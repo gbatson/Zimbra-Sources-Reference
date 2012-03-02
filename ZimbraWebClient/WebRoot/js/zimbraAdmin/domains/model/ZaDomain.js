@@ -211,6 +211,10 @@ ZaDomain.A_zimbraDomainCOSMaxAccounts = "zimbraDomainCOSMaxAccounts" ;
 ZaDomain.A_zimbraDomainFeatureMaxAccounts = "zimbraDomainFeatureMaxAccounts" ;
 ZaDomain.A2_account_limit = "account_limit" ;
 
+// help URL
+ZaDomain.A_zimbraHelpAdminURL = "zimbraHelpAdminURL";
+ZaDomain.A_zimbraHelpDelegatedURL = "zimbraHelpDelegatedURL";
+
 //skin properties
 ZaDomain.A_zimbraSkinForegroundColor = "zimbraSkinForegroundColor" ;
 ZaDomain.A_zimbraSkinBackgroundColor = "zimbraSkinBackgroundColor" ;
@@ -321,25 +325,8 @@ ZaDomain.compareACLs = function (val1, val2) {
 //In order to keep the domain list synchronized with server, we use synchronous call here.
 ZaDomain.getAll =
 function() {
-	var query = "";
-	if(!ZaZimbraAdmin.isGlobalAdmin()) {
-        	var domainNameList = ZaApp.getInstance()._domainNameList;
-        	if(!domainNameList || !(domainNameList instanceof Array) || domainNameList.length == 0) {
-            		return  new ZaItemList(ZaDomain);
-        	}
-        	if(domainNameList && domainNameList instanceof Array) {
-            		for(var i = 0; i < domainNameList.length; i++) {
-                		if(!target || domainNameList[i].indexOf(target) != -1)
-                		query += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
-            		}
-            		if(domainNameList.length > 1)
-            			query = "(|" + query + ")";
-        	}	
-    	} else
-	    query = ZaDomain.LOCAL_DOMAIN_QUERY;
-
 	var params = {
-		query: query,//ZaDomain.LOCAL_DOMAIN_QUERY, 
+		query: ZaDomain.LOCAL_DOMAIN_QUERY, 
 		types:[ZaSearch.DOMAINS],
 		sortBy:ZaDomain.A_domainName,
 		offset:"0",
@@ -437,6 +424,12 @@ function(tmpObj, newDomain) {
 
 	attr = soapDoc.set("a", tmpObj.attrs[ZaDomain.A_notes]);
 	attr.setAttribute("n", ZaDomain.A_notes);	
+
+	// help URL
+        attr = soapDoc.set("a", tmpObj.attrs[ZaDomain.A_zimbraHelpAdminURL]);
+        attr.setAttribute("n", ZaDomain.A_zimbraHelpAdminURL);
+        attr = soapDoc.set("a", tmpObj.attrs[ZaDomain.A_zimbraHelpDelegatedURL]);
+        attr.setAttribute("n", ZaDomain.A_zimbraHelpDelegatedURL);
 	
 	if(tmpObj.attrs[ZaDomain.A_zimbraAuthLdapStartTlsEnabled]) {
 		attr = soapDoc.set("a", tmpObj.attrs[ZaDomain.A_zimbraAuthLdapStartTlsEnabled]);
@@ -1878,6 +1871,9 @@ ZaDomain.myXModel = {
       { id:ZaDomain.A_zimbraSkinLogoLoginBanner, ref:"attrs/" + ZaDomain.A_zimbraSkinLogoLoginBanner, type:_COS_STRING_ },
       { id:ZaDomain.A_zimbraSkinLogoAppBanner, ref:"attrs/" + ZaDomain.A_zimbraSkinLogoAppBanner, type:_COS_STRING_ },
 
+	// help URL
+      { id:ZaDomain.A_zimbraHelpAdminURL, ref:"attrs/" + ZaDomain.A_zimbraHelpAdminURL, type:_COS_STRING_ },
+      { id:ZaDomain.A_zimbraHelpDelegatedURL, ref:"attrs/" + ZaDomain.A_zimbraHelpDelegatedURL, type:_COS_STRING_ },
         //interop
        { id:ZaDomain.A_zimbraFreebusyExchangeAuthUsername, ref:"attrs/" + ZaDomain.A_zimbraFreebusyExchangeAuthUsername, type: _COS_STRING_ },
        { id:ZaDomain.A_zimbraFreebusyExchangeAuthPassword, ref:"attrs/" + ZaDomain.A_zimbraFreebusyExchangeAuthPassword, type: _COS_STRING_ },
@@ -2094,39 +2090,3 @@ function (domainName) {
     }
 }
 
-ZaDomain.getEffectiveDomainList = function(adminId) {
-    var soapDoc = AjxSoapDoc.create("GetAllEffectiveRightsRequest", ZaZimbraAdmin.URN, null);
-    var elGrantee = soapDoc.set("grantee", adminId);
-    elGrantee.setAttribute("type", "usr");
-    elGrantee.setAttribute("by", "id");
-
-    var params = {};
-    params.soapDoc = soapDoc;
-    params.asyncMode = false;
-    var reqMgrParams = {
-        controller : ZaApp.getInstance().getCurrentController(),
-        busyMsg : ZaMsg.BUSY_GET_EFFICIENT_DOMAIN_LIST
-    }
-
-    var domainNameList = [];
-    try {
-        var resp = ZaRequestMgr.invoke(params, reqMgrParams);
-        if(!resp || resp.Body.GetAllEffectiveRightsResponse.Fault)
-            return domainNameList;
-        var targets = resp.Body.GetAllEffectiveRightsResponse.target;
-        for(var i = 0; i < targets.length; i++) {
-            if(targets[i].type != ZaItem.DOMAIN)
-                continue;
-            if(!targets[i].entries) continue;
-            for(var j = 0; j < targets[i].entries.length; j++) {
-                var entry = targets[i].entries[j].entry;
-                for(var k = 0; k < entry.length; k++)
-                    domainNameList.push(entry[k].name);
-            }
-            break;
-        }
-        return domainNameList;
-    } catch(ex) {
-        return domainNameList;
-    }
-}

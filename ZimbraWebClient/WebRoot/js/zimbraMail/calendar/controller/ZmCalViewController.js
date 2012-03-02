@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1601,8 +1601,8 @@ function(appt, type, mode) {
 	msgController.setMsg(appt.message);
 	// poke the msgController
 	var instanceDate = mode == ZmCalItem.MODE_DELETE_INSTANCE ? new Date(appt.uniqStartTime) : null;
-	msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner(), true);
-	this._continueDelete(appt, mode);
+	var delContCallback = new AjxCallback(this, this._continueDelete, [appt, mode]);
+	msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner(),true,null,null,delContCallback);
 };
 
 
@@ -2548,7 +2548,7 @@ function(recurrenceMode) {
 	var deleteOp = ZmOperation.DELETE;
 	var viewOp = ZmOperation.VIEW_APPOINTMENT;
 	var forwardOp = ZmOperation.FORWARD_APPT;
-
+	
 	if (recurrenceMode == ZmOperation.VIEW_APPT_INSTANCE) {
 		deleteOp = ZmOperation.DELETE_INSTANCE;
 		viewOp = ZmOperation.OPEN_APPT_INSTANCE;
@@ -2558,17 +2558,23 @@ function(recurrenceMode) {
 		viewOp = ZmOperation.OPEN_APPT_SERIES;
 		forwardOp = ZmOperation.FORWARD_APPT_SERIES;
 	}
-
-	return [
-		viewOp,
-		ZmOperation.SEP,
-		ZmOperation.REPLY_ACCEPT, ZmOperation.REPLY_TENTATIVE, ZmOperation.REPLY_DECLINE, ZmOperation.INVITE_REPLY_MENU,
-		ZmOperation.SEP,
-		forwardOp,
-        ZmOperation.PROPOSE_NEW_TIME,
-		deleteOp, ZmOperation.MOVE, ZmOperation.TAG_MENU,
-		ZmOperation.SHOW_ORIG
-	];
+	
+	var retVal = [viewOp,
+	      		ZmOperation.SEP,
+	    		ZmOperation.REPLY_ACCEPT,
+	    		ZmOperation.REPLY_TENTATIVE,
+	    		ZmOperation.REPLY_DECLINE,
+	    		ZmOperation.INVITE_REPLY_MENU,
+	    		ZmOperation.SEP,
+                forwardOp,
+                ZmOperation.PROPOSE_NEW_TIME,
+	    		deleteOp];
+	if (recurrenceMode != ZmOperation.VIEW_APPT_INSTANCE) {
+		retVal.push(ZmOperation.MOVE);
+	}
+	retVal.push(ZmOperation.TAG_MENU);
+	retVal.push(ZmOperation.SHOW_ORIG);
+	return retVal;
 };
 
 ZmCalViewController.prototype._getRecurringActionMenuOps =

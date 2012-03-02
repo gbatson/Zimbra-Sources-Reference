@@ -72,6 +72,7 @@ public class SkinResources
 	private static final String P_TEMPLATES = "templates";
 	private static final String P_COMPRESS = "compress";
 	private static final String P_CUSTOMER_DOMAIN = "customerDomain";
+	private static final String P_VERSION = "v";
 	
 	private static final String V_TRUE = "true";
 	private static final String V_FALSE = "false";
@@ -97,6 +98,8 @@ public class SkinResources
 	private static final String A_HELP_ADVANCED_URL = "zimbraHelpAdvancedURL";
 	private static final String A_HELP_DELEGATED_URL = "zimbraHelpDelegatedURL";
 	private static final String A_HELP_STANDARD_URL = "zimbraHelpStandardURL";
+
+	private static final String A_VERSION = "version";
 
 	private static final String H_USER_AGENT = "User-Agent";
 
@@ -182,6 +185,7 @@ public class SkinResources
         if (client == null) {
             client = CLIENT_ADVANCED;
         }
+        String cacheBusterVersion = (String) req.getAttribute(A_VERSION);
 
         String userAgent = getUserAgent(req);
         Map<String, String> macros = parseUserAgent(userAgent);
@@ -192,7 +196,7 @@ public class SkinResources
 		if (templates == null) templates = V_TRUE;
 		String serverName = getServerName(req);
 
-        String cacheId = serverName + ":" + uri + ":" + client + ":" + skin + "/templates=" + templates + ":" + browserType;
+        String cacheId = serverName + ":" + uri + ":" + client + ":" + skin + "/templates=" + templates + ":" + browserType + ":" + cacheBusterVersion;
 
         Locale locale = getLocale(req);
         if (type.equals(T_JAVASCRIPT) || type.equals(T_CSS)) {
@@ -229,7 +233,7 @@ public class SkinResources
         File file = !debug ? getCacheFile(cacheId) : null;
         if (file == null || !file.exists()) {
             if (ZimbraLog.webclient.isDebugEnabled()) ZimbraLog.webclient.debug("DEBUG: generating buffer");
-            buffer = generate(req, resp, cacheId, macros, type, client, locale, templates);
+            buffer = generate(req, resp, cacheId, macros, type, client, locale, templates, cacheBusterVersion);
             if (!debug) {
                 if (type.equals(T_CSS)) {
                     CssCompressor compressor = new CssCompressor(new StringReader(buffer));
@@ -380,7 +384,7 @@ public class SkinResources
     private String generate(HttpServletRequest req, HttpServletResponse resp,
                             String cacheId, Map<String, String> macros,
                             String type, String client, Locale requestedLocale,
-							String templatesParam)
+							String templatesParam, String cacheBusterVersion)
             throws IOException {
         String commentStart = "/* ";
         String commentContinue = " * ";
@@ -442,10 +446,15 @@ public class SkinResources
         if (appContextPath == null) {
             appContextPath = "/zimbra";
         }
-
-		// domain overrides
-		Map<String,String> substOverrides = new HashMap<String,String>();
-	    substOverrides.put(Manifest.S_APP_CONTEXT_PATH, appContextPath);
+        // domain overrides
+        
+        if (cacheBusterVersion == null) {
+            cacheBusterVersion = "";
+        }
+        Map<String,String> substOverrides = new HashMap<String,String>();
+        substOverrides.put(Manifest.S_APP_CONTEXT_PATH, appContextPath);
+        substOverrides.put(Manifest.S_JS_VERSION, cacheBusterVersion);
+		
 		try {
 			SoapProvisioning provisioning = new SoapProvisioning();
 			String soapUri =
@@ -1094,6 +1103,7 @@ public class SkinResources
 		private static final String S_HELP_STANDARD_URL = "HelpStandardURL";
 
 		private static final String S_APP_CONTEXT_PATH = "AppContextPath"; 
+		private static final String S_JS_VERSION = "jsVersion"; 
 
         private static final String E_SKIN = "skin";
         private static final String E_SUBSTITUTIONS = "substitutions";

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -204,7 +204,11 @@ function() {
 	} else {
 		this._moveCaretToTopHtml(true);
 	}
-	if (focused) focused.focus();
+	if (focused) {
+		try {
+			focused.focus();
+		} catch (e) {}
+	}
 };
 
 DwtHtmlEditor.prototype._moveCaretToTopHtml =
@@ -855,12 +859,8 @@ function() {
 		this._registerEditorEventHandlers(document.getElementById(this._iFrameId), doc);
 	};
 
-	if (AjxEnv.isIE || AjxEnv.isChrome) {
-		// IE needs a timeout
-		setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY);
-	} else {
-		cont.call(this, doc);
-	}
+    // most browsers need time out here
+	setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY * 4);
 };
 
 DwtHtmlEditor.prototype._focus =

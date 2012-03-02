@@ -2,7 +2,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -692,13 +692,15 @@ function(params, callback, result) {
 		this.participants.removeAll();
 	}
 
-	// clear all attachments
-	this.attachments.length = 0;
+	// clear all attachments and body data
+	this.attachments.length = this._bodyParts.length = 0;
+	this.findAttsFoundInMsgBodyDone = false;
 
 	this._loadFromDom(response.m[0]);
 	if (!this.isReadOnly() && params.markRead) {
 		this._markReadLocal(true);
 	}
+	this.findAttsFoundInMsgBody();
 
 	// return result so callers can check for exceptions if they want
 	if (this._loadCallback) {
@@ -1413,7 +1415,9 @@ function(params) {
 												noBusyOverlay:params.isDraft,
 												callback:respCallback,
 												errorCallback:params.errorCallback,
-												accountName:params.accountName });
+												accountName:params.accountName,
+                                                timeout: ( ( params.isDraft && this.attId ) ? 0 : null )
+                                                });
 	}
 };
 

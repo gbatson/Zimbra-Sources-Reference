@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 Zimbra, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.cs.fb;
 
 import java.io.IOException;
@@ -14,6 +30,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 
+import javax.activation.CommandMap;
+import javax.activation.MailcapCommandMap;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -67,6 +85,15 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
     static ExchangeServicePortType service = null;
 
     boolean Initialize(ServerInfo info) throws MalformedURLException {
+    	
+        ZimbraLog.fb.debug("Setting MailcapCommandMap handlers back to default");
+        MailcapCommandMap mc = (MailcapCommandMap)CommandMap.getDefaultCommandMap();
+        mc.addMailcap("application/xml;;x-java-content-handler=com.sun.mail.handlers.text_xml");
+        mc.addMailcap("text/xml;;x-java-content-handler=com.sun.mail.handlers.text_xml");
+        mc.addMailcap("text/plain;;x-java-content-handler=com.sun.mail.handlers.text_plain");
+        CommandMap.setDefaultCommandMap(mc);
+        ZimbraLog.fb.debug("Done Setting MailcapCommandMap handlers");
+    	
         URL wsdlUrl = ExchangeWebService.class.getResource("/Services.wsdl");
         ExchangeWebService factory =
             new ExchangeWebService(wsdlUrl,
@@ -866,7 +893,6 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
 
     public static void registerResolver(ExchangeUserResolver r, int priority) {
         synchronized (sRESOLVERS) {
-            ZimbraLog.fb.error("entering registerResolver");
             sRESOLVERS.ensureCapacity(priority + 1);
             sRESOLVERS.add(priority, r);
         }
@@ -907,7 +933,6 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
     }
 
     public ServerInfo getServerInfo(String emailAddr) {
-        ZimbraLog.fb.error("entering getServerInfo " + emailAddr);
         ServerInfo serverInfo = null;
         for (ExchangeUserResolver r : sRESOLVERS) {
             serverInfo = r.getServerInfo(emailAddr);

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -205,7 +205,15 @@ GlobalConfigXFormView.myXFormModifier = function(xFormObject, entry) {
 							} ,
                           { ref: ZaGlobalConfig.A_zimbraFileUploadMaxSize, type: _TEXTFIELD_,
 								  label: ZaMsg.NAD_DOC_MaxUploadSize, labelLocation:_LEFT_, cssClass:"admin_xform_number_input"
-	  						}
+	  						},
+							// help URL
+							{type: _SPACER_, height: 10},
+							{ ref: ZaGlobalConfig.A_zimbraHelpAdminURL, type: _TEXTFIELD_,
+                                                                  label: ZaMsg.Domain_zimbraHelpAdminURL, labelLocation:_LEFT_, width:200
+                                                        },
+							{ ref: ZaGlobalConfig.A_zimbraHelpDelegatedURL, type: _TEXTFIELD_,
+                                                                  label: ZaMsg.Domain_zimbraHelpDelegatedURL, labelLocation:_LEFT_, width: 200
+                                                        }
                         ]
 					}
 				]

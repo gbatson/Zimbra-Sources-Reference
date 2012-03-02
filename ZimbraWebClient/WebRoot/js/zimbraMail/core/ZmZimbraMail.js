@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,7 +34,7 @@
  * @extends	ZmController
  */
 ZmZimbraMail = function(params) {
-
+	this._startTime = new Date().getTime(); //time we started up
 	ZmController.call(this, null);
 
 	this._userShell = params.userShell;
@@ -630,6 +630,7 @@ function(params) {
 	this.getKeyMapMgr();	// make sure keyboard handling is initialized
 
 	this.setSessionTimer(true);
+	ZmZimbraMail.setAuthTokenEndTime(this._startTime);
 	ZmZimbraMail.killSplash();
 
 	// Give apps a chance to add their own ui components.
@@ -2049,7 +2050,12 @@ function(locationStr) {
  */
 ZmZimbraMail.redir =
 function(locationStr){
-	window.location = locationStr;
+	// IE has a tendency to throw a mysterious error when the "are you sure" dialog pops up and the user presses "cancel".
+	// Pressing cancel, however, equals doing nothing, so we can just catch the exception and ignore it (bug #59853)
+	try {
+		window.location = locationStr;
+	} catch (e) {
+	}
 };
 
 /**
@@ -2088,6 +2094,24 @@ function(bStartTimer) {
 			this._shell.clearHandler(DwtEvent.ONMOUSEDOWN);
 		else
 			window.onkeydown = null;
+	}
+};
+
+/**
+ * Sets the ZmSetting.TOKEN_ENDTIME
+ * @param {int} startTime   auth token creation time in milliseconds; uses current time if not specified
+ */
+ZmZimbraMail.setAuthTokenEndTime =
+function(startTime) {
+	if(!startTime) {
+		startTime = new Date().getTime();
+	}
+	var authTokenLifetime = appCtxt.get(ZmSetting.TOKEN_LIFETIME);
+	if (authTokenLifetime) {
+		var authTokenEndTime = startTime + authTokenLifetime;
+		appCtxt.set(ZmSetting.TOKEN_ENDTIME, authTokenEndTime);
+		DBG.println(AjxDebug.DBG1, "Setting authTokenEndTime to " + new Date(authTokenEndTime).toLocaleString());
+
 	}
 };
 

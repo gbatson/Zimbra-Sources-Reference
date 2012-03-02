@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 jylee 20110211-1747 */
+    /* build: 6.0.2_BETA1_1111 pshao 20110502-1459 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -4136,14 +4136,23 @@ public class ZAttrProvisioning {
 
     /**
      * Maximum number of messages to delete during a single transaction when
-     * emptying a folder. If the limit is exceeded, the folder is emptied in
-     * multiple transactions. Each transaction deletes this number of
-     * messages.
+     * emptying a large folder. When a folder is emptied and it contains more
+     * than zimbraMailEmptyFolderBatchThreshold messages, the operation is
+     * performed in multiple transactions.
      *
      * @since ZCS 6.0.8
      */
     @ZAttr(id=1097)
     public static final String A_zimbraMailEmptyFolderBatchSize = "zimbraMailEmptyFolderBatchSize";
+
+    /**
+     * Folders that contain more than this many messages will be emptied in
+     * batches of size zimbraMailEmptyFolderBatchSize.
+     *
+     * @since ZCS 6.0.13
+     */
+    @ZAttr(id=1208)
+    public static final String A_zimbraMailEmptyFolderBatchThreshold = "zimbraMailEmptyFolderBatchThreshold";
 
     /**
      * Number of bytes to buffer in memory per file descriptor in the cache.
@@ -4528,8 +4537,9 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMessageCacheSize = "zimbraMessageCacheSize";
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      */
     @ZAttr(id=334)
     public static final String A_zimbraMessageIdDedupeCacheSize = "zimbraMessageIdDedupeCacheSize";
@@ -7473,7 +7483,7 @@ public class ZAttrProvisioning {
     public static final String A_zimbraSSLCertificate = "zimbraSSLCertificate";
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @since ZCS 5.0.5
      */

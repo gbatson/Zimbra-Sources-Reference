@@ -1679,7 +1679,11 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="334" name="zimbraMessageIdDedupeCacheSize" type="integer" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
   <globalConfigValue>3000</globalConfigValue>
-  <desc>Size of cache for delivery time dedupe based on Message-Id header.  Set to 0 to disable this type of deduping.</desc>
+  <desc>
+    Number of Message-Id header values to keep in the LMTP dedupe cache.
+    Subsequent attempts to deliver a message with a matching Message-Id
+    to the same mailbox will be ignored.  A value of 0 disables deduping.
+  </desc>
 </attr>
 
 <attr id="335" name="zimbraFeatureSharingEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited">
@@ -4929,8 +4933,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1097" name="zimbraMailEmptyFolderBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.8">
-  <globalConfigValue>100000</globalConfigValue>
-  <desc>Maximum number of messages to delete during a single transaction when emptying a folder.  If the limit is exceeded, the folder is emptied in multiple transactions.  Each transaction deletes this number of messages.</desc>
+  <globalConfigValue>1000</globalConfigValue>
+  <desc>
+    Maximum number of messages to delete during a single transaction when emptying a large folder. 
+    When a folder is emptied and it contains more than zimbraMailEmptyFolderBatchThreshold messages, 
+    the operation is performed in multiple transactions.
+  </desc>
 </attr>
 
 <attr id="1101" name="zimbraAdminAccessControlMech" type="enum" cardinality="single" value="acl,global" optionalIn="globalConfig" since="6.0.9" requiresRestart="mailbox">
@@ -4965,5 +4973,13 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>webdav</globalConfigValue>
   <desc>Can be set to either webdav for Exchange 2007 or older, or ews for 2010 and newer</desc>
 </attr>
+
+<attr id="1208" name="zimbraMailEmptyFolderBatchThreshold" type="integer" cardinality="single" min="0" optionalIn="globalConfig,server" flags="serverInherited,domainAdminModifiable" since="6.0.13">
+  <globalConfigValue>100000</globalConfigValue>
+  <desc>
+    Folders that contain more than this many messages will be emptied in batches of size zimbraMailEmptyFolderBatchSize.
+  </desc>
+</attr>
+
 
 </attrs>

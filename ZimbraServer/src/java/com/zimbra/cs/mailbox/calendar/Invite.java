@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -2458,7 +2458,7 @@ public class Invite {
         return thisSeq >= otherSeq;
     }
 
-    public Invite newCopy() {
+    public Invite newCopy() throws ServiceException {
         List<ZAttendee> attendees = new ArrayList<ZAttendee>(mAttendees.size());
         for (ZAttendee at : mAttendees) {
             attendees.add(new ZAttendee(at));  // add a copy of attendee
@@ -2491,6 +2491,11 @@ public class Invite {
         inv.setDontIndexMimeMessage(getDontIndexMimeMessage());
         inv.mLocalOnly = mLocalOnly;
         inv.mDescInMeta = mDescInMeta;
+
+        inv.clearAlarms();
+        for (Alarm alarm : mAlarms) {
+            inv.addAlarm(alarm.newCopy());
+        }
         return inv;
     }
 

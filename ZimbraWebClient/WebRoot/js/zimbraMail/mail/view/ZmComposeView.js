@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1228,10 +1228,10 @@ function(signature, sigContent, account) {
 	var signatureId = signature.id;
 	sigContent = sigContent || this.getSignatureContent(signatureId);
 	if (this.getHtmlEditor().getMode() == DwtHtmlEditor.HTML) {
-		sigContent = ["<span id=\"", signatureId, "\">", sigContent, "</span>"].join('');
+		sigContent = ["<div id=\"", signatureId, "\">", sigContent, "</div>"].join('');
 	}
 
-	return sigContent;
+	return this._getSignatureSeparator() + sigContent;
 };
 
 /**
@@ -1278,7 +1278,7 @@ function(content, replaceSignatureId, account) {
 
 				if (newSigContent) {
 					sigEl.innerHTML = newSigContent;
-
+	
 					if (signature) {
 						sigEl.id = signature.id;
 					} else {
@@ -1302,7 +1302,7 @@ function(content, replaceSignatureId, account) {
 
 			//Replace Signature
 			if (replaceRe.test(content)) {
-				content = content.replace(replaceRe, newSig);
+				content = content.replace(replaceRe, this._getSignatureSeparator() + newSig);
 				done = true;
 			}
 		}
@@ -1328,10 +1328,7 @@ function(content, replaceSignatureId, account) {
 
 ZmComposeView.prototype.getSignatureContent =
 function(signatureId) {
-	var sig = this._getSignature(signatureId);
-	if (!sig) { return ""; }
-
-	return this._getSignatureSeparator() + sig;
+	return this._getSignature(signatureId) || "";
 };
 
 /**
@@ -1916,19 +1913,23 @@ function(action, msg, extraBodyText) {
 		}
 	}
 
-	var sigStyle, sig;
+	var sigStyle, sig, sigId, sigFormat;
 	var account = appCtxt.multiAccounts && this.getFromAccount();
 	var ac = window.parentAppCtxt || window.appCtxt;
 	if (ac.get(ZmSetting.SIGNATURES_ENABLED, null, account)) {
 		sig = this.getSignatureContentSpan(null, null, account);
 		sigStyle = sig && ac.get(ZmSetting.SIGNATURE_STYLE, null, account);
+		var signature = this.getSignatureById(sigId);
+		sigFormat = signature && signature.getContentType();
 	}
-	var sigPre = (sigStyle == ZmSetting.SIG_OUTLOOK) ? sig : "";
+	if (sigStyle == ZmSetting.SIG_OUTLOOK) {
+		sigPre = (this._composeMode == DwtHtmlEditor.TEXT || sigFormat == ZmMimeTable.TEXT_PLAIN) ? sig + crlf : sig;
+	}
 	extraBodyText = extraBodyText || "";
 	var preText = extraBodyText + sigPre;
-	if (sigPre) {
-		preText += crlf;
-	}
+//	if (sigPre) {
+//		preText += crlf;
+//	}
 
 	if (incOptions.headers) {
 		for (var i = 0; i < ZmComposeView.QUOTED_HDRS.length; i++) {

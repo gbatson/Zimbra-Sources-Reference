@@ -398,3 +398,28 @@ function(myId, tagId) {
 	var dwtObj = DwtControl.fromElementId(myId);
 	dwtObj.notifyListeners(ZmConvView._TAG_CLICK, tagId);
 };
+
+ZmConvView.prototype.handleRemoveAttachment =
+function(oldMsgId, newMsg) {
+	var ac = window.parentAppCtxt || window.appCtxt;
+	// cache this actioned ID so we can reset selection to it once the CREATE
+	// notifications have been processed.
+	ac.getApp(ZmApp.MAIL).getMailListController().actionedMsgId = newMsg.id;
+	var msgView = this.getMsgView();
+	if (msgView) {
+		var mailListView = this.getMailListView();
+		if (mailListView) {
+			var mailList = mailListView.getList();
+			var pos = mailList.indexOf(msgView._msg);
+			mailList.replace(pos, newMsg);
+			mailListView.set(mailList.clone(), mailListView._sortByString);
+			mailListView.setSelection(newMsg);
+		}
+		if (this._conv) {
+			//hack to avoid popview if only one message in conversation; delete notification will cause view to be popped otherwise
+			this._conv.addMsg(newMsg);
+			this._conv.numMsgs = this._conv.msgIds.length;
+		}
+		msgView.handleRemoveAttachment(oldMsgId, newMsg);
+	}
+};

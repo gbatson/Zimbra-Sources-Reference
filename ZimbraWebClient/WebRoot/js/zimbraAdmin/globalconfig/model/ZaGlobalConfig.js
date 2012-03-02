@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -163,6 +163,10 @@ ZaGlobalConfig.A_zimbraSkinLogoLoginBanner = "zimbraSkinLogoLoginBanner" ;
 ZaGlobalConfig.A_zimbraSkinLogoAppBanner = "zimbraSkinLogoAppBanner" ;
 ZaGlobalConfig.A2_blocked_extension_selection = "blocked_extension_selection";
 ZaGlobalConfig.A2_common_extension_selection = "common_extension_selection";
+
+// help URL
+ZaGlobalConfig.A_zimbraHelpAdminURL = "zimbraHelpAdminURL";
+ZaGlobalConfig.A_zimbraHelpDelegatedURL = "zimbraHelpDelegatedURL";
 
 ZaGlobalConfig.__configInstance = null;
 ZaGlobalConfig.isDirty = true;
@@ -392,6 +396,9 @@ ZaGlobalConfig.myXModel = {
         { id:ZaGlobalConfig.A_zimbraSkinLogoLoginBanner, ref:"attrs/" + ZaGlobalConfig.A_zimbraSkinLogoLoginBanner, type:_STRING_ },
         { id:ZaGlobalConfig.A_zimbraSkinLogoAppBanner, ref:"attrs/" + ZaGlobalConfig.A_zimbraSkinLogoAppBanner, type:_STRING_ },
 
+	// help URL
+        { id:ZaGlobalConfig.A_zimbraHelpAdminURL, ref:"attrs/" + ZaGlobalConfig.A_zimbraHelpAdminURL, type:_STRING_ },
+        { id:ZaGlobalConfig.A_zimbraHelpDelegatedURL, ref:"attrs/" + ZaGlobalConfig.A_zimbraHelpDelegatedURL, type:_STRING_ },
          //interop
         { id:ZaGlobalConfig.A_zimbraFreebusyExchangeAuthUsername, ref:"attrs/" + ZaGlobalConfig.A_zimbraFreebusyExchangeAuthUsername, type: _STRING_ },
         { id:ZaGlobalConfig.A_zimbraFreebusyExchangeAuthPassword, ref:"attrs/" + ZaGlobalConfig.A_zimbraFreebusyExchangeAuthPassword, type: _STRING_ },

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -40,7 +40,7 @@ public class ZAttrConfig extends Entry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 jylee 20110211-1747 */
+    /* build: 6.0.2_BETA1_1111 pshao 20110502-1459 */
 
     /**
      * RFC2256: descriptive information
@@ -12806,24 +12806,24 @@ public class ZAttrConfig extends Entry {
 
     /**
      * Maximum number of messages to delete during a single transaction when
-     * emptying a folder. If the limit is exceeded, the folder is emptied in
-     * multiple transactions. Each transaction deletes this number of
-     * messages.
+     * emptying a large folder. When a folder is emptied and it contains more
+     * than zimbraMailEmptyFolderBatchThreshold messages, the operation is
+     * performed in multiple transactions.
      *
-     * @return zimbraMailEmptyFolderBatchSize, or 100000 if unset
+     * @return zimbraMailEmptyFolderBatchSize, or 1000 if unset
      *
      * @since ZCS 6.0.8
      */
     @ZAttr(id=1097)
     public int getMailEmptyFolderBatchSize() {
-        return getIntAttr(Provisioning.A_zimbraMailEmptyFolderBatchSize, 100000);
+        return getIntAttr(Provisioning.A_zimbraMailEmptyFolderBatchSize, 1000);
     }
 
     /**
      * Maximum number of messages to delete during a single transaction when
-     * emptying a folder. If the limit is exceeded, the folder is emptied in
-     * multiple transactions. Each transaction deletes this number of
-     * messages.
+     * emptying a large folder. When a folder is emptied and it contains more
+     * than zimbraMailEmptyFolderBatchThreshold messages, the operation is
+     * performed in multiple transactions.
      *
      * @param zimbraMailEmptyFolderBatchSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -12839,9 +12839,9 @@ public class ZAttrConfig extends Entry {
 
     /**
      * Maximum number of messages to delete during a single transaction when
-     * emptying a folder. If the limit is exceeded, the folder is emptied in
-     * multiple transactions. Each transaction deletes this number of
-     * messages.
+     * emptying a large folder. When a folder is emptied and it contains more
+     * than zimbraMailEmptyFolderBatchThreshold messages, the operation is
+     * performed in multiple transactions.
      *
      * @param zimbraMailEmptyFolderBatchSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -12858,9 +12858,9 @@ public class ZAttrConfig extends Entry {
 
     /**
      * Maximum number of messages to delete during a single transaction when
-     * emptying a folder. If the limit is exceeded, the folder is emptied in
-     * multiple transactions. Each transaction deletes this number of
-     * messages.
+     * emptying a large folder. When a folder is emptied and it contains more
+     * than zimbraMailEmptyFolderBatchThreshold messages, the operation is
+     * performed in multiple transactions.
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -12875,9 +12875,9 @@ public class ZAttrConfig extends Entry {
 
     /**
      * Maximum number of messages to delete during a single transaction when
-     * emptying a folder. If the limit is exceeded, the folder is emptied in
-     * multiple transactions. Each transaction deletes this number of
-     * messages.
+     * emptying a large folder. When a folder is emptied and it contains more
+     * than zimbraMailEmptyFolderBatchThreshold messages, the operation is
+     * performed in multiple transactions.
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -12888,6 +12888,83 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetMailEmptyFolderBatchSize(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraMailEmptyFolderBatchSize, "");
+        return attrs;
+    }
+
+    /**
+     * Folders that contain more than this many messages will be emptied in
+     * batches of size zimbraMailEmptyFolderBatchSize.
+     *
+     * @return zimbraMailEmptyFolderBatchThreshold, or 100000 if unset
+     *
+     * @since ZCS 6.0.13
+     */
+    @ZAttr(id=1208)
+    public int getMailEmptyFolderBatchThreshold() {
+        return getIntAttr(Provisioning.A_zimbraMailEmptyFolderBatchThreshold, 100000);
+    }
+
+    /**
+     * Folders that contain more than this many messages will be emptied in
+     * batches of size zimbraMailEmptyFolderBatchSize.
+     *
+     * @param zimbraMailEmptyFolderBatchThreshold new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.13
+     */
+    @ZAttr(id=1208)
+    public void setMailEmptyFolderBatchThreshold(int zimbraMailEmptyFolderBatchThreshold) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailEmptyFolderBatchThreshold, Integer.toString(zimbraMailEmptyFolderBatchThreshold));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Folders that contain more than this many messages will be emptied in
+     * batches of size zimbraMailEmptyFolderBatchSize.
+     *
+     * @param zimbraMailEmptyFolderBatchThreshold new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.13
+     */
+    @ZAttr(id=1208)
+    public Map<String,Object> setMailEmptyFolderBatchThreshold(int zimbraMailEmptyFolderBatchThreshold, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailEmptyFolderBatchThreshold, Integer.toString(zimbraMailEmptyFolderBatchThreshold));
+        return attrs;
+    }
+
+    /**
+     * Folders that contain more than this many messages will be emptied in
+     * batches of size zimbraMailEmptyFolderBatchSize.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.13
+     */
+    @ZAttr(id=1208)
+    public void unsetMailEmptyFolderBatchThreshold() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailEmptyFolderBatchThreshold, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Folders that contain more than this many messages will be emptied in
+     * batches of size zimbraMailEmptyFolderBatchSize.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.13
+     */
+    @ZAttr(id=1208)
+    public Map<String,Object> unsetMailEmptyFolderBatchThreshold(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailEmptyFolderBatchThreshold, "");
         return attrs;
     }
 
@@ -15415,8 +15492,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @return zimbraMessageIdDedupeCacheSize, or 3000 if unset
      */
@@ -15426,8 +15504,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @param zimbraMessageIdDedupeCacheSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -15440,8 +15519,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @param zimbraMessageIdDedupeCacheSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -15455,8 +15535,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -15468,8 +15549,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -25470,7 +25552,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @return zimbraSSLExcludeCipherSuites, or empty array if unset
      *
@@ -25482,7 +25564,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param zimbraSSLExcludeCipherSuites new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -25497,7 +25579,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param zimbraSSLExcludeCipherSuites new value
      * @param attrs existing map to populate, or null to create a new map
@@ -25513,7 +25595,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param zimbraSSLExcludeCipherSuites new to add to existing values
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -25528,7 +25610,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param zimbraSSLExcludeCipherSuites new to add to existing values
      * @param attrs existing map to populate, or null to create a new map
@@ -25544,7 +25626,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param zimbraSSLExcludeCipherSuites existing value to remove
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -25559,7 +25641,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param zimbraSSLExcludeCipherSuites existing value to remove
      * @param attrs existing map to populate, or null to create a new map
@@ -25575,7 +25657,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -25589,7 +25671,7 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * space separated list of excluded cipher suites
+     * excluded cipher suites
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs

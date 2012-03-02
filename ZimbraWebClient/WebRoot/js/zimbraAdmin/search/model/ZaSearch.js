@@ -354,18 +354,6 @@ ZaSearch.prototype.dynSelectSearchDomains = function (callArgs) {
 		params.types = [ZaSearch.DOMAINS];
 		params.callback = dataCallback;
 		params.sortBy = ZaDomain.A_domainName;
-        	params.query = "";
-        	if(ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsDelegatedAdminAccount] == "TRUE") {
-            	var domainNameList = ZaApp.getInstance()._domainNameList;
-            	if(domainNameList && domainNameList instanceof Array) {
-                	for(var i = 0; i < domainNameList.length; i++) {
-                    		if(!value || domainNameList[i].indexOf(value) != -1)
-                    		params.query += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
-                	}
-                	if(domainNameList.length > 1)
-                    		params.query = "(|" + params.query + ")";
-            	}
-        	} else
 		params.query = ZaSearch.getSearchDomainByNameQuery(value);
 		params.controller = ZaApp.getInstance().getCurrentController();
 		params.showBusy = true;
@@ -535,6 +523,8 @@ function(n, types,excludeClosed) {
         for (var i = 0 ; i < types.length; i ++) {
             if (types[i] == "domains") {
                 query.push ("(zimbraDomainName=*"+n+"*)") ;
+	    } else if(types[i] == ZaSearch.ALIASES) {
+		query.push("(zimbraDomainName=*" + n + "*)(uid=*"+n+"*)");
             } else {
             	if(!addedAddrFields) {
             		query.push("(mail=*"+n+"*)(cn=*"+n+"*)(sn=*"+n+"*)(gn=*"+n+"*)(displayName=*"+n+"*)") ;

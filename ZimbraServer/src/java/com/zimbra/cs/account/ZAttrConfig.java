@@ -20,6 +20,7 @@
  */
 package com.zimbra.cs.account;
 
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
 
@@ -40,7 +41,7 @@ public class ZAttrConfig extends Entry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 jhahm 20110215-1542 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110321-1148 */
 
     /**
      * RFC2256: descriptive information
@@ -5341,13 +5342,13 @@ public class ZAttrConfig extends Entry {
      * Comma separated list of Contact attributes that should be hidden from
      * clients and export of contacts.
      *
-     * @return zimbraContactHiddenAttributes, or "dn,vcardUID,vcardURL,vcardXProps,member" if unset
+     * @return zimbraContactHiddenAttributes, or "dn,vcardUID,vcardURL,vcardXProps,member,SMIMECertificate" if unset
      *
      * @since ZCS 6.0.6
      */
     @ZAttr(id=1086)
     public String getContactHiddenAttributes() {
-        return getAttr(Provisioning.A_zimbraContactHiddenAttributes, "dn,vcardUID,vcardURL,vcardXProps,member");
+        return getAttr(Provisioning.A_zimbraContactHiddenAttributes, "dn,vcardUID,vcardURL,vcardXProps,member,SMIMECertificate");
     }
 
     /**
@@ -8695,7 +8696,7 @@ public class ZAttrConfig extends Entry {
      */
     @ZAttr(id=153)
     public String[] getGalLdapAttrMap() {
-        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapAttrMap); return value.length > 0 ? value : new String[] {"co=workCountry","company=company","zimbraPhoneticCompany,ms-DS-Phonetic-Company-Name=phoneticCompany","givenName,gn=firstName","zimbraPhoneticFirstName,ms-DS-Phonetic-First-Name=phoneticFirstName","sn=lastName","zimbraPhoneticLastName,ms-DS-Phonetic-Last-Name=phoneticLastName","displayName,cn=fullName,fullName2,fullName3,fullName4,fullName5,fullName6,fullName7,fullName8,fullName9,fullName10","initials=initials","description=notes","l=workCity","physicalDeliveryOfficeName=office","ou=department","street,streetAddress=workStreet","postalCode=workPostalCode","facsimileTelephoneNumber,fax=workFax","homeTelephoneNumber,homePhone=homePhone","mobileTelephoneNumber,mobile=mobilePhone","pagerTelephoneNumber,pager=pager","telephoneNumber=workPhone","st=workState","zimbraMailDeliveryAddress,zimbraMailAlias,mail=email,email2,email3,email4,email5,email6,email7,email8,email9,email10,email11,email12,email13,email14,email15,email16","title=jobTitle","whenChanged,modifyTimeStamp=modifyTimeStamp","whenCreated,createTimeStamp=createTimeStamp","zimbraId=zimbraId","objectClass=objectClass","zimbraMailForwardingAddress=member","zimbraCalResType,msExchResourceSearchProperties=zimbraCalResType","zimbraCalResLocationDisplayName,displayName=zimbraCalResLocationDisplayName","zimbraCalResBuilding=zimbraCalResBuilding","zimbraCalResCapacity,msExchResourceCapacity=zimbraCalResCapacity","zimbraCalResFloor=zimbraCalResFloor","zimbraCalResSite=zimbraCalResSite","zimbraCalResContactEmail=zimbraCalResContactEmail","msExchResourceSearchProperties=zimbraAccountCalendarUserType"};
+        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapAttrMap); return value.length > 0 ? value : new String[] {"co=workCountry","company=company","zimbraPhoneticCompany,ms-DS-Phonetic-Company-Name=phoneticCompany","givenName,gn=firstName","zimbraPhoneticFirstName,ms-DS-Phonetic-First-Name=phoneticFirstName","sn=lastName","zimbraPhoneticLastName,ms-DS-Phonetic-Last-Name=phoneticLastName","displayName,cn=fullName,fullName2,fullName3,fullName4,fullName5,fullName6,fullName7,fullName8,fullName9,fullName10","initials=initials","description=notes","l=workCity","physicalDeliveryOfficeName=office","ou=department","street,streetAddress=workStreet","postalCode=workPostalCode","facsimileTelephoneNumber,fax=workFax","homeTelephoneNumber,homePhone=homePhone","mobileTelephoneNumber,mobile=mobilePhone","pagerTelephoneNumber,pager=pager","telephoneNumber=workPhone","st=workState","zimbraMailDeliveryAddress,zimbraMailAlias,mail=email,email2,email3,email4,email5,email6,email7,email8,email9,email10,email11,email12,email13,email14,email15,email16","title=jobTitle","whenChanged,modifyTimeStamp=modifyTimeStamp","whenCreated,createTimeStamp=createTimeStamp","zimbraId=zimbraId","objectClass=objectClass","zimbraMailForwardingAddress=member","zimbraCalResType,msExchResourceSearchProperties=zimbraCalResType","zimbraCalResLocationDisplayName=zimbraCalResLocationDisplayName","zimbraCalResBuilding=zimbraCalResBuilding","zimbraCalResCapacity,msExchResourceCapacity=zimbraCalResCapacity","zimbraCalResFloor=zimbraCalResFloor","zimbraCalResSite=zimbraCalResSite","zimbraCalResContactEmail=zimbraCalResContactEmail","msExchResourceSearchProperties=zimbraAccountCalendarUserType","binary zimbraPrefMailSMIMECertificate,userCertificate,userSMIMECertificate=SMIMECertificate"};
     }
 
     /**
@@ -10772,6 +10773,137 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetHttpSSLNumThreads(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraHttpSSLNumThreads, "");
+        return attrs;
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @return zimbraIPMode, or ZAttrProvisioning.IPMode.ipv4 if unset and/or has invalid value
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public ZAttrProvisioning.IPMode getIPMode() {
+        try { String v = getAttr(Provisioning.A_zimbraIPMode); return v == null ? ZAttrProvisioning.IPMode.ipv4 : ZAttrProvisioning.IPMode.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.IPMode.ipv4; }
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @return zimbraIPMode, or "ipv4" if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public String getIPModeAsString() {
+        return getAttr(Provisioning.A_zimbraIPMode, "ipv4");
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public void setIPMode(ZAttrProvisioning.IPMode zimbraIPMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public Map<String,Object> setIPMode(ZAttrProvisioning.IPMode zimbraIPMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode.toString());
+        return attrs;
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public void setIPModeAsString(String zimbraIPMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public Map<String,Object> setIPModeAsString(String zimbraIPMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode);
+        return attrs;
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public void unsetIPMode() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public Map<String,Object> unsetIPMode(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, "");
         return attrs;
     }
 
@@ -14705,6 +14837,344 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @return zimbraMailSSLClientCertMode, or ZAttrProvisioning.MailSSLClientCertMode.Disabled if unset and/or has invalid value
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public ZAttrProvisioning.MailSSLClientCertMode getMailSSLClientCertMode() {
+        try { String v = getAttr(Provisioning.A_zimbraMailSSLClientCertMode); return v == null ? ZAttrProvisioning.MailSSLClientCertMode.Disabled : ZAttrProvisioning.MailSSLClientCertMode.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.MailSSLClientCertMode.Disabled; }
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @return zimbraMailSSLClientCertMode, or "Disabled" if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public String getMailSSLClientCertModeAsString() {
+        return getAttr(Provisioning.A_zimbraMailSSLClientCertMode, "Disabled");
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public void setMailSSLClientCertMode(ZAttrProvisioning.MailSSLClientCertMode zimbraMailSSLClientCertMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public Map<String,Object> setMailSSLClientCertMode(ZAttrProvisioning.MailSSLClientCertMode zimbraMailSSLClientCertMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode.toString());
+        return attrs;
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public void setMailSSLClientCertModeAsString(String zimbraMailSSLClientCertMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public Map<String,Object> setMailSSLClientCertModeAsString(String zimbraMailSSLClientCertMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode);
+        return attrs;
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public void unsetMailSSLClientCertMode() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public Map<String,Object> unsetMailSSLClientCertMode(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, "");
+        return attrs;
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * <p>Use getMailSSLClientCertPortAsString to access value as a string.
+     *
+     * @see #getMailSSLClientCertPortAsString()
+     *
+     * @return zimbraMailSSLClientCertPort, or 0 if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public int getMailSSLClientCertPort() {
+        return getIntAttr(Provisioning.A_zimbraMailSSLClientCertPort, 0);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @return zimbraMailSSLClientCertPort, or "0" if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public String getMailSSLClientCertPortAsString() {
+        return getAttr(Provisioning.A_zimbraMailSSLClientCertPort, "0");
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public void setMailSSLClientCertPort(int zimbraMailSSLClientCertPort) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, Integer.toString(zimbraMailSSLClientCertPort));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public Map<String,Object> setMailSSLClientCertPort(int zimbraMailSSLClientCertPort, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, Integer.toString(zimbraMailSSLClientCertPort));
+        return attrs;
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public void setMailSSLClientCertPortAsString(String zimbraMailSSLClientCertPort) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, zimbraMailSSLClientCertPort);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public Map<String,Object> setMailSSLClientCertPortAsString(String zimbraMailSSLClientCertPort, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, zimbraMailSSLClientCertPort);
+        return attrs;
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public void unsetMailSSLClientCertPort() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public Map<String,Object> unsetMailSSLClientCertPort(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, "");
+        return attrs;
+    }
+
+    /**
      * SSL port for end-user UI
      *
      * <p>Use getMailSSLPortAsString to access value as a string.
@@ -16370,8 +16840,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @return zimbraMessageIdDedupeCacheSize, or 3000 if unset
      */
@@ -16381,8 +16852,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @param zimbraMessageIdDedupeCacheSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -16395,8 +16867,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @param zimbraMessageIdDedupeCacheSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -16410,8 +16883,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -16423,8 +16897,9 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -19946,6 +20421,217 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetOAuthConsumerCredentials(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraOAuthConsumerCredentials, "");
+        return attrs;
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @return zimbraOpenidConsumerAllowedOPEndpointURL, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public String[] getOpenidConsumerAllowedOPEndpointURL() {
+        return getMultiAttr(Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL);
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param zimbraOpenidConsumerAllowedOPEndpointURL new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public void setOpenidConsumerAllowedOPEndpointURL(String[] zimbraOpenidConsumerAllowedOPEndpointURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, zimbraOpenidConsumerAllowedOPEndpointURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param zimbraOpenidConsumerAllowedOPEndpointURL new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public Map<String,Object> setOpenidConsumerAllowedOPEndpointURL(String[] zimbraOpenidConsumerAllowedOPEndpointURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, zimbraOpenidConsumerAllowedOPEndpointURL);
+        return attrs;
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param zimbraOpenidConsumerAllowedOPEndpointURL new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public void addOpenidConsumerAllowedOPEndpointURL(String zimbraOpenidConsumerAllowedOPEndpointURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, zimbraOpenidConsumerAllowedOPEndpointURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param zimbraOpenidConsumerAllowedOPEndpointURL new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public Map<String,Object> addOpenidConsumerAllowedOPEndpointURL(String zimbraOpenidConsumerAllowedOPEndpointURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, zimbraOpenidConsumerAllowedOPEndpointURL);
+        return attrs;
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param zimbraOpenidConsumerAllowedOPEndpointURL existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public void removeOpenidConsumerAllowedOPEndpointURL(String zimbraOpenidConsumerAllowedOPEndpointURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, zimbraOpenidConsumerAllowedOPEndpointURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param zimbraOpenidConsumerAllowedOPEndpointURL existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public Map<String,Object> removeOpenidConsumerAllowedOPEndpointURL(String zimbraOpenidConsumerAllowedOPEndpointURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, zimbraOpenidConsumerAllowedOPEndpointURL);
+        return attrs;
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public void unsetOpenidConsumerAllowedOPEndpointURL() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public Map<String,Object> unsetOpenidConsumerAllowedOPEndpointURL(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerAllowedOPEndpointURL, "");
+        return attrs;
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @return zimbraOpenidConsumerStatelessModeEnabled, or true if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public boolean isOpenidConsumerStatelessModeEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, true);
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @param zimbraOpenidConsumerStatelessModeEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public void setOpenidConsumerStatelessModeEnabled(boolean zimbraOpenidConsumerStatelessModeEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, zimbraOpenidConsumerStatelessModeEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @param zimbraOpenidConsumerStatelessModeEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public Map<String,Object> setOpenidConsumerStatelessModeEnabled(boolean zimbraOpenidConsumerStatelessModeEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, zimbraOpenidConsumerStatelessModeEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public void unsetOpenidConsumerStatelessModeEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public Map<String,Object> unsetOpenidConsumerStatelessModeEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, "");
         return attrs;
     }
 
@@ -27056,6 +27742,1664 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetReverseProxyWorkerProcesses(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraReverseProxyWorkerProcesses, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @return zimbraSMIMELdapAttribute, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public String[] getSMIMELdapAttribute() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapAttribute);
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapAttribute new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public void setSMIMELdapAttribute(String[] zimbraSMIMELdapAttribute) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapAttribute, zimbraSMIMELdapAttribute);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapAttribute new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public Map<String,Object> setSMIMELdapAttribute(String[] zimbraSMIMELdapAttribute, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapAttribute, zimbraSMIMELdapAttribute);
+        return attrs;
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapAttribute new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public void addSMIMELdapAttribute(String zimbraSMIMELdapAttribute) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapAttribute, zimbraSMIMELdapAttribute);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapAttribute new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public Map<String,Object> addSMIMELdapAttribute(String zimbraSMIMELdapAttribute, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapAttribute, zimbraSMIMELdapAttribute);
+        return attrs;
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapAttribute existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public void removeSMIMELdapAttribute(String zimbraSMIMELdapAttribute) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapAttribute, zimbraSMIMELdapAttribute);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapAttribute existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public Map<String,Object> removeSMIMELdapAttribute(String zimbraSMIMELdapAttribute, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapAttribute, zimbraSMIMELdapAttribute);
+        return attrs;
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public void unsetSMIMELdapAttribute() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapAttribute, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public Map<String,Object> unsetSMIMELdapAttribute(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapAttribute, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @return zimbraSMIMELdapBindDn, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public String[] getSMIMELdapBindDn() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapBindDn);
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindDn new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public void setSMIMELdapBindDn(String[] zimbraSMIMELdapBindDn) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindDn, zimbraSMIMELdapBindDn);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindDn new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public Map<String,Object> setSMIMELdapBindDn(String[] zimbraSMIMELdapBindDn, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindDn, zimbraSMIMELdapBindDn);
+        return attrs;
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindDn new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public void addSMIMELdapBindDn(String zimbraSMIMELdapBindDn) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapBindDn, zimbraSMIMELdapBindDn);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindDn new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public Map<String,Object> addSMIMELdapBindDn(String zimbraSMIMELdapBindDn, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapBindDn, zimbraSMIMELdapBindDn);
+        return attrs;
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindDn existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public void removeSMIMELdapBindDn(String zimbraSMIMELdapBindDn) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapBindDn, zimbraSMIMELdapBindDn);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindDn existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public Map<String,Object> removeSMIMELdapBindDn(String zimbraSMIMELdapBindDn, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapBindDn, zimbraSMIMELdapBindDn);
+        return attrs;
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public void unsetSMIMELdapBindDn() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindDn, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public Map<String,Object> unsetSMIMELdapBindDn(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindDn, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @return zimbraSMIMELdapBindPassword, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public String[] getSMIMELdapBindPassword() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapBindPassword);
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindPassword new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public void setSMIMELdapBindPassword(String[] zimbraSMIMELdapBindPassword) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindPassword, zimbraSMIMELdapBindPassword);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindPassword new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public Map<String,Object> setSMIMELdapBindPassword(String[] zimbraSMIMELdapBindPassword, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindPassword, zimbraSMIMELdapBindPassword);
+        return attrs;
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindPassword new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public void addSMIMELdapBindPassword(String zimbraSMIMELdapBindPassword) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapBindPassword, zimbraSMIMELdapBindPassword);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindPassword new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public Map<String,Object> addSMIMELdapBindPassword(String zimbraSMIMELdapBindPassword, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapBindPassword, zimbraSMIMELdapBindPassword);
+        return attrs;
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindPassword existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public void removeSMIMELdapBindPassword(String zimbraSMIMELdapBindPassword) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapBindPassword, zimbraSMIMELdapBindPassword);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapBindPassword existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public Map<String,Object> removeSMIMELdapBindPassword(String zimbraSMIMELdapBindPassword, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapBindPassword, zimbraSMIMELdapBindPassword);
+        return attrs;
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public void unsetSMIMELdapBindPassword() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindPassword, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public Map<String,Object> unsetSMIMELdapBindPassword(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapBindPassword, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @return zimbraSMIMELdapFilter, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public String[] getSMIMELdapFilter() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapFilter);
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapFilter new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public void setSMIMELdapFilter(String[] zimbraSMIMELdapFilter) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapFilter, zimbraSMIMELdapFilter);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapFilter new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public Map<String,Object> setSMIMELdapFilter(String[] zimbraSMIMELdapFilter, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapFilter, zimbraSMIMELdapFilter);
+        return attrs;
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapFilter new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public void addSMIMELdapFilter(String zimbraSMIMELdapFilter) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapFilter, zimbraSMIMELdapFilter);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapFilter new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public Map<String,Object> addSMIMELdapFilter(String zimbraSMIMELdapFilter, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapFilter, zimbraSMIMELdapFilter);
+        return attrs;
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapFilter existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public void removeSMIMELdapFilter(String zimbraSMIMELdapFilter) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapFilter, zimbraSMIMELdapFilter);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param zimbraSMIMELdapFilter existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public Map<String,Object> removeSMIMELdapFilter(String zimbraSMIMELdapFilter, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapFilter, zimbraSMIMELdapFilter);
+        return attrs;
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public void unsetSMIMELdapFilter() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapFilter, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public Map<String,Object> unsetSMIMELdapFilter(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapFilter, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @return zimbraSMIMELdapSearchBase, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public String[] getSMIMELdapSearchBase() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapSearchBase);
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapSearchBase new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public void setSMIMELdapSearchBase(String[] zimbraSMIMELdapSearchBase) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapSearchBase, zimbraSMIMELdapSearchBase);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapSearchBase new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public Map<String,Object> setSMIMELdapSearchBase(String[] zimbraSMIMELdapSearchBase, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapSearchBase, zimbraSMIMELdapSearchBase);
+        return attrs;
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapSearchBase new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public void addSMIMELdapSearchBase(String zimbraSMIMELdapSearchBase) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapSearchBase, zimbraSMIMELdapSearchBase);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapSearchBase new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public Map<String,Object> addSMIMELdapSearchBase(String zimbraSMIMELdapSearchBase, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapSearchBase, zimbraSMIMELdapSearchBase);
+        return attrs;
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapSearchBase existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public void removeSMIMELdapSearchBase(String zimbraSMIMELdapSearchBase) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapSearchBase, zimbraSMIMELdapSearchBase);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapSearchBase existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public Map<String,Object> removeSMIMELdapSearchBase(String zimbraSMIMELdapSearchBase, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapSearchBase, zimbraSMIMELdapSearchBase);
+        return attrs;
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public void unsetSMIMELdapSearchBase() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapSearchBase, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public Map<String,Object> unsetSMIMELdapSearchBase(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapSearchBase, "");
+        return attrs;
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @return zimbraSMIMELdapStartTlsEnabled, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public String[] getSMIMELdapStartTlsEnabled() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapStartTlsEnabled);
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapStartTlsEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public void setSMIMELdapStartTlsEnabled(String[] zimbraSMIMELdapStartTlsEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapStartTlsEnabled, zimbraSMIMELdapStartTlsEnabled);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapStartTlsEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public Map<String,Object> setSMIMELdapStartTlsEnabled(String[] zimbraSMIMELdapStartTlsEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapStartTlsEnabled, zimbraSMIMELdapStartTlsEnabled);
+        return attrs;
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapStartTlsEnabled new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public void addSMIMELdapStartTlsEnabled(String zimbraSMIMELdapStartTlsEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapStartTlsEnabled, zimbraSMIMELdapStartTlsEnabled);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapStartTlsEnabled new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public Map<String,Object> addSMIMELdapStartTlsEnabled(String zimbraSMIMELdapStartTlsEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapStartTlsEnabled, zimbraSMIMELdapStartTlsEnabled);
+        return attrs;
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapStartTlsEnabled existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public void removeSMIMELdapStartTlsEnabled(String zimbraSMIMELdapStartTlsEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapStartTlsEnabled, zimbraSMIMELdapStartTlsEnabled);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapStartTlsEnabled existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public Map<String,Object> removeSMIMELdapStartTlsEnabled(String zimbraSMIMELdapStartTlsEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapStartTlsEnabled, zimbraSMIMELdapStartTlsEnabled);
+        return attrs;
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public void unsetSMIMELdapStartTlsEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapStartTlsEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public Map<String,Object> unsetSMIMELdapStartTlsEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapStartTlsEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @return zimbraSMIMELdapURL, or empty array if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public String[] getSMIMELdapURL() {
+        return getMultiAttr(Provisioning.A_zimbraSMIMELdapURL);
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapURL new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public void setSMIMELdapURL(String[] zimbraSMIMELdapURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapURL, zimbraSMIMELdapURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapURL new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public Map<String,Object> setSMIMELdapURL(String[] zimbraSMIMELdapURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapURL, zimbraSMIMELdapURL);
+        return attrs;
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapURL new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public void addSMIMELdapURL(String zimbraSMIMELdapURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapURL, zimbraSMIMELdapURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapURL new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public Map<String,Object> addSMIMELdapURL(String zimbraSMIMELdapURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraSMIMELdapURL, zimbraSMIMELdapURL);
+        return attrs;
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapURL existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public void removeSMIMELdapURL(String zimbraSMIMELdapURL) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapURL, zimbraSMIMELdapURL);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param zimbraSMIMELdapURL existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public Map<String,Object> removeSMIMELdapURL(String zimbraSMIMELdapURL, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraSMIMELdapURL, zimbraSMIMELdapURL);
+        return attrs;
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public void unsetSMIMELdapURL() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapURL, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public Map<String,Object> unsetSMIMELdapURL(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSMIMELdapURL, "");
         return attrs;
     }
 

@@ -328,10 +328,13 @@ public final class MailConstants {
     public static final String E_FILTER_TESTS = "filterTests";
 
     public static final String E_HEADER_TEST = "headerTest";
+    public static final String E_TRUE_TEST = "trueTest";
     public static final String E_HEADER_EXISTS_TEST = "headerExistsTest";
     public static final String E_MIME_HEADER_TEST = "mimeHeaderTest";
     public static final String E_SIZE_TEST = "sizeTest";
     public static final String E_DATE_TEST = "dateTest";
+    public static final String E_CURRENT_TIME_TEST = "currentTimeTest";
+    public static final String E_CURRENT_DAY_OF_WEEK_TEST = "currentDayOfWeekTest";
     public static final String E_BODY_TEST = "bodyTest";
     public static final String E_ATTACHMENT_TEST = "attachmentTest";
     public static final String E_ADDRESS_BOOK_TEST = "addressBookTest";
@@ -345,9 +348,12 @@ public final class MailConstants {
     public static final String E_ACTION_TAG = "actionTag";
     public static final String E_ACTION_FLAG = "actionFlag";
     public static final String E_ACTION_REDIRECT = "actionRedirect";
+    public static final String E_ACTION_REPLY = "actionReply";
+    public static final String E_ACTION_NOTIFY = "actionNotify";
     public static final String E_ACTION_STOP = "actionStop";
 
     public static final String A_STRING_COMPARISON = "stringComparison";
+    public static final String A_CASE_SENSITIVE = "caseSensitive";
     public static final String A_NUMBER_COMPARISON = "numberComparison";
     public static final String A_DATE_COMPARISON = "dateComparison";
     public static final String A_CONDITION = "condition";
@@ -356,6 +362,8 @@ public final class MailConstants {
     public static final String A_FLAG_NAME = "flagName";
     public static final String A_TAG_NAME = "tagName";
     public static final String A_INDEX = "index";
+    public static final String A_TIME = "time";
+    public static final String A_MAX_BODY_SIZE = "maxBodySize";
 
     // grants and shares
     public static final String E_ACL = "acl";

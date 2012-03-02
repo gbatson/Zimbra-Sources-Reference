@@ -16,8 +16,10 @@ package com.zimbra.cs.account.ldap;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.naming.directory.Attributes;
 import javax.naming.directory.SearchResult;
@@ -37,9 +39,11 @@ public class LdapGalMapRules {
     
     private List<LdapGalMapRule> mRules;
     private List<String> mLdapAttrs;
+    private Set<String> mBinaryLdapAttrs;
     private Map<String, LdapGalValueMap> mValueMaps;
     private GalGroupHandler mGroupHandler;
     private boolean mFetchGroupMembers;
+    private boolean mNeedSMIMECerts;
 
     public LdapGalMapRules(String[] rules, String[] valueMaps, String groupHandlerClass) {
         init(rules, valueMaps, groupHandlerClass);
@@ -74,6 +78,7 @@ public class LdapGalMapRules {
         
         mRules = new ArrayList<LdapGalMapRule>(rules.length);
         mLdapAttrs = new ArrayList<String>();
+        mBinaryLdapAttrs = new HashSet<String>();
         for (String rule: rules)
             add(rule);
         
@@ -85,8 +90,16 @@ public class LdapGalMapRules {
         mFetchGroupMembers = fetchGroupMembers;
     }
     
+    public void setNeedSMIMECerts(boolean needSMIMECerts) {
+        mNeedSMIMECerts = needSMIMECerts;
+    }
+    
     public String[] getLdapAttrs() {
         return mLdapAttrs.toArray(new String[mLdapAttrs.size()]);
+    }
+    
+    public Set<String> getBinaryLdapAttrs() {
+        return mBinaryLdapAttrs;
     }
     
     public Map<String, Object> apply(ZimbraLdapContext zlc, String searchBase, SearchResult sr) {
@@ -95,6 +108,9 @@ public class LdapGalMapRules {
         
         HashMap<String,Object> contactAttrs = new HashMap<String, Object>();        
         for (LdapGalMapRule rule: mRules) {
+        	if (!mNeedSMIMECerts && rule.isSMIMECertificate()) {
+        		continue;
+        	}
             rule.apply(ldapAttrs, contactAttrs);
         }
         
@@ -118,6 +134,10 @@ public class LdapGalMapRules {
         mRules.add(lgmr);
         for (String ldapattr: lgmr.getLdapAttrs()) {
             mLdapAttrs.add(ldapattr);
+            
+            if (lgmr.isBinary()) {
+                mBinaryLdapAttrs.add(ldapattr);
+            }
         }
     }
 }

@@ -81,7 +81,8 @@ public class PageSearch extends AbsTab {
 		}
 
 		// Nothing more to do to make search appear, since it is always active if the app is active
-		
+		tracer.trace("Navigate to "+ this.myPageName());
+
 		zWaitForActive();
 		
 	}
@@ -90,6 +91,8 @@ public class PageSearch extends AbsTab {
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
 		
+		tracer.trace("Click button "+ button);
+
 		if ( button == null )
 			throw new HarnessException("Button cannot be null!");
 		
@@ -116,7 +119,7 @@ public class PageSearch extends AbsTab {
 		} else if ( button == Button.B_SEARCHSAVE ) {
 			
 			locator = "zb__Search__SAVE_title";
-			page = new DialogSaveSearch(MyApplication);
+			page = new DialogSaveSearch(MyApplication, this);
 			
 			// Make sure the button exists
 			if ( !this.sIsElementPresent(locator) )
@@ -168,6 +171,8 @@ public class PageSearch extends AbsTab {
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
 		
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+
 		if ( pulldown == null )
 			throw new HarnessException("Pulldown cannot be null!");
 		
@@ -264,6 +269,11 @@ public class PageSearch extends AbsTab {
 		throw new HarnessException(myPageName() + " does not have a list view");
 	}
 
+	@Override
+	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)  throws HarnessException {
+	   throw new HarnessException(myPageName() + " does not have a list view");
+    }
+		
 	/**
 	 * Enter text into the query string field
 	 * @param query
@@ -271,6 +281,9 @@ public class PageSearch extends AbsTab {
 	 */
 	public void zAddSearchQuery(String query) throws HarnessException {
 		logger.info(myPageName() + " zAddSearchQuery("+ query +")");
+		
+		tracer.trace("Search for the query "+ query);
+
 		
 		this.sType(Locators.zSearchInput, query);
 

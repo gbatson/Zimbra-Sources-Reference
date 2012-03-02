@@ -68,6 +68,8 @@ ZmSetting = function(id, params) {
 	} else {
 		this.value = null;
 	}
+
+    this.dontSaveDefault = params.dontSaveDefault;
 };
 
 ZmSetting.prototype = new ZmModel;
@@ -177,11 +179,6 @@ ZmSetting.INC_SMART				= "includeSmart";
 ZmSetting.INC_SMART_PRE			= "includeSmartWithPrefix";
 ZmSetting.INC_SMART_HDR			= "includeSmartAndHeaders";
 ZmSetting.INC_SMART_PRE_HDR		= "includeSmartAndHeadersWithPrefix";
-ZmSetting.LICENSE_BAD			= "bad";					// license status (network only)
-ZmSetting.LICENSE_GOOD			= "good";
-ZmSetting.LICENSE_GRACE			= "inGracePeriod";
-ZmSetting.LICENSE_NOT_ACTIVATED = "NOT_ACTIVATED";
-ZmSetting.LICENSE_NOT_INSTALLED = "NOT_INSTALLED";
 ZmSetting.MARK_READ_NONE		= -1;						// zimbraPrefMarkMsgRead
 ZmSetting.MARK_READ_NOW			= 0;						// zimbraPrefMarkMsgRead
 ZmSetting.MARK_READ_TIME		= 1;						// zimbraPrefMarkMsgRead
@@ -196,6 +193,24 @@ ZmSetting.RP_OFF				= "off";
 ZmSetting.RP_RIGHT				= "right";
 ZmSetting.SIG_INTERNET			= "internet";				// zimbraPrefMailSignatureStyle
 ZmSetting.SIG_OUTLOOK			= "outlook";
+
+// License status (network only)
+ZmSetting.LICENSE_GOOD			= "OK";
+ZmSetting.LICENSE_NOT_INSTALLED = "NOT_INSTALLED";
+ZmSetting.LICENSE_NOT_ACTIVATED = "NOT_ACTIVATED";
+ZmSetting.LICENSE_FUTURE		= "IN_FUTURE";
+ZmSetting.LICENSE_EXPIRED		= "EXPIRED";
+ZmSetting.LICENSE_BAD			= "INVALID";
+ZmSetting.LICENSE_GRACE			= "LICENSE_GRACE_PERIOD";
+ZmSetting.LICENSE_ACTIV_GRACE	= "ACTIVATION_GRACE_PERIOD";
+
+// warning messages for bad license statuses
+ZmSetting.LICENSE_MSG									= {};
+ZmSetting.LICENSE_MSG[ZmSetting.LICENSE_NOT_INSTALLED]	= ZmMsg.licenseNotInstalled;
+ZmSetting.LICENSE_MSG[ZmSetting.LICENSE_NOT_ACTIVATED]	= ZmMsg.licenseNotActivated;
+ZmSetting.LICENSE_MSG[ZmSetting.LICENSE_FUTURE]			= ZmMsg.licenseExpired;
+ZmSetting.LICENSE_MSG[ZmSetting.LICENSE_EXPIRED]		= ZmMsg.licenseExpired;
+ZmSetting.LICENSE_MSG[ZmSetting.LICENSE_BAD]			= ZmMsg.licenseExpired;
 
 // we need these IDs available when the app classes are parsed
 ZmSetting.LOCALE_NAME			= "LOCALE_NAME";
@@ -273,7 +288,23 @@ function(key, serialize) {
 		return null;
 	}
 
+    if(this.dontSaveDefault && serialize && !key){
+        value = this.getRefinedValue(value);
+    }
+
 	return serialize ? ZmSetting.serialize(value, this.dataType) : value;
+};
+
+ZmSetting.prototype.getRefinedValue =
+function(value){
+    if(this.dataType == ZmSetting.D_HASH){
+        var refinedValue = {}, dValue = this.defaultValue;
+        for(var key in value){
+             refinedValue[key] = (dValue[key] != value[key]) ? value[key] : "";
+        }
+        return refinedValue;
+    }
+    return value;
 };
 
 /**
@@ -355,8 +386,10 @@ function(value, key, setDefault, skipNotify, skipImplicit) {
 		changed = Boolean(newValue != this.value);
 		this.value = newValue;
 	} else if (this.dataType == ZmSetting.D_HASH) {
-		if (key) {
+		changed = true;
+        if (key) {
 			if (newValue) {
+                changed = Boolean(newValue != this.value[key]);
 				this.value[key] = newValue;
 			} else {
 				delete this.value[key];
@@ -364,7 +397,6 @@ function(value, key, setDefault, skipNotify, skipImplicit) {
 		} else {
 			this.value = newValue;
 		}
-		changed = true;
 	} else if (this.dataType == ZmSetting.D_LIST) {
 		if (newValue instanceof Array) {
 			this.value = newValue;

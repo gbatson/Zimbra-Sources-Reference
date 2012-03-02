@@ -75,7 +75,6 @@ function(msg) {
 	var invite = this._invite = msg.invite;
 
 	if (invite && invite.hasAcceptableComponents() &&
-		msg.folderId != ZmFolder.ID_TRASH &&
 		msg.folderId != ZmFolder.ID_SENT)
 	{
 		if (invite.hasCounterMethod()) {
@@ -85,7 +84,7 @@ function(msg) {
 			this._counterToolbar.reparentHtmlElement(this.parent.getHtmlElement(), 0);
 			this._counterToolbar.setVisible(Dwt.DISPLAY_BLOCK);
 		}
-		else if (invite.hasInviteReplyMethod()) {
+		else if (!invite.isOrganizer() && invite.hasInviteReplyMethod()) {
 			var ac = window.parentAppCtxt || window.appCtxt;
 			if (AjxEnv.isIE && this._inviteToolbar) {
 				//according to fix to bug 52412 reparenting doestn't work on IE. so I don't reparent for IE but also if the toolbar element exists,
@@ -139,6 +138,8 @@ function(msg) {
 					var isSelected = (calAcct && msgAcct)
 						? (calAcct == msgAcct && calendar.nId == ZmOrganizer.ID_CALENDAR)
 						: calendar.nId == ZmOrganizer.ID_CALENDAR;
+                    //bug: 57538 - this invite is intended for owner of shared calendar which should be selected
+                    if(msg.cif && calendar.owner == msg.cif && calendar.rid == ZmOrganizer.ID_CALENDAR) isSelected = true;
 					var option = new DwtSelectOptionData(calendar.id, name, isSelected, null, icon);
 					this._inviteMoveSelect.addOption(option);
 				}
@@ -344,7 +345,7 @@ function(reset) {
 };
 
 ZmInviteMsgView.prototype.addSubs =
-function(subs, sentBy, sentByAddr) {
+function(subs, sentBy, sentByAddr, obo) {
     AjxDispatcher.require(["CalendarCore", "Calendar"]);
 	subs.invite = this._invite;
 
@@ -392,11 +393,20 @@ function(subs, sentBy, sentByAddr) {
 	var org = new AjxEmailAddress(this._invite.getOrganizerEmail(), null, this._invite.getOrganizerName());
 	subs.invOrganizer = om ? om.findObjects(org, true, ZmObjectManager.EMAIL) : org.toString();
 
+    if(obo) {
+        subs.obo = om ? om.findObjects(obo, true, ZmObjectManager.EMAIL) : obo.toString();
+    }
+
 	// sent-by
 	var sentBy = this._invite.getSentBy();
 	if (sentBy) {
 		subs.invSentBy = om ? om.findObjects(sentBy, true, ZmObjectManager.EMAIL) : sentBy.toString();
 	}
+
+    if(this._msg.cif) {
+        subs.intendedForMsg = AjxMessageFormat.format(ZmMsg.intendedForInfo, [this._msg.cif]);
+        subs.intendedForClassName = "InviteIntendedFor";
+    }
 
 	// inviteees
 	var str = [];

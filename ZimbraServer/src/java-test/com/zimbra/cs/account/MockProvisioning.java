@@ -24,6 +24,7 @@ import java.util.Set;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.DataSource.Type;
 import com.zimbra.cs.account.NamedEntry.Visitor;
+import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.account.auth.AuthContext.Protocol;
 import com.zimbra.cs.mime.MimeTypeInfo;
 
@@ -219,6 +220,12 @@ public final class MockProvisioning extends Provisioning {
     public void preAuthAccount(Account acct, String accountName,
             String accountBy, long timestamp, long expires, String preAuth,
             Map<String, Object> authCtxt) {
+        throw new UnsupportedOperationException();
+    }
+    
+    @Override
+    public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) 
+    throws ServiceException {
         throw new UnsupportedOperationException();
     }
 

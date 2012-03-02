@@ -141,7 +141,7 @@ function(entry) {
 }
 
 ZaCosXFormView.gotSkins = function () {
-	return ((this.getController().getInstalledSkins() != null) && (this.getController().getInstalledSkins().length > 0));
+	return ((ZaApp.getInstance().getInstalledSkins() != null) && (ZaApp.getInstance().getInstalledSkins().length > 0));
 }
 
 ZaCosXFormView.isPasswordLockoutEnabled = function () {
@@ -208,7 +208,9 @@ ZaCosXFormView.FEATURE_TAB_ATTRS = [ZaCos.A_zimbraFeatureMailEnabled,
 	ZaCos.A_zimbraFeatureImportExportFolderEnabled,
 	ZaCos.A_zimbraDumpsterEnabled,
 	ZaCos.A_zimbraFeatureMailSendLaterEnabled,
-	ZaCos.A_zimbraFeatureFreeBusyViewEnabled
+	ZaCos.A_zimbraFeatureFreeBusyViewEnabled,
+	ZaCos.A_zimbraFeatureSMIMEEnabled,
+	ZaCos.A_zimbraFeatureManageSMIMECertificateEnabled
 ];
 
 ZaCosXFormView.FEATURE_TAB_RIGHTS = [];
@@ -266,10 +268,10 @@ ZaCosXFormView.SKIN_TAB_ATTRS = [ZaCos.A_zimbraPrefSkin,ZaCos.A_zimbraAvailableS
 ZaCosXFormView.SKIN_TAB_RIGHTS = [];
 
 ZaCosXFormView.ZIMLET_TAB_ATTRS = [ZaCos.A_zimbraZimletAvailableZimlets];
-ZaCosXFormView.ZIMLET_TAB_RIGHTS = [];
+ZaCosXFormView.ZIMLET_TAB_RIGHTS = [ZaCos.RIGHT_GET_ZIMLET, ZaCos.RIGHT_LIST_ZIMLET];
 
 ZaCosXFormView.SERVERPOOL_TAB_ATTRS = [ZaCos.A_zimbraMailHostPool];
-ZaCosXFormView.SERVERPOOL_TAB_RIGHTS = [];
+ZaCosXFormView.SERVERPOOL_TAB_RIGHTS = [ZaCos.RIGHT_GET_HOSTNAME];
 
 ZaCosXFormView.ADVANCED_TAB_ATTRS = [ZaCos.A_zimbraAttachmentsBlocked,
 	ZaCos.A_zimbraMailQuota,
@@ -341,12 +343,13 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
         this.tabChoices.push({value:_tab3, label:ZaMsg.TABT_Preferences});
     }
     
-    if(ZaTabView.isTAB_ENABLED(entry,ZaCosXFormView.SKIN_TAB_ATTRS, ZaCosXFormView.SKIN_TAB_RIGHTS)) {
+    if(ZaTabView.isTAB_ENABLED(entry,ZaCosXFormView.SKIN_TAB_ATTRS, ZaCosXFormView.SKIN_TAB_RIGHTS) && ZaCosXFormView.gotSkins()) {
        	_tab4 = ++this.TAB_INDEX;
         this.tabChoices.push({value:_tab4, label:ZaMsg.TABT_Themes});
     }
     
-    if(ZaTabView.isTAB_ENABLED(entry,ZaCosXFormView.ZIMLET_TAB_ATTRS, ZaCosXFormView.ZIMLET_TAB_RIGHTS)) {
+    var allZimlets = ZaZimlet.getAll(ZaZimlet.EXCLUDE_EXTENSIONS);
+    if(allZimlets != null && !AjxUtil.isEmpty(allZimlets.getArray()) && ZaTabView.isTAB_ENABLED(entry,ZaCosXFormView.ZIMLET_TAB_ATTRS, ZaCosXFormView.ZIMLET_TAB_RIGHTS)) {
 		_tab5 = ++this.TAB_INDEX;
         this.tabChoices.push({value:_tab5, label:ZaMsg.TABT_Zimlets});
     }
@@ -526,7 +529,20 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
                     {ref:ZaCos.A_zimbraFeatureInitialSearchPreferenceEnabled, type:_CHECKBOX_, msgName:ZaMsg.LBL_zimbraFeatureInitialSearchPreferenceEnabled,label:ZaMsg.LBL_zimbraFeatureInitialSearchPreferenceEnabled, trueValue:"TRUE", falseValue:"FALSE"},
                     {ref:ZaCos.A_zimbraFeaturePeopleSearchEnabled, type:_CHECKBOX_, msgName:ZaMsg.LBL_zimbraFeaturePeopleSearchEnabled,label:ZaMsg.LBL_zimbraFeaturePeopleSearchEnabled, trueValue:"TRUE", falseValue:"FALSE"}
                 ]
+            },
+            {type:_ZA_TOP_GROUPER_,  label:ZaMsg.NAD_zimbraSMIMEFeature, id:"cos_form_features_smime",
+                visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,
+					[
+						ZaCos.A_zimbraFeatureManageSMIMECertificateEnabled,
+						ZaCos.A_zimbraFeatureSMIMEEnabled
+					]]
+				],
+                items:[
+                    {ref:ZaCos.A_zimbraFeatureSMIMEEnabled, type:_CHECKBOX_, msgName:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,label:ZaMsg.LBL_zimbraFeatureSMIMEEnabled, trueValue:"TRUE", falseValue:"FALSE"},
+                    {ref:ZaCos.A_zimbraFeatureManageSMIMECertificateEnabled, type:_CHECKBOX_, msgName:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled,label:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled, trueValue:"TRUE", falseValue:"FALSE"}
+                ]
             }
+
 
         ];
 

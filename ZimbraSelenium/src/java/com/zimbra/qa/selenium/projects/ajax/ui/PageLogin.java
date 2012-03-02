@@ -1,16 +1,7 @@
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import com.zimbra.cs.account.Provisioning.ZimletBy;
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.AbsTab;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 
 
@@ -115,6 +106,8 @@ public class PageLogin extends AbsTab {
 	 */
 	public void zLogin(ZimbraAccount account) throws HarnessException {
 	   logger.debug("login(ZimbraAccount account)" + account.EmailAddress);
+	   
+	   tracer.trace("Login to the "+ MyApplication.myApplicationName() +" using user/password "+ account.EmailAddress +"/"+ account.Password);
 
 	   zNavigateTo();
 
@@ -210,6 +203,12 @@ public class PageLogin extends AbsTab {
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item) throws HarnessException {
+		throw new HarnessException("Login page does not have lists");
+	}
+
+	@Override
+	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
+			throws HarnessException {
 		throw new HarnessException("Login page does not have lists");
 	}
 

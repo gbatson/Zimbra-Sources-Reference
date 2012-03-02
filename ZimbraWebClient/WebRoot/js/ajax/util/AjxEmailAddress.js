@@ -148,11 +148,20 @@ function(str) {
 	} else {
 		parts = str.match(AjxEmailAddress.addrPat1);
 		if (parts && parts.length) {
-            //AjxEmailAddress.addrPat regocognizes the email better than using parts[0] from AjxEmailAddress.addrPat1
+			if (parts[1] == '"') {
+				return null;	// unmatched quote
+			}
+            //AjxEmailAddress.addrPat recognizes the email better than using parts[0] from AjxEmailAddress.addrPat1
             addr = str.match(AjxEmailAddress.addrPat);
-            addr = ( addr && addr.length && addr[0] != "") ? AjxStringUtil.trim(addr[0]) : parts[0];
+            addr = (addr && addr.length && addr[0] != "") ? AjxStringUtil.trim(addr[0]) : parts[0];
+			if (addr && addr.indexOf("..") != -1) {
+				return null;
+			}
 			str = str.replace(AjxEmailAddress.addrPat, '');
 		}
+	}
+	if (!addr) {
+		return null;
 	}
 	
 	// What remains is the name
@@ -215,11 +224,8 @@ function(emailStr, type, strict) {
  * @param {string}	str		an email string
  * @return	{boolean}	<code>true</code> if the string is valid
  */
-AjxEmailAddress.isValid =
-function(str) {
-	str = AjxStringUtil.trim(str);
-	var prelimOkay = AjxEmailAddress._prelimCheck(str);
-	return (prelimOkay && (str.match(AjxEmailAddress.addrPat) != null));
+AjxEmailAddress.isValid = function(str) {
+	return AjxEmailAddress.parse(str) != null;
 };
 
 AjxEmailAddress._prelimCheck =

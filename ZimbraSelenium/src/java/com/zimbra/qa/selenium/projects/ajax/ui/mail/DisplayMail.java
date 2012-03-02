@@ -2,6 +2,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 
 
 /**
@@ -43,6 +44,7 @@ public class DisplayMail extends AbsDisplay {
 		From,
 		To,
 		Cc,
+		OnBehalfOf,
 		Bcc,			// Does this show in any mail views?  Maybe in Sent?
 		Subject,
 		Body
@@ -75,16 +77,15 @@ public class DisplayMail extends AbsDisplay {
 	public AbsPage zClickViewEntireMessage() throws HarnessException {
 		logger.info(myPageName() + " zViewEntireMessage");
 		
-		AbsPage page = null;
+		tracer.trace("Click 'View Entire Message'");
+
+		AbsPage page = this;
 		String locator = Locators.zViewEntireMessage;
-		
-		if ( this.sIsElementPresent(locator) )
-			throw new HarnessException("'View Entire Message' link does not exist: "+ Locators.zViewEntireMessage);
 		
 		this.sClick(locator);
 		
 		this.zWaitForBusyOverlay();
-		
+
 		return (page);
 	}
 
@@ -94,6 +95,8 @@ public class DisplayMail extends AbsDisplay {
 	 * @throws HarnessException
 	 */
 	public AbsPage zClickHighlightObjects() throws HarnessException {
+		tracer.trace("Click 'highlight objects'");
+
 		throw new HarnessException("implement me!");
 	}
 	
@@ -191,7 +194,15 @@ public class DisplayMail extends AbsDisplay {
 				locator = "css=tr[id$='_from']";
 			}
 
-		} else if ( field == Field.ReceivedDate ) {
+		} else if ( field == Field.OnBehalfOf ) {
+			
+			locator = "css=tr[id$='_obo'] span[id$='_com_zimbra_email'] span span";
+			if ( !sIsElementPresent(locator) ) {
+				// no email zimlet case
+				locator = "css=tr[id$='_obo']";
+			}
+
+		}else if ( field == Field.ReceivedDate ) {
 			
 			locator = "css=tr[id$='__MSG_hdrTableTopRow'] td[class~='DateCol']";
 
@@ -218,8 +229,11 @@ public class DisplayMail extends AbsDisplay {
 			locator = "css=tr[id$='__MSG_hdrTableTopRow'] td[class~='SubjectCol']";
 
 		} else if ( field == Field.To ) {
-			
-			locator = "css=tr[id$='_to'] td[class~='LabelColValue'] span[id$='_com_zimbra_email'] span span";
+			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+			   locator = "css=tr[id$='_to'] td[class~='LabelColValue'] span[id$='_com_zimbra_email']";
+			} else {
+			   locator = "css=tr[id$='_to'] td[class~='LabelColValue'] span[id$='_com_zimbra_email'] span span";
+			}
 
 		} else {
 			
@@ -246,10 +260,23 @@ public class DisplayMail extends AbsDisplay {
 
 		
 	}
+	
+	/**
+	 * Wait for Zimlets to be rendered in the message
+	 * @throws HarnessException
+	 */
+	public void zWaitForZimlets() throws HarnessException {
+		// TODO: don't sleep.  figure out a way to query the app if zimlets are applied
+		logger.info("zWaitForZimlets: sleep a bit to let the zimlets be applied");
+		SleepUtil.sleepLong();
+	}
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
 		logger.warn("implement me", new Throwable());
+		
+		zWaitForZimlets();
+		
 		return (true);
 	}
 

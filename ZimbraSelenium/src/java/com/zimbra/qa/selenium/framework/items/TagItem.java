@@ -92,31 +92,32 @@ public class TagItem implements IItem {
 	}
 
 	public static TagItem importFromSOAP(Element tag) throws HarnessException {
-		
+
 		TagItem item = null;
-		
+
 		try {
 
 			// Make sure we only have the <tag/> part
 			Element t = ZimbraAccount.SoapClient.selectNode(tag, "//mail:tag");
 			if ( t == null )
 				throw new HarnessException("Element does not contain an <tag/> element");
-			
+
 			// Create the object
 			item = new TagItem();
-			
+
 			// Set the ID
 			item.setId(t.getAttribute("id", null));
-			
-			
+			//Set tag name
+			item.setName(t.getAttribute("name",null));			
+
 			return (item);
-			
+
 		} catch (Exception e) {
 			throw new HarnessException("Could not parse GetMsgResponse: "+ tag.prettyPrint(), e);
 		} finally {
 			if ( item != null )	logger.info(item.prettyPrint());
 		}
-		
+
 	}
 
 
@@ -135,7 +136,8 @@ public class TagItem implements IItem {
 			
 			account.soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");
 			
-			Element[] results = account.soapSelectNodes("//mail:GetTagResponse//mail:tag[@name='"+ name +"'");
+			Element[] results = account.soapSelectNodes("//mail:GetTagResponse//mail:tag[@name='"+name+"']");
+			
 			if (results.length != 1)
 				throw new HarnessException("Query should return 1 result, not "+ results.length);
 				

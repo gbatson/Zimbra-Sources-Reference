@@ -21,6 +21,7 @@ import java.util.Map;
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
 
+import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager;
@@ -37,8 +38,22 @@ class LdapGalMapRule {
     
     // parallel array with mContactAttrs
     private LdapGalValueMap[] mContactAttrsValueMaps;
-   
+    
+    private boolean mIsBinary;
+    private boolean mIsSMIMECertificate;
+    
+    // indicating that all LDAP attributes in the rule contain binary data
+    // the LDAP value will be base64 encoded when it is stored in the GalContact 
+    private static final String BINARY_INDICATOR = "binary ";
+    private static final int BINARY_INDICATOR_LEN = BINARY_INDICATOR.length();
+        
     public LdapGalMapRule(String rule, Map<String, LdapGalValueMap> valueMaps) {
+        
+        if (rule.startsWith(BINARY_INDICATOR)) {
+            mIsBinary = true;
+            rule = rule.substring(BINARY_INDICATOR_LEN);
+        }
+        
         int p = rule.indexOf('=');
         if (p != -1) {
             String ldapAttr = rule.substring(0, p);
@@ -54,6 +69,22 @@ class LdapGalMapRule {
                 }
             }
         }
+        
+        for (String contactAttr : mContactAttrs) {
+        	if (ContactConstants.A_SMIMECertificate.equals(contactAttr)) {
+        		mIsSMIMECertificate = true;
+        		break;
+        	}
+        }
+    }
+    
+    public boolean isBinary() {
+        return mIsBinary;
+    }
+    
+    // return if this rule is the SMIME certificate rule
+    public boolean isSMIMECertificate() {
+        return mIsSMIMECertificate;
     }
     
     public String[] getLdapAttrs() {
@@ -92,18 +123,13 @@ class LdapGalMapRule {
     }
     
     void apply(Attributes ldapAttrs, Map<String,Object> contactAttrs) {
-        AttributeManager attrMgr = null;
-        try {
-            attrMgr = AttributeManager.getInstance();
-        } catch (ServiceException se) {
-            ZimbraLog.account.warn("failed to get AttributeManager instance", se);
-        }
+        AttributeManager attrMgr = AttributeManager.getInst();
         
         int index = 0; // index into mContactAttrs
         for (String ldapAttr: mLdapAttrs) {
             if (index >= mContactAttrs.length) return;
             String val[];
-            try { val = LdapUtil.getMultiAttrString(ldapAttrs, ldapAttr); } 
+            try { val = LdapUtil.getMultiAttrString(ldapAttrs, ldapAttr, mIsBinary); } 
             catch (NamingException e) { return; }
             
             IDNType idnType = AttributeManager.idnType(attrMgr, ldapAttr);

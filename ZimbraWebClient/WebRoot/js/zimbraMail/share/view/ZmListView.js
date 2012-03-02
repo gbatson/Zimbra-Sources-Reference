@@ -134,7 +134,9 @@ ZmListView.prototype.set =
 function(list, sortField) {
 
 	this._sortByString = this._controller._currentSearch && this._controller._currentSearch.sortBy;
-	if(this.view) appCtxt.set(ZmSetting.SORTING_PREF, this._sortByString, this.view);
+    var settings = appCtxt.getSettings();
+	if(this.view && ( settings && settings.persistImplicitSortPrefs(this.view) ) )
+        appCtxt.set(ZmSetting.SORTING_PREF, this._sortByString, this.view);
 
 	this.setSelectionHdrCbox(false);
 
@@ -461,7 +463,7 @@ function(htmlArr, idx, item, field, colIdx, params) {
         } else if (item.isLowPriority) {
 			priorityImage = "PriorityLow_list";
 		} else {
-			priorityImage = "PriorityNormal_list";
+			priorityImage = "";
 		}
         idx = this._getImageHtml(htmlArr, idx, priorityImage, this._getFieldId(item, field));
 	} else {
@@ -714,11 +716,21 @@ function(clickedEl, bContained, ev) {
 	DwtListView.prototype.setMultiSelection.call(this, clickedEl, bContained);
 
 	this.setSelectionCbox(clickedEl, bContained);
-	this.setSelectionHdrCbox(this.getSelection().length == this.getList().size());
+	this.setSelectionHdrCbox(this._isAllChecked());
 
 	// reset toolbar operations LAST
 	this._controller._resetToolbarOperations();
 };
+
+/**
+ * check whether all items in the list are checked
+ * @return {Boolean} true if all items are checked
+ */
+ZmListView.prototype._isAllChecked = 
+function() {
+	return this.getSelection().length == this.getList().size();
+};
+
 
 /**
  * Sets the selection checkbox.

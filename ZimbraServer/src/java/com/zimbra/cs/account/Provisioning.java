@@ -847,6 +847,8 @@ public abstract class Provisioning extends ZAttrProvisioning {
 
     public abstract void preAuthAccount(Account acct, String accountName, String accountBy, long timestamp, long expires, String preAuth, Map<String, Object> authCtxt) throws ServiceException;
 
+    public abstract void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) throws ServiceException;
+    
     public abstract void changePassword(Account acct, String currentPassword, String newPassword) throws ServiceException;
 
     public static class SetPasswordResult {
@@ -2104,6 +2106,35 @@ public abstract class Provisioning extends ZAttrProvisioning {
         }
     }
     
-    public static String A_zimbraGalLdapValueMap = "zimbraGalLdapValueMap";
+    //
+    //
+    // SMIME config
+    //
+    //
+    // SMIME config on domain
+    public Map<String, Map<String, Object>> getDomainSMIMEConfig(Domain domain, String configName) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
+    }
+    
+    public void modifyDomainSMIMEConfig(Domain domain, String configName, Map<String, Object> attrs) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
+    }
+    
+    public void removeDomainSMIMEConfig(Domain domain, String configName) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
+    }
+    
+    // SMIME config on globalconfig
+    public Map<String, Map<String, Object>> getConfigSMIMEConfig(String configName) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
+    }
+    
+    public void modifyConfigSMIMEConfig(String configName, Map<String, Object> attrs) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
+    }
+    
+    public void removeConfigSMIMEConfig(String configName) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
+    }
 
 }

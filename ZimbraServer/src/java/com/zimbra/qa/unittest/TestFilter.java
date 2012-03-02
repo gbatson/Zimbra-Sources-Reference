@@ -14,32 +14,12 @@
  */
 package com.zimbra.qa.unittest;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-
-import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.zclient.ZEmailAddress;
-import junit.framework.TestCase;
-
-import org.apache.jsieve.parser.generated.Node;
-import org.apache.jsieve.parser.generated.ParseException;
-
 import com.zimbra.common.mime.MimeMessage;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.StringUtil;
@@ -53,14 +33,10 @@ import com.zimbra.cs.filter.RuleManager;
 import com.zimbra.cs.filter.RuleRewriter;
 import com.zimbra.cs.filter.SieveToSoap;
 import com.zimbra.cs.filter.SoapToSieve;
+import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
+import com.zimbra.cs.zclient.ZEmailAddress;
 import com.zimbra.cs.zclient.ZFilterAction;
-import com.zimbra.cs.zclient.ZFilterCondition;
-import com.zimbra.cs.zclient.ZFilterRule;
-import com.zimbra.cs.zclient.ZFilterRules;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZTag;
 import com.zimbra.cs.zclient.ZFilterAction.MarkOp;
 import com.zimbra.cs.zclient.ZFilterAction.ZDiscardAction;
 import com.zimbra.cs.zclient.ZFilterAction.ZFileIntoAction;
@@ -68,16 +44,43 @@ import com.zimbra.cs.zclient.ZFilterAction.ZKeepAction;
 import com.zimbra.cs.zclient.ZFilterAction.ZMarkAction;
 import com.zimbra.cs.zclient.ZFilterAction.ZRedirectAction;
 import com.zimbra.cs.zclient.ZFilterAction.ZTagAction;
+import com.zimbra.cs.zclient.ZFilterCondition;
 import com.zimbra.cs.zclient.ZFilterCondition.BodyOp;
 import com.zimbra.cs.zclient.ZFilterCondition.DateOp;
 import com.zimbra.cs.zclient.ZFilterCondition.HeaderOp;
+import com.zimbra.cs.zclient.ZFilterCondition.SimpleOp;
 import com.zimbra.cs.zclient.ZFilterCondition.ZAttachmentExistsCondition;
-import com.zimbra.cs.zclient.ZFilterCondition.ZMimeHeaderCondition;
 import com.zimbra.cs.zclient.ZFilterCondition.ZBodyCondition;
 import com.zimbra.cs.zclient.ZFilterCondition.ZDateCondition;
 import com.zimbra.cs.zclient.ZFilterCondition.ZHeaderCondition;
 import com.zimbra.cs.zclient.ZFilterCondition.ZInviteCondition;
+import com.zimbra.cs.zclient.ZFilterCondition.ZMimeHeaderCondition;
+import com.zimbra.cs.zclient.ZFilterRule;
+import com.zimbra.cs.zclient.ZFilterRules;
+import com.zimbra.cs.zclient.ZFolder;
+import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.cs.zclient.ZMessage;
 import com.zimbra.cs.zclient.ZMessage.Flag;
+import com.zimbra.cs.zclient.ZTag;
+import junit.framework.TestCase;
+import org.apache.jsieve.parser.generated.Node;
+import org.apache.jsieve.parser.generated.ParseException;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.TimeZone;
 
 public class TestFilter
 extends TestCase {
@@ -475,9 +478,7 @@ extends TestCase {
         TestUtil.addMessageLmtp(new String[] { USER_NAME }, USER_NAME, content);
         ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
         Set<String> tagIds = new HashSet<String>();
-        for (String tagId : msg.getTagIds().split(",")) {
-            tagIds.add(tagId);
-        }
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
         assertEquals(2, tagIds.size());
         assertTrue(tagIds.contains(mTag1.getId()));
         assertTrue(tagIds.contains(mTag2.getId()));
@@ -502,9 +503,7 @@ extends TestCase {
         ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
         Set<String> tagIds = new HashSet<String>();
         assertNotNull(msg.getTagIds());
-        for (String tagId : msg.getTagIds().split(",")) {
-            tagIds.add(tagId);
-        }
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
         assertEquals(1, tagIds.size());
         assertTrue(tagIds.contains(mTag1.getId()));
 
@@ -515,11 +514,183 @@ extends TestCase {
         msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
         tagIds = new HashSet<String>();
         assertNotNull(msg.getTagIds());
-        for (String tagId : msg.getTagIds().split(",")) {
-            tagIds.add(tagId);
-        }
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
         assertEquals(1, tagIds.size());
         assertTrue(tagIds.contains(mTag1.getId()));
+    }
+
+    public void testCaseSensitiveComparison()
+    throws Exception {
+
+        // Create case sensitive header and body filter rules
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        conditions.add(new ZHeaderCondition("Subject", HeaderOp.CONTAINS, true, "CHECK THIS"));
+        conditions.add(new ZBodyCondition(BodyOp.CONTAINS, true, "CHECK THIS"));
+        actions.add(new ZTagAction(mTag1.getName()));
+        rules.add(new ZFilterRule("header rule case sensitive", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        // Deliver message having lower case subject substring and make sure that tag1 was not applied
+        String subject = NAME_PREFIX + " testCaseSensitiveComparison1 check this";
+        TestUtil.addMessageLmtp(subject, USER_NAME, USER_NAME);
+        ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertTrue("message should not have been tagged", msg.getTagIds() == null || msg.getTagIds().isEmpty());
+
+        // Deliver message having upper case subject substring and make sure that tag1 was applied
+        subject = NAME_PREFIX + " testCaseSensitiveComparison2 CHECK THIS";
+        TestUtil.addMessageLmtp(subject, USER_NAME, USER_NAME);
+        msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertNotNull("message should have been tagged", msg.getTagIds());
+        Set<String> tagIds = new HashSet<String>();
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
+        assertTrue("message should have been tagged with tag1", tagIds.contains(mTag1.getId()));
+
+        // Deliver message having lower case body content substring and make sure that tag1 was not applied
+        subject = NAME_PREFIX + " testCaseSensitiveComparison3";
+        String content = new MessageBuilder().withSubject(subject).withToRecipient(USER_NAME).withBody("Hi check this").create();
+        TestUtil.addMessageLmtp(new String[] { USER_NAME }, USER_NAME, content);
+        msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertTrue("message should not have been tagged", msg.getTagIds() == null || msg.getTagIds().isEmpty());
+
+        // Deliver message having upper case body content substring and make sure that tag1 was applied
+        subject = NAME_PREFIX + " testCaseSensitiveComparison4";
+        content = new MessageBuilder().withSubject(subject).withToRecipient(USER_NAME).withBody("Hi CHECK THIS").create();
+        TestUtil.addMessageLmtp(new String[] { USER_NAME }, USER_NAME, content);
+        msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertNotNull("message should have been tagged", msg.getTagIds());
+        tagIds = new HashSet<String>();
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
+        assertTrue("message should have been tagged with tag1", tagIds.contains(mTag1.getId()));
+    }
+
+    public void testCurrentTimeTest()
+    throws Exception {
+        TimeZone userTz = ICalTimeZone.getAccountTimeZone(TestUtil.getAccount(USER_NAME));
+        Calendar calendar = Calendar.getInstance(userTz);
+        // Add 5 mins to current time
+        calendar.add(Calendar.MINUTE, 5);
+        // format time in HHmm
+        SimpleDateFormat format = new SimpleDateFormat("HHmm");
+        format.setTimeZone(userTz);
+        String timeStr = format.format(calendar.getTime());
+
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        // Condition true if msg received after timeStr
+        conditions.add(new ZFilterCondition.ZCurrentTimeCondition(DateOp.AFTER, timeStr));
+        actions.add(new ZTagAction(mTag1.getName()));
+        rules.add(new ZFilterRule("current time after", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        String subject = NAME_PREFIX + " testCurrentTimeTest1";
+        TestUtil.addMessageLmtp(subject, USER_NAME, USER_NAME);
+        ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertTrue("message should not have been tagged", msg.getTagIds() == null || msg.getTagIds().isEmpty());
+
+        rules = new ArrayList<ZFilterRule>();
+        conditions = new ArrayList<ZFilterCondition>();
+        // Condition true if msg received before timeStr
+        conditions.add(new ZFilterCondition.ZCurrentTimeCondition(DateOp.BEFORE, timeStr));
+        rules.add(new ZFilterRule("current time before", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        subject = NAME_PREFIX + " testCurrentTimeTest2";
+        TestUtil.addMessageLmtp(subject, USER_NAME, USER_NAME);
+        msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertNotNull("message should have been tagged", msg.getTagIds());
+        Set<String> tagIds = new HashSet<String>();
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
+        assertTrue("message should have been tagged with tag1", tagIds.contains(mTag1.getId()));
+    }
+
+    public void testCurrentDayOfWeekTest()
+    throws Exception {
+        TimeZone userTz = ICalTimeZone.getAccountTimeZone(TestUtil.getAccount(USER_NAME));
+        Calendar calendar = Calendar.getInstance(userTz);
+        int dayToday = calendar.get(Calendar.DAY_OF_WEEK) - 1;
+        int dayYesterday = dayToday == 0 ? 6 : dayToday - 1;
+        int dayTomorrow = dayToday == 6 ? 0 : dayToday + 1;
+
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        // Condition true if msg received on the day yesterday or tomorrow
+        conditions.add(new ZFilterCondition.ZCurrentDayOfWeekCondition(SimpleOp.IS, dayYesterday + "," + dayTomorrow));
+        actions.add(new ZTagAction(mTag1.getName()));
+        rules.add(new ZFilterRule("current day is not day today", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        String subject = NAME_PREFIX + " testCurrentDayOfWeekTest1";
+        TestUtil.addMessageLmtp(subject, USER_NAME, USER_NAME);
+        ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertTrue("message should not have been tagged", msg.getTagIds() == null || msg.getTagIds().isEmpty());
+
+        rules = new ArrayList<ZFilterRule>();
+        conditions = new ArrayList<ZFilterCondition>();
+        // Condition true if msg received on the day today
+        conditions.add(new ZFilterCondition.ZCurrentDayOfWeekCondition(SimpleOp.IS, Integer.toString(dayToday)));
+        rules.add(new ZFilterRule("current day is day today", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        subject = NAME_PREFIX + " testCurrentDayOfWeekTest2";
+        TestUtil.addMessageLmtp(subject, USER_NAME, USER_NAME);
+        msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertNotNull("message should have been tagged", msg.getTagIds());
+        Set<String> tagIds = new HashSet<String>();
+        tagIds.addAll(Arrays.asList(msg.getTagIds().split(",")));
+        assertTrue("message should have been tagged with tag1", tagIds.contains(mTag1.getId()));
+    }
+
+    public void testReplyAction()
+    throws Exception {
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        conditions.add(new ZFilterCondition.ZTrueCondition());
+        actions.add(new ZFilterAction.ZReplyAction("Hi ${FROM}, Your message was: '${BODY}'. Thanks!"));
+        rules.add(new ZFilterRule("reply action", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        String subject = NAME_PREFIX + " testReplyAction";
+        String body = "Hi, How r u?";
+        String msg = new MessageBuilder().withFrom(REMOTE_USER_NAME).withSubject(subject).withBody(body).create();
+        // send msg to user1
+        TestUtil.addMessageLmtp(new String[] { USER_NAME }, REMOTE_USER_NAME, msg);
+        // get auto reply from user1
+        ZMessage zMessage =
+                TestUtil.waitForMessage(TestUtil.getZMailbox(REMOTE_USER_NAME),
+                                        "in:inbox subject:\"Re: " + subject + "\"");
+        String content = zMessage.getMimeStructure().getContent();
+        assertTrue("template vars should be replaced", !content.contains("${FROM}") && !content.contains("${BODY}"));
+        assertTrue(content.contains(TestUtil.getAddress(REMOTE_USER_NAME)) && content.contains(body));
+    }
+
+    public void testNotifyAction()
+    throws Exception {
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        conditions.add(new ZFilterCondition.ZTrueCondition());
+        actions.add(new ZFilterAction.ZNotifyAction(
+                TestUtil.getAddress(REMOTE_USER_NAME), "${SUBJECT}", "From: ${FROM}, Message: ${BODY}"));
+        rules.add(new ZFilterRule("notify action", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        String subject = NAME_PREFIX + " testNotifyAction";
+        String body = "Hi, How r u?";
+        String msg = new MessageBuilder().withFrom(REMOTE_USER_NAME).withSubject(subject).withBody(body).create();
+        // send msg to user1
+        TestUtil.addMessageLmtp(new String[] { USER_NAME }, REMOTE_USER_NAME, msg);
+        // get notification msg from user1, it should have the same subject
+        ZMessage zMessage =
+                TestUtil.waitForMessage(TestUtil.getZMailbox(REMOTE_USER_NAME),
+                                        "in:inbox subject:\"" + subject + "\"");
+        String content = zMessage.getMimeStructure().getContent();
+        assertTrue("template vars should be replaced", !content.contains("${FROM}") && !content.contains("${BODY}"));
+        assertTrue(content.contains(TestUtil.getAddress(REMOTE_USER_NAME)) && content.contains(body));
     }
 
     public void testMarkRead()
@@ -751,9 +922,7 @@ extends TestCase {
         Set<String> tagIds = new HashSet<String>();
         String tagIdString = msg.getTagIds();
         if (tagIdString != null) {
-            for (String tagId : tagIdString.split(",")) {
-                tagIds.add(tagId);
-            }
+            tagIds.addAll(Arrays.asList(tagIdString.split(",")));
         }
         return tagIds;
     }
@@ -762,7 +931,7 @@ extends TestCase {
     throws IOException {
         StringBuilder buf = new StringBuilder();
         BufferedReader reader = new BufferedReader(new StringReader(content));
-        String line = null;
+        String line;
         String start = headerName + ": ";
         while ((line = reader.readLine()) != null) {
             if (!line.startsWith(start)) {
@@ -868,6 +1037,32 @@ extends TestCase {
         String content = new MessageBuilder().withSubject(subject).withBody("MatchMatchThis").create();
         TestUtil.addMessageLmtp(new String[] { USER_NAME }, USER_NAME, content);
         ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:\"" + subject + "\"");
+        assertTrue("Unexpected message flag state", msg.isFlagged());
+    }
+
+    /**
+     * Tests fix for bug 56019.
+     */
+    public void testSpecialCharInBody()
+    throws Exception {
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+
+        conditions.add(new ZBodyCondition(BodyOp.CONTAINS, "Andr\u00e9"));
+        actions.add(new ZMarkAction(MarkOp.FLAGGED));
+        rules.add(new ZFilterRule("testSpecialCharInBody", true, false, conditions, actions));
+
+        ZFilterRules zRules = new ZFilterRules(rules);
+        saveIncomingRules(mMbox, zRules);
+
+        // Add a message and test the flagged state.
+        String address = TestUtil.getAddress(USER_NAME);
+        // TestFilter-testSpecialCharInBody.msg's body contains base64 encoded content (containing "Andr\u00e9")
+        String msgContent = new String(
+            ByteUtil.getContent(new File("/opt/zimbra/unittest/TestFilter-testSpecialCharInBody.msg")));
+        TestUtil.addMessageLmtp(new String[] { address }, address, msgContent);
+        ZMessage msg = TestUtil.getMessage(mMbox, "in:inbox subject:testSpecialCharInBody");
         assertTrue("Unexpected message flag state", msg.isFlagged());
     }
 
@@ -1073,7 +1268,7 @@ extends TestCase {
         RuleRewriter.sanitizeRules(rulesEl);
         Element request = rulesEl.getFactory().createElement(MailConstants.SAVE_RULES_REQUEST);
         request.addElement(rulesEl);
-        response = mbox.invoke(request);
+        mbox.invoke(request);
         
         // Make sure the rules haven't changed.
         account = TestUtil.getAccount(USER_NAME);
@@ -1166,8 +1361,7 @@ extends TestCase {
 
         // if subject contains "outgoing", file into folder1 and tag with tag1
         List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
-        conditions = new ArrayList<ZFilterCondition>();
-        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        List<ZFilterAction> actions;
         actions = new ArrayList<ZFilterAction>();
         conditions.add(new ZHeaderCondition("subject", HeaderOp.CONTAINS, "outgoing"));
         actions.add(new ZFileIntoAction(FOLDER1_PATH));

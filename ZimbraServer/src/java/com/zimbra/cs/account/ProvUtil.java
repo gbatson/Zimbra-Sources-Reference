@@ -18,6 +18,7 @@ package com.zimbra.cs.account;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.util.Collections;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,6 +27,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -47,6 +49,7 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.methods.PostMethod;
 
@@ -59,8 +62,10 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.soap.SoapHttpTransport.HttpDebugListener;
 import com.zimbra.common.util.AccountLogger;
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.CliUtil;
 import com.zimbra.common.util.DateUtil;
+import com.zimbra.common.util.FileUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.SetUtil;
 import com.zimbra.common.util.StringUtil;
@@ -149,6 +154,7 @@ public class ProvUtil implements HttpDebugListener {
     private Map<String,Command> mCommandIndex;
     private Provisioning mProv;
     private BufferedReader mReader;
+    private boolean mOutputBinaryToFile;
 
     public void setDebug(SoapDebugLevel debug) { mDebug = debug; }
 
@@ -161,6 +167,14 @@ public class ProvUtil implements HttpDebugListener {
     public void setPassword(String password) { mPassword = password; mUseLdap = false; }
 
     public void setAuthToken(ZAuthToken zat) { mAuthToken = zat; mUseLdap = false; }
+    
+    private void setOutputBinaryToFile(boolean outputBinaryToFile) {
+        mOutputBinaryToFile = outputBinaryToFile;
+    }
+    
+    private boolean outputBinaryToFile() {
+        return mOutputBinaryToFile;
+    }
 
     public void setServer(String server ) {
         int i = server.indexOf(":");
@@ -484,6 +498,8 @@ public class ProvUtil implements HttpDebugListener {
         GET_DISTRIBUTION_LIST_MEMBERSHIP("getDistributionListMembership", "gdlm", "{name@domain|id}", Category.LIST, 1, 1),
         GET_DOMAIN("getDomain", "gd", "[-e] {domain|id} [attr1 [attr2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
         GET_DOMAIN_INFO("getDomainInfo", "gdi", "name|id|virtualHostname {value} [attr1 [attr2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
+        GET_CONFIG_SMIME_CONFIG("getConfigSMIMEConfig", "gcsc", "[configName]", Category.DOMAIN, 0, 1),
+        GET_DOMAIN_SMIME_CONFIG("getDomainSMIMEConfig", "gdsc", "name|id [configName]", Category.DOMAIN, 1, 2),
         GET_EFFECTIVE_RIGHTS("getEffectiveRights", "ger", "{target-type} [{target-id|target-name}] {grantee-id|grantee-name} [expandSetAttrs] [expandGetAttrs]", Category.RIGHT, 1, 5, null, new RightCommandHelp()),
 
         // for testing the provisioning interface only, comment out after testing, the soap is only used by admin console
@@ -513,6 +529,8 @@ public class ProvUtil implements HttpDebugListener {
         MODIFY_DATA_SOURCE("modifyDataSource", "mds", "{name@domain|id} {ds-name|ds-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
         MODIFY_DISTRIBUTION_LIST("modifyDistributionList", "mdl", "{list@domain|id} attr1 value1 [attr2 value2...]", Category.LIST, 3, Integer.MAX_VALUE),
         MODIFY_DOMAIN("modifyDomain", "md", "{domain|id} [attr1 value1 [attr2 value2...]]", Category.DOMAIN, 3, Integer.MAX_VALUE),
+        MODIFY_CONFIG_SMIME_CONFIG("modifyConfigSMIMEConfig", "mcsc", "configName [attr2 value2...]]", Category.DOMAIN, 1, Integer.MAX_VALUE),
+        MODIFY_DOMAIN_SMIME_CONFIG("modifyDomainSMIMEConfig", "mdsc", "name|id configName [attr2 value2...]]", Category.DOMAIN, 2, Integer.MAX_VALUE),
         MODIFY_IDENTITY("modifyIdentity", "mid", "{name@domain|id} {identity-name} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
         MODIFY_SIGNATURE("modifySignature", "msig", "{name@domain|id} {signature-name|signature-id} [attr1 value1 [attr2 value2...]]", Category.ACCOUNT, 4, Integer.MAX_VALUE),
         MODIFY_SERVER("modifyServer", "ms", "{name|id} [attr1 value1 [attr2 value2...]]", Category.SERVER, 3, Integer.MAX_VALUE),
@@ -527,6 +545,8 @@ public class ProvUtil implements HttpDebugListener {
         REMOVE_ACCOUNT_LOGGER("removeAccountLogger", "ral", "[-s/--server hostname] [{name@domain|id}] [{logging-category}]", Category.LOG, 0, 4),
         REMOVE_DISTRIBUTION_LIST_ALIAS("removeDistributionListAlias", "rdla", "{list@domain|id} {alias@domain}", Category.LIST, 2, 2),
         REMOVE_DISTRIBUTION_LIST_MEMBER("removeDistributionListMember", "rdlm", "{list@domain|id} {member@domain}", Category.LIST, 2, Integer.MAX_VALUE),
+        REMOVE_CONFIG_SMIME_CONFIG("removeConfigSMIMEConfig", "rcsc", "configName", Category.DOMAIN, 1, 1),
+        REMOVE_DOMAIN_SMIME_CONFIG("removeDomainSMIMEConfig", "rdsc", "name|id configName", Category.DOMAIN, 2, 2),
         RENAME_ACCOUNT("renameAccount", "ra", "{name@domain|id} {newName@domain}", Category.ACCOUNT, 2, 2),
         RENAME_CALENDAR_RESOURCE("renameCalendarResource",  "rcr", "{name@domain|id} {newName@domain}", Category.CALENDAR, 2, 2),
         RENAME_COS("renameCos", "rc", "{name|id} {newName}", Category.COS, 2, 2),
@@ -878,6 +898,12 @@ public class ProvUtil implements HttpDebugListener {
         case GET_DOMAIN_INFO:
             doGetDomainInfo(args);
             break;
+        case GET_CONFIG_SMIME_CONFIG:
+            doGetConfigSMIMEConfig(args);
+            break;
+        case GET_DOMAIN_SMIME_CONFIG:    
+            doGetDomainSMIMEConfig(args);
+            break;
         case GET_FREEBUSY_QUEUE_INFO:
             doGetFreeBusyQueueInfo(args);
             break;
@@ -941,6 +967,12 @@ public class ProvUtil implements HttpDebugListener {
         case MODIFY_DOMAIN:
             mProv.modifyAttrs(lookupDomain(args[1]), getMapAndCheck(args, 2), true);
             break;
+        case MODIFY_CONFIG_SMIME_CONFIG:
+            doModifyConfigSMIMEConfig(args);
+            break;
+        case MODIFY_DOMAIN_SMIME_CONFIG:
+            doModifyDomainSMIMEConfig(args);
+            break;    
         case MODIFY_SERVER:
             mProv.modifyAttrs(lookupServer(args[1]), getMapAndCheck(args, 2), true);
             break;
@@ -997,6 +1029,12 @@ public class ProvUtil implements HttpDebugListener {
                 return true;
             }
             doRemoveAccountLogger(alo);
+            break;
+        case REMOVE_CONFIG_SMIME_CONFIG:
+            doRemoveConfigSMIMEConfig(args);
+            break;
+        case REMOVE_DOMAIN_SMIME_CONFIG:
+            doRemoveDomainSMIMEConfig(args);
             break;
         case RENAME_ACCOUNT:
             mProv.renameAccount(lookupAccount(args[1]).getId(), args[2]);
@@ -2359,9 +2397,16 @@ public class ProvUtil implements HttpDebugListener {
             }
         }
 
+        AttributeManager attrMgr = AttributeManager.getInstance();
+        
+        SimpleDateFormat dateFmt = new SimpleDateFormat("yyyyMMddHHmmss");
+        String timestamp = dateFmt.format(new Date());
+        
         for (Map.Entry<String, Object> entry : attrs.entrySet()) {
             String name = entry.getKey();
 
+            boolean isBinary = attrMgr.isBinary(name);
+                
             Set<String> specificValues = null;
             if (specificAttrValues != null)
                 specificValues = specificAttrValues.get(name.toLowerCase());
@@ -2369,17 +2414,21 @@ public class ProvUtil implements HttpDebugListener {
             if (specificAttrValues == null || specificAttrValues.keySet().contains(name.toLowerCase())) {
 
                 Object value = entry.getValue();
+                
                 if (value instanceof String[]) {
                     String sv[] = (String[]) value;
-                    for (String aSv : sv) {
+                    for (int i = 0; i < sv.length; i++) {
+                        String aSv = sv[i];
                         // don't print permission denied attr
-                        if (aSv.length() > 0 && (specificValues == null || specificValues.isEmpty() || specificValues.contains(aSv)))
-                            printOutput(name + ": " + aSv);
+                        if (aSv.length() > 0 && (specificValues == null || specificValues.isEmpty() || specificValues.contains(aSv))) {
+                            printAttr(name, aSv, i, isBinary, timestamp);
+                        }
                     }
                 } else if (value instanceof String) {
                     // don't print permission denied attr
-                    if (((String)value).length() > 0 && (specificValues == null || specificValues.isEmpty() || specificValues.contains(value)))
-                        printOutput(name+": "+value);
+                    if (((String)value).length() > 0 && (specificValues == null || specificValues.isEmpty() || specificValues.contains(value))) {
+                        printAttr(name, (String)value, null, isBinary, timestamp);
+                    }
                 }
             }
         }
@@ -2837,9 +2886,59 @@ public class ProvUtil implements HttpDebugListener {
      * get map and check/warn deprecated attrs
      */
     private Map<String, Object> getMapAndCheck(String[] args, int offset) throws ArgException, ServiceException {
-        Map<String, Object> attrs = getMap(args, offset);
+        Map<String, Object> attrs = getAttrMap(args, offset);
         checkDeprecatedAttrs(attrs);
         return attrs;
+    }
+    
+
+    /**
+     * Convert an array of the form:
+     *
+     *    a1 v1 a2 v2 a2 v3
+     *
+     * to a map of the form:
+     *
+     *    a1 -> v1
+     *    a2 -> [v2, v3]
+     *    
+     * For binary attribute, the argument following an attribute name will be treated as a 
+     * file path and value for the attribute will be the base64 encoded string of the content 
+     * of the file.   
+     */
+    private static Map<String, Object> keyValueArrayToMultiMap(String[] args, int offset) 
+    throws IOException, ServiceException  {
+        AttributeManager attrMgr = AttributeManager.getInstance();
+        
+        Map<String, Object> attrs = new HashMap<String, Object>();
+        for (int i = offset; i < args.length; i += 2) {
+            String n = args[i];
+            if (i + 1 >= args.length) {
+                throw new IllegalArgumentException("not enough arguments");
+            }
+            String v = args[i + 1];
+            String attrName = n;
+            if (n.charAt(0) == '+' || n.charAt(0) == '-') {
+                attrName = attrName.substring(1);
+            }
+            if (attrMgr.isBinary(attrName) && v.length() > 0) {
+                File file = new File(v);
+                byte[] bytes = ByteUtil.getContent(file);
+                v = ByteUtil.encodeLDAPBase64(bytes);
+            }
+            StringUtil.addToMultiMap(attrs, n, v);
+        }
+        return attrs;
+    }
+    
+    private Map<String, Object> getAttrMap(String[] args, int offset) throws ArgException, ServiceException {
+        try {
+            return keyValueArrayToMultiMap(args, offset);
+        } catch (IllegalArgumentException iae) {
+            throw new ArgException("not enough arguments");
+        } catch (IOException ioe) {
+            throw ServiceException.INVALID_REQUEST("unable to process arguments", ioe);
+        }
     }
     
     private Map<String, Object> getMap(String[] args, int offset) throws ArgException {
@@ -2892,6 +2991,76 @@ public class ProvUtil implements HttpDebugListener {
         }
     }
 
+
+    /**
+     * Output binary attribute to file
+     * 
+     * value is written to:
+     * {LC.zmprov_tmp_directory}/{attr-name}[_{index-if-multi-valued}]{timestamp}
+     * 
+     * e.g.
+     * /opt/zimbra/data/tmp/zmprov/zimbraFoo_20110202161621
+     * 
+     * /opt/zimbra/data/tmp/zmprov/zimbraBar_0_20110202161507
+     * /opt/zimbra/data/tmp/zmprov/zimbraBar_1_20110202161507
+     * 
+     * @param attrName
+     * @param idx
+     * @param value
+     * @param timestamp
+     * @throws ServiceException
+     */
+    private void outputBinaryAttrToFile(String attrName, Integer idx, byte[] value, String timestamp) 
+    throws ServiceException {
+        StringBuilder sb = new StringBuilder(LC.zmprov_tmp_directory.value());
+        sb.append(File.separator).append(attrName);
+        if (idx != null) {
+            sb.append("_" + idx);
+        }
+        sb.append("_" + timestamp);
+        
+        File file = new File(sb.toString());
+        if (file.exists()) {
+            file.delete();
+        }
+        
+        try {
+            FileUtil.ensureDirExists(file.getParentFile());
+        } catch (IOException e) {
+            throw ServiceException.FAILURE(
+                    "Unable to create directory " + file.getParentFile().getAbsolutePath(), e);
+        }
+
+        try {
+            ByteUtil.putContent(file.getAbsolutePath(), value);
+        } catch (IOException e) {
+            throw ServiceException.FAILURE(
+                    "Unable to write to file " + file.getAbsolutePath(), e);
+        }
+    }
+    
+    private void printAttr(String attrName, String value, Integer idx, boolean isBinary, String timestamp) 
+    throws ServiceException {
+        if (isBinary) {
+            byte[] binary = ByteUtil.decodeLDAPBase64(value);
+            if (outputBinaryToFile()) {
+                outputBinaryAttrToFile(attrName, idx, binary, timestamp);
+            } else {
+                // print base64 encoded content
+                // follow ldapsearch notion of using two colons when printing base64 encoded data
+                // re-encode into 76 character blocks
+                String based64Chunked = new String(Base64.encodeBase64Chunked(binary));
+                // strip off the \n at the end
+                if (based64Chunked.charAt(based64Chunked.length() -1) == '\n') {
+                    based64Chunked = based64Chunked.substring(0, based64Chunked.length()-1);
+                }
+                printOutput(attrName + ":: " + based64Chunked);
+            }
+        } else {
+            printOutput(attrName + ": " + value);
+        }
+    }
+
     private static void printError(String text) {
         PrintStream ps = errConsole;
         try {
@@ -2904,7 +3073,7 @@ public class ProvUtil implements HttpDebugListener {
             ps.println(text);
         }
     }
-
+    
     private static void printOutput(String text) {
         PrintStream ps = console;
         try {
@@ -2928,6 +3097,7 @@ public class ProvUtil implements HttpDebugListener {
         ProvUtil pu = new ProvUtil();
         CommandLineParser parser = new PosixParser();
         Options options = new Options();
+        
         options.addOption("h", "help", false, "display usage");
         options.addOption("f", "file", true, "use file as input stream");
         options.addOption("s", "server", true, "host[:port] of server to connect to");
@@ -2941,6 +3111,7 @@ public class ProvUtil implements HttpDebugListener {
         options.addOption("d", "debug", false, "debug mode (SOAP request and response payload)");
         options.addOption("D", "debughigh", false, "debug mode (SOAP req/resp payload and http headers)");
         options.addOption("m", "master", false, "use LDAP master (has to be used with --ldap)");
+        options.addOption("t", "temp", false, "write binary values to files in temporary directory specified in localconfig key zmprov_tmp_directory");
         options.addOption(SoapCLI.OPT_AUTHTOKEN);
         options.addOption(SoapCLI.OPT_AUTHTOKENFILE);
 
@@ -3017,7 +3188,10 @@ public class ProvUtil implements HttpDebugListener {
             System.exit(2);
         }
 
-
+        if (cl.hasOption('t')) {
+            pu.setOutputBinaryToFile(true);
+        }
+        
         args = cl.getArgs();
 
         try {
@@ -4326,6 +4500,74 @@ public class ProvUtil implements HttpDebugListener {
             provider = args[1];
         FbCli fbcli = new FbCli();
         fbcli.purgeFreeBusyQueue(provider);
+    }
+    
+    private void dumpSMIMEConfigs(Map<String, Map<String, Object>> smimeConfigs) throws ServiceException {
+        for (Map.Entry<String, Map<String, Object>> smimeConfig : smimeConfigs.entrySet()) {
+            String configName = smimeConfig.getKey();
+            Map<String, Object> configAttrs = smimeConfig.getValue();
+            
+            console.println("# name "+ configName);
+            dumpAttrs(configAttrs, null);
+            console.println();
+        }
+    }
+    
+    private void doGetConfigSMIMEConfig(String[] args) throws ServiceException {
+        String configName = null;
+        if (args.length > 1) {
+            configName = args[1];
+        }
+        
+        Map<String, Map<String, Object>> smimeConfigs = mProv.getConfigSMIMEConfig(configName);
+        dumpSMIMEConfigs(smimeConfigs);
+    }
+    
+    private void doGetDomainSMIMEConfig(String[] args) throws ServiceException {
+        String domainName = args[1];
+        Domain domain = lookupDomain(domainName);
+        
+        String configName = null;
+        if (args.length > 2) {
+            configName = args[2];
+        }
+        
+        Map<String, Map<String, Object>> smimeConfigs = mProv.getDomainSMIMEConfig(domain, configName);
+        dumpSMIMEConfigs(smimeConfigs);
+    }
+    
+    private void doModifyConfigSMIMEConfig(String[] args) throws ServiceException, ArgException {
+        String configName = args[1];
+        mProv.modifyConfigSMIMEConfig(configName, getMapAndCheck(args, 2));
+    }
+    
+    private void doModifyDomainSMIMEConfig(String[] args) throws ServiceException, ArgException {
+        String domainName = args[1];
+        Domain domain = lookupDomain(domainName);
+        
+        String configName = args[2];
+        mProv.modifyDomainSMIMEConfig(domain, configName, getMapAndCheck(args, 3));
+    }
+    
+    private void doRemoveConfigSMIMEConfig(String[] args) throws ServiceException {
+        String configName = null;
+        if (args.length > 1) {
+            configName = args[1];
+        }
+        
+        mProv.removeConfigSMIMEConfig(configName);
+    }
+    
+    private void doRemoveDomainSMIMEConfig(String[] args) throws ServiceException {
+        String domainName = args[1];
+        Domain domain = lookupDomain(domainName);
+        
+        String configName = null;
+        if (args.length > 2) {
+            configName = args[2];
+        }
+        
+        mProv.removeDomainSMIMEConfig(domain, configName);
     }
 
     private void doHelp(String[] args) {

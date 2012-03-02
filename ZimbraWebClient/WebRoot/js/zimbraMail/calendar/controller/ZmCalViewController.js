@@ -109,7 +109,7 @@ ZmCalViewController = function(container, calApp) {
 ZmCalViewController.prototype = new ZmListController();
 ZmCalViewController.prototype.constructor = ZmCalViewController;
 
-ZmCalViewController.DEFAULT_APPOINTMENT_DURATION = 3600000;
+ZmCalViewController.DEFAULT_APPOINTMENT_DURATION = 30*60*1000;
 
 // maintenance needed on views and/or minical
 ZmCalViewController.MAINT_NONE 		= 0x0; // no work to do
@@ -326,9 +326,9 @@ function(localOnly, includeTrash) {
  *
  * @return {Array} array of {ZmOrganizer}
  */
-ZmCalViewController.prototype.getCheckedOrganizers = function(includeTrash) {
+ZmCalViewController.prototype.getCheckedOrganizers = function(includeTrash, acct) {
     var controller = appCtxt.getOverviewController();
-    var overviewId = appCtxt.getApp(ZmApp.CALENDAR).getOverviewId();
+    var overviewId = appCtxt.getApp(ZmApp.CALENDAR).getOverviewId(acct);
     var treeId = ZmOrganizer.CALENDAR;
     var treeView = controller.getTreeView(overviewId, treeId);
     var organizers = treeView.getSelected();
@@ -452,7 +452,8 @@ function(ev) {
         var organizer = ev.item.getData && ev.item.getData(Dwt.KEY_OBJECT);
         if (organizer && organizer.nId == ZmOrganizer.ID_TRASH) {
             var found = false;
-            var organizers = this.getCheckedOrganizers(true);
+            var acct = organizer.getAccount();
+            var organizers = this.getCheckedOrganizers(true, acct);
             for (var i = 0; i < organizers.length; i++) {
                 var id = organizers[i].nId;
                 if (id == ZmOrganizer.ID_TRASH) {
@@ -1537,8 +1538,16 @@ function(items, op) {
  */
 ZmCalViewController.prototype._doDelete =
 function(items, hardDelete, attrs, op) {
+
+    var isTrash = false;
+
 	// listview can handle deleting multiple items at once
-	if (this._viewMgr.getCurrentViewName() == ZmId.VIEW_CAL_LIST && items.length > 1) {
+    if(items.length>0){
+        var calendar = items[0].getFolder();
+        isTrash = calendar && calendar.nId==ZmOrganizer.ID_TRASH;
+    }
+
+	if ((this._viewMgr.getCurrentViewName() == ZmId.VIEW_CAL_LIST || isTrash) && items.length > 1) {
 		var divvied = this._divvyItems(items);
 
 		// data structure to keep track of which appts to delete and how
@@ -1663,8 +1672,11 @@ function() {
 	if (this._deleteList[ZmCalItem.MODE_DELETE] &&
 		this._deleteList[ZmCalItem.MODE_DELETE].length > 0)
 	{
+        var calendar = this._deleteList[ZmCalItem.MODE_DELETE][0].getFolder();
+        var isTrash = calendar && calendar.nId==ZmOrganizer.ID_TRASH;
+        var msg = (isTrash) ? ZmMsg.confirmCancelApptListPermanently : ZmMsg.confirmCancelApptList;
 		var callback = new AjxCallback(this, this._handleMultiDelete);
-		appCtxt.getConfirmationDialog().popup(ZmMsg.confirmCancelApptList, callback);
+		appCtxt.getConfirmationDialog().popup(msg, callback);
 	}
 };
 
@@ -1792,8 +1804,8 @@ function(appt, type, mode) {
 	msgController.setMsg(appt.message);
 	// poke the msgController
 	var instanceDate = mode == ZmCalItem.MODE_DELETE_INSTANCE ? new Date(appt.uniqStartTime) : null;
-	msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner(), true);
-	this._continueDelete(appt, mode);
+    var delContCallback = new AjxCallback(this, this._continueDelete, [appt, mode]);
+	msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner(),false,null,null,delContCallback);
 };
 
 
@@ -2331,7 +2343,7 @@ function(appt, startDateOffset, endDateOffset, callback, errorCallback, ev) {
 ZmCalViewController.prototype._handleResponseUpdateApptDate =
 function(appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback, result) {
 	// skip prompt if no attendees
-	if (!appt.otherAttendees) {
+	if (appt.inviteNeverSent || !appt.otherAttendees) {
 		this._handleResponseUpdateApptDateSave.apply(this, arguments);
 		return;
 	}
@@ -2392,7 +2404,12 @@ function(appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback
 		var respCallback = new AjxCallback(this, this._handleResponseUpdateApptDateSave2, [callback]);
 		var respErrCallback = new AjxCallback(this, this._handleResponseUpdateApptDateSave2, [errorCallback]);
 		appCtxt.getShell().setBusy(true);
-		appt.send(null, respCallback, respErrCallback);
+        if(appt.inviteNeverSent) {
+            appt.save(null, respCallback, respErrCallback);
+        }
+        else {
+		    appt.send(null, respCallback, respErrCallback);
+        }
 	} catch (ex) {
 		appCtxt.getShell().setBusy(false);
 		if (ex.msg) {
@@ -2457,22 +2474,24 @@ function(start, noheader, callback, result) {
 };
 
 ZmCalViewController.prototype.getUserStatusToolTipText =
-function(start, end, noheader, email, emptyMsg) {
+function(start, end, noheader, email, emptyMsg, calIds) {
 	try {
-		var calIds = [];
-		if (this._calTreeController) {
-			var calendars = this._calTreeController.getOwnedCalendars(this._app.getOverviewId(),email);
-			for (var i = 0; i < calendars.length; i++) {
-				var cal = calendars[i];
-				if (cal && (cal.nId != ZmFolder.ID_TRASH)) {
-					calIds.push(appCtxt.multiAccounts ? cal.id : cal.nId);
-				}
-			}
-		}		
-		
-		if ((calIds.length == 0) || !email) {
-			return "<b>" + ZmMsg.statusFree + "</b>";
-		}
+        if(!calIds) {
+            calIds = [];
+            if (this._calTreeController) {
+                var calendars = this._calTreeController.getOwnedCalendars(this._app.getOverviewId(),email);
+                for (var i = 0; i < calendars.length; i++) {
+                    var cal = calendars[i];
+                    if (cal && (cal.nId != ZmFolder.ID_TRASH)) {
+                        calIds.push(appCtxt.multiAccounts ? cal.id : cal.nId);
+                    }
+                }
+            }
+
+            if ((calIds.length == 0) || !email) {
+                return "<b>" + ZmMsg.statusFree + "</b>";
+            }
+        }
 
 		var startTime = start.getTime();
 		var endTime = end.getTime();
@@ -2484,7 +2503,7 @@ function(start, end, noheader, email, emptyMsg) {
 
 		// to avoid frequent request to server we cache the appt for the entire
 		// day first before getting the appts for selected time interval
-		this.getApptSummaries({start:dayStart.getTime(), end:dayEnd.getTime(), fanoutAllDay:true, folderIds: calIds});		
+		this.getApptSummaries({start:dayStart.getTime(), end:dayEnd.getTime(), fanoutAllDay:true, folderIds: calIds});
 
 		var result = this.getApptSummaries({start:startTime, end:endTime, fanoutAllDay:true, folderIds: calIds});
 
@@ -2584,13 +2603,19 @@ function(parent, num) {
 		var isPrivate = appt && appt.isPrivate() && calendar.isRemote() && !calendar.hasPrivateAccess();
 		var isForwardable = !isTrash && calendar && !calendar.isReadOnly();
 		var isReplyable = !isTrash && appt && (num == 1);
-		parent.enable([ZmOperation.DELETE, ZmOperation.MOVE], !disabled);
-		parent.enable([ZmOperation.REPLY, ZmOperation.REPLY_ALL], isReplyable);
-		parent.enable(ZmOperation.TAG_MENU, (!isShared && !isSynced && num > 0));
-		parent.enable(ZmOperation.VIEW_APPOINTMENT, !isPrivate);
-		parent.enable([ZmOperation.FORWARD_APPT, ZmOperation.FORWARD_APPT_INSTANCE, ZmOperation.FORWARD_APPT_SERIES], isForwardable);
-		parent.enable(ZmOperation.PROPOSE_NEW_TIME, !isTrash && (appt && !appt.isOrganizer()));
-		parent.enable(ZmOperation.SHOW_ORIG, num == 1 && appt && appt.getRestUrl() != null);
+        if(isTrash && num>1){
+            parent.enableAll(false);
+        }
+        else{
+		    parent.enable([ZmOperation.REPLY, ZmOperation.REPLY_ALL], isReplyable);
+            parent.enable(ZmOperation.TAG_MENU, (!isShared && !isSynced && num > 0));
+            parent.enable(ZmOperation.VIEW_APPOINTMENT, !isPrivate);
+            parent.enable([ZmOperation.FORWARD_APPT, ZmOperation.FORWARD_APPT_INSTANCE, ZmOperation.FORWARD_APPT_SERIES], isForwardable);
+            parent.enable(ZmOperation.PROPOSE_NEW_TIME, !isTrash && (appt && !appt.isOrganizer()));
+            parent.enable(ZmOperation.SHOW_ORIG, num == 1 && appt && appt.getRestUrl() != null);
+        }
+
+        parent.enable([ZmOperation.DELETE, ZmOperation.MOVE], !disabled);
 
         parent.enable(ZmOperation.VIEW_APPT_INSTANCE,!isTrash);
 
@@ -2679,7 +2704,41 @@ function(appt, type, op) {
 	msgController.setMsg(appt.message);
 	// poke the msgController
 	var instanceDate = op == ZmOperation.VIEW_APPT_INSTANCE ? new Date(appt.uniqStartTime) : null;
-	msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner());
+
+    if(type == ZmOperation.REPLY_DECLINE) {
+        var callback = new AjxCallback(this, this._sendInviteReply, [type, instanceDate]);
+        this._promptDeclineNotify(appt, callback);
+    }else {
+        msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner());
+    }
+};
+
+ZmCalViewController.prototype._promptDeclineNotify =
+function(appt, callback) {
+	if (!this._declineNotifyDialog) {
+		var msg = ZmMsg.confirmDeclineAppt;
+		this._declineNotifyDialog = new ZmApptDeleteNotifyDialog({
+			parent: this._shell,
+			title: AjxMsg.confirmTitle,
+			confirmMsg: msg,
+			choiceLabel1: ZmMsg.dontNotifyOrganizer,
+			choiceLabel2 : ZmMsg.notifyOrganizer
+		});
+	}
+	this._declineNotifyDialog.popup(new AjxCallback(this, this._declineNotifyYesCallback, [appt, callback]));
+};
+
+ZmCalViewController.prototype._declineNotifyYesCallback =
+function(appt, callback) {
+	var notifyOrg = !this._declineNotifyDialog.isDefaultOptionChecked();
+    if(callback) callback.run(appt, notifyOrg);
+};
+
+
+ZmCalViewController.prototype._sendInviteReply =
+function(type, instanceDate, appt, notifyOrg) {
+    var msgController = this._getMsgController();
+    msgController._sendInviteReply(type, appt.compNum || 0, instanceDate, appt.getRemoteFolderOwner(), !notifyOrg);
 };
 
 ZmCalViewController.prototype._handleApptEditRespondAction =

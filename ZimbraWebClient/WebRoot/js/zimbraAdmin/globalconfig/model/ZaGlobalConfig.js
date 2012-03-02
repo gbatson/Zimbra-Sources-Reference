@@ -25,6 +25,7 @@ ZaGlobalConfig.prototype = new ZaItem;
 ZaGlobalConfig.prototype.constructor = ZaGlobalConfig;
 ZaItem.loadMethods["ZaGlobalConfig"] = new Array();
 ZaItem.modifyMethods["ZaGlobalConfig"] = new Array();
+ZaItem.modifyMethodsExt["ZaGlobalConfig"] = new Array();
 
 ZaGlobalConfig.MTA_RESTRICTIONS = [
 	"reject_invalid_hostname", "reject_non_fqdn_hostname", "reject_non_fqdn_sender",
@@ -251,39 +252,55 @@ ZaGlobalConfig.prototype.initFromJS = function(obj) {
 }
 
 //ZaGlobalConfig.prototype.modify = 
-ZaGlobalConfig.modifyMethod = function (mods) {
-	var soapDoc = AjxSoapDoc.create("ModifyConfigRequest", ZaZimbraAdmin.URN, null);
-	for (var aname in mods) {
-		//multy value attribute
-		if(mods[aname] instanceof Array) {
-			var cnt = mods[aname].length;
-			if(cnt > 0) {
-				for(var ix=0; ix <cnt; ix++) {
-					if(mods[aname][ix] instanceof String)
-						var attr = soapDoc.set("a", mods[aname][ix].toString());
-					else if(mods[aname][ix] instanceof Object)
-						var attr = soapDoc.set("a", mods[aname][ix].toString());
-					else 
-						var attr = soapDoc.set("a", mods[aname][ix]);
-						
-					attr.setAttribute("n", aname);
-				}
-			} 
-			else {
-				var attr = soapDoc.set("a");
-				attr.setAttribute("n", aname);
-			}
-		} else {
-			//bug fix 10354: ingnore the changed ZaLicense Properties
-			if ((typeof ZaLicense == "function") && (ZaSettings.LICENSE_ENABLED)){
-				if (ZaUtil.findValueInObjArrByPropertyName (ZaLicense.myXModel.items, aname, "id") > -1 ){
-					continue ;
-				}
-			}
-			var attr = soapDoc.set("a", mods[aname]);
-			attr.setAttribute("n", aname);
-		}
-	}
+ZaGlobalConfig.modifyMethod = function (tmods, tmpObj) {
+        var soapDoc = AjxSoapDoc.create("BatchRequest", "urn:zimbra");
+        soapDoc.setMethodAttribute("onerror", "stop");
+
+        // S/MIME
+        var mods = tmods;
+        if(ZaItem.modifyMethodsExt["ZaGlobalConfig"]) {
+                var methods = ZaItem.modifyMethodsExt["ZaGlobalConfig"];
+                var cnt = methods.length;
+                for(var i = 0; i < cnt; i++) {
+                        if(typeof(methods[i]) == "function")
+                               methods[i].call(this, mods, tmpObj, soapDoc);
+                }
+
+        }
+
+        var modifyConfDoc = soapDoc.set("ModifyConfigRequest", null, null, ZaZimbraAdmin.URN);
+        for (var aname in mods) {
+                //multy value attribute
+                if(mods[aname] instanceof Array) {
+                        var cnt = mods[aname].length;
+                        if(cnt > 0) {
+                                for(var ix=0; ix <cnt; ix++) {
+                                        if(mods[aname][ix] instanceof String)
+                                                var attr = soapDoc.set("a", mods[aname][ix].toString(), modifyConfDoc);
+                                        else if(mods[aname][ix] instanceof Object)
+                                                var attr = soapDoc.set("a", mods[aname][ix].toString(), modifyConfDoc);
+                                        else 
+                                                var attr = soapDoc.set("a", mods[aname][ix], modifyConfDoc);
+                                                
+                                        attr.setAttribute("n", aname);
+                                }
+                        } 
+                        else {
+                                var attr = soapDoc.set("a");
+                                attr.setAttribute("n", aname);
+                        }
+                } else {
+                        //bug fix 10354: ingnore the changed ZaLicense Properties
+                        if ((typeof ZaLicense == "function") && (ZaSettings.LICENSE_ENABLED)){
+                                if (ZaUtil.findValueInObjArrByPropertyName (ZaLicense.myXModel.items, aname, "id") > -1 ){
+                                        continue ;
+                                }
+                        }
+                        var attr = soapDoc.set("a", mods[aname], modifyConfDoc);
+                        attr.setAttribute("n", aname);
+                }
+        }
+
 	var command = new ZmCsfeCommand();
 	var params = new Object();
 	params.soapDoc = soapDoc;	

@@ -44,7 +44,7 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.ZimbraACE;
 import com.zimbra.cs.fb.FreeBusy;
-import com.zimbra.cs.gal.GalGroup;
+import com.zimbra.cs.gal.GalGroupInfoProvider;
 import com.zimbra.cs.gal.GalGroup.GroupInfo;
 import com.zimbra.cs.html.HtmlDefang;
 import com.zimbra.cs.index.SearchParams;
@@ -2066,6 +2066,7 @@ public class ToXML {
             if (description != null && !description.equals(""))
                 m.addAttribute(MailConstants.A_DESC, description);
             m.addAttribute(MailConstants.A_CONTENT_TYPE, doc.getContentType());
+            m.addAttribute(MailConstants.A_DESC_ENABLED, doc.isDescriptionEnabled());
         }
 
         if (needToOutput(fields, Change.MODIFIED_CONTENT) || needToOutput(fields, Change.MODIFIED_NAME)) {
@@ -2345,6 +2346,7 @@ public class ToXML {
             }
         }
     }
+    
     public static Element encodeGalContact(Element response, GalContact contact) {
         Element cn = response.addElement(MailConstants.E_CONTACT);
         cn.addAttribute(MailConstants.A_ID, contact.getId());
@@ -2371,7 +2373,7 @@ public class ToXML {
                 if (addr.equalsIgnoreCase(requestedAcct.getName()) || addr.equalsIgnoreCase(authedAcct.getName()))
                     continue;
 
-                GroupInfo groupInfo = GalGroup.getGroupInfo(addr, true, requestedAcct, authedAcct);
+                GroupInfo groupInfo = GalGroupInfoProvider.getInstance().getGroupInfo(addr, true, requestedAcct, authedAcct);
                 if (GroupInfo.IS_GROUP == groupInfo) {
                     eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
                     eEmail.addAttribute(MailConstants.A_EXP, false);

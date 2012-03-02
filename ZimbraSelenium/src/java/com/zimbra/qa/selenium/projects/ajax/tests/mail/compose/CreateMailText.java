@@ -80,7 +80,7 @@ public class CreateMailText extends AjaxCommonTest {
 	}
 	
 	@Test(	description = "Send a mail using Text editor using keyboard shortcuts",
-			groups = { "smoke" },
+			groups = { "functional" },
 			dataProvider = "DataProvideNewMessageShortcuts")
 	public void CreateMailText_02(Shortcut shortcut, String keys) throws HarnessException {
 		
@@ -178,6 +178,8 @@ public class CreateMailText extends AjaxCommonTest {
 		
 		// Send the message
 		mailform.zSubmit();
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 				
 		MailItem sent = MailItem.importFromSOAP(app.zGetActiveAccount(), "in:sent subject:("+ mail.dSubject +")");
 		ZAssert.assertNotNull(sent, "Verify the message is in the sent folder");
@@ -234,8 +236,9 @@ public class CreateMailText extends AjaxCommonTest {
 		
 		// Send the message
 		mailform.zSubmit();
-				
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
 		ZAssert.assertNotNull(received, "Verify the message is received");
 		

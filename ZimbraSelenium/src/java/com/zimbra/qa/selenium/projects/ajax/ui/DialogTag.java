@@ -3,11 +3,9 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDialog;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+
 
 
 /**
@@ -37,8 +35,10 @@ public class DialogTag extends AbsDialog {
 	}
 	
 	
-	public DialogTag(AbsApplication application) {
-		super(application);
+	public DialogTag(AbsApplication application, AbsTab tab) {
+		super(application, tab);
+		
+		logger.info("new " + DialogTag.class.getCanonicalName());
 	}
 	
 	public void zSetTagName(String name) throws HarnessException {
@@ -127,7 +127,24 @@ public class DialogTag extends AbsDialog {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		return ( this.sIsElementPresent(Locators.zTagDialogId) );
+
+		logger.info(myPageName() + " zIsActive()");
+
+		String locator = "id="+ Locators.zTagDialogId;
+
+		if ( !this.sIsElementPresent(locator) ) {
+			return (false); // Not even present
+		}
+
+		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
+			return (false);	// Not visible per position
+		}
+
+		// Yes, visible
+		logger.info(myPageName() + " zIsVisible() = true");
+		return (true);
+
+		//return ( this.sIsElementPresent(Locators.zTagDialogId) );
 	}
 
 

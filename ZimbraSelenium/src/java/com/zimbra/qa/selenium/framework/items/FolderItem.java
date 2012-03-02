@@ -76,6 +76,24 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 	public FolderItem() {
 	}
 
+	////
+	// GUI methods
+	////
+	
+	
+	/**
+	 * Whether or not the folder is expanded (namely whether the icon is showing expanded/collapsed)
+	 * @return
+	 */
+	protected boolean gIsExpanded = false;
+	public boolean gGetIsExpanded() {
+		return (gIsExpanded);
+	}
+
+	public void gSetIsExpanded(boolean expanded) {
+		gIsExpanded = expanded;
+	}
+
 	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
 		
 		// TODO: handle all folder properties, not just name and parent
@@ -162,7 +180,8 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 			item = new FolderItem();
 			item.setId(fElement.getAttribute("id"));
 			item.setName(fElement.getAttribute("name"));
-			
+			item.setParentId(fElement.getAttribute("l"));
+
 			return (item);
 			
 		} catch (NumberFormatException e) {
@@ -174,9 +193,22 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		}
 	}
 
+	/**
+    * Import a system folder (i.e. Inbox, Sent, Trash, Contacts, etc.) with specified destination type
+    * @param account
+    * @param folder
+    * @param destType Destination Type
+    * @param accountName Account Name to get the folder from
+    * @return
+    * @throws HarnessException
+    */
+   public static FolderItem importFromSOAP(ZimbraAccount account, SystemFolder folder,
+         SOAP_DESTINATION_HOST_TYPE destType, String accountName) throws HarnessException {
+      return (importFromSOAP(account, folder.name, destType, accountName));
+   }
 
 	/**
-	 * Import a system folder (i.e. Inbox, Sent, Trash, Contacts, etc.)
+	 * Import a system folder (i.e. Inbox, Sent, Trash, Contacts, etc.) with default destination type: SERVER
 	 * @param account
 	 * @param folder
 	 * @return
@@ -186,6 +218,13 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		return (importFromSOAP(account, folder.name));
 	}
 
+	/**
+    * Import a folder based on folder's name with default destination type: SERVER
+    * @param account
+    * @param name
+    * @return
+    * @throws HarnessException
+    */
 	public static FolderItem importFromSOAP(ZimbraAccount account, String name) throws HarnessException {
 	   return importFromSOAP(account, name, SOAP_DESTINATION_HOST_TYPE.SERVER, null);
 	}
@@ -231,5 +270,6 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		sb.append("Parent ID: ").append(super.getParentId()).append('\n');
 		return (sb.toString());
 	}
+
 
 }

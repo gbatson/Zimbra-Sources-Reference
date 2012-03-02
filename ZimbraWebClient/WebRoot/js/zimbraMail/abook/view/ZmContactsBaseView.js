@@ -149,11 +149,6 @@ function(ev) {
 					this.addItem(newContact, index);
 				}
 
-				// only relayout if this is cards view
-				if (this instanceof ZmContactCardsView) {
-					this._layout();
-				}
-
 				// always select newly added contact if its been added to the
 				// current page of contacts
 				this.setSelection(newContact, false, true);
@@ -393,8 +388,11 @@ function(cell, letter, endLetter) {
 	var clc = AjxDispatcher.run("GetContactListController");
 	var alphabetBar = clc && clc.getParentView() && clc.getParentView().getAlphabetBar();
 	if (alphabetBar && alphabetBar.enabled()) {
-		if (alphabetBar.reset(cell))
+		if (alphabetBar.reset(cell)) {
+            letter = letter && String(letter).substr(0,1);
+            endLetter = endLetter && String(endLetter).substr(0,1);
 			clc.searchAlphabet(letter, endLetter);
+        }
 	}
 };
 

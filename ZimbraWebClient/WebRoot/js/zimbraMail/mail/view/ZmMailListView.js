@@ -577,7 +577,7 @@ function(field, itemIdx) {
 
 ZmMailListView.prototype._getToolTip =
 function(params) {
-	var tooltip, field = params.field, item = params.item;
+	var tooltip, field = params.field, item = params.item, matchIndex = params.match.participant;
 	if (!item) { return; }
 	var folder = appCtxt.getById(item.folderId);
 
@@ -587,7 +587,19 @@ function(params) {
 	else if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) &&
 			(field == ZmItem.F_FROM || field == ZmItem.F_PARTICIPANT))
 	{
-		tooltip = {callback:new AjxCallback(this, this._getParticipantToolTip, [item.getAddress(AjxEmailAddress.FROM)]), loading:true};
+		var addr;
+		if (field == ZmItem.F_FROM) { 
+			addr = item.getAddress(AjxEmailAddress.FROM);
+		} else if (field == ZmItem.F_PARTICIPANT) {
+			var matchIndex = (matchIndex != null) ? parseInt(matchIndex) : 0;
+			addr = item.participants && item.participants.get(matchIndex);
+		}
+		if (!addr) {
+			return;
+		}
+		//Let a Zimlet[Email Zimlet] handle creating and displaying tooltip.		
+		appCtxt.notifyZimlets("onHoverOverEmailInList", [addr, params.ev]);
+		return;
 	}
 	else if (field == ZmItem.F_SUBJECT) {
 		if ((item.type == ZmItem.MSG) && item.isInvite() && item.needsRsvp()) {
@@ -598,12 +610,7 @@ function(params) {
 			if (folder && folder.parent) {
 				folderTip = AjxMessageFormat.format(ZmMsg.accountDownloadToFolder, folder.getPath());
 			}
-			tooltip = tooltip +
-					(tooltip && folderTip ? "<br>" : "") +
-					folderTip;
-            if (tooltip == "") {
-				tooltip = null;
-			}
+			tooltip = folderTip ? [tooltip, folderTip].join("<br>") : tooltip;
         }
 	}
 	else if (field == ZmItem.F_FOLDER) {
@@ -623,42 +630,6 @@ function(params) {
 	}
 	
 	return tooltip;
-};
-
-/**
- * Get the tooltip for the given address. May invoke a server request. The caller will pass
- * a callback if there may be a server request. If it does not pass a callback, return a
- * tooltip based on cached data.
- *
- * @param address		[AjxEmailAddress]
- * @param callback		[AjxCallback]
- */
-ZmMailListView.prototype._getParticipantToolTip =
-function(address, callback) {
-	var addr = address && address.getAddress();
-	if (!addr || !appCtxt.get(ZmSetting.CONTACTS_ENABLED)) { return; }
-
-	if (callback) {
-		var respCallback = new AjxCallback(this, this._handleResponseGetContact, [address, callback]);
-		appCtxt.getApp(ZmApp.CONTACTS).getContactByEmail(addr, respCallback);
-	} else {
-		return this._handleResponseGetContact(address, null, appCtxt.getApp(ZmApp.CONTACTS).getContactByEmail(addr));
-	}
-};
-
-ZmMailListView.prototype._handleResponseGetContact =
-function(address, callback, contact) {
-	var tooltip;
-	if (contact) {
-		tooltip = contact.getToolTip(address.getAddress());
-	} else {
-		tooltip = address && AjxTemplate.expand("abook.Contacts#TooltipNotInAddrBook", {addrstr:address.toString()});
-	}
-	if (callback) {
-		callback.run(tooltip);
-	} else {
-		return tooltip;
-	}
 };
 
 /**
@@ -784,7 +755,7 @@ function(force) {
 
 	if (!this.isMultiColumn()) {
 		if (!this._colHeaderActionMenu || force) {
-			this._colHeaderActionMenu = this._getSortMenu(ZmMailListView.SINGLE_COLUMN_SORT, ZmItem.F_DATE);
+			this._colHeaderActionMenu = this._getSortMenu(this._getSingleColumnSortFields(), ZmItem.F_DATE);
 		}
 		var mi = this._colHeaderActionMenu.getItemById(ZmItem.F_FROM);
 		if (mi) {
@@ -802,6 +773,11 @@ function(force) {
 	}
 
 	return menu;
+};
+
+ZmMailListView.prototype._getSingleColumnSortFields =
+function() {
+	return ZmMailListView.SINGLE_COLUMN_SORT;
 };
 
 ZmMailListView.prototype._colHeaderActionListener =

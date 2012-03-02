@@ -106,6 +106,12 @@ function() {
         var currAcct = appCtxt.getActiveAccount();
         this.setSchedulerVisibility(currAcct.isZimbraAccount && !currAcct.isMain);
     }
+
+    this._editViewInitialized = true;
+    if(this._expandInlineScheduler) {
+        this._pickAttendeesInfo(ZmCalBaseItem.PERSON);
+    }
+
 };
 
 ZmApptEditView.prototype.blur =
@@ -409,7 +415,11 @@ function(calItem) {
 	calItem.setEndDate(endDate, true);
 	if (Dwt.getVisibility(this._tzoneSelectStartElement)) {
         calItem.timezone = this._tzoneSelectStart.getValue();
-        calItem.setEndTimezone(this._tzoneSelectEnd.getValue());
+        if (Dwt.getVisibility(this._tzoneSelectEndElement)) {
+            calItem.setEndTimezone(this._tzoneSelectEnd.getValue());
+        }else {
+            calItem.setEndTimezone(this._tzoneSelectStart.getValue());
+        }
     }
 
     // set attendees
@@ -480,6 +490,7 @@ function(calItem, mode) {
 	var sd = new Date(calItem.startDate.getTime());
 	var ed = new Date(calItem.endDate.getTime());
 
+    var isNew = (mode == ZmCalItem.MODE_NEW || mode == ZmCalItem.MODE_NEW_FROM_QUICKADD);
 	var isAllDayAppt = calItem.isAllDayEvent();
 	if (isAllDayAppt) {
 		this._allDayCheckbox.checked = true;
@@ -493,8 +504,7 @@ function(calItem, mode) {
 		this._endTimeSelect.set(now);
 
 		// bug 9969: HACK - remove the all day durtion for display
-		var isNew = (mode == ZmCalItem.MODE_NEW || mode == ZmCalItem.MODE_NEW_FROM_QUICKADD);
-		if (!isNew && ed.getHours() == 0 && ed.getMinutes() == 0 && ed.getSeconds() == 0) {
+		if (!isNew && ed.getHours() == 0 && ed.getMinutes() == 0 && ed.getSeconds() == 0 && sd.getTime() != ed.getTime()) {
 			ed.setHours(-12);
 		}
 	} else {
@@ -518,6 +528,9 @@ function(calItem, mode) {
 
     this._fwdApptOrigAttendees = [];
 
+    //editing an appt should exclude the original appt time for FB calculation
+    this._fbExcludeInfo = {};
+
     var showScheduleView = false;
 	// attendees
 	var attendees = calItem.getAttendees(ZmCalBaseItem.PERSON);
@@ -538,6 +551,7 @@ function(calItem, mode) {
     	this._attendees[ZmCalBaseItem.PERSON] = AjxVector.fromArray(attendees);
         for(var a=0;a<attendees.length;a++){
             this._attendeesHashMap[attendees[a].getEmail()+"-"+ZmCalBaseItem.PERSON]=attendees[a];
+            if(!isNew) this.addFreeBusyExcludeInfo(attendees[a].getEmail(), calItem.startDate.getTime(), calItem.endDate.getTime());
         }
     	this._attInputField[ZmCalBaseItem.PERSON] = this._attendeesInputField;
     	this._fwdApptOrigAttendees = [];
@@ -595,6 +609,8 @@ function(calItem, mode) {
         }
         this._calItemOrganizer =  calItem.getOrganizer() || "";
 
+        if(!isNew) this.addFreeBusyExcludeInfo(this.getOrganizerEmail(), calItem.startDate.getTime(), calItem.endDate.getTime());
+
         //enable forward field/picker if its not propose time view
         this._setAddresses(this._forwardToField, this._isProposeTime ? calItem.getOrganizer() : "");
         this._forwardToField.setEnabled(!this._isProposeTime);
@@ -640,12 +656,37 @@ function(calItem, mode) {
 
     showScheduleView = showScheduleView && !this._isForward;
 
-    if(showScheduleView && this._controller.isSave()){
+    if(this._controller.isSave() && showScheduleView){
         this._toggleInlineScheduler(true);
     }else{
         this._schedulerOpened = null;
         this._closeScheduler();
     }
+
+    this._expandInlineScheduler = (showScheduleView && !isNew);
+};
+
+ZmApptEditView.prototype.getFreeBusyExcludeInfo =
+function(emailAddr){
+    return this._fbExcludeInfo ? this._fbExcludeInfo[emailAddr] : null;
+};
+
+ZmApptEditView.prototype.excludeLocationFBSlots =
+function(locations, startTime, endTime){
+    for(var i=0; i < locations.length; i++){
+        var location = locations[i];
+        if(!location) continue;
+        this.addFreeBusyExcludeInfo(location.getEmail(), startTime, endTime);
+    }
+};
+
+ZmApptEditView.prototype.addFreeBusyExcludeInfo =
+function(emailAddr, startTime, endTime){
+    if(!this._fbExcludeInfo) this._fbExcludeInfo = {};
+    this._fbExcludeInfo[emailAddr] = {
+        s: startTime,
+        e: endTime
+    };
 };
 
 ZmApptEditView.prototype._getMeetingStatusMsg =
@@ -1175,7 +1216,8 @@ function(addrInput, addrs, type, shortForm) {
 	if (this._useAcAddrBubbles) {
 		addrInput.clear();
 		if (addrs && addrs.length) {
-			for (var i = 0, len = addrs.length; i < len; i++) {
+            var len = addrs.length;
+			for (var i = 0; i < len; i++) {
 				var addr = addrs[i];
 				if (addr) {
 					var addrStr, email, match;
@@ -1188,7 +1230,8 @@ function(addrInput, addrs, type, shortForm) {
 					}
 					else if (addr instanceof ZmContact) {
 						email = addr.getEmail(true);
-						addrStr = email.toString(shortForm);
+                        //bug: 57858 - give preference to lookup email address if its present
+						addrStr = addr.getLookupEmail() || email.toString(shortForm);
 						match = {isDL: addr.isGroup && addr.canExpand, email: addrStr};
 					}
 					addrInput.addBubble({address:addrStr, match:match, skipNotify:true});
@@ -1232,11 +1275,27 @@ function(addrType, attendees) {
     }
 
     if(addrType == ZmCalBaseItem.LOCATION || addrType == ZmCalBaseItem.EQUIPMENT) {
+        this.updateAttendeesCache(addrType, this._attendees[addrType].getArray());
         var attendeeStr = ZmApptViewHelper.getAttendeesString(this._attendees[addrType].getArray(), addrType);
         this.setAttendeesField(addrType, attendeeStr);        
     }
     
 	this._attendeePicker[addrType].popdown();
+};
+
+// Updates the local cache with attendee objects
+ZmApptEditView.prototype.updateAttendeesCache =
+function(addrType, attendees){
+
+    if (!(attendees && attendees.length)) return "";
+
+    var a = [];
+    for (var i = 0; i < attendees.length; i++) {
+        var attendee = attendees[i];
+        var addr = attendee.getLookupEmail() || attendee.getEmail();
+        var key = addr + "-" + addrType;
+        this._attendeesHashMap[key] = attendee;
+    }
 };
 
 ZmApptEditView.prototype.setAttendeesField =
@@ -1304,6 +1363,7 @@ function(addrStr) {
 
 ZmApptEditView.prototype.initialize =
 function(calItem, mode, isDirty, apptComposeMode) {
+    this._editViewInitialized = false;
     this._isForward = (apptComposeMode == ZmApptComposeView.FORWARD);
     this._isProposeTime = (apptComposeMode == ZmApptComposeView.PROPOSE_TIME);
     this._apptComposeMode = apptComposeMode;
@@ -1495,7 +1555,7 @@ function(text, el, match) {
             return;
         }
 		if (type == ZmCalBaseItem.LOCATION || type == ZmCalBaseItem.EQUIPMENT) {
-			var name = attendee.getAttendeeText();
+			var name = ZmApptViewHelper.getAttendeesText(attendee);
 			if(name) {
 				this._locationTextMap[name] = attendee;
 			}
@@ -1601,18 +1661,18 @@ function(calItem, isAllDayAppt) {
 
 ZmApptEditView.prototype._setTimezoneVisible =
 function(dateInfo) {
-	var showTimezone = !dateInfo.isAllDay && this._repeatSelect && this._repeatSelect.getValue()=="NON";
-	if (showTimezone) {
-		showTimezone = appCtxt.get(ZmSetting.CAL_SHOW_TIMEZONE) ||
-					   dateInfo.timezone != AjxTimezone.getServerId(AjxTimezone.DEFAULT);
-	}
+    var showTimezones = appCtxt.get(ZmSetting.CAL_SHOW_TIMEZONE) || dateInfo.timezone != AjxTimezone.getServerId(AjxTimezone.DEFAULT);
+	var showStartTimezone = showTimezones && !dateInfo.isAllDay;
+	var showEndTimezone = showStartTimezone && this._repeatSelect && this._repeatSelect.getValue()=="NON";
+
     if (this._tzoneSelectStartElement) {
-        Dwt.setVisible(this._tzoneSelectStartElement, showTimezone);
-        Dwt.setVisibility(this._tzoneSelectStartElement, showTimezone);
+        Dwt.setVisible(this._tzoneSelectStartElement, showStartTimezone);
+        Dwt.setVisibility(this._tzoneSelectStartElement, showStartTimezone);
     }
+
     if (this._tzoneSelectEndElement) {
-        Dwt.setVisible(this._tzoneSelectEndElement, showTimezone);
-        Dwt.setVisibility(this._tzoneSelectEndElement, showTimezone);
+        Dwt.setVisible(this._tzoneSelectEndElement, showEndTimezone);
+        Dwt.setVisibility(this._tzoneSelectEndElement, showEndTimezone);
     }
 };
 
@@ -1801,8 +1861,8 @@ function(ev) {
 */
 ZmApptEditView.prototype._setAttendees =
 function() {
-	
-	for (var t = 0; t < this._attTypes.length; t++) {
+
+    for (var t = 0; t < this._attTypes.length; t++) {
 		var type = this._attTypes[t];
 		var attendees = this._attendees[type].getArray();
 		var numAttendees = attendees.length;
@@ -1878,6 +1938,12 @@ function(type, useException) {
 	if (type != ZmCalBaseItem.LOCATION) {
 		this._controller.clearInvalidAttendees();
 	}
+
+    return this._pickAttendeesInfo(type, useException);
+};
+
+ZmApptEditView.prototype._pickAttendeesInfo =
+function(type, useException) {
     var attendees;
 
     if(type == ZmCalBaseItem.OPTIONAL_PERSON || type == ZmCalBaseItem.PERSON || type == ZmCalBaseItem.FORWARD) {
@@ -2064,6 +2130,7 @@ function(el) {
 
 ZmApptEditView.prototype._handleOnFocus =
 function(inputEl) {
+    if(!this._editViewInitialized) return;
 	this._activeInputField = inputEl._attType;
     this.setFocusMember(inputEl);
 };
@@ -2079,6 +2146,7 @@ function(member) {
 
 ZmApptEditView.prototype._handleOnBlur =
 function(inputEl) {
+    if(!this._editViewInitialized) return;
     this._handleAttendeeField(inputEl._attType);
 	this._activeInputField = null;
 };

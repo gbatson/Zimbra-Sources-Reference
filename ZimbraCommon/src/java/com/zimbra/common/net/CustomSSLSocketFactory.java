@@ -14,17 +14,29 @@
  */
 package com.zimbra.common.net;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
 
 import javax.net.SocketFactory;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
+
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.ZimbraLog;
 
 /**
  * Override SSLSocketFactory to provide a createSocket() interface
@@ -45,7 +57,40 @@ class CustomSSLSocketFactory extends SSLSocketFactory {
         factory = sf;
         this.verifyHostname = verifyHostname && tm instanceof CustomTrustManager;
     }
-
+    
+    /*
+    private KeyManager[] getKeyManagers() {
+        
+        // safety gate to skip the code in case it cases trouble
+        // TODO: remove in the next major release if everything works well.
+        if (!LC.mailboxd_enable_key_manager.booleanValue()) {
+            return null;
+        }
+        
+        KeyManagerFactory kmf = null;
+        try {
+            KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+            char[] pass = LC.mailboxd_keystore_password.value().toCharArray();
+            ks.load(new FileInputStream(LC.mailboxd_keystore.value()), pass);
+            kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            kmf.init(ks, pass);
+            return kmf.getKeyManagers();
+        } catch (UnrecoverableKeyException e) {
+            ZimbraLog.net.warn("unable to get KeyManagerFactory", e);
+        } catch (KeyStoreException e) {
+            ZimbraLog.net.warn("unable to get KeyManagerFactory", e);
+        } catch (CertificateException e) {
+            ZimbraLog.net.warn("unable to get KeyManagerFactory", e);
+        } catch (NoSuchAlgorithmException e) {
+            ZimbraLog.net.warn("unable to get KeyManagerFactory", e);
+        } catch (IOException e) {
+            ZimbraLog.net.warn("unable to get KeyManagerFactory", e);
+        }
+        
+        return null;
+    }
+    */ 
+    
     boolean isVerifyHostname() {
         return verifyHostname;
     }

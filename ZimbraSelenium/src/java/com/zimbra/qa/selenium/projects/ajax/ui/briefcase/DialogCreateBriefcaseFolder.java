@@ -31,8 +31,11 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 
 	}
 
-	public DialogCreateBriefcaseFolder(AbsApplication application) {
-		super(application);
+	public DialogCreateBriefcaseFolder(AbsApplication application, AbsTab tab) {
+		super(application, tab);
+		
+		logger.info("new " + DialogCreateBriefcaseFolder.class.getCanonicalName());
+
 	}
 
 	/*
@@ -68,6 +71,8 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	@Override
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton(" + button + ")");
+
+		tracer.trace("Click dialog button "+ button);
 
 		AbsPage page = null;
 		String locator = null;
@@ -128,6 +133,8 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	public void zClickTreeFolder(FolderItem folder) throws HarnessException {
 		logger.info(myPageName() + " zClickTreeFolder(" + folder + ")");
 
+		tracer.trace("Click on tree briefcase with name "+ folder.getName());
+
 		if (folder == null)
 			throw new HarnessException("folder must not be null");
 
@@ -153,6 +160,8 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	public void zEnterFolderName(String folder) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderName(" + folder + ")");
 
+		tracer.trace("Enter briefcase name in text box "+ folder);
+
 		if (folder == null)
 			throw new HarnessException("folder must not be null");
 
@@ -165,8 +174,8 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 		// For some reason, the text doesn't get entered on the first try
 		this.sFocus(locator);
 		this.zClick(locator);
-		zKeyboard.zTypeCharacters(folder);
-
+		this.sType(locator, folder);
+	
 		this.zWaitForBusyOverlay();
 
 	}
@@ -182,6 +191,8 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	 */
 	public void zEnterFolderColor(FolderColor color) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderColor(" + color + ")");
+
+		tracer.trace("Enter color "+ color);
 
 		if (color == null)
 			throw new HarnessException("folder must not be null");

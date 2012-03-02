@@ -10,6 +10,8 @@ import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
 
@@ -66,7 +68,12 @@ public class PagePreferences extends AbsTab {
 		
 		
 		// If the "folders" tree is visible, then mail is active
-		String locator = "xpath=//div[@id='zov__main_Options']";
+		String locator = null;
+		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+		   locator = "css=div[id='zov__local@host.local:main_Options']";
+		} else {
+		   locator = "xpath=//div[@id='zov__main_Options']";
+		}
 		
 		boolean loaded = this.sIsElementPresent(locator);
 		if ( !loaded )
@@ -101,6 +108,8 @@ public class PagePreferences extends AbsTab {
 			((AppAjaxClient)MyApplication).zPageMain.zNavigateTo();
 		}
 		
+		tracer.trace("Navigate to "+ this.myPageName());
+
 		// Click on Preferences icon
 		if ( !sIsElementPresent(PageMain.Locators.zAppbarPreferences) ) {
 			throw new HarnessException("Can't locate preferences icon");
@@ -211,7 +220,14 @@ public class PagePreferences extends AbsTab {
 	public AbsPage zListItem(Action action, String item) throws HarnessException {
 		throw new HarnessException(myPageName() + " does not have a Toolbar");
 	}
+	
+	@Override
+	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
+			throws HarnessException {
 
+		throw new HarnessException("Not applicaple for Preference");
+	}
+	
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item) throws HarnessException {
 		throw new HarnessException(myPageName() + " does not have a Toolbar");
@@ -221,6 +237,8 @@ public class PagePreferences extends AbsTab {
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
 		
+		tracer.trace("Click button "+ button);
+
 		if ( button == null )
 			throw new HarnessException("Button cannot be null!");
 		
@@ -266,7 +284,9 @@ public class PagePreferences extends AbsTab {
 
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option) throws HarnessException {
-		throw new HarnessException(myPageName() + " does not have a Toolbar");
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+
+		throw new HarnessException("implement me!");
 	}
 
 	

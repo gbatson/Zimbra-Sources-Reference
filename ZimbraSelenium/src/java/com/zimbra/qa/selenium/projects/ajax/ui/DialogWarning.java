@@ -1,10 +1,8 @@
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDialog;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
 
 /**
@@ -24,8 +22,11 @@ public class DialogWarning extends AbsDialog {
 
 		public static DialogWarningID SaveTaskChangeMessage = new DialogWarningID("YesNoCancel");
 		
-		private String Id;
-		private DialogWarningID(String id) {
+		public static DialogWarningID SendLink = new DialogWarningID("css=div[class=DwtConfirmDialog]");
+		public static DialogWarningID DeleteTagWarningMessage = new DialogWarningID("YesNoCancel");
+		
+		protected String Id;
+		protected DialogWarningID(String id) {
 			Id = id;
 		}
 	}
@@ -33,8 +34,8 @@ public class DialogWarning extends AbsDialog {
 	protected String MyDivId = null;
 	
 	
-	public DialogWarning(DialogWarningID dialogId, AbsApplication application) {
-		super(application);
+	public DialogWarning(DialogWarningID dialogId, AbsApplication application, AbsTab tab) {
+		super(application, tab);
 		
 		// Remember which div this object is pointing at
 		/*
@@ -47,6 +48,8 @@ public class DialogWarning extends AbsDialog {
 		 */
 		MyDivId = dialogId.Id;
 		
+		logger.info("new " + DialogWarning.class.getCanonicalName());
+
 	}
 	
 	public String zGetWarningTitle() throws HarnessException {
@@ -78,9 +81,13 @@ public class DialogWarning extends AbsDialog {
 		String buttonsTableLocator = "//div[@id='"+ MyDivId +"']//div[contains(@id, '_buttons')]";
 		
 		if ( button == Button.B_YES ) {
-
-			locator = buttonsTableLocator + "//table//table//tr/td[1]/div";
-
+			if(MyDivId.contains("css=div[class=DwtConfirmDialog]")){
+				locator = "css=td[class=ZWidgetTitle]:contains(Yes)";				
+				page = 	new FormMailNew(this.MyApplication);
+			}else{
+				locator = buttonsTableLocator + "//table//table//tr/td[1]/div";
+			}
+			
 		} else if ( button == Button.B_NO ) {
 
 			locator = buttonsTableLocator + "//table//table//tr/td[2]/div";

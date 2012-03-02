@@ -40,13 +40,17 @@ public abstract class ZFilterCondition implements ToZJSONObject {
     public static final String C_ATTACHMENT = "attachment";
     public static final String C_BODY = "body";
     public static final String C_DATE = "date";
+    public static final String C_CURRENT_TIME = "current_time";
+    public static final String C_CURRENT_DAY = "current_day_of_week";
     public static final String C_EXISTS = "exists";
     public static final String C_NOT_EXISTS = "not exists";
     public static final String C_HEADER = "header";
+    public static final String C_TRUE = "true";
     public static final String C_MIME_HEADER = "mime_header";
     public static final String C_NOT_ATTACHMENT = "not attachment";
     public static final String C_SIZE = "size";
     public static final String C_INVITE = "invite";
+    public static final String C_CASE_SENSITIVE = "case_sensitive";
 
     public enum HeaderOp {
 
@@ -159,6 +163,19 @@ public abstract class ZFilterCondition implements ToZJSONObject {
         }
     }
 
+    public enum SimpleOp {
+        IS, NOT_IS;
+
+        public static SimpleOp fromString(String s) throws ServiceException {
+            try {
+                return SimpleOp.valueOf(s.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw ZClientException.CLIENT_ERROR(
+                        "invalid op: " + s + ", value values: " + Arrays.asList(SimpleOp.values()), null);
+            }
+        }
+    }
+
     public enum AddressBookOp {
         IN, NOT_IN;
 
@@ -180,15 +197,17 @@ public abstract class ZFilterCondition implements ToZJSONObject {
             String s = condEl.getAttribute(MailConstants.A_STRING_COMPARISON);
             s = s.toLowerCase();
             StringComparison comparison = StringComparison.fromString(s);
+            boolean caseSensitive = condEl.getAttributeBool(MailConstants.A_CASE_SENSITIVE, false);
             String value = condEl.getAttribute(MailConstants.A_VALUE);
-            return new ZHeaderCondition(header, HeaderOp.fromStringComparison(comparison, isNegative), value);
+            return new ZHeaderCondition(header, HeaderOp.fromStringComparison(comparison, isNegative), caseSensitive, value);
         } else if (name.equals(MailConstants.E_MIME_HEADER_TEST)) {
             String header = condEl.getAttribute(MailConstants.A_HEADER);
             String s = condEl.getAttribute(MailConstants.A_STRING_COMPARISON);
             s = s.toLowerCase();
             StringComparison comparison = StringComparison.fromString(s);
+            boolean caseSensitive = condEl.getAttributeBool(MailConstants.A_CASE_SENSITIVE, false);
             String value = condEl.getAttribute(MailConstants.A_VALUE);
-            return new ZMimeHeaderCondition(header, HeaderOp.fromStringComparison(comparison, isNegative), value);
+            return new ZMimeHeaderCondition(header, HeaderOp.fromStringComparison(comparison, isNegative), caseSensitive, value);
         } else if (name.equals(MailConstants.E_HEADER_EXISTS_TEST)) {
             String header = condEl.getAttribute(MailConstants.A_HEADER);
             return new ZHeaderExistsCondition(header, !isNegative);
@@ -204,10 +223,21 @@ public abstract class ZFilterCondition implements ToZJSONObject {
             DateComparison comparison = DateComparison.fromString(s);
             Date date = new Date(condEl.getAttributeLong(MailConstants.A_DATE) * 1000);
             return new ZDateCondition(DateOp.fromDateComparison(comparison, isNegative), date);
+        } else if (name.equals(MailConstants.E_CURRENT_TIME_TEST)) {
+            String s = condEl.getAttribute(MailConstants.A_DATE_COMPARISON);
+            s = s.toLowerCase();
+            DateComparison comparison = DateComparison.fromString(s);
+            String timeStr = condEl.getAttribute(MailConstants.A_TIME);
+            return new ZCurrentTimeCondition(DateOp.fromDateComparison(comparison, isNegative), timeStr);
         } else if (name.equals(MailConstants.E_BODY_TEST)) {
             String value = condEl.getAttribute(MailConstants.A_VALUE);
             BodyOp op = (isNegative ? BodyOp.NOT_CONTAINS : BodyOp.CONTAINS);
-            return new ZBodyCondition(op, value);
+            boolean caseSensitive = condEl.getAttributeBool(MailConstants.A_CASE_SENSITIVE, false);
+            return new ZBodyCondition(op, caseSensitive, value);
+        } else if (name.equals(MailConstants.E_CURRENT_DAY_OF_WEEK_TEST)) {
+            String value = condEl.getAttribute(MailConstants.A_VALUE);
+            SimpleOp op = (isNegative ? SimpleOp.NOT_IS : SimpleOp.IS);
+            return new ZCurrentDayOfWeekCondition(op, value);
         } else if (name.equals(MailConstants.E_ADDRESS_BOOK_TEST)) {
             String header = condEl.getAttribute(MailConstants.A_HEADER);
             // String folderPath = condEl.getAttribute(MailConstants.A_FOLDER_PATH);
@@ -227,6 +257,8 @@ public abstract class ZFilterCondition implements ToZJSONObject {
                 }
                 return new ZInviteCondition(!isNegative, methods);
             }
+        } else if (name.equals(MailConstants.E_TRUE_TEST)) {
+            return new ZTrueCondition();
         } else {
              throw ZClientException.CLIENT_ERROR("unknown filter condition: "+name, null);
         }
@@ -292,12 +324,18 @@ public abstract class ZFilterCondition implements ToZJSONObject {
     }
     
     public static class ZBodyCondition extends ZFilterCondition {
-        private BodyOp mBodyOp;
-        private String mText;
+        private BodyOp bodyOp;
+        private boolean caseSensitive;
+        private String text;
 
         public ZBodyCondition(BodyOp op, String text) {
-            mBodyOp = op;
-            mText = text;
+            this(op, false, text);
+        }
+
+        public ZBodyCondition(BodyOp op, boolean caseSensitive, String text) {
+            this.bodyOp = op;
+            this.caseSensitive = caseSensitive;
+            this.text = text;
         }
 
         @Override
@@ -305,25 +343,61 @@ public abstract class ZFilterCondition implements ToZJSONObject {
             return C_BODY;
         }
 
-        public BodyOp getBodyOp() { return mBodyOp; }
-        public String getText() { return mText; }
+        public BodyOp getBodyOp() { return bodyOp; }
+        public boolean isCaseSensitive() { return caseSensitive; }
+        public String getText() { return text; }
 
         public String toConditionString() {
-            return (mBodyOp == BodyOp.CONTAINS ? "body contains " : "body not_contains ") +ZFilterRule.quotedString(getText());
+            return (bodyOp == BodyOp.CONTAINS ? "body contains " : "body not_contains ") +
+                    (caseSensitive ? "case_sensitive " : "") + ZFilterRule.quotedString(getText());
         }
 
         @Override
         Element toElement(Element parent) {
             Element test = parent.addElement(MailConstants.E_BODY_TEST);
-			if (!StringUtil.isNullOrEmpty(mText)) {
-            	test.addAttribute(MailConstants.A_VALUE, mText);
+            if (caseSensitive)
+                test.addAttribute(MailConstants.A_CASE_SENSITIVE, caseSensitive);
+			if (!StringUtil.isNullOrEmpty(text)) {
+            	test.addAttribute(MailConstants.A_VALUE, text);
 			}
-            if (mBodyOp == BodyOp.NOT_CONTAINS) {
+            if (bodyOp == BodyOp.NOT_CONTAINS) {
                 test.addAttribute(MailConstants.A_NEGATIVE, true);
             }
             return test;
         }
 
+    }
+
+    public static class ZCurrentDayOfWeekCondition extends ZFilterCondition {
+        private SimpleOp op;
+        private String days;
+
+        public ZCurrentDayOfWeekCondition(SimpleOp op, String days) {
+            this.op = op;
+            this.days = days;
+        }
+
+        @Override
+        public String getName() {
+            return C_CURRENT_DAY;
+        }
+
+        public SimpleOp getOp() { return op; }
+        public String getDays() { return days; }
+
+        public String toConditionString() {
+            return "current_day_of_week " + (op == SimpleOp.IS ? "is " : "not_is ") + days;
+        }
+
+        @Override
+        Element toElement(Element parent) {
+            Element test = parent.addElement(MailConstants.E_CURRENT_DAY_OF_WEEK_TEST);
+            test.addAttribute(MailConstants.A_VALUE, days);
+            if (op == SimpleOp.NOT_IS) {
+                test.addAttribute(MailConstants.A_NEGATIVE, true);
+            }
+            return test;
+        }
     }
 
     public static class ZSizeCondition extends ZFilterCondition {
@@ -423,23 +497,82 @@ public abstract class ZFilterCondition implements ToZJSONObject {
         
     }
 
-    public static class ZHeaderCondition extends ZFilterCondition {
-        private HeaderOp mHeaderOp;
-        private String mHeaderName;
-        private String mValue;
+    public static class ZCurrentTimeCondition extends ZFilterCondition {
+        private DateOp dateOp;
+        private String timeStr;
 
-        public ZHeaderCondition(String headerName, HeaderOp op, String value) {
-            mHeaderName = headerName;
-            mHeaderOp = op;
-            mValue = value;
+        public ZCurrentTimeCondition(DateOp op, String timeStr) {
+            this.dateOp = op;
+            this.timeStr = timeStr;
         }
 
-        public HeaderOp getHeaderOp() { return mHeaderOp; }
-        public String getHeaderName() { return mHeaderName; }
-        public String getHeaderValue()  { return mValue; }
+        public DateOp getDateOp() { return dateOp; }
+        public String getTimeStr() { return timeStr; }
 
         public String toConditionString() {
-            return "header " + ZFilterRule.quotedString(getHeaderName()) + " " + mHeaderOp.name().toLowerCase() + " " + ZFilterRule.quotedString(getHeaderValue());
+            return "current_time " + dateOp.name().toLowerCase() + " " + timeStr;
+        }
+
+        @Override
+        public String getName() {
+            return C_CURRENT_TIME;
+        }
+
+        @Override
+        Element toElement(Element parent) {
+            Element test = parent.addElement(MailConstants.E_CURRENT_TIME_TEST);
+            test.addAttribute(MailConstants.A_DATE_COMPARISON, dateOp.toDateComparison().toString());
+            if (dateOp.isNegative()) {
+                test.addAttribute(MailConstants.A_NEGATIVE, true);
+            }
+            test.addAttribute(MailConstants.A_TIME, timeStr);
+            return test;
+        }
+    }
+
+    public static class ZTrueCondition extends ZFilterCondition {
+
+        @Override
+        Element toElement(Element parent) {
+            return parent.addElement(MailConstants.E_TRUE_TEST);
+        }
+
+        @Override
+        public String getName() {
+            return C_TRUE;
+        }
+
+        @Override
+        public String toConditionString() {
+            return "true";
+        }
+    }
+
+    public static class ZHeaderCondition extends ZFilterCondition {
+        private HeaderOp headerOp;
+        private boolean caseSensitive;
+        private String headerName;
+        private String value;
+
+        public ZHeaderCondition(String headerName, HeaderOp op, String value) {
+            this(headerName, op, false, value);
+        }
+
+        public ZHeaderCondition(String headerName, HeaderOp op, boolean caseSensitive, String value) {
+            this.headerName = headerName;
+            this.headerOp = op;
+            this.caseSensitive = caseSensitive;
+            this.value = value;
+        }
+
+        public HeaderOp getHeaderOp() { return headerOp; }
+        public boolean isCaseSensitive() { return caseSensitive; }
+        public String getHeaderName() { return headerName; }
+        public String getHeaderValue()  { return value; }
+
+        public String toConditionString() {
+            return "header " + ZFilterRule.quotedString(getHeaderName()) + " " + headerOp.name().toLowerCase() +
+                    " " + (caseSensitive ? "case_sensitive " : "") + ZFilterRule.quotedString(getHeaderValue());
         }
 
         @Override
@@ -450,36 +583,45 @@ public abstract class ZFilterCondition implements ToZJSONObject {
         @Override
         Element toElement(Element parent) {
             Element test = parent.addElement(MailConstants.E_HEADER_TEST);
-            test.addAttribute(MailConstants.A_HEADER, mHeaderName);
-            test.addAttribute(MailConstants.A_STRING_COMPARISON, mHeaderOp.toStringComparison().toString());
-            if (mHeaderOp.isNegative()) {
+            test.addAttribute(MailConstants.A_HEADER, headerName);
+            test.addAttribute(MailConstants.A_STRING_COMPARISON, headerOp.toStringComparison().toString());
+            if (caseSensitive)
+                test.addAttribute(MailConstants.A_CASE_SENSITIVE, caseSensitive);
+            if (headerOp.isNegative()) {
                 test.addAttribute(MailConstants.A_NEGATIVE, true);
             }
-			if (!StringUtil.isNullOrEmpty(mValue)) {
-            	test.addAttribute(MailConstants.A_VALUE, mValue);
+			if (!StringUtil.isNullOrEmpty(value)) {
+            	test.addAttribute(MailConstants.A_VALUE, value);
 			}
             return test;
         }
-        
     }
 
     public static class ZMimeHeaderCondition extends ZFilterCondition {
-        private HeaderOp mHeaderOp;
-        private String mHeaderName;
-        private String mValue;
+        private HeaderOp headerOp;
+        private boolean caseSensitive;
+        private String headerName;
+        private String value;
 
         public ZMimeHeaderCondition(String headerName, HeaderOp op, String value) {
-            mHeaderName = headerName;
-            mHeaderOp = op;
-            mValue = value;
+            this(headerName, op, false, value);
         }
 
-        public HeaderOp getHeaderOp() { return mHeaderOp; }
-        public String getHeaderName() { return mHeaderName; }
-        public String getHeaderValue()  { return mValue; }
+        public ZMimeHeaderCondition(String headerName, HeaderOp op, boolean caseSensitive, String value) {
+            this.headerName = headerName;
+            this.headerOp = op;
+            this.caseSensitive = caseSensitive;
+            this.value = value;
+        }
+
+        public HeaderOp getHeaderOp() { return headerOp; }
+        public boolean isCaseSensitive() { return caseSensitive; }
+        public String getHeaderName() { return headerName; }
+        public String getHeaderValue()  { return value; }
 
         public String toConditionString() {
-            return "mime_header " + ZFilterRule.quotedString(getHeaderName()) + " " + mHeaderOp.name().toLowerCase() + " " + ZFilterRule.quotedString(getHeaderValue());
+            return "mime_header " + ZFilterRule.quotedString(getHeaderName()) + " " + headerOp.name().toLowerCase() +
+                    " " + (caseSensitive ? "case_sensitive " : "") + ZFilterRule.quotedString(getHeaderValue());
         }
 
         @Override
@@ -490,13 +632,15 @@ public abstract class ZFilterCondition implements ToZJSONObject {
         @Override
         Element toElement(Element parent) {
             Element test = parent.addElement(MailConstants.E_MIME_HEADER_TEST);
-            test.addAttribute(MailConstants.A_HEADER, mHeaderName);
-            test.addAttribute(MailConstants.A_STRING_COMPARISON, mHeaderOp.toStringComparison().toString());
-            if (mHeaderOp.isNegative()) {
+            test.addAttribute(MailConstants.A_HEADER, headerName);
+            test.addAttribute(MailConstants.A_STRING_COMPARISON, headerOp.toStringComparison().toString());
+            if (caseSensitive)
+                test.addAttribute(MailConstants.A_CASE_SENSITIVE, caseSensitive);
+            if (headerOp.isNegative()) {
                 test.addAttribute(MailConstants.A_NEGATIVE, true);
             }
-            if (!StringUtil.isNullOrEmpty(mValue)) {
-                test.addAttribute(MailConstants.A_VALUE, mValue);
+            if (!StringUtil.isNullOrEmpty(value)) {
+                test.addAttribute(MailConstants.A_VALUE, value);
             }
             return test;
         }

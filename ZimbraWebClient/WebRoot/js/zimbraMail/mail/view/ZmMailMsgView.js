@@ -87,8 +87,8 @@ ZmMailMsgView._inited 				= false;
 ZmMailMsgView._TAG_CLICK 			= "ZmMailMsgView._TAG_CLICK";
 ZmMailMsgView._TAG_ANCHOR 			= "TA";
 ZmMailMsgView._TAG_IMG 				= "TI";
-ZmMailMsgView.OBJ_SIZE_TEXT 		= 50; // max. size of text emails that will automatically highlight objects
-ZmMailMsgView.OBJ_SIZE_HTML 		= 50; // similar for HTML emails.
+ZmMailMsgView.OBJ_SIZE_TEXT 		= 70; // max. size of text emails that will automatically highlight objects
+ZmMailMsgView.OBJ_SIZE_HTML 		= 100; // similar for HTML emails.
 ZmMailMsgView.SHARE_EVENT 			= "share";
 ZmMailMsgView.IMG_FIX_RE			= new RegExp("(<img\\s+.*dfsrc\\s*=\\s*)[\"']http[^'\"]+part=([\\d\\.]+)[\"']([^>]*>)", "gi");
 ZmMailMsgView.FILENAME_INV_CHARS_RE = /[\./?*:;{}'\\]/g; // Chars we do not allow in a filename
@@ -97,6 +97,7 @@ ZmMailMsgView.SETHEIGHT_MAX_TRIES	= 3;
 ZmMailMsgView._URL_RE = /^((https?|ftps?):\x2f\x2f.+)$/;
 ZmMailMsgView._MAILTO_RE = /^mailto:[\x27\x22]?([^@?&\x22\x27]+@[^@?&]+\.[^@?&\x22\x27]+)[\x27\x22]?/;
 
+ZmMailMsgView.MAX_ADDRESSES_IN_FIELD = 10;
 
 // Public methods
 
@@ -399,7 +400,24 @@ function(msg, oldMsg) {
 	}
 
 	// reset scroll view to top most
-	this.getHtmlElement().scrollTop = 0;
+	var htmlElement = this.getHtmlElement();
+	htmlElement.scrollTop = 0;
+	if (htmlElement.scrollTop != 0) {
+		/* situation that happens only on Chrome, without repro steps - bug 55775/57090 */
+		AjxDebug.println(AjxDebug.SCROLL, "scrollTop not set to 0. scrollTop=" + htmlElement.scrollTop + " offsetHeight=" + htmlElement.offsetHeight + " scrollHeight=" + htmlElement.scrollHeight + " browser=" + navigator.userAgent);
+		AjxDebug.dumpObj(AjxDebug.SCROLL, htmlElement.outerHTML);
+		/*
+			trying this hack for solution -
+			explanation: The scroll bar does not appear if the scrollHeight of the div is bigger than the total height of the iframe and header together (i.e. if htmlElement.scrollHeight >= htmlElement.offsetHeight)
+			If the scrollbar does not appear it's set to, and stays 0 when the scrollbar reappears due to resizing the iframe in _resetIframeHeight (which is later, I think always on timer).
+			So what I do here is set the height of the iframe to very small (since the default is 150px), so the scroll bar disappears.
+			it will reappear when we reset the size in _resetIframeHeight. I hope this will solve the issue.
+		*/
+		var iframe = document.getElementById(this._iframeId);
+		iframe.style.height = "1px";
+		AjxDebug.println(AjxDebug.SCROLL, "scrollTop after reseting it with the hack =" + htmlElement.scrollTop);
+
+	}
 
 	// notify zimlets that a new message has been opened
 	appCtxt.notifyZimlets("onMsgView", [msg, oldMsg, this]);
@@ -903,7 +921,7 @@ function(container, html, isTextMsg, isTruncated) {
 		? "MsgBody MsgBody-text"
 		: "MsgBody MsgBody-html";
 
-	idoc.body.style.height = ""; //see bug 56899 - if the body has height such as 100% or 94%, it causes a problem in FF in calcualting the iframe height. Make sure the height is clear.
+	idoc.body.style.height = "auto"; //see bug 56899 - if the body has height such as 100% or 94%, it causes a problem in FF in calcualting the iframe height. Make sure the height is clear.
 
 	ifw.getIframe().onload = AjxCallback.simpleClosure(this._onloadIframe, this, ifw);
 
@@ -980,6 +998,26 @@ ZmMailMsgView.prototype.getTrustedSendersList =
 function() {
     return this._controller.getApp().getTrustedSendersList();
 };
+
+ZmMailMsgView.showMore =
+function(elementId, type) {
+	var showMore = document.getElementById(this._getShowMoreId(elementId, type));
+	var more = document.getElementById(this._getMoreId(elementId, type));
+	showMore.style.display = "none";
+	more.style.display = "inline";
+};
+
+
+ZmMailMsgView._getShowMoreId =
+function(elementId, type) {
+	return elementId + 'showmore_' + type;
+};
+
+ZmMailMsgView._getMoreId =
+function(elementId, type) {
+	return elementId + 'more_addrs_' + type;
+};
+
 
 ZmMailMsgView.prototype._renderMessage =
 function(msg, container, callback) {
@@ -1074,12 +1112,21 @@ function(msg, container, callback) {
 		if (addrs.length > 0) {
 			var idx = 0;
 			var parts = [];
+			var showMoreLink = false;
 			for (var j = 0; j < addrs.length; j++) {
 				if (j > 0) {
 					// no need for semicolon if we're showing addr bubbles
 					parts[idx++] = options.addrBubbles ? " " : AjxStringUtil.htmlEncode(AjxEmailAddress.SEPARATOR);
 				}
 
+				if (j == ZmMailMsgView.MAX_ADDRESSES_IN_FIELD) {
+					showMoreLink = true;
+					var showMoreId = ZmMailMsgView._getShowMoreId(this._htmlElId, type);
+					var moreId = ZmMailMsgView._getMoreId(this._htmlElId, type);
+					parts[idx++] = "<span id='" + showMoreId + "'>&nbsp;<a href='' onclick='ZmMailMsgView.showMore(\"" + this._htmlElId + "\", \"" + type + "\"); return false;'>";
+					parts[idx++] = ZmMsg.showMore;
+					parts[idx++] = "</a></span><span style='display:none;' id='" + moreId + "'>";
+				}
 				var email = addrs[j];
 				if (email.address) {
 					parts[idx++] = this._objectManager
@@ -1088,6 +1135,9 @@ function(msg, container, callback) {
 				} else {
 					parts[idx++] = AjxStringUtil.htmlEncode(email.name);
 				}
+			}
+			if (showMoreLink) {
+				parts[idx++] = "</span>";
 			}
 			var prefix = AjxStringUtil.htmlEncode(ZmMsg[AjxEmailAddress.TYPE_STRING[type]]);
 			var partStr = parts.join("");
@@ -1129,7 +1179,7 @@ function(msg, container, callback) {
 	};
 
 	if (invite && !invite.isEmpty() && this._inviteMsgView) {
-		this._inviteMsgView.addSubs(subs, sentBy, sentByAddr);
+		this._inviteMsgView.addSubs(subs, sentBy, sentByAddr, sender ? addr : null);
 	}
 	else {
 		subs.sentBy = sentBy;
@@ -2068,8 +2118,7 @@ function(itemId, attachments, viewAllImages, filename) {
 		filename = null;
 	}
 	filename = AjxStringUtil.urlComponentEncode(filename || ZmMsg.downloadAllDefaultFileName);
-
-	var url = [appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI), "&id=", itemId, "&filename=", filename, "&part="].join("");
+	var url = [appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI), "&id=", itemId, "&filename=", filename,"&charset=", appCtxt.getCharset(), "&part="].join("");
 	var parts = [];
 	for (var j = 0; j < attachments.length; j++) {
 		parts.push(attachments[j].part);

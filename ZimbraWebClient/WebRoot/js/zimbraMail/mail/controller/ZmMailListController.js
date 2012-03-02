@@ -239,6 +239,7 @@ function(actionCode) {
 		case ZmKeyMap.GOTO_JUNK:
 		case ZmKeyMap.GOTO_SENT:
 		case ZmKeyMap.GOTO_TRASH:
+			if (actionCode==ZmKeyMap.GOTO_JUNK && !appCtxt.get(ZmSetting.SPAM_ENABLED)) { break; }
 			this._folderSearch(ZmMailListController.ACTION_CODE_TO_FOLDER[actionCode]);
 			break;
 
@@ -246,6 +247,7 @@ function(actionCode) {
 		case ZmKeyMap.MOVE_TO_TRASH:
 		case ZmKeyMap.MOVE_TO_JUNK:
 			if (isSyncFailures) { break; }
+			if (actionCode==ZmKeyMap.MOVE_TO_JUNK && !appCtxt.get(ZmSetting.SPAM_ENABLED)) { break; }
 			if (num && !(isDrafts && actionCode != ZmKeyMap.MOVE_TO_TRASH)) {
 			 	var folderId = ZmMailListController.ACTION_CODE_TO_FOLDER_MOVE[actionCode];
 				folder = appCtxt.getById(folderId);
@@ -266,7 +268,7 @@ function(actionCode) {
 			break;
 	
 		case ZmKeyMap.SPAM:
-			if (num && !isDrafts && !isSyncFailures) {
+			if (num && !isDrafts && !isSyncFailures && appCtxt.get(ZmSetting.SPAM_ENABLED)) {
 				this._spamListener();
 			}
 			break;
@@ -520,7 +522,9 @@ function(view) {
 
 	this._setupViewMenu(view);
 	this._setupDeleteButton(this._toolbar[view]);
-	this._setupSpamButton(this._toolbar[view]);
+	if (appCtxt.get(ZmSetting.SPAM_ENABLED)) {
+		this._setupSpamButton(this._toolbar[view]);
+	}
 	this._setupCheckMailButton(this._toolbar[view]);
 
 	// reset new button properties
@@ -1355,7 +1359,7 @@ function(origMsg) {
 };
 
 ZmMailListController.prototype._sendInviteReply =
-function(type, componentId, instanceDate, accountName, ignoreNotifyDlg, origMsg, acceptFolderId) {
+function(type, componentId, instanceDate, accountName, ignoreNotify, origMsg, acceptFolderId, callback) {
 	var msg = new ZmMailMsg();
 	AjxDispatcher.require("CalendarCore");
 
@@ -1395,7 +1399,7 @@ function(type, componentId, instanceDate, accountName, ignoreNotifyDlg, origMsg,
 		msg.setSubject(subject);
 	}
 	var errorCallback = new AjxCallback(this, this._handleErrorInviteReply);
-	return msg.sendInviteReply(true, componentId, null, errorCallback, instanceDate, accountName, ignoreNotifyDlg);
+	return msg.sendInviteReply(true, componentId, callback, errorCallback, instanceDate, accountName, ignoreNotify);
 };
 
 ZmMailListController.prototype._handleErrorInviteReply =

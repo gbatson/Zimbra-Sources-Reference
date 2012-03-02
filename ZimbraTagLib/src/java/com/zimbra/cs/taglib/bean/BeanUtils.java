@@ -207,6 +207,11 @@ public class BeanUtils {
         return s;
     }
 
+    public static String htmlNewlineEncode(String text) {
+        if (text == null || text.length() == 0) return "";
+        return text.replaceAll("\n","<br>");
+    }
+
     public static String htmlDecode(String text) {
         if (text == null || text.length() == 0) return "";
         String s = replaceAll(text, "<br>", "\n");
@@ -226,6 +231,21 @@ public class BeanUtils {
         s = replaceAll(s, sGT, "&gt;");
         s = replaceAll(s, sDBLQT, "&quot;");
         return s;
+    }
+
+    public static String htmlRubyEncode(String base, String text) {
+        if (base != null && base.length() > 0 && text != null && text.length() > 0) {
+            StringBuilder str = new StringBuilder();
+            str.append("<ruby><rb>");
+            str.append(htmlEncode(base));
+            str.append("</rb><rp>(</rp><rt>");
+            str.append(htmlEncode(text));
+            str.append("</rt><rp>)</rp></ruby>");
+            return str.toString();
+        }
+        String s = base != null && base.length() > 0 ? base :
+                  (text != null && text.length() > 0 ? text : "");
+        return htmlEncode(s);
     }
 
     private static String internalTextToHtml(String text) {
@@ -489,6 +509,14 @@ public class BeanUtils {
        Provisioning prov = Provisioning.getInstance();
        return prov.getConfig().getBooleanAttr(attr, false) || Provisioning.TRUE.equals(getAttr(pc, attr));
    }
+
+    public static String getMailURL(PageContext pc) {
+        try {
+            return Provisioning.getInstance().getLocalServer().getMailURL();
+        } catch (ServiceException e) {
+            return "/zimbra";
+        }
+    }
 
     public static String repeatString(String string, int count) {
         if (count==0) return "";
@@ -851,7 +879,18 @@ public class BeanUtils {
                     cal.add(Calendar.DAY_OF_MONTH, - (((dow-1) + (7- (int)prefFirstDayOfWeek)) % 7));
         }
         return cal;
-     }
+    }
+
+    public static Calendar getCurrentDay(java.util.Calendar date) {
+         Calendar cal = Calendar.getInstance(date.getTimeZone());
+         cal.setTimeInMillis(date.getTimeInMillis());
+         cal.set(Calendar.HOUR_OF_DAY, 0);
+         cal.set(Calendar.MINUTE, 0);
+         cal.set(Calendar.SECOND, 0);
+         cal.set(Calendar.MILLISECOND, 0);
+
+         return cal;
+    }
 
     public static void getNextDay(Calendar cal) {
         cal.add(Calendar.DAY_OF_MONTH, 1);
@@ -1397,7 +1436,7 @@ public class BeanUtils {
      * false otherwise.
      */
     public static boolean isAllowedUA(com.zimbra.cs.taglib.bean.ZUserAgentBean ua, String[] allowedUA) {
-        if (allowedUA.length == 0) return true;
+        if (allowedUA == null || allowedUA.length == 0) return true;
         Pattern pattern;
         Matcher m;
         for (String str : allowedUA) {

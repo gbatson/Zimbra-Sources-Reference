@@ -58,6 +58,7 @@ ZaDomain.ACLLabels = {r:ZaMsg.ACL_R, w:ZaMsg.ACL_W, i:ZaMsg.ACL_I, a:ZaMsg.ACL_A
 ZaItem.loadMethods["ZaDomain"] = new Array();
 ZaItem.initMethods["ZaDomain"] = new Array();
 ZaItem.modifyMethods["ZaDomain"] = new Array();
+ZaItem.modifyMethodsExt["ZaDomain"] = new Array();
 ZaItem.createMethods["ZaDomain"] = new Array();
 
 ZaDomain.DOMAIN_STATUS_ACTIVE = "active";
@@ -226,6 +227,7 @@ ZaDomain.A_zimbraZimletDomainAvailableZimlets = "zimbraZimletDomainAvailableZiml
 ZaDomain.A_zimbraDomainCOSMaxAccounts = "zimbraDomainCOSMaxAccounts" ;
 ZaDomain.A_zimbraDomainFeatureMaxAccounts = "zimbraDomainFeatureMaxAccounts" ;
 ZaDomain.A2_account_limit = "account_limit" ;
+
 
 //skin properties
 ZaDomain.A_zimbraSkinForegroundColor = "zimbraSkinForegroundColor" ;
@@ -1219,14 +1221,25 @@ ZaDomain.prototype.setStatus = function (newStatus) {
 * modifies object's information in the database
 **/
 ZaDomain.modifyMethod =
-function(mods,tmpObj) {
+function(tmods,tmpObj) {
 	var soapDoc = AjxSoapDoc.create("BatchRequest", "urn:zimbra");
 	soapDoc.setMethodAttribute("onerror", "stop");
-	
+
+	// method  plugin
+	var mods = tmods;
+	if(ZaItem.modifyMethodsExt["ZaDomain"]) {
+                var methods = ZaItem.modifyMethodsExt["ZaDomain"];
+                var cnt = methods.length;
+                for(var i = 0; i < cnt; i++) {
+                        if(typeof(methods[i]) == "function")
+                               methods[i].call(this, mods, tmpObj, soapDoc);
+                }
+
+	}	 
 	var modifyDomainDoc = soapDoc.set("ModifyDomainRequest", null, null, ZaZimbraAdmin.URN);
 	soapDoc.set("id", this.id,modifyDomainDoc);
 	
-    for (var aname in mods) {
+    	for (var aname in mods) {
 		//multy value attribute
 		if(mods[aname] instanceof Array) {
 			var cnt = mods[aname].length;
@@ -1245,7 +1258,7 @@ function(mods,tmpObj) {
 			var attr = soapDoc.set("a", mods[aname],modifyDomainDoc);
 			attr.setAttribute("n", aname);
 		}
-    }
+    	}
     
 	if(tmpObj[ZaDomain.A2_gal_sync_accounts] && tmpObj[ZaDomain.A2_gal_sync_accounts][0]) { 
 		if(tmpObj[ZaDomain.A2_gal_sync_accounts][0][ZaAccount.A2_zimbra_ds] 
@@ -1277,7 +1290,7 @@ function(mods,tmpObj) {
 				attr.setAttribute("n", ZaDataSource.A_zimbraDataSourcePollingInterval);
 			}
 		}
-	}	
+	}
 	
 	try {
 		params = new Object();

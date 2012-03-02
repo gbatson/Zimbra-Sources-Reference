@@ -181,16 +181,27 @@ function(view) {
 		ZmListController.prototype._initializeToolBar.call(this, view);
 		this._setupViewMenu(view, true);
 		this._setNewButtonProps(view, ZmMsg.newDocument, "Doc", "DocDis", ZmOperation.NEW_DOC);
-		var toolbar = this._toolbar[view];
-		button = toolbar.getButton(ZmOperation.DELETE);
-		button.setToolTipContent(ZmMsg.deletePermanentTooltip);
 		this._initSendMenu(view);
+        var toolbar = this._toolbar[view];
 		toolbar.addFiller();
 		this._initializeNavToolBar(view);
 		appCtxt.notifyZimlets("initializeToolbar", [this._app, toolbar, this, view], {waitUntilLoaded:true});
 	} else {
-		this._setupViewMenu(view, false);
+        this._setupDeleteButton(this._toolbar[view]);
+        this._setupViewMenu(view, false);
 	}
+};
+
+// If we're in the Trash folder, change the "Delete" button tooltip
+ZmBriefcaseController.prototype._setupDeleteButton =
+function(parent) {
+    var folder = this._getSearchFolder();
+    var inTrashFolder = (folder && folder.nId == ZmFolder.ID_TRASH);
+    var tooltip = inTrashFolder ? ZmMsg.deletePermanentTooltip : ZmMsg.deleteTooltip;
+    var deleteButton = parent.getButton(ZmOperation.DELETE);
+    if(deleteButton){
+        deleteButton.setToolTipContent(ZmOperation.getToolTip(ZmOperation.DELETE, ZmKeyMap.MAP_NAME_R[this.getKeyMapName()], tooltip));
+    }
 };
 
 ZmBriefcaseController.prototype._initializeNavToolBar =
@@ -230,8 +241,11 @@ function(parent, num) {
     isMixedSelected = isFolderSelected ? (isBriefcaseItemSelected || isRevisionSelected) :  (isBriefcaseItemSelected && isRevisionSelected);
 
     var briefcase = appCtxt.getById(this._folderId);
+    if(!(briefcase instanceof ZmBriefcase)){
+        briefcase = null;
+    }
     var isTrash = (briefcase && briefcase.nId == ZmOrganizer.ID_TRASH);
-    var isShared = ((briefcase && briefcase.nId != ZmOrganizer.ID_TRASH) && briefcase.isShared());
+    var isShared = ((briefcase && briefcase.nId != ZmOrganizer.ID_TRASH && briefcase.isShared()));
 	var isReadOnly = briefcase ? briefcase.isReadOnly() : false;
 	var isMultiFolder = (noOfFolders > 1);
 	var isItemSelected = (num>0);
@@ -528,22 +542,22 @@ function(ev) {
 
 	if (ev.detail == DwtListView.ITEM_DBL_CLICKED) {
 		var item = ev.item;
-		var restUrl = item.getRestUrl();
 
         if(item.isFolder){
             this._app.search({folderId:item.id, noClear:true});
             return;
         }
 
+		var restUrl = item.getRestUrl();
+        //added for bug: 45150
+        restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
         if (item.isWebDoc()) {
-            //added for bug: 45150
-            restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
 			restUrl = ZmBriefcaseApp.addEditorParam(restUrl);
             restUrl += (restUrl.match(/\?/) ? "&" : "?") + "localeId=" + AjxEnv.DEFAULT_LOCALE;
 
 		}
 		if (restUrl) {
-            if(item.isDownloadable()) {
+            if(item.isDownloadable() && !(item.contentType == ZmMimeTable.APP_ADOBE_PDF && this.hasPDFReader())) {
                 this._downloadFile(restUrl);
             }else {
 			    window.open(restUrl, this._getWindowName(item.name), item.isWebDoc() ? "" : ZmBriefcaseApp.getDocWindowFeatures());
@@ -551,6 +565,14 @@ function(ev) {
 		}
 	}
 };
+
+ZmBriefcaseController.prototype.hasPDFReader =
+function(){
+    if(AjxUtil.isUndefined(this._hasPDFReader)){
+        this._hasPDFReader = AjxPluginDetector.detectPDFReader();
+    }
+    return this._hasPDFReader;
+}
 
 ZmBriefcaseController.prototype._listActionListener =
 function(ev) {
@@ -844,8 +866,8 @@ function() {
 
 	items = AjxUtil.toArray(items);
 
-	// Allow download to only one file.
-    this.downloadFile(items[0]);
+	    // Allow download to only one file.
+        this.downloadFile(items[0]);
 };
 
 ZmBriefcaseController.prototype.downloadFile =

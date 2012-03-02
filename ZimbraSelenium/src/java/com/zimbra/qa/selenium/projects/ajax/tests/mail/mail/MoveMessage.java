@@ -9,7 +9,7 @@ import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.DialogMove;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 
 public class MoveMessage extends AjaxCommonTest {
@@ -19,7 +19,7 @@ public class MoveMessage extends AjaxCommonTest {
 		logger.info("Checking for the Move Dialog ...");
 
 		// Check if the "Move Dialog is still open
-		DialogMove dialog = new DialogMove(app);
+		DialogMove dialog = new DialogMove(app, ((AppAjaxClient)app).zPageMail);
 		if ( dialog.zIsActive() ) {
 			logger.warn(dialog.myPageName() +" was still active.  Cancelling ...");
 			dialog.zClickButton(Button.B_CANCEL);
@@ -44,10 +44,10 @@ public class MoveMessage extends AjaxCommonTest {
 	@Test(	description = "Move a mail by selecting message, then clicking toolbar 'Move' button",
 			groups = { "smoke" })
 	public void MoveMail_01() throws HarnessException {
-		
+
 		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();
 		String foldername = "folder"+ ZimbraSeleniumProperties.getUniqueString();
-		
+
 		// Create a subfolder to move the message into
 		// i.e. Inbox/subfolder
 		//
@@ -56,6 +56,7 @@ public class MoveMessage extends AjaxCommonTest {
 					"<CreateFolderRequest xmlns='urn:zimbraMail'>" +
 						"<folder name='" + foldername +"' l='"+ inbox.getId() +"'/>" +
 					"</CreateFolderRequest>");
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		FolderItem subfolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), foldername);
 
 		// Send a message to the account
@@ -69,7 +70,7 @@ public class MoveMessage extends AjaxCommonTest {
 							"</mp>" +
 						"</m>" +
 					"</SendMsgRequest>");
-		
+
 		// Get the mail item for the new message
 		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
 		
@@ -84,7 +85,9 @@ public class MoveMessage extends AjaxCommonTest {
 		DialogMove dialog = (DialogMove) app.zPageMail.zToolbarPressButton(Button.B_MOVE);
 		dialog.zClickTreeFolder(subfolder);
 		dialog.zClickButton(Button.B_OK);
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Get the message, make sure it is in the correct folder
 		app.zGetActiveAccount().soapSend(
 				"<GetMsgRequest xmlns='urn:zimbraMail'>" +
@@ -97,7 +100,7 @@ public class MoveMessage extends AjaxCommonTest {
 	}
 
 	@Test(	description = "Move a mail by selecting message, then click 'm' shortcut",
-			groups = { "smoke" })
+			groups = { "functional" })
 	public void MoveMail_02() throws HarnessException {
 		
 		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();
@@ -111,6 +114,7 @@ public class MoveMessage extends AjaxCommonTest {
 					"<CreateFolderRequest xmlns='urn:zimbraMail'>" +
 						"<folder name='" + foldername +"' l='"+ inbox.getId() +"'/>" +
 					"</CreateFolderRequest>");
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		FolderItem subfolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), foldername);
 
 		// Send a message to the account
@@ -124,7 +128,7 @@ public class MoveMessage extends AjaxCommonTest {
 							"</mp>" +
 						"</m>" +
 					"</SendMsgRequest>");
-		
+
 		// Get the mail item for the new message
 		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
 		
@@ -139,10 +143,12 @@ public class MoveMessage extends AjaxCommonTest {
 		app.zPageMail.zKeyboardShortcut(Shortcut.S_MOVE);
 		
 		// A move dialog will pop up
-		DialogMove dialog = new DialogMove(app);
+		DialogMove dialog = new DialogMove(app, ((AppAjaxClient)app).zPageMail);
 		dialog.zClickTreeFolder(subfolder);
 		dialog.zClickButton(Button.B_OK);
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Get the message, make sure it is in the correct folder
 		app.zGetActiveAccount().soapSend(
 				"<GetMsgRequest xmlns='urn:zimbraMail'>" +
@@ -172,7 +178,7 @@ public class MoveMessage extends AjaxCommonTest {
 							"</mp>" +
 						"</m>" +
 					"</SendMsgRequest>");
-		
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		// Get the mail item for the new message
 		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
 		
@@ -185,7 +191,9 @@ public class MoveMessage extends AjaxCommonTest {
 		
 		// Click move
 		app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_MOVETOTRASH);
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Get the message, make sure it is in the correct folder
 		app.zGetActiveAccount().soapSend(
 				"<GetMsgRequest xmlns='urn:zimbraMail'>" +
@@ -214,6 +222,8 @@ public class MoveMessage extends AjaxCommonTest {
 					"<CreateFolderRequest xmlns='urn:zimbraMail'>" +
 						"<folder name='" + foldername +"' l='"+ inbox.getId() +"'/>" +
 					"</CreateFolderRequest>");
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		FolderItem subfolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), foldername);
 
 		// Send a message to the account
@@ -231,7 +241,9 @@ public class MoveMessage extends AjaxCommonTest {
 "</content>" +
                 	"</m>" +
             	"</AddMsgRequest>");
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Get the mail item for the new message
 		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
 		
@@ -247,7 +259,9 @@ public class MoveMessage extends AjaxCommonTest {
 		
 		// Click move
 		app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_MOVETOINBOX);
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Get the message, make sure it is in the correct folder
 		app.zGetActiveAccount().soapSend(
 				"<GetMsgRequest xmlns='urn:zimbraMail'>" +
@@ -260,7 +274,7 @@ public class MoveMessage extends AjaxCommonTest {
 	}
 
 	@Test(	description = "Move a mail by entering folder name in the dialog search",
-			groups = { "smoke" })
+			groups = { "functional" })
 	public void MoveMail_05() throws HarnessException {
 		
 		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();
@@ -274,6 +288,7 @@ public class MoveMessage extends AjaxCommonTest {
 					"<CreateFolderRequest xmlns='urn:zimbraMail'>" +
 						"<folder name='" + foldername +"' l='"+ inbox.getId() +"'/>" +
 					"</CreateFolderRequest>");
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		FolderItem subfolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), foldername);
 
 		// Send a message to the account
@@ -300,9 +315,11 @@ public class MoveMessage extends AjaxCommonTest {
 		
 		// Click move
 		DialogMove dialog = (DialogMove) app.zPageMail.zToolbarPressButton(Button.B_MOVE);
-		dialog.zEnterFolderName(subfolder.getName());
+		dialog.zClickTreeFolder(subfolder);
 		dialog.zClickButton(Button.B_OK);
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Get the message, make sure it is in the correct folder
 		app.zGetActiveAccount().soapSend(
 				"<GetMsgRequest xmlns='urn:zimbraMail'>" +

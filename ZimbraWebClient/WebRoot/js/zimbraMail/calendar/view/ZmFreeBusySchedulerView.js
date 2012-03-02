@@ -44,7 +44,8 @@ ZmFreeBusySchedulerView = function(parent, attendees, controller, dateInfo) {
 	this._allAttendees = [];
 	this._allAttendeesStatus = [];
 	this._allAttendeesSlot = null;
-
+    this._sharedCalIds = {};
+    
 	this._attTypes = [ZmCalBaseItem.PERSON];
 	if (appCtxt.get(ZmSetting.GAL_ENABLED)) {
 		this._attTypes.push(ZmCalBaseItem.LOCATION);
@@ -293,6 +294,9 @@ function() {
 // Add the attendee, then create a new empty slot since we've now filled one.
 ZmFreeBusySchedulerView.prototype._autocompleteCallback =
 function(text, el, match) {
+    if(match.fullAddress) {
+        el.value = match.fullAddress;
+    }
 	if (match && match.item) {
 		if (match.item.isGroup && match.item.isGroup()) {
 			var members = match.item.getGroupMembers().good.getArray();
@@ -577,8 +581,9 @@ function(inputEl, attendee, useException) {
 	if (value) {
 		if (curAttendee) {
 			// user edited slot with an attendee in it
-			var attText = AjxStringUtil.trim(curAttendee.getAttendeeText(type, true));
-			if (value == attText) {
+            var lookupEmailObj = curAttendee.getLookupEmail(true);
+            var lookupEmail = lookupEmailObj ? lookupEmailObj.toString(type && type != ZmCalBaseItem.PERSON) : null;
+			if (value == lookupEmail || value == ZmApptViewHelper.getAttendeesText(curAttendee, type, true)) {
 				return;
 			} else {
 				this._resetRow(sched, false, type, true);
@@ -586,7 +591,7 @@ function(inputEl, attendee, useException) {
 		}
 		attendee = attendee ? attendee : ZmApptViewHelper.getAttendeeFromItem(value, type, true);
 		if (attendee) {
-			var email = attendee.getEmail();
+			var email = this.getEmail(attendee);
 
 
 			if (email instanceof Array) {
@@ -620,7 +625,7 @@ function(inputEl, attendee, useException) {
             //directly update attendees
 			if(this.isComposeMode) {
                 this._editView.parent.updateAttendees(attendee, type, ZmApptComposeView.MODE_ADD);
-                if(isOptionalAttendee) this._editView.showOptional(); 
+                if(isOptionalAttendee) this._editView.showOptional();
                 this._editView._setAttendees();
             }
             else {
@@ -656,7 +661,7 @@ function(sched, attendee, type) {
 	if (type != ZmCalBaseItem.PERSON) { return; }
 
 	var name = attendee.getFullName();
-	var email = attendee.getEmail();
+	var email = this.getEmail(attendee);
 	if (name && email) {
 		var ptst = ZmMsg.attendeeStatusLabel + ZmCalItem.getLabelForParticipationStatus(attendee.getParticipantStatus() || "NE");
 		sched.inputObj.setToolTipContent(email + (this.isComposeMode && this._editView.getRsvp()) ? ("<br>"+ ptst) : "");
@@ -747,7 +752,7 @@ function(organizer, attendees) {
     var emails = [], email;
 
 	// create a slot for the organizer
-	this._organizerIndex = this._addAttendeeRow(false, organizer.getAttendeeText(ZmCalBaseItem.PERSON, true), false);
+	this._organizerIndex = this._addAttendeeRow(false, ZmApptViewHelper.getAttendeesText(organizer, ZmCalBaseItem.PERSON, true), false);
 	emails.push(this._setAttendee(this._organizerIndex, organizer, ZmCalBaseItem.PERSON, true));
 
     var list = [];
@@ -757,7 +762,7 @@ function(organizer, attendees) {
             var att = attendees[type].getArray ? attendees[type].getArray() : attendees[type];
             for (var i = 0; i < att.length; i++) {
                 list.push(att[i]);
-                email = att[i] ? att[i].getEmail() : null;
+                email = att[i] ? this.getEmail(att[i]) : null;
                 emails.push(email);
             }
         }
@@ -808,7 +813,7 @@ function(list,updateCycle) {
 
 ZmFreeBusySchedulerView.prototype.addAttendee =
 function(att, type, isOrganizer, emails) {
-    var email = att ? att.getEmail() : null;
+    var email = att ? this.getEmail(att) : null;
     if (email && !this._emailToIdx[email]) {
         var index = this._addAttendeeRow(false, null, false); // create a slot for this attendee
         emails.push(this._setAttendee(index, att, type, false));
@@ -846,7 +851,7 @@ function(organizer, attendees) {
         if(attendees[type]) {
             var att = attendees[type].getArray ? attendees[type].getArray() : attendees[type];
             for (var i = 0; i < att.length; i++) {
-                var email = att[i] ? att[i].getEmail() : null;
+                var email = att[i] ? this.getEmail(att[i]) : null;
                 if(email) newEmails[email] = true;
                 if (email && !this._emailToIdx[email]) {
                     var index;
@@ -896,13 +901,13 @@ function(index, attendee, type, isOrganizer) {
 	sched.attType = type;
 	var input = sched.inputObj;
 	if (input) {
-		input.setValue(attendee.getAttendeeText(type, true), true);
+		input.setValue(ZmApptViewHelper.getAttendeesText(attendee, type, true), true);
 		this._setAttendeeToolTip(sched, attendee, type);
 	}
 
     var nameDiv = document.getElementById(sched.dwtNameId);
     if(isOrganizer && nameDiv) {
-        nameDiv.innerHTML = '<div class="ZmSchedulerInputDisabled">' + attendee.getAttendeeText(type, true) + '</div>';
+        nameDiv.innerHTML = '<div class="ZmSchedulerInputDisabled">' + ZmApptViewHelper.getAttendeesText(attendee, type, true) + '</div>';
     }
 
     var button = sched.btnObj;
@@ -920,7 +925,7 @@ function(index, attendee, type, isOrganizer) {
 
     this._setParticipantStatus(sched, attendee, index);
     
-	var email = attendee.getEmail();
+	var email = this.getEmail(attendee);
 	if (email instanceof Array) {
         sched.uid = email[0];
 		for (var i in email) {
@@ -1012,6 +1017,20 @@ function(sched, resetRole, type, noClear, noUpdate) {
         if (input) {
 			input.setToolTipContent(null);
 		}
+
+        var email = this.getEmail(sched.attendee);
+
+        if (email instanceof Array) {
+            for (var i in email) {
+                var m = email[i];
+                this._emailToIdx[m] = null;
+                delete this._emailToIdx[m];
+            }
+        } else {
+            this._emailToIdx[email] = null;
+            delete this._emailToIdx[email];
+        }
+
 		sched.attendee = null;
 	}
 
@@ -1040,6 +1059,7 @@ function(sched, resetRole, type, noClear, noUpdate) {
 
 	sched.uid = null;
 	this._activeInputIdx = null;
+
 };
 
 ZmFreeBusySchedulerView.prototype._resetTimezoneSelect =
@@ -1168,7 +1188,7 @@ function(sched, type, svp) {
 	// if we wiped out an attendee, make sure it's reflected in master list
 	if (sched.attendee) {
 
-        var email = sched.attendee.getEmail();
+        var email = this.getEmail(sched.attendee);
         delete this._emailToIdx[email];
 
 		if(this.isComposeMode) {
@@ -1189,6 +1209,11 @@ function(sched, type, svp) {
 	} else if (type == ZmCalBaseItem.EQUIPMENT && svp._acEquipmentList) {
 		svp._acEquipmentList.handle(inputEl);
 	}
+};
+
+ZmFreeBusySchedulerView.prototype.getEmail =
+function(attendee) {
+    return attendee.getLookupEmail() || attendee.getEmail();
 };
 
 ZmFreeBusySchedulerView.prototype._colorSchedule =
@@ -1603,7 +1628,7 @@ function() {
 	var attendee = sched.attendee;
 	var table = sched ? document.getElementById(sched.dwtTableId) : null;
 	if (attendee) {
-		var email = attendee.getEmail();
+		var email = this.getEmail(attendee);
 
 		var startDate  = new Date(this._getStartTime());
 		var startTime = startDate.getTime() +  cellIndex*30*60*1000;
@@ -1629,11 +1654,12 @@ function() {
 
 ZmFreeBusySchedulerView.prototype.popupFreeBusyToolTop =
 function(params) {
-    var cc = AjxDispatcher.run("GetCalController");
-    var treeController =  cc.getCalTreeController();
-    var calendars = treeController ? treeController.getOwnedCalendars(appCtxt.getApp(ZmApp.CALENDAR).getOverviewId(), params.email) : [];
-    var tooltipContent = "";
-
+    var cc = AjxDispatcher.run("GetCalController"),
+        treeController =  cc.getCalTreeController(),
+        calendars = treeController ? treeController.getOwnedCalendars(appCtxt.getApp(ZmApp.CALENDAR).getOverviewId(), params.email) : [],
+        tooltipContent = "",
+        i,
+        length;
     if(!params.status) params.status = ZmFreeBusySchedulerView.STATUS_FREE;
 
     var fbStatusMsg = [];
@@ -1644,17 +1670,76 @@ function(params) {
     fbStatusMsg[ZmFreeBusySchedulerView.STATUS_UNKNOWN]  = ZmMsg.unknown;
     fbStatusMsg[ZmFreeBusySchedulerView.STATUS_WORKING]  = ZmMsg.free;
 
-    if(calendars.length == 0) {
+    var calIds = [];
+    var calRemoteIds = new AjxVector();
+    for (i = 0, length = calendars.length; i < length; i++) {
+        var cal = calendars[i];
+        if (cal && (cal.nId != ZmFolder.ID_TRASH)) {
+            calIds.push(appCtxt.multiAccounts ? cal.id : cal.nId);
+            calRemoteIds.add(cal.getRemoteId(), null, true);
+        }
+    }
+    var sharedCalIds = this.getUserSharedCalIds(params.email);
+    var id;
+    // Check and remove the duplicates
+    // otherwise results will be duplicated
+    if(sharedCalIds) {
+        for(i=0, length = sharedCalIds.length; i<length; i++) {
+            id = sharedCalIds[i];
+            if(id && !calRemoteIds.contains(id)) {
+                calIds.push(id);
+            }
+        }
+    }
+
+    if(calIds.length == 0) {
         tooltipContent = "<b>" + ZmMsg.statusLabel + " " + fbStatusMsg[params.status] + "</b>";
     }else {
         var acct = this._editView.getCalendarAccount();
         var emptyMsg = acct && (acct.name == params.email) ? fbStatusMsg[params.status] : ZmMsg.unknown;
-        tooltipContent = cc.getUserStatusToolTipText(params.startDate, params.endDate, true, params.email, emptyMsg);
+        tooltipContent = cc.getUserStatusToolTipText(params.startDate, params.endDate, true, params.email, emptyMsg, calIds);
     }
     var shell = DwtShell.getShell(window);
     var tooltip = shell.getToolTip();
     tooltip.setContent(tooltipContent, true);
     tooltip.popup(params.x, params.y, true);
+};
+
+ZmFreeBusySchedulerView.prototype.getUserSharedCalIds =
+function(email) {
+    var organizer = this._schedTable[this._organizerIndex] ? this._schedTable[this._organizerIndex].attendee : null,
+        organizerEmail = organizer ? this.getEmail(organizer) : "";
+
+    if(!email || email == organizerEmail) {
+        return [];
+    }
+    if(this._sharedCalIds && this._sharedCalIds[email]) {
+        return this._sharedCalIds[email];
+    }
+    var jsonObj = {GetShareInfoRequest:{_jsns:"urn:zimbraAccount"}};
+	var request = jsonObj.GetShareInfoRequest;
+	if (email) {
+		request.owner = {by:"name", _content:email};
+	}
+	var result = appCtxt.getAppController().sendRequest({jsonObj:	jsonObj});
+
+    //parse the response
+    var resp = result.GetShareInfoResponse;
+    var share = (resp && resp.share) ? resp.share : null;
+    var ids = [];
+    if(share) {
+        for(var i=0; i<share.length; i++) {
+            if(share[i].ownerId && share[i].folderId) {
+                var folderId = share[i].ownerId + ":" + share[i].folderId;
+                ids.push(folderId);
+            }
+        }
+        if(!this._sharedCalIds) {
+            this._sharedCalIds = {};
+        }
+    }
+    this._sharedCalIds[email] = ids;
+    return ids;
 };
 
 //bug: 30989 - getting proper email address from alias

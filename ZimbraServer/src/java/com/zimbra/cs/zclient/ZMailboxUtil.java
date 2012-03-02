@@ -242,15 +242,17 @@ public class ZMailboxUtil implements DebugListener {
         CONVERSATION("help on conversation-related commands"),
         FILTER("help on filter-realted commnds",
                         "  {conditions}:\n" +
-                        "    header \"comma-separated-names\" is|not_is|contains|not_contains|matches|not_matches \"value\"\n" +
+                        "    header \"comma-separated-names\" is|not_is|contains|not_contains|matches|not_matches [case_sensitive] \"value\"\n" +
                         "    header \"comma-separated-names\" exists|not_exists\n" +
-                        "    mime_header \"name\" is|not_is|contains|not_contains|matches|not_matches \"value\"\n" +
+                        "    mime_header \"name\" is|not_is|contains|not_contains|matches|not_matches [case_sensitive] \"value\"\n" +
                         "    date before|not_before|after|not_after \"YYYYMMDD\"\n" +
                         "    size under|not_under|over|not_over \"1|1K|1M\"\n" +
-                        "    body contains|not_contains \"text\"\n" +
+                        "    body contains|not_contains [case_sensitive] \"text\"\n" +
                         "    addressbook in|not_in \"header-name\"\n" +
                         "    attachment exists|not_exists\n" +
                         "    invite exists|not_exists\n" +
+                        "    current_time before|not_before|after|not_after \"HHmm\"\n" +
+                        "    current_day_of_week is|not_is \"comma-separated-days(0=Sun,6=Sat)\"\n" +
                         "\n" +
                         "  {actions}:\n" +
                         "    keep\n" +
@@ -259,6 +261,8 @@ public class ZMailboxUtil implements DebugListener {
                         "    tag \"/tag\"\n" +
                         "    mark read|flagged\n" +
                         "    redirect \"address\"\n" +
+                        "    reply \"body-template\"\n" +
+                        "    notify \"address\" \"subject-template\" \"body-template\" [\"max-body-size(bytes)\"]\n" +
                         "    stop\n"),
         FOLDER("help on folder-related commands"),
         ITEM("help on item-related commands"),

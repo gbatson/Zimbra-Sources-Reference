@@ -20,8 +20,6 @@
 package com.zimbra.cs.account;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.service.ServiceException.Argument;
-
 
 /**
  * @author schemers
@@ -40,6 +38,7 @@ public class AccountServiceException extends ServiceException {
     public static final String INVALID_ATTR_VALUE = "account.INVALID_ATTR_VALUE";
     public static final String MULTIPLE_ACCOUNTS_MATCHED  = "account.MULTIPLE_ACCOUNTS_MATCHED";
     public static final String MULTIPLE_DOMAINS_MATCHED  = "account.MULTIPLE_DOMAINS_MATCHED";
+    public static final String NO_SMIME_CONFIG    = "account.NO_SMIME_CONFIG";
     public static final String NO_SUCH_ACCOUNT    = "account.NO_SUCH_ACCOUNT";
     public static final String NO_SUCH_ALIAS      = "account.NO_SUCH_ALIAS";
     public static final String NO_SUCH_DOMAIN     = "account.NO_SUCH_DOMAIN";
@@ -80,7 +79,7 @@ public class AccountServiceException extends ServiceException {
         super(message, code, isReceiversFault);
     }
 
-    private AccountServiceException(String message, String code, boolean isReceiversFault, Throwable cause) {
+    protected AccountServiceException(String message, String code, boolean isReceiversFault, Throwable cause) {
         super(message, code, isReceiversFault, cause);
     }
 
@@ -103,7 +102,7 @@ public class AccountServiceException extends ServiceException {
         private String mAcctName;  // real account name
 
         private AuthFailedServiceException(String acctName, String namePassedIn, String reason, String code, boolean isReceiversFault, Throwable cause) {
-            super("authentication failed for " + namePassedIn, code, isReceiversFault, cause);
+            super("authentication failed for [" + namePassedIn + "]", code, isReceiversFault, cause);
             mReason = reason;
             mAcctName = acctName;
         }
@@ -131,7 +130,11 @@ public class AccountServiceException extends ServiceException {
             return new AuthFailedServiceException(acctName, namePassedIn, reason, AUTH_FAILED, SENDERS_FAULT, t);
         }
 
-        public static AuthFailedServiceException AUTH_FAILED( String reason, Throwable t) {
+        public static AuthFailedServiceException AUTH_FAILED(String namePassedIn, String reason, Throwable t) {
+            return new AuthFailedServiceException("N/A", namePassedIn, reason, AUTH_FAILED, SENDERS_FAULT, t);
+        }
+        
+        public static AuthFailedServiceException AUTH_FAILED(String reason, Throwable t) {
             return new AuthFailedServiceException("N/A", "N/A", reason, AUTH_FAILED, SENDERS_FAULT, t);
         }
 
@@ -174,6 +177,10 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException(msg, INVALID_ATTR_VALUE, SENDERS_FAULT, t);
     }
 
+    public static AccountServiceException NO_SMIME_CONFIG(String desc) {
+        return new AccountServiceException("no SMIME config: "+ desc, NO_SMIME_CONFIG, SENDERS_FAULT, null);
+    }
+    
     public static AccountServiceException NO_SUCH_ACCOUNT(String name) {
         return new AccountServiceException("no such account: "+name, NO_SUCH_ACCOUNT, SENDERS_FAULT, null);
     }

@@ -1224,6 +1224,10 @@ function(fullVersion, width, height) {
 	if (window.appDevMode) {
 		url[i++] = "&dev=1";
 	}
+    if (window.appCoverageMode) {
+        url[i++] = "&coverage=1";
+    }
+
 
 	width = width || 705;
 	height = height || 465;
@@ -1708,4 +1712,20 @@ function() {
 ZmAppCtxt.prototype.getOutsideMouseEventMgr =
 function() {
 	return DwtOutsideMouseEventMgr.INSTANCE;
+};
+
+
+/**
+* @return Returns language specific charset. Currently supports only Japanese. 
+* Returns "Windows-31J" for Japanese or returns "UTF-8" for everything else
+*/
+ZmAppCtxt.prototype.getCharset =
+function() {
+	var lang = AjxEnv.isIE ? window.navigator.systemLanguage : window.navigator.language;
+	//Currently only differs for Japanese, but can extend for different languages as/if we need it.
+	if((AjxEnv.DEFAULT_LOCALE == "ja" || lang == "ja") && AjxEnv.isWindows) {
+		return "Windows-31J";
+	} else {
+		return "UTF-8";
+	}
 };

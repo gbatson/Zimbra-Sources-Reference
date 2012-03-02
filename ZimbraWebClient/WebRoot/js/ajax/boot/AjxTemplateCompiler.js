@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,7 +30,9 @@ AjxTemplate.compile = function(pkg, authoritative, define, templateText) {
 			var attrs = AjxTemplate.__parseAttrs(m[1]);
 			var body = m[2];
 			if (attrs["xml:space"] != "preserve") {
-				body = body.replace(AjxTemplate.__RE_GT_LINESEP_LT, "><").trim();
+                // bug 47973: IE doesn't support String.prototype.trim
+                // NOTE: This was caused when the Java TemplateCompiler class was ported.
+                body = body.replace(AjxTemplate.__RE_GT_LINESEP_LT, "><").replace(/^\s+|\s+$/,"");
 			}
 
 			var packageId = pkg;
@@ -52,7 +54,7 @@ AjxTemplate.compile = function(pkg, authoritative, define, templateText) {
 			var id = templateId ? packageId+"#"+templateId : packageId;
 
 			var func = AjxTemplate.__convertLines(body);
-			AjxTemplate.register(packageId, func, attrs, authoritative);
+			AjxTemplate.register(id, func, attrs, authoritative);
 
 			if (first && define) {
 				AjxPackage.define(packageId);

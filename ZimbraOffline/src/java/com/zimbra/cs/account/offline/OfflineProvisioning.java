@@ -387,6 +387,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             ((OfflineSignature) e).setName(e.getAttr(A_zimbraSignatureName));
         } else if (etype == EntryType.CONFIG) {
             attrs = OfflineConfig.instantiate(this).getAttrs();
+        } else if (etype == EntryType.COS && e instanceof OfflineCos) {
+            attrs = OfflineCos.instantiate(this).getAttrs();
         } else {
             attrs = DbOfflineDirectory.readDirectoryEntry(etype, A_zimbraId, e.getAttr(A_zimbraId));
         }
@@ -834,6 +836,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         setDefaultAccountAttributes(attrs);
 
         OfflineAccount galAcct = (OfflineAccount)createAccountInternal(name, id, attrs, true, false);
+        setAccountAttribute(galAcct, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.FALSE);
+        setAccountAttribute(mainAcct, OfflineConstants.A_offlineGalAccountSyncToken, "");
         setAccountAttribute(mainAcct, OfflineConstants.A_offlineGalAccountId, galAcct.getId());
         return galAcct;
     }
@@ -968,6 +972,11 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public boolean isGalAccount(Account account) {
         String flavor = account.getAttr(A_offlineAccountFlavor, null);
         return flavor != null && flavor.equals("Gal");
+    }
+    
+    public boolean isMountpointAccount(String accountId) throws ServiceException {
+        Account acct = getAccountById(accountId);
+        return (acct != null && isMountpointAccount(acct));
     }
 
     public boolean isMountpointAccount(Account account) {
@@ -1443,6 +1452,11 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     @Override
     public synchronized void preAuthAccount(Account acct, String accountName, String accountBy, long timestamp, long expires, String preAuth, Map<String, Object> authCtxt) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("preAuthAccount");
+    }
+    
+    @Override
+    public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) throws ServiceException {
+        throw OfflineServiceException.UNSUPPORTED("ssoAuthAccount");
     }
 
     @Override

@@ -252,12 +252,10 @@ function(list, noResultsOk, doAdd) {
 
             var taskStatusClass = this._normalClass;
 
-            if(item.status == ZmCalendarApp.STATUS_COMP && currentSec != ZmTaskListView.SEC_PASTDUE) {
-               taskStatusClass += " ZmCompletedtask"
-            } else if(item.status == ZmCalendarApp.STATUS_COMP && currentSec == ZmTaskListView.SEC_PASTDUE) {
-               taskStatusClass += " ZmOverdueCompletedtask"
+            if(item.status == ZmCalendarApp.STATUS_COMP) {
+               taskStatusClass += " ZmCompletedtask";
             } else if(item.status != ZmCalendarApp.STATUS_COMP && currentSec == ZmTaskListView.SEC_PASTDUE) {
-               taskStatusClass += " ZmOverduetask"
+               taskStatusClass += " ZmOverduetask";
             }
 
 			var div = this._createItemHtml(item, {now:now,divClass:taskStatusClass}, !doAdd, i);
@@ -362,7 +360,7 @@ function() {
 
 ZmTaskListView.prototype._getCellId =
 function(item, field) {
-    if(field == ZmItem.F_PRIORITY) {
+    if(field == ZmItem.F_PRIORITY || field == ZmItem.F_SUBJECT || field == ZmItem.F_STATUS || field == ZmItem.F_PCOMPLETE || field == ZmItem.F_DATE) {
 	    return this._getFieldId(item, field)
     } else if (field == ZmItem.F_SELECTION) {
 		return this._getFieldId(item, ZmItem.F_SELECTION_CELL);
@@ -506,9 +504,9 @@ ZmTaskListView.prototype._getHeaderToolTip =
 function(field, itemIdx) {
 	switch (field) {
 		case ZmItem.F_PRIORITY: 	return ZmMsg.priority;
-		case ZmItem.F_STATUS:		return ZmMsg.status;
-		case ZmItem.F_PCOMPLETE:	return ZmMsg.percentComplete;
-		case ZmItem.F_DATE:			return ZmMsg.dateDue;
+		case ZmItem.F_STATUS:		return ZmMsg.sortByStatus;
+		case ZmItem.F_PCOMPLETE:	return ZmMsg.sortByPComplete;
+		case ZmItem.F_DATE:			return ZmMsg.sortByDueDate;
 	}
 	return ZmListView.prototype._getHeaderToolTip.call(this, field, itemIdx);
 };
@@ -521,8 +519,8 @@ function(columnItem, bSortAsc) {
 		case ZmItem.F_SUBJECT:		sortBy = bSortAsc ? ZmSearch.SUBJ_ASC : ZmSearch.SUBJ_DESC; break;
 		case ZmItem.F_STATUS:		sortBy = bSortAsc ? ZmSearch.STATUS_ASC : ZmSearch.STATUS_DESC; break;
 		case ZmItem.F_PCOMPLETE:	sortBy = bSortAsc ? ZmSearch.PCOMPLETE_ASC : ZmSearch.PCOMPLETE_DESC; break;
-		case ZmItem.F_DATE:			sortBy = bSortAsc ? ZmSearch.DUE_DATE_DESC : ZmSearch.DUE_DATE_ASC;	break; //bug:50890 changed the default order
-        case ZmItem.F_SORTED_BY:    sortBy = bSortAsc ? ZmSearch.DUE_DATE_DESC : ZmSearch.DUE_DATE_ASC;	break;
+		case ZmItem.F_DATE:			sortBy = bSortAsc ? ZmSearch.DUE_DATE_ASC : ZmSearch.DUE_DATE_DESC;	break; //bug:50890 changed the default order
+        case ZmItem.F_SORTED_BY:    sortBy = bSortAsc ? ZmSearch.DUE_DATE_ASC : ZmSearch.DUE_DATE_DESC;	break;
 	}
 
     if (sortBy) {
@@ -555,8 +553,7 @@ function(el) {
 		Dwt.setHandler(this._newTaskInputEl, DwtEvent.ONKEYPRESS, ZmTaskListView._handleKeyPress);
 		this.shell.getHtmlElement().appendChild(this._newTaskInputEl);
 
-		var bounds = Dwt.getBounds(el);
-		Dwt.setBounds(this._newTaskInputEl, bounds.x, bounds.y, bounds.width, bounds.height);
+		this._resetInputSize(el);
 	} else {
 		this._newTaskInputEl.value = "";
 	}
@@ -625,7 +622,7 @@ function(htmlArr, idx, headerCol, i, numCols, id, defaultColumnSort) {
 		htmlArr[idx++] = textTdId;
 		htmlArr[idx++] = "'></td></tr></table></div></td>";
 	} else {
-		return DwtListView.prototype._createHeader.apply(this, arguments);
+        return DwtListView.prototype._createHeader.apply(this, arguments);
 	}
 };
 
@@ -820,7 +817,7 @@ function() {
 		this._normalClass = isMultiColumn ? DwtListView.ROW_CLASS : ZmTaskListView.ROW_DOUBLE_CLASS;
 		var list = this.getList() || (new AjxVector());
 		this.set(list.clone());
-		this._restoreState();
+        this._restoreState();
 	}
 };
 
@@ -829,6 +826,7 @@ function(newWidth, newHeight) {
 	this.setSize(newWidth, newHeight);
 	var height = (newHeight == Dwt.DEFAULT) ? newHeight : newHeight - DwtListView.HEADERITEM_HEIGHT;
 	Dwt.setSize(this._parentEl, newWidth, height);
+	this._resetInputSize();
 };
 
 ZmTaskListView.prototype._resetColWidth =
@@ -841,6 +839,18 @@ function() {
         var lastCol = this._headerList[lastColIdx];
 		if (lastCol._field != ZmItem.F_SORTED_BY) {
 			DwtListView.prototype._resetColWidth.apply(this, arguments);
+		}
+	}
+};
+
+ZmTaskListView.prototype._resetInputSize =
+function(el) {
+
+	if (this._newTaskInputEl) {
+		el = el || document.getElementById(this.dId);
+		if (el) {
+			var bounds = Dwt.getBounds(el);
+			Dwt.setBounds(this._newTaskInputEl, bounds.x, bounds.y, bounds.width, bounds.height);
 		}
 	}
 };

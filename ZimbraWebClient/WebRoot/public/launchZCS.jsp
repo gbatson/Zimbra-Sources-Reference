@@ -87,6 +87,16 @@
 		}
 		request.setAttribute("packages", "dev");
 	}
+
+    boolean isCoverage = getParameter(request, "coverage", "0").equals("1");
+    if (isCoverage) {
+		request.setAttribute("gzip", "false");
+		if (request.getAttribute("debug") == null) {
+			request.setAttribute("debug", "0");
+		}
+		request.setAttribute("packages", "dev");
+    }
+
     boolean isScriptErrorOn = getParameter(request, "scripterrors", "0").equals("1");
     boolean isNotifyDebugOn = getParameter(request, "notifydebug", "0").equals("1");
 	String debug = getParameter(request, "debug", getAttribute(request, "debug", null));
@@ -106,7 +116,7 @@
 	String editor = getParameter(request, "editor", "");
 
 	String ext = getAttribute(request, "fileExtension", null);
-	if (ext == null || isDevMode) ext = "";
+	if (ext == null || isDevMode || isCoverage) ext = "";
 	
 	String offlineMode = getParameter(request, "offline", application.getInitParameter("offlineMode"));
 
@@ -139,6 +149,7 @@
 	pageContext.setAttribute("isDebug", isSkinDebugMode || isDevMode);
 	pageContext.setAttribute("isLeakDetectorOn", isLeakDetectorOn);
 	pageContext.setAttribute("editor", editor);
+    pageContext.setAttribute("isCoverage", isCoverage);
 %>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 <fmt:setLocale value='${locale}' scope='request' />
@@ -164,6 +175,7 @@
 	appExtension   = "${zm:jsEncode(ext)}";
 	appRequestLocaleId = "${locale}";
 	window.appDevMode     = ${isDevMode};
+    window.appCoverageMode = ${isCoverage};
     window.isScriptErrorOn   = ${isScriptErrorOn};
     window.isNotifyDebugOn   = ${isNotifyDebugOn};
 </script>
@@ -270,14 +282,14 @@
     	allPackages += "," + extraPackages;
     }
 
-    String pprefix = isDevMode ? "public/jsp" : "js";
-    String psuffix = isDevMode ? ".jsp" : "_all.js";
+    String pprefix = isDevMode  && !isCoverage ? "public/jsp" : "js";
+    String psuffix = isDevMode && !isCoverage ? ".jsp" : "_all.js";
 
     String[] pnames = allPackages.split(",");
     for (String pname : pnames) {
         String pageurl = "/" + pprefix + "/" + pname + psuffix;
 		pageContext.setAttribute("pageurl", pageurl);
-		if (isDevMode) { %>
+		if (isDevMode && !isCoverage) { %>
             <jsp:include page='${pageurl}' />
         <% } else { %>
             <script src="${contextPath}${pageurl}${ext}?v=${vers}"></script>
@@ -317,7 +329,7 @@
 // compile locale specific templates
 for (var pkg in window.AjxTemplateMsg) {
 	var text = AjxTemplateMsg[pkg];
-	AjxTemplate.compile(pkg, true, true, text);
+	AjxTemplate.compile(pkg, true, false, text);
 }
 </script>
 
@@ -373,10 +385,7 @@ for (var pkg in window.AjxTemplateMsg) {
 		//       scoped variable.
 		<zm:getDomainInfo var="domainInfo" by="virtualHostname" value="${zm:getServerName(pageContext)}"/>
 		var settings = {
-			"dummy":1<c:forEach var="pref" items="${requestScope.authResult.prefs}">,
-			"${pref.key}":"${zm:jsEncode(pref.value[0])}"</c:forEach>
-			<c:forEach var="attr" items="${requestScope.authResult.attrs}">,
-			"${attr.key}":"${zm:jsEncode(attr.value[0])}"</c:forEach>
+			"dummy":1
 			<c:if test="${not empty domainInfo}">
 			<c:forEach var="info" items="${domainInfo.attrs}">,
 			"${info.key}":"${zm:jsEncode(info.value)}"</c:forEach>

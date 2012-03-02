@@ -159,6 +159,43 @@ function(startDateField, endDateField, isStartDate, skipCheck, oldStartDate) {
 	return needsUpdate;
 };
 
+ZmApptViewHelper.getApptToolTipText =
+function(origAppt, controller) {
+    if(origAppt._toolTip) {
+        return origAppt._toolTip;
+    }
+    var appt = ZmAppt.quickClone(origAppt);
+    var organizer = appt.getOrganizer();
+	var sentBy = appt.getSentBy();
+	var userName = appCtxt.get(ZmSetting.USERNAME);
+	if (sentBy || (organizer && organizer != userName)) {
+		organizer = (appt.message && appt.message.invite && appt.message.invite.getOrganizerName()) || organizer;
+		if (sentBy) {
+			var contactsApp = appCtxt.getApp(ZmApp.CONTACTS);
+			var contact = contactsApp && contactsApp.getContactByEmail(sentBy);
+			sentBy = (contact && contact.getFullName()) || sentBy;
+		}
+	} else {
+		organizer = null;
+		sentBy = null;
+	}
+
+	var params = {
+		appt: appt,
+		cal: (appt.folderId != ZmOrganizer.ID_CALENDAR && controller) ? controller.getCalendar() : null,
+		organizer: organizer,
+		sentBy: sentBy,
+		when: appt.getDurationText(false, false),
+		location: appt.getLocation(),
+		width: "250",
+        hideAttendees: true
+	};
+
+	var toolTip = origAppt._toolTip = AjxTemplate.expand("calendar.Appointment#Tooltip", params);
+    return toolTip;
+};
+
+
 ZmApptViewHelper.getDayToolTipText =
 function(date, list, controller, noheader, emptyMsg) {
 	
@@ -183,37 +220,42 @@ function(date, list, controller, noheader, emptyMsg) {
 	for (var i = 0; i < size; i++) {
 		var ao = list.get(i);
 		if (ao.isAllDayEvent()) {
-			//DBG.println("AO    "+ao);
-			var bs = "";
-			if (!ao._fanoutFirst) bs = "border-left:none;";
-			if (!ao._fanoutLast) bs += "border-right:none;";
-			var body_style = (bs != "") ? "style='"+bs+"'" : "";
-			html.append("<tr><td><div class=appt>");
-			html.append(ZmApptViewHelper._allDayItemHtml(ao, Dwt.getNextId(), body_style, controller));
-			html.append("</div></td></tr>");
+            if(ao.toString() == "ZmAppt") {
+                html.append(ZmApptViewHelper.getApptToolTipText(ao, controller));
+            }
+            else {
+                //DBG.println("AO    "+ao);
+                var bs = "";
+                if (!ao._fanoutFirst) bs = "border-left:none;";
+                if (!ao._fanoutLast) bs += "border-right:none;";
+                var body_style = (bs != "") ? "style='"+bs+"'" : "";
+                html.append("<tr><td><div class=appt>");
+                html.append(ZmApptViewHelper._allDayItemHtml(ao, Dwt.getNextId(), body_style, controller));
+                html.append("</div></td></tr>");
+            }
 		}
-	}
-
-	for (var i = 0; i < size; i++) {
-		var ao = list.get(i);
-		if (!ao.isAllDayEvent()) {
-		
-			var color = ZmCalendarApp.COLORS[controller.getCalendarColor(ao.folderId)];
-			var isNew = ao.status == ZmCalBaseItem.PSTATUS_NEEDS_ACTION;
-
-			html.append("<tr><td class='calendar_month_day_item'><div class='", color, isNew ? "DarkC" : "C", "'>");		
-			if (isNew) html.append("<b>");
-			//html.append("&bull;&nbsp;");
-			//var dur = ao.getShortStartHour();
-			var dur = ao.getDurationText(false, false);
-			html.append(dur);
-			if (dur != "") {
-				html.append("&nbsp;");
-			}
-			html.append(AjxStringUtil.htmlEncode(ao.getName()));
-			if (isNew) html.append("</b>");			
-			html.append("</div>");
-			html.append("</td></tr>");
+	    else {
+		    if(ao.toString() == "ZmAppt") {
+                html.append(ZmApptViewHelper.getApptToolTipText(ao, controller));
+            }
+            else {
+                var color = ZmCalendarApp.COLORS[controller.getCalendarColor(ao.folderId)];
+                var isNew = ao.status == ZmCalBaseItem.PSTATUS_NEEDS_ACTION;
+    
+                html.append("<tr><td class='calendar_month_day_item'><div class='", color, isNew ? "DarkC" : "C", "'>");
+                if (isNew) html.append("<b>");
+                //html.append("&bull;&nbsp;");
+                //var dur = ao.getShortStartHour();
+                var dur = ao.getDurationText(false, false);
+                html.append(dur);
+                if (dur != "") {
+                    html.append("&nbsp;");
+                }
+                html.append(AjxStringUtil.htmlEncode(ao.getName()));
+                if (isNew) html.append("</b>");
+                html.append("</div>");
+                html.append("</td></tr>");
+            }
 		}
 	}
 	if ( size == 0) {
@@ -447,7 +489,7 @@ function(list, type, includeDisplayName, includeRole) {
 	var a = [];
 	for (var i = 0; i < list.length; i++) {
 		var attendee = list[i];
-		var text = attendee.getAttendeeText(type);
+		var text = ZmApptViewHelper.getAttendeesText(attendee, type);
 		if (includeDisplayName && list.length == 1) {
 			var displayName = attendee.getAttr(ZmResource.F_locationName);
 			if (displayName) {
@@ -461,6 +503,16 @@ function(list, type, includeDisplayName, includeRole) {
 	}
 
 	return a.join(ZmAppt.ATTENDEES_SEPARATOR);
+};
+
+ZmApptViewHelper.getAttendeesText =
+function(attendee, type, shortForm) {
+
+    //give preference to lookup email is the attendee object is located by looking up email address
+    var lookupEmailObj = attendee.getLookupEmail(true);
+    if(lookupEmailObj) return lookupEmailObj.toString(shortForm || (type && type != ZmCalBaseItem.PERSON))
+
+    return attendee.getAttendeeText(type, shortForm);
 };
 
 /**

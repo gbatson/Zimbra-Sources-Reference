@@ -16,8 +16,10 @@
 package com.zimbra.cs.account.ldap;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.GalContact;
 import com.zimbra.cs.account.Provisioning;
@@ -156,28 +158,45 @@ public class LdapUtil {
     }
 
     public static String getAttrString(Attributes attrs, String name) throws NamingException {
+        AttributeManager attrMgr = AttributeManager.getInst();
+        boolean isBinary = attrMgr == null ? false : attrMgr.isBinary(name);
+        
         Attribute attr = attrs.get(name);
         if (attr != null) {
             Object o = attr.get();
-            if (o instanceof String)
+            if (o instanceof String) {
                 return (String) o;
-            else 
+            } else if (isBinary) {
+                return ByteUtil.encodeLDAPBase64((byte[])o);
+            } else {
                 return new String((byte[])o);
+            }
         } else {
             return null;
         }
     }
 
-    public static String[] getMultiAttrString(Attributes attrs, String name) throws NamingException {
+    public static String[] getMultiAttrString(Attributes attrs, String name) 
+    throws NamingException {
+        AttributeManager attrMgr = AttributeManager.getInst();
+        boolean isBinary = attrMgr == null ? false : attrMgr.isBinary(name);
+        return getMultiAttrString(attrs, name, isBinary);
+    }
+    
+    public static String[] getMultiAttrString(Attributes attrs, String name, boolean isBinary) 
+    throws NamingException {
         Attribute attr = attrs.get(name);
         if (attr != null) {
             String result[] = new String[attr.size()];
             for (int i=0; i < attr.size(); i++) {
                 Object o = attr.get(i);
-                if (o instanceof String)
+                if (o instanceof String) {
                     result[i] = (String) o;
-                else 
+                } else if (isBinary) {
+                    result[i] = ByteUtil.encodeLDAPBase64((byte[])o);
+                } else {
                     result[i] = new String((byte[])o);
+                }
             }
             return result;
         } else {
@@ -193,24 +212,34 @@ public class LdapUtil {
      * @param attrs the attributes to enumerate over
      * @throws NamingException
      */
-    public static Map<String, Object> getAttrs(Attributes attrs) throws NamingException  {
-        Map<String,Object> map = new HashMap<String,Object>();        
+    public static Map<String, Object> getAttrs(Attributes attrs) throws NamingException {
+        Map<String,Object> map = new HashMap<String,Object>();  
+        
+        AttributeManager attrMgr = AttributeManager.getInst();
+        
         for (NamingEnumeration ne = attrs.getAll(); ne.hasMore(); ) {
             Attribute attr = (Attribute) ne.next();
+            boolean isBinary = attrMgr == null ? false : attrMgr.isBinary(attr.getID());
+            
             if (attr.size() == 1) {
                 Object o = attr.get();
-                if (o instanceof String)
+                if (o instanceof String) {
                     map.put(attr.getID(), o);
-                else 
+                } else if (isBinary) {
+                    map.put(attr.getID(), ByteUtil.encodeLDAPBase64((byte[])o));
+                } else 
                     map.put(attr.getID(), new String((byte[])o));
             } else {
                 String result[] = new String[attr.size()];
                 for (int i=0; i < attr.size(); i++) {
                     Object o = attr.get(i);
-                    if (o instanceof String)
+                    if (o instanceof String) {
                         result[i] = (String) o;
-                    else 
+                    } else if (isBinary) {
+                        result[i] = ByteUtil.encodeLDAPBase64((byte[])o);
+                    } else {
                         result[i] = new String((byte[])o);
+                    }
                 }
                 map.put(attr.getID(), result);
             }
@@ -256,27 +285,38 @@ public class LdapUtil {
     /**
      * "modify" the entry. If value is null or "", then remove attribute, otherwise replace/add it.
      */
-    private static void modifyAttr(ArrayList<ModificationItem> modList, String name, String value, com.zimbra.cs.account.Entry entry) {
+    private static void modifyAttr(ArrayList<ModificationItem> modList, String name, String value, 
+            com.zimbra.cs.account.Entry entry, boolean isBinary) {
         int mod_op = (value == null || value.equals("")) ? DirContext.REMOVE_ATTRIBUTE : DirContext.REPLACE_ATTRIBUTE;
         if (mod_op == DirContext.REMOVE_ATTRIBUTE) {
             // make sure it exists
             if (entry.getAttr(name, false) == null)
                 return;
         }
+        
         BasicAttribute ba = new BasicAttribute(name);
         if (mod_op == DirContext.REPLACE_ATTRIBUTE)
-            ba.add(value);
+            ba.add(decodeBase64IfBinary(isBinary, value));
         modList.add(new ModificationItem(mod_op, ba));
+    }
+    
+    private static void modifyAttr(ArrayList<ModificationItem> modList, String name, String[] value, boolean isBinary) {
+        BasicAttribute ba = new BasicAttribute(name);
+        for (int i=0; i < value.length; i++) {
+            ba.add(decodeBase64IfBinary(isBinary, value[i]));
+        }
+        modList.add(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, ba));
     }
 
     /**
      * remove the attr with the specified value
      */
-    private static void removeAttr(ArrayList<ModificationItem> modList, String name, String value, com.zimbra.cs.account.Entry entry) {
+    private static void removeAttr(ArrayList<ModificationItem> modList, String name, String value, 
+            com.zimbra.cs.account.Entry entry, boolean isBinary) {
         if (!contains(entry.getMultiAttr(name, false), value)) return;
         
         BasicAttribute ba = new BasicAttribute(name);
-        ba.add(value);
+        ba.add(decodeBase64IfBinary(isBinary, value));
         modList.add(new ModificationItem(DirContext.REMOVE_ATTRIBUTE, ba));
     }
 
@@ -291,7 +331,8 @@ public class LdapUtil {
     /**
      * remove the attr with the specified value
      */
-    private static void removeAttr(ArrayList<ModificationItem> modList, String name, String value[], com.zimbra.cs.account.Entry entry) {
+    private static void removeAttr(ArrayList<ModificationItem> modList, String name, String value[], 
+            com.zimbra.cs.account.Entry entry, boolean isBinary) {
         String[] currentValues = entry.getMultiAttr(name, false);
         if (currentValues == null || currentValues.length == 0) return;
 
@@ -299,7 +340,7 @@ public class LdapUtil {
         for (int i=0; i < value.length; i++) {
             if (!contains(currentValues, value[i])) continue;
             if (ba == null) ba = new BasicAttribute(name);
-            ba.add(value[i]);
+            ba.add(decodeBase64IfBinary(isBinary, value[i]));
         }
         if (ba != null) modList.add(new ModificationItem(DirContext.REMOVE_ATTRIBUTE, ba));
 
@@ -308,11 +349,12 @@ public class LdapUtil {
     /**
      * add an additional attr with the specified value
      */
-    private static void addAttr(ArrayList<ModificationItem> modList, String name, String value, com.zimbra.cs.account.Entry entry) {
+    private static void addAttr(ArrayList<ModificationItem> modList, String name, String value, 
+            com.zimbra.cs.account.Entry entry, boolean isBinary) {
         if (contains(entry.getMultiAttr(name, false), value)) return;        
         
         BasicAttribute ba = new BasicAttribute(name);
-        ba.add(value);
+        ba.add(decodeBase64IfBinary(isBinary, value));
         modList.add(new ModificationItem(DirContext.ADD_ATTRIBUTE, ba));
     }
 
@@ -320,14 +362,15 @@ public class LdapUtil {
     /**
      * add an additional attr with the specified value
      */
-    private static void addAttr(ArrayList<ModificationItem> modList, String name, String value[], com.zimbra.cs.account.Entry entry) {
+    private static void addAttr(ArrayList<ModificationItem> modList, String name, String value[], 
+            com.zimbra.cs.account.Entry entry, boolean isBinary) {
         String[] currentValues = entry.getMultiAttr(name, false);
         
         BasicAttribute ba = null;
         for (int i=0; i < value.length; i++) {
             if (contains(currentValues, value[i])) continue;
             if (ba == null) ba = new BasicAttribute(name);
-            ba.add(value[i]);
+            ba.add(decodeBase64IfBinary(isBinary, value[i]));
         }
         if (ba != null) modList.add(new ModificationItem(DirContext.ADD_ATTRIBUTE, ba));
     }
@@ -343,8 +386,12 @@ public class LdapUtil {
      *     in which case a multi-valued attr is updated</li>
      * </ul>
      */
-    public static void modifyAttrs(ZimbraLdapContext zlc, String dn, Map attrs, com.zimbra.cs.account.Entry entry) throws NamingException, ServiceException {
+    public static void modifyAttrs(ZimbraLdapContext zlc, String dn, Map attrs, com.zimbra.cs.account.Entry entry) 
+    throws NamingException, ServiceException {
         ArrayList<ModificationItem> modlist = new ArrayList<ModificationItem>();
+        
+        AttributeManager attrMgr = AttributeManager.getInst();
+        
         for (Iterator mit=attrs.entrySet().iterator(); mit.hasNext(); ) {
             Map.Entry me = (Entry) mit.next();
             Object v= me.getValue();
@@ -358,6 +405,8 @@ public class LdapUtil {
                 if (attrs.containsKey(key)) 
                     throw ServiceException.INVALID_REQUEST("can't mix +attrName/-attrName with attrName", null);
             }
+             
+            boolean isBinary = attrMgr == null ? false : attrMgr.isBinary(key);
 
             // Convert array to List so it can be treated as a Collection
             if (v instanceof Object[]) {
@@ -384,22 +433,27 @@ public class LdapUtil {
                     }
                     
                     // Add attrs
-                    if (doAdd) addAttr(modlist, key, sa, entry);
-                    else if (doRemove) removeAttr(modlist, key, sa, entry);
-                    else {
-                        BasicAttribute ba = new BasicAttribute(key);
-                        for (i=0; i < sa.length; i++)
-                            ba.add(sa[i]);
-                        modlist.add(new ModificationItem(DirContext.REPLACE_ATTRIBUTE, ba));
+                    if (doAdd) {
+                        addAttr(modlist, key, sa, entry, isBinary);
+                    } else if (doRemove) {
+                        removeAttr(modlist, key, sa, entry, isBinary);
+                    } else {
+                        modifyAttr(modlist, key, sa, isBinary);
                     }
                 }
             } else if (v instanceof Map) {
                 throw ServiceException.FAILURE("Map is not a supported value type", null);
             } else {
                 String s = (v == null ? null : v.toString());
-                if (doAdd) addAttr(modlist, key, s, entry);
-                else if (doRemove) removeAttr(modlist, key, s, entry);
-                else modifyAttr(modlist, key, s, entry);
+                if (doAdd) {
+                    addAttr(modlist, key, s, entry, isBinary);
+                }
+                else if (doRemove) {
+                    removeAttr(modlist, key, s, entry, isBinary);
+                }
+                else {
+                    modifyAttr(modlist, key, s, entry, isBinary);
+                }
             }
         }
         ModificationItem[] mods = new ModificationItem[modlist.size()];
@@ -413,22 +467,30 @@ public class LdapUtil {
      * @param attrs
      */
     public static void mapToAttrs(Map mapAttrs, Attributes attrs) {
+        AttributeManager attrMgr = AttributeManager.getInst();
+        
         for (Iterator mit=mapAttrs.entrySet().iterator(); mit.hasNext(); ) {
             Map.Entry me = (Entry) mit.next();
+            
+            String attrName = (String)me.getKey();
             Object v = me.getValue();
+            
+            boolean isBinary = attrMgr == null ? false : attrMgr.isBinary(attrName);
+            
             if (v instanceof String)
-                attrs.put((String)me.getKey(), (String)v);
+                attrs.put(attrName, decodeBase64IfBinary(isBinary, (String)v));
             else if (v instanceof String[]) {
                 String[] sa = (String[]) v;
-                BasicAttribute a = new BasicAttribute((String)me.getKey());
-                for (int i=0; i < sa.length; i++)
-                        a.add(sa[i]);
+                BasicAttribute a = new BasicAttribute(attrName);
+                for (int i=0; i < sa.length; i++) {
+                    a.add(decodeBase64IfBinary(isBinary, sa[i]));
+                }
                 attrs.put(a);
             } else if (v instanceof Collection) {
                 Collection c = (Collection) v;
-                BasicAttribute a = new BasicAttribute((String)me.getKey());
+                BasicAttribute a = new BasicAttribute(attrName);
                 for (Object o : c) {
-                	a.add(o.toString());
+                	a.add(decodeBase64IfBinary(isBinary, o.toString()));
                 }
                 attrs.put(a);
             }
@@ -585,16 +647,19 @@ public class LdapUtil {
       public static void searchLdapOnReplica(String base, String query, String[] returnAttrs, SearchLdapVisitor visitor) throws ServiceException {
           searchLdap(base, query, returnAttrs, false, visitor);
       }
+      
+      private static void searchLdap(String base, String query, String[] returnAttrs, boolean useMaster, SearchLdapVisitor visitor) 
+      throws ServiceException {
+          ZimbraLdapContext zlc = new ZimbraLdapContext(useMaster);
+          searchLdap(zlc, base, query, returnAttrs, visitor);
+      }
               
-      private static void searchLdap(String base, String query, String[] returnAttrs, boolean useMaster, SearchLdapVisitor visitor) throws ServiceException {
+      public static void searchLdap(ZimbraLdapContext zlc, String base, String query, String[] returnAttrs, SearchLdapVisitor visitor) 
+      throws ServiceException {
           
           int maxResults = 0; // no limit
-          ZimbraLdapContext zlc = null; 
-          int numModified = 0;
           
           try {
-              zlc = new ZimbraLdapContext(useMaster);
-              
               SearchControls searchControls =
                   new SearchControls(SearchControls.SUBTREE_SCOPE, maxResults, 0, returnAttrs, false, false);
 
@@ -833,7 +898,8 @@ public class LdapUtil {
         
         ZimbraLdapContext zlc = null;
         try {
-            zlc = new ZimbraLdapContext(galParams.url(), galParams.requireStartTLS(), galParams.credential(), "external GAL");
+            zlc = new ZimbraLdapContext(galParams.url(), galParams.requireStartTLS(), 
+                    galParams.credential(), rules.getBinaryLdapAttrs(), "external GAL");
             searchGal(zlc,
                       GalSearchConfig.GalType.ldap,
                       galParams.pageSize(),
@@ -930,11 +996,12 @@ public class LdapUtil {
             GalSearchConfig cfg = params.getConfig();
             GalSearchConfig.GalType galType =  params.getConfig().getGalType();
 
-            if (galType == GalSearchConfig.GalType.zimbra)
+            if (galType == GalSearchConfig.GalType.zimbra) {
                 zlc = new ZimbraLdapContext(false);
-            else
+            } else {
             	zlc = new ZimbraLdapContext(cfg.getUrl(), cfg.getStartTlsEnabled(), cfg.getAuthMech(),
-                        cfg.getBindDn(), cfg.getBindPassword(), "external GAL");
+                        cfg.getBindDn(), cfg.getBindPassword(), cfg.getRules().getBinaryLdapAttrs(), "external GAL");
+            }
             
             searchGal(zlc,
                       galType,
@@ -1081,5 +1148,9 @@ public class LdapUtil {
         else if (sb.equalsIgnoreCase("ROOT"))
             return "";
         return "";
+    }
+    
+    private static Object decodeBase64IfBinary(boolean isBinary, String value) {
+        return isBinary ? ByteUtil.decodeLDAPBase64(value) : value;
     }
  }

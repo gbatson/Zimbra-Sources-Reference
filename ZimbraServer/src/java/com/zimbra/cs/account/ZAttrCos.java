@@ -20,6 +20,7 @@
  */
 package com.zimbra.cs.account;
 
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
 
@@ -39,7 +40,7 @@ public class ZAttrCos extends NamedEntry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 jhahm 20110215-1542 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110321-1148 */
 
     /**
      * RFC2256: common name(s) for which the entity is known by
@@ -4037,6 +4038,83 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
+     * whether email features and tabs are enabled in the web client if
+     * accessed from the admin console
+     *
+     * @return zimbraFeatureAdminMailEnabled, or true if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1170)
+    public boolean isFeatureAdminMailEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureAdminMailEnabled, true);
+    }
+
+    /**
+     * whether email features and tabs are enabled in the web client if
+     * accessed from the admin console
+     *
+     * @param zimbraFeatureAdminMailEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1170)
+    public void setFeatureAdminMailEnabled(boolean zimbraFeatureAdminMailEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAdminMailEnabled, zimbraFeatureAdminMailEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether email features and tabs are enabled in the web client if
+     * accessed from the admin console
+     *
+     * @param zimbraFeatureAdminMailEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1170)
+    public Map<String,Object> setFeatureAdminMailEnabled(boolean zimbraFeatureAdminMailEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAdminMailEnabled, zimbraFeatureAdminMailEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether email features and tabs are enabled in the web client if
+     * accessed from the admin console
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1170)
+    public void unsetFeatureAdminMailEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAdminMailEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether email features and tabs are enabled in the web client if
+     * accessed from the admin console
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1170)
+    public Map<String,Object> unsetFeatureAdminMailEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAdminMailEnabled, "");
+        return attrs;
+    }
+
+    /**
      * advanced search button enabled
      *
      * @return zimbraFeatureAdvancedSearchEnabled, or true if unset
@@ -4095,6 +4173,88 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetFeatureAdvancedSearchEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFeatureAdvancedSearchEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * whether or not to enable rerouting spam messages to Junk folder in
+     * ZCS, exposing Junk folder and actions in the web UI, and exposing Junk
+     * folder to IMAP clients.
+     *
+     * @return zimbraFeatureAntispamEnabled, or true if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1168)
+    public boolean isFeatureAntispamEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureAntispamEnabled, true);
+    }
+
+    /**
+     * whether or not to enable rerouting spam messages to Junk folder in
+     * ZCS, exposing Junk folder and actions in the web UI, and exposing Junk
+     * folder to IMAP clients.
+     *
+     * @param zimbraFeatureAntispamEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1168)
+    public void setFeatureAntispamEnabled(boolean zimbraFeatureAntispamEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAntispamEnabled, zimbraFeatureAntispamEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether or not to enable rerouting spam messages to Junk folder in
+     * ZCS, exposing Junk folder and actions in the web UI, and exposing Junk
+     * folder to IMAP clients.
+     *
+     * @param zimbraFeatureAntispamEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1168)
+    public Map<String,Object> setFeatureAntispamEnabled(boolean zimbraFeatureAntispamEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAntispamEnabled, zimbraFeatureAntispamEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether or not to enable rerouting spam messages to Junk folder in
+     * ZCS, exposing Junk folder and actions in the web UI, and exposing Junk
+     * folder to IMAP clients.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1168)
+    public void unsetFeatureAntispamEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAntispamEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether or not to enable rerouting spam messages to Junk folder in
+     * ZCS, exposing Junk folder and actions in the web UI, and exposing Junk
+     * folder to IMAP clients.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1168)
+    public Map<String,Object> unsetFeatureAntispamEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureAntispamEnabled, "");
         return attrs;
     }
 
@@ -4871,6 +5031,78 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
+     * whether detailed contact search UI is enabled
+     *
+     * @return zimbraFeatureContactsDetailedSearchEnabled, or false if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1164)
+    public boolean isFeatureContactsDetailedSearchEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureContactsDetailedSearchEnabled, false);
+    }
+
+    /**
+     * whether detailed contact search UI is enabled
+     *
+     * @param zimbraFeatureContactsDetailedSearchEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1164)
+    public void setFeatureContactsDetailedSearchEnabled(boolean zimbraFeatureContactsDetailedSearchEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureContactsDetailedSearchEnabled, zimbraFeatureContactsDetailedSearchEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether detailed contact search UI is enabled
+     *
+     * @param zimbraFeatureContactsDetailedSearchEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1164)
+    public Map<String,Object> setFeatureContactsDetailedSearchEnabled(boolean zimbraFeatureContactsDetailedSearchEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureContactsDetailedSearchEnabled, zimbraFeatureContactsDetailedSearchEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether detailed contact search UI is enabled
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1164)
+    public void unsetFeatureContactsDetailedSearchEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureContactsDetailedSearchEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether detailed contact search UI is enabled
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1164)
+    public Map<String,Object> unsetFeatureContactsDetailedSearchEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureContactsDetailedSearchEnabled, "");
+        return attrs;
+    }
+
+    /**
      * contact features
      *
      * @return zimbraFeatureContactsEnabled, or true if unset
@@ -5279,6 +5511,78 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetFeatureDistributionListExpandMembersEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFeatureDistributionListExpandMembersEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * whether export folder feature is enabled
+     *
+     * @return zimbraFeatureExportFolderEnabled, or true if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1185)
+    public boolean isFeatureExportFolderEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureExportFolderEnabled, true);
+    }
+
+    /**
+     * whether export folder feature is enabled
+     *
+     * @param zimbraFeatureExportFolderEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1185)
+    public void setFeatureExportFolderEnabled(boolean zimbraFeatureExportFolderEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureExportFolderEnabled, zimbraFeatureExportFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether export folder feature is enabled
+     *
+     * @param zimbraFeatureExportFolderEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1185)
+    public Map<String,Object> setFeatureExportFolderEnabled(boolean zimbraFeatureExportFolderEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureExportFolderEnabled, zimbraFeatureExportFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether export folder feature is enabled
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1185)
+    public void unsetFeatureExportFolderEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureExportFolderEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether export folder feature is enabled
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1185)
+    public Map<String,Object> unsetFeatureExportFolderEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureExportFolderEnabled, "");
         return attrs;
     }
 
@@ -6010,7 +6314,10 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
-     * whether import export folder feature is enabled
+     * Deprecated since: 7.1.0. deprecated in favor of
+     * zimbraFeatureImportFolderEnabled and zimbraFeatureExportFolderEnabled
+     * for bug 53745. Orig desc: whether import export folder feature is
+     * enabled
      *
      * @return zimbraFeatureImportExportFolderEnabled, or true if unset
      *
@@ -6022,7 +6329,10 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
-     * whether import export folder feature is enabled
+     * Deprecated since: 7.1.0. deprecated in favor of
+     * zimbraFeatureImportFolderEnabled and zimbraFeatureExportFolderEnabled
+     * for bug 53745. Orig desc: whether import export folder feature is
+     * enabled
      *
      * @param zimbraFeatureImportExportFolderEnabled new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -6037,7 +6347,10 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
-     * whether import export folder feature is enabled
+     * Deprecated since: 7.1.0. deprecated in favor of
+     * zimbraFeatureImportFolderEnabled and zimbraFeatureExportFolderEnabled
+     * for bug 53745. Orig desc: whether import export folder feature is
+     * enabled
      *
      * @param zimbraFeatureImportExportFolderEnabled new value
      * @param attrs existing map to populate, or null to create a new map
@@ -6053,7 +6366,10 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
-     * whether import export folder feature is enabled
+     * Deprecated since: 7.1.0. deprecated in favor of
+     * zimbraFeatureImportFolderEnabled and zimbraFeatureExportFolderEnabled
+     * for bug 53745. Orig desc: whether import export folder feature is
+     * enabled
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -6067,7 +6383,10 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
-     * whether import export folder feature is enabled
+     * Deprecated since: 7.1.0. deprecated in favor of
+     * zimbraFeatureImportFolderEnabled and zimbraFeatureExportFolderEnabled
+     * for bug 53745. Orig desc: whether import export folder feature is
+     * enabled
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -6078,6 +6397,78 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetFeatureImportExportFolderEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFeatureImportExportFolderEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * whether import folder feature is enabled
+     *
+     * @return zimbraFeatureImportFolderEnabled, or true if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1184)
+    public boolean isFeatureImportFolderEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureImportFolderEnabled, true);
+    }
+
+    /**
+     * whether import folder feature is enabled
+     *
+     * @param zimbraFeatureImportFolderEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1184)
+    public void setFeatureImportFolderEnabled(boolean zimbraFeatureImportFolderEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureImportFolderEnabled, zimbraFeatureImportFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether import folder feature is enabled
+     *
+     * @param zimbraFeatureImportFolderEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1184)
+    public Map<String,Object> setFeatureImportFolderEnabled(boolean zimbraFeatureImportFolderEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureImportFolderEnabled, zimbraFeatureImportFolderEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether import folder feature is enabled
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1184)
+    public void unsetFeatureImportFolderEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureImportFolderEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether import folder feature is enabled
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1184)
+    public Map<String,Object> unsetFeatureImportFolderEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureImportFolderEnabled, "");
         return attrs;
     }
 
@@ -6825,6 +7216,83 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetFeatureMailUpsellURL(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFeatureMailUpsellURL, "");
+        return attrs;
+    }
+
+    /**
+     * whether to allow end user to publish and remove S/MIME certificates to
+     * their GAL entry in the web UI
+     *
+     * @return zimbraFeatureManageSMIMECertificateEnabled, or false if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1183)
+    public boolean isFeatureManageSMIMECertificateEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureManageSMIMECertificateEnabled, false);
+    }
+
+    /**
+     * whether to allow end user to publish and remove S/MIME certificates to
+     * their GAL entry in the web UI
+     *
+     * @param zimbraFeatureManageSMIMECertificateEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1183)
+    public void setFeatureManageSMIMECertificateEnabled(boolean zimbraFeatureManageSMIMECertificateEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureManageSMIMECertificateEnabled, zimbraFeatureManageSMIMECertificateEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether to allow end user to publish and remove S/MIME certificates to
+     * their GAL entry in the web UI
+     *
+     * @param zimbraFeatureManageSMIMECertificateEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1183)
+    public Map<String,Object> setFeatureManageSMIMECertificateEnabled(boolean zimbraFeatureManageSMIMECertificateEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureManageSMIMECertificateEnabled, zimbraFeatureManageSMIMECertificateEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether to allow end user to publish and remove S/MIME certificates to
+     * their GAL entry in the web UI
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1183)
+    public void unsetFeatureManageSMIMECertificateEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureManageSMIMECertificateEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether to allow end user to publish and remove S/MIME certificates to
+     * their GAL entry in the web UI
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1183)
+    public Map<String,Object> unsetFeatureManageSMIMECertificateEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureManageSMIMECertificateEnabled, "");
         return attrs;
     }
 
@@ -7711,6 +8179,83 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetFeatureReadReceiptsEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFeatureReadReceiptsEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * whether S/MIME feature is enabled. Note: SMIME is a Network feature,
+     * this attribute is effective only if SMIME is permited by license.
+     *
+     * @return zimbraFeatureSMIMEEnabled, or false if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1186)
+    public boolean isFeatureSMIMEEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraFeatureSMIMEEnabled, false);
+    }
+
+    /**
+     * whether S/MIME feature is enabled. Note: SMIME is a Network feature,
+     * this attribute is effective only if SMIME is permited by license.
+     *
+     * @param zimbraFeatureSMIMEEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1186)
+    public void setFeatureSMIMEEnabled(boolean zimbraFeatureSMIMEEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSMIMEEnabled, zimbraFeatureSMIMEEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether S/MIME feature is enabled. Note: SMIME is a Network feature,
+     * this attribute is effective only if SMIME is permited by license.
+     *
+     * @param zimbraFeatureSMIMEEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1186)
+    public Map<String,Object> setFeatureSMIMEEnabled(boolean zimbraFeatureSMIMEEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSMIMEEnabled, zimbraFeatureSMIMEEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether S/MIME feature is enabled. Note: SMIME is a Network feature,
+     * this attribute is effective only if SMIME is permited by license.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1186)
+    public void unsetFeatureSMIMEEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSMIMEEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether S/MIME feature is enabled. Note: SMIME is a Network feature,
+     * this attribute is effective only if SMIME is permited by license.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1186)
+    public Map<String,Object> unsetFeatureSMIMEEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFeatureSMIMEEnabled, "");
         return attrs;
     }
 
@@ -13923,6 +14468,78 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
+     * regex of alllowed characters in password
+     *
+     * @return zimbraPasswordAllowedChars, or null if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1163)
+    public String getPasswordAllowedChars() {
+        return getAttr(Provisioning.A_zimbraPasswordAllowedChars, null);
+    }
+
+    /**
+     * regex of alllowed characters in password
+     *
+     * @param zimbraPasswordAllowedChars new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1163)
+    public void setPasswordAllowedChars(String zimbraPasswordAllowedChars) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedChars, zimbraPasswordAllowedChars);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex of alllowed characters in password
+     *
+     * @param zimbraPasswordAllowedChars new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1163)
+    public Map<String,Object> setPasswordAllowedChars(String zimbraPasswordAllowedChars, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedChars, zimbraPasswordAllowedChars);
+        return attrs;
+    }
+
+    /**
+     * regex of alllowed characters in password
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1163)
+    public void unsetPasswordAllowedChars() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedChars, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex of alllowed characters in password
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1163)
+    public Map<String,Object> unsetPasswordAllowedChars(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedChars, "");
+        return attrs;
+    }
+
+    /**
      * whether or not to enforce password history. Number of unique passwords
      * a user must have before being allowed to re-use an old one. A value of
      * 0 means no password history.
@@ -14574,6 +15191,78 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetPasswordMinAge(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraPasswordMinAge, "");
+        return attrs;
+    }
+
+    /**
+     * minimum number of alphabet characters required in a password
+     *
+     * @return zimbraPasswordMinAlphaChars, or 0 if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1162)
+    public int getPasswordMinAlphaChars() {
+        return getIntAttr(Provisioning.A_zimbraPasswordMinAlphaChars, 0);
+    }
+
+    /**
+     * minimum number of alphabet characters required in a password
+     *
+     * @param zimbraPasswordMinAlphaChars new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1162)
+    public void setPasswordMinAlphaChars(int zimbraPasswordMinAlphaChars) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinAlphaChars, Integer.toString(zimbraPasswordMinAlphaChars));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * minimum number of alphabet characters required in a password
+     *
+     * @param zimbraPasswordMinAlphaChars new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1162)
+    public Map<String,Object> setPasswordMinAlphaChars(int zimbraPasswordMinAlphaChars, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinAlphaChars, Integer.toString(zimbraPasswordMinAlphaChars));
+        return attrs;
+    }
+
+    /**
+     * minimum number of alphabet characters required in a password
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1162)
+    public void unsetPasswordMinAlphaChars() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinAlphaChars, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * minimum number of alphabet characters required in a password
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1162)
+    public Map<String,Object> unsetPasswordMinAlphaChars(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinAlphaChars, "");
         return attrs;
     }
 
@@ -24911,6 +25600,78 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetPrefSkin(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraPrefSkin, "");
+        return attrs;
+    }
+
+    /**
+     * sort order for list view in the WEB UI
+     *
+     * @return zimbraPrefSortOrder, or null if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1188)
+    public String getPrefSortOrder() {
+        return getAttr(Provisioning.A_zimbraPrefSortOrder, null);
+    }
+
+    /**
+     * sort order for list view in the WEB UI
+     *
+     * @param zimbraPrefSortOrder new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1188)
+    public void setPrefSortOrder(String zimbraPrefSortOrder) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSortOrder, zimbraPrefSortOrder);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * sort order for list view in the WEB UI
+     *
+     * @param zimbraPrefSortOrder new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1188)
+    public Map<String,Object> setPrefSortOrder(String zimbraPrefSortOrder, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSortOrder, zimbraPrefSortOrder);
+        return attrs;
+    }
+
+    /**
+     * sort order for list view in the WEB UI
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1188)
+    public void unsetPrefSortOrder() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSortOrder, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * sort order for list view in the WEB UI
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1188)
+    public Map<String,Object> unsetPrefSortOrder(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefSortOrder, "");
         return attrs;
     }
 

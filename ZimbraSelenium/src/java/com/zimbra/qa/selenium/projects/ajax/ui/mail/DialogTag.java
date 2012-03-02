@@ -3,10 +3,7 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDialog;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 
 
@@ -37,12 +34,16 @@ public class DialogTag extends AbsDialog {
 	}
 	
 	
-	public DialogTag(AbsApplication application) {
-		super(application);
+	public DialogTag(AbsApplication application, AbsTab tab) {
+		super(application, tab);
+		
+		logger.info("new "+ DialogTag.class.getCanonicalName());
 	}
 	
 	public void zSetTagName(String name) throws HarnessException {
 		logger.info(myPageName() + " zSetTagName("+ name +")");
+
+		tracer.trace("Set tag name "+ name);
 
 		String locator = "id="+ Locators.zTagNameFieldId;
 		
@@ -58,6 +59,8 @@ public class DialogTag extends AbsDialog {
 	public void zSetTagColor(String color) throws HarnessException {
 		logger.info(myPageName() + " zSetTagColor("+ color +")");
 
+		tracer.trace("Set tag color "+ color);
+
 		throw new HarnessException("implement me!");
 		
 	}
@@ -65,6 +68,8 @@ public class DialogTag extends AbsDialog {
 	@Override
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton("+ button +")");
+
+		tracer.trace("Click dialog button "+ button);
 
 		AbsPage page = null;
 		String locator = null;

@@ -851,7 +851,7 @@ function(ev) {
  */
 ZmListController.prototype._participantComposeListener =
 function(ev) {
-	var name = this._actionEv.address.toString(AjxEmailAddress.SEPARATOR) + AjxEmailAddress.SEPARATOR;
+	var name = this._actionEv.address.toString() + AjxEmailAddress.SEPARATOR;
 	AjxDispatcher.run("Compose", {action: ZmOperation.NEW_MESSAGE, inNewWindow: this._app._inNewWindow(ev),
 								  toOverride: name});
 };
@@ -939,7 +939,7 @@ function(ev) {
         // Bug: 44488 - Don't allow dropping tag of one account to other account's item
         if (appCtxt.multiAccounts) {
            var listAcctId = item ? item.getAccount().id : null;
-           var tagAcctId = data.account.id;
+           var tagAcctId = data[0].account.id;
            if (listAcctId != tagAcctId) {
                ev.doIt = false;
            }

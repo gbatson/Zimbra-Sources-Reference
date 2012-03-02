@@ -865,7 +865,7 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
     }
 
     public static void registerResolver(ExchangeUserResolver r, int priority) {
-        synchronized (sRESOLVERS) {         
+        synchronized (sRESOLVERS) {
             sRESOLVERS.ensureCapacity(priority + 1);
             sRESOLVERS.add(priority, r);
         }

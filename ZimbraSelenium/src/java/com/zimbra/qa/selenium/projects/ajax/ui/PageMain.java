@@ -3,9 +3,9 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogError.DialogErrorID;
 
 
 /**
@@ -40,24 +40,21 @@ public class PageMain extends AbsTab {
 	public Toaster zGetToaster() throws HarnessException {
 		return (new Toaster(this.MyApplication));
 	}
+	
+	public DialogError zGetErrorDialog(DialogErrorID zimbra) {
+		return (new DialogError(zimbra, this.MyApplication, this));
+	}
+
+
 
 	public boolean zIsZimletLoaded() throws HarnessException {
-		return (ClientSessionFactory
-	            .session()
-				.selenium()
-				.getEval(
-						"this.browserbot.getUserWindow().top.appCtxt.getZimletMgr().loaded")
-				.equals("true"));
+		return ("true".equals(sGetEval("this.browserbot.getUserWindow().top.appCtxt.getZimletMgr().loaded")));
 	}
 	
 	public boolean zIsMinicalLoaded() throws HarnessException {
-		return (ClientSessionFactory
-	            .session()
-				.selenium()
-				.getEval(
-						"this.browserbot.getUserWindow().top.appCtxt.getAppViewMgr().getCurrentViewComponent(this.browserbot.getUserWindow().top.ZmAppViewMgr.C_TREE_FOOTER) != null")
-				.equals("true"));
+		return ("true".equals(sGetEval("this.browserbot.getUserWindow().top.appCtxt.getAppViewMgr().getCurrentViewComponent(this.browserbot.getUserWindow().top.ZmAppViewMgr.C_TREE_FOOTER) != null")));
 	}
+	
 	/* (non-Javadoc)
 	 * @see projects.admin.ui.AbsPage#isActive()
 	 */
@@ -118,19 +115,21 @@ public class PageMain extends AbsTab {
 	 */
 	public void zLogout() throws HarnessException {
 		logger.debug("logout()");
-		
+
+		tracer.trace("Logout of the "+ MyApplication.myApplicationName());
+
 		zNavigateTo();
 
 		if ( !sIsElementPresent(Locators.zLogoffButton) ) {
 			throw new HarnessException("The logoff button is not present " + Locators.zLogoffButton);
 		}
-				
+
 		// Click on logout
 		sClick(Locators.zLogoffButton);
-				
+
 		sWaitForPageToLoad();
 		((AppAjaxClient)MyApplication).zPageLogin.zWaitForActive();
-		
+
 		((AppAjaxClient)MyApplication).zSetActiveAcount(null);
 
 	}
@@ -159,6 +158,11 @@ public class PageMain extends AbsTab {
 		throw new HarnessException("Main page does not have lists");
 	}
 
+	@Override
+	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
+			throws HarnessException {
+		throw new HarnessException("Main page does not have lists");
+	}	
 	/**
 	 * Close any extra compose tabs
 	 */

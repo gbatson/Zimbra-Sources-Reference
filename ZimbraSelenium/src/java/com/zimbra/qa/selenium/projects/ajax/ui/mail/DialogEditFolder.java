@@ -4,7 +4,7 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
 import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.HarnessException;
 
 
 /**
@@ -23,8 +23,10 @@ public class DialogEditFolder extends AbsDialog {
 	}
 	
 	
-	public DialogEditFolder(AbsApplication application) {
-		super(application);
+	public DialogEditFolder(AbsApplication application, AbsTab tab) {
+		super(application, tab);
+		logger.info("new "+ DialogEditFolder.class.getCanonicalName());
+
 	}
 	
 
@@ -48,6 +50,8 @@ public class DialogEditFolder extends AbsDialog {
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton("+ button +")");
 
+		tracer.trace("Click dialog button "+ button);
+		
 		AbsPage page = null;
 		String locator = null;
 		
@@ -98,6 +102,8 @@ public class DialogEditFolder extends AbsDialog {
 	public void zSetNewName(String folder) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderName("+ folder +")");
 		
+		tracer.trace("Enter new folder name "+ folder);
+
 		if ( folder == null ) 
 			throw new HarnessException("folder must not be null");
 		
@@ -136,6 +142,8 @@ public class DialogEditFolder extends AbsDialog {
 	public void zSetNewColor(FolderColor color) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderColor("+ color +")");
 		
+		tracer.trace("Enter folder color "+ color);
+
 		if ( color == null ) 
 			throw new HarnessException("folder must not be null");
 		

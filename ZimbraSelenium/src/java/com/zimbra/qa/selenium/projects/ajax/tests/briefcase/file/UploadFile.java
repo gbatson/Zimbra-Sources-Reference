@@ -5,6 +5,7 @@ import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.Action;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
@@ -21,7 +22,7 @@ public class UploadFile extends AjaxCommonTest {
 		super.startingAccountPreferences = null;
 	}
 
-	@Test(description = "Upload file through SOAP - verify through SOAP", groups = { "smoke" })
+	@Test(description = "Upload file through RestUtil - verify through SOAP", groups = { "smoke" })
 	public void UploadFile_01() throws HarnessException {
 		ZimbraAccount account = app.zGetActiveAccount();
 
@@ -32,13 +33,13 @@ public class UploadFile extends AjaxCommonTest {
 		DocumentItem document = new DocumentItem();
 
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-				+ "/data/public/other/testtextfile.txt";
+				+ "/data/public/other/testsoundfile.wav";
 
 		String fileName = document.getFileName(filePath);
-
-		// Upload file to server through SOAP
+		
+		// Upload file to server through RestUtil
 		String attachmentId = account.uploadFile(filePath);
-
+	
 		// Save uploaded file to briefcase through SOAP
 		account.soapSend(
 
@@ -62,11 +63,18 @@ public class UploadFile extends AjaxCommonTest {
 						+ "</SearchRequest>");
 
 		String name = account.soapSelectValue("//mail:doc", "name");
-
+		String id = account.soapSelectValue("//mail:doc", "id");
+		
 		ZAssert.assertEquals(name, fileName, "Verify file name through SOAP");
+		
+		//delete file upon test completion
+		account.soapSend(
+				"<ItemActionRequest xmlns='urn:zimbraMail'>" +
+				"<action id='" + id + "' op='trash'/>" +
+				"</ItemActionRequest>");				
 	}
 
-	@Test(description = "Upload file through SOAP - verify through GUI", groups = { "sanity" })
+	@Test(description = "Upload file through RestUtil - verify through GUI", groups = { "sanity" })
 	public void UploadFile_02() throws HarnessException {
 		ZimbraAccount account = app.zGetActiveAccount();
 
@@ -81,21 +89,21 @@ public class UploadFile extends AjaxCommonTest {
 
 		String fileName = document.getFileName(filePath);
 
-		// Upload file to server through SOAP
+		// Upload file to server through RestUtil
 		String attachmentId = account.uploadFile(filePath);
 
 		// Save uploaded file to briefcase through SOAP
 		account.soapSend("<SaveDocumentRequest xmlns='urn:zimbraMail'>"
 				+ "<doc l='" + briefcaseFolder.getId() + "'><upload id='"
-				+ attachmentId + "'/>" + "</doc>" + "</SaveDocumentRequest>");
+				+ attachmentId + "'/></doc></SaveDocumentRequest>");
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		// Verify document is created
-		String name = app.zPageBriefcase
-				.sGetText("css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width*='auto'] div:contains("
-						+ fileName + ")");
+		String name = app.zPageBriefcase.getText(fileName);
 		ZAssert.assertEquals(name, fileName, "Verify file name through GUI");
 	}
 }

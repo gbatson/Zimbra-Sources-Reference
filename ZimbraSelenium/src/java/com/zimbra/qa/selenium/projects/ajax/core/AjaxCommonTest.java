@@ -1,49 +1,22 @@
 package com.zimbra.qa.selenium.projects.ajax.core;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.URL;
-import java.net.URLConnection;
-import java.util.HashMap;
-import java.util.Map;
+import java.io.*;
+import java.util.*;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import org.testng.annotations.AfterClass;
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.AfterSuite;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.BeforeMethod;
-import org.testng.annotations.BeforeSuite;
+import org.apache.log4j.*;
+import org.testng.annotations.*;
 import org.xml.sax.SAXException;
 
-
-import com.thoughtworks.selenium.DefaultSelenium;
-import com.thoughtworks.selenium.SeleniumException;
+import com.thoughtworks.selenium.*;
 import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
-import com.zimbra.qa.selenium.framework.core.ZimbraSelenium;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
-import com.zimbra.qa.selenium.framework.util.CodeCoverage;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.BuildUtility;
-import com.zimbra.qa.selenium.framework.util.CommandLine;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
-import com.zimbra.qa.selenium.framework.util.OperatingSystem;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZimbraDesktopProperties;
-import com.zimbra.qa.selenium.framework.util.BuildUtility.ARCH;
-import com.zimbra.qa.selenium.framework.util.BuildUtility.BRANCH;
-import com.zimbra.qa.selenium.framework.util.BuildUtility.PRODUCT_NAME;
+import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.BuildUtility.*;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.OperatingSystem.OsType;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.PageLogin;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.desktop.core.DesktopInstallUtil;
 
 /**
@@ -125,6 +98,7 @@ public class AjaxCommonTest {
    private ARCH _arch = null;
    private boolean _uninstallAppAfterTest = false;
    private boolean _forceInstall = false;
+   protected String[] desktopZimlets = null;
 
 	/**
 	 * BeforeMethod variables
@@ -133,14 +107,16 @@ public class AjaxCommonTest {
 	 */
 	protected AbsTab startingPage = null;
 	protected Map<String, String> startingAccountPreferences = null;
-	
+	protected Map<String, String> startingAccountZimletPreferences = null;
+
 	protected AjaxCommonTest() {
 		logger.info("New "+ AjaxCommonTest.class.getCanonicalName());
-		
+
 		app = new AppAjaxClient();
-		
+
 		startingPage = app.zPageMain;
 		startingAccountPreferences = new HashMap<String, String>();
+		startingAccountZimletPreferences = new HashMap<String, String>();
 	}
 
    /**
@@ -400,12 +376,6 @@ public class AjaxCommonTest {
       logger.info("accountDeleteUrl: " + accountDeleteUrl);
       GeneralUtility.doHttpPost(accountDeleteUrl);
 
-      String accountUrl = new StringBuilder(serverScheme).append("://")
-            .append(serverName). append(":")
-            .append(connectionPort).append("/")
-            .append("?at=")
-            .append(zdp.getSerialNumber()).toString();
-
       _selenium.refresh();
       GeneralUtility.waitForElementPresent(app.zPageLogin,
             PageLogin.Locators.zAddNewAccountButton);
@@ -436,6 +406,7 @@ public class AjaxCommonTest {
       case DESKTOP:
          destType = SOAP_DESTINATION_HOST_TYPE.CLIENT;
          ZimbraAccount.AccountZWC().authenticateToMailClientHost();
+
          if (_currentAccount != ZimbraAccount.AccountZWC()) {
             app.zPageLogin.zNavigateTo();
             if  (app.zPageLogin.sIsElementPresent(PageLogin.Locators.zBtnLoginDesktop)) {
@@ -502,12 +473,21 @@ public class AjaxCommonTest {
 
       // If test account preferences are defined, then make sure the test account
       // uses those preferences
-      // 
+      //
       if ( (startingAccountPreferences != null) && (!startingAccountPreferences.isEmpty()) ) {
          logger.debug("commonTestBeforeMethod: startingAccountPreferences are defined");
          ZimbraAccount.AccountZWC().modifyPreferences(startingAccountPreferences, destType);
       }
-		
+
+      // If test account zimlet preferences are defined, then make sure the test account
+      // uses those zimlet preferences
+      //
+      if ( (startingAccountZimletPreferences != null) && (!startingAccountZimletPreferences.isEmpty()) ) {
+         logger.debug("commonTestBeforeMethod: startingAccountPreferences are defined");
+         ZimbraAccount.AccountZWC().modifyZimletPreferences(startingAccountZimletPreferences,
+               destType);
+      }
+
       // If AccountZWC is not currently logged in, then login now
       if ( !ZimbraAccount.AccountZWC().equals(app.zGetActiveAccount()) ) {
          logger.debug("commonTestBeforeMethod: AccountZWC is not currently logged in");
@@ -531,7 +511,7 @@ public class AjaxCommonTest {
          }
 
       }
-		
+
       // If a startingPage is defined, then make sure we are on that page
       if ( startingPage != null ) {
          logger.debug("commonTestBeforeMethod: startingPage is defined");
@@ -546,8 +526,18 @@ public class AjaxCommonTest {
             throw new HarnessException("Unable to navigate to "+ startingPage.myPageName());
          }
 
+         if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP && startingPage != app.zPageLogin) {
+            if (desktopZimlets == null) {
+               desktopZimlets = app.zGetActiveAccount().getAvailableZimlets(
+                     SOAP_DESTINATION_HOST_TYPE.CLIENT);
+            }
+            logger.debug("Desktop Zimlets are: ");
+            for (int i = 0; i < desktopZimlets.length; i++) {
+               logger.debug("==> Zimlet " + i + " is: " + desktopZimlets[i]);
+            }
+         }
       }
-		
+
       // Make sure any extra compose tabs are closed
       app.zPageMain.zCloseComposeTabs();
 
@@ -598,6 +588,37 @@ public class AjaxCommonTest {
 		logger.info("commonTestAfterMethod: start");
 		
 		CodeCoverage.getInstance().calculateCoverage();
+
+		// For Ajax, if account is considered dirty (modified),
+		// then recreate a new account, but for desktop, the zimlet
+		// preferences has to be reset to default, all core zimlets are enabled
+		ZimbraAccount currentAccount = app.zGetActiveAccount();
+		if (currentAccount != null && currentAccount.accountIsDirty &&
+		      currentAccount == ZimbraAccount.AccountZWC()) {
+
+		   if (ZimbraSeleniumProperties.getAppType() == AppType.AJAX) {
+
+		      // Reset the account
+		      ZimbraAccount.ResetAccountZWC();
+
+		   } else if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+
+		      if (desktopZimlets == null) {
+		         throw new HarnessException("Desktop zimlets are null for unknown reason");
+		      }
+
+		      // Reset the zimlets preferences to default
+		      Map<String, String> defaultZimlets = new HashMap<String, String>();
+
+		      for (int i = 0; i < desktopZimlets.length; i++) {
+		         defaultZimlets.put(desktopZimlets[i], "enabled");
+		      }
+
+		      ZimbraAccount.AccountZWC().modifyZimletPreferences(defaultZimlets,
+	               SOAP_DESTINATION_HOST_TYPE.CLIENT);
+
+		   }
+		}
 
 		logger.info("commonTestAfterMethod: finish");
 	}

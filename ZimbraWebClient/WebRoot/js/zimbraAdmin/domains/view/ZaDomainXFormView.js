@@ -25,7 +25,7 @@ ZaDomainXFormView = function(parent, entry) {
 		parent:parent,
 		iKeyName:"ZaDomainXFormView",
 		contextId: ZaId.TAB_DOMAIN_EDIT
-	}); //qin@	
+	}); 
 	this.GALModes = [
 		{label:ZaMsg.GALMode_internal, value:ZaDomain.GAL_Mode_internal},
 		{label:ZaMsg.GALMode_external, value:ZaDomain.GAL_Mode_external}, 
@@ -61,6 +61,9 @@ function (index, form) {
 	this.setInstanceValue(list);
 	form.parent.setDirty(true);
 }*/
+
+ZaTabView.XFormSetObjectMethods["ZaDomainXFormView"] = new Array();
+
 /**
 * @method setObject sets the object contained in the view
 * @param entry - ZaDomain object to display
@@ -208,7 +211,18 @@ function(entry) {
 			//this._containedObject[ZaDomain.A2_gal_sync_accounts][0][ZaAccount.A2_zimbra_ds].attrs = ZaItem.deepCloneListItem (entry[ZaDomain.A2_gal_sync_accounts][0][ZaAccount.A2_zimbra_ds].attrs); 
 		}
 	}
-	
+	// execute other init methods
+	if(ZaTabView.XFormSetObjectMethods["ZaDomainXFormView"]) {
+		var methods = ZaTabView.XFormSetObjectMethods["ZaDomainXFormView"];
+		var cnt = methods.length;
+		var containedObj = this._containedObject;
+		for(var i = 0; i < cnt; i++) {
+			if(typeof(methods[i]) == "function")
+				containedObj = methods[i].call(this, containedObj, entry);
+		}
+		this._containedObject = containedObj;
+	}
+
     this._localXForm.setInstance(this._containedObject);        
 	this.updateTab();
 }
@@ -1140,8 +1154,6 @@ ZaDomainXFormView.myXFormModifier = function(xFormObject,entry) {
 		};
                 switchGroup.items.push(case9a);
         }
-
- 
     xFormObject.items.push(tabBar);
 	xFormObject.items.push(switchGroup);
 }

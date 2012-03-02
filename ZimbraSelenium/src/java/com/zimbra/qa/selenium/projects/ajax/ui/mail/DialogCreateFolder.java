@@ -5,7 +5,13 @@ package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.Stafpostqueue;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 
 /**
  * Represents a "Create New Folder" dialog box
@@ -30,8 +36,11 @@ public class DialogCreateFolder extends AbsDialog {
 	}
 	
 	
-	public DialogCreateFolder(AbsApplication application) {
-		super(application);
+	public DialogCreateFolder(AbsApplication application, AbsTab tab) {
+		super(application, tab);
+		
+		logger.info("new "+ DialogCreateFolder.class.getCanonicalName());
+
 	}
 	
 
@@ -47,7 +56,7 @@ public class DialogCreateFolder extends AbsDialog {
 	public boolean zIsActive() throws HarnessException {
 		logger.info(myPageName() + " zIsVisible()");
 
-		String locator = "id="+ Locators.zDialogId;
+		String locator = Locators.zNameField;
 		
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false); // Not even present
@@ -62,17 +71,35 @@ public class DialogCreateFolder extends AbsDialog {
 		return (true);
 		
 	}
-	
-	
+
 	@Override
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton("+ button +")");
+
+		tracer.trace("Click dialog button "+ button);
 
 		AbsPage page = null;
 		String locator = null;
 		if ( button == Button.B_OK ) {
 
 			locator = Locators.zOkButton;
+
+			this.zClick(locator);
+
+	      this.zWaitForBusyOverlay();
+
+	      // Wait for the spinner image ONLY for desktop
+         ((AppAjaxClient)MyApplication).zPageMail.zWaitForDesktopLoadingSpinner(5000);
+
+         // Check the message queue
+	      Stafpostqueue sp = new Stafpostqueue();
+	      try {
+	         sp.waitForPostqueue();
+	      } catch (Exception e) {
+	         throw new HarnessException("Getting exception while post queueing: " + e.getMessage());
+	      }
+
+	      return (page);
 
 		} else if ( button == Button.B_CANCEL ) {
 
@@ -122,6 +149,8 @@ public class DialogCreateFolder extends AbsDialog {
 	public void zClickTreeFolder(FolderItem folder) throws HarnessException {
 		logger.info(myPageName() + " zClickTreeFolder("+ folder +")");
 		
+		tracer.trace("Click on tree folder with name "+ folder.getName());
+
 		if ( folder == null ) 
 			throw new HarnessException("folder must not be null");
 		
@@ -141,17 +170,19 @@ public class DialogCreateFolder extends AbsDialog {
 	 * @param folder
 	 */
 	public void zEnterFolderName(String folder) throws HarnessException {
-	   logger.info(myPageName() + " zEnterFolderName("+ folder +")");
+		logger.info(myPageName() + " zEnterFolderName("+ folder +")");
 
-      if ( folder == null ) 
-         throw new HarnessException("folder must not be null");
+		tracer.trace("Enter folder name in text box "+ folder);
 
-      String locator = Locators.zNameField;
+		if ( folder == null ) 
+			throw new HarnessException("folder must not be null");
 
-      if ( !this.sIsElementPresent(locator) )
-         throw new HarnessException("unable to find folder name field "+ locator);
+		String locator = Locators.zNameField;
 
-      sType(locator, folder);      
+		if ( !this.sIsElementPresent(locator) )
+			throw new HarnessException("unable to find folder name field "+ locator);
+
+		sType(locator, folder);      
 	}
 
 	public enum FolderColor {
@@ -175,6 +206,8 @@ public class DialogCreateFolder extends AbsDialog {
 	public void zEnterFolderColor(FolderColor color) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderColor("+ color +")");
 		
+		tracer.trace("Enter color "+ color);
+
 		if ( color == null ) 
 			throw new HarnessException("folder must not be null");
 		

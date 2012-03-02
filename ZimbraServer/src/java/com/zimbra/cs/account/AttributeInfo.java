@@ -24,8 +24,10 @@ import java.util.regex.Pattern;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
+import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.Version;
@@ -279,6 +281,10 @@ public class AttributeInfo {
             for (int i=0; i < values.length; i++)
                 checkValue(values[i], checkImmutable, attrsToModify);
         }
+        
+        if (isDeprecated() && !DebugConfig.allowModifyingDeprecatedAttributes) {
+            throw ServiceException.FAILURE("modifying deprecated attribute is not allowed: " + mName, null);
+        }
     }
 
     protected void checkValue(String value, boolean checkImmutable, Map attrsToModify) throws ServiceException {
@@ -299,6 +305,11 @@ public class AttributeInfo {
                 return;
             else
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be TRUE or FALSE", null);
+        case TYPE_BINARY:
+            byte[] binary = ByteUtil.decodeLDAPBase64(value);
+            if (binary.length > mMax)
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+binary.length+") larger then max allowed: "+mMax, null);
+            return;
         case TYPE_DURATION:
             if (!DURATION_PATTERN.matcher(value).matches())
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName + " " + DURATION_PATTERN_DOC, null);

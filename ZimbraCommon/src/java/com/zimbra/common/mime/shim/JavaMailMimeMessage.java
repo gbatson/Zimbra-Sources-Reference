@@ -54,7 +54,7 @@ public class JavaMailMimeMessage extends MimeMessage implements JavaMailShim {
     private Object jmcontent; // JavaMailMimeMultipart or JavaMailMimeMessage or null
 
     public JavaMailMimeMessage(com.zimbra.common.mime.MimeMessage mm) {
-        super(Session.getInstance(mm.getProperties()));
+        super(Session.getInstance(mm.getProperties() == null ? new Properties() : mm.getProperties()));
         zmessage = mm;
     }
 
@@ -127,6 +127,43 @@ public class JavaMailMimeMessage extends MimeMessage implements JavaMailShim {
 
     public Session getSession() {
         return session;
+    }
+
+    public JavaMailMimeMessage setSession(Session session) {
+        this.session = session;
+        if (ZPARSER) {
+            zmessage.setProperties(session == null ? null : session.getProperties());
+        }
+        return this;
+    }
+
+    public String getProperty(String key) {
+        return session == null ? null : session.getProperties().getProperty(key);
+    }
+
+    public JavaMailMimeMessage setProperty(String key, String value) {
+        Properties props = session == null ? null : session.getProperties();
+        if (props != null) {
+            if (value != null) {
+                props.setProperty(key, value);
+            } else {
+                props.remove(key);
+            }
+        }
+        if (ZPARSER) {
+            Properties zprops = zmessage.getProperties();
+            if (zprops == null && value != null) {
+                zmessage.setProperties(zprops = new Properties());
+            }
+            if (zprops != props) {
+                if (value != null) {
+                    zprops.setProperty(key, value);
+                } else if (zprops != null) {
+                    zprops.remove(key);
+                }
+            }
+        }
+        return this;
     }
 
     @Override

@@ -498,7 +498,8 @@ effect if called in a <nosession> context.
    <id>{account-id}</id>
    <name>{account-name}</name>
    <lifetime>...</lifetime>
-   [<rest>{account-base-REST-url}</rest>
+   [<adminDelegated>{admin-delegated}</adminDelegated>
+    <rest>{account-base-REST-url}</rest>
     <used>{used}</used>
     <prevSession>{previous-SOAP-session}</prevSession>
     <accessed>{last-SOAP-access}</accessed>
@@ -557,13 +558,14 @@ effect if called in a <nosession> context.
          </attrs>
      </childAccount>*
    </childAccounts>
-   [<license status="inGracePeriod|bad"/>]
 </GetInfoResponse>
 
   {version} = server version: <major>[.<minor>[.<maintenance>]][build] <release> <date>[ <type>]
   {account-name} = email address (user@domain)
   {life-time} = number of milliseconds until auth token expires
+  {admin-delegated} = "1" if the auth token is a delegated auth token issued to an admin account
   {account-base-REST-url} = base REST URL for the requested account
+  
 
 
   returned only if the command successfully executes on the target user's home mail server:
@@ -585,9 +587,6 @@ effect if called in a <nosession> context.
        the only one URL will be returned.
 
   {account-base-public-url} = base public URL for the requested account
-
-  license attribute is pertinent to the Network edition only.  this attribute is
-  present only when the installed license is NOT ok.
 
   attrs under <childAccount>: including the following attrs of the child account:
         - displayName
@@ -656,6 +655,17 @@ import and export of addressbook.
  <SearchGalRequest [type="{type}"] [limit="..."] [offset="..."] [sortBy="{sort-by}"] [groupBy="{group-by}"]  [needExp="1|0"]>
   [<cursor id="{prevId}" sortVal="{prevSortValue}" endSortVal="{endSortValue}"/> ]
    <name>...</name>
+   
+   [<searchFilter>
+     <conds [not="1|0"] [or="1|0"] >
+       [<cond> or <conds>]+
+     </conds>  (exactly one instance of <conds>)
+
+     -- or --
+
+     <cond [not="1|0"] attr="{attr}" op="{op}" value="{value}" />  (exactly one instance of <cond>)
+   </searchFilter>]
+   
  </SearchGalRequest>
 
  <SearchGalResponse more="{more}" sortBy="sort-by" offset="..." [tokenizeKey="{tokenize-key-op}"]>
@@ -687,6 +697,8 @@ import and export of addressbook.
        returned only if needExp is 1 in the request and only on group entries (type=group in attrs on a <cn>).
 
   see SearchRequest for use of cursor.
+
+  see SearchCalendarResources for use of searchFilter
 
 ----------------------------
 
@@ -2672,17 +2684,19 @@ to work in ZCS 6.0, and will be removed in the next major release.
 
 Tests:
 
-  <headerTest header="{comma-separated-header-names}" stringComparison="{type}" value="{value}" />
+  <headerTest header="{comma-separated-header-names}" stringComparison="{type}" [caseSensitive="{0|1}"] value="{value}" />
   <headerExistsTest header="{header-name}" />
-  <mimeHeaderTest header="{header-name}" stringComparison="{type}" value="{value}" />
+  <mimeHeaderTest header="{header-name}" stringComparison="{type}" [caseSensitive="{0|1}"] value="{value}" />
   <sizeTest numberComparison="{over|under}" s="{size}" />
   <dateTest dateComparison="{before|after}" d="{date}" />
-  <bodyTest value="{value}" />
+  <bodyTest [caseSensitive="{0|1}"] value="{value}" />
   <attachmentTest />
   <addressBookTest header="{header-name}" folderPath="{folder-path}" />
   <inviteTest>
     <method>{method}</method>+
   </inviteTest>
+  <currentTimeTest dateComparison="{before|after}" d="time-in-HHmm-format}" />
+  <currentDayOfWeekTest value="comma-separated-day-of-week-indices" />
 
 Each test has the following optional attributes:
     * "negative": specifies a "not" condition for that test
@@ -2697,6 +2711,12 @@ Actions:
   <actionFlag flagName="{flag}" />
   <actionRedirect a="{email-address}" />
   <actionStop />
+  <actionReply>
+    <content>{body-template}</content>
+  </actionReply>
+  <actionNotify a="email-address" [su="subject-template"] [maxBodySize="{num-bytes}"]>
+    <content>{body-template}</content> ?
+  </actionReply>
 
 Each action has an optional "index" attribute which specifies a guaranteed order
 for the action elements.
@@ -2706,16 +2726,17 @@ numberComparison values: over, under
 dateComparison values: before, after
 size values are in bytes (no suffix), kilobytes (50K), megabytes (50M) or gigabytes (2G)
 flag values: flagged, read
-date values are in seconds since epoch, and are truncated to the day. Hours, minutes,
-  and seconds are ignored.
+<dateTest>: date values are are truncated to the day. Hours, minutes, and seconds are ignored.
 index is an integer, used to maintain the order of filter tests and actions.
 method values: anyrequest, anyreply, publish, request, reply, add, cancel, refresh,
   counter, declinecounter.  anyrequest matches publish, request, add, cancel,
   declinecounter.  anyreply matches reply, refresh, counter.  If no methods are
   specified, the test returns true for all invites.
-
-<mimeHeaderTest> behaves just like <headerTest>, but matches headers on
+<mimeHeaderTest>: behaves just like <headerTest>, but matches headers on
   all MIME parts, instead of just the top-level headers.
+<currentDayOfWeekTest>: 0=Sunday, 6=Saturday
+body-template/subject-template: Can contain variables such as ${SUBJECT}, ${TO}, ${CC}, etc
+  (basically ${any-header-name}; case not important), plus ${BODY} (text body of the message).
 
 ---------------------------
 
@@ -3474,5 +3495,20 @@ sets device email address as the value of zimbraCalendarReminderDeviceEmail acco
 <InvalidateReminderDeviceRequest a="{device-email-address}"/>
 
 <InvalidateReminderDeviceResponse/>
+
+-----------------------------
+
+Get SMIME public keys from external LDAP.
+
+<GetSMIMEPublicKeysRequest>
+  <email>...<email>
+<GetSMIMEPublicKeysRequest>
+
+<GetSMIMEPublicKeysResponse>
+  <cert>{base64-encoded-cert}</cert>+
+</GetSMIMEPublicKeysResponse>
+
+Throws NO_SMIME_CONFIG if ther is no SMIME config on the domain or globalconfig.
+
 
 -----------------------------

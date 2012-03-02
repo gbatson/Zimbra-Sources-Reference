@@ -11,7 +11,7 @@
 
   <display-name>Zimbra Service</display-name>
   <description>SOAP Service</description>
-
+  
   <filter>
     <filter-name>ThrottlingFilter</filter-name>
     <filter-class>com.zimbra.cs.servlet.ThrottlingFilter</filter-class>
@@ -182,6 +182,18 @@
     </init-param>
     <load-on-startup>5</load-on-startup>
   </servlet>
+  
+  <!-- HTTPSCLIENTCERTBEGIN %%uncomment VAR:zimbraMailSSLClientCertPort,-->,0%%
+  <servlet>
+    <servlet-name>CertAuthServlet</servlet-name>
+    <servlet-class>com.zimbra.cs.service.CertAuthServlet</servlet-class>
+    <init-param>
+      <param-name>allowed.ports</param-name>
+      <param-value>%%zimbraMailSSLClientCertPort%%, 9443</param-value>
+    </init-param>
+    <load-on-startup>5</load-on-startup>
+  </servlet>
+  %%uncomment VAR:zimbraMailSSLClientCertPort,<!--,0%% HTTPSCLIENTCERTEND -->
 
   <servlet>
     <servlet-name>PublicICalServlet</servlet-name>
@@ -338,7 +350,7 @@
     <servlet-name>PreAuthServlet</servlet-name>
     <url-pattern>/preauth</url-pattern>
   </servlet-mapping>
-
+  
   <!-- HTTPSCLIENTCERTBEGIN %%uncomment VAR:zimbraMailSSLClientCertPort,-->,0%%
   <servlet-mapping>
     <servlet-name>CertAuthServlet</servlet-name>

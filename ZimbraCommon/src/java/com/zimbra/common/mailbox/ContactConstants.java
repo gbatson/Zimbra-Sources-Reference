@@ -77,6 +77,7 @@ public final class ContactConstants {
     public static final String A_jobTitle = Attr.jobTitle.name();
     public static final String A_lastName = Attr.lastName.name();
     public static final String A_phoneticLastName = Attr.phoneticLastName.name();
+    public static final String A_maidenName = Attr.maidenName.name();
     public static final String A_member = Attr.member.name();
     public static final String A_middleName = Attr.middleName.name();
     public static final String A_mobilePhone = Attr.mobilePhone.name();
@@ -94,6 +95,7 @@ public final class ContactConstants {
     public static final String A_otherStreet = Attr.otherStreet.name();
     public static final String A_otherURL = Attr.otherURL.name();
     public static final String A_pager = Attr.pager.name();
+    public static final String A_SMIMECertificate = Attr.SMIMECertificate.name();
     public static final String A_workCity = Attr.workCity.name();
     public static final String A_workCountry = Attr.workCountry.name();
     public static final String A_workFax = Attr.workFax.name();
@@ -175,6 +177,7 @@ public final class ContactConstants {
         jobTitle,
         lastName,
         phoneticLastName,
+        maidenName,
         member,
         middleName,
         mobilePhone,
@@ -193,6 +196,7 @@ public final class ContactConstants {
         otherURL,
         pager,
         tollFree,
+        SMIMECertificate,
         workCity,
         workCountry,
         workFax,

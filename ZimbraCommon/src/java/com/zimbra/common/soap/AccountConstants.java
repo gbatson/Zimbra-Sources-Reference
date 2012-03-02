@@ -96,15 +96,26 @@ public class AccountConstants {
     public static final QName GET_VERSION_INFO_REQUEST = QName.get("GetVersionInfoRequest", NAMESPACE);
     public static final QName GET_VERSION_INFO_RESPONSE = QName.get("GetVersionInfoResponse", NAMESPACE);
     
+    // SMIME
+    public static final QName GET_SMIME_PUBLIC_CERTS_REQUEST = QName.get("GetSMIMEPublicCertsRequest", NAMESPACE);
+    public static final QName GET_SMIME_PUBLIC_CERTS_RESPONSE = QName.get("GetSMIMEPublicCertsResponse", NAMESPACE);
+
+    
     public static final String E_ACTION = "action";
+    public static final String E_ADMIN_DELEGATED = "adminDelegated";
     public static final String E_AUTH_TOKEN = "authToken";
     public static final String E_CRUMB = "crumb";
     public static final String E_REFERRAL = "refer";
     public static final String E_LIFETIME = "lifetime";
     public static final String E_ACCOUNT = "account";
     public static final String E_CALENDAR_RESOURCE = "calresource";
+    public static final String E_CERT = "cert";
+    public static final String E_CERTS = "certs";
     public static final String E_DL = "dl";
     public static final String E_DLM = "dlm";
+    public static final String E_EMAIL = "email";
+    public static final String E_EMAIL2 = "email2";
+    public static final String E_EMAIL3 = "email3";
     public static final String E_VERSION = "version";
     public static final String E_NAME = "name";
     public static final String E_ID = "id";
@@ -156,6 +167,7 @@ public class AccountConstants {
     public static final String E_OWNER = "owner";
     public static final String E_SHARE = "share";
     public static final String E_CONTACT_ID = "cid";
+    public static final String E_STORE = "store";
     
     public static final String A_ACTIVE = "active";
     public static final String A_ATTRS = "attrs";
@@ -184,11 +196,14 @@ public class AccountConstants {
     public static final String A_UTF8 = "utf8";
     public static final String A_VISIBLE = "visible";
     public static final String A_PERM_DENIED = "pd";
+    public static final String A_EMAIL = "email";
+    public static final String A_STORE = "store";
     
     // gal
     public static final String A_IS_GROUP = "isGroup";
     public static final String A_EXP = "exp";
     public static final String A_NEED_EXP = "needExp";
+    public static final String A_NEED_SMIME_CERTS = "needSMIMECerts";
     public static final String A_GAL_ACCOUNT_ID = "galAcctId";
     public static final String A_PAGINATION_SUPPORTED = "paginationSupported";
     
@@ -207,6 +222,9 @@ public class AccountConstants {
     public static final String A_RIGHTS = "rights";
     public static final String A_MOUNTPOINT_ID = "mid";
     
+    // contact search
+    public static final String A_DEPARTMENT = "department";
+
 
     // calendar resource search
     public static final String A_ENTRY_SEARCH_FILTER_OR = "or";

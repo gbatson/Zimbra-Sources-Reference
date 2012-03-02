@@ -117,6 +117,8 @@ public class ZFeatures {
     public boolean getMailPriority() { return getBool(Provisioning.A_zimbraFeatureMailPriorityEnabled); }
 
     public boolean getPortalEnabled() { return getBool(Provisioning.A_zimbraFeaturePortalEnabled); }
+
+    public boolean getContactsDetailedSearch() { return getBool(Provisioning.A_zimbraFeatureContactsDetailedSearchEnabled); }
     
     // defaults to TRUE
     public boolean getWebSearchEnabled() { return get(Provisioning.A_zimbraFeatureWebSearchEnabled) == null ||
@@ -132,5 +134,8 @@ public class ZFeatures {
 	// defaults to TRUE
 	public boolean getPop3Enabled() { return	get(Provisioning.A_zimbraPop3Enabled) == null ||
 												getBool(Provisioning.A_zimbraPop3Enabled); }
+	// defaults to TRUE
+	public boolean getSpam() { return	get(Provisioning.A_zimbraFeatureAntispamEnabled) == null ||
+												getBool(Provisioning.A_zimbraFeatureAntispamEnabled); }
 }
 

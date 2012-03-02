@@ -69,6 +69,8 @@ public class FlagMail extends AjaxCommonTest {
 			}
 		}
 
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// Make sure the GUI shows "flagged"
 		ZAssert.assertNotNull(listmail, "Verify the message is in the list");
 		ZAssert.assertTrue(listmail.gIsFlagged, "Verify the message is flagged in the list");
@@ -82,7 +84,7 @@ public class FlagMail extends AjaxCommonTest {
 
 	
 	@Test(	description = "Flag a mail by using shortcut 'mf'",
-			groups = { "smoke" })
+			groups = { "functional" })
 	public void FlagMail_02() throws HarnessException {
 		
 		// Create the message data to be sent
@@ -124,6 +126,8 @@ public class FlagMail extends AjaxCommonTest {
 			}
 		}
 
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		
 		// Make sure the GUI shows "flagged"
 		ZAssert.assertNotNull(listmail, "Verify the message is in the list");
 		ZAssert.assertTrue(listmail.gIsFlagged, "Verify the message is flagged in the list");

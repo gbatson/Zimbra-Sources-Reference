@@ -503,11 +503,13 @@ function(attId, docIds, draftType, callback, contactId) {
 
 	// check for read receipt
 	var requestReadReceipt = false;
-    var acct = acctName && appCtxt.accountList.getAccountByName(acctName);
+	var acct = acctName && appCtxt.accountList.getAccountByName(acctName);
 	if (appCtxt.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED, null, acct)) {
 		var menu = this._toolbar.getButton(ZmOperation.COMPOSE_OPTIONS).getMenu();
-		var mi = menu.getItemById(ZmOperation.KEY_ID, ZmOperation.REQUEST_READ_RECEIPT);
-		requestReadReceipt = (!!(mi && mi.getChecked()));
+		if (menu) {
+			var mi = menu.getItemById(ZmOperation.KEY_ID, ZmOperation.REQUEST_READ_RECEIPT);
+			requestReadReceipt = (!!(mi && mi.getChecked()));
+		}
 	}
 
 	var respCallback = new AjxCallback(this, this._handleResponseSendMsg, [draftType, msg, callback]);
@@ -702,6 +704,7 @@ function(actionCode) {
 	switch (actionCode) {
 		case ZmKeyMap.CANCEL:
 			DBG.println("aif1", "Compose ctlr: CANCEL");
+			AjxDebug.println(AjxDebug.REPLY, "Reset compose view: handleKeyAction");
 			this._cancelCompose();
 			break;
 
@@ -1109,17 +1112,18 @@ function(composeMode, incOptions) {
 
 	composeMode = composeMode || this._composeMode;
 	incOptions = incOptions || this._curIncOptions || {};
+    var ac = window.parentAppCtxt || window.appCtxt;
 
 	var button = this._toolbar.getButton(ZmOperation.COMPOSE_OPTIONS);
 	button.setToolTipContent(ZmMsg[ZmComposeController.OPTIONS_TT[this._action]]);
 	var menu = this._optionsMenu[this._action];
 	if (!menu) { return; }
 
-	if (appCtxt.get(ZmSetting.HTML_COMPOSE_ENABLED)) {
+	if (ac.get(ZmSetting.HTML_COMPOSE_ENABLED)) {
 		menu.checkItem(ZmHtmlEditor._VALUE, composeMode, true);
 	}
 
-	if (appCtxt.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED) || appCtxt.multiAccounts) {
+	if (ac.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED) || ac.multiAccounts) {
 		var mi = menu.getOp(ZmOperation.REQUEST_READ_RECEIPT);
 		if (mi) {
 			// did this draft have "request read receipt" option set?
@@ -1130,8 +1134,8 @@ function(composeMode, incOptions) {
 				mi.setChecked(false, true);
 			}
 
-			if (appCtxt.multiAccounts) {
-                mi.setEnabled(appCtxt.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED, null, this._composeView.getFromAccount()));
+			if (ac.multiAccounts) {
+                mi.setEnabled(ac.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED, null, this._composeView.getFromAccount()));
 			}
 		}
 	}
@@ -1416,6 +1420,7 @@ function(ev) {
 // Cancel button was pressed
 ZmComposeController.prototype._cancelListener =
 function(ev) {
+	AjxDebug.println(AjxDebug.REPLY, "Reset compose view: _cancelListener");
 	this._cancelCompose();
 };
 
@@ -1535,7 +1540,9 @@ function(op) {
 		this._action = ZmOperation.FORWARD_INLINE;
 	}
 
-	cv.resetBody(this._action, this._msg);
+	var unquotedContent = cv.getUnQuotedContent();
+
+	cv.resetBody(this._action, this._msg, unquotedContent);
 };
 
 ZmComposeController.prototype._detachListener =

@@ -36,6 +36,8 @@ ZaGlobalConfigViewController.prototype.constructor = ZaGlobalConfigViewControlle
 ZaController.initToolbarMethods["ZaGlobalConfigViewController"] = new Array();
 ZaController.setViewMethods["ZaGlobalConfigViewController"] = [];
 ZaController.changeActionsStateMethods["ZaGlobalConfigViewController"] = [];
+//qin
+ZaController.saveChangeCheckMethods["ZaGlobalConfigViewController"] = new Array();
 
 /**
 * Adds listener to removal of an ZaDomain 
@@ -216,9 +218,19 @@ function () {
 		}
 	}
 
+        //transfer the fields from the tmpObj to the _currentObject, since _currentObject is an instance of ZaDomain
+        var mods = new Object();
+
+        // execute other plugin methods
+        if(ZaController.saveChangeCheckMethods["ZaGlobalConfigViewController"]) {
+                var methods = ZaController.saveChangeCheckMethods["ZaGlobalConfigViewController"];
+                var cnt = methods.length;
+                for(var i = 0; i < cnt; i++) {
+                        if(typeof(methods[i]) == "function")
+                               methods[i].call(this, mods, tmpObj, this._currentObject);
+                }
+        }
 	
-	//transfer the fields from the tmpObj to the _currentObject, since _currentObject is an instance of ZaDomain
-	var mods = new Object();
 	for (var a in tmpObj.attrs) {
 		if(a == ZaItem.A_objectClass || a == ZaGlobalConfig.A_zimbraAccountClientAttr ||
 		a == ZaGlobalConfig.A_zimbraServerInheritedAttr || a == ZaGlobalConfig.A_zimbraDomainInheritedAttr ||
@@ -226,7 +238,6 @@ function () {
 		a == ZaGlobalConfig.A_zimbraGalLdapFilterDef || /^_/.test(a) || a == ZaGlobalConfig.A_zimbraMtaBlockedExtension || a == ZaGlobalConfig.A_zimbraMtaCommonBlockedExtension
                 || a == ZaItem.A_zimbraACE)
 			continue;
-
 		if(!ZaItem.hasWritePermission(a,tmpObj)) {
 			continue;
 		}		
@@ -259,10 +270,10 @@ function () {
 		} else if (AjxUtil.isEmpty(tmpObj.attrs[ZaGlobalConfig.A_zimbraMtaBlockedExtension])  && !AjxUtil.isEmpty(this._currentObject.attrs[ZaGlobalConfig.A_zimbraMtaBlockedExtension])) {
 			mods[ZaGlobalConfig.A_zimbraMtaBlockedExtension] = "";
 		}		
-	}	
+	}
 	//save the model
 	//var changeDetails = new Object();
-	this._currentObject.modify(mods);
+	this._currentObject.modify(mods,tmpObj);
 	
 	return true;
 }

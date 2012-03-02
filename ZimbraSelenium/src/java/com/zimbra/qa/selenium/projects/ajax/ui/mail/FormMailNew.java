@@ -6,7 +6,7 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.RecipientItem.RecipientType;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 
 
@@ -39,14 +39,14 @@ public class FormMailNew extends AbsForm {
 		public static final String zSubjectField		= "css=div[id^=zv__COMPOSE] input[id$=_subject_control]";
 		public static final String zAttachmentField     = "css=div[id$=_attachments_div]";
 		public static final String zAttachmentText      = "css=div[id$=_attachments_div] a[class='AttLink']:contains(";
-
-		public static final String zBodyFrameHTML		= "//div[contains(id,'zv__COMPOSE')]//iframe";
-
+		public static final String zLinkText 			= "css=iframe[id*='DWT'][class*='Editor']";
 		
-		public static final String zPriorityPulldown	= "css=[id^=zv__COMPOSE][id$=___priority_dropdown]";
-		public static final String zPriorityOptionHigh	= "css=[id^=zv__COMPOSE][id$=___priority_dropdown]";
-		public static final String zPriorityOptionNormal	= "css=[id^=zv__COMPOSE][id$=___priority_dropdown]";
-		public static final String zPriorityOptionLow	= "css=[id^=zv__COMPOSE][id$=___priority_dropdown]";
+		public static final String zBodyFrameHTML		= "//div[contains(id,'zv__COMPOSE')]//iframe";
+		
+		public static final String zPriorityPulldown	= "css=[id*='__COMPOSE'][id$='___priority_dropdown']";
+		public static final String zPriorityOptionHigh	= "css=[id*='__COMPOSE'][id$='___priority_dropdown']";
+		public static final String zPriorityOptionNormal	= "css=[id*='__COMPOSE'][id$='___priority_dropdown']";
+		public static final String zPriorityOptionLow	= "css=[id*='__COMPOSE'][id$='___priority_dropdown']";
 		
 		public static final String zBubbleToField		= "css=[id^=zv__COMPOSE][id$=_to_cell]";
 		public static final String zBubbleCcField		= "css=[id^=zv__COMPOSE][id$=_cc_cell]";
@@ -126,6 +126,8 @@ public class FormMailNew extends AbsForm {
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
 		
+		tracer.trace("Click button "+ button);
+
 		if ( button == null )
 			throw new HarnessException("Button cannot be null!");
 		
@@ -158,7 +160,7 @@ public class FormMailNew extends AbsForm {
 		} else if ( button == Button.B_CANCEL ) {
 
 			locator = Locators.zCancelIconBtn;
-			page = new DialogWarning(DialogWarning.DialogWarningID.SaveCurrentMessageAsDraft, this.MyApplication);
+			page = new DialogWarning(DialogWarning.DialogWarningID.SaveCurrentMessageAsDraft, this.MyApplication, ((AppAjaxClient)this.MyApplication).zPageMail);
 			
 			// If the compose view is not dirty (i.e. no pending changes)
 			// then the dialog will not appear.  So, click the button
@@ -258,6 +260,8 @@ public class FormMailNew extends AbsForm {
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressPulldown("+ pulldown +", "+ option +")");
 		
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+
 		if ( pulldown == null )
 			throw new HarnessException("Pulldown cannot be null!");
 		
@@ -278,21 +282,21 @@ public class FormMailNew extends AbsForm {
 			if ( option == Button.O_PRIORITY_HIGH ) {
 				
 				// TODO
-				pulldownLocator = "css=[id^='zv__COMPOSE'][id$='___priority_left_icon']";
+				pulldownLocator = Locators.zPriorityPulldown;
 				optionLocator = "TODO";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
 				
 				// TODO
-				pulldownLocator = "css=[id^='zv__COMPOSE'][id$='___priority_left_icon']";
+				pulldownLocator = Locators.zPriorityPulldown;
 				optionLocator = "TODO";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_LOW ) {
 				
 				// TODO
-				pulldownLocator = "css=[id^='zv__COMPOSE'][id$='___priority_left_icon']";
+				pulldownLocator = Locators.zPriorityPulldown;
 				optionLocator = "TODO";
 				page = this;
 
@@ -349,6 +353,8 @@ public class FormMailNew extends AbsForm {
 	 */
 	public void zFillField(Field field, String value) throws HarnessException {
 	
+		tracer.trace("Set "+ field +" to "+ value);
+
 		String locator = null;
 		
 		if ( field == Field.To ) {

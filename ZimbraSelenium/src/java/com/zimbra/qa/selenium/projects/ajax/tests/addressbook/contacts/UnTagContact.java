@@ -5,7 +5,6 @@ import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.ContactItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
@@ -71,19 +70,23 @@ public class UnTagContact extends AjaxCommonTest  {
 
     	// Untag it
 		app.zPageAddressbook.zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_REMOVETAG);
-		
+
+
+		//verify toasted message 'contact created'
+		Toaster toast = app.zPageMain.zGetToaster();
+		String toastMsg = toast.zGetToastMessage();
+		ZAssert.assertStringContains(toastMsg, "All tags removed from 1 contact", "Verify toast message 'All tags removed from 1 contact'");
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		app.zGetActiveAccount().soapSend(
 					"<GetContactsRequest xmlns='urn:zimbraMail'>" +
 						"<cn id='"+ contactItem.getId() +"'/>" +
 					"</GetContactsRequest>");
 		String contactTag = app.zGetActiveAccount().soapSelectValue("//mail:GetContactsResponse//mail:cn", "t");
-		
+
 		ZAssert.assertNull(contactTag, "Verify that the tag is removed from the contact");
-	      
-		//verify toasted message 'contact created'
-        Toaster toast = app.zPageMain.zGetToaster();
-        String toastMsg = toast.zGetToastMessage();
-        ZAssert.assertStringContains(toastMsg, "All tags removed from 1 contact", "Verify toast message 'All tags removed from 1 contact'");
+
 	 
    	}
 	

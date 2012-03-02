@@ -923,8 +923,8 @@ ZaAccountXFormView.FEATURE_TAB_ATTRS = [ZaAccount.A_zimbraFeatureManageZimlets,
 	ZaAccount.A_zimbraFeatureTasksEnabled,
 	//ZaAccount.A_zimbraFeatureNotebookEnabled,
 	ZaAccount.A_zimbraFeatureBriefcasesEnabled,
-	ZaAccount.A_zimbraFeatureBriefcaseDocsEnabled,
-	ZaAccount.A_zimbraFeatureIMEnabled,
+	//ZaAccount.A_zimbraFeatureBriefcaseDocsEnabled,
+	//ZaAccount.A_zimbraFeatureIMEnabled,
 	ZaAccount.A_zimbraFeatureOptionsEnabled,
 	ZaAccount.A_zimbraFeatureTaggingEnabled,
 	ZaAccount.A_zimbraFeatureSharingEnabled,
@@ -950,13 +950,15 @@ ZaAccountXFormView.FEATURE_TAB_ATTRS = [ZaAccount.A_zimbraFeatureManageZimlets,
 	ZaAccount.A_zimbraFeatureMailPollingIntervalPreferenceEnabled,
 	ZaAccount.A_zimbraFeatureIdentitiesEnabled,
 	ZaAccount.A_zimbraFeatureGroupCalendarEnabled,
-	ZaAccount.A_zimbraFeatureInstantNotify,
+	//ZaAccount.A_zimbraFeatureInstantNotify,
   ZaAccount.A_zimbraFeaturePeopleSearchEnabled,
   ZaAccount.A_zimbraFeatureAdvancedSearchEnabled,
 	ZaAccount.A_zimbraFeatureSavedSearchesEnabled,
 	ZaAccount.A_zimbraFeatureInitialSearchPreferenceEnabled,
 	ZaAccount.A_zimbraFeatureImportExportFolderEnabled,
-	ZaAccount.A_zimbraDumpsterEnabled
+	ZaAccount.A_zimbraDumpsterEnabled,
+	ZaAccount.A_zimbraFeatureSMIMEEnabled,
+	ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled
 ];
 
 ZaAccountXFormView.FEATURE_TAB_RIGHTS = [];
@@ -1958,7 +1960,26 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							{ref:ZaAccount.A_zimbraFeatureInitialSearchPreferenceEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureInitialSearchPreferenceEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureInitialSearchPreferenceEnabled, trueValue:"TRUE", falseValue:"FALSE"},
 						  {ref:ZaAccount.A_zimbraFeaturePeopleSearchEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeaturePeopleSearchEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeaturePeopleSearchEnabled, trueValue:"TRUE", falseValue:"FALSE"}
 						]
-					}
+					},
+                                        {type:_ZA_TOP_GROUPER_, label: ZaMsg.NAD_zimbraSMIMEFeature, id:"account_form_features_smime", colSizes:["auto"],numCols:1,
+                                                visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,             
+                                      		[ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, ZaAccount.A_zimbraFeatureSMIMEEnabled]]],
+                                                items:[
+                                                 {ref:ZaAccount.A_zimbraFeatureSMIMEEnabled,
+                                                        type:_SUPER_CHECKBOX_,
+                                                        resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
+                                                        msgName:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,
+                                                        checkBoxLabel:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,
+                                                        trueValue:"TRUE", falseValue:"FALSE"},
+
+                                                 {ref:ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, 
+							type:_SUPER_CHECKBOX_, 
+							resetToSuperLabel:ZaMsg.NAD_ResetToCOS, 
+							msgName:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled,
+							checkBoxLabel:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled, 
+							trueValue:"TRUE", falseValue:"FALSE"}
+                                                ]
+                                        }
 				]
 			});
 	}
@@ -1984,8 +2005,9 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							],
 							cssStyle:"padding-top:5px; padding-bottom:5px"
 						},
-						{type:_ZA_PLAIN_GROUPER_, id:"account_prefs_general",colSizes:["auto"],numCols:1,
+						{type:_ZA_PLAIN_GROUPER_, id:"account_prefs_general",colSizes:["auto"],numCols:1, 
 							items :[
+								 { type:_GROUP_, numCols: 1, colSizes:["auto"], width:"100%", colSpan:3, items:[
 								{ref:ZaAccount.A_zimbraPrefClientType,
 									type:_SUPER_SELECT1_,
 									labelCssStyle:"width:195px",colSizes:["375px","190px"], 
@@ -1993,7 +2015,7 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 									msgName:ZaMsg.MSG_zimbraPrefClientType,
 									label:ZaMsg.LBL_zimbraPrefClientType, 
 									labelLocation:_LEFT_
-								},
+								}]},
 								{ref:ZaAccount.A_zimbraPrefMailInitialSearch, type:_SUPER_TEXTFIELD_,
 									colSizes:["195px","375px","190px"], 
 									msgName:ZaMsg.LBL_zimbraPrefMailInitialSearch,
@@ -2030,17 +2052,18 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 									resetToSuperLabel:ZaMsg.NAD_ResetToCOS, checkBoxLabel:ZaMsg.LBL_zimbraPrefShowSelectionCheckbox,
 									trueValue:"TRUE", falseValue:"FALSE"},
 								{ref:ZaAccount.A_zimbraJunkMessagesIndexingEnabled, 
-									type:_SUPER_CHECKBOX_,  colSpan:2,
+									type:_SUPER_CHECKBOX_,  colSpan:3,
 									colSizes:["195px","375px","190px"],
 									resetToSuperLabel:ZaMsg.NAD_ResetToCOS, 
 									msgName:ZaMsg.LBL_zimbraJunkMessagesIndexingEnabled,
 									checkBoxLabel:ZaMsg.LBL_zimbraJunkMessagesIndexingEnabled, 
 									trueValue:"TRUE", falseValue:"FALSE"},
-                                {ref:ZaAccount.A_zimbraPrefLocale, type:_SUPER_SELECT1_,
+                                				{ type:_GROUP_, numCols: 1, colSizes:["auto"], width:"100%", colSpan:3, items:[
+								{ref:ZaAccount.A_zimbraPrefLocale, type:_SUPER_SELECT1_,
 									labelCssStyle:"width:195px", colSizes:["375px","190px"],
-                                    choices: ZaSettings.getLocaleChoices(),
-                                    msgName:ZaMsg.LBL_zimbraPrefLocale,label:ZaMsg.LBL_zimbraPrefLocale,
-									 labelLocation:_LEFT_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS}
+                                    					choices: ZaSettings.getLocaleChoices(),
+                                    					msgName:ZaMsg.LBL_zimbraPrefLocale,label:ZaMsg.LBL_zimbraPrefLocale,
+									labelLocation:_LEFT_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS}]}
                             ]                                                             
 						},	
 						{type:_ZA_TOP_GROUPER_, id:"account_prefs_standard_client",colSizes:["195px","auto"],numCols:2,
@@ -2973,7 +2996,7 @@ nowrap:false, labelWrap:true,
                        						label:ZaMsg.LBL_zimbraProxyAllowedDomains, 
                        						labelCssStyle:"vertical-align:top",
                        						type:_SUPER_REPEAT_,
-								resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
+                       						resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
                        						repeatInstance:"",
                        						addButtonLabel:ZaMsg.NAD_ProxyAddAllowedDomain ,
                        						removeButtonLabel: ZaMsg.NAD_ProxyRemoveAllowedDomain,
@@ -2983,7 +3006,8 @@ nowrap:false, labelWrap:true,
                        						repeatItems: [
                                					{ref:".", type:_TEXTFIELD_,
                                 				enableDisableChecks:[ZaItem.hasWritePermission] ,
-                                  				visibilityChecks:[ZaItem.hasReadPermission],
+                                  				visibilityChecks:[[ZaItem.hasReadPermission,ZaAccount.A_zimbraProxyAllowedDomains]],
+                                  				enableDisableChecks:[[ZaItem.hasWritePermission,ZaAccount.A_zimbraProxyAllowedDomains]],
                                   				width: "15em"}
                                 				]			
                      					},

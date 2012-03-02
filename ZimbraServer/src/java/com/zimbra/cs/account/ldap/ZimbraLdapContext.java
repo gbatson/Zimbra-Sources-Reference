@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.security.cert.Certificate;
 import java.util.Date;
 import java.util.Hashtable;
+import java.util.Set;
 
 import javax.naming.CompositeName;
 import javax.naming.Context;
@@ -61,6 +62,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.stats.ZimbraPerf;
 import com.zimbra.cs.util.Zimbra;
@@ -221,6 +223,31 @@ public class ZimbraLdapContext {
         return false;
     }
     
+    // TODO: re-visit when we switch away from JNDI
+    // JNDI relies the ;binary option in attribute name to return binary data in bytes array,
+    // (otherwise it(Attribute.get()) returns String, even for attrs declared as 1.3.6.1.4.1.1466.115.121.1.5 syntax)
+    // but OpenLDAP does NOT support the ;binary option in attribute name.
+    //
+    // So we ended up using this JNDI hack
+    //
+    private static void markBinaryAttrs(Hashtable<String, String> env, Set<String> binaryAttrs) {
+        StringBuilder binAttrs = new StringBuilder();
+        for (String attr : binaryAttrs) {
+            binAttrs.append(attr + " ");
+        }
+        if (binAttrs.length() > 0) {
+            env.put("java.naming.ldap.attributes.binary", binAttrs.toString());
+        }
+    }
+    
+    // for ZimbraLDAP, use AttributeManager
+    private static void markBinaryAttrs(Hashtable<String, String> env) {
+        AttributeManager attrMgr = AttributeManager.getInst();
+        if (attrMgr != null) {
+            markBinaryAttrs(env, attrMgr.getBinaryAttrs());
+        }
+    }
+    
     private static synchronized Hashtable<String, String> getDefaultEnv(boolean master) {
         Hashtable<String, String> sEnv = null;
         
@@ -237,6 +264,8 @@ public class ZimbraLdapContext {
         sEnv.put(Context.REFERRAL, "follow");
         sEnv.put("com.sun.jndi.ldap.connect.timeout", LC.ldap_connect_timeout.value());
         sEnv.put("com.sun.jndi.ldap.read.timeout", LC.ldap_read_timeout.value());
+        
+        markBinaryAttrs(sEnv);
         
         // env.put("java.naming.ldap.derefAliases", "never");
         // default: env.put("java.naming.ldap.version", "3");
@@ -300,6 +329,8 @@ public class ZimbraLdapContext {
         env.put(Context.REFERRAL, "follow");
         env.put("com.sun.jndi.ldap.connect.timeout", ldapConfig.connTimeout());
         env.put("com.sun.jndi.ldap.read.timeout", ldapConfig.readTimeout());
+        
+        markBinaryAttrs(env);
         
         if (ConnType.isSTARTTLS(master)) {
             env.put("com.sun.jndi.ldap.connect.pool", "false");
@@ -429,33 +460,48 @@ public class ZimbraLdapContext {
      * External LDAP
      */
     public ZimbraLdapContext(String urls[], boolean requireStartTLS, String bindDn, String bindPassword, String note) 
-        throws ServiceException, NamingException, IOException {
-        this(urls, requireStartTLS, null, bindDn, bindPassword, note);
+    throws ServiceException, NamingException, IOException {
+        this(urls, requireStartTLS, null, bindDn, bindPassword, null, note);
     }
     
     /*
      * External LDAP
      */
-    public ZimbraLdapContext(String urls[], boolean requireStartTLS, LdapGalCredential credential, String note) 
-        throws ServiceException, NamingException, IOException {
-        this(urls, requireStartTLS, credential.getAuthMech(), credential.getBindDn(), credential.getBindPassword(), note);
+    public ZimbraLdapContext(String urls[], boolean requireStartTLS, LdapGalCredential credential, Set<String> binaryAttrs, String note) 
+    throws ServiceException, NamingException, IOException {
+        this(urls, requireStartTLS, credential.getAuthMech(), credential.getBindDn(), credential.getBindPassword(), binaryAttrs, note);
+    }
+    
+    /*
+     * External LDAP
+     */
+    public ZimbraLdapContext(String urls[], boolean requireStartTLS, String authMech, 
+            String bindDn, String bindPassword, Set<String> binaryAttrs, String note)  
+    throws ServiceException, NamingException, IOException {
+        this(joinURLS(urls), requireStartTLS, authMech, bindDn, bindPassword, binaryAttrs, note); 
     }
     
     /*
      * External LDAP
      * 
-     * Naming or IO exceptions are not caught then wrapped in a ServiceException like in the ZimbraLdapContext for Zimbra internal directory, 
-     * because callsites of this method need to check for Naming/IOExceptions and log/handle/throw accordingly.  
+     * Unlike what's been done in the ZimbraLdapContext for Zimbra internal directory, 
+     * naming or IO exceptions are not caught then wrapped in a ServiceException.
+     * Callsites of this method need to check Naming/IOExceptions and log/handle/throw accordingly.  
      */
-    public ZimbraLdapContext(String urls[], boolean requireStartTLS, String authMech, String bindDn, String bindPassword, String note)  
-        throws ServiceException, NamingException, IOException {
+    public ZimbraLdapContext(String urls, boolean requireStartTLS, String authMech, 
+            String bindDn, String bindPassword, Set<String> binaryAttrs, String note)  
+    throws ServiceException, NamingException, IOException {
         Hashtable<String, String> env = new Hashtable<String, String>();
         
         env.put(Context.INITIAL_CONTEXT_FACTORY, "com.sun.jndi.ldap.LdapCtxFactory");
-        env.put(Context.PROVIDER_URL, joinURLS(urls));
+        env.put(Context.PROVIDER_URL, urls);
         env.put(Context.REFERRAL, "follow");
         env.put("com.sun.jndi.ldap.connect.timeout", LC.ldap_connect_timeout.value());
         env.put("com.sun.jndi.ldap.read.timeout", LC.ldap_read_timeout.value());
+        
+        if (binaryAttrs != null) {
+            markBinaryAttrs(env, binaryAttrs);
+        }
         
         String derefAliases = LC.ldap_deref_aliases.value();
         if (!StringUtil.isNullOrEmpty(derefAliases))

@@ -2425,6 +2425,13 @@ function(action, msg, extraBodyText) {
 	}
 };
 
+ZmComposeView.prototype.getUnQuotedContent =
+function() {
+	var body = this._htmlEditor.getContent();
+	var prefaceIndex = body.indexOf(this._getPreface());
+	return (prefaceIndex!=-1) ? AjxStringUtil.htmlPlatformIndependent(body.substring(0, prefaceIndex)) : body;
+};
+
 ZmComposeView.prototype._getBodyContent =
 function(msg, htmlMode) {
 
@@ -2933,9 +2940,9 @@ function() {
 
 ZmComposeView.prototype._getPriorityImage =
 function(flag) {
-	if (flag == ZmItem.FLAG_HIGH_PRIORITY)	{ return "PriorityHigh"; }
-	if (flag == ZmItem.FLAG_LOW_PRIORITY)	{ return "PriorityLow"; }
-	return "PriorityNormal";
+	if (flag == ZmItem.FLAG_HIGH_PRIORITY)	{ return "PriorityHigh_list"; }
+	if (flag == ZmItem.FLAG_LOW_PRIORITY)	{ return "PriorityLow_list"; }
+	return "PriorityNormal_list";
 };
 
 ZmComposeView.prototype._priorityMenuListner =

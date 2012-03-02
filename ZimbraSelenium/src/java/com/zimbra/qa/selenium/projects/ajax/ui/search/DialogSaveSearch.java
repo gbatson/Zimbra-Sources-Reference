@@ -4,10 +4,7 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.search;
 
 import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDialog;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
 
@@ -35,8 +32,8 @@ public class DialogSaveSearch extends AbsDialog {
 	}
 	
 	
-	public DialogSaveSearch(AbsApplication application) {
-		super(application);
+	public DialogSaveSearch(AbsApplication application, AbsTab tab) {
+		super(application, tab);
 		
 		logger.info("new " + DialogSaveSearch.class.getCanonicalName());
 
@@ -75,6 +72,8 @@ public class DialogSaveSearch extends AbsDialog {
 	@Override
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton("+ button +")");
+
+		tracer.trace("Click dialog button "+ button);
 
 		String locator = null;
 		
@@ -136,6 +135,8 @@ public class DialogSaveSearch extends AbsDialog {
 	public void zClickTreeFolder(FolderItem folder) throws HarnessException {
 		logger.info(myPageName() + " zClickTreeFolder("+ folder +")");
 		
+		tracer.trace("Click on tree folder with name "+ folder.getName());
+
 		if ( folder == null ) 
 			throw new HarnessException("folder must not be null");
 		
@@ -160,6 +161,8 @@ public class DialogSaveSearch extends AbsDialog {
 	public void zEnterFolderName(String folder) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderName("+ folder +")");
 		
+		tracer.trace("Enter folder name in text box "+ folder);
+
 		if ( folder == null ) 
 			throw new HarnessException("folder must not be null");
 		

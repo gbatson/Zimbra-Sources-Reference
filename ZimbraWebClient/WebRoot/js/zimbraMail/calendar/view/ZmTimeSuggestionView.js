@@ -234,7 +234,7 @@ function(item) {
         locationObj = this.parent.getLocationByEmail(location);
         name = location;
         if(locationObj) {
-            name = locationObj.getAttr(ZmResource.F_locationName) || locationObj.getAttr(ZmResource.F_name);
+            name = locationObj.getAttr(ZmResource.F_name) || locationObj.getAttr(ZmResource.F_locationName);
         }
 
         var mi = menu.createMenuItem(location, {style:DwtMenuItem.RADIO_STYLE, text: name});
@@ -347,6 +347,7 @@ function() {
 
 ZmTimeSuggestionView.prototype.setShowSuggestionsHTML =
 function(date) {
+    this.removeAll();
 	var	div = document.createElement("div");
     var params = [
         '<span class="fakeanchor" id="' + this.getHTMLElId() + '_showsuggestions">',

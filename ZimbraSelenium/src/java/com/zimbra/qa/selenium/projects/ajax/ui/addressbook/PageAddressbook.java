@@ -14,9 +14,11 @@ import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.PageMail;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.TreeMail;
 import com.zimbra.qa.selenium.projects.ajax.ui.search.PageAdvancedSearch;
 
@@ -46,8 +48,8 @@ public class PageAddressbook extends AbsTab {
 		public static final ContextMenuItem CONTACT_SUB_REMOVE_TAG = new ContextMenuItem("zmi__Contacts__TAG_MENU|MENU|REMOVETAG","Remove Tag","div[class='ImgDeleteTag']","");
 		
 		//TODO: Need fixed id for the following:
-		public static final ContextMenuItem CONTACT_SUB_RECEIVED_FROM_CONTACT = new ContextMenuItem("zmi__Contacts__BROWSE","Advanced Search","div[class='ImgSearchBuilder']","");
-	    public static final ContextMenuItem CONTACT_SUB_SENT_TO_CONTACT = new ContextMenuItem("zmi__Contacts__BROWSE","Advanced Search","div[class='ImgSearchBuilder']","");
+		public static  ContextMenuItem CONTACT_SUB_RECEIVED_FROM_CONTACT = new ContextMenuItem(null,"Received From Contact","div[class='ImgSearch']","");
+	    public static  ContextMenuItem CONTACT_SUB_SENT_TO_CONTACT = new ContextMenuItem(null,"Sent To Contact","div[class='ImgSearch']","");
 	}
 	
 	public PageAddressbook(AbsApplication application) {
@@ -112,18 +114,14 @@ public class PageAddressbook extends AbsTab {
 			((AppAjaxClient)MyApplication).zPageMain.zNavigateTo();
 		}
 
-		// Click on Addressbook icon
-		if ( !sIsElementPresent(PageMain.Locators.zAppbarContact) ) {
+		tracer.trace("Navigate to "+ this.myPageName());
+
+		if (!GeneralUtility.waitForElementPresent(this,PageMain.Locators.zAppbarContact))  {
 			throw new HarnessException("Can't locate addressbook icon");
 		}
 
-		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-   		((AppAjaxClient) MyApplication).zPageMail.zNavigateTo();
-         GeneralUtility.waitForElementPresent(this,
-               PageMain.Locators.zAppbarBriefcase, 20000);
-         ((AppAjaxClient) MyApplication).zPageMail.zToolbarPressButton(Button.B_GETMAIL);
-		}
-
+		
+		// Click on Addressbook icon
 		zClick(PageMain.Locators.zAppbarContact);
 
 		zWaitForActive();
@@ -164,6 +162,8 @@ public class PageAddressbook extends AbsTab {
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
+
+		tracer.trace("Press the "+ button +" button");
 
 		if ( button == null )
 			throw new HarnessException("Button cannot be null!");
@@ -220,7 +220,7 @@ public class PageAddressbook extends AbsTab {
 		    }
 
 		   locator = "id="+ id;
-		   page = new DialogContactMove(MyApplication);
+		   page = new DialogMove(MyApplication, this);
 	    }
 
 
@@ -249,6 +249,8 @@ public class PageAddressbook extends AbsTab {
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
 
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+
 		if ( pulldown == null )
 			throw new HarnessException("Button cannot be null!");
 
@@ -264,7 +266,7 @@ public class PageAddressbook extends AbsTab {
 
 		    pulldownLocator = "css=td[id$='__TAG_MENU_dropdown'] div[class='ImgSelectPullDownArrow']";
     		optionLocator = "css=div[id$='__TAG_MENU|MENU|NEWTAG']";
-			page = new DialogTag(this.MyApplication);
+			page = new DialogTag(this.MyApplication, this);
 
 			
 		 } else if ( option == Button.O_TAG_REMOVETAG ) {
@@ -274,14 +276,21 @@ public class PageAddressbook extends AbsTab {
 			pulldownLocator = null;	
 			optionLocator = null;
 			page = null;
-
+			
+			zWaitForBusyOverlay();
 			// FALL THROUGH
 
 		 } else {
 			throw new HarnessException("no logic defined for pulldown/option "+ pulldown +"/"+ option);
 		 }
 	    }		
-	
+	   else if ( pulldown == Button.B_NEW ) {
+		   if ( option == Button.O_NEW_CONTACT ) {
+			    pulldownLocator = "css=div[id='zb__CNS__NEW_MENU'] td[id='zb__CNS__NEW_MENU_dropdown']";
+			    optionLocator="css=tr[id='POPUP_NEW_CONTACT']";
+				page = new FormContactNew(this.MyApplication);		   
+		   }
+	   }
 	// Default behavior
 		if ( pulldownLocator != null ) {
 						
@@ -369,6 +378,8 @@ public class PageAddressbook extends AbsTab {
 		String id = null;
         String contactLocator = getContactLocator(contact);
         
+		tracer.trace(action +" then "+ option +" then "+ subOption +" on contact = "+ contact);
+
         if ( action == Action.A_RIGHTCLICK ) {
 			ContextMenuItem cmi=null;
 		    ContextMenuItem sub_cmi = null;
@@ -383,7 +394,7 @@ public class PageAddressbook extends AbsTab {
 													
 				if (subOption == Button.O_TAG_NEWTAG) {
 					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_NEW_TAG;
-					page = new DialogTag(this.MyApplication);
+					page = new DialogTag(this.MyApplication, this);
 				}
 				
 				else if (subOption == Button.O_TAG_REMOVETAG) {
@@ -393,19 +404,35 @@ public class PageAddressbook extends AbsTab {
 			}
 			else if (option == Button.B_SEARCH) {
 				cmi=CONTEXT_MENU.CONTACT_SEARCH;
-				
+				String previousSiblingId="zmi__Contacts__TAG_MENU|MENU";
+		        String parentId=sGetNextSiblingId(previousSiblingId);
+		        int    parentIdInt = 0;
+		        String prefix="DWT";
+		        
+		        try {
+		        	//DWTXXXX		        
+		        	parentIdInt = Integer.parseInt(parentId.substring(prefix.length(), parentId.length()));
+		        	
+		        }
+		        catch (Exception e) {
+		        	throw new HarnessException("cannot find the id");
+		        }
 				
 				if (subOption == Button.O_SEARCH_MAIL_SENT_TO_CONTACT) {
 					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_SENT_TO_CONTACT;
-				    //TODO change DisplayMail constructor to public??					
-					//page = new DisplayMail(this.MyApplication); 
+		            //locator = "css=div[id=" + sGetNextSiblingId(previousSiblingId) + "]" + sub_cmi.locator;
+				    sub_cmi.locator=prefix + (parentIdInt + 3);
+					page = ((AppAjaxClient)MyApplication).zPageMail;
+				    
 				}
 			
 				else if (subOption == Button.O_SEARCH_MAIL_RECEIVED_FROM_CONTACT) {
 					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_RECEIVED_FROM_CONTACT;
-					//TODO change DisplayMail constructor to public??
-					//page = new DisplayMail(this.MyApplication); 
+					//locator = "css=div[id=" + sGetNextSiblingId(previousSiblingId) + "]" + sub_cmi.locator;
+					sub_cmi.locator=prefix + (parentIdInt + 2);			
+					page = ((AppAjaxClient)MyApplication).zPageMail;
 				}
+					
 			}
 			id = cmi.locator;
 			locator = "id="+ id;
@@ -433,8 +460,8 @@ public class PageAddressbook extends AbsTab {
 			// make sure the sub context menu enabled			
 			zWaitForElementEnabled(id);
 			
-	
-        }
+        } 
+			
         
 		// Click option
 		this.zClick(locator);
@@ -456,6 +483,8 @@ public class PageAddressbook extends AbsTab {
 		String id = null;
         String contactLocator = getContactLocator(contact);
         
+		tracer.trace(action +" then "+ option +" on contact = "+ contact);
+
 		if ( action == Action.A_RIGHTCLICK ) {
 			ContextMenuItem cmi=null;
 								
@@ -466,7 +495,7 @@ public class PageAddressbook extends AbsTab {
 			}
 			else if (option == Button.B_MOVE) {
 				cmi=CONTEXT_MENU.CONTACT_MOVE;
-				page = new DialogContactMove(MyApplication);	
+				page = new DialogMove(MyApplication, this);	
 			}
             
 			else if (option == Button.B_EDIT) {
@@ -525,6 +554,8 @@ public class PageAddressbook extends AbsTab {
 		logger.info(myPageName() + " zListItem("+ action +", "+ contact +")");
         String contactLocator=getContactLocator(contact);
         
+		tracer.trace(action +" on contact = "+ contact);
+
 		if ( action == Action.A_LEFTCLICK ) {
 			//click
 			this.zClick(contactLocator);
@@ -543,4 +574,5 @@ public class PageAddressbook extends AbsTab {
 		throw new HarnessException("action not supported ");
 	
 	}
+
 }

@@ -333,7 +333,7 @@ function() {
 			icon: "SendReceive",
 			templateId: "data.ImportExport#ImportExportPrefPage",
 			priority: 100,
-			precondition: ZmSetting.IMPORT_EXPORT_ENABLED,
+			precondition: [ZmSetting.IMPORT_ENABLED, ZmSetting.EXPORT_ENABLED],
 			prefs: [
 				ZmSetting.IMPORT_FOLDER,
 				ZmSetting.IMPORT_BUTTON,
@@ -423,8 +423,12 @@ function() {
 	ZmPref.registerPref("COMPOSE_INIT_FONT_FAMILY", {
 		displayName:		ZmMsg.defaultFontSettings,
 		displayContainer:	ZmPref.TYPE_SELECT,
-		displayOptions: 	["Arial", "Arial Black","Comic Sans MS","Courier New", "Lucida Console", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"],
-		options: 			["Arial", "Arial Black","Comic Sans MS","Courier New", "Lucida Console", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"],
+		displayOptions: 	["Andale Mono","Arial", "Arial Black","Book Antiqua","Bookman Old Style","Comic Sans MS","Courier New", "Garamond",
+                             "Georgia", "Helvetica", "Impact", "Lucida Console", "Symbol", "Tahoma", "Terminal", "Times New Roman", "Trebuchet MS",
+                             "Verdana","Webdings","Wingdings"],
+		options: 			["Andale Mono","Arial", "Arial Black","Book Antiqua","Bookman Old Style","Comic Sans MS","Courier New", "Garamond",
+                             "Georgia", "Helvetica", "Impact", "Lucida Console", "Symbol", "Tahoma", "Terminal", "Times New Roman", "Trebuchet MS",
+                             "Verdana","Webdings","Wingdings"],
 		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
 	});
 
@@ -838,6 +842,10 @@ function() {
 ZmPreferencesApp.getFilterRulesController =
 function(outgoing) {
     var prefController = AjxDispatcher.run("GetPrefController");
-    var filterController = prefController.getFilterController();
-    return outgoing ? filterController.getOutgoingFilterRulesController() : filterController.getIncomingFilterRulesController();
+    if (prefController && prefController.getPrefsView()) {
+        var filterController = prefController.getFilterController();
+        return outgoing ? filterController.getOutgoingFilterRulesController() : filterController.getIncomingFilterRulesController();
+    }
+
+    return null;
 };

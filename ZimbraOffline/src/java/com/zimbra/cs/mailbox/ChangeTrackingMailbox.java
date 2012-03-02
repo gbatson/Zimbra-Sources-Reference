@@ -79,6 +79,14 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             DbOfflineMailbox.updateChangeRecord(item, changeMask & filter);
     }
     
+    @Override
+    void trackChangeDeleted() throws ServiceException {
+        if (!isTrackingSync()) {
+            return;
+        }
+        lastChangeTime = System.currentTimeMillis();
+    }
+    
     abstract boolean isPushType(byte type);
     
     abstract int getChangeMaskFilter(byte type);

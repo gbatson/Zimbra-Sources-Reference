@@ -327,6 +327,14 @@ function(ev) {
 	var cal = menu.getItem(0);
 	cal.setDate(calDate, true);
 	ev.item.popup();
+
+    if(AjxEnv.isIE) {
+        //DwtMenu adds padding of 6px each side
+        //IE has to add 12px to width and height to adjust the calendar
+        var menuSize = menu.getSize();
+        menu.setSize(menuSize.x+12, menuSize.y+12);
+        menu.getHtmlElement().style.width = "180px";
+    }
 };
 
 /**

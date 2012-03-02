@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 jhahm 20110215-1542 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110321-1148 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -396,6 +396,24 @@ public class ZAttrProvisioning {
         public boolean isYahoo() { return this == yahoo;}
     }
 
+    public static enum IPMode {
+        ipv6("ipv6"),
+        ipv4("ipv4"),
+        both("both");
+        private String mValue;
+        private IPMode(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static IPMode fromString(String s) throws ServiceException {
+            for (IPMode value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isIpv6() { return this == ipv6;}
+        public boolean isIpv4() { return this == ipv4;}
+        public boolean isBoth() { return this == both;}
+    }
+
     public static enum MailMode {
         https("https"),
         both("both"),
@@ -434,6 +452,24 @@ public class ZAttrProvisioning {
         public boolean isReverse_proxied() { return this == reverse_proxied;}
         public boolean isWronghost() { return this == wronghost;}
         public boolean isAlways() { return this == always;}
+    }
+
+    public static enum MailSSLClientCertMode {
+        Disabled("Disabled"),
+        NeedClientAuth("NeedClientAuth"),
+        WantClientAuth("WantClientAuth");
+        private String mValue;
+        private MailSSLClientCertMode(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static MailSSLClientCertMode fromString(String s) throws ServiceException {
+            for (MailSSLClientCertMode value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isDisabled() { return this == Disabled;}
+        public boolean isNeedClientAuth() { return this == NeedClientAuth;}
+        public boolean isWantClientAuth() { return this == WantClientAuth;}
     }
 
     public static enum MailStatus {
@@ -2934,10 +2970,29 @@ public class ZAttrProvisioning {
     public static final String A_zimbraExternalPop3SSLPort = "zimbraExternalPop3SSLPort";
 
     /**
+     * whether email features and tabs are enabled in the web client if
+     * accessed from the admin console
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1170)
+    public static final String A_zimbraFeatureAdminMailEnabled = "zimbraFeatureAdminMailEnabled";
+
+    /**
      * advanced search button enabled
      */
     @ZAttr(id=138)
     public static final String A_zimbraFeatureAdvancedSearchEnabled = "zimbraFeatureAdvancedSearchEnabled";
+
+    /**
+     * whether or not to enable rerouting spam messages to Junk folder in
+     * ZCS, exposing Junk folder and actions in the web UI, and exposing Junk
+     * folder to IMAP clients.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1168)
+    public static final String A_zimbraFeatureAntispamEnabled = "zimbraFeatureAntispamEnabled";
 
     /**
      * Docs features enabled in briefcase
@@ -3024,6 +3079,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFeatureConfirmationPageEnabled = "zimbraFeatureConfirmationPageEnabled";
 
     /**
+     * whether detailed contact search UI is enabled
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1164)
+    public static final String A_zimbraFeatureContactsDetailedSearchEnabled = "zimbraFeatureContactsDetailedSearchEnabled";
+
+    /**
      * contact features
      */
     @ZAttr(id=135)
@@ -3066,6 +3129,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1134)
     public static final String A_zimbraFeatureDistributionListExpandMembersEnabled = "zimbraFeatureDistributionListExpandMembersEnabled";
+
+    /**
+     * whether export folder feature is enabled
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1185)
+    public static final String A_zimbraFeatureExportFolderEnabled = "zimbraFeatureExportFolderEnabled";
 
     /**
      * filter prefs enabled
@@ -3143,12 +3214,23 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFeatureIMEnabled = "zimbraFeatureIMEnabled";
 
     /**
-     * whether import export folder feature is enabled
+     * Deprecated since: 7.1.0. deprecated in favor of
+     * zimbraFeatureImportFolderEnabled and zimbraFeatureExportFolderEnabled
+     * for bug 53745. Orig desc: whether import export folder feature is
+     * enabled
      *
      * @since ZCS 6.0.0_BETA1
      */
     @ZAttr(id=750)
     public static final String A_zimbraFeatureImportExportFolderEnabled = "zimbraFeatureImportExportFolderEnabled";
+
+    /**
+     * whether import folder feature is enabled
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1184)
+    public static final String A_zimbraFeatureImportFolderEnabled = "zimbraFeatureImportFolderEnabled";
 
     /**
      * preference to set initial search
@@ -3220,6 +3302,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=528)
     public static final String A_zimbraFeatureMailUpsellURL = "zimbraFeatureMailUpsellURL";
+
+    /**
+     * whether to allow end user to publish and remove S/MIME certificates to
+     * their GAL entry in the web UI
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1183)
+    public static final String A_zimbraFeatureManageSMIMECertificateEnabled = "zimbraFeatureManageSMIMECertificateEnabled";
 
     /**
      * enable end-user to manage zimlets
@@ -3353,6 +3444,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=354)
     public static final String A_zimbraFeatureSkinChangeEnabled = "zimbraFeatureSkinChangeEnabled";
+
+    /**
+     * whether S/MIME feature is enabled. Note: SMIME is a Network feature,
+     * this attribute is effective only if SMIME is permited by license.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1186)
+    public static final String A_zimbraFeatureSMIMEEnabled = "zimbraFeatureSMIMEEnabled";
 
     /**
      * tagging feature
@@ -4247,6 +4347,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraInterceptSubject = "zimbraInterceptSubject";
 
     /**
+     * supported IP mode
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public static final String A_zimbraIPMode = "zimbraIPMode";
+
+    /**
      * set to true for admin accounts
      */
     @ZAttr(id=31)
@@ -4806,6 +4914,33 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMailSpamLifetime = "zimbraMailSpamLifetime";
 
     /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public static final String A_zimbraMailSSLClientCertMode = "zimbraMailSSLClientCertMode";
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public static final String A_zimbraMailSSLClientCertPort = "zimbraMailSSLClientCertPort";
+
+    /**
      * SSL port for end-user UI
      */
     @ZAttr(id=166)
@@ -5018,8 +5153,9 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMessageCacheSize = "zimbraMessageCacheSize";
 
     /**
-     * Size of cache for delivery time dedupe based on Message-Id header. Set
-     * to 0 to disable this type of deduping.
+     * Number of Message-Id header values to keep in the LMTP dedupe cache.
+     * Subsequent attempts to deliver a message with a matching Message-Id to
+     * the same mailbox will be ignored. A value of 0 disables deduping.
      */
     @ZAttr(id=334)
     public static final String A_zimbraMessageIdDedupeCacheSize = "zimbraMessageIdDedupeCacheSize";
@@ -5565,6 +5701,31 @@ public class ZAttrProvisioning {
     public static final String A_zimbraObjectType = "zimbraObjectType";
 
     /**
+     * allowed OpenID Provider Endpoint URLs for authentication
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1191)
+    public static final String A_zimbraOpenidConsumerAllowedOPEndpointURL = "zimbraOpenidConsumerAllowedOPEndpointURL";
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public static final String A_zimbraOpenidConsumerStatelessModeEnabled = "zimbraOpenidConsumerStatelessModeEnabled";
+
+    /**
+     * regex of alllowed characters in password
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1163)
+    public static final String A_zimbraPasswordAllowedChars = "zimbraPasswordAllowedChars";
+
+    /**
      * registered change password listener name
      *
      * @since ZCS 5.0.1
@@ -5656,6 +5817,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=35)
     public static final String A_zimbraPasswordMinAge = "zimbraPasswordMinAge";
+
+    /**
+     * minimum number of alphabet characters required in a password
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1162)
+    public static final String A_zimbraPasswordMinAlphaChars = "zimbraPasswordMinAlphaChars";
 
     /**
      * minimum length of a password
@@ -6735,6 +6904,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraPrefMailSignatureStyle = "zimbraPrefMailSignatureStyle";
 
     /**
+     * user&#039;s S/MIME public keys (certificates)
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1172)
+    public static final String A_zimbraPrefMailSMIMECertificate = "zimbraPrefMailSMIMECertificate";
+
+    /**
      * whether audible alert is enabled when a new email arrives
      *
      * @since ZCS 5.0.7
@@ -6998,6 +7175,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=355)
     public static final String A_zimbraPrefSkin = "zimbraPrefSkin";
+
+    /**
+     * sort order for list view in the WEB UI
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1188)
+    public static final String A_zimbraPrefSortOrder = "zimbraPrefSortOrder";
 
     /**
      * The name of the dictionary used for spell checking. If not set, the
@@ -7959,6 +8144,142 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=669)
     public static final String A_zimbraSkinSelectionColor = "zimbraSkinSelectionColor";
+
+    /**
+     * LDAP attribute(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple attributes can be separated by comma. All SMIME attributes
+     * are in the format of {config-name}:{value}. A &#039;SMIME config&#039;
+     * is a set of SMIME attribute values with the same {config-name}.
+     * Multiple SMIME configs can be configured on a domain or on
+     * globalconfig. Note: SMIME attributes on domains do not inherited
+     * values from globalconfig, they are not domain-inherited attributes.
+     * During SMIME public key lookup, if there are any SMIME config on the
+     * domain of the account, they are used. SMIME configs on globalconfig
+     * will be used only when there is no SMIME config on the domain. SMIME
+     * attributes cannot be modified directly with zmprov md/mcf commands.
+     * Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1182)
+    public static final String A_zimbraSMIMELdapAttribute = "zimbraSMIMELdapAttribute";
+
+    /**
+     * LDAP bind DN for public key lookup for S/MIME via external LDAP. Can
+     * be empty for anonymous bind. All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1178)
+    public static final String A_zimbraSMIMELdapBindDn = "zimbraSMIMELdapBindDn";
+
+    /**
+     * LDAP bind password for public key lookup for S/MIME via external LDAP.
+     * Can be empty for anonymous bind. All SMIME attributes are in the
+     * format of {config-name}:{value}. A &#039;SMIME config&#039; is a set
+     * of SMIME attribute values with the same {config-name}. Multiple SMIME
+     * configs can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1179)
+    public static final String A_zimbraSMIMELdapBindPassword = "zimbraSMIMELdapBindPassword";
+
+    /**
+     * LDAP search filter for public key lookup for S/MIME via external LDAP.
+     * Can contain the following conversion variables for expansion: %n -
+     * search key with @ (or without, if no @ was specified) %u - with @
+     * removed e.g. (mail=%n) All SMIME attributes are in the format of
+     * {config-name}:{value}. A &#039;SMIME config&#039; is a set of SMIME
+     * attribute values with the same {config-name}. Multiple SMIME configs
+     * can be configured on a domain or on globalconfig. Note: SMIME
+     * attributes on domains do not inherited values from globalconfig, they
+     * are not domain-inherited attributes. During SMIME public key lookup,
+     * if there are any SMIME config on the domain of the account, they are
+     * used. SMIME configs on globalconfig will be used only when there is no
+     * SMIME config on the domain. SMIME attributes cannot be modified
+     * directly with zmprov md/mcf commands. Use zmprov
+     * gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1181)
+    public static final String A_zimbraSMIMELdapFilter = "zimbraSMIMELdapFilter";
+
+    /**
+     * LDAP search base for public key lookup for S/MIME via external LDAP.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1180)
+    public static final String A_zimbraSMIMELdapSearchBase = "zimbraSMIMELdapSearchBase";
+
+    /**
+     * Whether to use startTLS for public key lookup for S/MIME via external
+     * LDAP. All SMIME attributes are in the format of {config-name}:{value}.
+     * A &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1177)
+    public static final String A_zimbraSMIMELdapStartTlsEnabled = "zimbraSMIMELdapStartTlsEnabled";
+
+    /**
+     * LDAP URL(s) for public key lookup for S/MIME via external LDAP.
+     * Multiple URLs for error fallback purpose can be seperated by space.
+     * All SMIME attributes are in the format of {config-name}:{value}. A
+     * &#039;SMIME config&#039; is a set of SMIME attribute values with the
+     * same {config-name}. Multiple SMIME configs can be configured on a
+     * domain or on globalconfig. Note: SMIME attributes on domains do not
+     * inherited values from globalconfig, they are not domain-inherited
+     * attributes. During SMIME public key lookup, if there are any SMIME
+     * config on the domain of the account, they are used. SMIME configs on
+     * globalconfig will be used only when there is no SMIME config on the
+     * domain. SMIME attributes cannot be modified directly with zmprov
+     * md/mcf commands. Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command
+     * instead.
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1176)
+    public static final String A_zimbraSMIMELdapURL = "zimbraSMIMELdapURL";
 
     /**
      * Whether to enable smtp debug trace

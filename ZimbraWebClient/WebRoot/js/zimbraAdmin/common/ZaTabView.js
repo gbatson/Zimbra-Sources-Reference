@@ -66,6 +66,7 @@ ZaTabView.prototype.constructor = ZaTabView;
 * @see ZaCosXFormView#ZaServerXFormView
 **/
 ZaTabView.XFormModifiers = new Object();
+ZaTabView.XFormSetObjectMethods = new Object();
 
 ZaTabView.DEFAULT_TAB = 1;
 
@@ -301,10 +302,10 @@ ZaTabView.isTAB_ENABLED = function (entry, attrsArray, rightsArray) {
 	if(!entry)
 		return true;
 		
-	if(!attrsArray && !rightsArray)
+	if(AjxUtil.isEmpty(attrsArray) && AjxUtil.isEmpty(rightsArray))
 		return true;
 		
-	if(attrsArray) {
+	if(!AjxUtil.isEmpty(attrsArray)) {
 		var cntAttrs = attrsArray.length;
 		for(var i=0; i< cntAttrs; i++) {
 			if(ZaItem.hasReadPermission(attrsArray[i],entry)) {
@@ -313,7 +314,7 @@ ZaTabView.isTAB_ENABLED = function (entry, attrsArray, rightsArray) {
 		}
 	} 
 	
-	if(rightsArray) {
+	if(!AjxUtil.isEmpty(rightsArray)) {
 		var cntRights = rightsArray.length;
 		for(var i=0; i< cntRights; i++) {
 			if(ZaItem.hasRight(rightsArray[i],entry)) {

@@ -37,13 +37,13 @@ public class TreeBriefcase extends AbsTree {
 	public AbsPage zTreeItem(Action action, IItem item, boolean isRowAdded)
 	throws HarnessException {
 
+		tracer.trace("Click "+ action +" on folder "+ item.getName());
+
 
 		String treeItemLocator = null;
 		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
 		   treeItemLocator = Locators.briefcaseTreeView_Desktop
                + "[class='DwtTreeItem-Text']";
-		   ((AppAjaxClient) MyApplication).zPageMail.zNavigateTo();
-		   ((AppAjaxClient) MyApplication).zPageBriefcase.zNavigateTo();
 		} else {
 		   treeItemLocator = Locators.briefcaseTreeView
 		         + "][class='DwtTreeItem-selected']";
@@ -124,6 +124,7 @@ public class TreeBriefcase extends AbsTree {
 	 */
 	@Override
 	public AbsPage zPressButton(Button button) throws HarnessException {
+		tracer.trace("Click "+ button);
 
 		if (button == null)
 			throw new HarnessException("Button cannot be null");
@@ -134,7 +135,7 @@ public class TreeBriefcase extends AbsTree {
 		if (button == Button.B_TREE_NEWBRIEFCASE) {
 
 			locator = "id=overviewHeader-Text FakeAnchor";
-			page = new DialogCreateBriefcaseFolder(MyApplication);
+			page = new DialogCreateBriefcaseFolder(MyApplication, ((AppAjaxClient)MyApplication).zPageBriefcase);
 
 			if (!this.sIsElementPresent(locator)) {
 				throw new HarnessException(
@@ -191,6 +192,8 @@ public class TreeBriefcase extends AbsTree {
 	public AbsPage zTreeItem(Action action, IItem briefcaseFolder)
 			throws HarnessException {
 
+		tracer.trace("Click "+ action +" on folder "+ briefcaseFolder.getName());
+
 		// Validate the arguments
 		if ((action == null) || (briefcaseFolder == null)) {
 			throw new HarnessException(
@@ -208,6 +211,9 @@ public class TreeBriefcase extends AbsTree {
 	@Override
 	public AbsPage zTreeItem(Action action, Button option, IItem briefcaseFolder)
 			throws HarnessException {
+		
+		tracer.trace("Click "+ action +" then "+ option +" on folder "+ briefcaseFolder.getName());
+
 		// Validate the arguments
 		if ((action == null) || (option == null) || (briefcaseFolder == null)) {
 			throw new HarnessException(

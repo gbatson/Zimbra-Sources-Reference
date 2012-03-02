@@ -37,8 +37,10 @@ public abstract class AbsSeleniumObject {
 	protected static Logger logger = LogManager
 			.getLogger(AbsSeleniumObject.class);
 
+	protected static final Logger tracer = LogManager.getLogger(ExecuteHarnessMain.TraceLoggerName);
+	
 	public AbsSeleniumObject() {
-		logger.info("new AbsSeleniumObject");
+		logger.info("new "+ AbsSeleniumObject.class.getCanonicalName());
 	}
 
 	/**
@@ -109,8 +111,8 @@ public abstract class AbsSeleniumObject {
 					+ ") element is not present");
 		}
 
-		ClientSessionFactory.session().selenium().mouseDownRight(locator);
-		ClientSessionFactory.session().selenium().mouseUpRight(locator);
+		ClientSessionFactory.session().selenium().mouseDownRightAt(locator,"0,0");
+		ClientSessionFactory.session().selenium().mouseUpRightAt(locator,"0,0");
 		logger.info("zRightClick(" + locator + ")");
 	}
 
@@ -150,6 +152,19 @@ public abstract class AbsSeleniumObject {
 	// Start: Selenium methods
 	// // ***
 
+	
+	/**
+	 * DefaultSelenium.getEval()
+	 * 
+	 * @param script
+	 */
+	public String sGetEval(String script) throws HarnessException {
+		String value = ClientSessionFactory.session().selenium().getEval(script);
+		logger.info("getEval("+ script +") = "+ value);
+		return (value);
+	}
+
+
 	/**
 	 * DefaultSelenium.getHtmlSource()
 	 * 
@@ -162,6 +177,22 @@ public abstract class AbsSeleniumObject {
 		return (htmlString);
 	}
 
+	/**
+	 * getNextSiblingId()
+	 * 
+	 * @param 
+	 */
+	public String sGetNextSiblingId(String id) {
+		String sibLingid = ClientSessionFactory
+				.session()
+				.selenium()
+				.getEval(
+		"this.browserbot.getUserWindow().document.getElementById('" + id + "')" + ".nextSibling.id" );
+		logger.info("sGetNextSiblingId( " + id + ") = " + sibLingid);
+		return (sibLingid);
+	}
+
+	
 	/**
 	 * DefaultSelenium.getSelectedId()
 	 * 
@@ -196,7 +227,7 @@ public abstract class AbsSeleniumObject {
 					.waitForPageToLoad(timeout);
 			logger.info("waitForPageToLoad(" + timeout + ")");
 		} catch (Exception ex) {
-			logger.info(ex.fillInStackTrace());
+			logger.warn("sWaitForPageToLoad() error", ex);
 		}
 	}
 
@@ -253,6 +284,15 @@ public abstract class AbsSeleniumObject {
 		return (count);
 	}
 
+	/**
+	 * DefaultSelenium.getCssCount()
+	 */
+	public int sGetCssCount(String css) {
+		int count = ClientSessionFactory.session().selenium().getCssCount(css).intValue();
+		logger.info("getCssCount(" + css + ") = " + count);
+		return (count);
+	}
+	
 	/**
 	 * DefaultSelenium.getAttribute()
 	 * @throws SeleniumException
@@ -316,6 +356,14 @@ public abstract class AbsSeleniumObject {
 		}
 	}
 
+	/**
+	 * zWaitForBusyOverlayHTML
+	 */
+	public void zWaitForBusyOverlayHTML() throws HarnessException {
+		logger.info("zWaitForBusyOverlayHTML()");
+		SleepUtil.sleepLong();
+	}
+	
 	/**
 	 * DefaultSelenium.waitForCondition() Runs the specified JavaScript snippet
 	 * repeatedly until it evaluates to true

@@ -1192,7 +1192,7 @@ public class Mailbox {
         if (conn != null)
             setOperationConnection(conn);
 
-        boolean needRedo = octxt == null || octxt.needRedo();
+        boolean needRedo = needRedo(octxt);
         // have a single, consistent timestamp for anything affected by this operation
         mCurrentChange.setTimestamp(time);
         if (recorder != null && needRedo)
@@ -1636,7 +1636,7 @@ public class Mailbox {
                 throw e;
         }
 
-        boolean needRedo = octxt == null || octxt.needRedo();
+        boolean needRedo = needRedo(octxt);
         DeleteMailbox redoRecorder = new DeleteMailbox(mId);
         boolean success = false;
         try {
@@ -2790,7 +2790,7 @@ public class Mailbox {
         try {
             beginTransaction("getModifiedItems", octxt);
 
-            Set<Integer> visible = getVisibleFolderIds();
+            Set<Integer> visible = Folder.toId(getAccessibleFolders(ACL.RIGHT_READ));
             if (folderIds == null)
                 folderIds = visible;
             else if (visible != null)
@@ -2806,14 +2806,17 @@ public class Mailbox {
         }
     }
 
-    /** Returns a list of all <code>Folder</code>s the authenticated user has
-     *  {@link ACL#RIGHT_READ} access to.  Returns <tt>null</tt> if the
-     *  authenticated user has read access to the entire Mailbox. */
+    /**
+     * Returns a list of all {@link Folder}s the authenticated user has {@link ACL#RIGHT_READ} access to. Returns
+     * {@code null} if the authenticated user has read access to the entire Mailbox.
+     *
+     * @see #getAccessibleFolders(short)
+     */
     public synchronized Set<Folder> getVisibleFolders(OperationContext octxt) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getVisibleFolders", octxt);
-            Set<Folder> visible = getVisibleFolders();
+            Set<Folder> visible = getAccessibleFolders(ACL.RIGHT_READ);
             success = true;
             return visible;
         } finally {
@@ -2821,65 +2824,30 @@ public class Mailbox {
         }
     }
 
-    /** Returns a list of all <code>Folder</code>s that the authenticated user
-     *  from the current transaction has {@link ACL#RIGHT_READ} access to.
-     *  Returns <tt>null</tt> if the authenticated user has read access to
-     *  the entire Mailbox. */
-    Set<Folder> getVisibleFolders() throws ServiceException {
-        return getAccessibleFolders(ACL.RIGHT_READ);
-    }
-
-    /** Returns a list of all <code>Folder</code>s that the authenticated user
-     *  from the current transaction has a certain set of rights on.  Returns
-     *  <tt>null</tt> if the authenticated user has the required access on the
-     *  entire Mailbox.
-     * @param rights  The bitmask representing the required permissions. */
+    /**
+     * Returns a list of all {@link Folder}s that the authenticated user from the current transaction has a certain set
+     * of rights on. Returns {@code null} if the authenticated user has the required access on the entire Mailbox.
+     *
+     * @param rights bitmask representing the required permissions
+     */
     Set<Folder> getAccessibleFolders(short rights) throws ServiceException {
-        if (!mCurrentChange.isActive())
+        if (!mCurrentChange.isActive()) {
             throw ServiceException.FAILURE("cannot get visible hierarchy outside transaction", null);
-        if (hasFullAccess())
+        }
+        if (hasFullAccess()) {
             return null;
-
+        }
         boolean incomplete = false;
         Set<Folder> visible = new HashSet<Folder>();
-        for (Folder folder : mFolderCache.values())
-            if (folder.canAccess(rights))
+        for (Folder folder : mFolderCache.values()) {
+            if (folder.canAccess(rights)) {
                 visible.add(folder);
-            else
+            } else {
                 incomplete = true;
+            }
+        }
         return incomplete ? visible : null;
     }
-
-    /** Returns a list of the IDs of all <code>Folder</code>s that the
-     *  current transaction's authenticated user has {@link ACL#RIGHT_READ}
-     *  access on.  Returns <tt>null</tt> if the authenticated user has read
-     *  access on the entire Mailbox. */
-    public synchronized Set<Integer> getVisibleFolderIds(OperationContext octxt) throws ServiceException {
-        boolean success = false;
-        try {
-            beginTransaction("getVisibleFolderIds", octxt);
-            Set<Integer> visible = getVisibleFolderIds();
-            success = true;
-            return visible;
-        } finally {
-            endTransaction(success);
-        }
-    }
-
-    /** Returns a list of the IDs of all <code>Folder</code>s that the
-     *  current transaction's authenticated user has {@link ACL#RIGHT_READ}
-     *  access on.  Returns <tt>null</tt> if the authenticated user has read
-     *  access on the entire Mailbox. */
-    Set<Integer> getVisibleFolderIds() throws ServiceException {
-        Set<Folder> folders = getVisibleFolders();
-        if (folders == null)
-            return null;
-        Set<Integer> visible = new HashSet<Integer>(folders.size());
-        for (Folder folder : folders)
-            visible.add(folder.getId());
-        return visible;
-    }
-
 
     public Flag getFlagById(int flagId) throws ServiceException {
         Flag flag = Flag.getFlag(this, flagId);
@@ -4752,21 +4720,27 @@ public class Mailbox {
                                                     Message.DraftInfo dinfo, CustomMetadata customData,
                                                     DeliveryContext dctxt, StagedBlob staged)
     throws IOException, ServiceException {
-        if (pm == null)
+        if (pm == null) {
             throw ServiceException.INVALID_REQUEST("null ParsedMessage when adding message to mailbox " + mId, null);
+        }
 
         boolean debug = ZimbraLog.mailbox.isDebugEnabled();
 
-        if (Math.abs(conversationId) <= HIGHEST_SYSTEM_ID)
+        if (Math.abs(conversationId) <= HIGHEST_SYSTEM_ID) {
             conversationId = ID_AUTO_INCREMENT;
+        }
 
-        boolean needRedo = octxt == null || octxt.needRedo();
+        boolean needRedo = needRedo(octxt);
         CreateMessage redoPlayer = (octxt == null ? null : (CreateMessage) octxt.getPlayer());
         boolean isRedo = redoPlayer != null;
 
         Blob blob = dctxt.getIncomingBlob();
-        if (blob == null)
+        if (blob == null) {
             throw ServiceException.FAILURE("Incoming blob not found.", null);
+        }
+
+        // make sure we're parsing headers using the target account's charset
+        pm.setDefaultCharset(getAccount().getPrefMailDefaultCharset());
 
         // quick check to make sure we don't deliver 5 copies of the same message
         String msgidHeader = pm.getMessageID();
@@ -7484,7 +7458,14 @@ public class Mailbox {
             endTransaction(success);
         }
     }
-    
+
+    private boolean needRedo(OperationContext octxt) {
+        // Don't generate redo data for changes made during mailbox version migrations.
+        if (!open)
+            return false;
+        return octxt == null || octxt.needRedo();
+    }
+
     /**
      * Be very careful when changing code in this method.  The order of almost
      * every line of code is important to ensure correct redo logging and crash
@@ -7528,9 +7509,7 @@ public class Mailbox {
             return;
         }
 
-        boolean needRedo = true;
-        if (mCurrentChange.octxt != null)
-            needRedo = mCurrentChange.octxt.needRedo();
+        boolean needRedo = needRedo(mCurrentChange.octxt);
         RedoableOp redoRecorder = mCurrentChange.recorder;
         // 1. Log the change redo record for main transaction.
         if (redoRecorder != null && needRedo)

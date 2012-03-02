@@ -37,6 +37,7 @@ ZaDomainController.prototype.constructor = ZaDomainController;
 ZaController.changeActionsStateMethods["ZaDomainController"] = new Array();
 ZaController.initToolbarMethods["ZaDomainController"] = new Array();
 ZaController.setViewMethods["ZaDomainController"] = new Array();
+ZaController.saveChangeCheckMethods["ZaDomainController"] = new Array();
 /**
 *	@method show
 *	@param entry - isntance of ZaDomain class
@@ -212,6 +213,15 @@ function () {
          catchAllChanged = true ;
     }
 
+        // execute other plugin methods
+        if(ZaController.saveChangeCheckMethods["ZaDomainController"]) {
+                var methods = ZaController.saveChangeCheckMethods["ZaDomainController"];
+                var cnt = methods.length;
+                for(var i = 0; i < cnt && !haveSmth; i++) {
+                        if(typeof(methods[i]) == "function")
+                               haveSmth =  methods[i].call(this, mods, tmpObj, this._currentObject);
+                }
+        }
 
 	for (var a in tmpObj.attrs) {
 		if(a == ZaItem.A_zimbraId || a==ZaDomain.A_domainName  || a == ZaDomain.A_domainType
@@ -220,7 +230,7 @@ function () {
 		}
 		if(!ZaItem.hasWritePermission(a,tmpObj)) {
 				continue;
-		}			
+		}
 		if (!(AjxUtil.isEmpty(this._currentObject.attrs[a]) && AjxUtil.isEmpty(tmpObj.attrs[a]))) {
 			if(tmpObj.attrs[a] instanceof Array) {
 					if(
@@ -276,7 +286,6 @@ function () {
 			}
 		}
 	}
-
 	if(haveSmth || catchAllChanged) {
 		try { 
 			if(renameNotebookAccount) {
@@ -608,12 +617,13 @@ function (resp) {
 	if(!resp)
 		return;
 	if(resp.isException()) {
-		var ex = resp.getException();
-		if(ex.msg && (ex.msg.indexOf("NameNotFoundException")>0 || ex.msg.indexOf("NoMXRecordsForDomain")>0)) {
-			this.popupErrorDialog(AjxMessageFormat.format(ZaMsg.failedToGetMXRecords, [this._currentObject.name]));
-		} else {
-			this._handleException(resp.getException(), "ZaDomainController.prototype.checkMXCallback", null, false);
-		}
+		//var ex = resp.getException();
+		//if(ex.msg && (ex.msg.indexOf("NameNotFoundException")>0 || ex.msg.indexOf("NoMXRecordsForDomain")>0)) {
+		//	this.popupErrorDialog(AjxMessageFormat.format(ZaMsg.failedToGetMXRecords, [this._currentObject.name]));
+		//} else {
+		//	this._handleException(resp.getException(), "ZaDomainController.prototype.checkMXCallback", null, false);
+		//}
+		this.popupErrorDialog(AjxMessageFormat.format(ZaMsg.failedToGetMXRecords, [this._currentObject.name]));
 		return;
 	} 
 	var response = resp.getResponse().Body.CheckDomainMXRecordResponse;

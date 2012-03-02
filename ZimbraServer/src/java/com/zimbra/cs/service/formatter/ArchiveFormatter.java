@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -43,6 +43,11 @@ import javax.mail.Part;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimePart;
 import javax.servlet.http.HttpServletResponse;
+
+import org.mortbay.io.EndPoint;
+import org.mortbay.io.nio.SelectChannelEndPoint;
+import org.mortbay.jetty.HttpConnection;
+import org.mortbay.thread.Timeout;
 
 import com.google.common.base.Strings;
 import com.zimbra.common.localconfig.LC;
@@ -170,6 +175,10 @@ public abstract class ArchiveFormatter extends Formatter {
 
     @Override public void formatCallback(UserServletContext context) throws IOException,
         ServiceException, UserServletException {
+
+        // Disable the jetty timeout
+        disableJettyTimeout();
+
         HashMap<Integer, Integer> cnts = new HashMap<Integer, Integer>();
         boolean conversations = false;
         int dot;
@@ -338,6 +347,37 @@ public abstract class ArchiveFormatter extends Formatter {
         }
     }
 
+
+    /**
+     * Implemented for bug 56458..
+     *
+     * Disable the Jetty timeout for the SelectChannelConnector and the SSLSelectChannelConnector
+     * for this request.
+     *
+     * By default (and our normal configuration) Jetty has a 30 second idle timeout (10 if the server is busy) for
+     * connection endpoints. There's another task that keeps track of what connections have timeouts and periodically
+     * works over a queue and closes endpoints that have been timed out. This plays havoc with downloads to slow connections
+     * and whenever we have a long pause while working to create an archive.
+     *
+     * This method removes this request from the queue to check timeout via the mechanisms that are normally used
+     * after jetty completes a request. Given that we don't send a content-length down to the browser for
+     * archive responses, we have to close the socket to tell the browser its done. Since we have to do that.. leaving this
+     * endpoint without a timeout is safe. If the connection was being reused (ie keep-alive) this could have issues, but its not
+     * in this case.
+     */
+    private void disableJettyTimeout() {
+        if (LC.zimbra_archive_formatter_disable_timeout.booleanValue()) {
+            EndPoint endPoint = HttpConnection.getCurrentConnection().getEndPoint();
+            if (endPoint instanceof SelectChannelEndPoint) {
+                SelectChannelEndPoint scEndPoint = (SelectChannelEndPoint) endPoint;
+                Timeout.Task task = scEndPoint.getTimeoutTask();
+                if (task != null) {
+                    task.cancel();
+                }
+            }
+        }
+    }
+
     private ArchiveOutputStream saveItem(UserServletContext context, MailItem mi,
         Map<Integer, String> fldrs, Map<Integer, Integer> cnts,
         Set<String> names, boolean version, ArchiveOutputStream aos,
@@ -363,9 +403,10 @@ public abstract class ArchiveFormatter extends Formatter {
         case MailItem.TYPE_APPOINTMENT:
             Appointment appt = (Appointment)mi;
 
-            if (!appt.isPublic() && !appt.allowPrivateAccess(context.authAccount,
-                context.isUsingAdminPrivileges()))
+            if (!appt.isPublic() && !appt.allowPrivateAccess(
+                    context.getAuthAccount(), context.isUsingAdminPrivileges())) {
                 return aos;
+            }
             if (meta) {
                 name = appt.getSubject();
                 ext = "appt";
@@ -417,11 +458,11 @@ public abstract class ArchiveFormatter extends Formatter {
             ext = "note";
             break;
         case MailItem.TYPE_TASK:
-            Task task = (Task)mi;
-
-            if (!task.isPublic() && !task.allowPrivateAccess(context.authAccount,
-                context.isUsingAdminPrivileges()))
+            Task task = (Task) mi;
+            if (!task.isPublic() && !task.allowPrivateAccess(
+                    context.getAuthAccount(), context.isUsingAdminPrivileges())) {
                 return aos;
+            }
             ext = "task";
             break;
         case MailItem.TYPE_VIRTUAL_CONVERSATION:
@@ -490,8 +531,8 @@ public abstract class ArchiveFormatter extends Formatter {
                     context.getStartTime(), context.getEndTime(), false);
                 boolean needAppleICalHacks = Browser.APPLE_ICAL.equals(browser);
                 boolean useOutlookCompatMode = Browser.IE.equals(browser);
-                OperationContext octxt = new OperationContext(context.authAccount,
-                    context.isUsingAdminPrivileges());
+                OperationContext octxt = new OperationContext(
+                        context.getAuthAccount(), context.isUsingAdminPrivileges());
                 StringWriter writer = new StringWriter();
 
                 if (!instances.isEmpty()) {
@@ -622,7 +663,7 @@ public abstract class ArchiveFormatter extends Formatter {
         if (mi.isTagged(Flag.ID_FLAG_VERSIONED)) {
             // prepend the version before the extension of up to four characters
             int dot = name.lastIndexOf('.');
-            if (dot >= name.length() - 5) {
+            if (dot >= 0 && dot >= name.length() - 5) {
                 name = name.substring(0, dot) + String.format("-%05d", mi.getVersion()) + name.substring(dot);
             } else {
                 name += String.format("-%05d", mi.getVersion());
@@ -845,7 +886,7 @@ public abstract class ArchiveFormatter extends Formatter {
             for (ServiceException.Argument arg : ex.getArgs())
                 s.append(' ').append(arg.mName).append('=').append(arg.mValue);
         }
-        ZimbraLog.misc.warn(s);
+        ZimbraLog.misc.warn(s, ex);
     }
 
     private Folder createParent(UserServletContext context, Map<Object, Folder> fmap,
@@ -935,10 +976,10 @@ public abstract class ArchiveFormatter extends Formatter {
 
     private void warn(Exception e) {
         if (e.getCause() == null)
-            ZimbraLog.misc.warn("Archive Formatter warning: %s", e);
+            ZimbraLog.misc.warn("Archive Formatter warning: %s", e, e);
         else
             ZimbraLog.misc.warn("Archive Formatter warning: %s: %s", e,
-                e.getCause().toString());
+                e.getCause().toString(), e.getCause());
     }
 
     private void addItem(UserServletContext context, Folder fldr,
@@ -1522,8 +1563,7 @@ public abstract class ArchiveFormatter extends Formatter {
                 break;
             case MailItem.TYPE_DOCUMENT:
             case MailItem.TYPE_WIKI:
-                String creator = (context.authAccount == null ? null :
-                    context.authAccount.getName());
+                String creator = context.getAuthAccount() == null ? null : context.getAuthAccount().getName();
 
                 try {
                     oldItem = mbox.getItemByPath(oc, file, fldr.getId());

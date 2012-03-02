@@ -14,7 +14,7 @@
 							</table>
 						</div>
 					<$ } $>
-					<div class="ZmMailMsgViewDiv">
+					<div>
 						<table cellspacing=0 cellpadding=0 border=0 width=100%>
 							<tr id='${hdrTableTopRowId}'>
 								<$ if (data.closeBtnCellId) { $>
@@ -27,6 +27,7 @@
 									<td id='${reportBtnCellId}'></td>
 									<td>&nbsp;</td>
 								<$ } $>
+                                <td>&nbsp;</td>
 								<td class='LabelColValue SubjectCol' valign=top width=100%>
 									<$= data.subject $>
 								</td>
@@ -56,17 +57,15 @@
 												<td>&nbsp;</td>
 											<$ } $>
 											<td>${sentBy}&nbsp;&nbsp;</td>
+                                            <$ if (data.obo && (AjxStringUtil.stripTags(data.obo) != AjxStringUtil.stripTags(data.sentBy))) { // if Email zimlet is deployed. $>
+                                                <td id='OBJ_PREFIX_obo_label' class='LabelColName'><$= ZmMsg.onBehalfOfLabel $></td>
+                                                <td id='OBJ_PREFIX_obo' class='LabelColValue' colspan=10><$= data.obo $></td>
+                                            <$ } $>
 										</tr>
 									</table>
 								</td>
 							</tr>
 
-							<$ if (data.obo && (AjxStringUtil.stripTags(data.obo) != AjxStringUtil.stripTags(data.sentBy))) { // if Email zimlet is deployed. $>
-								<tr id='OBJ_PREFIX_obo'>
-									<td valign='top' class='LabelColName'><$= ZmMsg.onBehalfOfLabel $></td>
-									<td class='LabelColValue' colspan=10><$= data.obo $></td>
-								</tr>
-							<$ } $>
 
 							<$ for (var i = 0; i < data.participants.length; i++) { $>
 								<tr id='OBJ_PREFIX_<$=Dwt.getNextId()$>_<$=data.participants[i].prefix.toLowerCase()$>'>
@@ -116,6 +115,7 @@
 	<div><!-- empty container DIV here so Dwt.parseHtmlFragment returns the infoBar div below -->
 		<table class='InvHeaderTable' id='${id}_headerElement'cellspacing=0 cellpadding=0 border=0 width=100%>
 			<tr>
+                <td>&nbsp;</td>
 				<td>
 					<$ if (data.ptstMsg) { $>
 						<div class="${ptstClassName}">
@@ -124,6 +124,17 @@
 									<td><$= AjxImg.getImageHtml(data.ptstIcon) $></td>
 									<td>&nbsp;</td>
 									<td>${ptstMsg}</td>
+								</tr>
+							</table>
+						</div>
+					<$ } $>
+					<$ if (data.intendedForMsg) { $>
+						<div class="${intendedForClassName}">
+							<table border=0 cellpadding=0 cellspacing=0>
+								<tr>
+								    <td><$= AjxImg.getImageHtml("Information") $></td>
+									<td>&nbsp;</td>
+									<td>${intendedForMsg}</td>
 								</tr>
 							</table>
 						</div>
@@ -169,6 +180,12 @@
 									<td class='LabelColValue'><$= data.invSentBy $></td>
 								</tr>
 							<$ } $>
+                            <$ if (data.obo && (AjxStringUtil.stripTags(data.obo) != AjxStringUtil.stripTags(data.invSentBy))) { $>
+                                <tr>
+                                    <td class='LabelColName' width=75><$= ZmMsg.onBehalfOfLabel $> </td>
+                                    <td class='LabelColValue'><$= data.obo $></td>
+                                </tr>
+                            <$ } $>
 							<tr>
 								<td class='LabelColName ${timeChangeClass}'><$= data.counterInvMsg ? ZmMsg.proposedTimeLabel : ZmMsg.timeLabel $></td>
 								<td class='LabelColValue ${timeChangeClass}'>

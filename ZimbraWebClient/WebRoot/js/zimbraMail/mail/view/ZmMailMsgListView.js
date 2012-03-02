@@ -29,6 +29,12 @@ ZmMailMsgListView.prototype.constructor = ZmMailMsgListView;
 
 ZmMailMsgListView.INDENT		= "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 
+ZmMailMsgListView.SINGLE_COLUMN_SORT_CV = [
+	{field:ZmItem.F_FROM,	msg:"from"		},
+	{field:ZmItem.F_SIZE,	msg:"size"		},
+	{field:ZmItem.F_DATE,	msg:"date"		}
+];
+
 // Public methods
 
 ZmMailMsgListView.prototype.toString = 
@@ -121,8 +127,7 @@ function(htmlArr, idx, msg, field, colIdx, params) {
 						htmlArr[idx++] = AjxStringUtil.LIST_SEP;
 					}
 					htmlArr[idx++] = "<span style='white-space: nowrap' id='";
-					// bug fix #3001 - always add one to index value (to take FROM: address into account)
-					htmlArr[idx++] = [fieldId, parts[j].index + 1].join(DwtId.SEP);
+					htmlArr[idx++] = [fieldId, parts[j].index].join(DwtId.SEP);
 					htmlArr[idx++] = "'>";
 					htmlArr[idx++] = parts[j].name;
 					htmlArr[idx++] = "</span>";
@@ -351,6 +356,30 @@ function(parent, controller) {
 	}
 
 	return this._getHeaders(this.view, headers);
+};
+
+ZmMailMsgListView.prototype._initHeaders =
+function() {
+
+	ZmMailListView.prototype._initHeaders.apply(this, arguments);
+	if (this._mode == ZmId.VIEW_CONV) {
+		this._headerInit[ZmItem.F_SUBJECT] = {text:ZmMsg.fragment, noRemove:true, resizeable:true};
+	}
+};
+
+ZmMailMsgListView.prototype._getHeaderToolTip =
+function(field, itemIdx) {
+	if (field == ZmItem.F_SUBJECT && this._mode == ZmId.VIEW_CONV) {
+		return ZmMsg.fragment;
+	}
+	else {
+		return ZmMailListView.prototype._getHeaderToolTip.apply(this, arguments);
+	}
+};
+
+ZmMailMsgListView.prototype._getSingleColumnSortFields =
+function() {
+	return (this._mode == ZmId.VIEW_CONV) ? ZmMailMsgListView.SINGLE_COLUMN_SORT_CV : ZmMailListView.SINGLE_COLUMN_SORT;
 };
 
 ZmMailMsgListView.prototype._sortColumn = 

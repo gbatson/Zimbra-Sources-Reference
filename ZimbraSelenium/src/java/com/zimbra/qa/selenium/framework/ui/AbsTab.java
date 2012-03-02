@@ -3,7 +3,12 @@ package com.zimbra.qa.selenium.framework.ui;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.PageMail;
 
 
 /**
@@ -70,6 +75,12 @@ public abstract class AbsTab extends AbsPage {
 	public abstract AbsPage zListItem(Action action, Button option, String item) throws HarnessException;
 	
 	/**
+	 * Take action on list items with optional action
+	 * (mainly right-click -> context menu-> sub menu)
+	 */
+	public abstract AbsPage zListItem(Action action, Button option, Button subOption, String item) throws HarnessException;
+	
+	/**
 	 * Click on a button
 	 * @param button the button to press
 	 * @return Returns the resulting Page, Wizard, etc. or null
@@ -123,6 +134,19 @@ public abstract class AbsTab extends AbsPage {
 		return (page);
 	}
 	
-
-	
+   /** Waiting for the desktop loading spinner
+    * @throws HarnessException 
+    * 
+    */
+   public void zWaitForDesktopLoadingSpinner(long timeout) throws HarnessException {
+      if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+         String spinnerLocator = "css=img[src='/img/animated/ImgSpinner.gif']";
+         if (GeneralUtility.waitForElementPresent(this,
+               spinnerLocator, timeout)) {
+            Object[] params = {spinnerLocator};
+            GeneralUtility.waitFor(null, this, false, "sIsElementPresent",
+                  params, WAIT_FOR_OPERAND.EQ, false, 30000, 1000);
+         }
+      }
+   }
 }

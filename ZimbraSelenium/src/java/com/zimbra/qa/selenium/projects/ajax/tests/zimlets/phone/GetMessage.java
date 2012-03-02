@@ -1,5 +1,6 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.zimlets.phone;
 
+import java.io.File;
 import java.util.*;
 
 import org.testng.annotations.*;
@@ -31,7 +32,7 @@ public class GetMessage extends AjaxCommonTest {
 	}
 	
 	@Test(	description = "Receive a mail with a basic US Phone number",
-			groups = { "functional" })
+			groups = { "smoke" })
 	public void GetMessage_01() throws HarnessException {
 		
 		// Create the message data to be sent
@@ -127,7 +128,7 @@ public class GetMessage extends AjaxCommonTest {
 		final String mime = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/mime/email01/en_us_valid_phone.txt";
 		
 		// Inject the example message
-		LmtpUtil.injectFile(app.zGetActiveAccount().EmailAddress, mime);
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mime));
 
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
@@ -180,7 +181,7 @@ public class GetMessage extends AjaxCommonTest {
 		final String mime = ZimbraSeleniumProperties.getBaseDirectory() + "/data/public/mime/email01/en_us_invalid_phone.txt";
 		
 		// Inject the example message
-		LmtpUtil.injectFile(app.zGetActiveAccount().EmailAddress, mime);
+		LmtpInject.injectFile(app.zGetActiveAccount().EmailAddress, new File(mime));
 
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);

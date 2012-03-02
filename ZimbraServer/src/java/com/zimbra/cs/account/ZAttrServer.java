@@ -20,6 +20,7 @@
  */
 package com.zimbra.cs.account;
 
+import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
 
@@ -39,7 +40,7 @@ public class ZAttrServer extends NamedEntry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 jhahm 20110215-1542 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110321-1148 */
 
     /**
      * RFC2256: common name(s) for which the entity is known by
@@ -2401,13 +2402,13 @@ public class ZAttrServer extends NamedEntry {
      * Comma separated list of Contact attributes that should be hidden from
      * clients and export of contacts.
      *
-     * @return zimbraContactHiddenAttributes, or "dn,vcardUID,vcardURL,vcardXProps,member" if unset
+     * @return zimbraContactHiddenAttributes, or "dn,vcardUID,vcardURL,vcardXProps,member,SMIMECertificate" if unset
      *
      * @since ZCS 6.0.6
      */
     @ZAttr(id=1086)
     public String getContactHiddenAttributes() {
-        return getAttr(Provisioning.A_zimbraContactHiddenAttributes, "dn,vcardUID,vcardURL,vcardXProps,member");
+        return getAttr(Provisioning.A_zimbraContactHiddenAttributes, "dn,vcardUID,vcardURL,vcardXProps,member,SMIMECertificate");
     }
 
     /**
@@ -3829,6 +3830,137 @@ public class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetIMBindAddress(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraIMBindAddress, "");
+        return attrs;
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @return zimbraIPMode, or ZAttrProvisioning.IPMode.ipv4 if unset and/or has invalid value
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public ZAttrProvisioning.IPMode getIPMode() {
+        try { String v = getAttr(Provisioning.A_zimbraIPMode); return v == null ? ZAttrProvisioning.IPMode.ipv4 : ZAttrProvisioning.IPMode.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.IPMode.ipv4; }
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @return zimbraIPMode, or "ipv4" if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public String getIPModeAsString() {
+        return getAttr(Provisioning.A_zimbraIPMode, "ipv4");
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public void setIPMode(ZAttrProvisioning.IPMode zimbraIPMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public Map<String,Object> setIPMode(ZAttrProvisioning.IPMode zimbraIPMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode.toString());
+        return attrs;
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public void setIPModeAsString(String zimbraIPMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param zimbraIPMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public Map<String,Object> setIPModeAsString(String zimbraIPMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, zimbraIPMode);
+        return attrs;
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public void unsetIPMode() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * supported IP mode
+     *
+     * <p>Valid values: [both, ipv6, ipv4]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1171)
+    public Map<String,Object> unsetIPMode(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraIPMode, "");
         return attrs;
     }
 
@@ -7893,6 +8025,344 @@ public class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetMailReferMode(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraMailReferMode, "");
+        return attrs;
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @return zimbraMailSSLClientCertMode, or ZAttrProvisioning.MailSSLClientCertMode.Disabled if unset and/or has invalid value
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public ZAttrProvisioning.MailSSLClientCertMode getMailSSLClientCertMode() {
+        try { String v = getAttr(Provisioning.A_zimbraMailSSLClientCertMode); return v == null ? ZAttrProvisioning.MailSSLClientCertMode.Disabled : ZAttrProvisioning.MailSSLClientCertMode.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.MailSSLClientCertMode.Disabled; }
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @return zimbraMailSSLClientCertMode, or "Disabled" if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public String getMailSSLClientCertModeAsString() {
+        return getAttr(Provisioning.A_zimbraMailSSLClientCertMode, "Disabled");
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public void setMailSSLClientCertMode(ZAttrProvisioning.MailSSLClientCertMode zimbraMailSSLClientCertMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public Map<String,Object> setMailSSLClientCertMode(ZAttrProvisioning.MailSSLClientCertMode zimbraMailSSLClientCertMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode.toString());
+        return attrs;
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public void setMailSSLClientCertModeAsString(String zimbraMailSSLClientCertMode) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param zimbraMailSSLClientCertMode new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public Map<String,Object> setMailSSLClientCertModeAsString(String zimbraMailSSLClientCertMode, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, zimbraMailSSLClientCertMode);
+        return attrs;
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public void unsetMailSSLClientCertMode() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * enable authentication via X.509 Client Certificate. Disabled: client
+     * authentication is disabled. NeedClientAuth: client authentication is
+     * required during SSL handshake on the SSL mutual authentication
+     * port(see zimbraMailSSLClientCertPort). The SSL handshake will fail if
+     * the client does not present a certificate to autenticate.
+     * WantClientAuth: client authentication is requested during SSL
+     * handshake on the SSL mutual authentication port(see
+     * zimbraMailSSLClientCertPort). The SSL handshake will still proceed if
+     * the client does not present a certificate to autenticate. In the case
+     * when client does not send a certificate, user will be redirected to
+     * the usual entry page of the requested webapp, where username/password
+     * is ptompted.
+     *
+     * <p>Valid values: [NeedClientAuth, WantClientAuth, Disabled]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1190)
+    public Map<String,Object> unsetMailSSLClientCertMode(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertMode, "");
+        return attrs;
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * <p>Use getMailSSLClientCertPortAsString to access value as a string.
+     *
+     * @see #getMailSSLClientCertPortAsString()
+     *
+     * @return zimbraMailSSLClientCertPort, or 0 if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public int getMailSSLClientCertPort() {
+        return getIntAttr(Provisioning.A_zimbraMailSSLClientCertPort, 0);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @return zimbraMailSSLClientCertPort, or "0" if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public String getMailSSLClientCertPortAsString() {
+        return getAttr(Provisioning.A_zimbraMailSSLClientCertPort, "0");
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public void setMailSSLClientCertPort(int zimbraMailSSLClientCertPort) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, Integer.toString(zimbraMailSSLClientCertPort));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public Map<String,Object> setMailSSLClientCertPort(int zimbraMailSSLClientCertPort, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, Integer.toString(zimbraMailSSLClientCertPort));
+        return attrs;
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public void setMailSSLClientCertPortAsString(String zimbraMailSSLClientCertPort) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, zimbraMailSSLClientCertPort);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param zimbraMailSSLClientCertPort new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public Map<String,Object> setMailSSLClientCertPortAsString(String zimbraMailSSLClientCertPort, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, zimbraMailSSLClientCertPort);
+        return attrs;
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public void unsetMailSSLClientCertPort() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL port requesting client certificate for end-user UI
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1999)
+    public Map<String,Object> unsetMailSSLClientCertPort(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPort, "");
         return attrs;
     }
 
@@ -12315,6 +12785,83 @@ public class ZAttrServer extends NamedEntry {
     public Map<String,Object> unsetNotifyServerEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraNotifyServerEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @return zimbraOpenidConsumerStatelessModeEnabled, or true if unset
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public boolean isOpenidConsumerStatelessModeEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, true);
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @param zimbraOpenidConsumerStatelessModeEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public void setOpenidConsumerStatelessModeEnabled(boolean zimbraOpenidConsumerStatelessModeEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, zimbraOpenidConsumerStatelessModeEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @param zimbraOpenidConsumerStatelessModeEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public Map<String,Object> setOpenidConsumerStatelessModeEnabled(boolean zimbraOpenidConsumerStatelessModeEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, zimbraOpenidConsumerStatelessModeEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public void unsetOpenidConsumerStatelessModeEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether stateless mode (not establishing an association with the
+     * OpenID Provider) in OpenID Consumer is enabled
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.0
+     */
+    @ZAttr(id=1189)
+    public Map<String,Object> unsetOpenidConsumerStatelessModeEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOpenidConsumerStatelessModeEnabled, "");
         return attrs;
     }
 

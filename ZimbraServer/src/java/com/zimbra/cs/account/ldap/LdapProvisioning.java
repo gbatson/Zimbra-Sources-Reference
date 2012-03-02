@@ -76,6 +76,7 @@ import com.zimbra.cs.account.gal.GalUtil;
 import com.zimbra.cs.account.krb5.Krb5Principal;
 import com.zimbra.cs.account.ldap.LdapUtil.SearchLdapVisitor;
 import com.zimbra.cs.account.names.NameUtil;
+import com.zimbra.cs.extension.ExtensionUtil;
 import com.zimbra.cs.gal.GalSearchConfig;
 import com.zimbra.cs.httpclient.URLUtil;
 import com.zimbra.cs.localconfig.DebugConfig;
@@ -83,6 +84,7 @@ import com.zimbra.cs.mime.MimeTypeInfo;
 import com.zimbra.cs.util.Zimbra;
 import com.zimbra.cs.zimlet.ZimletException;
 import com.zimbra.cs.zimlet.ZimletUtil;
+import com.zimbra.soap.ZimbraSoapContext;
 
 import javax.naming.AuthenticationException;
 import javax.naming.AuthenticationNotSupportedException;
@@ -104,6 +106,7 @@ import javax.naming.directory.SchemaViolationException;
 import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -116,6 +119,8 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.Stack;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * LDAP implementation of {@link Provisioning}.
@@ -1505,12 +1510,11 @@ public class LdapProvisioning extends Provisioning {
 
     @Override
     public void removeAlias(DistributionList dl, String alias) throws ServiceException {
-        // make a copy of all addrs of this DL, after the delete all aliases on this dl
-        // object will be gone, but we need to remove them from the allgroups cache after the DL is deleted
-        Set<String> addrs = new HashSet<String>(dl.getMultiAttrSet(Provisioning.A_mail));
-        
         removeAliasInternal(dl, alias);
-        mAllDLs.removeGroup(addrs);
+        
+        Set<String> toRemove = new HashSet<String>();
+        toRemove.add(alias);
+        mAllDLs.removeGroup(toRemove);
     }
 
     private boolean isEntryAlias(Attributes attrs) throws NamingException {
@@ -3389,9 +3393,10 @@ public class LdapProvisioning extends Provisioning {
          *              server, so bug 46767 should not happen and the reload should never
          *              be triggered(good for bug 18981).
          */
-        if (!onLocalServer(acct))
+        if (!onLocalServer(acct)) {
             reload(acct, false);  // reload from the replica
-
+        }
+        
         String accountStatus = acct.getAccountStatus(Provisioning.getInstance());
         if (accountStatus == null)
             throw AuthFailedServiceException.AUTH_FAILED(acct.getName(), AuthMechanism.namePassedIn(authCtxt), "missing account status");
@@ -3552,6 +3557,23 @@ public class LdapProvisioning extends Provisioning {
     @Override
     public void accountAuthed(Account acct) throws ServiceException {
         updateLastLogon(acct);
+    }
+    
+    @Override
+    public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) throws ServiceException {
+        try {
+            checkAccountStatus(acct, authCtxt);
+            ZimbraLog.security.info(ZimbraLog.encodeAttrs(
+                    new String[] {"cmd", "Auth","account", acct.getName(), "protocol", proto.toString()}));
+        } catch (AuthFailedServiceException e) {
+            ZimbraLog.security.warn(ZimbraLog.encodeAttrs(
+                    new String[] {"cmd", "Auth","account", acct.getName(), "protocol", proto.toString(), "error", e.getMessage() + e.getReason(", %s")}));
+            throw e;
+        } catch (ServiceException e) {
+            ZimbraLog.security.warn(ZimbraLog.encodeAttrs(
+                    new String[] {"cmd", "Auth","account", acct.getName(), "protocol", proto.toString(), "error", e.getMessage()}));
+            throw e;
+        }
     }
 
     private void updateLastLogon(Account acct) throws ServiceException {
@@ -3859,6 +3881,24 @@ public class LdapProvisioning extends Provisioning {
         
         return cos.getIntAttr(name, defaultValue);
     }
+    
+    private String getString(Account acct, Cos cos, Attributes attrs, String name) 
+    throws ServiceException {
+        if (acct != null) {
+            return acct.getAttr(name);
+        }
+
+        try {
+            String v = LdapUtil.getAttrString(attrs, name);
+            if (v != null) {
+                return v;
+            }
+        } catch (NamingException ne) {
+            throw ServiceException.FAILURE(ne.getMessage(), ne);
+        }
+        
+        return cos.getAttr(name);
+    }
 
 
     /**
@@ -3888,8 +3928,21 @@ public class LdapProvisioning extends Provisioning {
         int minLowerCase = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinLowerCaseChars, 0);
         int minNumeric = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinNumericChars, 0);
         int minPunctuation = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinPunctuationChars, 0);
-
-        boolean hasPolicies = minUpperCase > 0 || minLowerCase > 0 || minNumeric > 0 || minPunctuation > 0;
+        int minAlpha = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinAlphaChars, 0);
+        
+        String allowedChars = getString(acct, cos, attrs, Provisioning.A_zimbraPasswordAllowedChars);
+        Pattern allowedCharsPattern = null;
+        if (allowedChars != null) {
+            try {
+                allowedCharsPattern = Pattern.compile(allowedChars);
+            } catch (PatternSyntaxException e) {
+                throw AccountServiceException.INVALID_PASSWORD(Provisioning.A_zimbraPasswordAllowedChars + 
+                        " is not valid regex: " + e.getMessage());
+            }
+        }
+        
+        boolean hasPolicies = minUpperCase > 0 || minLowerCase > 0 || minNumeric > 0 || minPunctuation > 0 ||
+                minAlpha > 0 || allowedCharsPattern != null;
             
         if (!hasPolicies) {
             return;
@@ -3897,11 +3950,13 @@ public class LdapProvisioning extends Provisioning {
 
         int upper = 0;
         int lower = 0;
-        int punctuation = 0;
         int numeric = 0;
+        int punctuation = 0;
+        int alpha = 0;
 
         for (int i=0; i < password.length(); i++) {
             int ch = password.charAt(i);
+            boolean isAlpha = true;
 
             if (Character.isUpperCase(ch)) {
                 upper++;
@@ -3909,9 +3964,24 @@ public class LdapProvisioning extends Provisioning {
                 lower++;
             } else if (Character.isDigit(ch)) {
                 numeric++;
+                isAlpha = false;
             } else if (isAsciiPunc(ch)) {
                 punctuation++;
+                isAlpha = false;
             }
+            
+            if (isAlpha) {
+                alpha++;
+            }
+            
+            if (allowedCharsPattern != null) {
+                char character = password.charAt(i);
+                if (!allowedCharsPattern.matcher(Character.toString(character)).matches()) {
+                    throw AccountServiceException.INVALID_PASSWORD(character + " is not an allowed character", 
+                            new Argument(Provisioning.A_zimbraPasswordAllowedChars, allowedChars, Argument.Type.STR));
+                }
+            }
+            
         }
 
         if (upper < minUpperCase) {
@@ -3929,6 +3999,10 @@ public class LdapProvisioning extends Provisioning {
         if (punctuation < minPunctuation) {
             throw AccountServiceException.INVALID_PASSWORD("not enough punctuation characters", 
                     new Argument(Provisioning.A_zimbraPasswordMinPunctuationChars, minPunctuation, Argument.Type.NUM));
+        }
+        if (alpha < minAlpha) {
+            throw AccountServiceException.INVALID_PASSWORD("not enough alpha characters", 
+                    new Argument(Provisioning.A_zimbraPasswordMinAlphaChars, minAlpha, Argument.Type.NUM));
         }
     }
 
@@ -6715,7 +6789,43 @@ public class LdapProvisioning extends Provisioning {
             LdapUtil.searchLdapOnReplica(base, query.toString(), returnAttrs, visitor);
         }
     }
+    
+    @Override
+    public Map<String, Map<String, Object>> getDomainSMIMEConfig(Domain domain, String configName) throws ServiceException {
+        LdapSMIMEConfig smime = LdapSMIMEConfig.getInstance(domain);
+        return smime.get(configName);
+    }
+    
+    @Override
+    public void modifyDomainSMIMEConfig(Domain domain, String configName, Map<String, Object> attrs) throws ServiceException {
+        LdapSMIMEConfig smime = LdapSMIMEConfig.getInstance(domain);
+        smime.modify(configName, attrs);
+    }
+    
+    @Override
+    public void removeDomainSMIMEConfig(Domain domain, String configName) throws ServiceException {
+        LdapSMIMEConfig smime = LdapSMIMEConfig.getInstance(domain);
+        smime.remove(configName);
+    }
 
+    @Override
+    public Map<String, Map<String, Object>> getConfigSMIMEConfig(String configName) throws ServiceException {
+        LdapSMIMEConfig smime = LdapSMIMEConfig.getInstance(getConfig());
+        return smime.get(configName);
+    }
+    
+    @Override
+    public void modifyConfigSMIMEConfig(String configName, Map<String, Object> attrs) throws ServiceException {
+        LdapSMIMEConfig smime = LdapSMIMEConfig.getInstance(getConfig());
+        smime.modify(configName, attrs);
+    }
+    
+    @Override
+    public void removeConfigSMIMEConfig(String configName) throws ServiceException {
+        LdapSMIMEConfig smime = LdapSMIMEConfig.getInstance(getConfig());
+        smime.remove(configName);
+    }
+    
     public static void testAuthDN() {
         System.out.println(LdapUtil.computeAuthDn("schemers@example.zimbra.com", null));
         System.out.println(LdapUtil.computeAuthDn("schemers@example.zimbra.com", ""));

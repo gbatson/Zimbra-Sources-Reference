@@ -1,15 +1,17 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 
-import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
 import com.zimbra.qa.selenium.framework.ui.AbsForm;
+import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 
 public class DocumentBriefcaseEdit extends AbsForm {
 
 	public static class Locators {
-		public static final String zFrame = "css=iframe[id='DWT9'][class='ZDEditor']";
+		public static final String zFrame = "css=iframe[id^='DWT'][class='ZDEditor']";
 		public static final String zSaveAndCloseIconBtn = "//*[@id='DWT8_left_icon']";
 		public static final String zBodyField = "css=body";
 		public static final String zNameField = "css=[class=DwtInputField] input";
@@ -51,21 +53,6 @@ public class DocumentBriefcaseEdit extends AbsForm {
 
 	@Override
 	public void zFill(IItem item) throws HarnessException {
-		logger.info("DocumentBriefcaseEdit(ZimbraItem)");
-		logger.info(item.prettyPrint());
-
-		// Make sure the item is a DocumentItem
-		if (!(item instanceof DocumentItem)) {
-			throw new HarnessException(
-					"Invalid item type - must be DocumentItem");
-		}
-
-		// Convert object to DocumentItem
-		DocumentItem docItem = (DocumentItem) item;
-
-		// Fill out the form
-		typeDocumentText(docItem.getDocText());
-		typeDocumentName(docItem.getDocName());
 	}
 
 	@Override
@@ -87,8 +74,16 @@ public class DocumentBriefcaseEdit extends AbsForm {
 		// this.sMouseDown(Locators.zSaveAndCloseIconBtn);
 		// this.sMouseUp(Locators.zSaveAndCloseIconBtn);
 
-		// Wait for the page to be saved
-		// SleepUtil.sleepSmall();
+		// Add Document version notes in the popped up dialog
+		DialogAddVersionNotes dlgAddNotes = new DialogAddVersionNotes(
+				MyApplication, ((AppAjaxClient) MyApplication).zPageBriefcase);
+
+		if (dlgAddNotes.zIsActive()) {
+			dlgAddNotes.zEnterVersionNotes("notes"
+					+ ZimbraSeleniumProperties.getUniqueString());
+
+			dlgAddNotes.zClickButton(Button.B_OK);
+		}
 	}
 
 	@Override

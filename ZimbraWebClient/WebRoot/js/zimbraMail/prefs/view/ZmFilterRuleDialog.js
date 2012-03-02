@@ -35,6 +35,7 @@ ZmFilterRuleDialog = function() {
 
 	// set content
 	this.setContent(this._contentHtml());
+    this._createControls();
 	this._setConditionSelect();
 	this._createTabGroup();
 
@@ -159,6 +160,13 @@ function() {
 
 	// content html
 	return AjxTemplate.expand("prefs.Pages#MailFilterRule", id);
+};
+
+ZmFilterRuleDialog.prototype._createControls =
+function() {
+ this._stopFiltersCheckbox = new DwtCheckbox({parent: this, id: this._stopCheckboxId, checked: true});
+ this._stopFiltersCheckbox.replaceElement(document.getElementById(this._stopCheckboxId));
+ this._stopFiltersCheckbox.setText(ZmMsg.stopFilterProcessing);
 };
 
 ZmFilterRuleDialog.prototype._setConditionSelect =
@@ -943,7 +951,9 @@ function(ev) {
 		var cancelCallback = new AjxCallback(this, function(){target.checked = false;});
 		if (active) {
 			var outgoingFilterController = ZmPreferencesApp.getFilterRulesController(this._outgoing);
-			outgoingFilterController.handleBeforeFilterChange(null, cancelCallback);
+            if (outgoingFilterContrller) {
+			    outgoingFilterController.handleBeforeFilterChange(null, cancelCallback);
+            }
 		}
 	}
 };
@@ -995,18 +1005,22 @@ function(rowId) {
 ZmFilterRuleDialog.prototype._cancelButtonListener =
 function(ev) {
     var filterRulesController = ZmPreferencesApp.getFilterRulesController(this._outgoing);
-    //get index before loading rules to keep selection on cancel
-    var sel = filterRulesController.getListView() ? filterRulesController.getListView().getSelection()[0] : null;
-    var index = sel ? this._rules.getIndexOfRule(sel) : null;
-    var callback = new AjxCallback(this, this._handleResponseLoadRules, [index]);
-    this._rules.loadRules(true, callback);
+    if (filterRulesController) {
+        //get index before loading rules to keep selection on cancel
+        var sel = filterRulesController.getListView() ? filterRulesController.getListView().getSelection()[0] : null;
+        var index = sel ? this._rules.getIndexOfRule(sel) : null;
+        var callback = new AjxCallback(this, this._handleResponseLoadRules, [index]);
+        this._rules.loadRules(true, callback);
+    }
     this.popdown();
 };
 
 ZmFilterRuleDialog.prototype._handleResponseLoadRules =
 function(index) {
     var filterRulesController = ZmPreferencesApp.getFilterRulesController(this._outgoing);
-    filterRulesController.resetListView(index);
+    if (filterRulesController) {
+        filterRulesController.resetListView(index);
+    }
 };
 
 /**

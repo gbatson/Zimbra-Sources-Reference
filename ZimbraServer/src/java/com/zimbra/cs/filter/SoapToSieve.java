@@ -14,11 +14,6 @@
  */
 package com.zimbra.cs.filter;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -29,6 +24,11 @@ import com.zimbra.cs.filter.FilterUtil.DateComparison;
 import com.zimbra.cs.filter.FilterUtil.Flag;
 import com.zimbra.cs.filter.FilterUtil.NumberComparison;
 import com.zimbra.cs.filter.FilterUtil.StringComparison;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 public class SoapToSieve {
     
@@ -136,8 +136,10 @@ public class SoapToSieve {
             snippet = String.format("date :%s \"%s\"",
                 comparison, FilterUtil.SIEVE_DATE_PARSER.format(date));
         } else if (name.equals(MailConstants.E_BODY_TEST)) {
+            boolean caseSensitive = test.getAttributeBool(MailConstants.A_CASE_SENSITIVE, false);
             String value = test.getAttribute(MailConstants.A_VALUE);
-            snippet = String.format("body :contains \"%s\"", FilterUtil.escape(value));
+            String snippetFormat = caseSensitive ? "body :contains :comparator \"i;octet\" \"%s\"" : "body :contains \"%s\"";
+            snippet = String.format(snippetFormat, FilterUtil.escape(value));
         } else if (name.equals(MailConstants.E_ADDRESS_BOOK_TEST)) {
             String header = test.getAttribute(MailConstants.A_HEADER);
             String folderPath = test.getAttribute(MailConstants.A_FOLDER_PATH);
@@ -147,6 +149,22 @@ public class SoapToSieve {
             snippet = "attachment";
         } else if (name.equals(MailConstants.E_INVITE_TEST)) {
             snippet = convertInviteTest(test);
+        } else if (name.equals(MailConstants.E_CURRENT_TIME_TEST)) {
+            String s = test.getAttribute(MailConstants.A_DATE_COMPARISON);
+            s = s.toLowerCase();
+            DateComparison comparison = DateComparison.fromString(s);
+            snippet = String.format("current_time :%s \"%s\"", comparison, test.getAttribute(MailConstants.A_TIME));
+        } else if (name.equals(MailConstants.E_CURRENT_DAY_OF_WEEK_TEST)) {
+            String value = test.getAttribute(MailConstants.A_VALUE);
+            String[] daysOfWeek = value.split(",");
+            for (int i = 0; i < daysOfWeek.length; i ++)
+                daysOfWeek[i] = StringUtil.enclose(daysOfWeek[i], '"');
+            snippet = String.format("current_day_of_week :is %s",
+                                    new StringBuilder().append('[').
+                                            append(StringUtil.join(",", daysOfWeek)).
+                                            append(']').toString());
+        } else if (name.equals(MailConstants.E_TRUE_TEST)) {
+            snippet = "true";
         } else {
             ZimbraLog.soap.debug("Ignoring unexpected test %s.", name);
         }
@@ -170,8 +188,10 @@ public class SoapToSieve {
         String s = test.getAttribute(MailConstants.A_STRING_COMPARISON);
         s = s.toLowerCase();
         StringComparison comparison = StringComparison.fromString(s);
+        boolean caseSensitive = test.getAttributeBool(MailConstants.A_CASE_SENSITIVE, false);
         String value = test.getAttribute(MailConstants.A_VALUE);
-        String snippet = String.format("%s :%s %s \"%s\"", testName, comparison, header, FilterUtil.escape(value));
+        String snippetFormat = caseSensitive ? "%s :%s :comparator \"i;octet\" %s \"%s\"" : "%s :%s %s \"%s\"";
+        String snippet = String.format(snippetFormat, testName, comparison, header, FilterUtil.escape(value));
         
         // Bug 35983: disallow more than four asterisks in a row.
         if (comparison == StringComparison.matches && value != null && value.contains("*****")) {
@@ -222,11 +242,30 @@ public class SoapToSieve {
         } else if (name.equals(MailConstants.E_ACTION_REDIRECT)) {
             String address = action.getAttribute(MailConstants.A_ADDRESS);
             return String.format("redirect \"%s\"", FilterUtil.escape(address));
+        } else if (name.equals(MailConstants.E_ACTION_REPLY)) {
+            String bodyTemplate = action.getAttribute(MailConstants.E_CONTENT);
+            return new StringBuilder("reply text:\r\n").
+                    append(getDotStuffed(bodyTemplate)).
+                    append("\r\n.\r\n").toString();
+        } else if (name.equals(MailConstants.E_ACTION_NOTIFY)) {
+            String emailAddr = action.getAttribute(MailConstants.A_ADDRESS);
+            String subjectTemplate = action.getAttribute(MailConstants.A_SUBJECT, "");
+            String bodyTemplate = action.getAttribute(MailConstants.E_CONTENT, "");
+            int maxBodyBytes = action.getAttributeInt(MailConstants.A_MAX_BODY_SIZE, -1);
+            return new StringBuilder("notify ").
+                    append(StringUtil.enclose(emailAddr, '"')).append(" ").
+                    append(StringUtil.enclose(subjectTemplate, '"')).append(" ").
+                    append("text:\r\n").append(getDotStuffed(bodyTemplate)).append("\r\n.\r\n").
+                    append(maxBodyBytes == -1 ? "" : " " + maxBodyBytes).toString();
         } else if (name.equals(MailConstants.E_ACTION_STOP)) {
             return "stop";
         } else {
             ZimbraLog.soap.debug("Ignoring unexpected action '%s'", name);
         }
         return null;
+    }
+
+    private static String getDotStuffed(String bodyTemplate) {
+        return bodyTemplate.replaceAll("\r\n\\.", "\r\n..");
     }
 }

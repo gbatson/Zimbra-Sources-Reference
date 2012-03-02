@@ -35,6 +35,8 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountCache;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AccountServiceException.AuthFailedServiceException;
+import com.zimbra.cs.account.DomainCache.GetFromDomainCacheOption;
+import com.zimbra.cs.account.Provisioning.CountObjectsType;
 import com.zimbra.cs.account.Alias;
 import com.zimbra.cs.account.AttributeClass;
 import com.zimbra.cs.account.AttributeManager;
@@ -357,11 +359,23 @@ public class LdapProvisioning extends Provisioning {
     }  
 
     /**
-     * reload/refresh the entry.
+     * reload/refresh the entry from the ***master***.
      */
     public void reload(Entry e) throws ServiceException
     {    
-        refreshEntry(e, null, this);
+        reload(e, true);
+    }
+    
+    @Override
+    public void reload(Entry e, boolean master) throws ServiceException {
+        
+        ZimbraLdapContext zlc = null;
+        try {
+            zlc = new ZimbraLdapContext(master);
+            refreshEntry(e, zlc, this);
+        } finally {
+            ZimbraLdapContext.closeContext(zlc);
+        }
     }
 
     void refreshEntry(Entry entry, ZimbraLdapContext initZlc, LdapProvisioning prov) throws ServiceException {
@@ -738,9 +752,6 @@ public class LdapProvisioning extends Provisioning {
         return emailAddress;
     }
 
-    /* (non-Javadoc)
-     * @see com.zimbra.cs.account.Provisioning#getDomainByNameInternal(java.lang.String)
-     */
     private Account getAccountByName(String emailAddress, boolean loadFromMaster) throws ServiceException {
         
         Account account = getAccountByNameInternal(emailAddress, loadFromMaster);
@@ -755,9 +766,6 @@ public class LdapProvisioning extends Provisioning {
         return account;
     }
     
-    /* (non-Javadoc)
-     * @see com.zimbra.cs.account.Provisioning#getDomainByNameInternal(java.lang.String)
-     */
     private Account getAccountByNameInternal(String emailAddress, boolean loadFromMaster) throws ServiceException {
         
         emailAddress = fixupAccountName(emailAddress);
@@ -1679,6 +1687,33 @@ public class LdapProvisioning extends Provisioning {
         
     }
 
+    /**
+     * search alias target - implementation can return cached entry
+     * 
+     * @param alias
+     * @param mustFind
+     * @return
+     * @throws ServiceException
+     */
+    @Override
+    public NamedEntry getAliasTarget(Alias alias, boolean mustFind) throws ServiceException {
+        
+        String targetId = alias.getAttr(Provisioning.A_zimbraAliasTargetId);
+        NamedEntry target;
+        
+        // maybe it's an account/cr
+        target = get(AccountBy.id, targetId);
+        if (target != null)
+            return target;
+        
+        
+        // maybe it's a group
+        // (note, entries in this DL cache contains only minimal attrs)
+        target = getGroup(DistributionListBy.id, targetId);
+        
+        return target;
+    }
+    
     /*
      * (non-Javadoc)
      *
@@ -1817,52 +1852,56 @@ public class LdapProvisioning extends Provisioning {
 
     @Override
     public Domain get(DomainBy keyType, String key) throws ServiceException {
+        return getDomain(keyType, key, false);
+    }
+    
+    @Override
+    public Domain getDomain(DomainBy keyType, String key, boolean checkNegativeCache) throws ServiceException {
+        
+		// note: *always* use negative cache for keys from external source
+        //       - virtualHostname, foreignName, krb5Realm
+		
+        GetFromDomainCacheOption option = checkNegativeCache ? GetFromDomainCacheOption.BOTH : GetFromDomainCacheOption.POSITIVE;
+            
         switch(keyType) {
             case name:
-                return getDomainByNameInternal(key);
+                return getDomainByNameInternal(key, option);
             case id:
-                return getDomainByIdInternal(key);
+                return getDomainByIdInternal(key, null, option);
             case virtualHostname:
-                return getDomainByVirtualHostnameInternal(key);
+                return getDomainByVirtualHostnameInternal(key, GetFromDomainCacheOption.BOTH);
             case krb5Realm:
-                return getDomainByKrb5RealmInternal(key);
+                return getDomainByKrb5RealmInternal(key, GetFromDomainCacheOption.BOTH);
             default:
                 return null;
         }
     }
     
-    @Override
-    public Domain getZimbraDomain(DomainBy keyType, String key) throws ServiceException {
-        
-        // remove it from the non-existing cache if we find it there
-        Domain domain = getFromCache(keyType, key);
-        if (domain instanceof DomainCache.NonExistingDomain)
-            sDomainCache.removeNonExisting(keyType, key);
-        
-        return get(keyType, key);
-    }
-
-    private Domain getFromCache(DomainBy keyType, String key) throws ServiceException {
+    private Domain getFromCache(DomainBy keyType, String key, GetFromDomainCacheOption option) throws ServiceException {
         switch(keyType) {
             case name:
                 String asciiName = IDNUtil.toAsciiDomainName(key);
-                return sDomainCache.getByName(asciiName);
+                return sDomainCache.getByName(asciiName, option);
             case id:
-                return sDomainCache.getById(key);
+                return sDomainCache.getById(key, option);
             case virtualHostname:
-                return sDomainCache.getByVirtualHostname(key);
+                return sDomainCache.getByVirtualHostname(key, option);
             case krb5Realm:
-                return sDomainCache.getByKrb5Realm(key);
+                return sDomainCache.getByKrb5Realm(key, option);
             default:
                 return null;
         }
     }
 
     private Domain getDomainById(String zimbraId, ZimbraLdapContext zlc) throws ServiceException {
+        return getDomainByIdInternal(zimbraId, zlc, GetFromDomainCacheOption.POSITIVE);
+    }
+
+    private Domain getDomainByIdInternal(String zimbraId, ZimbraLdapContext zlc, GetFromDomainCacheOption option) throws ServiceException {
         if (zimbraId == null)
             return null;
 
-        Domain d = sDomainCache.getById(zimbraId);
+        Domain d = sDomainCache.getById(zimbraId, option);
         if (d instanceof DomainCache.NonExistingDomain)
             return null;
 
@@ -1875,23 +1914,17 @@ public class LdapProvisioning extends Provisioning {
         return domain;
     }
 
-    /* (non-Javadoc)
-     * @see com.zimbra.cs.account.Provisioning#getDomainByIdInternal(java.lang.String)
-     */
-    private Domain getDomainByIdInternal(String zimbraId) throws ServiceException {
-        return getDomainById(zimbraId, null);
-    }
-
-    /* (non-Javadoc)
-     * @see com.zimbra.cs.account.Provisioning#getDomainByNameInternal(java.lang.String)
-     */
-    private Domain getDomainByNameInternal(String name) throws ServiceException {
+    private Domain getDomainByNameInternal(String name, GetFromDomainCacheOption option) throws ServiceException {
         String asciiName = IDNUtil.toAsciiDomainName(name);
-        return getDomainByAsciiName(asciiName, null);
+        return getDomainByAsciiNameInternal(asciiName, null, option);
     }
 
     private Domain getDomainByAsciiName(String name, ZimbraLdapContext zlc) throws ServiceException {
-        Domain d = sDomainCache.getByName(name);
+        return getDomainByAsciiNameInternal(name, zlc, GetFromDomainCacheOption.POSITIVE);
+    }
+    
+    private Domain getDomainByAsciiNameInternal(String name, ZimbraLdapContext zlc, GetFromDomainCacheOption option) throws ServiceException {
+        Domain d = sDomainCache.getByName(name, option);
         if (d instanceof DomainCache.NonExistingDomain)
             return null;
 
@@ -1904,8 +1937,8 @@ public class LdapProvisioning extends Provisioning {
         return domain;
     }
 
-    private Domain getDomainByVirtualHostnameInternal(String virtualHostname) throws ServiceException {
-        Domain d = sDomainCache.getByVirtualHostname(virtualHostname);
+    private Domain getDomainByVirtualHostnameInternal(String virtualHostname, GetFromDomainCacheOption option) throws ServiceException {
+        Domain d = sDomainCache.getByVirtualHostname(virtualHostname, option);
         if (d instanceof DomainCache.NonExistingDomain)
             return null;
 
@@ -1918,8 +1951,8 @@ public class LdapProvisioning extends Provisioning {
         return domain;
     }
 
-    private Domain getDomainByKrb5RealmInternal(String krb5Realm) throws ServiceException {
-        Domain d = sDomainCache.getByKrb5Realm(krb5Realm);
+    private Domain getDomainByKrb5RealmInternal(String krb5Realm, GetFromDomainCacheOption option) throws ServiceException {
+        Domain d = sDomainCache.getByKrb5Realm(krb5Realm, option);
         if (d instanceof DomainCache.NonExistingDomain)
             return null;
 
@@ -2962,7 +2995,7 @@ public class LdapProvisioning extends Provisioning {
             case name:
                 return getDistributionListByNameInternal(key);
             default:
-                    return null;
+                return null;
         }
     }
 
@@ -3244,12 +3277,34 @@ public class LdapProvisioning extends Provisioning {
     private void checkAccountStatus(Account acct, Map<String, Object> authCtxt) throws ServiceException {
         /*
          * We no longer do this reload(see bug 18981):
-         *     Staled data can be read back if there are replication delays and the account is 
+         *     Stale data can be read back if there are replication delays and the account is 
          *     refreshed from a not-caught-up replica.
          * 
-         * For now we comment it out and leave a "stub" here for reference instead of deleting it.
+         * We put this reload back for bug 46767.  
+         *     SetPassword is always proxied to the home server, 
+         *     but not the AuthRequest.  Not reloading here creates the problem that after a 
+         *     SetPassword, if an AuthRequest (or auth from other protocols: imap/pop3) comes 
+         *     in on a non-home server, the new password won't get hornored; even worse, the old 
+         *     password will!  This hole will last until the account is aged out of cache.
+         * 
+         *     We have to put back this reload.
+         *         - if we relaod from the master, bug 18981 and bug 46767 will be taken care of, 
+         *           but will regress bug 20634 - master down should not block login. 
+         *           
+         *         - if we reload from the replica, 
+         *           1. if the replica is always caught up, everything is fine.
+         *           
+         *           2. if the replica is slow, bug 18981 and bug 46767 can still happen.
+         *              To minimize impact to bug 18981, we do this reload only when the server 
+         *              is not the home server of the account.
+         *              For bug 46767, customer will have to fix their replica, period!
+         *              
+         *              Note, if nginx is fronting, auth is always redirected to the home 
+         *              server, so bug 46767 should not happen and the reload should never 
+         *              be triggered(good for bug 18981).
          */
-        // reload(acct);
+        if (!onLocalServer(acct))
+            reload(acct, false);  // reload from the replica 
         
         String accountStatus = acct.getAccountStatus(Provisioning.getInstance());
         if (accountStatus == null)
@@ -4340,23 +4395,14 @@ public class LdapProvisioning extends Provisioning {
             directGroups = new ArrayList<DistributionList>();
             Set<String> idsToRemove = null;
             for (String groupId : directGroupIds) {
-                DistributionList group = sDLCache.getById(groupId);
+                DistributionList group = prov.getGroup(DistributionListBy.id, groupId);
                 if (group == null) {
-                    // fetch from LDAP
-                    group = prov.getDistributionListByQuery(prov.mDIT.mailBranchBaseDN(),
-                                LdapFilter.distributionListById(groupId),
-                                null, sMinimalDlAttrs);
-                    if (group == null) {
-                        // the group could have been deleted
-                        // remove it from our direct group id cache on the entry
-                        if (idsToRemove == null)
-                            idsToRemove = new HashSet<String>();
-                        idsToRemove.add(groupId);
-                    } else  { 
-                        sDLCache.put(group);
-                    }
-                } 
-                if (group != null)
+                    // the group could have been deleted
+                    // remove it from our direct group id cache on the entry
+                    if (idsToRemove == null)
+                        idsToRemove = new HashSet<String>();
+                    idsToRemove.add(groupId);
+                } else
                     directGroups.add(group);
             }
             
@@ -4375,6 +4421,51 @@ public class LdapProvisioning extends Provisioning {
         }
         
         return directGroups;
+    }
+    
+    // like get(DistributionListBy keyType, String key)
+    // the difference are:
+    //     - cached
+    //     - entry returned only contains minimal DL attrs
+    //
+    // TODO: generalize it to be a Provisioning method
+    private DistributionList getGroup(DistributionListBy keyType, String key) throws ServiceException {
+        switch(keyType) {
+        case id:
+            return getGroupById(key);
+        case name:
+            return getGroupByName(key);
+        default:
+           return null;
+        }
+    }
+    
+    private DistributionList getGroupById(String groupId) throws ServiceException {
+        DistributionList group = sDLCache.getById(groupId);
+        if (group == null) {
+            // fetch from LDAP
+            group = getDistributionListByQuery(mDIT.mailBranchBaseDN(),
+                        LdapFilter.distributionListById(groupId),
+                        null, sMinimalDlAttrs);
+            if (group != null)
+                sDLCache.put(group);
+        } 
+        
+        return group;
+    }
+    
+    private DistributionList getGroupByName(String groupName) throws ServiceException {
+        DistributionList group = sDLCache.getByName(groupName);
+        if (group == null) {
+            // fetch from LDAP
+            group = getDistributionListByQuery(mDIT.mailBranchBaseDN(),
+                        LdapFilter.distributionListByName(groupName),
+                        null, sMinimalDlAttrs);
+            if (group != null)
+                sDLCache.put(group);
+        } 
+        
+        return group;
     }
     
     private static List<DistributionList> getGroupsInternal(Entry entry, boolean directOnly, Map<String, String> via)
@@ -4599,7 +4690,7 @@ public class LdapProvisioning extends Provisioning {
         return bases.toArray(new String[bases.size()]);
     }
     
-    public List<NamedEntry> searchDirectory(SearchOptions options, boolean useConnPool) throws ServiceException {
+    private List<NamedEntry> searchDirectory(SearchOptions options, boolean useConnPool) throws ServiceException {
         String base = null;
         
         LdapDomain ld = (LdapDomain) options.getDomain();
@@ -5235,7 +5326,7 @@ public class LdapProvisioning extends Provisioning {
          * 
          */ 
         Signature acctSig = LdapSignature.getAccountSignature(this, account);
-        if (acctSig != null && signatureName.equals(acctSig.getName()))
+        if (acctSig != null && signatureName.equalsIgnoreCase(acctSig.getName()))
             throw AccountServiceException.SIGNATURE_EXISTS(signatureName);
         
         boolean setAsDefault = false;
@@ -5320,7 +5411,7 @@ public class LdapProvisioning extends Provisioning {
             // check for duplicate names
             List<Signature> sigs = getAllSignatures(account);
             for (Signature sig : sigs) {
-                if (sig.getName().equals(newName) && !sig.getId().equals(signatureId))
+                if (sig.getName().equalsIgnoreCase(newName) && !sig.getId().equals(signatureId))
                     throw AccountServiceException.SIGNATURE_EXISTS(newName);
             }
         }
@@ -6074,45 +6165,6 @@ public class LdapProvisioning extends Provisioning {
                                   right, rightModifier);               
     }
 
-
-    
-    public long countAccounts(String domain) throws ServiceException {
-        String query = LdapFilter.allNonSystemAccounts();
-        int numAccounts = 0;
-        
-        ZimbraLdapContext zlc = null;
-        try {
-            zlc = new ZimbraLdapContext();
-            
-            SearchControls searchControls = 
-                new SearchControls(SearchControls.SUBTREE_SCOPE, 0, 0, new String[] {"zimbraId", "objectclass"}, false, false);
-
-            NamingEnumeration<SearchResult> ne = null;
-
-            try {
-                String dn = mDIT.domainToAccountSearchDN(domain);
-                ne = zlc.searchDir(dn, query, searchControls);
-                while (ne != null && ne.hasMore()) {
-                    SearchResult sr = ne.nextElement();
-                    dn = sr.getNameInNamespace();
-                    // skip admin accounts
-                    if (dn.endsWith("cn=zimbra")) continue;
-                    Attributes attrs = sr.getAttributes();
-                    Attribute objectclass = attrs.get("objectclass");
-                    if (objectclass.contains("zimbraAccount")) 
-                        numAccounts++;
-                }
-            } finally {
-                if (ne != null) ne.close();
-            }
-        } catch (NamingException e) {
-            throw ServiceException.FAILURE("unable to count the users", e);
-        } finally {
-            ZimbraLdapContext.closeContext(zlc);
-        }
-        return numAccounts;
-    }
-    
     public String getNamingRdnAttr(Entry entry) throws ServiceException {
         return mDIT.getNamingRdnAttr(entry);
     }
@@ -6199,7 +6251,7 @@ public class LdapProvisioning extends Provisioning {
             if (entries != null)
                 throw ServiceException.INVALID_REQUEST("cannot specify entry for flushing global config", null);
             Config config = getConfig();
-            reload(config);
+            reload(config, false);
             return;
         case cos:
             if (entries != null) {
@@ -6207,7 +6259,7 @@ public class LdapProvisioning extends Provisioning {
                     CosBy cosBy = (entry.mEntryBy==CacheEntryBy.id)? CosBy.id : CosBy.name;
                     Cos cos = getFromCache(cosBy, entry.mEntryIdentity);
                     if (cos != null)
-                        reload(cos);
+                        reload(cos, false);
                 }
             } else
                 sCosCache.clear();
@@ -6216,12 +6268,12 @@ public class LdapProvisioning extends Provisioning {
             if (entries != null) {
                 for (CacheEntry entry : entries) {
                     DomainBy domainBy = (entry.mEntryBy==CacheEntryBy.id)? DomainBy.id : DomainBy.name;
-                    Domain domain = getFromCache(domainBy, entry.mEntryIdentity);
+                    Domain domain = getFromCache(domainBy, entry.mEntryIdentity, GetFromDomainCacheOption.BOTH);
                     if (domain != null) {
                         if (domain instanceof DomainCache.NonExistingDomain)
-                            sDomainCache.removeNonExisting(domainBy, entry.mEntryIdentity);
+                            sDomainCache.removeFromNegativeCache(domainBy, entry.mEntryIdentity);
                         else
-                            reload(domain);
+                            reload(domain, false);
                     }
                 }
             } else
@@ -6233,7 +6285,7 @@ public class LdapProvisioning extends Provisioning {
                     ServerBy serverBy = (entry.mEntryBy==CacheEntryBy.id)? ServerBy.id : ServerBy.name;
                     Server server = get(serverBy, entry.mEntryIdentity);
                     if (server != null)
-                        reload(server);
+                        reload(server, false);
                 }
             } else
                 sServerCache.clear();
@@ -6244,7 +6296,7 @@ public class LdapProvisioning extends Provisioning {
                     ZimletBy zimletBy = (entry.mEntryBy==CacheEntryBy.id)? ZimletBy.id : ZimletBy.name;
                     Zimlet zimlet = getFromCache(zimletBy, entry.mEntryIdentity);
                     if (zimlet != null)
-                        reload(zimlet);
+                        reload(zimlet, false);
                 }
             } else
                 sZimletCache.clear();
@@ -6326,6 +6378,83 @@ public class LdapProvisioning extends Provisioning {
         return visitor.getResult();
     }
     
+    
+    
+    @Override
+    public long countObjects(CountObjectsType type, Domain domain) throws ServiceException {
+        
+        String[] bases = null;
+        String query = null;
+        String[] attrs = null;
+        
+        // figure out bases, query, and attrs for each supported counting type
+        switch (type) {
+        case userAccounts:
+            
+            if (domain instanceof LdapDomain) {
+                String b = mDIT.domainDNToAccountSearchDN(((LdapDomain)domain).getDN());
+                bases = new String[]{b};
+            } else
+                bases = getSearchBases(Provisioning.SA_ACCOUNT_FLAG);
+                
+            query = LdapFilter.allNonSystemAccounts();
+            attrs = new String[] {"zimbraId"};
+            break;
+        default:
+            throw ServiceException.INVALID_REQUEST("unsupported counting type:" + type.toString(), null);
+        }
+        
+        long num = 0;
+        for (String base : bases) {
+            num += countObjects(base, query, attrs);
+        }
+        
+        return num;
+    }
+    
+    private long countObjects(String base, String query, String[] attrs) throws ServiceException {
+        long num = 0;
+        
+        ZimbraLdapContext zlc = null;
+        try {
+            zlc = new ZimbraLdapContext();  
+            
+            SearchControls searchControls = 
+                new SearchControls(SearchControls.SUBTREE_SCOPE, 0, 0, attrs, false, false);
+
+            NamingEnumeration<SearchResult> ne = null;
+            
+            //Set the page size and initialize the cookie that we pass back in subsequent pages
+            int maxResults = 0; // no limit
+            int pageSize = LdapUtil.adjustPageSize(maxResults, 1000);
+            byte[] cookie = null;
+            
+            try {
+                do {
+                    zlc.setPagedControl(pageSize, cookie, true);
+                    ne = zlc.searchDir(base, query, searchControls);
+                    
+                    while (ne != null && ne.hasMore()) {
+                        SearchResult sr = ne.nextElement();
+                        num++;
+                    }
+                    cookie = zlc.getCookie();
+                } while (cookie != null);
+                
+            } finally {
+                if (ne != null) ne.close();
+            }
+        } catch (NamingException e) {
+            throw ServiceException.FAILURE("unable to count users", e);
+        } catch (IOException e) {
+            throw ServiceException.FAILURE("unable to count users", e);
+        } finally {
+            ZimbraLdapContext.closeContext(zlc);
+        }
+        
+        return num;
+    }
+    
     @Override
     public Map<String, String> getNamesForIds(Set<String> ids, EntryType type) throws ServiceException {
         final Map<String, String> result = new HashMap<String, String>();
@@ -6373,7 +6502,7 @@ public class LdapProvisioning extends Provisioning {
         case domain:
             unresolvedIds = new HashSet<String>();
             for (String id : ids) {
-                entry = sDomainCache.getById(id);
+                entry = getFromCache(DomainBy.id, id, GetFromDomainCacheOption.POSITIVE);
                 if (entry != null) 
                     result.put(id, entry.getName());
                 else
@@ -6476,7 +6605,7 @@ public class LdapProvisioning extends Provisioning {
      */
     public static void main(String[] args) throws Exception {
         LdapProvisioning prov = (LdapProvisioning)Provisioning.getInstance();
-        
+
         /*
         Map<String, Object> acctAttrs = new HashMap<String, Object>();
         acctAttrs.put("zimbraYahooId", null);

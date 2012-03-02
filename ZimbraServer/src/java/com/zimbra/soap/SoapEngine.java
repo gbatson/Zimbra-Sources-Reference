@@ -30,11 +30,11 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.AccountServiceException.AuthFailedServiceException;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.redolog.RedoLogProvider;
@@ -355,7 +355,7 @@ public class SoapEngine {
             boolean delegatedAuth = false;
             if (at != null) {
                 acctId = at.getAccountId();
-                isGuestAccount = acctId.equals(ACL.GUID_PUBLIC);
+                isGuestAccount = acctId.equals(GuestAccount.GUID_PUBLIC);
                 delegatedAuth = at.isDelegatedAuth();
             }
             
@@ -369,7 +369,7 @@ public class SoapEngine {
                     if (account == null)
                         return soapFault(soapProto, "acount " + acctId + " not found", ServiceException.AUTH_EXPIRED());
 
-                    if (!AuthProvider.checkAuthTokenValidityValue(prov, account, at))    
+                    if (!account.checkAuthTokenValidityValue(at))    
                         return soapFault(soapProto, "invalid validity value", ServiceException.AUTH_EXPIRED());
                     
                     if (delegatedAuth && account.getAccountStatus(prov).equals(Provisioning.ACCOUNT_STATUS_MAINTENANCE))
@@ -482,10 +482,10 @@ public class SoapEngine {
 	}
 
     private void acknowledgeNotifications(ZimbraSoapContext zsc) {
-        String authAccountId = zsc.getAuthtokenAccountId();
         SessionInfo sinfo = zsc.getSessionInfo();
-        if (sinfo != null && sinfo.sequence > 0) {
-            Session session = SessionCache.lookup(sinfo.sessionId, authAccountId);
+        if (sinfo != null) {
+            Session session = SessionCache.lookup(sinfo.sessionId, zsc.getAuthtokenAccountId());
+            // acknowledge ntfn sets up to sinfo.sequence; unset value means acknowledge all sent ntfns
             if (session instanceof SoapSession)
                 ((SoapSession) session).acknowledgeNotifications(sinfo.sequence);
         }

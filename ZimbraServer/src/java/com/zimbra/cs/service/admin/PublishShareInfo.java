@@ -21,13 +21,11 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.ShareInfo;
 import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
 import com.zimbra.cs.account.Provisioning.PublishShareInfoAction;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
@@ -82,23 +80,31 @@ public class PublishShareInfo extends ShareInfoHandler {
             checkAdminLoginAsRight(zsc, prov, ownerAcct);
             
             Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(ownerAcct, false);
-            if (mbox == null)
-                throw ServiceException.FAILURE("mailbox not found for account " + ownerAcct.getId(), null);
+
+            if (mbox == null) {
+                /*
+                 * bug 42416
+                 * instead of throwing, just do nothing.  The mailbox does not exist, there is any
+                 * share info anyway. 
+                 */
+                // throw ServiceException.FAILURE("mailbox not found for account " + ownerAcct.getId(), null);
+            } else {
             
-            Folder folder = null;
+                Folder folder = null;
+                    
+                if (folderPath != null)
+                    folder = getFolderByPath(octxt, mbox, folderPath);
+                else if (folderId != null)
+                    folder = getFolderByPath(octxt, mbox, folderId);
+                else if (folderIdOrPath != null)
+                    folder = getFolder(octxt, mbox, folderIdOrPath);
+                else {
+                    // no folder is given, iterate through all folders
+                    folder = null;
+                }
                 
-            if (folderPath != null)
-                folder = getFolderByPath(octxt, mbox, folderPath);
-            else if (folderId != null)
-                folder = getFolderByPath(octxt, mbox, folderId);
-            else if (folderIdOrPath != null)
-                folder = getFolder(octxt, mbox, folderIdOrPath);
-            else {
-                // no folder is given, iterate through all folders
-                folder = null;
+                ShareInfo.Publishing.publish(prov, octxt, publishingOnEntry, ownerAcct, folder);
             }
-            
-            ShareInfo.Publishing.publish(prov, octxt, publishingOnEntry, ownerAcct, folder);
             
         } else {
             // removing (unpublishing)

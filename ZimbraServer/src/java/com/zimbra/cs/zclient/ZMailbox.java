@@ -95,6 +95,8 @@ import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.AttachedMessagePart;
 import com.zimbra.cs.zclient.ZSearchParams.Cursor;
 import com.zimbra.cs.zclient.event.*;
 
+import java.util.Iterator;
+
 public class ZMailbox implements ToZJSONObject {
     public final static int MAX_NUM_CACHED_SEARCH_PAGERS = 5;
     public final static int MAX_NUM_CACHED_SEARCH_CONV_PAGERS = 5;
@@ -2812,7 +2814,7 @@ public class ZMailbox implements ToZJSONObject {
      * @throws ServiceException on error
      */
     public ZActionResult emptyFolder(String ids, boolean subfolders) throws ServiceException {
-        return doAction(folderAction("empty", ids).addAttribute(MailConstants.A_RECURSIVE, true));
+        return doAction(folderAction("empty", ids).addAttribute(MailConstants.A_RECURSIVE, subfolders));
     }
 
     /** mark all items in folder as read
@@ -3995,6 +3997,56 @@ public class ZMailbox implements ToZJSONObject {
     }
 
     /**
+     * Validates the given set of folder ids.  If a folder id corresponds to a mountpoint
+     * that is not accessible, that id is omitted from the returned list.
+     */
+    public synchronized String getValidFolderIds(String ids) throws ServiceException {
+        if (StringUtil.isNullOrEmpty(ids)) {
+            return "";
+        }
+        
+        // 1. Separate Local FolderIds and Remote FolderIds
+        // sbResult is a list of valid folderIds
+        // sbRemote is a list of mountpoints
+        Set<String> mountpointIds = new HashSet<String>();
+        Set<String> validIds = new HashSet<String>();
+
+        for (String id : ids.split(",")) {
+            ZFolder f = getFolderById(id);
+            if(f instanceof ZMountpoint) {
+                mountpointIds.add(id);
+            }
+            else {
+                validIds.add(id);
+            }
+        }
+        
+        //2. Send a batch request GetFolderRequest with sbRemote as input
+        try {
+            Element batch = newRequestElement(ZimbraNamespace.E_BATCH_REQUEST);
+            //Element resp;
+            for (String id : mountpointIds) {
+                Element folderrequest = batch.addElement(MailConstants.GET_FOLDER_REQUEST);
+                Element e = folderrequest.addElement(MailConstants.E_FOLDER);
+                e.addAttribute(MailConstants.A_FOLDER, id);
+            }
+
+            Element resp = mTransport.invoke(batch);
+            //3. Parse the response and add valid folderIds to sbResult.
+            for (Element e : resp.listElements()) {
+                if (e.getName().equals(MailConstants.GET_FOLDER_RESPONSE.getName())) {
+                    String id = e.getElement(MailConstants.E_MOUNT).getAttribute(MailConstants.A_ID);
+                    validIds.add(id);
+                }
+            }
+
+            return StringUtil.join(",", validIds);
+        } catch (IOException e) {
+            throw ZClientException.IO_ERROR("invoke "+e.getMessage(), e);
+        }
+    }
+    
+    /**
      * @param query optional seach query to limit appts returend
      * @param startMsec starting time of range, in msecs
      * @param endMsec ending time of range, in msecs
@@ -4018,13 +4070,7 @@ public class ZMailbox implements ToZJSONObject {
             if (folderId == null) folderId = ZFolder.ID_CALENDAR;
             ZApptSummaryResult cached = mApptSummaryCache.get(startMsec, endMsec, folderId, timeZone, query);
             if (cached == null) {
-                ZFolder folder = getFolderById(folderId);
-                /*
-                 * Folder cache might not always result in a hit, still go ahead and fetch the appointments.
-                 */
-                if ((folder == null) || !(folder instanceof ZMountpoint) || (folder instanceof ZMountpoint && folder.getEffectivePerms() != null)) {
-                    idsToFetch.add(folderId);
-                }
+                idsToFetch.add(folderId);
             } else {
                 summaries.add(cached);
             }
@@ -4318,7 +4364,7 @@ public class ZMailbox implements ToZJSONObject {
     }
 
     public enum ZFreeBusySlotType {
-        FREE, BUSY, TENTATIVE, UNAVAILABLE, NO_DATA, OUT_OF_OFFICE;
+        FREE, BUSY, TENTATIVE, UNAVAILABLE, NODATA;
 
         public static ZFreeBusySlotType fromString(String s) throws ServiceException {
             try {
@@ -4360,18 +4406,16 @@ public class ZMailbox implements ToZJSONObject {
             List<ZFreeBusyTimeSlot> slots = new ArrayList<ZFreeBusyTimeSlot>();
             for (Element slot : user.listElements()) {
                 ZFreeBusySlotType type;
-                if (slot.getName().equals(MailConstants.E_FREEBUSY_FREE)) {
-                    type = ZFreeBusySlotType.FREE;
-                } else if (slot.getName().equals(MailConstants.E_FREEBUSY_BUSY)) {
+                if (slot.getName().equals(MailConstants.E_FREEBUSY_BUSY)) {
                     type = ZFreeBusySlotType.BUSY;
                 } else if (slot.getName().equals(MailConstants.E_FREEBUSY_BUSY_TENTATIVE)) {
                     type = ZFreeBusySlotType.TENTATIVE;
                 } else if (slot.getName().equals(MailConstants.E_FREEBUSY_BUSY_UNAVAILABLE)) {
                     type = ZFreeBusySlotType.UNAVAILABLE;
-                } else if (slot.getName().equals(MailConstants.E_FREEBUSY_BUSY_OUT_OF_OFFICE)) {
-                    type = ZFreeBusySlotType.OUT_OF_OFFICE;
+                } else if (slot.getName().equals(MailConstants.E_FREEBUSY_NODATA)) {
+                    type = ZFreeBusySlotType.NODATA;
                 } else {
-                    type = ZFreeBusySlotType.NO_DATA;
+                    type = ZFreeBusySlotType.FREE;
                 }
                 slots.add(new ZFreeBusyTimeSlot(
                         type,
@@ -4390,7 +4434,7 @@ public class ZMailbox implements ToZJSONObject {
                 case BUSY:
                 case TENTATIVE:
                 case UNAVAILABLE:
-                case OUT_OF_OFFICE:    
+                case NODATA:
                     result.add(new ZAppointmentHit(slot));
                     break;
             }
@@ -4746,6 +4790,23 @@ public class ZMailbox implements ToZJSONObject {
         return result;
     }
 
+    public boolean checkPermission(String name, List<String> rights) throws ServiceException {
+        Element req = newRequestElement(MailConstants.CHECK_PERMISSION_REQUEST);
+        Element eTarget = req.addElement(MailConstants.E_TARGET);
+        eTarget.addAttribute(MailConstants.A_TARGET_TYPE, "account");
+        eTarget.addAttribute(MailConstants.A_TARGET_BY, "name");
+        eTarget.setText(name);
+        
+        for (String right : rights) {
+            Element eRight = req.addElement(MailConstants.E_RIGHT);
+            eRight.setText(right);
+        }
+        Element resp = invoke(req);
+        boolean allow = resp.getAttributeBool(MailConstants.A_ALLOW);
+        
+        return allow;
+    }
+    
     public String toString() {
         try {
             return String.format("[ZMailbox %s]", getName());

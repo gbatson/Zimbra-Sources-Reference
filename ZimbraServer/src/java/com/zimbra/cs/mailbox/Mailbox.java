@@ -38,6 +38,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.mail.MessagingException;
@@ -72,6 +73,7 @@ import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbPool;
+import com.zimbra.cs.db.DbMailItem.QueryParams;
 import com.zimbra.cs.db.DbPool.Connection;
 import com.zimbra.cs.fb.FreeBusy;
 import com.zimbra.cs.fb.FreeBusyProvider;
@@ -430,7 +432,7 @@ public class Mailbox {
             // init the index
             if (!DebugConfig.disableIndexing) 
                 mIndexHelper.instantiateMailboxIndex();
-            
+
             if (mVersion == null) { 
                 // if we've just initialized() the mailbox, then the version will
                 // be set in the config, but it won't be comitted yet -- and unfortunately 
@@ -464,17 +466,21 @@ public class Mailbox {
             }
 
             // bug 41893: revert folder colors back to mapped value
-            // bug 42874: re-index all contacts
             if (!getVersion().atLeast(1, 7)) {
                 MailboxUpgrade.upgradeTo1_7(this);
-                mIndexHelper.upgradeMailboxTo1_7();
-                updateVersion(new MailboxVersion((short)1, (short)7));
+                updateVersion(new MailboxVersion((short) 1, (short) 7));
             }
 
             // bug 41850: revert tag colors back to mapped value
             if (!getVersion().atLeast(1, 8)) {
                 MailboxUpgrade.upgradeTo1_8(this);
-                updateVersion(new MailboxVersion((short)1, (short)8));
+                updateVersion(new MailboxVersion((short) 1, (short) 8));
+            }
+
+            // bug 20620: track \Deleted counts separately
+            if (!getVersion().atLeast(1, 9)) {
+                purgeImapDeleted(null);
+                updateVersion(new MailboxVersion((short) 1, (short) 9));
             }
 
             // done!
@@ -483,7 +489,7 @@ public class Mailbox {
         }
         return false;
     }
-    
+
     /** Returns the server-local numeric ID for this mailbox.  To get a
      *  system-wide, persistent unique identifier for the mailbox, use
      *  {@link #getAccountId()}. */
@@ -570,7 +576,7 @@ public class Mailbox {
         if (mListeners.isEmpty())
             return Collections.emptyList();
         else if (stype == null)
-                return new ArrayList<Session>(mListeners);
+            return new ArrayList<Session>(mListeners);
 
         List<Session> sessions = new ArrayList<Session>(mListeners.size());
         for (Session s : mListeners)
@@ -585,18 +591,14 @@ public class Mailbox {
         else if (stype == null)
             return true;
 
-        for (Session s : mListeners)
+        for (Session s : mListeners) {
             if (s.getType() == stype)
                 return true;
+        }
         return false;
     }
 
-    /**
-     * Loookup a {@link Session) in the set of listeners on this mailbox
-     * 
-     * @param sessionId
-     * @return
-     */
+    /** Loookup a {@link Session} in the set of listeners on this mailbox. */
     public Session getListener(String sessionId) {
         if (sessionId != null) {
             for (Session session : mListeners) {
@@ -897,14 +899,17 @@ public class Mailbox {
 
         // if we go negative, that's OK!  just pretend we're at 0.
         long size = Math.max(0, (mCurrentChange.size == MailboxChange.NO_CHANGE ? mData.size : mCurrentChange.size) + delta);
+        if (delta > 0 && checkQuota)
+            checkSizeChange(size);
 
-        if (delta > 0 && checkQuota) {
-            long quota = getAccount().getLongAttr(Provisioning.A_zimbraMailQuota, 0);
-            if (quota != 0 && size > quota)
-                throw MailServiceException.QUOTA_EXCEEDED(quota);
-        }
         mCurrentChange.mDirty.recordModified(this, Change.MODIFIED_SIZE);
         mCurrentChange.size = size;
+    }
+
+    void checkSizeChange(long newSize) throws ServiceException {
+        long quota = getAccount().getLongAttr(Provisioning.A_zimbraMailQuota, 0);
+        if (quota != 0 && newSize > quota)
+            throw MailServiceException.QUOTA_EXCEEDED(quota);
     }
 
     /** Returns the last time that the mailbox had a write op caused by a SOAP
@@ -1495,8 +1500,8 @@ public class Mailbox {
         ZimbraLog.cache.info("initializing folder and tag caches for mailbox " + getId());
 
         try {
-            Map<MailItem.UnderlyingData, Long> folderData = new HashMap<MailItem.UnderlyingData, Long>();
-            Map<MailItem.UnderlyingData, Long> tagData    = new HashMap<MailItem.UnderlyingData, Long>();
+            DbMailItem.FolderTagMap folderData = new DbMailItem.FolderTagMap();
+            DbMailItem.FolderTagMap tagData    = new DbMailItem.FolderTagMap();
             MailboxData stats = null;
 
             // Load folders and tags from memcached if we can.
@@ -1509,13 +1514,13 @@ public class Mailbox {
                     for (Metadata meta : foldersMeta) {
                         UnderlyingData ud = new UnderlyingData();
                         ud.deserialize(meta);
-                        folderData.put(ud, -1L);
+                        folderData.put(ud, null);
                     }
                     List<Metadata> tagsMeta = ftData.getTags();
                     for (Metadata meta : tagsMeta) {
                         UnderlyingData ud = new UnderlyingData();
                         ud.deserialize(meta);
-                        tagData.put(ud, -1L);
+                        tagData.put(ud, null);
                     }
                     loadedFromMemcached = true;
                 }
@@ -1540,10 +1545,11 @@ public class Mailbox {
 
             mFolderCache = new HashMap<Integer, Folder>();
             // create the folder objects and, as a side-effect, populate the new cache
-            for (Map.Entry<MailItem.UnderlyingData, Long> entry : folderData.entrySet()) {
+            for (Map.Entry<MailItem.UnderlyingData, DbMailItem.FolderTagCounts> entry : folderData.entrySet()) {
                 Folder folder = (Folder) MailItem.constructItem(this, entry.getKey());
-                if (entry.getValue() > 0)
-                    folder.setSize(folder.getItemCount(), entry.getValue());
+                DbMailItem.FolderTagCounts fcounts = entry.getValue();
+                if (fcounts != null)
+                    folder.setSize(folder.getItemCount(), fcounts.deletedCount, fcounts.totalSize, fcounts.deletedUnreadCount);
             }
             // establish the folder hierarchy
             for (Folder folder : mFolderCache.values()) {
@@ -1564,8 +1570,12 @@ public class Mailbox {
 
             mTagCache = new HashMap<Object, Tag>(tagData.size() * 3);
             // create the tag objects and, as a side-effect, populate the new cache
-            for (MailItem.UnderlyingData ud : tagData.keySet()) {
-                Tag tag = new Tag(this, ud);
+            for (Map.Entry<MailItem.UnderlyingData, DbMailItem.FolderTagCounts> entry : tagData.entrySet()) {
+                Tag tag = new Tag(this, entry.getKey());
+                DbMailItem.FolderTagCounts tcounts = entry.getValue();
+                if (tcounts != null)
+                    tag.setSize(tcounts.deletedUnreadCount);
+
                 if (persist)
                     tag.saveTagCounts();
             }
@@ -1724,7 +1734,7 @@ public class Mailbox {
         }
     }
 
-    public synchronized MailboxVersion getVersion() { return mVersion; }
+    public synchronized MailboxVersion getVersion()  { return mVersion; }
     
     synchronized void updateVersion(MailboxVersion vers) throws ServiceException {
         mVersion = new MailboxVersion(vers);
@@ -1737,9 +1747,7 @@ public class Mailbox {
         setConfig(null, Mailbox.MD_CONFIG_VERSION, md);
     }
     
-    /**
-     * Status of current batched indexing operation 
-     */
+    /** Status of current batched indexing operation. */
     public static class BatchedIndexStatus {
         public int mNumProcessed = 0;
         public int mNumToProcess = 0;
@@ -1816,6 +1824,12 @@ public class Mailbox {
      * 
      * @param octxt    The context (authenticated user, redo player, other
      *                 constraints) under which this operation is executed.
+     *                 Note, if the callstack is currently in a transaction,
+     *                 this octxt will be ignored for right checking purpose; 
+     *                 the OperationContext object associated with the 
+     *                 top-most transaction will be used for right checking 
+     *                 purpose instead.
+     *                 
      * @param itemId   The item whose permissions we need to query.
      * @param type     The item's type, or {@link MailItem#TYPE_UNKNOWN}.
      * @return An OR'ed-together set of rights, e.g. {@link ACL#RIGHT_READ}
@@ -1828,13 +1842,14 @@ public class Mailbox {
      * @see ACL
      * @see MailItem#checkRights(short, Account, boolean) */
     public synchronized short getEffectivePermissions(OperationContext octxt, int itemId, byte type) throws ServiceException {
-        // fetch the item outside the transaction so we get it even if the
-        //   authenticated user doesn't have read permissions on it
-        MailItem item = getItemById(null, itemId, type);
-
         boolean success = false;
         try {
             beginTransaction("getEffectivePermissions", octxt);
+            
+            // fetch the item without perm check so we get it even if the
+            // authenticated user doesn't have read permissions on it
+            MailItem item = getItemById(itemId, type);
+            
             // use ~0 to query *all* rights; may need to change this when we do negative rights
             short rights = item.checkRights((short) ~0, getAuthenticatedAccount(), isUsingAdminPrivileges());
             success = true;
@@ -1843,6 +1858,38 @@ public class Mailbox {
             endTransaction(success);
         }
     }
+    
+    /**
+     * See Mailbox.getEffectivePermissions(OperationContext octxt, int itemId, byte type)
+     * 
+     * This API uses the credentials in authedAcct/asAdmin parameters.
+     * 
+     * @param authedAcct
+     * @param asAdmin
+     * @param itemId
+     * @param type
+     * @return
+     * @throws ServiceException
+     */
+    public synchronized short getEffectivePermissions(Account authedAcct, boolean asAdmin, int itemId, byte type) throws ServiceException {
+
+        boolean success = false;
+        try {
+            beginTransaction("getEffectivePermissions", new OperationContext(authedAcct, asAdmin));
+            
+            // fetch the item without perm check so we get it even if the
+            // authenticated user doesn't have read permissions on it
+            MailItem item = getItemById(itemId, type);
+            
+            // use ~0 to query *all* rights; may need to change this when we do negative rights
+            short rights = item.checkRights((short) ~0, authedAcct, asAdmin);
+            success = true;
+            return rights;
+        } finally {
+            endTransaction(success);
+        }
+    }
+    
 
     /** Returns whether this type of {@link MailItem} is definitely preloaded
      *  in one of the <tt>Mailbox</tt>'s caches.
@@ -2190,30 +2237,30 @@ public class Mailbox {
      *  This can return anything with a name; at present, that is limited to
      *  {@link Folder}s, {@link Tag}s, and {@link Document}s. */
     public synchronized MailItem getItemByPath(OperationContext octxt, String name, int folderId) throws ServiceException {
+        if (name != null) {
+            while (name.startsWith("/")) {
+                folderId = ID_FOLDER_USER_ROOT;
+                name = name.substring(1);
+            }
+            while (name.endsWith("/"))
+                name = name.substring(0, name.length() - 1);
+        }        
         if (name == null || name.equals(""))
             return getFolderById(octxt, folderId);
 
-        if (name.equals("/"))
-            return getFolderById(octxt, ID_FOLDER_USER_ROOT);
-        
-        if (name.startsWith("/")) {
-            folderId = ID_FOLDER_USER_ROOT;
-            name = name.substring(1);
-        }
-        if (name.endsWith("/"))
-            name = name.substring(0, name.length() - 1);
-
-        Folder parent = getFolderById(null, folderId);
         boolean success = false;
         try {
             // tag/folder caches are populated in beginTransaction...
-            beginTransaction("getItemByName", octxt);
+            beginTransaction("getItemByPath", octxt);
+
+            Folder parent = (Folder) getItemById(folderId, MailItem.TYPE_FOLDER);
 
             int slash = name.lastIndexOf('/');
             if (slash != -1) {
-                for (String segment : name.substring(0, slash).split("/"))
+                for (String segment : name.substring(0, slash).split("/")) {
                     if ((parent = parent.findSubfolder(segment)) == null)
                         throw MailServiceException.NO_SUCH_FOLDER(name);
+                }
                 name = name.substring(slash + 1);
             }
 
@@ -2224,7 +2271,7 @@ public class Mailbox {
                 // check for the specified item -- folder first, then document
                 item = parent.findSubfolder(name);
                 if (item == null) {
-                    checkAccess(parent);
+                	checkAccess(parent);
                     item = getItem(DbMailItem.getByName(this, parent.getId(), name, MailItem.TYPE_DOCUMENT));
                 }
             }
@@ -3268,9 +3315,17 @@ public class Mailbox {
     }
 
     public synchronized void writeICalendarForCalendarItems(
+        Writer writer, OperationContext octxt, Collection<CalendarItem> calItems,
+        boolean useOutlookCompatMode, boolean ignoreErrors, boolean needAppleICalHacks,
+        boolean trimCalItemsList)
+    throws ServiceException {
+            writeICalendarForCalendarItems(writer, octxt, calItems, useOutlookCompatMode, ignoreErrors, needAppleICalHacks, trimCalItemsList, false);
+    }
+
+    public synchronized void writeICalendarForCalendarItems(
             Writer writer, OperationContext octxt, Collection<CalendarItem> calItems,
             boolean useOutlookCompatMode, boolean ignoreErrors, boolean needAppleICalHacks,
-            boolean trimCalItemsList)
+            boolean trimCalItemsList, boolean escapeHtmlTags)
     throws ServiceException {
         try {
             writer.write("BEGIN:VCALENDAR\r\n");
@@ -3319,7 +3374,7 @@ public class Mailbox {
                     }
                     if (comps != null) {
                         for (ZComponent comp : comps) {
-                            comp.toICalendar(writer, needAppleICalHacks);
+                            comp.toICalendar(writer, needAppleICalHacks, escapeHtmlTags);
                         }
                     }
                 }
@@ -3332,15 +3387,22 @@ public class Mailbox {
     }
 
     public synchronized void writeICalendarForRange(
+        Writer writer, OperationContext octxt, long start, long end, int folderId,
+        boolean useOutlookCompatMode, boolean ignoreErrors, boolean needAppleICalHacks)
+    throws ServiceException {
+        writeICalendarForRange(writer, octxt, start, end, folderId, useOutlookCompatMode, ignoreErrors, needAppleICalHacks, false);
+    }
+
+    public synchronized void writeICalendarForRange(
             Writer writer, OperationContext octxt, long start, long end, int folderId,
-            boolean useOutlookCompatMode, boolean ignoreErrors, boolean needAppleICalHacks)
+            boolean useOutlookCompatMode, boolean ignoreErrors, boolean needAppleICalHacks, boolean escapeHtmlTags)
     throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("writeICalendarForRange", octxt);
             Collection<CalendarItem> calItems = getCalendarItemsForRange(octxt, start, end, folderId, null);
             writeICalendarForCalendarItems(
-                    writer, octxt, calItems, useOutlookCompatMode, ignoreErrors, needAppleICalHacks, true);
+                    writer, octxt, calItems, useOutlookCompatMode, ignoreErrors, needAppleICalHacks, true, escapeHtmlTags);
         } finally {
             endTransaction(success);
         }
@@ -4493,6 +4555,9 @@ public class Mailbox {
             String hash = getHash(subject);
             long tags = Tag.tagsToBitmask(tagStr);
 
+            // step 0: preemptively check for quota issues (actual update is done in Message.create)
+            checkSizeChange(getSize() + staged.getStagedSize());
+
             // step 1: get an ID assigned for the new message
             int messageId = getNextItemId(!isRedo ? ID_AUTO_INCREMENT : redoPlayer.getMessageId());
             if (isRedo)
@@ -5209,6 +5274,44 @@ public class Mailbox {
      * @param targetId  The ID of the target folder for the move.
      * @param tcon      An optional constraint on the items being moved. */
     public synchronized void move(OperationContext octxt, int[] itemIds, byte type, int targetId, TargetConstraint tcon) throws ServiceException {
+        try {
+            moveInternal(octxt, itemIds, type, targetId, tcon);
+            return;
+        } catch (ServiceException e) {
+            // make sure that move-to-Trash never fails with a naming conflict
+            if (!e.getCode().equals(MailServiceException.ALREADY_EXISTS) || targetId != ID_FOLDER_TRASH)
+                throw e;
+        }
+
+        // if we're here, we hit a naming conflict during move-to-Trash
+        if (itemIds.length == 1) {
+            // rename the item being moved instead of the one already there...
+            rename(octxt, itemIds[0], type, generateAlternativeItemName(octxt, itemIds[0], type), targetId);
+        } else {
+            // iterate one-by-one and move the items individually
+            for (int id : itemIds) {
+                // FIXME: non-transactional
+                try {
+                    // still more likely than not to succeed...
+                    moveInternal(octxt, new int[] { id }, type, targetId, tcon);
+                } catch (ServiceException e) {
+                    // rename the item being moved instead of the one already there...
+                    rename(octxt, id, type, generateAlternativeItemName(octxt, id, type), targetId);
+                }
+            }
+        }
+    }
+
+    private String generateAlternativeItemName(OperationContext octxt, int id, byte type) throws ServiceException {
+        String name = getItemById(octxt, id, type).getName();
+        String uuid = '{' + UUID.randomUUID().toString() + '}';
+        if (name.length() + uuid.length() > MailItem.MAX_NAME_LENGTH)
+            return name.substring(0, MailItem.MAX_NAME_LENGTH - uuid.length()) + uuid;
+        else
+            return name + uuid;
+    }
+
+    private synchronized void moveInternal(OperationContext octxt, int[] itemIds, byte type, int targetId, TargetConstraint tcon) throws ServiceException {
         MoveItem redoRecorder = new MoveItem(mId, itemIds, type, targetId, tcon);
         Map<Integer, String> oldFolderPaths = new HashMap<Integer, String>(); 
 
@@ -5227,9 +5330,9 @@ public class Mailbox {
             boolean resetUIDNEXT = false;
 
             for (MailItem item : items) {
-                if (item instanceof Folder && !oldFolderPaths.containsKey(item.getId())) {
+                if (item instanceof Folder && !oldFolderPaths.containsKey(item.getId()))
                     oldFolderPaths.put(item.getId(), ((Folder) item).getPath());
-                }
+
                 // train the spam filter if necessary...
                 trainSpamFilter(octxt, item, target);
                 
@@ -5253,9 +5356,8 @@ public class Mailbox {
         }
         
         if (success) {
-            for (int id : oldFolderPaths.keySet()) {
+            for (int id : oldFolderPaths.keySet())
                 updateFilterRules(id, oldFolderPaths.get(id));
-            }
         }
     }
 
@@ -5432,6 +5534,7 @@ public class Mailbox {
     public synchronized void delete(OperationContext octxt, int[] itemIds, byte type, TargetConstraint tcon) throws ServiceException {
         DeleteItem redoRecorder = new DeleteItem(mId, itemIds, type, tcon);
         Map<Integer, String> deletedFolderPaths = new HashMap<Integer, String>();
+        Map<Integer, String> deletedTags = new HashMap<Integer, String>();
 
         boolean success = false;
         try {
@@ -5452,6 +5555,9 @@ public class Mailbox {
                 
                 if (item.getType() == MailItem.TYPE_FOLDER) {
                     deletedFolderPaths.put(item.getId(), ((Folder) item).getPath());
+                }
+                if (item.getType() == MailItem.TYPE_TAG) {
+                    deletedTags.put(item.getId(), item.getName());
                 }
 
                 // however, trying to delete messages and passing in a folder ID is not OK
@@ -5476,6 +5582,9 @@ public class Mailbox {
         
         for (int id : deletedFolderPaths.keySet()) {
             updateFilterRules(id, deletedFolderPaths.get(id));
+        }
+        for (int id: deletedTags.keySet()) {
+            RuleManager.tagDeleted(getAccount(), deletedTags.get(id));
         }
     }
 
@@ -6122,9 +6231,31 @@ public class Mailbox {
             endTransaction(success);
         }
     }
-
-    public synchronized void emptyFolder(OperationContext octxt, int folderId, boolean removeSubfolders)
+    
+    public void emptyFolder(OperationContext octxt, int folderId, boolean removeSubfolders)
     throws ServiceException {
+        Folder root = getFolderById(octxt, folderId);
+        long itemCount = 0;
+        if (!removeSubfolders) {
+            itemCount = root.getItemCount();
+        } else {
+            for (Folder folder : getFolderById(folderId).getSubfolderHierarchy()) {
+                itemCount += folder.getItemCount();
+            }
+        }
+        ZimbraLog.mailbox.info("Emptying %d items from %s, removeSubfolders=%b.", itemCount, root.getPath(), removeSubfolders);
+        
+        int batchSize = Provisioning.getInstance().getLocalServer().getMailEmptyFolderBatchSize();
+        if (itemCount <= batchSize) {
+            emptySmallFolder(octxt, folderId, removeSubfolders);
+        } else {
+            emptyLargeFolder(octxt, folderId, removeSubfolders, batchSize);
+        }
+    }
+
+    private synchronized void emptySmallFolder(OperationContext octxt, int folderId, boolean removeSubfolders)
+    throws ServiceException {
+        ZimbraLog.mailbox.debug("Emptying small folder %s, removeSubfolders=%b", folderId, removeSubfolders);
         EmptyFolder redoRecorder = new EmptyFolder(mId, folderId, removeSubfolders);
 
         boolean success = false;
@@ -6136,6 +6267,58 @@ public class Mailbox {
             success = true;
         } finally {
             endTransaction(success);
+        }
+    }
+    
+    private void emptyLargeFolder(OperationContext octxt, int folderId, boolean removeSubfolders, int batchSize)
+    throws ServiceException {
+        ZimbraLog.mailbox.debug("Emptying large folder %s, removeSubfolders=%b, batchSize=%d",
+            folderId, removeSubfolders, batchSize);
+        
+        List<Integer> folderIds = new ArrayList<Integer>();
+        if (!removeSubfolders) {
+            folderIds.add(folderId);
+        } else {
+            List<Folder> folders = getFolderById(octxt, folderId).getSubfolderHierarchy();
+            for (Folder folder : folders) {
+                folderIds.add(folder.getId());
+            }
+        }
+        
+        for (int id : folderIds) {
+            Folder folder = getFolderById(octxt, id);
+            if (!folder.canAccess(ACL.RIGHT_DELETE)) {
+                throw ServiceException.PERM_DENIED("not authorized to empty " + folder.getPath());
+            }
+        }
+        
+        QueryParams params = new QueryParams();
+        params.setFolderIds(folderIds).setModifiedBefore(System.currentTimeMillis()).setRowLimit(batchSize);
+        params.setExcludedTypes(MailItem.TYPE_FOLDER, MailItem.TYPE_MOUNTPOINT, MailItem.TYPE_SEARCHFOLDER);
+        
+        while (true) {
+            Set<Integer> itemIds = null;
+            Connection conn = null;
+            
+            // Synchronize on this mailbox to make sure that no one modifies the
+            // items we're about to delete.
+            synchronized (this) {
+                try {
+                    conn = DbPool.getConnection();
+                    itemIds = DbMailItem.getIds(this, conn, params);
+                } finally {
+                    DbPool.quietClose(conn);
+                }
+
+                if (itemIds.isEmpty()) {
+                    break;
+                }
+                delete(octxt, ArrayUtil.toIntArray(itemIds), MailItem.TYPE_UNKNOWN, null);
+            }
+        }
+        
+        if (removeSubfolders) {
+            emptySmallFolder(octxt, folderId, removeSubfolders);
         }
     }
 
@@ -6211,15 +6394,19 @@ public class Mailbox {
      * Purges messages in system folders based on user- and admin-level purge settings
      * on the account.
      */
-    public void purgeMessages(OperationContext octxt) throws ServiceException {
+    public boolean purgeMessages(OperationContext octxt) throws ServiceException {
         // Look up the account outside the synchronized block, so that the mailbox
         // doesn't get locked due to an unresponsive LDAP server (see bug 33650).
-        purgeMessages(octxt, getAccount());
+        int batchSize = Provisioning.getInstance().getLocalServer().getMailPurgeBatchSize();
+        return purgeMessages(octxt, getAccount(), batchSize);
     }
 
-    private synchronized void purgeMessages(OperationContext octxt, Account acct) throws ServiceException {
+    /**
+     * @return <tt>true</tt> if all messages that meet the purge criteria were purged,
+     * <tt>false</tt> if the number of messages to purge in any folder exceeded <tt>maxItemsPerFolder</tt>
+     */
+    private synchronized boolean purgeMessages(OperationContext octxt, Account acct, Integer maxItemsPerFolder) throws ServiceException {
         if (ZimbraLog.purge.isDebugEnabled()) {
-            ZimbraLog.purge.debug("Purging messages.");
             ZimbraLog.purge.debug("System retention policy: Trash=%s, Junk=%s, All messages=%s",
                 acct.getAttr(Provisioning.A_zimbraMailTrashLifetime),
                 acct.getAttr(Provisioning.A_zimbraMailSpamLifetime),
@@ -6249,8 +6436,10 @@ public class Mailbox {
             userInboxReadTimeout <= 0 && userInboxReadTimeout <= 0 &&
             userInboxUnreadTimeout <= 0 && userSentTimeout <= 0)
             // Nothing to do
-            return;
+            return true;
 
+        ZimbraLog.purge.info("Purging messages.");
+        
         // sanity-check the really dangerous value...
         if (globalTimeout > 0 && globalTimeout < Constants.SECONDS_PER_MONTH) {
             // this min is also used by POP3 EXPIRE command. update Pop3Handler.MIN_EPXIRE_DAYS if it changes.
@@ -6270,38 +6459,64 @@ public class Mailbox {
             Folder sent = getFolderById(ID_FOLDER_SENT);
             Folder inbox = getFolderById(ID_FOLDER_INBOX);
 
-            if (globalTimeout > 0)
-                Folder.purgeMessages(this, null, getOperationTimestamp() - globalTimeout, null, false, false);
+            boolean purgedAll = true;
+            
+            if (globalTimeout > 0) {
+                int numPurged = Folder.purgeMessages(this, null, getOperationTimestamp() - globalTimeout, null, false, false, maxItemsPerFolder);
+                purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
+            }
             if (trashTimeout > 0) {
                 boolean useChangeDate =
                     acct.getBooleanAttr(Provisioning.A_zimbraMailPurgeUseChangeDateForTrash, true);
-                Folder.purgeMessages(this, trash, getOperationTimestamp() - trashTimeout, null, useChangeDate, true);
+                int numPurged = Folder.purgeMessages(this, trash, getOperationTimestamp() - trashTimeout, null, useChangeDate, true, maxItemsPerFolder);
+                ZimbraLog.purge.debug("Purged %d messages from Trash", numPurged);
+                purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
             }
-            if (junkTimeout > 0)
-                Folder.purgeMessages(this, junk, getOperationTimestamp() - junkTimeout, null, false, false);
-            if (userInboxReadTimeout > 0)
-                Folder.purgeMessages(this, inbox, getOperationTimestamp() - userInboxReadTimeout, false, false, false);
-            if (userInboxUnreadTimeout > 0)
-                Folder.purgeMessages(this, inbox, getOperationTimestamp() - userInboxUnreadTimeout, true, false, false);
-            if (userSentTimeout > 0)
-                Folder.purgeMessages(this, sent, getOperationTimestamp() - userSentTimeout, null, false, false);
-
+            if (junkTimeout > 0) {
+                int numPurged = Folder.purgeMessages(this, junk, getOperationTimestamp() - junkTimeout, null, false, false, maxItemsPerFolder);
+                purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
+                ZimbraLog.purge.debug("Purged %d messages from Junk", numPurged);
+            }
+            if (userInboxReadTimeout > 0) {
+                int numPurged = Folder.purgeMessages(this, inbox, getOperationTimestamp() - userInboxReadTimeout, false, false, false, maxItemsPerFolder);
+                purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
+                ZimbraLog.purge.debug("Purged %d read messages from Inbox", numPurged);
+            }
+            if (userInboxUnreadTimeout > 0) {
+                int numPurged = Folder.purgeMessages(this, inbox, getOperationTimestamp() - userInboxUnreadTimeout, true, false, false, maxItemsPerFolder);
+                purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
+                ZimbraLog.purge.debug("Purged %d unread messages from Inbox", numPurged);
+            }
+            if (userSentTimeout > 0) {
+                int numPurged = Folder.purgeMessages(this, sent, getOperationTimestamp() - userSentTimeout, null, false, false, maxItemsPerFolder);
+                purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
+                ZimbraLog.purge.debug("Purged %d messages from Sent", numPurged);
+            }
             // deletes have already been collected, so fetch the tombstones and write once
             TypedIdList tombstones = collectPendingTombstones();
             if (tombstones != null && !tombstones.isEmpty())
                 DbMailItem.writeTombstones(this, tombstones);
 
             int convTimeout = (int) (LC.conversation_max_age_ms.longValue() / 1000);
-            int tombstoneTimeout = (int) (LC.tombstone_max_age_ms.longValue() / 1000);
             DbMailItem.closeOldConversations(this, getOperationTimestamp() - convTimeout);
             
             // TODO: reenamble tombstone purging once we're able to add the client
             // support described in bug 12965.
+            // int tombstoneTimeout = (int) (LC.tombstone_max_age_ms.longValue() / 1000);
             // DbMailItem.purgeTombstones(this, getOperationTimestamp() - tombstoneTimeout);
             success = true;
+            ZimbraLog.purge.debug("purgedAll=%b", purgedAll);
+            return purgedAll;
         } finally {
             endTransaction(success);
         }
+    }
+    
+    private boolean updatePurgedAll(boolean purgedAll, int numDeleted, Integer maxItems) {
+        if (!purgedAll) {
+            return false;
+        }
+        return (maxItems == null || numDeleted < maxItems);
     }
 
     /** Returns the smaller non-zero value, or <tt>0</tt> if both
@@ -6321,8 +6536,20 @@ public class Mailbox {
             beginTransaction("purgeImapDeleted", octxt, redoRecorder);
 
             Set<Folder> purgeable = getAccessibleFolders((short) (ACL.RIGHT_READ | ACL.RIGHT_DELETE));
-            PendingDelete info = DbMailItem.getImapDeleted(this, purgeable);
-            MailItem.delete(this, info, null, MailItem.DeleteScope.ENTIRE_ITEM, true);
+
+            // short-circuit the DB call if we're tracking \Deleted counts and they're all 0
+            boolean skipDB = false;
+            if (getVersion().atLeast(1, 9)) {
+                int deleted = 0;
+                for (Folder folder : purgeable != null ? purgeable : listAllFolders())
+                    deleted += folder.getDeletedCount();
+                skipDB = deleted == 0;
+            }
+
+            if (!skipDB) {
+                PendingDelete info = DbMailItem.getImapDeleted(this, purgeable);
+                MailItem.delete(this, info, null, MailItem.DeleteScope.ENTIRE_ITEM, true);
+            }
             success = true;
         } finally {
             endTransaction(success);
@@ -6621,8 +6848,7 @@ public class Mailbox {
         }
     }
 
-    private SharedDeliveryCoordinator mSharedDelivCoord =
-        new SharedDeliveryCoordinator();
+    private SharedDeliveryCoordinator mSharedDelivCoord = new SharedDeliveryCoordinator();
 
     /**
      * Puts mailbox in shared delivery mode.  A shared delivery is delivery of
@@ -6769,7 +6995,6 @@ public class Mailbox {
         if (!mCurrentChange.endChange())
             return;
 
-        Connection conn = mCurrentChange.conn;
         ServiceException exception = null;
 
         // update mailbox size and folder unread/message counts
@@ -6781,6 +7006,8 @@ public class Mailbox {
                 success = false;
             }
         }
+
+        Connection conn = mCurrentChange.conn;
 
         // Failure case is very simple.  Just rollback the database and cache
         // and return.  We haven't logged anything to the redo log for this
@@ -6866,7 +7093,6 @@ public class Mailbox {
                 //    a redo error, and the second case would index the wrong
                 //    value.
                 if (redoRecorder != null) {
-                    
                     if (mCurrentChange.mDirty != null && mCurrentChange.mDirty.changedTypes != 0) {
                         // if an "all accounts" waitset is active, and this change has an appropriate type,
                         // then we'll need to set a commit-callback

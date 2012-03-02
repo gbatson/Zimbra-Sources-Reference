@@ -82,7 +82,7 @@ public class ExchangeMailbox extends ChangeTrackingMailbox {
             }
         }
     }
-    
+
     @Override
     boolean isPushType(byte type) {
         switch (type) {
@@ -131,7 +131,7 @@ public class ExchangeMailbox extends ChangeTrackingMailbox {
         }
     }
 
-    OfflineDataSource getDataSource() throws ServiceException {
+    private OfflineDataSource getDataSource() throws ServiceException {
         return (OfflineDataSource)OfflineProvisioning.getOfflineInstance().getDataSource(getAccount());
     }
     
@@ -288,7 +288,7 @@ public class ExchangeMailbox extends ChangeTrackingMailbox {
 
     private void syncDataSource(boolean force, boolean isOnRequest) throws ServiceException {
         OfflineDataSource ds = getDataSource();
-        if (!force && !isOnRequest && !isTimeToSync(ds))
+        if (!force && !isOnRequest && !isTimeToSync(ds) && !ds.isSyncNeeded())
             return;
         
         OfflineSyncManager syncMan = OfflineSyncManager.getInstance();
@@ -308,6 +308,15 @@ public class ExchangeMailbox extends ChangeTrackingMailbox {
                 syncMan.processSyncException(ds, x);
         } catch (Error e) {
             syncMan.processSyncError(ds, e);
+        }
+    }
+    
+    @Override
+    public void deleteMailbox() throws ServiceException {
+        super.deleteMailbox();
+        OfflineDataSource ds = getDataSource();
+        if (ds != null) {
+            ds.mailboxDeleted();
         }
     }
 }

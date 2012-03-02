@@ -26,6 +26,10 @@ public class MailConstants {
     public static final QName NO_OP_REQUEST = QName.get("NoOpRequest", NAMESPACE);
     public static final QName NO_OP_RESPONSE = QName.get("NoOpResponse", NAMESPACE);
 
+    // UUID generation
+    public static final QName GENERATE_UUID_REQUEST = QName.get("GenerateUUIDRequest", NAMESPACE);
+    public static final QName GENERATE_UUID_RESPONSE = QName.get("GenerateUUIDResponse", NAMESPACE);
+
     // searching
     public static final QName SEARCH_REQUEST = QName.get("SearchRequest", NAMESPACE);
     public static final QName SEARCH_RESPONSE = QName.get("SearchResponse", NAMESPACE);
@@ -258,8 +262,8 @@ public class MailConstants {
     public static final QName AUTO_COMPLETE_RESPONSE = QName.get("AutoCompleteResponse", NAMESPACE);
     
     // contact ranking mgmt
-    public static final QName RESET_CONTACT_RANKING_REQUEST  = QName.get("ResetContactRankingRequest", NAMESPACE);
-    public static final QName RESET_CONTACT_RANKING_RESPONSE = QName.get("ResetContactRankingResponse", NAMESPACE);
+    public static final QName RANKING_ACTION_REQUEST  = QName.get("RankingActionRequest", NAMESPACE);
+    public static final QName RANKING_ACTION_RESPONSE = QName.get("RankingActionResponse", NAMESPACE);
     
     public static final String E_MAILBOX = "mbx";
     public static final String E_ITEM = "item";
@@ -300,6 +304,7 @@ public class MailConstants {
     
     public static final String E_HEADER_TEST = "headerTest";
     public static final String E_HEADER_EXISTS_TEST = "headerExistsTest";
+    public static final String E_MIME_HEADER_TEST = "mimeHeaderTest";
     public static final String E_SIZE_TEST = "sizeTest";
     public static final String E_DATE_TEST = "dateTest";
     public static final String E_BODY_TEST = "bodyTest";
@@ -376,6 +381,7 @@ public class MailConstants {
     public static final String A_ESTIMATE_SIZE = "estimateSize";
     public static final String A_URL = "url";
     public static final String A_NUM = "n";
+    public static final String A_IMAP_NUM = "i4n";
     public static final String A_IMAP_MODSEQ = "i4ms";
     public static final String A_IMAP_UIDNEXT = "i4next";
     public static final String A_TOTAL_SIZE = "total";
@@ -383,6 +389,7 @@ public class MailConstants {
     public static final String A_RECURSIVE = "recursive";
     public static final String A_DEFAULT_VIEW = "view";
     public static final String A_UNREAD = "u";
+    public static final String A_IMAP_UNREAD = "i4u";
     public static final String A_COLOR = "color";
     public static final String A_RGB = "rgb";
     public static final String A_CREATED_DATE = "cd";
@@ -510,8 +517,7 @@ public class MailConstants {
     public static final String E_FREEBUSY_BUSY = "b";
     public static final String E_FREEBUSY_BUSY_TENTATIVE = "t";
     public static final String E_FREEBUSY_BUSY_UNAVAILABLE = "u";
-    public static final String E_FREEBUSY_BUSY_OUT_OF_OFFICE = "o";
-    public static final String E_FREEBUSY_NO_DATA = "n";
+    public static final String E_FREEBUSY_NODATA = "n";
     public static final String E_CAL_ORGANIZER = "or";
     public static final String E_CAL_ICAL = "ical";
     public static final String E_CAL_ATTENDEE = "at";

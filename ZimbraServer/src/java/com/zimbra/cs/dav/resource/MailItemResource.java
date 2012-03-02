@@ -32,6 +32,7 @@ import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
@@ -53,6 +54,8 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.service.formatter.VCard;
+import com.zimbra.cs.service.mail.ItemActionHelper;
+import com.zimbra.cs.service.util.ItemId;
 
 /**
  * Abstraction of DavResource that maps to MailItem in the mailbox.
@@ -78,13 +81,13 @@ public abstract class MailItemResource extends DavResource {
 	
     private static final String BLUE   = "#0252D4FF";
     private static final String CYAN   = "#008284FF";
+    private static final String GRAY   = "#848284FF";
     private static final String GREEN  = "#2CA10BFF";
+    private static final String ORANGE = "#F57802FF";
+    private static final String PINK   = "#B027AEFF";
     private static final String PURPLE = "#492BA1FF";
     private static final String RED    = "#E51717FF";
     private static final String YELLOW = "#848200FF";
-    private static final String PINK   = "#B027AEFF";
-    private static final String GRAY   = "#848284FF";
-    private static final String ORANGE = "#F57802FF";
     private static final String DEFAULT_COLOR = ORANGE;
     
     protected static final String[] COLOR_MAP = {
@@ -205,11 +208,14 @@ public abstract class MailItemResource extends DavResource {
 	
 	/* Moves this resource to another Collection. */
 	public void move(DavContext ctxt, Collection dest) throws DavException {
-		if (mFolderId == dest.getId())
+		if (mFolderId == dest.getId() && mOwnerId.compareTo(dest.getOwner()) == 0)
 			return;
 		try {
 			Mailbox mbox = getMailbox(ctxt);
-			mbox.move(ctxt.getOperationContext(), mId, MailItem.TYPE_UNKNOWN, dest.getId());
+			ArrayList<Integer> ids = new ArrayList<Integer>();
+			ids.add(mId);
+            ItemActionHelper.MOVE(ctxt.getOperationContext(), mbox, SoapProtocol.Soap12, ids, mType, null, dest.getItemId());
+			//mbox.move(ctxt.getOperationContext(), mId, MailItem.TYPE_UNKNOWN, dest.getId());
 		} catch (ServiceException se) {
 			int resCode = se instanceof MailServiceException.NoSuchItemException ?
 					HttpServletResponse.SC_NOT_FOUND : HttpServletResponse.SC_FORBIDDEN;
@@ -251,6 +257,10 @@ public abstract class MailItemResource extends DavResource {
 	
 	public int getId() {
 		return mId;
+	}
+	
+	public ItemId getItemId() {
+	    return new ItemId(mOwnerId, mId);
 	}
 	
 	private Map<QName,Element> getDeadProps(DavContext ctxt, MailItem item) throws DocumentException, IOException, DavException, ServiceException {

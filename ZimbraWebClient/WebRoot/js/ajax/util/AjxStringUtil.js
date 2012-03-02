@@ -35,8 +35,24 @@ function(val) {
 	return val ? String(val) : "";
 };
 
+/**
+ * Capitalizes the specified string by upper-casing the first character
+ * and lower-casing the rest of the string.
+ *
+ * @param {string} str  The string to capitalize.
+ */
 AjxStringUtil.capitalize = function(str) {
-	return str.charAt(0).toUpperCase() + str.substr(1).toLowerCase();
+	return str.length > 0 ? str.charAt(0).toUpperCase() + str.substr(1).toLowerCase() : "";
+};
+
+/**
+ * Capitalizes all the words in the specified string by upper-casing the first
+ * character of each word and lower-casing the rest of the word.
+ *
+ * @param {string} str  The string to capitalize.
+ */
+AjxStringUtil.capitalizeWords = function(str) {
+    return AjxUtil.map(str.split(/\s+/g), AjxStringUtil.capitalize).join(" ");
 };
 
 /**
@@ -59,6 +75,19 @@ function(text, sep, camel) {
 		newText.push(wds[i].substring(0, 1).toUpperCase() + wds[i].substring(1).toLowerCase());
 	}
 	return newText.join("");
+};
+
+/**
+ * Converts the given mixed-case text to a string of one or more words
+ * separated by spaces.
+ *
+ * @param {string} text The mixed-case text.
+ * @param {string} sep  (Optional) The separator between words. Default
+ *                      is a single space.
+ */
+AjxStringUtil.fromMixed = function(text, sep) {
+    sep = ["$1", sep || " ", "$2"].join("");
+    return text.replace(/([a-z])([A-Z]+)/g, sep).trim();
 };
 
 /**
@@ -797,6 +826,8 @@ AjxStringUtil.HTML_QUOTE_COLOR = "rgb(16, 16, 255)";
  */
 AjxStringUtil.getTopLevel =
 function(text, eol, htmlMode) {
+
+	if (!text) { return [""]; }
 	var isHtml = /<br|<div/i.test(text);
 	var split = isHtml ? AjxStringUtil.HTML_BR_RE : AjxStringUtil.SPLIT_RE;
 	var eol = isHtml ? '<br>' : '\n';
@@ -955,7 +986,8 @@ AjxStringUtil._NON_WHITESPACE = /\S+/;
 AjxStringUtil._LF = /\n/;
 
 AjxStringUtil.convertHtml2Text =
-function(domRoot) {
+function(domRoot, convertor) {
+
 	if (!domRoot) { return null; }
 
 	if (typeof domRoot == "string") {
@@ -966,22 +998,32 @@ function(domRoot) {
 	var text = [];
 	var idx = 0;
 	var ctxt = {};
-	this._traverse(domRoot, text, idx, AjxStringUtil._NO_LIST, 0, 0, ctxt);
+	this._traverse(domRoot, text, idx, AjxStringUtil._NO_LIST, 0, 0, ctxt, convertor);
 	return text.join("");
 };
 
 AjxStringUtil._traverse =
-function(el, text, idx, listType, listLevel, bulletNum, ctxt) {
+function(el, text, idx, listType, listLevel, bulletNum, ctxt, convertor) {
+
 	var nodeName = el.nodeName.toLowerCase();
 
-	if (nodeName == "#text") {
+	var result = null;
+	if (convertor && convertor[nodeName]) {
+		result = convertor[nodeName](el);
+	}
+
+	if (result != null) {
+		text[idx++] = result;
+	} else if (nodeName == "#text") {
 		if (el.nodeValue.search(AjxStringUtil._NON_WHITESPACE) != -1) {
-			if (ctxt.lastNode == "ol" || ctxt.lastNode == "ul")
+			if (ctxt.lastNode == "ol" || ctxt.lastNode == "ul") {
 				text[idx++] = "\n";
-			if (ctxt.isPreformatted)
+			}
+			if (ctxt.isPreformatted) {
 				text[idx++] = AjxStringUtil.trim(el.nodeValue) + " ";
-			else
+			} else {
 				text[idx++] = AjxStringUtil.trim(el.nodeValue.replace(AjxStringUtil._LF, " "), true) + " ";
+			}
 		}
 	} else if (nodeName == "p") {
 		text[idx++] = "\n\n";
@@ -989,22 +1031,25 @@ function(el, text, idx, listType, listLevel, bulletNum, ctxt) {
 		text[idx++] = "\n";
 	} else if (nodeName == "ol" || nodeName == "ul") {
 		text[idx++] = "\n";
-		if (el.parentNode.nodeName.toLowerCase() != "li" && ctxt.lastNode != "br"
-			&& ctxt.lastNode != "hr")
+		if (el.parentNode.nodeName.toLowerCase() != "li" && ctxt.lastNode != "br" && ctxt.lastNode != "hr") {
 			text[idx++] = "\n";
+		}
 		listType = (nodeName == "ol") ? AjxStringUtil._ORDERED_LIST : AjxStringUtil._UNORDERED_LIST;
 		listLevel++;
 		bulletNum = 0;
 	} else if (nodeName == "li") {
-		for (var i = 0; i < listLevel; i++)
+		for (var i = 0; i < listLevel; i++) {
 			text[idx++] = AjxStringUtil._INDENT;
-		if (listType == AjxStringUtil._ORDERED_LIST)
+		}
+		if (listType == AjxStringUtil._ORDERED_LIST) {
 			text[idx++] = bulletNum + ". ";
-		else
-			text[idx++] = "\u2022 "; // TODO LmMsg.bullet
+		} else {
+			text[idx++] = "\u2022 "; // TODO ZmMsg.bullet
+		}
 	} else if (nodeName == "img") {
-		if (el.alt && el.alt != "")
+		if (el.alt && el.alt != "") {
 			text[idx++] = el.alt;
+		}
 	} else if (nodeName == "tr" && el.parentNode.firstChild != el) {
 		text[idx++] = "\n";
 	} else if (nodeName == "td" && el.parentNode.firstChild != el) {
@@ -1026,9 +1071,10 @@ function(el, text, idx, listType, listLevel, bulletNum, ctxt) {
 	var len = childNodes.length;
 	for (var i = 0; i < len; i++) {
 		var tmp = childNodes[i];
-		if (tmp.nodeType == 1 && tmp.tagName.toLowerCase() == "li")
+		if (tmp.nodeType == 1 && tmp.tagName.toLowerCase() == "li") {
 			bulletNum++;
-		idx = this._traverse(tmp, text, idx, listType, listLevel, bulletNum, ctxt);
+		}
+		idx = this._traverse(tmp, text, idx, listType, listLevel, bulletNum, ctxt, convertor);
 	}
 
 	if (nodeName == "h1" || nodeName == "h2" || nodeName == "h3" || nodeName == "h4"
@@ -1038,8 +1084,9 @@ function(el, text, idx, listType, listLevel, bulletNum, ctxt) {
 	} else if (nodeName == "pre") {
 		ctxt.isPreformatted = false;
 	} else if (nodeName == "li") {
-		if (!ctxt.list)
+		if (!ctxt.list) {
 			text[idx++] = "\n";
+		}
 		ctxt.list = false;
 	} else if (nodeName == "ol" || nodeName == "ul") {
 		ctxt.list = true;

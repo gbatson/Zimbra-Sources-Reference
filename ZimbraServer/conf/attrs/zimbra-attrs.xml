@@ -437,7 +437,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>must change password on auth</desc>
 </attr>
 
-<attr id="42" name="zimbraAuthMech" type="string" max="512" cardinality="single" optionalIn="domain">
+<attr id="42" name="zimbraAuthMech" type="string" max="512" cardinality="single" optionalIn="domain" callback="AuthMech">
   <desc>mechanism to use for authentication.  Valid values are zimbra, ldap, ad, kerberos5, custom:{handler-name} [arg1 arg2 ...]</desc>
 </attr>
 
@@ -840,7 +840,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>company=company</globalConfigValue>
   <globalConfigValue>givenName,gn=firstName</globalConfigValue>
   <globalConfigValue>sn=lastName</globalConfigValue>
-  <globalConfigValue>displayName,cn=fullName</globalConfigValue>
+  <globalConfigValue>displayName,cn=fullName,fullName2,fullName3,fullName4,fullName5,fullName6,fullName7,fullName8,fullName9,fullName10</globalConfigValue>
   <globalConfigValue>initials=initials</globalConfigValue>
   <globalConfigValue>description=notes</globalConfigValue>
   <globalConfigValue>l=workCity</globalConfigValue>
@@ -922,9 +922,10 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>SSL port for end-user UI</desc>
 </attr>
 
-<attr id="167" name="zimbraPrefContactsInitialView" type="enum" value="cards,list" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable">
+<attr id="167" name="zimbraPrefContactsInitialView" type="enum" value="cards,list" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" deprecatedSince="6.0.5">
   <defaultCOSValue>list</defaultCOSValue>
   <desc>initial contact view to use</desc>
+  <deprecateDesc>We do not support cards view any more.  See bug 47439</deprecateDesc>
 </attr>
 
 <attr id="168" name="zimbraTableMaintenanceMinRows" type="integer" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" deprecatedSince="4.5.7">
@@ -2736,8 +2737,9 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   </desc>
 </attr>
 
-<attr id="543" name="zimbraMailLastPurgedMailboxId" type="integer" cardinality="single" optionalIn="server" since="5.0.0">
+<attr id="543" name="zimbraMailLastPurgedMailboxId" type="integer" cardinality="single" optionalIn="server" since="5.0.0" deprecatedSince="5.0.7">
   <desc>The id of the last purged mailbox.</desc>
+  <deprecateDesc>deprecated per bug 28842</deprecateDesc>>
 </attr>
 
 <attr id="544" name="zimbraFeatureZimbraAssistantEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="5.0.0">
@@ -3830,7 +3832,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="758" name="zimbraContactRankingTableSize" type="integer" min="0" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="6.0.0_BETA1">
-  <defaultCOSValue>40</defaultCOSValue>
+  <defaultCOSValue>200</defaultCOSValue>
   <desc>
     Size of the contact ranking table.  Ranking table is used to keep track of
     most heavily used contacts in outgoing email.  Contacts in the ranking table
@@ -4205,11 +4207,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>whether to send read receipt</desc>
 </attr>
 
-<attr id="823" name="zimbraPrefReadReceiptsToAddress" type="string" max="256" cardinality="single" optionalIn="account,identity,dataSource" flags="domainAdminModifiable" since="6.0.0_BETA1">
+<attr id="823" name="zimbraPrefReadReceiptsToAddress" type="string" max="256" cardinality="single" optionalIn="account,identity,dataSource" flags="domainAdminModifiable" since="6.0.0_BETA1" deprecatedSince="6.0.8">
   <desc>
     address to put in reply-to header of read receipt messages, 
     if it is not set, then the compose identitys primary email address is used.
   </desc>
+  <deprecateDesc>Deprecated per bug 46988.  This feature was never fully implemented.</deprecateDesc>
 </attr>
 
 <attr id="824" name="zimbraMailUncompressedCacheMaxFiles" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="ServerConfig" since="6.0.0_BETA1" deprecatedSince="6.0.7">
@@ -4785,6 +4788,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1073" name="zimbraPrefSpellIgnoreWord" type="string" max="256" cardinality="multi" optionalIn="account,cos,domain" flags="domainAdminModifiable" since="6.0.5">
+  <defaultCOSValue>blog</defaultCOSValue>
   <desc>List of words to ignore when checking spelling.  The word list of an account includes the words specified for its cos and domain.
   </desc>
 </attr>
@@ -4912,6 +4916,21 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     Whether auth token validity value checking should be performed during auth token validation.  
     See description for zimbraAuthTokenValidityValue.
   </desc>
+</attr>
+
+<attr id="1095" name="zimbraPrefDefaultPrintFontSize" type="astring" max="32" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable"  since="6.0.8">
+  <defaultCOSValue>12pt</defaultCOSValue>
+  <desc>default font size</desc>
+</attr>
+
+<attr id="1096" name="zimbraMailPurgeBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.8">
+  <globalConfigValue>10000</globalConfigValue>
+  <desc>Maximum number of messages to delete from a folder during a single purge operation.  If the limit is exceeded, the mailbox is purged again at the end of the purge cycle until all qualifying messages are purged.</desc>
+</attr>
+
+<attr id="1097" name="zimbraMailEmptyFolderBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.8">
+  <globalConfigValue>100000</globalConfigValue>
+  <desc>Maximum number of messages to delete during a single transaction when emptying a folder.  If the limit is exceeded, the folder is emptied in multiple transactions.  Each transaction deletes this number of messages.</desc>
 </attr>
 
 </attrs>

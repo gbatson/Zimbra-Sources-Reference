@@ -27,22 +27,19 @@ import java.io.OutputStream;
 
 import javax.activation.DataSource;
 
-import com.zimbra.cs.store.MailboxBlob;
+import com.zimbra.cs.store.Blob;
 import com.zimbra.cs.store.StoreManager;
 
 public class BlobDataSource implements DataSource {
 
-    private MailboxBlob mBlob;
+    private Blob mBlob;
     private String mContentType;
 
-    /**
-     * @param blob
-     */
-    public BlobDataSource(MailboxBlob blob) {
+    public BlobDataSource(Blob blob) {
         mBlob = blob;
     }
 
-    public BlobDataSource(MailboxBlob blob, String ct) {
+    public BlobDataSource(Blob blob, String ct) {
         this(blob);
         mContentType = ct;
     }
@@ -53,13 +50,6 @@ public class BlobDataSource implements DataSource {
         return "message/rfc822";
     }
 
-    /**
-     * Returns the InputStream for this blob. Note that this method 
-     * needs a database connection and will obtain/release one
-     * automatically if needed, or use the one passed to it from
-     * the constructor.
-     * @throws IOException
-     */
     public InputStream getInputStream() throws IOException {
         return StoreManager.getInstance().getContent(mBlob);
     }
@@ -69,7 +59,7 @@ public class BlobDataSource implements DataSource {
         return mBlob.toString();
     }
 
-    public OutputStream getOutputStream() throws IOException {
+    public OutputStream getOutputStream() {
         throw new UnsupportedOperationException();
     }
 

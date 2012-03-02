@@ -16,6 +16,7 @@
 package com.zimbra.common.localconfig;
 
 import com.zimbra.common.util.Constants;
+import org.dom4j.DocumentException;
 
 import java.io.File;
 
@@ -47,9 +48,15 @@ public class LC {
         return value;
     }
 
+	// Force reload of the config file
+	//
     public static String[] getAllKeys() {
         return LocalConfig.getInstance().allKeys();
     }
+
+	public static void readConfig() throws DocumentException, ConfigException {
+		LocalConfig.readConfig(null);
+	}
 
     static void init() {
         // This method is there to guarantee static initializer of this
@@ -306,6 +313,7 @@ public class LC {
     public static final KnownKey postfix_virtual_mailbox_maps;
     public static final KnownKey postfix_virtual_transport;
 
+    public static final KnownKey sqlite_shared_cache_enabled;
     public static final KnownKey sqlite_cache_size;
     public static final KnownKey sqlite_journal_mode;
     public static final KnownKey sqlite_page_size;
@@ -381,6 +389,8 @@ public class LC {
         new KnownKey("nio_imap_write_chunk_size").setDefault(8*1024);
     public static final KnownKey nio_imap_thread_keep_alive_time =
         new KnownKey("nio_imap_thread_keep_alive_time").setDefault(60);
+    public static final KnownKey data_source_imap_reuse_connections =
+        new KnownKey("data_source_imap_reuse_connections", "false");
 
     public static final KnownKey krb5_keytab;
     public static final KnownKey krb5_service_principal_from_interface_address;
@@ -389,11 +399,12 @@ public class LC {
     public static final KnownKey zimbra_mtareport_max_users;
     public static final KnownKey zimbra_mtareport_max_hosts;
 
+    public static final KnownKey zmmtaconfig_interval;
+    public static final KnownKey zmmtaconfig_log_level;
+    public static final KnownKey zmmtaconfig_listen_port;
     public static final KnownKey zmmtaconfig_enable_config_restarts;
 
     public static final KnownKey zimbra_mailbox_groups;
-    
-    public static final KnownKey debug_mailboxindex_use_new_locking;
 
     public static final KnownKey zimbra_class_provisioning;
     public static final KnownKey zimbra_class_accessmanager;
@@ -403,6 +414,7 @@ public class LC {
     public static final KnownKey zimbra_class_application;
     public static final KnownKey zimbra_class_rulerewriterfactory;
     public static final KnownKey zimbra_class_datasourcemanager;
+    public static final KnownKey zimbra_class_attrmanager;
 
     // XXX REMOVE AND RELEASE NOTE
     public static final KnownKey data_source_trust_self_signed_certs;
@@ -469,7 +481,7 @@ public class LC {
     
     public static final KnownKey yauth_baseuri;
     
-    public static final KnownKey purge_initial_sleep_time;
+    public static final KnownKey purge_initial_sleep_ms;
     public static final KnownKey conversation_max_age_ms;
     public static final KnownKey tombstone_max_age_ms;
     
@@ -488,6 +500,7 @@ public class LC {
     // http client read timeouts
     public static final KnownKey httpclient_soaphttptransport_retry_count;
     public static final KnownKey httpclient_soaphttptransport_so_timeout;
+    public static final KnownKey cli_httpclient_soaphttptransport_so_timeout;
     
     // convertd
     public static final KnownKey httpclient_convertd_so_timeout;
@@ -558,7 +571,9 @@ public class LC {
     public static final KnownKey freebusy_exchange_cn1;
     public static final KnownKey freebusy_exchange_cn2;
     public static final KnownKey freebusy_exchange_cn3;
-    
+
+    public static final KnownKey freebusy_disable_nodata_status;
+
     public static final KnownKey data_source_scheduling_enabled;
     
     public static final KnownKey notes_enabled;
@@ -1158,9 +1173,10 @@ public class LC {
         postfix_virtual_transport  = new KnownKey("postfix_virtual_transport");
         postfix_virtual_transport.setDefault("error");
 
-        sqlite_cache_size = new KnownKey("sqlite_cache_size", "4000");
+        sqlite_shared_cache_enabled = new KnownKey("sqlite_shared_cache_enabled", "false");
+        sqlite_cache_size = new KnownKey("sqlite_cache_size", "500");
         sqlite_journal_mode = new KnownKey("sqlite_journal_mode", "PERSIST");
-        sqlite_page_size = new KnownKey("sqlite_page_size", "2048");
+        sqlite_page_size = new KnownKey("sqlite_page_size", "4096");
         sqlite_sync_mode = new KnownKey("sqlite_sync_mode", "NORMAL");
         
         mailboxd_directory = new KnownKey("mailboxd_directory");
@@ -1289,8 +1305,17 @@ public class LC {
         zimbra_mtareport_max_hosts = new KnownKey("zimbra_mtareport_max_hosts");
         zimbra_mtareport_max_hosts.setDefault("50");
 
-	zmmtaconfig_enable_config_restarts = new KnownKey("zmmtaconfig_enable_config_restarts");
-	zmmtaconfig_enable_config_restarts.setDefault("TRUE");
+		zmmtaconfig_enable_config_restarts = new KnownKey("zmmtaconfig_enable_config_restarts");
+		zmmtaconfig_enable_config_restarts.setDefault("TRUE");
+
+		zmmtaconfig_interval = new KnownKey("zmmtaconfig_interval");
+		zmmtaconfig_interval.setDefault("60");
+
+		zmmtaconfig_log_level = new KnownKey("zmmtaconfig_log_level");
+		zmmtaconfig_log_level.setDefault("3");
+
+		zmmtaconfig_listen_port = new KnownKey("zmmtaconfig_listen_port");
+		zmmtaconfig_listen_port.setDefault("7171");
 
         zimbra_auth_always_send_refer = new KnownKey("zimbra_auth_always_send_refer");
         zimbra_auth_always_send_refer.setDefault("false");
@@ -1312,9 +1337,6 @@ public class LC {
         zimbra_mailbox_groups = new KnownKey("zimbra_mailbox_groups");
         zimbra_mailbox_groups.setDefault("100");
 
-        debug_mailboxindex_use_new_locking = new KnownKey("debug_mailboxindex_use_new_locking");
-        debug_mailboxindex_use_new_locking.setDefault("true");
-
         zimbra_class_provisioning = new KnownKey("zimbra_class_provisioning", "com.zimbra.cs.account.ldap.LdapProvisioning");
         zimbra_class_accessmanager = new KnownKey("zimbra_class_accessmanager", "com.zimbra.cs.account.accesscontrol.ACLAccessManager");
         zimbra_class_mboxmanager = new KnownKey("zimbra_class_mboxmanager", "com.zimbra.cs.mailbox.MailboxManager");
@@ -1323,7 +1345,8 @@ public class LC {
         zimbra_class_application = new KnownKey("zimbra_class_application", "com.zimbra.cs.util.ZimbraApplication");
         zimbra_class_rulerewriterfactory = new KnownKey("zimbra_class_rulerewriterfactory", "com.zimbra.cs.filter.RuleRewriterFactory");
         zimbra_class_datasourcemanager = new KnownKey("zimbra_class_datasourcemanager", "com.zimbra.cs.datasource.DataSourceManager");
-        
+        zimbra_class_attrmanager = new KnownKey("zimbra_class_attrmanager", "com.zimbra.cs.account.AttributeManager");
+
         data_source_trust_self_signed_certs = new KnownKey("data_source_trust_self_signed_certs", "false");
         data_source_fetch_size = new KnownKey("data_source_fetch_size", "5");
         data_source_max_message_memory_size = new KnownKey("data_source_max_message_memory_size", "2097152"); // 2 megabytes
@@ -1416,7 +1439,7 @@ public class LC {
 	    yauth_baseuri.setDefault("https://login.yahoo.com/WSLogin/V1");
 	    yauth_baseuri.setDoc("base uri for yauth");
         
-        purge_initial_sleep_time = new KnownKey(
+        purge_initial_sleep_ms = new KnownKey(
             "purge_initial_sleep_ms", Long.toString(30 * Constants.MILLIS_PER_MINUTE),
             "Amount of time (in milliseconds) that the purge thread sleeps on startup before doing work.");
         
@@ -1488,6 +1511,14 @@ public class LC {
                 "httpclient_soaphttptransport_so_timeout", 
                 Long.toString(300 * Constants.MILLIS_PER_SECOND),
                 "socket timeout in milliseconds for SOAP clients using the SoapHttpTransport class");
+        
+        // Bug: 47051
+        // Known key for the CLI utilities SOAP HTTP transport timeout.
+        // The default value is set to 0 i.e. no timeout.
+        cli_httpclient_soaphttptransport_so_timeout = new KnownKey(
+            "cli_httpclient_soaphttptransport_so_timeout", 
+            "0",
+            "socket timeout in milliseconds for cli utilities SOAP clients using the SoapHttpTransport class");
         
         httpclient_convertd_so_timeout = new KnownKey(
                 "httpclient_convertd_so_timeout", 
@@ -1577,6 +1608,8 @@ public class LC {
         freebusy_exchange_cn1 = new KnownKey("freebusy_exchange_cn1");
         freebusy_exchange_cn2 = new KnownKey("freebusy_exchange_cn2");
         freebusy_exchange_cn3 = new KnownKey("freebusy_exchange_cn3");
+
+        freebusy_disable_nodata_status = new KnownKey("freebusy_disable_nodata_status", "false");
 
         zimbra_lmtp_validate_messages = new KnownKey("zimbra_lmtp_validate_messages", "true");
         zimbra_lmtp_max_line_length = new KnownKey("zimbra_lmtp_max_line_length", "10240");

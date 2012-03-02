@@ -62,7 +62,7 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
 
     private String mSessionId;
     
-    private MailboxSync mMailboxSync = new MailboxSync(this);
+    private MailboxSync mMailboxSync = null;
 
     private Map<Integer,Integer> mRenumbers = new HashMap<Integer,Integer>();
     private Set<Integer> mLocalTagDeletes = new HashSet<Integer>();
@@ -173,7 +173,7 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
         
         return authToken;
     }
-
+    
     String getRemoteUser() throws ServiceException {
         return getAccount().getName();
     }
@@ -200,8 +200,21 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
     }
 
     @Override MailItem getItemById(int id, byte type) throws ServiceException {
+        NoSuchItemException trappedExcept = null;
+        try { 
+            MailItem item = super.getItemById(id, type);
+            if (item != null)
+                return item;
+        }
+        catch (NoSuchItemException nsie) {
+            trappedExcept = nsie;
+        }
         Integer renumbered = mRenumbers.get(id < -FIRST_USER_ID ? -id : id);
-        return super.getItemById(renumbered == null ? id : (id < 0 ? -renumbered : renumbered), type);
+        if (renumbered != null)
+            return super.getItemById(id < 0 ? -renumbered : renumbered, type);
+        if (trappedExcept != null)
+            throw trappedExcept;
+        return null;
     }
 
     @Override MailItem[] getItemById(int[] ids, byte type) throws ServiceException {
@@ -392,7 +405,6 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
     synchronized void syncMetadata(OperationContext octxt, int itemId, byte type, int folderId, int flags, long tags, byte color)
         throws ServiceException {
         boolean success = false;
-        String oldFolderPath = null;
         try {
             beginTransaction("syncMetadata", octxt);
             MailItem item = getItemById(itemId, type);
@@ -420,9 +432,6 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
             flags &= ~Flag.BITMASK_UNREAD;
 
             String prevIndexId = item.getIndexId();
-            if (item instanceof Folder) {
-                oldFolderPath = ((Folder) item).getPath();
-            }
             item.move(getFolderById(folderId));
             if (!StringUtil.equal(prevIndexId, item.getIndexId())) {
                 queueForIndexing(item, false, null);
@@ -435,10 +444,6 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
             success = true;
         } finally {
             endTransaction(success);
-        }
-        
-        if (success && oldFolderPath != null) {
-            updateFilterRules(itemId, oldFolderPath);
         }
     }
 
@@ -500,13 +505,24 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
     public Element sendRequest(Element request, boolean requiresAuth, boolean noSession, int timeout, SoapProtocol resProto,
         Map<String, ElementHandler> saxHandlers) throws ServiceException {
         String uri = getSoapUri();
+        ZAuthToken authToken = requiresAuth ? getAuthToken() : null;
+        return sendRequest(request, requiresAuth, noSession, timeout, resProto, saxHandlers, uri, authToken);
+    }
+    
+    public Element sendRequest(Element request, boolean requiresAuth, boolean noSession, int timeout, SoapProtocol resProto,
+        Map<String, ElementHandler> saxHandlers, String uri, ZAuthToken authToken) throws ServiceException {
+        return sendRequest(request, requiresAuth, noSession, timeout, resProto, saxHandlers, uri, authToken, false);
+    }
+    
+    public Element sendRequest(Element request, boolean requiresAuth, boolean noSession, int timeout, SoapProtocol resProto,
+        Map<String, ElementHandler> saxHandlers, String uri, ZAuthToken authToken, boolean sendAcctId) throws ServiceException {
         OfflineAccount acct = getOfflineAccount();
         SoapHttpTransport transport = new SoapHttpTransport(uri);
         try {
             transport.setUserAgent(OfflineLC.zdesktop_name.value(), OfflineLC.getFullVersion());
             transport.setTimeout(timeout);
             if (requiresAuth)
-                transport.setAuthToken(getAuthToken());
+                transport.setAuthToken(authToken == null ? getAuthToken() : authToken);
             transport.setRequestProtocol(SoapProtocol.Soap12);
             if (resProto != null)
                 transport.setResponseProtocol(resProto);
@@ -530,7 +546,10 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
             if (saxHandlers != null) {
                 response = transport.invoke(request.detach(), false, true, null, null, null, saxHandlers);
             } else if (noSession) {
-            	response = transport.invokeWithoutSession(request.detach());
+            	if (sendAcctId)
+                    response = transport.invoke(request.detach(), false, true, acct.getId());
+            	else 
+            	    response = transport.invokeWithoutSession(request.detach());
             } else {
             	if (mSessionId != null)
             		transport.setSessionId(mSessionId);
@@ -607,4 +626,15 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
     
     @Override
     protected void updateRssDataSource(Folder folder) {} //bug 38129, to suppress creation of datasource
+    
+    @Override
+    synchronized boolean finishInitialization() throws ServiceException {
+        if (super.finishInitialization()) {
+            if (mMailboxSync == null) {
+                mMailboxSync = new MailboxSync(this);            
+            }
+            return true;
+        }
+        return false;
+    }
 }

@@ -568,8 +568,7 @@ function() {
 		isAppOverview:		true,
 		treeIds:			treeIds,
 		appName:			this._name,
-		account:			appCtxt.getActiveAccount(),
-        scroll:             Dwt.SCROLL_Y
+		account:			appCtxt.getActiveAccount()
 	};
 };
 
@@ -823,6 +822,7 @@ function(mods) {
 	if (!list) { return; }
 	list._evt.batchMode = true;
 	list._evt.item = item;	// placeholder - change listeners like it to be there
+	list._evt.items = null;
 	for (var ev in notifs) {
 		var details = {notifs:notifs[ev]};
 		list._notify(ev, details);
@@ -847,7 +847,7 @@ function(ev) {
 ZmApp.prototype._handleCreateFolder =
 function(create, org) {
 	var parent = appCtxt.getById(create.l);
-	if (parent && (ZmOrganizer.VIEWS[org][create.view])) {
+	if (parent && (ZmOrganizer.VIEW_HASH[org][create.view])) {
 		parent.notifyCreate(create, "folder");
 		create._handled = true;
 	}

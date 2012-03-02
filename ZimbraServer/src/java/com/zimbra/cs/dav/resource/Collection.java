@@ -65,7 +65,7 @@ public class Collection extends MailItemResource {
         mMailboxId = f.getMailboxId();
     }
 
-    private Collection(String name, String acct) throws DavException {
+    public Collection(String name, String acct) throws DavException {
         super(name, acct);
         long now = System.currentTimeMillis();
         setCreationDate(now);
@@ -81,11 +81,6 @@ public class Collection extends MailItemResource {
     @Override
     public boolean isCollection() {
         return true;
-    }
-
-    @Override
-    public boolean isLocal() {
-        return mMailboxId != 0;
     }
 
     @Override
@@ -117,7 +112,6 @@ public class Collection extends MailItemResource {
 
         // XXX aggregate into single call
         ret.addAll(mbox.getItemList(ctxt.getOperationContext(), MailItem.TYPE_FOLDER, mId));
-        ret.addAll(mbox.getItemList(ctxt.getOperationContext(), MailItem.TYPE_MOUNTPOINT, mId));
         ret.addAll(mbox.getItemList(ctxt.getOperationContext(), MailItem.TYPE_DOCUMENT, mId));
         ret.addAll(mbox.getItemList(ctxt.getOperationContext(), MailItem.TYPE_WIKI, mId));
         ret.addAll(mbox.getItemList(ctxt.getOperationContext(), MailItem.TYPE_CONTACT, mId));
@@ -154,8 +148,12 @@ public class Collection extends MailItemResource {
 
         FileUploadServlet.Upload upload = ctxt.getUpload();
         String ctype = upload.getContentType();
-        if (ctype != null && ctype.startsWith(DavProtocol.VCARD_CONTENT_TYPE)) {
-            // create vcard if content type is text/vcard
+        if (ctype != null && 
+                (ctype.startsWith(DavProtocol.VCARD_CONTENT_TYPE) ||
+                 ctype.startsWith(MimeConstants.CT_TEXT_VCARD_LEGACY) ||
+                 ctype.startsWith(MimeConstants.CT_TEXT_VCARD_LEGACY2))) {
+            // create vcard if content type is text/vcard or legacy
+            // vCard MIME types such as text/x-vcard or text/directory.
             return createVCard(ctxt, name);
         }
         String author = ctxt.getAuthAccount().getName();

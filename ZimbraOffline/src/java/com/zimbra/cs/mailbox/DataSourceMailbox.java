@@ -46,6 +46,7 @@ import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineDataSource;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.datasource.DataSourceManager;
+import com.zimbra.cs.datasource.imap.ImapSync;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.mailbox.MailSender.SafeSendFailedException;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
@@ -72,9 +73,7 @@ public class DataSourceMailbox extends SyncMailbox {
 
     DataSourceMailbox(MailboxData data) throws ServiceException {
         super(data);
-
-        OfflineDataSource ds = (OfflineDataSource)OfflineProvisioning.
-            getOfflineInstance().getDataSource(getAccount());
+        OfflineDataSource ds = getDataSource();
         if (ds != null) {
             hasFolders = ds.getType() == DataSource.Type.imap;
             isFlat = ds.isLive() || ds.isYahoo();
@@ -84,7 +83,8 @@ public class DataSourceMailbox extends SyncMailbox {
         mNoInferiorsFlag = getFlagById(Flag.ID_FLAG_NO_INFERIORS);
     }
 
-    @Override protected synchronized void initialize() throws ServiceException {
+    @Override
+    protected synchronized void initialize() throws ServiceException {
         super.initialize();
         if (hasFolders) {
             List<Pair<Integer, String>> systemMailFolders = new ArrayList<
@@ -119,8 +119,7 @@ public class DataSourceMailbox extends SyncMailbox {
                 if (mi != null)
                     mi.mData.flags |= mNoInferiorsFlag.getBitmask();
             }
-            OfflineDataSource ds = (OfflineDataSource)(OfflineProvisioning.
-                getOfflineInstance().getDataSource(getAccount()));
+            OfflineDataSource ds = getDataSource();
             if (ds.isYahoo() || ds.isGmail())
                 getCachedItem(ID_FOLDER_CALENDAR).setColor(new MailItem.Color(
                     (byte)(ds.isYahoo() ? 4 : 5)));
@@ -148,9 +147,8 @@ public class DataSourceMailbox extends SyncMailbox {
     public String getItemFlagString(MailItem mi) {
         if (hasFolders && mi.getType() == MailItem.TYPE_FOLDER) {
             try {
-                OfflineDataSource ds = (OfflineDataSource)(OfflineProvisioning.
-                    getOfflineInstance().getDataSource(getAccount()));
-                if (ds.isSyncInboxOnly()) {
+                OfflineDataSource ds = getDataSource();
+                if (ds != null && ds.isSyncInboxOnly()) {
                     int flags = mi.getFlagBitmask();
                     
                     flags &= ~Flag.BITMASK_SYNCFOLDER;
@@ -174,8 +172,7 @@ public class DataSourceMailbox extends SyncMailbox {
     }
 
     private boolean isSyncEnabledByDefault(String path) throws ServiceException {
-        OfflineDataSource ds = (OfflineDataSource)(OfflineProvisioning.
-            getOfflineInstance().getDataSource(getAccount()));
+        OfflineDataSource ds = getDataSource();
         return ds != null && ds.isSyncEnabledByDefault(path);
     }
 
@@ -413,13 +410,13 @@ public class DataSourceMailbox extends SyncMailbox {
         return System.currentTimeMillis() - syncMan.getLastSyncTime(ds) >= frequency;
     }
 
-    private void syncAllLocalDataSources(boolean force, boolean isOnRequest) throws
-        ServiceException {
+    private void syncAllLocalDataSources(boolean force, boolean isOnRequest)
+        throws ServiceException {
         OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
         List<DataSource> dataSources = prov.getAllDataSources(getAccount());
         OfflineSyncManager syncMan = OfflineSyncManager.getInstance();
         for (DataSource ds : dataSources) {
-            if (!force && !isOnRequest && !isTimeToSync(ds))
+            if (!force && !isOnRequest && !isTimeToSync(ds) && !ds.isSyncNeeded())
                 continue;
             try {
                 OfflineLog.offline.info(
@@ -487,10 +484,9 @@ public class DataSourceMailbox extends SyncMailbox {
     Set<Folder> getAccessibleFolders(short rights) throws ServiceException {
         Set<Folder> accessable = super.getAccessibleFolders(rights);
         boolean all = true;
-        OfflineDataSource ds = (OfflineDataSource)(OfflineProvisioning.
-            getOfflineInstance().getDataSource(getAccount()));
         Set<Folder> visible = new HashSet<Folder>();
-
+        OfflineDataSource ds = getDataSource();
+        
         if (ds == null)
             return accessable;
         for (Folder folder : accessable == null ? getFolderById(
@@ -507,5 +503,19 @@ public class DataSourceMailbox extends SyncMailbox {
                 all = false;
         }
         return all ? null : visible;
+    }
+
+    private OfflineDataSource getDataSource() throws ServiceException {
+        return (OfflineDataSource)
+            OfflineProvisioning.getOfflineInstance().getDataSource(getAccount());
+    }
+
+    @Override
+    public void deleteMailbox() throws ServiceException {
+        super.deleteMailbox();
+        OfflineDataSource ds = getDataSource();
+        if (ds != null) {
+            ds.mailboxDeleted();
+        }
     }
 }

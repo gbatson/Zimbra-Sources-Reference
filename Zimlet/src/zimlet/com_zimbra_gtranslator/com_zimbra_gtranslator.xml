@@ -1,12 +1,7 @@
-<zimlet name="com_zimbra_gtranslator" version="1.1" label="Google Translator" description="Translates drag-and-drop email messages using Google Translator.">
+<zimlet name="com_zimbra_gtranslator" version="3.0.1" label="Google Translator" description="Translates Emails into more than 2500 combination of languages using Google(TM)'s language translation service" target="main compose-window">
 	<include>gtranslator.js</include>
+	<include>http://www.google.com/jsapi</include>
 	<includeCSS>gtranslator.css</includeCSS>
 	<resource>google-icon.gif</resource>
-	<handlerObject>Com_Zimbra_Gtranslator</handlerObject>
-
-	<zimletPanelItem label="Google Translator" icon="Google-panelIcon">
-		<toolTipText>Drag-and-drop a conversation or message to translate using Google Translator.</toolTipText>
-		<dragSource type="ZmConv" />
-		<dragSource type="ZmMailMsg" />
-	</zimletPanelItem>
+	<handlerObject>com_zimbra_gtranslator_HandlerObject</handlerObject>
 </zimlet>

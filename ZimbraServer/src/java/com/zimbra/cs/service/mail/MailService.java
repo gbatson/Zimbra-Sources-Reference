@@ -38,6 +38,9 @@ public class MailService implements DocumentService {
         // noop
         dispatcher.registerHandler(MailConstants.NO_OP_REQUEST, new NoOp());
 
+        // UUID generation
+        dispatcher.registerHandler(MailConstants.GENERATE_UUID_REQUEST, new GenerateUUID());
+
         // searching
         dispatcher.registerHandler(MailConstants.BROWSE_REQUEST, new Browse());
         dispatcher.registerHandler(MailConstants.SEARCH_REQUEST, new Search());
@@ -198,6 +201,6 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.GET_YAHOO_AUTH_TOKEN_REQUEST, new GetYahooAuthToken());
         
         dispatcher.registerHandler(MailConstants.AUTO_COMPLETE_REQUEST, new AutoComplete());
-        dispatcher.registerHandler(MailConstants.RESET_CONTACT_RANKING_REQUEST, new ResetContactRanking());
+        dispatcher.registerHandler(MailConstants.RANKING_ACTION_REQUEST, new RankingAction());
     }
 }

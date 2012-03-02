@@ -27,7 +27,6 @@ import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
 import com.zimbra.common.mailbox.ContactConstants;
-import com.zimbra.cs.mailbox.Contact;
 
 
 public class ParsedAddress implements Comparable<ParsedAddress> {

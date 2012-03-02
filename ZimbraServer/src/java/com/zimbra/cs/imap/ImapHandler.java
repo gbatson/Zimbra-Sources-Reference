@@ -25,6 +25,7 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
@@ -95,6 +96,10 @@ abstract class ImapHandler extends ProtocolHandler {
 
     private static final long MAXIMUM_IDLE_PROCESSING_MILLIS = 15 * Constants.MILLIS_PER_SECOND;
 
+    /** Maximum number of consecutive user commands resulting in BAD responses
+     *  before the server disconnects the client. */
+    static final int MAXIMUM_CONSECUTIVE_BAD = 5;
+
     // ID response parameters
     private static final String ID_PARAMS = "\"NAME\" \"Zimbra\" \"VERSION\" \"" + BuildInfo.VERSION + "\" \"RELEASE\" \"" + BuildInfo.RELEASE + "\"";
 
@@ -107,6 +112,7 @@ abstract class ImapHandler extends ProtocolHandler {
     protected ImapCredentials mCredentials;
     protected boolean         mStartedTLS;
     protected String          mLastCommand;
+    protected int             mConsecutiveBAD;
     private   ImapProxy       mProxy;
     protected ImapFolder      mSelectedFolder;
     private   String          mIdleTag;
@@ -157,6 +163,7 @@ abstract class ImapHandler extends ProtocolHandler {
     }
 
     protected void handleParseException(ImapParseException e) throws IOException {
+        mConsecutiveBAD++;
         String message = (e.mCode == null ? "" : '[' + e.mCode + "] ") + e.getMessage();
         if (e.mTag == null)
             sendUntagged("BAD " + message, true);
@@ -235,7 +242,7 @@ abstract class ImapHandler extends ProtocolHandler {
             return CONTINUE_PROCESSING;
         try {
             Account account = mCredentials.getAccount();
-            if (account == null || !isAccountStatusActive(account)) {
+            if (account == null || !account.isAccountStatusActive()) {
                 ZimbraLog.imap.warn("account missing or not active; dropping connection");
                 return STOP_PROCESSING;
             }
@@ -253,7 +260,7 @@ abstract class ImapHandler extends ProtocolHandler {
             return CONTINUE_PROCESSING;
         try {
             Account account = Provisioning.getInstance().get(Provisioning.AccountBy.id, id);
-            if (account == null || !isAccountStatusActive(account)) {
+            if (account == null || !account.isAccountStatusActive()) {
                 ZimbraLog.imap.warn("target account missing or not active; dropping connection");
                 return STOP_PROCESSING;
             }
@@ -263,11 +270,6 @@ abstract class ImapHandler extends ProtocolHandler {
         }
 
         return CONTINUE_PROCESSING;
-    }
-
-    // TODO Consider adding method to Account base class
-    private boolean isAccountStatusActive(Account account) {
-        return account.getAccountStatus(Provisioning.getInstance()).equals(Provisioning.ACCOUNT_STATUS_ACTIVE);
     }
 
     boolean executeRequest(ImapRequest req) throws IOException, ImapParseException {
@@ -362,22 +364,7 @@ abstract class ImapHandler extends ProtocolHandler {
                                     params |= ImapFolder.SELECT_CONDSTORE;
                                 } else if (param.equals("QRESYNC") && sessionActivated(ImapExtension.QRESYNC)) {
                                     params |= ImapFolder.SELECT_CONDSTORE;
-                                    qri = new QResyncInfo();
-                                    req.skipSpace();  req.skipChar('(');
-                                    qri.uvv = req.parseInteger(req.readNumber());  req.skipSpace();
-                                    qri.modseq = req.parseInteger(req.readNumber());
-                                    if (req.peekChar() == ' ') {
-                                        req.skipSpace();
-                                        if (req.peekChar() != '(')
-                                            qri.knownUIDs = req.readSequence(false);
-                                        if (qri.knownUIDs == null || req.peekChar() == ' ') {
-                                            if (qri.knownUIDs != null)  req.skipSpace();
-                                            req.skipChar('(');  qri.seqMilestones = req.readSequence(false);
-                                            req.skipSpace();    qri.uidMilestones = req.readSequence(false);
-                                            req.skipChar(')');
-                                        }
-                                    }
-                                    req.skipChar(')');
+                                    req.skipSpace();  qri = parseQResyncInfo(req);
                                 } else {
                                     throw new ImapParseException(tag, "unknown EXAMINE parameter \"" + param + '"');
                                 }
@@ -476,7 +463,7 @@ abstract class ImapHandler extends ProtocolHandler {
                                     throw new ImapParseException(tag, "unknown LIST select option \"" + option + '"');
                             }
                             if ((selectOptions & (SELECT_SUBSCRIBED | SELECT_RECURSIVE)) == SELECT_RECURSIVE)
-                                throw new ImapParseException(tag, "must include SUBSCRIBED when specifying RECURSIVEMATCH", false);
+                                throw new ImapParseException(tag, "must include SUBSCRIBED when specifying RECURSIVEMATCH");
                             req.skipChar(')');  req.skipSpace();
                         }
 
@@ -566,7 +553,6 @@ abstract class ImapHandler extends ProtocolHandler {
                         if (cmd.equals("FLAGS.SILENT"))  silent = true;
                         else if (!cmd.equals("FLAGS"))   throw new ImapParseException(tag, "invalid store-att-flags");
                         req.skipSpace();  List<String> flags = req.readFlags();
-
                         checkEOF(tag, req);
                         return isProxied ? mProxy.proxy(req) : doSTORE(tag, sequence, flags, operation, silent, modseq, byUID);
                     } else if (command.equals("SELECT")) {
@@ -582,22 +568,7 @@ abstract class ImapHandler extends ProtocolHandler {
                                     params |= ImapFolder.SELECT_CONDSTORE;
                                 } else if (param.equals("QRESYNC") && sessionActivated(ImapExtension.QRESYNC)) {
                                     params |= ImapFolder.SELECT_CONDSTORE;
-                                    qri = new QResyncInfo();
-                                    req.skipSpace();  req.skipChar('(');
-                                    qri.uvv = req.parseInteger(req.readNumber());  req.skipSpace();
-                                    qri.modseq = req.parseInteger(req.readNumber());
-                                    if (req.peekChar() == ' ') {
-                                        req.skipSpace();
-                                        if (req.peekChar() != '(')
-                                            qri.knownUIDs = req.readSequence(false);
-                                        if (qri.knownUIDs == null || req.peekChar() == ' ') {
-                                            if (qri.knownUIDs != null)  req.skipSpace();
-                                            req.skipChar('(');  qri.seqMilestones = req.readSequence(false);
-                                            req.skipSpace();    qri.uidMilestones = req.readSequence(false);
-                                            req.skipChar(')');
-                                        }
-                                    }
-                                    req.skipChar(')');
+                                    req.skipSpace();  qri = parseQResyncInfo(req);
                                 } else {
                                     throw new ImapParseException(tag, "unknown SELECT parameter \"" + param + '"');
                                 }
@@ -610,23 +581,7 @@ abstract class ImapHandler extends ProtocolHandler {
                         Integer options = null;
                         req.skipSpace();
                         if ("RETURN".equals(req.peekATOM()) && extensionEnabled("ESEARCH")) {
-                            options = 0;
-                            req.skipAtom("RETURN");  req.skipSpace();  req.skipChar('(');
-                            while (req.peekChar() != ')') {
-                                if (options != 0)
-                                    req.skipSpace();
-                                String option = req.readATOM();
-                                if (option.equals("MIN"))         options |= RETURN_MIN;
-                                else if (option.equals("MAX"))    options |= RETURN_MAX;
-                                else if (option.equals("ALL"))    options |= RETURN_ALL;
-                                else if (option.equals("COUNT"))  options |= RETURN_COUNT;
-                                else if (option.equals("SAVE") && extensionEnabled("SEARCHRES"))  options |= RETURN_SAVE;
-                                else
-                                    throw new ImapParseException(tag, "unknown RETURN option \"" + option + '"');
-                            }
-                            req.skipChar(')');  req.skipSpace();
-                            if (options == 0)
-                                options = RETURN_ALL;
+                            options = parseSearchOptions(req);  req.skipSpace();
                         }
                         String charset = null;
                         if ("CHARSET".equals(req.peekATOM())) {
@@ -648,23 +603,7 @@ abstract class ImapHandler extends ProtocolHandler {
                         Integer options = null;
                         req.skipSpace();
                         if ("RETURN".equals(req.peekATOM()) && extensionEnabled("ESORT")) {
-                            options = 0;
-                            req.skipAtom("RETURN");  req.skipSpace();  req.skipChar('(');
-                            while (req.peekChar() != ')') {
-                                if (options != 0)
-                                    req.skipSpace();
-                                String option = req.readATOM();
-                                if (option.equals("MIN"))         options |= RETURN_MIN;
-                                else if (option.equals("MAX"))    options |= RETURN_MAX;
-                                else if (option.equals("ALL"))    options |= RETURN_ALL;
-                                else if (option.equals("COUNT"))  options |= RETURN_COUNT;
-                                else if (option.equals("SAVE") && extensionEnabled("SEARCHRES"))  options |= RETURN_SAVE;
-                                else
-                                    throw new ImapParseException(tag, "unknown RETURN option \"" + option + '"');
-                            }
-                            req.skipChar(')');  req.skipSpace();
-                            if (options == 0)
-                                options = RETURN_ALL;
+                            options = parseSearchOptions(req);  req.skipSpace();
                         }
                         req.skipChar('(');
                         boolean desc = false;  List<SortBy> order = new ArrayList<SortBy>(2);
@@ -763,7 +702,7 @@ abstract class ImapHandler extends ProtocolHandler {
         throw new ImapParseException(tag, "command not implemented");
     }
 
-    byte parseStatusFields(ImapRequest req) throws ImapParseException {
+    private byte parseStatusFields(ImapRequest req) throws ImapParseException {
         byte status = 0;
         req.skipChar('(');
         do {
@@ -781,6 +720,45 @@ abstract class ImapHandler extends ProtocolHandler {
         } while (req.peekChar() != ')');
         req.skipChar(')');
         return status;
+    }
+
+    private int parseSearchOptions(ImapRequest req) throws ImapParseException {
+        int options = 0;
+        req.skipAtom("RETURN");  req.skipSpace();  req.skipChar('(');
+        while (req.peekChar() != ')') {
+            if (options != 0)
+                req.skipSpace();
+            String option = req.readATOM();
+            if (option.equals("MIN"))         options |= RETURN_MIN;
+            else if (option.equals("MAX"))    options |= RETURN_MAX;
+            else if (option.equals("ALL"))    options |= RETURN_ALL;
+            else if (option.equals("COUNT"))  options |= RETURN_COUNT;
+            else if (option.equals("SAVE") && extensionEnabled("SEARCHRES"))  options |= RETURN_SAVE;
+            else
+                throw new ImapParseException(req.getTag(), "unknown RETURN option \"" + option + '"');
+        }
+        req.skipChar(')');
+        return options == 0 ? RETURN_ALL : options;
+    }
+
+    private QResyncInfo parseQResyncInfo(ImapRequest req) throws ImapParseException {
+        QResyncInfo qri = new QResyncInfo();
+        req.skipSpace();  req.skipChar('(');
+        qri.uvv = req.parseInteger(req.readNumber());  req.skipSpace();
+        qri.modseq = req.parseInteger(req.readNumber());
+        if (req.peekChar() == ' ') {
+            req.skipSpace();
+            if (req.peekChar() != '(')
+                qri.knownUIDs = req.readSequence(false);
+            if (qri.knownUIDs == null || req.peekChar() == ' ') {
+                if (qri.knownUIDs != null)  req.skipSpace();
+                req.skipChar('(');  qri.seqMilestones = req.readSequence(false);
+                req.skipSpace();    qri.uidMilestones = req.readSequence(false);
+                req.skipChar(')');
+            }
+        }
+        req.skipChar(')');
+        return qri;
     }
 
     State getState() {
@@ -1401,7 +1379,13 @@ abstract class ImapHandler extends ProtocolHandler {
                 throw ImapServiceException.FOLDER_NOT_VISIBLE(path.asImapPath());
 
             Object mboxobj = path.getOwnerMailbox();
-            if (mboxobj instanceof Mailbox) {
+            if (path.useReferent()) {
+                // when users try to remove mountpoints, the IMAP client hard-deletes the subfolders!
+                //   deal with this by only *pretending* to delete subfolders of mountpoints
+                mCredentials.hideFolder(path);
+                // even pretend-deleting the folder also unsubscribes from it...
+                mCredentials.unsubscribe(path);
+            } else if (mboxobj instanceof Mailbox) {
                 Mailbox mbox = (Mailbox) mboxobj;
                 Folder folder = (Folder) path.getFolder();
                 if (!folder.isDeletable())
@@ -1607,7 +1591,7 @@ abstract class ImapHandler extends ProtocolHandler {
 
         String command = (returnOptions & RETURN_XLIST) != 0 ? "XLIST" : "LIST";
 
-        if (selectOptions == 0 && returnOptions == 0 && mailboxNames.size() == 1 && mailboxNames.contains("")) {
+        if (selectOptions == 0 && (returnOptions & ~RETURN_XLIST) == 0 && mailboxNames.size() == 1 && mailboxNames.contains("")) {
             // 6.3.8: "An empty ("" string) mailbox name argument is a special request to return
             //         the hierarchy delimiter and the root name of the name given in the reference."
             sendNotifications(true, false);
@@ -2043,11 +2027,11 @@ abstract class ImapHandler extends ProtocolHandler {
             if (zfolder == null)
                 throw MailServiceException.NO_SUCH_FOLDER(path.asImapPath());
 
-            messages = zfolder.getMessageCount();
+            messages = zfolder.getImapMessageCount();
             recent = 0;
             uidnext = zfolder.getImapUIDNEXT();
             uvv = ImapFolder.getUIDValidity(zfolder);
-            unread = zfolder.getUnreadCount();
+            unread = zfolder.getImapUnreadCount();
             modseq = zfolder.getImapMODSEQ();
         } else {
             throw AccountServiceException.NO_SUCH_ACCOUNT(path.getOwner());
@@ -2356,7 +2340,7 @@ abstract class ImapHandler extends ProtocolHandler {
             String granteeId = null;
             byte granteeType;
             if (principal.equals("anyone")) {
-                granteeId = ACL.GUID_AUTHUSER;  granteeType = ACL.GRANTEE_AUTHUSER;
+                granteeId = GuestAccount.GUID_AUTHUSER;  granteeType = ACL.GRANTEE_AUTHUSER;
             } else {
                 granteeType = ACL.GRANTEE_USER;
                 NamedEntry entry = Provisioning.getInstance().get(AccountBy.name, principal);
@@ -2440,7 +2424,7 @@ abstract class ImapHandler extends ProtocolHandler {
             // figure out whose permissions are being revoked
             String granteeId = null;
             if (principal.equals("anyone")) {
-                granteeId = ACL.GUID_AUTHUSER;
+                granteeId = GuestAccount.GUID_AUTHUSER;
             } else {
                 NamedEntry entry = Provisioning.getInstance().get(AccountBy.name, principal);
                 if (entry == null)
@@ -2461,16 +2445,16 @@ abstract class ImapHandler extends ProtocolHandler {
                 Folder folder = (Folder) path.getFolder();
                 if (folder.getEffectiveACL() != null) {
                     mbox.revokeAccess(getContext(), folder.getId(), granteeId);
-                    if (granteeId == ACL.GUID_AUTHUSER)
-                        mbox.revokeAccess(getContext(), folder.getId(), ACL.GUID_PUBLIC);
+                    if (granteeId == GuestAccount.GUID_AUTHUSER)
+                        mbox.revokeAccess(getContext(), folder.getId(), GuestAccount.GUID_PUBLIC);
                 }
             } else {
                 ZMailbox zmbx = (ZMailbox) mboxobj;
                 ZFolder zfolder = (ZFolder) path.getFolder();
                 if (!zfolder.getGrants().isEmpty()) {
                     zmbx.modifyFolderRevokeGrant(zfolder.getId(), granteeId);
-                    if (granteeId == ACL.GUID_AUTHUSER)
-                        zmbx.modifyFolderRevokeGrant(zfolder.getId(), ACL.GUID_PUBLIC);
+                    if (granteeId == GuestAccount.GUID_AUTHUSER)
+                        zmbx.modifyFolderRevokeGrant(zfolder.getId(), GuestAccount.GUID_PUBLIC);
                 }
             }
         } catch (ServiceException e) {

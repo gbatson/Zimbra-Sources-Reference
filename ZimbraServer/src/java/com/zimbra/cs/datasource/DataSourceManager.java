@@ -143,7 +143,7 @@ public class DataSourceManager {
                         cmdClass = ExtensionUtil.findClass(className);
                     }
                     Constructor constructor = cmdClass.getConstructor(new Class[] {DataSource.class});
-                    return (DataImport)constructor.newInstance(new Object[] {ds});
+                    return (DataImport)constructor.newInstance(ds);
                 }
             } catch (Exception x) {
                 ZimbraLog.datasource.warn("Failed instantiating xsync class: %s", ds, x);
@@ -154,15 +154,15 @@ public class DataSourceManager {
                 "Unknown data import type: " + ds.getType());
         }
     }
-    
+
     public static String getDefaultImportClass(DataSource.Type ds) {
-    	switch (ds) {
-    	case caldav:
-    		return CalDavDataImport.class.getName();
-    	case gal:
-    		return GalImport.class.getName();
-    	}
-    	return null;
+        switch (ds) {
+        case caldav:
+            return CalDavDataImport.class.getName();
+        case gal:
+            return GalImport.class.getName();
+        }
+        return null;
     }
 
     /*
@@ -172,13 +172,13 @@ public class DataSourceManager {
     public static void test(DataSource ds) throws ServiceException {
         ZimbraLog.datasource.info("Testing: %s", ds);
         try {
-        	DataImport di = getInstance().getDataImport(ds);
-        	di.test();
+            DataImport di = getInstance().getDataImport(ds);
+            di.test();
             ZimbraLog.datasource.info("Test succeeded: %s", ds);
         } catch (ServiceException x) {
-        	ZimbraLog.datasource.warn("Test failed: %s", ds, x);
+            ZimbraLog.datasource.warn("Test failed: %s", ds, x);
             throw x;
-        }        
+        }
     }
 
     public static List<ImportStatus> getImportStatus(Account account)
@@ -266,8 +266,6 @@ public class DataSourceManager {
                 importStatus.mIsRunning = false;
             }
         }
-        
-        return;
     }
     
     public static void resetErrorStatus(DataSource ds) {
@@ -299,26 +297,17 @@ public class DataSourceManager {
     
     private static String generateErrorMessage(Throwable t) {
         StringBuilder buf = new StringBuilder();
-        boolean isFirst = true;
         while (t != null) {
             // HACK: go with JavaMail error message
             if (t.getClass().getName().startsWith("javax.mail.")) {
                 String msg = t.getMessage();
-                if (msg == null) {
-                    msg = t.toString();
-                }
-                return msg;
+                return msg != null ? msg : t.toString();
             }
-            if (isFirst) {
-                isFirst = false;
-            } else {
+            if (buf.length() > 0) {
                 buf.append(", ");
             }
             String msg = t.getMessage();
-            if (msg == null) {
-                msg = t.toString(); 
-            }
-            buf.append(msg);
+            buf.append(msg != null ? msg : t.toString());
             t = t.getCause();
         }
         return buf.toString();

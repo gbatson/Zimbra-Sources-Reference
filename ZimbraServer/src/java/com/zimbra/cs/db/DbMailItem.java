@@ -27,6 +27,7 @@ import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -35,6 +36,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
@@ -1712,7 +1715,14 @@ public class DbMailItem {
             return "type = " + type;
     }
 
-    public static Mailbox.MailboxData getFoldersAndTags(Mailbox mbox, Map<UnderlyingData, Long> folderData, Map<UnderlyingData, Long> tagData, boolean reload)
+    public static class FolderTagMap extends HashMap<UnderlyingData, FolderTagCounts> { }
+
+    public static class FolderTagCounts {
+        public int totalSize, deletedCount, deletedUnreadCount;
+        @Override public String toString()  { return totalSize + "/" + deletedCount + "/" + deletedUnreadCount; }
+    }
+
+    public static Mailbox.MailboxData getFoldersAndTags(Mailbox mbox, FolderTagMap folderData, FolderTagMap tagData, boolean reload)
     throws ServiceException {
         assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(mbox));
 
@@ -1729,9 +1739,9 @@ public class DbMailItem {
             while (rs.next()) {
                 UnderlyingData data = constructItem(rs);
                 if (MailItem.isAcceptableType(MailItem.TYPE_FOLDER, data.type))
-                    folderData.put(data, -1L);
+                    folderData.put(data, null);
                 else if (MailItem.isAcceptableType(MailItem.TYPE_TAG, data.type))
-                    tagData.put(data, -1L);
+                    tagData.put(data, null);
 
                 rs.getInt(CI_UNREAD);
                 reload |= rs.wasNull();
@@ -1762,51 +1772,64 @@ public class DbMailItem {
             Map<Integer, UnderlyingData> lookup = new HashMap<Integer, UnderlyingData>(folderData.size() + tagData.size());
 
             // going to recalculate counts, so discard any existing counts...
-            for (Map.Entry<UnderlyingData, Long> entry : folderData.entrySet()) {
-                UnderlyingData data = entry.getKey();
-                lookup.put(data.id, data);
-                data.size = data.unreadCount = 0;
-                entry.setValue(0L);
-            }
-
-            for (UnderlyingData data : tagData.keySet()) {
-                lookup.put(data.id, data);
-                data.size = data.unreadCount = 0;
+            for (FolderTagMap itemData : new FolderTagMap[] { folderData, tagData }) {
+                for (Map.Entry<UnderlyingData, FolderTagCounts> entry : itemData.entrySet()) {
+                    UnderlyingData data = entry.getKey();
+                    lookup.put(data.id, data);
+                    data.size = data.unreadCount = 0;
+                    entry.setValue(new FolderTagCounts());
+                }
             }
 
             rs.close();
             stmt.close();
 
             Mailbox.MailboxData mbd = new Mailbox.MailboxData();
-            stmt = conn.prepareStatement("SELECT folder_id, type, tags, COUNT(*), SUM(unread), SUM(size)" +
+            stmt = conn.prepareStatement("SELECT folder_id, type, tags, flags, COUNT(*), SUM(unread), SUM(size)" +
                         " FROM " + table + " WHERE " + IN_THIS_MAILBOX_AND + "type NOT IN " + NON_SEARCHABLE_TYPES +
-                        " GROUP BY folder_id, type, tags");
+                        " GROUP BY folder_id, type, tags, flags");
             setMailboxId(stmt, mbox, 1);
             rs = stmt.executeQuery();
 
             while (rs.next()) {
+                int folderId = rs.getInt(1);
                 byte type  = rs.getByte(2);
-                int count  = rs.getInt(4);
-                int unread = rs.getInt(5);
-                long size  = rs.getLong(6);
+                long tags  = rs.getLong(3);
+                boolean deleted = (rs.getInt(4) & Flag.BITMASK_DELETED) != 0;
+                int count  = rs.getInt(5);
+                int unread = rs.getInt(6);
+                long size  = rs.getLong(7);
 
                 if (type == MailItem.TYPE_CONTACT)
                     mbd.contacts += count;
                 mbd.size += size;
 
-                UnderlyingData data = lookup.get(rs.getInt(1));
-                assert(data != null);
-                data.unreadCount += unread;
-                data.size += count;
-                Long folderSize = folderData.get(data);
-                folderData.put(data, folderSize == null ? size : folderSize + size);
+                UnderlyingData data = lookup.get(folderId);
+                if (data != null) {
+                    data.unreadCount += unread;
+                    data.size += count;
 
-                long tags = rs.getLong(3);
+                    FolderTagCounts fcounts = folderData.get(data);
+                    fcounts.totalSize += size;
+                    if (deleted) {
+                        fcounts.deletedCount += count;
+                        fcounts.deletedUnreadCount += unread;
+                    }
+                } else {
+                    ZimbraLog.mailbox.warn("inconsistent DB state: items with no corresponding folder (folder ID " + folderId + ")");
+                }
+
                 for (int i = 0; tags != 0 && i < MailItem.MAX_TAG_COUNT - 1; i++) {
                     if ((tags & (1L << i)) != 0) {
                         data = lookup.get(i + MailItem.TAG_ID_OFFSET);
-                        if (data != null)
+                        if (data != null) {
+                            // not keeping track of item counts on tags, just unread counts
                             data.unreadCount += unread;
+                            if (deleted)
+                                tagData.get(data).deletedUnreadCount += unread;
+                        } else {
+                            ZimbraLog.mailbox.warn("inconsistent DB state: items with no corresponding tag (tag ID " + (i + MailItem.TAG_ID_OFFSET) + ")");
+                        }
                         // could track cumulative count if desired...
                         tags &= ~(1L << i);
                     }
@@ -1825,10 +1848,16 @@ public class DbMailItem {
             rs = stmt.executeQuery();
 
             while (rs.next()) {
-                UnderlyingData data = lookup.get(rs.getInt(1));
-                assert(data != null);
-                Long folderSize = folderData.get(data);
-                folderData.put(data, folderSize == null ? rs.getLong(2) : folderSize + rs.getLong(2));
+                int folderId = rs.getInt(1);
+                long size    = rs.getLong(2);
+
+                mbd.size += size;
+
+                UnderlyingData data = lookup.get(folderId);
+                if (data != null)
+                    folderData.get(data).totalSize += size;
+                else
+                    ZimbraLog.mailbox.warn("inconsistent DB state: revisions with no corresponding folder (folder ID " + folderId + ")");
             }
 
             return mbd;
@@ -2333,9 +2362,9 @@ public class DbMailItem {
             DbPool.closeStatement(stmt);
         }
     }
-
+    
     public static PendingDelete getLeafNodes(Mailbox mbox, List<Folder> folders, int before, boolean globalMessages,
-                                             Boolean unread, boolean useChangeDate)
+                                             Boolean unread, boolean useChangeDate, Integer maxItems)
     throws ServiceException {
         assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(mbox));
 
@@ -2354,10 +2383,14 @@ public class DbMailItem {
                              " AND " + DbUtil.whereIn("folder_id", folders.size());
             if (unread != null)
                 constraint += " AND unread = ?";
+            String orderByLimit = "";
+            if (maxItems != null && Db.supports(Db.Capability.LIMIT_CLAUSE)) {
+                orderByLimit = " ORDER BY " + dateColumn + " LIMIT " + maxItems;
+            }
 
             stmt = conn.prepareStatement("SELECT " + LEAF_NODE_FIELDS +
                         " FROM " + getMailItemTableName(mbox) +
-                        " WHERE " + IN_THIS_MAILBOX_AND + constraint);
+                        " WHERE " + IN_THIS_MAILBOX_AND + constraint + orderByLimit);
             if (globalMessages || getTotalFolderSize(folders) > RESULTS_STREAMING_MIN_ROWS)
                 Db.getInstance().enableStreaming(stmt);
             int pos = 1;
@@ -2449,11 +2482,12 @@ public class DbMailItem {
 
     public static class LocationCount {
         public int count;
+        public int deleted;
         public long size;
-        public LocationCount(int c, long sz)              { count = c;  size = sz; }
-        public LocationCount(LocationCount lc)            { count = lc.count;  size = lc.size; }
-        public LocationCount increment(int c, long sz)    { count += c;  size += sz;  return this; }
-        public LocationCount increment(LocationCount lc)  { count += lc.count;  size += lc.size;  return this; }
+        public LocationCount(int c, int d, long sz)            { count = c;  deleted += d;  size = sz; }
+        public LocationCount(LocationCount lc)                 { count = lc.count;  deleted = lc.deleted;  size = lc.size; }
+        public LocationCount increment(int c, int d, long sz)  { count += c;  deleted += d;  size += sz;  return this; }
+        public LocationCount increment(LocationCount lc)       { count += lc.count;  deleted += lc.deleted;  size += lc.size;  return this; }
     }
 
     /**
@@ -2501,12 +2535,17 @@ public class DbMailItem {
                     info.modifiedIds.add(parentId);
             }
 
+            int flags = rs.getInt(LEAF_CI_FLAGS);
+            if ((flags & Flag.BITMASK_VERSIONED) != 0)
+                versioned.add(id);
+
             Integer folderId = rs.getInt(LEAF_CI_FOLDER_ID);
+            boolean isDeleted = (flags & Flag.BITMASK_DELETED) != 0;
             LocationCount count = info.messages.get(folderId);
             if (count == null)
-                info.messages.put(folderId, new LocationCount(1, size));
+                info.messages.put(folderId, new LocationCount(1, isDeleted ? 1 : 0, size));
             else
-                count.increment(1, size);
+                count.increment(1, isDeleted ? 1 : 0, size);
 
             String blobDigest = rs.getString(LEAF_CI_BLOB_DIGEST);
             if (blobDigest != null) {
@@ -2519,11 +2558,6 @@ public class DbMailItem {
                     else
                         info.blobs.add(mblob);
                 } catch (Exception e1) { }
-            }
-
-            int flags = rs.getInt(LEAF_CI_FLAGS);
-            if ((flags & Flag.BITMASK_VERSIONED) != 0) {
-                versioned.add(id);
             }
 
             String indexId = rs.getString(LEAF_CI_INDEX_ID);
@@ -2563,9 +2597,9 @@ public class DbMailItem {
                 Integer folderId = rs.getInt(2);
                 LocationCount count = info.messages.get(folderId);
                 if (count == null)
-                    info.messages.put(folderId, new LocationCount(0, rs.getLong(3)));
+                    info.messages.put(folderId, new LocationCount(0, 0, rs.getLong(3)));
                 else
-                    count.increment(0, rs.getLong(3));
+                    count.increment(0, 0, rs.getLong(3));
 
                 String blobDigest = rs.getString(6);
                 if (blobDigest != null) {
@@ -3140,6 +3174,127 @@ public class DbMailItem {
             return result;
         } catch (SQLException e) {
             throw ServiceException.FAILURE("finding items between dates", e);
+        } finally {
+            DbPool.closeResults(rs);
+            DbPool.closeStatement(stmt);
+        }
+    }
+    
+    public static class QueryParams {
+        private SortedSet<Integer> mFolderIds = new TreeSet<Integer>();
+        private Long mModifiedBefore;
+        private Integer mRowLimit;
+        private SortedSet<Byte> mIncludedTypes = new TreeSet<Byte>();
+        private SortedSet<Byte> mExcludedTypes = new TreeSet<Byte>();
+
+        public SortedSet<Integer> getFolderIds() { return Collections.unmodifiableSortedSet(mFolderIds); }
+        public QueryParams setFolderIds(Collection<Integer> ids) {
+            mFolderIds.clear();
+            if (ids != null) {
+                mFolderIds.addAll(ids);
+            }
+            return this;
+        }
+        
+        public SortedSet<Byte> getIncludedTypes() { return Collections.unmodifiableSortedSet(mIncludedTypes); }
+        public QueryParams setIncludedTypes(byte ... types) {
+            mIncludedTypes.clear();
+            if (types != null) {
+                for (byte type : types) {
+                    mIncludedTypes.add(type);
+                }
+            }
+            return this;
+        }
+        
+        public SortedSet<Byte> getExcludedTypes() { return Collections.unmodifiableSortedSet(mExcludedTypes); }
+        public QueryParams setExcludedTypes(byte ... types) {
+            mExcludedTypes.clear();
+            if (types != null) {
+                for (byte type : types) {
+                    mExcludedTypes.add(type);
+                }
+            }
+            return this;
+        }
+
+        /**
+         * @return the timestamp, in milliseconds
+         */
+        public Long getModifiedBefore() { return mModifiedBefore; }
+        /**
+         * Return items modified earlier than the given timestamp.
+         * @param timestamp the timestamp, in milliseconds
+         */
+        public QueryParams setModifiedBefore(Long timestamp) { mModifiedBefore = timestamp; return this; }
+        
+        public Integer getRowLimit() { return mRowLimit; }
+        public QueryParams setRowLimit(Integer rowLimit) { mRowLimit = rowLimit; return this; }
+    }
+
+    /**
+     * Returns the ids of items that match the given query parameters.
+     * @return the matching ids, or an empty <tt>Set</tt>
+     */
+    public static Set<Integer> getIds(Mailbox mbox, Connection conn, QueryParams params)
+    throws ServiceException {
+        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(mbox));
+        
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        Set<Integer> ids = new HashSet<Integer>();
+        
+        try {
+            // Prepare the statement based on query parameters.
+            StringBuilder buf = new StringBuilder();
+            buf.append("SELECT id FROM " + getMailItemTableName(mbox) + " WHERE " + IN_THIS_MAILBOX_AND + "1 = 1");
+            
+            Set<Byte> includedTypes = params.getIncludedTypes();
+            Set<Byte> excludedTypes = params.getExcludedTypes();
+            Set<Integer> folderIds = params.getFolderIds();
+            Long modifiedBefore = params.getModifiedBefore();
+            Integer rowLimit = params.getRowLimit();
+            
+            if (!includedTypes.isEmpty()) {
+                buf.append(" AND ").append(DbUtil.whereIn("type", includedTypes.size()));
+            }
+            if (!excludedTypes.isEmpty()) {
+                buf.append(" AND ").append(DbUtil.whereNotIn("type", excludedTypes.size()));
+            }
+            if (!folderIds.isEmpty()) {
+                buf.append(" AND ").append(DbUtil.whereIn("folder_id", folderIds.size()));
+            }
+            if (modifiedBefore != null) {
+                buf.append(" AND ").append("mod_content < ?");
+            }
+            if (rowLimit != null && Db.supports(Db.Capability.LIMIT_CLAUSE)) {
+                buf.append(" LIMIT ").append(rowLimit);
+            }
+            stmt = conn.prepareStatement(buf.toString());
+            
+            // Bind values, execute query, return results.
+            int pos = 1;
+            pos = setMailboxId(stmt, mbox, pos);
+            for (byte type : includedTypes) {
+                stmt.setByte(pos++, type);
+            }
+            for (byte type : excludedTypes) {
+                stmt.setByte(pos++, type);
+            }
+            for (int id : folderIds) {
+                stmt.setInt(pos++, id);
+            }
+            if (modifiedBefore != null) {
+                stmt.setInt(pos++, (int) (modifiedBefore / 1000));
+            }
+
+            rs = stmt.executeQuery();
+
+            while (rs.next())
+                ids.add(rs.getInt(1));
+            return ids;
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("getting ids", e);
         } finally {
             DbPool.closeResults(rs);
             DbPool.closeStatement(stmt);

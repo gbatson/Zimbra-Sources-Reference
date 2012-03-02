@@ -437,6 +437,7 @@ function() {
  *
  * @param parent
  * @param controller
+ * @private
  */
 ZmPrefZimletListView = function(parent, controller) {
 	DwtListView.call(this, {
@@ -563,6 +564,7 @@ function(clickedEl, ev, button) {
 
 /**
  * Model class to hold the list of PrefZimlets
+ * @private
  */
 ZmPrefZimlets = function() {
    ZmModel.call(this, ZmEvent.S_PREF_ZIMLET);
@@ -603,8 +605,8 @@ ZmPrefZimlets.prototype.sortByName =
 function(desc) {
 	var r = 0;
 	this._vector.sort(function(a,b) {
-		var aname = a.getNameWithoutPrefix();
-		var bname = b.getNameWithoutPrefix();
+		var aname = a.getNameWithoutPrefix().toLowerCase();
+		var bname = b.getNameWithoutPrefix().toLowerCase();
 
 		if (aname == bname) {
 			r = 0;
@@ -623,6 +625,8 @@ function(desc) {
  * @param name
  * @param active
  * @param desc
+ *
+ * @private
  */
 ZmPrefZimlet = function(name, active, desc, label) {
 	this.name = name;

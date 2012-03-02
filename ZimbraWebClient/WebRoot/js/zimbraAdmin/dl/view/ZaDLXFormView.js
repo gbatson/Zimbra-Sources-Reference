@@ -780,22 +780,21 @@ ZaDLXFormView.myXFormModifier = function(xFormObject, entry) {
 				    {type: _GROUP_, width: "98%", id: "dl_form_members_general_group", numCols: 2, colSizes:[100, "*"], items: [
 				    		{ref:ZaAccount.A_name, type:_EMAILADDR_, msgName:ZaMsg.MSG_LabelListName, label: ZaMsg.LBL_LabelListName, 
 				    			forceUpdate:true, tableCssStyle: "width:100", inputWidth:"100",
-								id:"dl_name_field",
-								enableDisableChecks:[[XFormItem.prototype.hasRight,ZaDistributionList.RENAME_DL_RIGHT]],
-								visibilityChecks:[]
+								id:"dl_name_field", 
+                                visibilityChecks:[],
+								enableDisableChecks:[[XFormItem.prototype.hasRight,ZaDistributionList.RENAME_DL_RIGHT]]
 							},
 						    {ref:ZaAccount.A_displayname, type:_TEXTFIELD_, label:ZaMsg.NAD_DisplayName, msgName:ZaMsg.NAD_DisplayName,width:"100%",
-						    	visibilityChecks:[],
-                                cssClass:"admin_xform_name_input", align: _LEFT_
+						    	cssClass:"admin_xform_name_input", align: _LEFT_
 						    },
                             ZaItem.descriptionXFormItem,
 							{ref: "zimbraMailStatus", type:_CHECKBOX_, trueValue:"enabled", falseValue:"disabled", align:_LEFT_,
-								visibilityChecks:[],nowrap:false,labelWrap:true,
+								nowrap:false,labelWrap:true,
                                 label:ZaMsg.DLXV_LabelEnabled, msgName:ZaMsg.DLXV_LabelEnabled, labelLocation:_LEFT_,
 								labelCssClass:"xform_label", cssStyle:"padding-left:0px"
 							},	
    							{ref:ZaAccount.A_zimbraHideInGal, type:_CHECKBOX_, trueValue:"TRUE", falseValue:"FALSE", align:_LEFT_,
-								visibilityChecks:[],nowrap:false,labelWrap:true,
+								nowrap:false,labelWrap:true,
                                 label:ZaMsg.LBL_zimbraHideInGal, msgName:ZaMsg.LBL_zimbraHideInGal, labelLocation:_LEFT_,labelCssClass:"xform_label", cssStyle:"padding-left:0px"
 							}
 						]

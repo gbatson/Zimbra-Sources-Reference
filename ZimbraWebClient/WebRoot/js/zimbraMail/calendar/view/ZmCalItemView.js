@@ -95,7 +95,7 @@ function(calItem, prevView, mode) {
 ZmCalItemView.prototype.reset =
 function() {
 	ZmMailMsgView.prototype.reset.call(this);
-	this._calItem = null;
+	this._calItem = null;    
 };
 
 ZmCalItemView.prototype.close = function() {}; // override
@@ -114,7 +114,9 @@ function(calItem) {
 	var editBtnCellId = this._htmlElId + "_editBtnCell";
 	this._hdrTableId = this._htmlElId + "_hdrTable";
 
-    subs.allowEdit = (appCtxt.get(ZmSetting.CAL_APPT_ALLOW_ATTENDEE_EDIT) || calItem.isOrg);
+    var calendar = calItem.getFolder();
+    var isReadOnly = calendar.isReadOnly();
+    subs.allowEdit = !isReadOnly && (appCtxt.get(ZmSetting.CAL_APPT_ALLOW_ATTENDEE_EDIT) || calItem.isOrg);
 
 	var el = this.getHtmlElement();
 	el.innerHTML = AjxTemplate.expand("calendar.Appointment#ReadOnlyView", subs);
@@ -292,7 +294,7 @@ function(ev) {
         msgDialog.popup();
         msgDialog.registerCallback(DwtDialog.OK_BUTTON, this.edit, this);
         return;
-    }else{
+    }else if(this._editWarningDialog){
         this._editWarningDialog.popdown();
     }
     
@@ -349,12 +351,16 @@ function(calItem) {
 	var equipment = calItem.getAttendeesText(ZmCalBaseItem.EQUIPMENT, true);
 	var isException = calItem._orig.isException;
 	var dateStr = this._getTimeString(calItem);
-	var attendees = calItem.getAttendeesText(ZmCalBaseItem.PERSON);
+	//var attendees = calItem.getAttendeesText(ZmCalBaseItem.PERSON);
+    var isAttendees = false;
+    var reqAttendees = calItem.getAttendeesTextByRole(ZmCalBaseItem.PERSON, ZmCalItem.ROLE_REQUIRED);
+    var optAttendees = calItem.getAttendeesTextByRole(ZmCalBaseItem.PERSON, ZmCalItem.ROLE_OPTIONAL);
+    if(reqAttendees || optAttendees) isAttendees = true;
 	var org, obo;
 	var recurStr = calItem.isRecurring() ? calItem.getRecurBlurb() : null;
 	var attachStr = ZmCalItemView._getAttachString(calItem);
 
-	if (attendees) {
+	if (isAttendees) {
 		var organizer = org = calItem.getOrganizer();
 		var sender = calItem.message.getAddress(AjxEmailAddress.SENDER);
 		var from = calItem.message.getAddress(AjxEmailAddress.FROM);
@@ -375,7 +381,8 @@ function(calItem) {
 		dateStr = this._objectManager.findObjects(dateStr, true);
 		if (org) org = this._objectManager.findObjects(org, true, ZmObjectManager.EMAIL);
 		if (obo) obo = this._objectManager.findObjects(obo, true, ZmObjectManager.EMAIL);
-		if (attendees) attendees = this._objectManager.findObjects(attendees, true);
+		if (optAttendees) optAttendees = this._objectManager.findObjects(optAttendees, true);
+        if (reqAttendees) reqAttendees = this._objectManager.findObjects(reqAttendees, true);
 	}
 
 	return {
@@ -385,7 +392,9 @@ function(calItem) {
 		equipment: equipment,
 		isException: isException,
 		dateStr: dateStr,
-		attendees: attendees,
+        isAttendees: isAttendees,
+        reqAttendees: reqAttendees,
+		optAttendees: optAttendees,
 		org: org,
 		obo: obo,
 		recurStr: recurStr,
@@ -478,6 +487,8 @@ ZmTaskView.prototype.close =
 function() {
 	this._controller._app.popView();
 };
+
+ZmTaskView.prototype.setSelectionHdrCbox = function(check) {};
 
 ZmTaskView.prototype._getSubs =
 function(calItem) {

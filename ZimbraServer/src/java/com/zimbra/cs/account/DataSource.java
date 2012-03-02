@@ -29,6 +29,8 @@ import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
+import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.Mailbox;
 import org.apache.commons.codec.binary.Base64;
 
 import com.zimbra.common.service.ServiceException;
@@ -264,8 +266,7 @@ public class DataSource extends AccountProperty {
      * Returns <tt>true</tt> if this data source has a scheduled poll interval.
      * @see #getPollingInterval
      */
-    public boolean isScheduled()
-    throws ServiceException {
+    public boolean isScheduled() throws ServiceException {
         return getPollingInterval() > 0;
     }
 
@@ -348,12 +349,6 @@ public class DataSource extends AccountProperty {
     	return false;
     }
     
-    /**
-     * Check if a local folder is setup to sync with remote folder
-     * 
-     * @param localPath
-     * @return
-     */
     public boolean isSyncEnabled(String localPath) {
     	return true;
     }
@@ -437,6 +432,23 @@ public class DataSource extends AccountProperty {
         }
     }
 
+    public boolean isSyncEnabled(Folder folder) {
+        return DataSourceManager.getInstance().isSyncEnabled(this, folder);
+    }
+
+    public boolean isSyncCapable(Folder folder) {
+        return DataSourceManager.getInstance().isSyncCapable(this, folder);
+    }
+
+    public boolean isSyncNeeded() throws ServiceException {
+        return false;
+    }
+
+    public void mailboxDeleted() {}
+    
+    public Mailbox getMailbox() throws ServiceException {
+        return DataSourceManager.getInstance().getMailbox(this);
+    }
 
     public String toString() {
         List<String> parts = new ArrayList<String>();

@@ -19,8 +19,8 @@ import com.zimbra.common.util.Pair;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mountpoint;
@@ -60,6 +60,7 @@ public class HtmlFormatter extends Formatter {
 
     private static final String ATTR_TARGET_ACCOUNT_PREF_TIME_ZONE   = "zimbra_target_account_prefTimeZoneId";
     private static final String ATTR_TARGET_ACCOUNT_PREF_SKIN   = "zimbra_target_account_prefSkin";
+    private static final String ATTR_TARGET_ACCOUNT_PREF_LOCALE   = "zimbra_target_account_prefLocale";
     private static final String ATTR_TARGET_ACCOUNT_PREF_CALENDAR_FIRST_DAY_OF_WEEK   = "zimbra_target_account_prefCalendarFirstDayOfWeek";
     private static final String ATTR_TARGET_ACCOUNT_PREF_CALENDAR_DAY_HOUR_START   = "zimbra_target_account_prefCalendarDayHourStart";
     private static final String ATTR_TARGET_ACCOUNT_PREF_CALENDAR_DAY_HOUR_END  = "zimbra_target_account_prefCalendarDayHourEnd";
@@ -86,14 +87,14 @@ public class HtmlFormatter extends Formatter {
         long expiration = System.currentTimeMillis() + AUTH_EXPIRATION;
         if (context.basicAuthHappened) {
             Account acc = context.authAccount;
-            if (acc instanceof ACL.GuestAccount)
-                auth = AuthToken.getAuthToken(acc.getId(), acc.getName(), null, ((ACL.GuestAccount)acc).getDigest(), expiration);
+            if (acc instanceof GuestAccount)
+                auth = AuthToken.getAuthToken(acc.getId(), acc.getName(), null, ((GuestAccount)acc).getDigest(), expiration);
             else
                 auth = AuthProvider.getAuthToken(context.authAccount, expiration);
         } else if (context.cookieAuthHappened) {
             auth = UserServlet.getAuthTokenFromCookie(context.req, context.resp, true);
         } else {
-            auth = AuthToken.getAuthToken(ACL.GUID_PUBLIC, null, null, null, expiration);
+            auth = AuthToken.getAuthToken(GuestAccount.GUID_PUBLIC, null, null, null, expiration);
         }
 
         String authString = null;
@@ -145,6 +146,7 @@ public class HtmlFormatter extends Formatter {
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_ID, targetAccount.getId());
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_TIME_ZONE, targetAccount.getAttr(Provisioning.A_zimbraPrefTimeZoneId));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_SKIN, targetAccount.getAttr(Provisioning.A_zimbraPrefSkin));
+            context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_LOCALE, targetAccount.getAttr(Provisioning.A_zimbraPrefLocale));            
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_CALENDAR_FIRST_DAY_OF_WEEK, targetAccount.getAttr(Provisioning.A_zimbraPrefCalendarFirstDayOfWeek));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_CALENDAR_DAY_HOUR_START, targetAccount.getAttr(Provisioning.A_zimbraPrefCalendarDayHourStart));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_CALENDAR_DAY_HOUR_END, targetAccount.getAttr(Provisioning.A_zimbraPrefCalendarDayHourEnd));

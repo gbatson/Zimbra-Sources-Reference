@@ -15,10 +15,13 @@
 package com.zimbra.cs.dav.service.method;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 
 import javax.servlet.http.HttpServletResponse;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavException;
 import com.zimbra.cs.dav.DavProtocol;
@@ -58,6 +61,11 @@ public class Move extends DavMethod {
 			end--;
 		begin = dest.lastIndexOf("/", end-1);
 		String newName = dest.substring(begin+1, end);
+        try {
+            newName = URLDecoder.decode(newName, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            ZimbraLog.dav.warn("can't decode URL ", dest, e);
+        }
 		if (!oldName.equals(newName))
 			rs.rename(ctxt, newName, destCollection);
 	}
@@ -68,15 +76,19 @@ public class Move extends DavMethod {
             throw new DavException("no destination specified", HttpServletResponse.SC_BAD_REQUEST, null);
         return destination;
 	}
-	protected Collection getDestinationCollection(DavContext ctxt) throws DavException {
-	    String destinationUrl = getDestination(ctxt);
-	    try {
-	        DavResource r = UrlNamespace.getResourceAtUrl(ctxt, destinationUrl);
-	        if (r instanceof Collection)
-	            return ((Collection)r);
-	        return UrlNamespace.getCollectionAtUrl(ctxt, destinationUrl);
-	    } catch (Exception e) {
-	        throw new DavException("can't get destination collection", DavProtocol.STATUS_FAILED_DEPENDENCY);
-	    }
-	}
+    protected Collection getDestinationCollection(DavContext ctxt) throws DavException {
+        String destinationUrl = getDestination(ctxt);
+        if (!destinationUrl.endsWith("/")) {
+            int slash = destinationUrl.lastIndexOf('/');
+            destinationUrl = destinationUrl.substring(0, slash+1);
+        }
+        try {
+            DavResource r = UrlNamespace.getResourceAtUrl(ctxt, destinationUrl);
+            if (r instanceof Collection)
+                return ((Collection)r);
+            return UrlNamespace.getCollectionAtUrl(ctxt, destinationUrl);
+        } catch (Exception e) {
+            throw new DavException("can't get destination collection", DavProtocol.STATUS_FAILED_DEPENDENCY);
+        }
+    }
 }

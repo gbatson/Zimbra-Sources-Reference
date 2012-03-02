@@ -270,7 +270,7 @@ function(params, result) {
 		}
 	}
 
-	var response;
+	var response, refreshBlock;
 	try {
 		if (params.asyncMode && !params.restUri) {
 			response = result.getResponse(); // may throw exception
@@ -283,7 +283,7 @@ function(params, result) {
 			}
 		}
 		if (response.Header) {
-			this._handleHeader(response.Header);
+			refreshBlock = this._handleHeader(response.Header);
 		}
 	} catch (ex) {
 		DBG.println(AjxDebug.DBG2, "Request " + params.reqId + " got an exception");
@@ -324,6 +324,11 @@ function(params, result) {
 	this._handleNotifications(response.Header);
 
 	this._clearPendingRequest(params.reqId);
+
+	if (refreshBlock && (!appCtxt.isOffline || !appCtxt.multiAccounts)) {
+		this._refreshHandler(refreshBlock);
+	}
+	
 	if (!params.asyncMode) {
 		return response.Body;
 	}
@@ -382,25 +387,18 @@ function(reqId) {
  */
 ZmRequestMgr.prototype._handleHeader =
 function(hdr) {
-	if (!hdr) { return; }
+
+	var ctxt = hdr && hdr.context;
+	if (!ctxt) { return; }
 
 	// update change token if we got one
-	if (hdr && hdr.context && hdr.context.change) {
-		this._changeToken = hdr.context.change.token;
-	}
-
-	if (hdr && hdr.context && hdr.context.refresh) {
-		this._highestNotifySeen = 0;
-		// bug: 24269 - offline does not handle refresh block well so ignore it
-		// until we find a better solution
-		if (!appCtxt.isOffline || !appCtxt.multiAccounts) {
-			this._refreshHandler(hdr.context.refresh);
-		}
+	if (ctxt.change) {
+		this._changeToken = ctxt.change.token;
 	}
 
 	// offline/zdesktop only
-	if (hdr && hdr.context.zdsync && hdr.context.zdsync.account) {
-		var acctList = hdr.context.zdsync.account;
+	if (ctxt.zdsync && ctxt.zdsync.account) {
+		var acctList = ctxt.zdsync.account;
 		for (var i = 0; i < acctList.length; i++) {
 			var acct = appCtxt.accountList.getAccount(acctList[i].id);
 			if (acct) {
@@ -408,6 +406,14 @@ function(hdr) {
 			}
 		}
 	}
+
+	if (ctxt.refresh) {
+		this._controller.runAppFunction("_clearDeferredFolders");
+		this._loadTrees(ctxt.refresh);
+		this._highestNotifySeen = 0;
+	}
+
+	return ctxt.refresh;
 };
 
 /**
@@ -448,12 +454,14 @@ function(ex, params) {
  */
 ZmRequestMgr.prototype._handleNotifications =
 function(hdr) {
+
 	if (hdr && hdr.context && hdr.context.notify) {
-        for(i = 0; i < hdr.context.notify.length; i++) {
+        for (var i = 0; i < hdr.context.notify.length; i++) {
         	var notify = hdr.context.notify[i];
         	var seq = notify.seq;
             // BUG?  What if the array isn't in sequence-order?  Could we miss notifications?
-            if (notify.seq > this._highestNotifySeen) {
+			var sid = hdr.context && ZmCsfeCommand.extractSessionId(hdr.context.session);
+            if (notify.seq > this._highestNotifySeen && !(sid && ZmCsfeCommand._staleSession[sid])) {
                 DBG.println(AjxDebug.DBG1, "Handling notification[" + i + "] seq=" + seq);
                 this._highestNotifySeen = seq;
                 this._notifyHandler(notify);
@@ -474,9 +482,12 @@ function(hdr) {
  */
 ZmRequestMgr.prototype._refreshHandler =
 function(refresh) {
+
 	DBG.println(AjxDebug.DBG1, "Handling REFRESH");
-	this._controller.runAppFunction("_clearDeferredFolders");
-	
+	if (!appCtxt.inStartup) {
+		this._controller._execPoll();
+	}
+
 	if (refresh.version) {
 		if (!this._canceledReload) {
 			var curVersion = appCtxt.get(ZmSetting.SERVER_VERSION);
@@ -496,13 +507,16 @@ function(refresh) {
 		}
 	}
 
+	// Run any app-requested refresh routines
+	this._controller.runAppFunction("refresh", false, refresh);
+};
+
+ZmRequestMgr.prototype._loadTrees =
+function(refresh) {
 	var unread = {};
 	var main = appCtxt.multiAccounts ? appCtxt.accountList.mainAccount : null;
 	this._loadTree(ZmOrganizer.TAG, unread, refresh.tags, null, main);
 	this._loadTree(ZmOrganizer.FOLDER, unread, refresh.folder[0], "folder", main);
-
-	// Run any app-requested refresh routines
-	this._controller.runAppFunction("refresh", false, refresh);
 };
 
 /**
@@ -688,34 +702,6 @@ function(modifies) {
 			}
 		}
 	}
-};
-
-/**
- * Returns a list of objects that have the given parent, flattening child
- * arrays in the process. It also saves each child's name into it.
- *
- * @param {Object}	parent	the notification subnode
- *
- * TODO: remove this func (still used by ZmMailApp::preNotify)
- * 
- * @private
- */
-ZmRequestMgr._getObjList =
-function(parent) {
-	var list = [];
-	for (var name in parent) {
-		var obj = parent[name];
-		if (obj instanceof Array) {
-			for (var i = 0; i < obj.length; i++) {
-				obj[i]._name = name;
-				list.push(obj[i]);
-			}
-		} else {
-			obj._name = name;
-			list.push(obj);
-		}
-	}
-	return list;
 };
 
 /**

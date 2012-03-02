@@ -20,7 +20,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.UUID;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
@@ -129,14 +128,6 @@ public class ItemActionHelper {
         return ia;
     }
 
-    public static ItemActionHelper TRASH(OperationContext octxt, Mailbox mbox, SoapProtocol responseProto,
-                List<Integer> ids, 
-                byte type, TargetConstraint tcon) throws ServiceException {
-        ItemActionHelper ia = new ItemActionHelper(octxt, mbox, responseProto, ids, Op.TRASH, type, true, tcon);
-        ia.schedule();
-        return ia;
-    }
-
     public static ItemActionHelper RENAME(OperationContext octxt, Mailbox mbox, SoapProtocol responseProto,
                 List<Integer> ids, byte type, TargetConstraint tcon, String name, ItemId iidFolder)
     throws ServiceException {
@@ -171,7 +162,6 @@ public class ItemActionHelper {
         MOVE("move"),
         COPY("copy"),
         SPAM("spam"),
-        TRASH("trash"),
         RENAME("rename"),
         UPDATE("update")
         ;
@@ -361,16 +351,6 @@ public class ItemActionHelper {
                 for (MailItem item : copies)
                     mCreatedIds.add(mIdFormatter.formatItemId(item));
                 break;
-            case TRASH:
-                try {
-                    // in general, everything will work fine, so just blindly try to move the targets to trash
-                    getMailbox().move(getOpCtxt(), mIds, mItemType, Mailbox.ID_FOLDER_TRASH, mTargetConstraint);
-                } catch (ServiceException e) {
-                    if (!e.getCode().equals(MailServiceException.ALREADY_EXISTS))
-                        throw e;
-                    moveWithRename(Mailbox.ID_FOLDER_TRASH);
-                }
-                break;
             case RENAME:
                 for (int id : mIds)
                     getMailbox().rename(getOpCtxt(), id, mItemType, mName, mIidFolder.getId());
@@ -389,29 +369,6 @@ public class ItemActionHelper {
                 break;
             default:
                 throw ServiceException.INVALID_REQUEST("unknown operation: " + mOperation, null);
-        }
-    }
-
-    private void moveWithRename(int targetId) throws ServiceException {
-        // naming conflict; handle on an item-by-item basis
-        for (int id : mIds) {
-            try {
-                // still more likely than not to succeed...
-                getMailbox().move(getOpCtxt(), id, mItemType, targetId, mTargetConstraint);
-            } catch (ServiceException e) {
-                if (!e.getCode().equals(MailServiceException.ALREADY_EXISTS))
-                    throw e;
-
-                // rename the item being moved instead of the one already there...
-                String name = getMailbox().getItemById(getOpCtxt(), id, mItemType).getName();
-                String uuid = '{' + UUID.randomUUID().toString() + '}', newName;
-                if (name.length() + uuid.length() > MailItem.MAX_NAME_LENGTH)
-                    newName = name.substring(0, MailItem.MAX_NAME_LENGTH - uuid.length()) + uuid;
-                else
-                    newName = name + uuid;
-                // FIXME: relying on the fact that conversations collect things that don't cause naming conflicts
-                getMailbox().rename(getOpCtxt(), id, mItemType, newName, targetId);
-            }
         }
     }
 
@@ -576,21 +533,31 @@ public class ItemActionHelper {
                     Element request = new Element.XMLElement(qname).addAttribute(MailConstants.A_FOLDER, folderStr).addAttribute(MailConstants.A_FLAGS, flags);
                     ToXML.encodeAlarmTimes(request, cal);
 
-                    boolean isOrganizer = false;
                     Invite invDefault = cal.getDefaultInviteOrNull();
+
+                    // Takeover as organizer if we're doing a MOVE and source mailbox is the organizer.
+                    // Don't takeover in a COPY operation.
+                    boolean takeoverAsOrganizer = false;
+                    if (Op.MOVE.equals(mOperation)) {
+                        Invite inv = invDefault;
+                        if (inv == null) {
+                            // no default invite; let's use the first invite
+                            Invite[] invs = cal.getInvites();
+                            if (invs != null && invs.length > 0)
+                                inv = invs[0];
+                        }
+                        takeoverAsOrganizer = inv != null && inv.isOrganizer();
+                    }
+
                     if (invDefault != null) {
-                        if (invDefault.isOrganizer())
-                            isOrganizer = true;
-                        addCalendarPart(request.addUniqueElement(MailConstants.A_DEFAULT), cal, invDefault, zmbx, target);
+                        addCalendarPart(request.addUniqueElement(MailConstants.A_DEFAULT), cal, invDefault, zmbx, target, takeoverAsOrganizer);
                     }
 
                     for (Invite inv : cal.getInvites()) {
                         if (inv == null || inv == invDefault)
                             continue;
-                        if (inv.isOrganizer())
-                            isOrganizer = true;
                         String elem = inv.isCancel() ? MailConstants.E_CAL_CANCEL : MailConstants.E_CAL_EXCEPT;
-                        addCalendarPart(request.addElement(elem), cal, inv, zmbx, target);
+                        addCalendarPart(request.addElement(elem), cal, inv, zmbx, target, takeoverAsOrganizer);
                     }
 
                     ToXML.encodeCalendarReplies(request, cal);
@@ -598,7 +565,7 @@ public class ItemActionHelper {
                     createdId = zmbx.invoke(request).getAttribute(MailConstants.A_CAL_ID);
                     mCreatedIds.add(createdId);
 
-                    if (isOrganizer) {
+                    if (takeoverAsOrganizer) {
                         // Announce organizer change to attendees.
                         request = new Element.XMLElement(MailConstants.ANNOUNCE_ORGANIZER_CHANGE_REQUEST);
                         request.addAttribute(MailConstants.A_ID, createdId);
@@ -628,7 +595,8 @@ public class ItemActionHelper {
         }
     }
 
-    private void addCalendarPart(Element parent, CalendarItem cal, Invite inv, ZMailbox zmbx, Account target) throws ServiceException {
+    private void addCalendarPart(Element parent, CalendarItem cal, Invite inv, ZMailbox zmbx, Account target, boolean takeoverAsOrganizer)
+    throws ServiceException {
         parent.addAttribute(MailConstants.A_CAL_PARTSTAT, inv.getPartStat());
         Element m = parent.addUniqueElement(MailConstants.E_MSG);
 
@@ -646,7 +614,7 @@ public class ItemActionHelper {
             }
         }
 
-        if (inv.isOrganizer() && inv.hasOrganizer()) {
+        if (takeoverAsOrganizer && inv.isOrganizer() && inv.hasOrganizer()) {
             Invite invCopy = inv.newCopy();
             invCopy.setInviteId(inv.getMailItemId());
             // Increment SEQUENCE and bring DTSTAMP current because we're changing organizer.

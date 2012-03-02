@@ -509,7 +509,7 @@ ZmNotebookPageView.prototype.createHistoryLink = function(doc,wikiName){
 };
 
 ZmNotebookPageView.prototype.editPage = function(pageName){
-
+    pageName = AjxStringUtil.htmlDecode(pageName);
 	var controller = this._controller;
 	var object = controller._object;
 	var cache = appCtxt.getApp(ZmApp.NOTEBOOK).getNotebookCache();
@@ -523,7 +523,7 @@ ZmNotebookPageView.prototype.editPage = function(pageName){
 };
 
 ZmNotebookPageView.prototype.deletePage = function(pageName){
-
+    pageName = AjxStringUtil.htmlDecode(pageName);
 	var controller = this._controller;
 	var object = controller._object;
 	var cache = appCtxt.getApp(ZmApp.NOTEBOOK).getNotebookCache();
@@ -536,7 +536,7 @@ ZmNotebookPageView.prototype.deletePage = function(pageName){
 };
 
 ZmNotebookPageView.prototype.showHistory = function(pageName){
-
+    pageName = AjxStringUtil.htmlDecode(pageName);
 	var controller = this._controller;
 	var object = controller._object;
 	var cache = appCtxt.getApp(ZmApp.NOTEBOOK).getNotebookCache();
@@ -666,15 +666,18 @@ ZmNotebookPageView.prototype.loadURL = function(restUrl){
     if(appCtxt.get(ZmSetting.LOCALE_NAME)) {
         var locale = appCtxt.get(ZmSetting.LOCALE_NAME);
         var index = locale.indexOf("_");
-        var languageId;
+        var languageId, countryId;
         if (index == -1) {
             languageId = locale;
+            countryId = null;
         } else {
             languageId = locale.substr(0, index);
+            countryId = locale.substr(index+1);
         }
         url += (url.match(/\?/) ?  '&' : '?') + 'language=' + languageId;
+        url += (countryId ? (url.match(/\?/) ?  '&' : '?') + 'country=' + countryId : "");
     }
-    url = url + (url.indexOf('?') ? '&' : '?') + 't=' + (new Date()).getTime(); 
+    url = url + (url.indexOf('?') ? '&' : '?') + 't=' + (new Date()).getTime();
     this._iframe1.src = url;
 };
 

@@ -181,9 +181,6 @@
 	color:@AppC+60@;
 }
 
-input.admin_xform_name_input_disabled {
-	@InputField-disabled@
-}
 .admin_xform_name_input {
 	width:200px;
 }
@@ -581,8 +578,8 @@ input.admin_xform_name_input_disabled {
 
 .ZAppTab 									{	@AppTab@	@AppTabSpacing@				}
 
-.ZAppTabBorder								{	@AppTabBorder@	@AppTabBorder-normal@ 	}
-.ZHover		.ZAppTabBorder					{					@AppTabBorder-hover@	@ActiveCursor@ }
+.ZAppTabBorder								{	@AppTabBorder@	@AppTabBorder-normal@	}
+.ZHover		.ZAppTabBorder					{					@AppTabBorder-hover@	}
 .ZDisabled	.ZAppTabBorder					{					@AppTabBorder-disabled@	}
 .ZFocused	.ZAppTabBorder					{					@AppTabBorder-focused@	}
 .ZActive	.ZAppTabBorder					{					@AppTabBorder-active@	}
@@ -612,6 +609,14 @@ input.admin_xform_name_input_disabled {
 
 .ZaShowSavedSearchArrowButton .ZWidgetTable .ZLeftIcon div {
 	margin-left: 3px ;	
+}
+
+.ZToolbarButtonBorder,  .ZMenuItemBorder {
+	border: 2px solid transparent; 	
+#IFDEF MSIE
+	border: 1px solid transparent; 
+	border-color:@AppC+20@;	
+#ENDIF
 }
 
 .ZaSearchOptionViewSubHeader {

@@ -630,7 +630,7 @@ ZaController.prototype._errorDialogCallback =
 function() {
 	ZaApp.getInstance().dialogs["errorDialog"].popdown();
 	if (this._execFrame) {
-		if (this._execFrame.restartOnError && !this._authenticating && this._execFrame.method)
+		if (this._execFrame.restartOnError && !this._authenticating)
 			this._execFrame.method.apply(this, this._execFrame.args);
 		this._execFrame = null;
 	}
@@ -949,7 +949,9 @@ ZaController.prototype._showAccountsView = function (defaultType, ev) {
 	var acctListController = ZaApp.getInstance().getAccountListController(viewId);
 	
 	var query = "";
-	if(!ZaSettings.HAVE_MORE_DOMAINS && ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] != 'TRUE') {
+
+    if (defaultType != ZaItem.ALIAS)  { //alias uid has no domain name, we shouldn't add a domain name filter. See bug 46626, 44799 & 4704 
+    	if(!ZaSettings.HAVE_MORE_DOMAINS && ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] != 'TRUE') {
 		var queryChunks = [];
 		var domainList = ZaApp.getInstance().getDomainList().getArray();
 		//var domainList = [];
@@ -970,7 +972,10 @@ ZaController.prototype._showAccountsView = function (defaultType, ev) {
 			queryChunks.push(")");
 			query=queryChunks.join("");
 		}		
-	}		
+	}
+    }
+
+
 	acctListController.setPageNum(1);	
 	acctListController.setQuery(query);
 	acctListController.setSortOrder("1");

@@ -50,13 +50,13 @@
     <value>0</value>
   </key>
   <key name="sqlite_cache_size">
-    <value>4000</value>
+    <value>500</value>
   </key>
   <key name="sqlite_journal_mode">
-    <value>persist</value>
+    <value>PERSIST</value>
   </key>
   <key name="sqlite_sync_mode">
-    <value>normal</value>
+    <value>NORMAL</value>
   </key>
   <key name="ssl_allow_mismatched_certs">
     <value>false</value>
@@ -130,6 +130,9 @@
   <key name="zimbra_class_sslprotocolsocketfactory">
     <value>com.zimbra.common.net.CustomSSLProtocolSocketFactory</value>
   </key>
+  <key name="zimbra_class_attrmanager">
+    <value>com.zimbra.cs.account.offline.OfflineAttributeManager</value>
+  </key>
   <key name="zimbra_disk_cache_servlet_flush">
     <value>false</value>
   </key>
@@ -195,5 +198,8 @@
   </key>
   <key name="zimbra_slow_logging_threshold">
     <value>5000</value>
+  </key>
+  <key name="data_source_imap_reuse_connections">
+    <value>true</value>
   </key>
 </localconfig>

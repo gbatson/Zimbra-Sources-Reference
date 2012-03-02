@@ -844,9 +844,12 @@ public abstract class AdminAccessControl {
      */
     public static class SearchDirectoryRightChecker extends BulkRightChecker {
         
+        protected boolean mAllowAll; // short cut for global admin
+        
         public SearchDirectoryRightChecker(AdminAccessControl accessControl, Provisioning prov, Set<String> reqAttrs) throws ServiceException {
             // reqAttrs is no longer needed, TODO, cleanup from all callsites 
             super(accessControl, prov);
+            mAllowAll = allowAll();
         }
         
         private boolean hasRightsToListDanglingAlias(Alias alias) throws ServiceException {
@@ -863,22 +866,38 @@ public abstract class AdminAccessControl {
             return mAC.hasRightsToList(alias, AdminRight.PR_SYSTEM_ADMIN_ONLY, null);
         }
         
-        private boolean hasRightsToListAlias(Alias alias) throws ServiceException {
+        // no longer used for perf reason, for bug 46205
+        private boolean hasRightsToListAlias_old(Alias alias) throws ServiceException {
             boolean hasRight;
             
             // if an admin can list the account/cr/dl, he can do the same on their aliases
             // don't need any getAttrs rights on the account/cr/dl, because the returned alias
             // entry contains only attrs on the alias, not the target entry.
-            TargetType tt = alias.getTargetType(mProv);
+            NamedEntry aliasTarget = alias.getTarget(mProv);
             
-            if (tt == null) // we have a dangling alias, can't check right, allows only system admin
+            if (aliasTarget == null) // we have a dangling alias, can't check right, allows only system admin
                 hasRight = hasRightsToListDanglingAlias(alias);
             else 
-                hasRight = allow(alias.getTarget(mProv));
+                hasRight = allow(aliasTarget);
             
             return hasRight;
         }
         
+        // bug 46205.  
+        // 
+        // list alias is now a domain right.
+        //
+        // the old way of checking the list*** right on the target object(account/cr/dl) 
+        // of the alias has perf issue, because we will have to load the target object 
+        // if it is not in cache - for all aliases returned by the LDAP search.
+        private boolean hasRightsToListAlias(Alias alias) throws ServiceException {
+            Domain domain = mProv.getDomain(alias);
+            if (domain == null)
+                return false;
+            else
+                return hasRight(domain, Admin.R_listAlias);
+        }
+    
         private AdminRight needRight(NamedEntry entry) throws ServiceException {
             if (entry instanceof CalendarResource) {
                 return Admin.R_listCalendarResource;
@@ -898,6 +917,9 @@ public abstract class AdminAccessControl {
          * returns if entry is allowed.
          */
         public boolean allow(NamedEntry entry) throws ServiceException {
+            
+            if (mAllowAll)
+                return true;
             
             if (entry instanceof Alias)
                 return hasRightsToListAlias((Alias)entry);

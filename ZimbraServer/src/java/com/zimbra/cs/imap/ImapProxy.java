@@ -54,7 +54,7 @@ class ImapProxy {
 
         Account acct = handler.getCredentials().getAccount();
         Server server = Provisioning.getInstance().getServer(path.getOwnerAccount());
-        String host = server.getAttr(Provisioning.A_zimbraServiceHostname);
+        String host = server.getServiceHostname();
         if (acct == null)
             throw ServiceException.PROXY_ERROR(new Exception("no such authenticated user"), path.asImapPath());
 
@@ -65,9 +65,9 @@ class ImapProxy {
         config.setReadTimeout(LC.javamail_imap_timeout.intValue());
         config.setConnectTimeout(config.getReadTimeout());
         config.setHost(host);
-        if (server.getBooleanAttr(Provisioning.A_zimbraImapServerEnabled, true)) {
+        if (server.isImapServerEnabled()) {
             config.setPort(server.getIntAttr(Provisioning.A_zimbraImapBindPort, ImapConfig.DEFAULT_PORT));
-        } else if (server.getBooleanAttr(Provisioning.A_zimbraImapSSLServerEnabled, true)) {
+        } else if (server.isImapSSLServerEnabled()) {
             config.setPort(server.getIntAttr(Provisioning.A_zimbraImapSSLBindPort, ImapConfig.DEFAULT_SSL_PORT));
             config.setSecurity(MailConfig.Security.SSL);
         } else {
@@ -159,6 +159,8 @@ class ImapProxy {
 
             ImapConfig config = conn.getImapConfig();
             final int oldTimeout = config != null ? config.getReadTimeout() : LC.javamail_imap_timeout.intValue();
+            // necessary because of subsequent race condition with req.cleanup()
+            final byte[] payload = req.toByteArray();
 
             mIdleThread = new Thread() {
                 @Override public void run() {
@@ -167,7 +169,7 @@ class ImapProxy {
                         // the standard aggressive read timeout is inappropriate for IDLE
                         conn.setReadTimeout(ImapFolder.IMAP_IDLE_TIMEOUT_SEC);
                         // send the IDLE command; this call waits until the subsequent DONE is acknowledged
-                        boolean ok = proxyCommand(req.getTag(), req.toByteArray(), true, true);
+                        boolean ok = proxyCommand(req.getTag(), payload, true, true);
                         // restore the old read timeout
                         conn.setReadTimeout(oldTimeout);
                         // don't set <code>success</code> until we're past things that can throw IOExceptions
@@ -246,7 +248,7 @@ class ImapProxy {
             boolean proxy = (first != '+' || isIdle) && (!tagged || includeTaggedResponse);
 
             ByteArrayOutputStream line = proxy ? new ByteArrayOutputStream() : null;
-            StringBuilder debug = proxy && ZimbraLog.imap.isDebugEnabled() ? new StringBuilder("  S: ") : null;
+            StringBuilder debug = proxy && ZimbraLog.imap.isDebugEnabled() ? new StringBuilder("  pxy: ") : null;
             StringBuilder condition = new StringBuilder(10);
 
             boolean quoted = false, escaped = false, space1 = false, space2 = false;
@@ -295,9 +297,9 @@ class ImapProxy {
                     if (literal == -1)
                         break;
                     // if there's a literal, copy it and then handle the following line
-                    byte buffer[] = literal == 0 ? null : new byte[Math.min(literal, 8196)];
+                    byte buffer[] = literal == 0 ? null : new byte[Math.min(literal, 65536)];
                     while (literal > 0) {
-                        int read = min.read(buffer);
+                        int read = min.read(buffer, 0, Math.min(literal, buffer.length));
                         if (read == -1)
                             break;
                         if (proxy)

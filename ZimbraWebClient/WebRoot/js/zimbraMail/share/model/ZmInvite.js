@@ -236,6 +236,18 @@ function(compNum) {
 };
 
 /**
+ * Gets the sequence no
+ *
+ * @param	{int}	compNum		the component number
+ * @return	{String} the sequence no
+ */
+ZmInvite.prototype.getSequenceNo =
+function(compNum) {
+	var cn = compNum || 0;
+	return this.components[cn] ? this.components[cn].seq : null;
+};
+
+/**
  * Gets the organizer email.
  * 
  * @param	{int}	compNum		the component number
@@ -379,8 +391,20 @@ function(compNum) {
 };
 
 /**
- * Gets the status.
+ * Gets the appointment id.
  * 
+ * @param	{int}	compNum		the component number
+ * @return {String}	the id
+ */
+ZmInvite.prototype.getAppointmentId =
+function(compNum) {
+	var cn = compNum || 0;
+	return this.components[cn].apptId;
+};
+
+/**
+ * Gets the status.
+ *
  * @param	{int}	compNum		the component number
  * @return {String}	the status
  */
@@ -459,12 +483,17 @@ function(compNum) {
  */
 ZmInvite.prototype.getComponentDescriptionHtml =
 function(compNum) {
-    var cn = compNum || 0;    
-    if (this.components[cn] == null) return;
-	var desc = this.components[cn].descHtml;
+    var cn = compNum || 0;
+    var comp = this.components[cn];
+    if (comp == null) return;
+	var desc = comp.descHtml;
 	var content = desc && desc[0]._content || null;
-    if(!content)
-        content = this.getApptSummary(true);
+    if(!content){
+        var txtContent = comp.desc;
+        txtContent = (txtContent && txtContent[0]._content) || null;
+        if(!txtContent)
+            content = this.getApptSummary(true);
+    }
 	return content;
 };
 
@@ -476,12 +505,17 @@ function(compNum) {
  */
 ZmInvite.prototype.getComponentDescription =
 function(compNum) {
-    var cn = compNum || 0;    
-    if (this.components[cn] == null) return;
-	var desc = this.components[cn].desc;
+    var cn = compNum || 0;
+    var comp = this.components[cn];
+    if (comp == null) return;
+	var desc = comp.desc;
 	var content = desc && desc[0]._content || null;
-    if(!content)
-        content = this.getApptSummary();
+    if(!content){
+        var htmlContent = comp.descHtml;
+        htmlContent = (htmlContent && htmlContent[0]._content) || null;
+        if(!htmlContent)
+            content = this.getApptSummary();
+    }
 	return content;
 };
 
@@ -746,7 +780,19 @@ function(compNum) {
 	return this.components[cn] ? this.components[cn].loc : null;
 };
 
-/** 
+/**
+ * Gets the recurrence id (ridZ) - applicable to recurring appointment .
+ *
+ * @param	{int}	compNum		the component number
+ * @return	{String}	the recurrence id, null for non-recurring appointment
+ */
+ZmInvite.prototype.getRecurrenceId =
+function(compNum) {
+	var cn = compNum || 0;
+	return this.components[cn] ? this.components[cn].ridZ : null;
+};
+
+/**
  * Gets the tool tip in HTML for this invite.
  * 
  * <p>
@@ -966,4 +1012,31 @@ function(compNum) {
     var methodName = this.getInviteMethod(compNum);
     var publishOrRequest = (methodName == ZmCalendarApp.METHOD_REQUEST || methodName == ZmCalendarApp.METHOD_PUBLISH);
     return ((methodName == null) || publishOrRequest);
+};
+
+/**
+ * Checks the invite has a counter method.
+ *
+ * @param	{int}	    compNum		the component number
+ * @return	{Boolean}	<code>true</code> if the invite has a counter method
+ */
+ZmInvite.prototype.hasCounterMethod =
+function(compNum) {
+    var methodName = this.getInviteMethod(compNum);
+    return (methodName == ZmCalendarApp.METHOD_COUNTER);
+};
+
+/**
+ * returns proposed time from counter invite
+ *
+ * @param	{int}	    compNum		the component number
+ * @return	{string}	proposed time as formatted string
+ */
+ZmInvite.prototype.getProposedTimeStr =
+function(compNum) {
+    var methodName = this.getInviteMethod(compNum);
+    if (methodName == ZmCalendarApp.METHOD_COUNTER) {
+        return this.getDurationText(compNum, false, false, true);                
+    }
+    return "";
 };

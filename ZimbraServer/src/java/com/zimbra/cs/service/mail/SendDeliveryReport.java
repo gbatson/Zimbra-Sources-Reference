@@ -15,9 +15,11 @@
 package com.zimbra.cs.service.mail;
 
 import java.text.DateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TimeZone;
 
 import javax.mail.MessagingException;
 import javax.mail.Transport;
@@ -30,6 +32,7 @@ import com.sun.mail.smtp.SMTPMessage;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.L10nUtil.MsgKey;
@@ -85,7 +88,10 @@ public class SendDeliveryReport extends MailDocumentHandler {
         MimeMessage mm = msg.getMimeMessage();
         Account owner = msg.getMailbox().getAccount();
 
-        String charset = authAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, MimeConstants.P_CHARSET_UTF8);
+        String charset = authAccount.getPrefMailDefaultCharset();
+        if (charset == null)
+            charset = MimeConstants.P_CHARSET_UTF8;
+
         try {
             InternetAddress[] recipients = Mime.parseAddressHeader(mm, "Disposition-Notification-To");
             if (recipients == null || recipients.length == 0)
@@ -100,7 +106,7 @@ public class SendDeliveryReport extends MailDocumentHandler {
             report.setHeader("Auto-Submitted", "auto-replied (zimbra; read-receipt)");
             report.setHeader("Precedence", "bulk");
 
-            if (Provisioning.getInstance().getConfig().getBooleanAttr(Provisioning.A_zimbraAutoSubmittedNullReturnPath, true))
+            if (Provisioning.getInstance().getConfig().isAutoSubmittedNullReturnPath())
                 report.setEnvelopeFrom("<>");
             else
                 report.setEnvelopeFrom(authAccount.getName());
@@ -137,15 +143,21 @@ public class SendDeliveryReport extends MailDocumentHandler {
         }
     }
 
-    private String generateTextPart(Account owner, MimeMessage mm, Locale lc) throws MessagingException {
+    protected String generateTextPart(Account owner, MimeMessage mm, Locale lc) throws MessagingException {
         String subject = Mime.getSubject(mm);
-        Date date = mm.getSentDate();
-        String dateStr = date == null ? "???" : DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT, lc).format(date);
+
+        String dateStr = "???";
+        Calendar cal = DateUtil.parseRFC2822DateAsCalendar(mm.getHeader("Date", null));
+        if (cal != null) {
+            DateFormat format = DateFormat.getDateTimeInstance(DateFormat.LONG, DateFormat.LONG, lc);
+            format.setTimeZone(TimeZone.getTimeZone("GMT" + DateUtil.getTimezoneString(cal)));
+            dateStr = format.format(cal.getTime());
+        }
 
         return L10nUtil.getMessage(MsgKey.readReceiptNotification, lc, dateStr, owner.getName(), subject);
     }
 
-    private String generateReport(Account owner, MimeMessage mm, boolean automatic, String requestHost, String userAgent)
+    protected String generateReport(Account owner, MimeMessage mm, boolean automatic, String requestHost, String userAgent)
     throws MessagingException {
         StringBuilder mdn = new StringBuilder();
 

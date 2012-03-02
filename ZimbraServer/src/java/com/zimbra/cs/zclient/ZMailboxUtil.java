@@ -75,6 +75,7 @@ import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zclient.ZClientException;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.accesscontrol.Right;
@@ -82,7 +83,6 @@ import com.zimbra.cs.account.accesscontrol.RightManager;
 import com.zimbra.cs.account.soap.SoapAccountInfo;
 import com.zimbra.cs.account.soap.SoapProvisioning;
 import com.zimbra.cs.account.soap.SoapProvisioning.DelegateAuthResponse;
-import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.util.BuildInfo;
 import com.zimbra.cs.util.SoapCLI;
@@ -268,11 +268,13 @@ public class ZMailboxUtil implements DebugListener {
                         "  {conditions}:\n" +
                         "    header \"name\" is|not_is|contains|not_contains|matches|not_matches \"value\"\n" +
                         "    header \"name\" exists|not_exists\n" +
+                        "    mime_header \"name\" is|not_is|contains|not_contains|matches|not_matches \"value\"\n" +
                         "    date before|not_before|after|not_after \"YYYYMMDD\"\n" +
                         "    size under|not_under|over|not_over \"1|1K|1M\"\n" +
                         "    body contains|not_contains \"text\"\n" +
                         "    addressbook in|not_in \"header-name\"\n" +
                         "    attachment exists|not_exists\n" +
+                        "    invite exists|not_exists\n" +
                         "\n" +
                         "  {actions}:\n" +
                         "    keep\n" +
@@ -347,7 +349,7 @@ public class ZMailboxUtil implements DebugListener {
         AUTHENTICATE("authenticate", "a", "{name} {password}", "authenticate as account and open mailbox", Category.MISC, 2, 2, O_URL),
         AUTO_COMPLETE("autoComplete", "ac", "{query}", "contact auto autocomplete", Category.CONTACT,  1, 1, O_VERBOSE),
         AUTO_COMPLETE_GAL("autoCompleteGal", "acg", "{query}", "gal auto autocomplete", Category.CONTACT,  1, 1, O_VERBOSE),
-        // CHECK_PERMISSION("checkPermission", "cp", "[right1 [right2...]]", "check if the user has the specified right on target.", Category.PERMISSION, 0, Integer.MAX_VALUE, O_VERBOSE),
+        CHECK_PERMISSION("checkPermission", "cp", "{name} {right}", "check if the user has the specified right on target.", Category.PERMISSION, 2, 2, O_VERBOSE),
         CREATE_CONTACT("createContact", "cct", "[attr1 value1 [attr2 value2...]]", "create contact", Category.CONTACT, 2, Integer.MAX_VALUE, O_FOLDER, O_IGNORE, O_TAGS),
         CREATE_FOLDER("createFolder", "cf", "{folder-name}", "create folder", Category.FOLDER, 1, 1, O_VIEW, O_COLOR, O_FLAGS, O_URL),
         CREATE_IDENTITY("createIdentity", "cid", "{identity-name} [attr1 value1 [attr2 value2...]]", "create identity", Category.ACCOUNT, 1, Integer.MAX_VALUE),
@@ -934,6 +936,9 @@ public class ZMailboxUtil implements DebugListener {
         case ADMIN_AUTHENTICATE:
             doAdminAuth(args);
             break;
+        case CHECK_PERMISSION:
+            doCheckPermission(args);
+            break;
         case CREATE_CONTACT:
             String ccId = mMbox.createContact(lookupFolderId(folderOpt()),tagsOpt(), getContactMap(args, 0, !ignoreOpt())).getId();
             stdout.println(ccId);
@@ -1441,11 +1446,11 @@ public class ZMailboxUtil implements DebugListener {
             perms = args[3];
             break;
         case pub:
-            grantee = ACL.GUID_PUBLIC;
+            grantee = GuestAccount.GUID_PUBLIC;
             perms = args[2];
             break;
         case all:
-            grantee = ACL.GUID_AUTHUSER;
+            grantee = GuestAccount.GUID_AUTHUSER;
             perms = args[2];
             break;
         case guest:
@@ -1486,7 +1491,8 @@ public class ZMailboxUtil implements DebugListener {
             }
             
             if (zid != null || (type == GranteeType.all || type == GranteeType.pub)) {
-                grantee = zid;
+                if (zid != null)
+                    grantee = zid;
                 mMbox.modifyFolderRevokeGrant(folderId, grantee);
             } else {
                 // zid is null
@@ -1582,12 +1588,12 @@ public class ZMailboxUtil implements DebugListener {
             break;
         case all:
             if (args.length != 2) throw ZClientException.CLIENT_ERROR("wrong number of args", null);
-            granteeId = ACL.GUID_AUTHUSER;
+            granteeId = GuestAccount.GUID_AUTHUSER;
             right = args[1];
             break;
         case pub:
             if (args.length != 2) throw ZClientException.CLIENT_ERROR("wrong number of args", null);
-            granteeId = ACL.GUID_PUBLIC;
+            granteeId = GuestAccount.GUID_PUBLIC;
             right = args[1];
             break;
         case gst:
@@ -1659,6 +1665,15 @@ public class ZMailboxUtil implements DebugListener {
         }
     }
 
+    private void doCheckPermission(String[] args) throws ServiceException {
+        String user = args[0];
+        List<String> rights = new ArrayList<String>();
+        rights.add(args[1]); // support only one right in CLI
+        
+        boolean allow =  mMbox.checkPermission(user, rights);
+        stdout.println((allow?"allowed":"not allowed"));
+    }
+    
     private void doAdminAuth(String[] args) throws ServiceException {
         adminAuth(args[0], args[1], urlOpt(true));
     }
@@ -1811,17 +1826,23 @@ public class ZMailboxUtil implements DebugListener {
         String cmOwner = args[1];
         String cmItem = args[2];
 
-        OwnerBy ownerBy = OwnerBy.BY_ID;
-        Account ownerAcct = mProv.getAccount(cmOwner);
-        if (ownerAcct != null) {
-            if (cmOwner.equals(ownerAcct.getId()))
-                ownerBy = OwnerBy.BY_ID;
-            else
-                ownerBy = OwnerBy.BY_NAME;
-        } else {
-            // account is not found, still let it go to server (default to OwnerBy.BY_ID) and let server return us the error
+        OwnerBy ownerBy = OwnerBy.BY_NAME;
+        if (Provisioning.isUUID(cmOwner))
+            ownerBy = OwnerBy.BY_ID;
+        
+        SharedItemBy sharedItemBy = SharedItemBy.BY_PATH;
+        String sharedItem = cmItem;
+        
+        int colonAt = cmItem.indexOf(':');
+        if (colonAt != -1 && colonAt != 0 && colonAt != cmItem.length()-1) {
+            String itemOwnerId = cmItem.substring(0, colonAt);
+            String itemId = cmItem.substring(colonAt+1);
+            if (Provisioning.isUUID(itemOwnerId)) {
+                sharedItemBy = SharedItemBy.BY_ID;
+                sharedItem = itemId;
+            }
         }
-
+        
         ZMountpoint cm = mMbox.createMountpoint(
                     lookupFolderId(cmPath, true),
                     ZMailbox.getBasePath(cmPath),
@@ -1830,8 +1851,8 @@ public class ZMailboxUtil implements DebugListener {
                     flagsOpt(),
                     ownerBy,
                     cmOwner,
-                    (Provisioning.isUUID(cmItem) ? SharedItemBy.BY_ID : SharedItemBy.BY_PATH),
-                    cmItem);
+                    sharedItemBy,
+                    sharedItem);
         stdout.println(cm.getId());
     }
 

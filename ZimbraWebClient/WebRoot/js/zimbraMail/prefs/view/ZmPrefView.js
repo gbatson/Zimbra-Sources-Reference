@@ -117,23 +117,26 @@ function(section) {
 	var organizer = ZmPrefPage.createFromSection(section);
 	var treeController = appCtxt.getOverviewController().getTreeController(ZmOrganizer.PREF_PAGE);
 	var tree = treeController.getDataTree();
-	var parent = tree.getById(ZmId.getPrefPageId(section.parentId)) || tree.root;
-	organizer.pageId = this.getNumTabs();
-	organizer.parent = parent;
 
-	// find index within parent's children
-	var index = null;
-	var children = parent.children.getArray();
-	for (var i = 0; i < children.length; i++) {
-		if (section.priority < this.getSectionForTab(children[i].pageId).priority) {
-			index = i;
-			break;
+	if (tree) {
+		var parent = tree.getById(ZmId.getPrefPageId(section.parentId)) || tree.root;
+		organizer.pageId = this.getNumTabs();
+		organizer.parent = parent;
+
+		// find index within parent's children
+		var index = null;
+		var children = parent.children.getArray();
+		for (var i = 0; i < children.length; i++) {
+			if (section.priority < this.getSectionForTab(children[i].pageId).priority) {
+				index = i;
+				break;
+			}
 		}
-	}
-	parent.children.add(organizer, index);
+		parent.children.add(organizer, index);
 
-	// notify so that views can be updated
-	organizer._notify(ZmEvent.E_CREATE);
+		// notify so that views can be updated
+		organizer._notify(ZmEvent.E_CREATE);
+	}
 };
 
 ZmPrefView.prototype._prefSectionRemoved =
@@ -159,6 +162,7 @@ ZmPrefView.prototype._addSection =
 function(section, index) {
 	// does the section meet the precondition?
 	if ((!appCtxt.multiAccounts || (appCtxt.multiAccounts && appCtxt.getActiveAccount().isMain)) && !this._controller.checkPreCondition(section)) { return; }
+	if (this.prefView[section.id]) return; // Section already exists
 
 	// create pref page's view
 	var view = (section.createView)
@@ -412,14 +416,18 @@ function(section, viewPage, dirtyCheck, noValidation, list, errors, view) {
 ZmPrefView.prototype._prefChanged =
 function(type, origValue, value) {
 
-	var test1 = value || null;
-	var test2 = origValue || null;
+	var test1 = (typeof value == "undefined" || value === null || value === "") ? null : value;
+	var test2 = (typeof origValue == "undefined" || origValue === null || origValue === "") ? null : origValue;
 
 	if (type == ZmSetting.D_LIST) {
 		return !AjxUtil.arrayCompare(test1, test2);
 	}
 	if (type == ZmSetting.D_HASH) {
 		return !AjxUtil.hashCompare(test1, test2);
+	}
+	if (type == ZmSetting.D_INT) {
+		test1 = parseInt(test1);
+		test2 = parseInt(test2);
 	}
 	return Boolean(test1 != test2);
 };

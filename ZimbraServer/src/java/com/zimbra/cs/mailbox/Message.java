@@ -40,6 +40,7 @@ import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.index.IndexDocument;
 import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
+import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.calendar.*;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
@@ -595,9 +596,15 @@ public class Message extends MailItem {
             }
         }
 
+        boolean publicInvites = true;  // used to check if any invite is non-public
+        int calItemFolderId =
+            invites.size() > 0 && invites.get(0).isTodo() ? Mailbox.ID_FOLDER_TASKS : Mailbox.ID_FOLDER_CALENDAR;
         CalendarItem firstCalItem = null;
         Set<String> calUidsSeen = new HashSet<String>();
         for (Invite cur : invites) {
+            if (!cur.isPublic())
+                publicInvites = false;
+
             // Bug 38550/41239: If ORGANIZER is missing, set it to email sender.  If that sender
             // is the same user as the recipient, don't set organizer and clear attendees instead.
             // We don't want to set organizer to receiving user unless we're absolutely certain
@@ -686,6 +693,7 @@ public class Message extends MailItem {
                                     int defaultFolder = cur.isTodo() ? Mailbox.ID_FOLDER_TASKS : Mailbox.ID_FOLDER_CALENDAR;
                                     calItem = mMailbox.createCalendarItem(defaultFolder, flags, 0, cur.getUid(), pm, cur, null);
                                     calItemIsNew = true;
+                                    calItemFolderId = calItem.getFolderId();
                                 }
                             } else {
                                 sLog.info("Mailbox " + getMailboxId()+" Message "+getId()+" SKIPPING Invite "+method+" b/c no CalendarItem could be found");
@@ -734,6 +742,7 @@ public class Message extends MailItem {
                                     	calFolderId = Mailbox.ID_FOLDER_CALENDAR;
                                 }
                                 modifiedCalItem = calItem.processNewInvite(pm, cur, calFolderId, discardExistingInvites);
+                                calItemFolderId = calFolderId;
                             }
                         }
                     }
@@ -803,21 +812,57 @@ public class Message extends MailItem {
                 }
 
                 if (forwardTo != null && forwardTo.length > 0) {
-                    List<String> sanitizedTo = new ArrayList<String>();
+                    List<String> rcptsUnfiltered = new ArrayList<String>();  // recipients to receive unfiltered message
+                    List<String> rcptsFiltered = new ArrayList<String>();    // recipients to receive message filtered to remove private data
+                    Folder calFolder = null;
+                    try {
+                        calFolder = getMailbox().getFolderById(calItemFolderId);
+                    } catch (NoSuchItemException e) {
+                        ZimbraLog.mailbox.warn("No such calendar folder (" + calItemFolderId + ") during invite auto-forwarding");
+                    }
                     for (String fwd : forwardTo) {
                         // Prevent forwarding to self.
-                        if (!AccountUtil.addressMatchesAccount(acct, fwd))
-                            sanitizedTo.add(fwd);
+                        if (AccountUtil.addressMatchesAccount(acct, fwd))
+                            continue;
+                        if (publicInvites) {
+                            rcptsUnfiltered.add(fwd);
+                        } else {
+                            boolean allowed = false;
+                            if (calFolder != null) {
+                                Account rcptAcct = Provisioning.getInstance().get(AccountBy.name, fwd);
+                                if (rcptAcct != null)
+                                    allowed = calFolder.canAccess(ACL.RIGHT_PRIVATE, rcptAcct, false);
+                            }
+                            if (allowed) {
+                                rcptsUnfiltered.add(fwd);
+                            } else if (acct instanceof CalendarResource) {
+                                // Forward filtered invite from calendar resource accounts only.  Don't forward filtered
+                                // invite from regular user account because the forwardee won't be able to accept/decline
+                                // due to permission error.
+                                rcptsFiltered.add(fwd);
+                            }
+                        }
                     }
-                    if (!sanitizedTo.isEmpty()) {
+                    if (!rcptsUnfiltered.isEmpty() || !rcptsFiltered.isEmpty()) {
                         MimeMessage mmOrig = pm.getMimeMessage();
                         if (mmOrig != null) {
                             String origSender = pm.getSenderEmail(false);
                             String forwarder = AccountUtil.getCanonicalAddress(acct);
-                            MimeMessage mm = CalendarMailSender.createForwardedInviteMessage(mmOrig, origSender, forwarder, sanitizedTo.toArray(new String[0]));
-                            if (mm != null) {
-                                ItemId origMsgId = new ItemId(getMailbox(), getId());
-                                CalendarMailSender.sendInviteForwardMessage(octxt, getMailbox(), origMsgId, mm);
+                            if (!rcptsUnfiltered.isEmpty()) {
+                                MimeMessage mm = CalendarMailSender.createForwardedInviteMessage(
+                                        mmOrig, origSender, forwarder, rcptsUnfiltered.toArray(new String[0]));
+                                if (mm != null) {
+                                    ItemId origMsgId = new ItemId(getMailbox(), getId());
+                                    CalendarMailSender.sendInviteForwardMessage(octxt, getMailbox(), origMsgId, mm);
+                                }
+                            }
+                            if (!rcptsFiltered.isEmpty()) {
+                                MimeMessage mm = CalendarMailSender.createForwardedPrivateInviteMessage(
+                                        acct.getLocale(), method, invites, origSender, forwarder, rcptsFiltered.toArray(new String[0]));
+                                if (mm != null) {
+                                    ItemId origMsgId = new ItemId(getMailbox(), getId());
+                                    CalendarMailSender.sendInviteForwardMessage(octxt, getMailbox(), origMsgId, mm);
+                                }
                             }
                         }
                     }
@@ -832,7 +877,7 @@ public class Message extends MailItem {
             return;
 
         mMailbox.updateSize(size - mData.size, true);
-        getFolder().updateSize(0, size - mData.size);
+        getFolder().updateSize(0, 0, size - mData.size);
 
         mData.size    = size;
         mData.locator = mblob.getLocator();
@@ -853,8 +898,8 @@ public class Message extends MailItem {
      *  uncached {@link Conversation}s when a {@link Message} changes state.
      * 
      * @param delta  The change in unread count for this item. */
-    @Override protected void updateUnread(int delta) throws ServiceException {
-        if (delta == 0 || !trackUnread())
+    @Override protected void updateUnread(int delta, int deletedDelta) throws ServiceException {
+        if ((delta == 0 && deletedDelta == 0) || !trackUnread())
             return;
         markItemModified(Change.MODIFIED_UNREAD);
         
@@ -867,14 +912,14 @@ public class Message extends MailItem {
             throw ServiceException.FAILURE("inconsistent state: unread < 0 for " + getClass().getName() + " " + mId, null);
 
         // update the folder's unread count
-        getFolder().updateUnread(delta);
+        getFolder().updateUnread(delta, deletedDelta);
 
         // update the conversation's unread count
         if (parent != null)
-            parent.updateUnread(delta);
+            parent.updateUnread(delta, deletedDelta);
 
         // tell the tags about the new read/unread item
-        updateTagUnread(delta);
+        updateTagUnread(delta, deletedDelta);
     }
 
     /** @perms {@link ACL#RIGHT_INSERT} on the target folder,
@@ -995,7 +1040,7 @@ public class Message extends MailItem {
         if (mData.size != size) {
             markItemModified(Change.MODIFIED_SIZE);
             mMailbox.updateSize(size - mData.size, false);
-            getFolder().updateSize(0, size - mData.size);
+            getFolder().updateSize(0, 0, size - mData.size);
             mData.size = size;
         }
 

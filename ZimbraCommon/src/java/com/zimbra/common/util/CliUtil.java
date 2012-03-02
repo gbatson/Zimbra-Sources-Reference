@@ -15,13 +15,14 @@
 
 package com.zimbra.common.util;
 
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.net.SocketFactories;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 
 public class CliUtil {
     public static void toolSetup() {
-        toolSetup("INFO");
+        toolSetup("INFO"); 
     }
 
     public static void toolSetup(String defaultLogLevel) {
@@ -31,6 +32,19 @@ public class CliUtil {
     public static void toolSetup(String defaultLogLevel, String logFile, boolean showThreads) {
         ZimbraLog.toolSetupLog4j(defaultLogLevel, logFile, showThreads);
         SocketFactories.registerProtocols();
+        
+        // Bug: 47051
+        // for the CLI utilities we need to disable HTTP soap client timeout.
+        LC.httpclient_soaphttptransport_so_timeout.setDefault(LC.cli_httpclient_soaphttptransport_so_timeout.longValue()); 
+    }
+    
+    /**
+     * Sets up the default value in local configuration cache for httpclient_soaphttptransport_so_timeout
+     * for CLI utilities. Use cli_httpclient_soaphttptransport_so_timeout configuration key to 
+     * override the default using local configuration file.
+     */
+    public static void setCliSoapHttpTransportTimeout() {
+        LC.httpclient_soaphttptransport_so_timeout.setDefault(LC.cli_httpclient_soaphttptransport_so_timeout.longValue());
     }
 
     /**

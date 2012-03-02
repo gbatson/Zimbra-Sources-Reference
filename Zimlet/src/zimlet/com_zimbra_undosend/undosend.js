@@ -44,6 +44,7 @@ function() {
 	this.undeSend_howMuchDelay = parseInt(this.getUserProperty("undeSend_howMuchDelay"));
 };
 
+
 /**
  * Initializes the zimlet.
  *@see ZmZimletBase
@@ -93,29 +94,36 @@ function(controller) {
 
 	if (!this.appViewMgr) {
 		this.appViewMgr = appCtxt.getAppViewMgr();
-	}
+	}	
 	var viewId = this.appViewMgr._currentView;
-	if (this.appViewMgr._isTabView[viewId]) {
-		var tab = appCtxt.getAppChooser().getButton(this.appViewMgr._tabParams[viewId].id);
-		var title = this._getComposeTabTitle(viewId);//store the title as when we push the view back, it doesnt seem to work
+
+	if(!appCtxt.isChildWindow) {
+		if (this.appViewMgr._isTabView[viewId]) {
+			var tab = appCtxt.getAppChooser().getButton(this.appViewMgr._tabParams[viewId].id);
+			var title = this._getComposeTabTitle(viewId);//store the title as when we push the view back, it doesnt seem to work
+		}
 	}
 	var undoLinkId = "UndoSendHdlrZimlet_undoLink" + viewId;
 	var timerSpanId = "undoSendHdlrZimlet_Timer" + viewId;
 	var sendNowId = "UndoSendHdlrZimlet_sendNow" + viewId;
 	this._viewIdAndParamsMap[viewId] = {tab:tab, title:title, undoLinkId:undoLinkId, timerSpanId:timerSpanId, sendNowId:sendNowId};
 	this._viewIdAndStatusesMap[viewId] = {undoLinkClicked:false, sendNowLinkClicked:false,  currentCounter:this._totalWaitTimeInSeconds};
-	this.appViewMgr.popView(true, viewId);
-	controller.inactive = false; //IMPORTANT! make sure to set this so this view isnt reused
+
+	if(!appCtxt.isChildWindow) {
+		this.appViewMgr.popView(true, viewId);
+		controller.inactive = false; //IMPORTANT! make sure to set this so this view isnt reused
+	}
+
 
 	this._storeMsgs();
 	var html = [this._getMainMsg(timerSpanId),
 		" <a  style='text-decoration:underline;color:#CA0000;font-weight:bold;font-size:12px' href=# id='",undoLinkId,"'>",this._msg_UndoSendZimlet_Undo,"</a> or",
 		" <a  style='text-decoration:underline;color:darkblue;font-size:10px;font-weight:normal' href=# id='",sendNowId,"'>",this._msg_UndoSendZimlet_sendNow,"</a>"].join("");
 
+	var params = {controller:controller, viewId:viewId, timerSpanId:timerSpanId};
 
-	this._setAlertViewContent(html);
-	this._addListenersToLinks(controller);
-	this.timer = setInterval(AjxCallback.simpleClosure(this._updateCounter, this, controller, viewId, timerSpanId), 1000);
+	this._setAlertViewContent(html, params);
+
 };
 
 /**
@@ -182,6 +190,7 @@ function(controller, viewId, timerSpanId) {
 		}
 	}
 };
+
 /**
  * Reverts the compose view
  * @param {ZmComposeController} controller A controller
@@ -192,16 +201,16 @@ function(controller, viewId) {
 	this._viewIdAndStatusesMap[viewId].undoLinkClicked = true;
 	clearInterval(this.timer);
 	this._hideAlertView();
-	this.appViewMgr.pushView(viewId, true);
-
-
-	var obj = this._viewIdAndParamsMap[viewId];
-	var tab = obj.tab;
-	var title = obj.title;
-	if (tab != undefined) {
-		tab.setText(title);
+	if(!appCtxt.isChildWindow){
+		this.appViewMgr.pushView(viewId, true);
+		var obj = this._viewIdAndParamsMap[viewId];
+		var tab = obj.tab;
+		var title = obj.title;
+		if (tab != undefined) {
+			tab.setText(title);
+		}
+		this._setComposeTabTitle(viewId, title);
 	}
-	this._setComposeTabTitle(viewId, title);
 };
 
 /**
@@ -288,35 +297,70 @@ function(controller, expn, msg) {
 	}
 };
 
+/**
+ * Sets Html content to undo-send canvas
+ * @param {string} content String that should be displayed
+ * @param {params} An Object with controller, viewId, timerSpanId info
+ */
+UndoSendZimlet.prototype._setAlertViewContent =
+function(content, params) {
+	if (this._mainContainer) {
+		this._setDelayedContent(content, params);
+		return;
+	}
+	if(!appCtxt.isChildWindow) {
+		this._mainContainer = document.getElementById("z_shell").appendChild(document.createElement('div'));
+	} else {
+		this._mainContainer = document.getElementById("DWT1").appendChild(document.createElement('div'));
+	}
+	if(appCtxt.isChildWindow) {
+		this._mainContainer.style.left = "25%";
+	} else {
+		this._mainContainer.style.left = "40%";
+	}
+	this._mainContainer.style.position = "absolute";
+	this._mainContainer.style.display = "none";
+	this._mainContainer.style.zIndex = 9000;
+
+	var container = document.createElement('div');
+	container.id = "undoSendZimlet_mainContainer";
+	container.className = "undosend_yellow";
+	this._mainContainer.appendChild(container);
+	if (content) {
+		this._setDelayedContent(content, params);
+	}
+};
+
+/**
+ * Delays setting content by 200ms to make super-fast v8 js Google Chrome happy
+ * @param {string} content String that should be displayed
+ * @param {params} An Object with controller, viewId, timerSpanId info
+ */
+UndoSendZimlet.prototype._setDelayedContent =
+function(content, params) {//this dilay is required to make sure Chrome's super-fast v8-js engine to wait a little
+	if(AjxEnv.isChrome) {
+		setTimeout(AjxCallback.simpleClosure(this._doSetContent, this, content, params), 200);
+	} else {
+		this._doSetContent(content, params);
+	}
+};
 
 /**
  * Sets Html content to undo-send canvas
  * @param {string} content String that should be displayed
+ * @param {params} An Object with controller, viewId, timerSpanId info
  */
-UndoSendZimlet.prototype._setAlertViewContent =
-function(content) {
-	if (this._mainContainer) {
-		document.getElementById("undoSendZimlet_mainContainer").innerHTML = content;
-		this._mainContainer.style.display = "block";
-		return;
-	}
-	this._mainContainer = document.getElementById("z_shell").appendChild(document.createElement('div'));
-	this._mainContainer.style.left = "40%";
-	this._mainContainer.style.position = "absolute";
+UndoSendZimlet.prototype._doSetContent =
+function(content, params) {
+	document.getElementById("undoSendZimlet_mainContainer").innerHTML = content;
 	this._mainContainer.style.display = "block";
-	this._mainContainer.style.zIndex = 9000;
 
-	var html = new Array();
-	var i = 0;
-	html[i++] = "<DIV id ='undoSendZimlet_mainContainer' class='undosend_yellow'>";
-	html[i++] = "</DIV>";
-	this._mainContainer.innerHTML = html.join("");
-
-	if (content) {
-		document.getElementById("undoSendZimlet_mainContainer").innerHTML = content;
-	}
+	this._addListenersToLinks(params.controller);
+	this.timer = setInterval(AjxCallback.simpleClosure(this._updateCounter, this, params.controller, params.viewId, params.timerSpanId), 1000);
 	this._alertViewDisplayed = true;
 };
+
+
 
 /**
  * Hides the view

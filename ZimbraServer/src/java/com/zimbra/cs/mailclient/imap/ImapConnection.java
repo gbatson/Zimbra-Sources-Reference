@@ -25,6 +25,7 @@ import com.zimbra.cs.mailclient.util.Ascii;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.SocketTimeoutException;
 import java.util.Formatter;
 import java.util.List;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ public final class ImapConnection extends MailConnection {
     private MailboxInfo mailbox;
     private ImapRequest request;
     private DataHandler dataHandler;
+    private Character delimiter;
     
     private final AtomicInteger tagCount = new AtomicInteger();
 
@@ -192,7 +194,7 @@ public final class ImapConnection extends MailConnection {
     public synchronized MailboxInfo select(String name) throws IOException {
         mailbox = doSelectOrExamine(CAtom.SELECT, name);
         setState(State.SELECTED);
-        return getMailbox();
+        return getMailboxInfo();
     }
 
     public MailboxInfo examine(String name) throws IOException {
@@ -256,8 +258,14 @@ public final class ImapConnection extends MailConnection {
         newUidRequest(CAtom.EXPUNGE, seq).sendCheckStatus();
     }
 
-    public synchronized void mclose() throws IOException {
+    public synchronized void close_mailbox() throws IOException {
         newRequest(CAtom.CLOSE).sendCheckStatus();
+        mailbox = null;
+        setState(State.AUTHENTICATED);
+    }
+
+    public synchronized void unselect() throws IOException {
+        newRequest(CAtom.UNSELECT).sendCheckStatus();
         mailbox = null;
         setState(State.AUTHENTICATED);
     }
@@ -296,8 +304,11 @@ public final class ImapConnection extends MailConnection {
     }
 
     public char getDelimiter() throws IOException {
-        List<ListData> ld = list("", "");
-        return ld.isEmpty() ? 0 : ld.get(0).getDelimiter();
+        if (delimiter == null) {
+            List<ListData> ld = list("", "");
+            delimiter = ld.isEmpty() ? 0 : ld.get(0).getDelimiter();
+        }
+        return delimiter;
     }
 
     public CopyResult copy(String seq, String mbox) throws IOException {
@@ -454,7 +465,7 @@ public final class ImapConnection extends MailConnection {
         return capabilities;
     }
 
-    public MailboxInfo getMailbox() {
+    public MailboxInfo getMailboxInfo() {
         // Make sure we return a copy of the actual mailbox since it can
         // be modified in-place in response to unsolicited messages from
         // the server.
@@ -467,6 +478,14 @@ public final class ImapConnection extends MailConnection {
 
     public boolean hasCapability(String cap) {
         return capabilities != null && capabilities.hasCapability(cap);
+    }
+
+    public boolean hasIdle() {
+        return hasCapability(ImapCapabilities.IDLE);
+    }
+
+    public boolean hasUnselect() {
+        return hasCapability(ImapCapabilities.UNSELECT);
     }
 
     public boolean hasMechanism(String method) {
@@ -546,8 +565,12 @@ public final class ImapConnection extends MailConnection {
                 throw new IOException("Unexpected continuation response");
             }
             assert res.isTagged();
+        } catch (SocketTimeoutException e) {
+            getLogger().debug("Timed-out during IDLE", e);
         } catch (IOException e) {
-            getLogger().error("IDLE failed", e);
+            if (!isClosed()) {
+                getLogger().error("IDLE failed", e);
+            }
         }
         synchronized (this) {
             request = null;

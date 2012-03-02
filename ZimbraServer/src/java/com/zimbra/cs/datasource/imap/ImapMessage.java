@@ -24,7 +24,7 @@ public class ImapMessage extends DataSourceMapping {
     private long uid;
     private static final String METADATA_KEY_FLAGS = "f";
     private static final String METADATA_KEY_UID = "u";
-    
+
     public ImapMessage(DataSource ds, DataSourceItem dsi) throws ServiceException {
         super(ds, dsi);
     }
@@ -37,8 +37,8 @@ public class ImapMessage extends DataSourceMapping {
         super(ds, remoteId(folderId, uid));
     }
     
-    public ImapMessage(DataSource ds, int folderId, int itemId, int flags,
-        long uid) throws ServiceException {
+    public ImapMessage(DataSource ds, int folderId, int itemId, int flags, long uid)
+        throws ServiceException {
         super(ds, folderId, itemId, remoteId(folderId, uid));
         setFlags(flags);
         setUid(uid);
@@ -70,5 +70,10 @@ public class ImapMessage extends DataSourceMapping {
 
     private static String remoteId(int folderId, long uid) {
         return Integer.toString(folderId) + "_" + Long.toString(uid); 
+    }
+
+    public String toString() {
+        return String.format("{folderId=%d,itemId=%d,remoteId=%s}",
+            getFolderId(), getItemId(), getRemoteId());
     }
 }

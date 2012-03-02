@@ -120,7 +120,9 @@ public class UrlNamespace {
 	    UrlComponents uc = parseUrl(url);
 		if (uc.user == null || uc.path == null)
             throw new DavException("invalid uri", HttpServletResponse.SC_NOT_FOUND, null);
-		return getResourceAt(ctxt, uc.user, uc.path);
+		DavResource rs = getResourceAt(ctxt, uc.user, uc.path);
+		rs.mUri = uc.path;
+		return rs;
 	}
 	
     public static DavResource getPrincipalAtUrl(DavContext ctxt, String url) throws DavException {
@@ -340,13 +342,26 @@ public class UrlNamespace {
         if (account == null)
             throw new DavException("no such accout "+user, HttpServletResponse.SC_NOT_FOUND, null);
 
+        if (ctxt.getUser().compareTo(user) != 0 || !Provisioning.onLocalServer(account)) {
+            try {
+                return new RemoteCollection(ctxt, path, account);
+            } catch (MailServiceException.NoSuchItemException e) {
+                return null;
+            }
+        }
+        
         Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(account);
-        String id = null;
+        int id = 0;
         int index = path.indexOf('?');
         if (index > 0) {
             Map<String, String> params = HttpUtil.getURIParams(path.substring(index+1));
             path = path.substring(0, index);
-            id = params.get("id");
+            if (params.containsKey("id")) {
+                try {
+                    id = Integer.parseInt(params.get("id"));
+                } catch (NumberFormatException e) {
+                }
+            }
         }
         OperationContext octxt = ctxt.getOperationContext();
         MailItem item = null;
@@ -354,8 +369,8 @@ public class UrlNamespace {
         // simple case.  root folder or if id is specified.
         if (path.equals("/"))
             item = mbox.getFolderByPath(octxt, "/");
-        else if (id != null)
-            item = mbox.getItemById(octxt, Integer.parseInt(id), MailItem.TYPE_UNKNOWN);
+        else if (id > 0)
+            item = mbox.getItemById(octxt, id, MailItem.TYPE_UNKNOWN);
 
         if (item != null)
             return getResourceFromMailItem(ctxt, item);
@@ -388,9 +403,13 @@ public class UrlNamespace {
         		String uid = path.substring(index + 1, path.length() - CalendarObject.CAL_EXTENSION.length());
         		index = uid.indexOf(',');
         		if (index > 0) {
-        			id = uid.substring(index+1);
-        			item = mbox.getItemById(octxt, Integer.parseInt(id), MailItem.TYPE_UNKNOWN);
-
+                    try {
+                        id = Integer.parseInt(uid.substring(index+1));
+                    } catch (NumberFormatException e) {
+                    }
+        		}
+        		if (id > 0) {
+        		    item = mbox.getItemById(octxt, id, MailItem.TYPE_UNKNOWN);
         		} else {
         			item = mbox.getCalendarItemByUid(octxt, uid);
         		}

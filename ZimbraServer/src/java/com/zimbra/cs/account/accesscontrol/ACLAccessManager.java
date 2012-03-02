@@ -27,6 +27,7 @@ import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
 import com.zimbra.cs.account.Provisioning.CosBy;
@@ -35,7 +36,6 @@ import com.zimbra.cs.account.ldap.LdapUtil;
 import com.zimbra.cs.account.accesscontrol.RightBearer.Grantee;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.account.accesscontrol.Rights.User;
-import com.zimbra.cs.mailbox.ACL;
 
 public class ACLAccessManager extends AccessManager {
 
@@ -208,14 +208,14 @@ public class ACLAccessManager extends AccessManager {
             Account granteeAcct;
             if (grantee == null) {
                 if (rightNeeded.isUserRight())
-                    granteeAcct = ACL.ANONYMOUS_ACCT;
+                    granteeAcct = GuestAccount.ANONYMOUS_ACCT;
                 else
                     return false;
             } else if (grantee.isZimbraUser())
                 granteeAcct = getAccountFromAuthToken(grantee);
             else {
                 if (rightNeeded.isUserRight())
-                    granteeAcct = new ACL.GuestAccount(grantee);
+                    granteeAcct = new GuestAccount(grantee);
                 else
                     return false;
             }
@@ -242,7 +242,7 @@ public class ACLAccessManager extends AccessManager {
                 granteeAcct = Provisioning.getInstance().get(Provisioning.AccountBy.name, granteeEmail);
             if (granteeAcct == null) {
                 if (rightNeeded.isUserRight())
-                    granteeAcct = ACL.ANONYMOUS_ACCT;
+                    granteeAcct = GuestAccount.ANONYMOUS_ACCT;
                 else
                     return false;
             }
@@ -285,7 +285,7 @@ public class ACLAccessManager extends AccessManager {
         else if (hardRulesResult == Boolean.FALSE)
             return AllowedAttrs.DENY_ALL_ATTRS();
         else
-            return RightChecker.accessibleAttrs(new Grantee(credentials), target, AdminRight.PR_GET_ATTRS, false);
+            return CheckAttrRight.accessibleAttrs(new Grantee(credentials), target, AdminRight.PR_GET_ATTRS, false);
     }
     
     @Override
@@ -321,7 +321,7 @@ public class ACLAccessManager extends AccessManager {
             return hardRulesResult.booleanValue();
         
         Grantee grantee = new Grantee(granteeAcct);
-        AllowedAttrs allowedAttrs = RightChecker.accessibleAttrs(grantee, target, AdminRight.PR_SET_ATTRS, false);
+        AllowedAttrs allowedAttrs = CheckAttrRight.accessibleAttrs(grantee, target, AdminRight.PR_SET_ATTRS, false);
         return allowedAttrs.canSetAttrs(grantee, target, attrsNeeded);
     }
     
@@ -420,7 +420,7 @@ public class ACLAccessManager extends AccessManager {
                     return false;
                 
                 if (rightNeeded.isUserRight())
-                    grantee = ACL.ANONYMOUS_ACCT;
+                    grantee = GuestAccount.ANONYMOUS_ACCT;
                 else
                     return false;
             }
@@ -452,15 +452,17 @@ public class ACLAccessManager extends AccessManager {
             //
             Boolean result = null;
             if (target != null)
-                result = PresetRightChecker.check(grantee, target, rightNeeded, canDelegateNeeded, via);
+                result = CheckPresetRight.check(grantee, target, rightNeeded, canDelegateNeeded, via);
             
-            if (result != null)
-                return result.booleanValue();
+            if (result != null && result.booleanValue()) 
+                return result.booleanValue();  // // allowed by ACL
             else {
+                // either no matching ACL for the right or is now allowed by ACL
+                
                 if (canDelegateNeeded)
                     return false;
                 
-                // no ACL, call the fallback if there is one for the right
+                // call the fallback if there is one for the right
                 CheckRightFallback fallback = rightNeeded.getFallback();
                 if (fallback != null) {
                     Boolean fallbackResult = fallback.checkRight(grantee, target, asAdmin);
@@ -468,10 +470,13 @@ public class ACLAccessManager extends AccessManager {
                         return fallbackResult.booleanValue();
                 }
                 
-                // no ACL, and no callback (or no callback result), see if there is a configured default 
-                Boolean defaultValue = rightNeeded.getDefault();
-                if (defaultValue != null)
-                    return defaultValue.booleanValue();
+                if (result == null) {
+                    // no matching ACL for the right, and no callback (or no callback result), 
+                    // see if there is a configured default 
+                    Boolean defaultValue = rightNeeded.getDefault();
+                    if (defaultValue != null)
+                        return defaultValue.booleanValue();
+                }
             }
                 
         } catch (ServiceException e) {
@@ -489,7 +494,7 @@ public class ACLAccessManager extends AccessManager {
                                    Map<String, Object> attrs, boolean asAdmin) throws ServiceException {
         
         TargetType targetType = TargetType.getTargetType(target);
-        if (!RightChecker.rightApplicableOnTargetType(targetType, rightNeeded, canDelegateNeeded))
+        if (!CheckRight.rightApplicableOnTargetType(targetType, rightNeeded, canDelegateNeeded))
             return false;
         
         boolean allowed = false;
@@ -517,21 +522,21 @@ public class ACLAccessManager extends AccessManager {
     private boolean checkAttrRight(Account granteeAcct, Entry target, 
             AttrRight rightNeeded, boolean canDelegateNeeded) throws ServiceException {
         AllowedAttrs allowedAttrs = 
-            RightChecker.accessibleAttrs(new Grantee(granteeAcct), target, rightNeeded, canDelegateNeeded);
+            CheckAttrRight.accessibleAttrs(new Grantee(granteeAcct), target, rightNeeded, canDelegateNeeded);
         return allowedAttrs.canAccessAttrs(rightNeeded.getAttrs(), target);
     }
     
     private boolean canGetAttrsInternal(Account granteeAcct, Entry target, 
             Set<String> attrsNeeded, boolean canDelegateNeeded) throws ServiceException {
         AllowedAttrs allowedAttrs = 
-            RightChecker.accessibleAttrs(new Grantee(granteeAcct), target, AdminRight.PR_GET_ATTRS, canDelegateNeeded);
+            CheckAttrRight.accessibleAttrs(new Grantee(granteeAcct), target, AdminRight.PR_GET_ATTRS, canDelegateNeeded);
         return allowedAttrs.canAccessAttrs(attrsNeeded, target);
     }
     
     private boolean canSetAttrsInternal(Account granteeAcct, Entry target, 
             Set<String> attrsNeeded, boolean canDelegateNeeded) throws ServiceException {
         AllowedAttrs allowedAttrs = 
-            RightChecker.accessibleAttrs(new Grantee(granteeAcct), target, AdminRight.PR_SET_ATTRS, canDelegateNeeded);
+            CheckAttrRight.accessibleAttrs(new Grantee(granteeAcct), target, AdminRight.PR_SET_ATTRS, canDelegateNeeded);
         return allowedAttrs.canAccessAttrs(attrsNeeded, target);
     }
 

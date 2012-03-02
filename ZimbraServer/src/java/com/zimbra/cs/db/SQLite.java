@@ -40,6 +40,9 @@ import com.zimbra.cs.db.DbPool.PoolConfig;
 
 public class SQLite extends Db {
 
+    private static final String PRAGMA_JOURNAL_MODE_DEFAULT = "DELETE";
+    private static final String PRAGMA_SYNCHRONOUS_DEFAULT  = "FULL";
+
     private Map<Db.Error, String> mErrorCodes;
     private String cacheSize;
     private String journalMode;
@@ -138,24 +141,18 @@ public class SQLite extends Db {
          * auto_vacuum causes databases to be locked permanently
          * pragma(conn, dbname, "auto_vacuum", "2");
          */
-        pragma(conn, dbname, "encoding", "\"UTF-8\"");
         pragma(conn, dbname, "foreign_keys", "ON");
-        pragma(conn, dbname, "fullfsync", "OFF");
-        pragma(conn, dbname, "journal_mode", journalMode);
-        pragma(conn, dbname, "synchronous", syncMode);
-
-        if (cacheSize != null) {
+        if (journalMode != null && !journalMode.equalsIgnoreCase(PRAGMA_JOURNAL_MODE_DEFAULT))
+            pragma(conn, dbname, "journal_mode", journalMode);
+        if (syncMode != null && !syncMode.equalsIgnoreCase(PRAGMA_SYNCHRONOUS_DEFAULT))
+            pragma(conn, dbname, "synchronous", syncMode);
+        if (cacheSize != null)
             pragma(conn, dbname, "cache_size", cacheSize);
-            // leaving this uncommented seems to break subsequent PRAGMAs
-            // pragma(conn, dbname, "default_cache_size", cacheSize);
-        }
-        if (pageSize != null) {
-            pragma(conn, dbname, "default_page_size", pageSize);
+        if (pageSize != null)
             pragma(conn, dbname, "page_size", pageSize);
-        }
     }
 
-    private static final int DEFAULT_CONNECTION_POOL_SIZE = 12;
+    private static final int DEFAULT_CONNECTION_POOL_SIZE = 6;
 
     private static final int MAX_ATTACHED_DATABASES = readConfigInt("sqlite_max_attached_databases", "max # of attached databases", 7);
 
@@ -346,7 +343,8 @@ public class SQLite extends Db {
 
         private Properties getSQLiteProperties() {
             Properties props = new Properties();
-            props.setProperty("shared_cache", "true");
+            if (LC.sqlite_shared_cache_enabled.booleanValue())
+                props.setProperty("shared_cache", "true");
             return props;
         }
     }

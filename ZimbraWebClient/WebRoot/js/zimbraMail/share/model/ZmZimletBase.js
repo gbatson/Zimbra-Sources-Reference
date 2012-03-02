@@ -605,10 +605,10 @@ function(callback) {
         userprop[i].label = this._zimletContext.processMessage(userprop[i].label);
         if (userprop[i].type == "enum") {
         	var items = userprop[i].item;
-        	for (var i=0; items != null && i < items.length; i++) {
-        		if (items[i] == null)
+        	for (var j=0; items != null && j < items.length; j++) {
+        		if (items[j] == null)
         			continue;
-        		var item = items[i];
+        		var item = items[j];
         		item.label = this._zimletContext.processMessage(item.label);
         	}
         }
@@ -1008,7 +1008,7 @@ function(object, context, x, y, span) {
 	var tooltip = shell.getToolTip();
 	tooltip.setContent('<div id="zimletTooltipDiv"/>', true);
 	this.toolTipPoppedUp(span, object, context, document.getElementById("zimletTooltipDiv"));
-	tooltip.popup(x, y, true);
+	tooltip.popup(x, y, true, new AjxCallback(this, this.hoverOut, object, context, span));
 };
 
 /**

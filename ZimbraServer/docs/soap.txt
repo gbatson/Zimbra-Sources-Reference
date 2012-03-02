@@ -708,12 +708,12 @@ import and export of addressbook.
 
 ----------------------------
 
-<AutoCompleteRequest folders="{folders}" includeGal="0|1">
+<AutoCompleteRequest [folders="{folders}"] [includeGal="0|1"]>
   <name>...</name>
 </AutoCompleteRequest>
 
 <AutoCompleteResponse canBeCached="0|1">
-  <match ranking="..." l="..." type="gal|group|contact|unknown" email="..." [display="..."] [id="..."]/>*
+  <match ranking="..." type="gal|group|contact|rankingTable" email="..." [display="..."] [id="..."] [l="..."]/>*
 </AutoCompleteResponse>
 
   {folders} - comma separates list of folder IDs.
@@ -1149,7 +1149,7 @@ Conversations:
 Folders:
 
   <folder id="{folder-id}" name="{folder-name}" l="{parent-id}" [f="{flags}"] [color="{color}"]
-  		 u="{unread}" n="{msg-count}" s="{total-size}" [view="{default-type}"]
+  		 u="{unread}" [i4u="{imap-unread}"] n="{msg-count}" [i4n="{imap-count}"] s="{total-size}" [view="{default-type}"]
   		 [url="{remote-url}"] [perm="{effective-perms}"] [rest="{rest-url}"]>
     [<acl> <grant perm="{rights}" gt="{grantee-type}" zid="{zimbra-id}" d="{grantee-name}" [pw="{password-for-guest}"] [key=="{access-key}"]/>* </acl>]
   </folder>
@@ -1160,7 +1160,9 @@ Folders:
   {flags}        = checked in UI (#), exclude free/(b)usy info, IMAP subscribed (*), does not (i)nherit rights from parent, is a s(y)nc folder with external data source, sync is turned on(~), folder does n(o)t allow inferiors / children
   {color}        = numeric; range 0-127; defaults to 0 if not present; client can display only 0-7
   {unread}       = number of unread messages in folder
+  {imap-unread}  = number of unread messages with this tag, *including* those with the IMAP \Deleted flag set
   {msg-count}    = number of non-subfolder items in folder
+  {imap-count}   = number of non-subfolder items in folder, *including* those with the IMAP \Deleted flag set
   {total-size}   = total size of all of non-subfolder items in folder
   {default-type} = (optional) default type for the folder; used by web client to decide which view to use;
                    possible values are the same as <SearchRequest>'s {types}: conversation|message|contact|etc
@@ -1203,14 +1205,15 @@ Mountpoints:
 
 Tags:
 
-  <tag id="{tag-id}" name="{tag-name}" [color="{color}"] u="{unread}"/>
+  <tag id="{tag-id}" name="{tag-name}" [color="{color}"] u="{unread}" [i4u="{imap-unread}"]/>
 
-  {tag-name} = name of tag; max length 128; whitespace is trimmed by server;
-               cannot contain ':', '"', '/', or any character below 0x20;
-               cannot begin with '\' (avoid collsions with IMAP)
-  {color}    = numeric; range 0-127; defaults to 0 if not present; client can display only 0-7
-  {unread}   = number of unread messages with this tag
- 
+  {tag-name}    = name of tag; max length 128; whitespace is trimmed by server;
+                  cannot contain ':', '"', '/', or any character below 0x20;
+                  cannot begin with '\' (avoid collsions with IMAP)
+  {color}       = numeric; range 0-127; defaults to 0 if not present; client can display only 0-7
+  {unread}      = number of unread messages with this tag
+  {imap-unread} = number of unread messages with this tag, *including* those with the IMAP \Deleted flag set
+
 ----------
 
 <SearchRequest [limit="..."] [offset="..."] [sortBy="{sort-by}"] [groupBy="{group-by}"]
@@ -1644,6 +1647,12 @@ if nest="1" on the request, response looks like this:
 
 GetFolderResponse always has exactly 1 folder element within it.  Without a base
 folder ID that folder element will represent the virtual root folder.
+
+Mountpoints are handled in one of two ways, depending on the type of the <folder>
+in the request.  When <folder> is a mountpoint, the mountpoint is
+validated and all of its subfolders are returned.  When <folder> is not specified
+or it is a regular folder, any subfolders that are mountpoints are not validated,
+and subfolders of the mountpoint are not returned.
 
 ----------
 
@@ -2588,14 +2597,14 @@ Tests:
 
   <headerTest header="{header-name}" stringComparison="{type}" value="{value}" />
   <headerExistsTest header="{header-name}" />
+  <mimeHeaderTest header="{header-name}" stringComparison="{type}" value="{value}" />
   <sizeTest numberComparison="{over|under}" s="{size}" />
   <dateTest dateComparison="{before|after}" d="{date}" />
   <bodyTest value="{value}" />
   <attachmentTest />
   <addressBookTest header="{header-name}" folderPath="{folder-path}" />
   <inviteTest>
-    <method>{method}</method>
-    ...
+    <method>{method}</method>+
   </inviteTest>
 
 Each test has the following optional attributes:
@@ -2628,6 +2637,9 @@ method values: anyrequest, anyreply, publish, request, reply, add, cancel, refre
   declinecounter.  anyreply matches reply, refresh, counter.  If no methods are
   specified, the test returns true for all invites.
  
+<mimeHeaderTest> behaves just like <headerTest>, but matches headers on
+  all MIME parts, instead of just the top-level headers.
+
 ---------------------------
 
 <ApplyFilterRulesRequest>
@@ -2994,7 +3006,7 @@ Grant account level permissions.
      usr - either zid or d is required. 
      grp - either zid or d is required. 
      all - zid, d, pw are ignored
-     gst - zid is ignored, d is required, pw is optional (not yet supported)
+     gst - zid is ignored, d is required, pw is optional
      key - zid is ignored, d is required
      pub - zid, d, pw are ignored
   
@@ -3012,7 +3024,7 @@ GrantPermissionResponse returns permissions that are successfully granted.
 
 <GrantPermissionResponse>
   <ace right="{right}" [deny="{deny}"] gt="{grantee-type}" zid="{zimbra-id}" [d="{grantee-name}"] [pw="{password}"] [key="{accesskey}"]/>*
-</GrantPermissionRequest>
+</GrantPermissionResponse>
 ---------------------------
 
 Revoke account level permissions.
@@ -3273,11 +3285,14 @@ returns the effective permissions of the specified folder
 
 ---------------------------- 
 
-<ResetContactRankingRequest/>
+<RankingActionRequest>
+  <action op="reset|delete" [email="{email-address}"] />
+</RankingActionRequest>
 
-resets the contact ranking table for the account
+<RankingActionResponse/>
 
-<ResetContactRankingResponse/>
+reset - resets the contact ranking table for the account
+delete - delete the ranking information for the email address
 
 ----------------------------
   
@@ -3288,5 +3303,13 @@ resets the contact ranking table for the account
 <ModifyZimletPrefsResponse>
     <zimlet name="{name}" presence="{enabled|disabled}"/>+
 </ModifyZimletPrefsResponse>
+
+----------------------------
+
+<GenerateUUIDRequest/>
+
+<GenerateUUIDResponse>{generated UUID}</GenerateUUIDResponse>
+
+Ajax client can use this request to ask the server for help in generating a proper, globally unique UUID.
 
 ---------

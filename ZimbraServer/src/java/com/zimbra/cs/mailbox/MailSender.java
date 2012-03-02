@@ -436,7 +436,11 @@ public class MailSender {
                 } catch (Exception e) {
                     ZimbraLog.smtp.error("unable to update contact rankings", e);
                 }
-                if (authuser.getBooleanAttr(Provisioning.A_zimbraPrefAutoAddAddressEnabled, false)) {
+                if (mSaveContacts != null)
+                    saveNewContacts(mSaveContacts, octxt, authMailbox);
+                
+                // disable server side detection of new contacts
+                if (false && authuser.getBooleanAttr(Provisioning.A_zimbraPrefAutoAddAddressEnabled, false)) {
                     Collection<InternetAddress> newContacts = getNewContacts(sentAddresses, authuser, octxt, authMailbox);
                     saveNewContacts(newContacts, octxt, authMailbox);
                 }
@@ -599,13 +603,11 @@ public class MailSender {
                 sender = (InternetAddress) addr;
         } else {
             sender = canSendAs ? null : AccountUtil.getFriendlyEmailAddress(authuser);
-            if (canSendAs) {
-                // if the call doesn't require a Sender but the caller supplied one, pass it through if it's acceptable
-                Address addr = mm.getSender();
-                if (addr != null && addr instanceof InternetAddress) {
-                    if (AccountUtil.addressMatchesAccount(authuser, ((InternetAddress) addr).getAddress()))
-                        sender = (InternetAddress) addr;
-                }
+            // if the call doesn't require a Sender but the caller supplied one, pass it through if it's acceptable
+            Address addr = mm.getSender();
+            if (addr != null && addr instanceof InternetAddress) {
+                if (AccountUtil.addressMatchesAccount(authuser, ((InternetAddress) addr).getAddress()))
+                    sender = (InternetAddress) addr;
             }
         }
 

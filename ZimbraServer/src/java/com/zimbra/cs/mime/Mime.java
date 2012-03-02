@@ -114,7 +114,7 @@ public class Mime {
         Set<MPartInfo> bodies = getBody(parts, true);
         for (MPartInfo mpi : parts) {
             mpi.mIsFilterableAttachment = isFilterableAttachment(mpi, bodies);
-            if (mpi.mIsFilterableAttachment && !mpi.getContentType().equals(MimeConstants.CT_XML_ZIMBRA_SHARE))
+            if (mpi.mIsFilterableAttachment)
                 mpi.mIsToplevelAttachment = bodies == null || !bodies.contains(mpi) || !INLINEABLE_TYPES.contains(mpi.mContentType);
         }
         return parts;
@@ -590,6 +590,10 @@ public class Mime {
         // Zimbra folder sharing notifications are not considered attachments.
         if (ctype.equals(MimeConstants.CT_XML_ZIMBRA_SHARE))
             return false;
+
+        // computer-readable sections of multipart/reports aren't considered attachments
+        if (ctype.equals("message/disposition-notification") || ctype.equals("message/delivery-status"))
+            return false;
         
         return true;
      }
@@ -599,7 +603,7 @@ public class Mime {
       * returns a <code>Set</code> of unique content-type strings, or an
       * empty set if there are no attachments.
       */
-     public static Set<String> getAttachmentList(List<MPartInfo> parts) {
+     public static Set<String> getAttachmentTypeList(List<MPartInfo> parts) {
          // get a set of all the content types 
          HashSet<String> set = new HashSet<String>();
          for (MPartInfo mpi : parts) {
@@ -984,9 +988,9 @@ public class Mime {
      * multiple headers with the same name exist, returns the first one.
      * If the header does not exist, returns <tt>null</tt>. 
      */
-    public static String getHeader(MimeMessage msg, String headerName) {
+    public static String getHeader(MimePart part, String headerName) {
         try {
-            String value = msg.getHeader(headerName, null);
+            String value = part.getHeader(headerName, null);
             if (value == null || value.length() == 0)
                 return null;
             try {
@@ -1007,9 +1011,9 @@ public class Mime {
      * Returns the decoded and unfolded values for the given header name,
      * or an empty array if no headers with the given name exist.
      */
-    public static String[] getHeaders(MimeMessage msg, String headerName) {
+    public static String[] getHeaders(MimePart part, String headerName) {
         try {
-            String[] values = msg.getHeader(headerName);
+            String[] values = part.getHeader(headerName);
             if (values == null || values.length == 0)
                 return NO_HEADERS;
 
@@ -1066,8 +1070,11 @@ public class Mime {
                 sender = msg.getHeader("Sender", null);
             } catch (MessagingException e) {}
         }
-        if (sender == null)
+        if (sender == null) {
             sender = "";
+        } else if (sender.endsWith("<>")) { // Bug #47492
+            sender = sender.replaceAll("<>$","").trim();
+        }
         String decoded;
         try {
             decoded = MimeUtility.decodeText(sender);

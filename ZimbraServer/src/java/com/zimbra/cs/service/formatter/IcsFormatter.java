@@ -89,26 +89,40 @@ public class IcsFormatter extends Formatter {
 
         // todo: get from folder name
         String filename = context.itemPath;
-        if (filename == null || filename.length() == 0)
-            filename = "contacts";
+
         if (mayAttach(context)) {
+            if (filename == null || filename.length() == 0)
+                filename = "contacts";
+			
+            String requestFilename = context.req.getParameter("filename"); // Let the client specify the filename to save as
+            if (requestFilename != null)
+                filename = requestFilename;
+            else
+                filename = filename.replaceAll("^\\W",""); // Trim off leading non-word characters (e.g. forward slash)
+
             String cd = Part.ATTACHMENT + "; filename=" + HttpUtil.encodeFilename(context.req, filename + ".ics");
             context.resp.addHeader("Content-Disposition", cd);
         }
-        context.resp.setCharacterEncoding(MimeConstants.P_CHARSET_UTF8);
-        context.resp.setContentType(getContentType(context, MimeConstants.CT_TEXT_CALENDAR));
-
         Browser browser = HttpUtil.guessBrowser(context.req);
         boolean useOutlookCompatMode = Browser.IE.equals(browser);
         boolean needAppleICalHacks = Browser.APPLE_ICAL.equals(browser);  // bug 15549
+        boolean htmlFormat = !mayAttach(context) && Browser.IE.equals(browser); // Use only htmlFormat when the file isn't supposed to be downloaded (ie. it's supposed to be shown in the browser). Mangles the code so it can be displayed correctly, especially by IE
+
+        context.resp.setCharacterEncoding(MimeConstants.P_CHARSET_UTF8);
+        context.resp.setContentType(htmlFormat ? MimeConstants.CT_TEXT_HTML : getContentType(context, MimeConstants.CT_TEXT_CALENDAR));
+        
         OperationContext octxt = new OperationContext(context.authAccount, context.isUsingAdminPrivileges());
         FileBufferedWriter fileBufferedWriter = new FileBufferedWriter(
                 context.resp.getWriter(),
                 LC.calendar_ics_export_buffer_size.intValueWithinRange(0, FileBufferedWriter.MAX_BUFFER_SIZE));
         try {
+            if (htmlFormat)
+                fileBufferedWriter.write("<html><body><pre>");
             context.targetMailbox.writeICalendarForCalendarItems(
                     fileBufferedWriter, octxt, calItems,
-                    useOutlookCompatMode, true, needAppleICalHacks, true);
+                    useOutlookCompatMode, true, needAppleICalHacks, true, htmlFormat);
+            if (htmlFormat)
+                fileBufferedWriter.write("</pre></body></html>");
         } finally {
             fileBufferedWriter.finish();
         }

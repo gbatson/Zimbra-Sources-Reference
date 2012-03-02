@@ -23,6 +23,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
@@ -51,9 +52,16 @@ class LdapDistributionList extends DistributionList implements LdapEntry {
         Set<String> existing = getMultiAttrSet(Provisioning.A_zimbraMailForwardingAddress);
         Set<String> mods = new HashSet<String>();
         
+        // all addrs of thie DL
+        AddrsOfEntry addrsOfDL = getAllAddressesOfEntry(prov, getName());
+        
         for (int i = 0; i < members.length; i++) { 
             String memberName = members[i].toLowerCase();
-            memberName = IDNUtil.toAsciiEmail(members[i]);
+            memberName = IDNUtil.toAsciiEmail(memberName);
+            
+            if (addrsOfDL.isIn(memberName))
+                throw ServiceException.INVALID_REQUEST("Cannot add self as a member: " + memberName, null);
+            
             if (!existing.contains(memberName)) {
                 mods.add(memberName);
 
@@ -91,13 +99,18 @@ class LdapDistributionList extends DistributionList implements LdapEntry {
     }
 
     void removeMembers(String[] members, LdapProvisioning prov) throws ServiceException {
-        Set<String> existing = getMultiAttrSet(Provisioning.A_zimbraMailForwardingAddress);
+        Set<String> curMembers = getMultiAttrSet(Provisioning.A_zimbraMailForwardingAddress);
+        
+        // bug 46219, need a case insentitive Set
+        Set<String> existing = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+        existing.addAll(curMembers);
+        
         Set<String> mods = new HashSet<String>();
         HashSet<String> failed = new HashSet<String>();
 
         for (int i = 0; i < members.length; i++) { 
             String memberName = members[i].toLowerCase();
-            memberName = IDNUtil.toAsciiEmail(members[i]);
+            memberName = IDNUtil.toAsciiEmail(memberName);
             if (memberName.length() == 0) {
                 throw ServiceException.INVALID_REQUEST("invalid member email address: " + memberName, null);
             }
@@ -217,6 +230,10 @@ class LdapDistributionList extends DistributionList implements LdapEntry {
         
         int size() {
             return mAllAddrs.size();
+        }
+        
+        boolean isIn(String addr) {
+            return mAllAddrs.contains(addr.toLowerCase());
         }
     }
     

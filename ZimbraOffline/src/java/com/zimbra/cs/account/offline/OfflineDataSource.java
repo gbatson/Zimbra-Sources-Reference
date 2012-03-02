@@ -26,6 +26,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.datasource.DataSourceManager;
+import com.zimbra.cs.datasource.imap.ImapSync;
 import com.zimbra.cs.mailbox.DataSourceMailbox;
 import com.zimbra.cs.mailbox.DesktopMailbox;
 import com.zimbra.cs.mailbox.Folder;
@@ -174,7 +175,8 @@ public class OfflineDataSource extends DataSource {
         return isSyncEnabledByDefault(localPath);
     }
 
-    @Override public boolean isSaveToSent() {
+    @Override
+    public boolean isSaveToSent() {
         return getType() == Type.pop3 || knownService == null || knownService.isSaveToSent();
     }
 
@@ -190,7 +192,8 @@ public class OfflineDataSource extends DataSource {
         return knownService != null && knownService.getName().equals(SERVICE_NAME_GMAIL);
     }
     
-    @Override public void reportError(int itemId, String error, Exception e) {
+    @Override
+    public void reportError(int itemId, String error, Exception e) {
         String data = "";
         try {
             // If this is a message, then indicate folder name
@@ -268,15 +271,14 @@ public class OfflineDataSource extends DataSource {
     
     @Override
     public boolean isDebugTraceEnabled() {
-    	if (super.isDebugTraceEnabled())
-    		return true;
-    	boolean accountDebugTrace = false;
-    	try {
-    		accountDebugTrace = ((OfflineAccount)getAccount()).isDebugTraceEnabled();
-    	} catch (ServiceException x) {}
-    	return  accountDebugTrace;
+        if (super.isDebugTraceEnabled())
+            return true;
+        boolean accountDebugTrace = false;
+        try {
+            accountDebugTrace = ((OfflineAccount)getAccount()).isDebugTraceEnabled();
+        } catch (ServiceException x) {}
+        return  accountDebugTrace;
     }
-
 
     /*
      * Returns true if the Yahoo email address associated with the specified
@@ -310,9 +312,16 @@ public class OfflineDataSource extends DataSource {
             isDebugTraceEnabled());
     }
 
-    public Mailbox getMailbox()
-    throws ServiceException {
-        return DataSourceManager.getInstance().getMailbox(this);
+    @Override
+    public boolean isSyncNeeded() throws ServiceException {
+        return getType() == Type.imap && ImapSync.isSyncNeeded(this);
+    }
+
+    @Override
+    public void mailboxDeleted() {
+        if (getType() == Type.imap) {
+            ImapSync.reset(this.getId());
+        }
     }
 }
 

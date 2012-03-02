@@ -21,6 +21,7 @@ function preload() {
 
 function shutdown() {
   stopServer();
+  return true;
 }
 
 function startServer() {
@@ -84,6 +85,14 @@ function reloadWebAppIni() {
   var iniFile = appRoot.clone();
   iniFile.append("webapp.ini");
   WebAppProperties.readINI(iniFile);  
+
+  var pos = WebAppProperties.uri.indexOf("127.0.0.1:");
+  var ss = WebAppProperties.uri.substring(pos + 10);
+  pos = ss.indexOf("/");
+  var prefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
+  if (prefs) {
+     prefs.setCharPref("capability.principal.codebase.p1.id", "http://127.0.0.1:" + ss.substr(0, pos));
+  }
 }
 
 function serverCheck() {
@@ -154,8 +163,7 @@ function checkForUpdates()
 }
 
 function quitApp() {
-  var appStartup = Cc["@mozilla.org/toolkit/app-startup;1"].getService(Ci.nsIAppStartup);
-  appStartup.quit(appStartup.eAttemptQuit);
+  window.platform.quit();
 }
 
 function shutdownService() {

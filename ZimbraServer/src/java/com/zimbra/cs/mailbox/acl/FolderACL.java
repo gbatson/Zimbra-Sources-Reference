@@ -26,6 +26,7 @@ import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.Server;
@@ -258,7 +259,8 @@ public class FolderACL {
         EffectiveACLCache.put(folder.getAccount().getId(), folder.getId(), acl);
         
         // return the effective permission - auth user dependent
-        return ownerMbx.getEffectivePermissions(octxt, folder.getId(), MailItem.TYPE_FOLDER);
+        return ownerMbx.getEffectivePermissions(octxt.getAuthenticatedUser(), octxt.isUsingAdminPrivileges(), 
+                folder.getId(), MailItem.TYPE_FOLDER);
     }
     
     private Short getEffectivePermissionsRemote() throws ServiceException {
@@ -276,7 +278,7 @@ public class FolderACL {
         if (mOctxt != null)
             authToken = mOctxt.getAuthToken();
         if (authToken == null)
-            authToken = AuthProvider.getAuthToken(ACL.ANONYMOUS_ACCT);
+            authToken = AuthProvider.getAuthToken(GuestAccount.ANONYMOUS_ACCT);
         transport.setAuthToken(authToken.toZAuthToken());
         transport.setTargetAcctId(mShareTarget.getAccountId());
         

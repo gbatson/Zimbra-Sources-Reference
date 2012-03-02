@@ -13,15 +13,9 @@
 -- ***** END LICENSE BLOCK *****
 -- 
 
-PRAGMA default_page_size = 2048;
-PRAGMA page_size = 2048;
-PRAGMA default_cache_size = 2000;
-PRAGMA cache_size = 2000;
+PRAGMA default_cache_size = 500;
 PRAGMA encoding = "UTF-8";
-PRAGMA fullsync = OFF;
-PRAGMA journal_mode = PERSIST;
 PRAGMA legacy_file_format = OFF;
-PRAGMA foreign_keys = ON;
 
 -- -----------------------------------------------------------------------
 -- volumes

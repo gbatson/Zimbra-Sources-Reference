@@ -4540,7 +4540,6 @@ var Dom = YAHOO.util.Dom,
         * @description The Editor class' initialization method
         */
         init: function(p_oElement, p_oAttributes) {
-
             if (!this._defaultToolbar) {
                 this._defaultToolbar = {
                     collapse: true,
@@ -4549,8 +4548,8 @@ var Dom = YAHOO.util.Dom,
                     buttons: [
                         { group: 'fontstyle', label: 'Font Name and Size',
                             buttons: [
-                                { type: 'select', label: 'Arial', value: 'fontname', disabled: true,
-                                    menu: [
+                                { type: 'select', label: p_oAttributes.defaultFont || 'Arial', value: 'fontname', disabled: true,
+                                    menu: p_oAttributes.fonts || [
                                         { text: 'Arial', checked: true },
                                         { text: 'Arial Black' },
                                         { text: 'Comic Sans MS' },
@@ -5379,8 +5378,9 @@ var Dom = YAHOO.util.Dom,
             }
 
             if (fn_button) {
-                for (var b = 0; b < fn_button._configs.menu.value.length; b++) {
-                    if (family && fn_button._configs.menu.value[b].text.toLowerCase() == family.toLowerCase()) {
+		var entries = fn_button._configs.menu.value;
+                for (var b = 0; b < entries.length; b++) {
+                    if (family && (entries[b].value && entries[b].value.toLowerCase() == family.toLowerCase()) || (entries[b].text && entries[b].text.toLowerCase() == family.toLowerCase())) {
                         validFont = true;
                         family = fn_button._configs.menu.value[b].text; //Put the proper menu name in the button
                     }
@@ -7453,17 +7453,17 @@ var Dom = YAHOO.util.Dom,
                 buttons: [
                     { group: 'fontstyle', label: 'Font Name and Size',
                         buttons: [
-                            { type: 'select', label: 'Arial', value: 'fontname', disabled: true,
-                                menu: [
-                                    { text: 'Arial', checked: true },
-                                    { text: 'Arial Black' },
-                                    { text: 'Comic Sans MS' },
-                                    { text: 'Courier New' },
-                                    { text: 'Lucida Console' },
-                                    { text: 'Tahoma' },
-                                    { text: 'Times New Roman' },
-                                    { text: 'Trebuchet MS' },
-                                    { text: 'Verdana' }
+                            { type: 'select', label: p_oAttributes.defaultFont || 'Arial', value: 'fontname', disabled: true,
+                                menu: p_oAttributes.fonts || [
+                                    	{ text: 'Arial', checked: true },
+                                        { text: 'Arial Black' },
+                                        { text: 'Comic Sans MS' },
+                                        { text: 'Courier New' },
+                                        { text: 'Lucida Console' },
+                                        { text: 'Tahoma' },
+                                        { text: 'Times New Roman' },
+                                        { text: 'Trebuchet MS' },
+                                        { text: 'Verdana' }
                                 ]
                             },
                             { type: 'spin', label: '13', value: 'fontsize', range: [ 9, 75 ], disabled: true }

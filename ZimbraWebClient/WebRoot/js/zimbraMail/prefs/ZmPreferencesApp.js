@@ -357,12 +357,26 @@ function() {
 		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
 	});
 
+	var styles=[],names=[];
+	for (var key in DwtHtmlEditor.FONT_FAMILY) {
+		var obj = DwtHtmlEditor.FONT_FAMILY[key];
+		styles.push(obj.value);
+		names.push(obj.name);
+	}
+
 	ZmPref.registerPref("COMPOSE_INIT_FONT_FAMILY", {
 		displayName:		ZmMsg.defaultFontSettings,
 		displayContainer:	ZmPref.TYPE_SELECT,
-		displayOptions: 	["Arial", "Times New Roman", "Courier", "Verdana"],
-		options: 			["Arial", "Times New Roman", "Courier", "Verdana"],
-		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
+		displayOptions: 	names,
+		options: 			styles,
+		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED],
+		approximateFunction: function(id) {
+			// Choose the style that comes closest, or the first if none is found
+			if (AjxUtil.indexOf(styles, id) != -1) {
+				return id;
+			}
+			return DwtHtmlEditor._normalizeFontId(id);
+		}
 	});
 
 	// Yuck: Should add functionality in Pref. to add prefix/postfix to all options. Meanwhile...

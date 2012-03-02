@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,16 +21,12 @@ function com_zimbra_socialDigg(zimlet) {
 
 com_zimbra_socialDigg.prototype.getDiggCategories =
 function() {
-
 	this.allDiggCats = new Array();
-	this.allDiggCats.push({query:"Popular in 24hours", name:"Popular in 24hours"});
-	this.allDiggCats.push({query:"technology", name:"technology"});
-	this.allDiggCats.push({query:"science", name:"science"});
-	this.allDiggCats.push({query:"sports", name:"sports"});
-	this.allDiggCats.push({query:"world_business", name:"world_business"});
-	this.allDiggCats.push({query:"entertainment", name:"entertainment"});
-	this.allDiggCats.push({query:"videos", name:"videos"});
-	this.allDiggCats.push({query:"Offbeat", name:"Offbeat"});
+	this.allDiggCats.push({query:"Popular in 24hours", name:this.zimlet.getMessage("popularIn24Hours")});
+	this.allDiggCats.push({query:"technology", name:this.zimlet.getMessage("technology")});
+	this.allDiggCats.push({query:"science", name:this.zimlet.getMessage("science")});
+	this.allDiggCats.push({query:"sports", name:this.zimlet.getMessage("sports")});
+	this.allDiggCats.push({query:"entertainment", name:this.zimlet.getMessage("entertainment")});
 
 	if (this.zimlet.preferences.social_pref_diggPopularIsOn) {
 		for (var i = 0; i < 1; i++) {
@@ -42,9 +38,21 @@ function() {
 	this.zimlet._updateAllWidgetItems({updateDiggTree:true});
 };
 
+com_zimbra_socialDigg.prototype._getQueryFromHeaderName =
+function(headerName) {
+	for(var i =0; i < this.allDiggCats.length; i++) {
+		var cat = this.allDiggCats[i];
+		if(cat.name == headerName) {
+			return cat.query;
+		}
+	}
+	return "Popular in 24hours";
+};
+
 com_zimbra_socialDigg.prototype.diggSearch =
 function(params) {
-	var query = params.query;
+	var headerName = params.headerName;
+	var query = this._getQueryFromHeaderName(headerName);
 	var url = "";
 	var tmp = new Date();
 	var time = ((new Date(tmp.getFullYear(), tmp.getMonth(), tmp.getDate())).getTime() - 3600 * 24 * 1000) / 1000;
@@ -57,14 +65,12 @@ function(params) {
 	var entireurl = ZmZimletBase.PROXY + AjxStringUtil.urlComponentEncode(url);
 	AjxRpc.invoke(null, entireurl, null, new AjxCallback(this, this._DiggSearchCallback, params), true);
 };
+
 com_zimbra_socialDigg.prototype._DiggSearchCallback =
 function(params, response) {
-	var text = response.text;
-	if (!response.success) {
-		var transitions = [ ZmToast.FADE_IN, ZmToast.PAUSE, ZmToast.PAUSE,  ZmToast.FADE_OUT ];
-		appCtxt.getAppController().setStatusMsg("Digg Error: " + text, ZmStatusView.LEVEL_WARNING, null, transitions);
-		return;
+	var jsonObj = this.zimlet._extractJSONResponse(params.tableId, this.zimlet.getMessage("diggError"), response);
+	if(jsonObj.stories) {
+		jsonObj = jsonObj.stories;
 	}
-	var jsonObj = eval("(" + text + ")");
-	this.zimlet.createCardView(params.tableId, jsonObj.stories, "DIGG");
+	this.zimlet.createCardView({tableId:params.tableId, items:jsonObj, type:"DIGG"});
 };

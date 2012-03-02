@@ -473,14 +473,7 @@ function(attId, docIds, draftType, callback) {
 
 	var respCallback = new AjxCallback(this, this._handleResponseSendMsg, [draftType, msg, callback]);
 	var errorCallback = new AjxCallback(this, this._handleErrorSendMsg, msg);
-	var resp = msg.send(isDraft, respCallback, errorCallback, acctName, null, requestReadReceipt);
-	
-	// XXX: temp bug fix #4325 - if resp returned, we're processing sync
-	//      request REVERT this bug fix once mozilla fixes bug #295422!
-	if (resp) {
-		this._processSendMsg(draftType, msg, resp);
-		if (callback) callback.run(resp);
-	}
+	msg.send(isDraft, respCallback, errorCallback, acctName, null, requestReadReceipt);
 };
 
 ZmComposeController.prototype._handleResponseSendMsg =
@@ -769,8 +762,7 @@ function(delMsg) {
 	actionNode.setAttribute("id", mailItem.id);
 	actionNode.setAttribute("op", "delete");
 
-	var async = window.parentController == null;
-	appCtxt.getAppController().sendRequest({soapDoc:soapDoc, asyncMode:async});
+    appCtxt.getAppController().sendRequest({soapDoc:soapDoc, asyncMode:true});
 };
 
 /**
@@ -1771,4 +1763,33 @@ function() {
 		DBG.println(AjxDebug.DBG1, "ZmComposeController: auth time save canceled. Action ID = " + this._authTimedAction._id);
 		this._authTimedAction = null;
 	}
+};
+
+ZmComposeController.prototype._pasteHandler = function( ev ){
+    var items,blob,controller,req;
+    if (ev.clipboardData){
+        items = ev.clipboardData.items;
+        if( items ){
+            blob = items[0].getAsFile();
+            if( blob ){
+                controller = this;
+                req = new XMLHttpRequest();
+                req.open("POST", appCtxt.get(ZmSetting.CSFE_ATTACHMENT_UPLOAD_URI)+"?fmt=extended,raw", true);
+                req.setRequestHeader("Cache-Control", "no-cache");
+                req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+                req.setRequestHeader("Content-Type", blob.type);
+                req.setRequestHeader("Content-Disposition", 'attachment; filename="' + ev.timeStamp + '"');//For paste from clipboard filename is undefined so we are using timestamp
+                req.onreadystatechange = function(){
+                    if(req.readyState === 4 && req.status === 200) {
+                        var resp = eval("["+req.responseText+"]");
+                        if(resp.length === 3) {
+                            resp[2].clipboardPaste = true;
+                            controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, resp[2]);
+                        }
+                    }
+                }
+                req.send(blob);
+            }
+        }
+    }
 };

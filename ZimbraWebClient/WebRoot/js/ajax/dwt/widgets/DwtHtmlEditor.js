@@ -823,10 +823,23 @@ function(content) {
 	var cont = AjxCallback.simpleClosure(this._finishHtmlModeInit, this);
 	setTimeout(cont, DwtHtmlEditor._INITDELAY);
 
+    if( this._isPasteEnabled ){
+        var pastecont = AjxCallback.simpleClosure(this._registerPasteEvent, this);
+        iFrame.onload = pastecont;
+    }
+
 	iFrame.src = this._blankIframeSrc || "";
 	htmlEl.appendChild(iFrame);
 
 	return iFrame;
+};
+
+DwtHtmlEditor.prototype._registerPasteEvent = function(){
+    var editor = this,
+        doc = editor._getIframeDoc();
+    //Always unregister event handler as safari and chrome fires multiple times if registered multiple
+    editor._unregisterEditorEventHandler(doc,"paste");
+    editor._registerEditorEventHandler(doc,"paste");
 };
 
 DwtHtmlEditor.prototype._finishHtmlModeInit =
@@ -966,7 +979,7 @@ function() {
 	var row = null;
 	if (!AjxEnv.isIE) {
 		try {
-			for (i = 0; range = sel.getRangeAt(i) && i < limit; i++) {
+			for (i = 0; (range = sel.getRangeAt(i)) && i < limit; i++) {
 				var td = range.startContainer.childNodes[range.startOffset];
 				if (td) {
 					if (td.parentNode != row) {
@@ -1683,7 +1696,8 @@ DwtHtmlEditor.prototype.insertLink = function(params) {
             var node = this._getIframeDoc().createElement("a");
             node.href = url;
             if (params.text)
-                node.innerHTML = params.text;
+                node.innerText = params.text;
+			
             this._insertNodeAtSelection(node, false);
             this.selectNodeContents(node);
         } else {
@@ -2126,3 +2140,46 @@ function(parentNode, regex, replaceString, mode, hits) {
 
 	return hits;
 };
+
+DwtHtmlEditor._normalizeFontId = function(id, dontFallback) {
+    var oldid = id;
+	id = id.replace(/,\s/g,",").replace(/'/g,"").toLowerCase(); // Make sure all ids that are supposed to be found in DwtHtmlEditor.FONT_FAMILY are actually found
+    if (!dontFallback) {
+        var map = DwtHtmlEditor.FONT_FAMILY;
+        if (map && !map[id]) {
+            var keys = AjxUtil.keys(map);
+            if (keys.length) {
+                var splitId = id.split(","); // e.g. ["times new roman","helvetica"]
+                for (var i=0; i<splitId.length; i++) { // Loop over input font names
+                    for (var j=0; j<keys.length; j++) { // Loop over candidate styles, e.g. ["arial,sans-serif","times new roman,serif"]
+                        if (keys[j].indexOf(splitId[i]) != -1) {
+                            return keys[j];
+                        }
+                    }
+                }
+                return keys[0];
+            }
+        }
+    }
+    return id;
+};
+DwtHtmlEditor._normalizeFontName = function(fontId) {
+    return DwtHtmlEditor.FONT_FAMILY[DwtHtmlEditor._normalizeFontId(fontId)].name;
+};
+DwtHtmlEditor._normalizeFontValue = function(fontId) {
+    return DwtHtmlEditor.FONT_FAMILY[DwtHtmlEditor._normalizeFontId(fontId)].value;
+};
+
+DwtHtmlEditor.FONT_FAMILY = {};
+(function() {
+	var KEYS = [ "fontFamilyIntl", "fontFamilyBase" ];
+	var i, j, key, value, name;
+	for (j = 0; j < KEYS.length; j++) {
+		for (i = 1; value = AjxMsg[KEYS[j]+i+".css"]; i++) {
+			if (value.match(/^#+$/)) break;
+			value = DwtHtmlEditor._normalizeFontId(value,true);
+			name = AjxMsg[KEYS[j]+i+".display"];
+			DwtHtmlEditor.FONT_FAMILY[value] = {name:name, value:value};
+		}
+	}
+})();

@@ -20,7 +20,7 @@
  * @class
  * @constructor
  */
-ZmHtmlEditor = function(parent, posStyle, content, mode, withAce) {
+ZmHtmlEditor = function(parent, posStyle, content, mode, withAce, enablePaste) {
 	if (arguments.length == 0) return;
 	this._toolbars = [];
 
@@ -31,6 +31,10 @@ ZmHtmlEditor = function(parent, posStyle, content, mode, withAce) {
 	if (this.ACE_ENABLED) {
 		this._ace_componentsLoading = 0;
 	}
+
+    if(enablePaste){
+        this._isPasteEnabled = enablePaste;
+    }
 
 	DwtHtmlEditor.call(this, {parent:parent, className:"ZmHtmlEditor", posStyle:posStyle,
 							  content:content, mode:mode, blankIframeSrc:appContextPath+"/public/blank.html"});
@@ -59,19 +63,6 @@ ZmHtmlEditor.__makeFontName = function(value) {
 ZmHtmlEditor.__toUpperCase = function(s) {
 	return s.toUpperCase();
 };
-
-ZmHtmlEditor.FONT_FAMILY = {};
-(function() {
-	var KEYS = [ "fontFamilyIntl", "fontFamilyBase" ];
-	var i, j, key, value, name;
-	for (j = 0; j < KEYS.length; j++) {
-		for (i = 1; value = AjxMsg[KEYS[j]+i+".css"]; i++) {
-			if (value.match(/^#+$/)) break;
-			name = AjxMsg[KEYS[j]+i+".display"];
-			ZmHtmlEditor.FONT_FAMILY[value] = {name:name, value:value};
-		}
-	}
-})();
 
 // Big ugly RegExp, looking for iframe tags where the id starts with "ACE-"
 ZmHtmlEditor.ACE_IFRAME_RE = new RegExp("<iframe\\s+.*?\\bid\\s*=\\s*[\"']?(ace-[^\"'\\s]*).*?>.*?</iframe(\\s.*?)?>", "ig");
@@ -320,7 +311,7 @@ function() {
 
 ZmHtmlEditor.prototype._resetFormatControlDefaults =
 function() {
-	this._fontFamilyButton.setText(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
+	this._fontFamilyButton.setText(DwtHtmlEditor._normalizeFontName(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY)));
 	this._fontSizeButton.setText(this._getFontSizeLabel(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE)));
 	this._fontColorButton.setColor(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_COLOR));
 	this._styleMenu.checkItem(ZmHtmlEditor._VALUE, DwtHtmlEditor.PARAGRAPH, true);
@@ -364,9 +355,8 @@ ZmHtmlEditor.prototype._setFontStyles =
 function() {
 	var doc = this._getIframeDoc();
 	var style = doc.body && doc.body.style;
-
 	if (style) {
-		style.fontFamily = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY);
+		style.fontFamily = DwtHtmlEditor._normalizeFontValue(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
 		style.fontSize = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
 		style.color = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_COLOR);
 	}
@@ -651,9 +641,8 @@ function(ev) {
 
 ZmHtmlEditor.prototype._fontFamilyListener =
 function(ev) {
-	var id = ev.item.getData(ZmHtmlEditor._VALUE);
-	this.setFont(ZmHtmlEditor.FONT_FAMILY[id].value);
-	this._fontFamilyButton.setText(ZmHtmlEditor.FONT_FAMILY[id].name);
+	this.setFont(DwtHtmlEditor._normalizeFontValue(ev.item.getData(ZmHtmlEditor._VALUE)));
+	//this._fontFamilyButton.setText(DwtHtmlEditor.FONT_FAMILY[id] && DwtHtmlEditor.FONT_FAMILY[id].name || ZmHtmlEditor.__makeFontName(id));
 };
 
 ZmHtmlEditor.prototype._fontSizeListener =
@@ -1021,7 +1010,7 @@ function(html, insertFontStyle, onlyInnerContent) {
 		if (insertFontStyle) {
 			cont[idx++] = "<div";
 			cont[idx++] = " style='font-family:";
-			cont[idx++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY);
+			cont[idx++] = DwtHtmlEditor._normalizeFontValue(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
 			cont[idx++] = "; font-size: ";
 			cont[idx++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
 			cont[idx++] = "; color: ";
@@ -1055,7 +1044,7 @@ ZmHtmlEditor.prototype._getFontStyle =
 function(html) {
 	var a = [], i = 0;
 	a[i++] = "<div style='font-family: ";
-	a[i++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY);
+	a[i++] = DwtHtmlEditor._normalizeFontValue(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
 	a[i++] = "; font-size: ";
 	a[i++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
 	a[i++] = "; color: ";
@@ -1337,11 +1326,11 @@ function(tb) {
 	var menu = new ZmPopupMenu(this._fontFamilyButton);
 	var listener = new AjxListener(this, this._fontFamilyListener);
 
-	for (var id in ZmHtmlEditor.FONT_FAMILY) {
-		var item = ZmHtmlEditor.FONT_FAMILY[id];
-		var mi = menu.createMenuItem(item.name, {text:item.name});
+	for (var id in DwtHtmlEditor.FONT_FAMILY) {
+		var name = DwtHtmlEditor.FONT_FAMILY[id] && DwtHtmlEditor.FONT_FAMILY[id].name || ZmHtmlEditor.__makeFontName(id);
+		var mi = menu.createMenuItem(name, {text:name});
 		mi.addSelectionListener(listener);
-		mi.setData(ZmHtmlEditor._VALUE, item.value);
+		mi.setData(ZmHtmlEditor._VALUE, DwtHtmlEditor.FONT_FAMILY[id] && DwtHtmlEditor.FONT_FAMILY[id].value || ZmHtmlEditor.__makeFontName(id));
 	}
 
 	this._fontFamilyButton.setMenu(menu);
@@ -1412,10 +1401,7 @@ function(ev) {
 		// and an un-updated toolbar, rather than the other way around.
 
 		if (ev.fontFamily) {
-			var id = ev.fontFamily;
-			var name = ZmHtmlEditor.FONT_FAMILY[id] && ZmHtmlEditor.FONT_FAMILY[id].name;
-			name = name || ZmHtmlEditor.__makeFontName(id);
-			this._fontFamilyButton.setText(name);
+			this._fontFamilyButton.setText(DwtHtmlEditor._normalizeFontName(ev.fontFamily));
 		}
 
 		if (ev.fontSize) {
@@ -1699,7 +1685,7 @@ ZmHtmlEditor.prototype._nextElement = function(el) {
 
 ZmHtmlEditor.prototype._elementIsIEFiller =
 function(el) {
-	if (el.attributes) {
+	if (el && el.attributes) {
 		for (var i=0; i<el.attributes.length; i++) {
 			if (el.attributes[i].name=="_ieFiller") {
 				return true;

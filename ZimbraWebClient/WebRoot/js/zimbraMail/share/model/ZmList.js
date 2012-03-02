@@ -415,7 +415,9 @@ function(params) {
 	params.attrs = {tag:tagId};
 	params.action = doTag ? "tag" : "!tag";
     params.actionText = doTag ? ZmMsg.actionTag : ZmMsg.actionUntag;
-    params.actionArg = params.tag && params.tag.name;
+    if (params.tag && params.tag.name) {
+        params.actionArg = AjxStringUtil.htmlEncode(params.tag.name);
+	}
 
 	this._itemAction(params);
 };
@@ -1013,6 +1015,7 @@ function(summary) {
 		ZmList.progressDialog = null;
 	}
 	if (summary) {
+		summary = AjxStringUtil.htmlEncode(summary); //encode html special chars such as < and > so won't be interpreted as html (both for security and for not losing visibility of characters)
 		appCtxt.setStatusMsg(summary);
 	}
 };

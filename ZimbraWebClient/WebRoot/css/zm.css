@@ -735,13 +735,14 @@ INPUT[type="text"].people_search_input {
 	border: 0px !important;
 	outline: none !important;
 	margin-left: 3px;
+    margin-bottom: 3px;
 }
 
 .addrBubbleContainer input:first-child {
 	margin-left: 0;
 }
 
-.addrBubble, .addrBubble-selected {
+.addrBubble, .addrBubble-selected, .addrBubble-actioned {
 	color: black;
 	border: 1px solid #999999;
 	padding: 1px 3px;
@@ -765,6 +766,10 @@ INPUT[type="text"].people_search_input {
 	background-color: @SelC@;
 }
 
+.addrBubble-actioned {
+	background-color: @RightClickColor@;
+}
+
 .addrBubbleHolder span:hover {
 	cursor: pointer;
 }
@@ -772,6 +777,21 @@ INPUT[type="text"].people_search_input {
 .addrBubble .link {
 	color: #666666;
 	cursor: pointer;
+}
+
+.addrBubbleInsertionBar {
+	background-color: black;
+	width: 2px;
+	height: auto;
+	margin-bottom: 2px;
+	margin-left: 3px;
+}
+
+.addrBubbleHide {
+	display:inline-block;
+	overflow:hidden;
+	width:1px;
+	height:1px;
 }
 
 /*
@@ -1239,7 +1259,19 @@ line-height:normal;
 	overflow: hidden;
 }
 
+.ZmCompletedtask td{
+    text-decoration: line-through;
+    color: #999999;
+}
 
+.ZmOverduetask td{
+    color: red;
+}
+
+.ZmOverdueCompletedtask td{
+    text-decoration: line-through;
+    color: red;
+}
 
 /*
  *	Calendar application
@@ -2892,7 +2924,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	@TabRoundCorners@
 }
 
-.ZOptionsSectionTabView .ZTab.ZSelected .ZTabBorder {
+.ZOptionsSectionTabView .ZSelected .ZTabBorder {
 	background-color: @AppC@;
 	border-bottom-color: @AppC@;
 }
@@ -3469,6 +3501,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	@Text-disabled@;
 	padding: 6px;
 	width: 250px;
+    background-color: #FFFFFF;
 }
 
 .shortcutKeys-panel {
@@ -3490,6 +3523,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	padding: 5px;
 	@SeparatorBorder@
 	color: black;
+    background-color: #FFFFFF;
 }
 
 .shortcutDescription-panel, .shortcutDescription-print {
@@ -3525,6 +3559,7 @@ HTML>BODY .appt-selected .appt_allday_body
 	@SeparatorBorder@
 	@Text@
 	line-height: 22px;
+    background-color: @AppC@;
 }
 
 .shortcutKey-panel, .shortcutKey-print {
@@ -4469,7 +4504,7 @@ If you feel compelled to have a background color, please do so on a per skin lev
 }
 
 .ZmSelectAddrDialog {
-	width: 400px;
+	width: 375px;
 }
 
 /*Briefcase Split View */

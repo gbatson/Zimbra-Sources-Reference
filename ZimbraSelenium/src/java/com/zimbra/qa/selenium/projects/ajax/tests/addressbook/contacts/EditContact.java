@@ -8,10 +8,12 @@ import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.ui.Toaster;
 import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.*;
 
 
@@ -24,7 +26,7 @@ public class EditContact extends AjaxCommonTest  {
 		super.startingPage =  app.zPageAddressbook;
 
 		// Make sure we are using an account with conversation view
-		super.startingAccount = null;		
+		super.startingAccountPreferences = null;		
 		
 	}
 	
@@ -48,6 +50,7 @@ public class EditContact extends AjaxCommonTest  {
 
         // Refresh the view, to pick up the new contact
         FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
+        GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
         app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
 
         // Select the contact
@@ -71,7 +74,9 @@ public class EditContact extends AjaxCommonTest  {
 		
         
         //verify toasted message Contact Saved
-        ZAssert.assertStringContains(app.zPageAddressbook.sGetText("xpath=//div[@id='z_toast_text']"), "Contact Saved", "Verify toast message 'Contact Saved'");
+        Toaster toast = app.zPageMain.zGetToaster();
+        String toastMsg = toast.zGetToastMessage();
+        ZAssert.assertStringContains(toastMsg, "Contact Saved", "Verify toast message 'Contact Saved'");
 
         //verify new contact item is displayed
         List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();   

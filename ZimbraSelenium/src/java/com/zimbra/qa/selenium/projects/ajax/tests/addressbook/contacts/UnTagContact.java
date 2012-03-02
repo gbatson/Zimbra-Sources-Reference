@@ -1,19 +1,19 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
 
-import java.util.List;
-
 import org.testng.annotations.Test;
 
-import com.zimbra.qa.selenium.framework.items.*;
+import com.zimbra.qa.selenium.framework.items.ContactItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
-import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
-import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.ui.Action;
+import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
+import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZAssert;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.DialogTag;
+import com.zimbra.qa.selenium.projects.ajax.ui.Toaster;
 
 
 public class UnTagContact extends AjaxCommonTest  {
@@ -23,7 +23,7 @@ public class UnTagContact extends AjaxCommonTest  {
 		// All tests start at the Address page
 		super.startingPage = app.zPageAddressbook;
 
-		super.startingAccount = null;		
+		super.startingAccountPreferences = null;		
 		
 	}
 	
@@ -41,21 +41,28 @@ public class UnTagContact extends AjaxCommonTest  {
                 "</CreateTagRequest>");
 		String tagid = app.zGetActiveAccount().soapSelectValue("//mail:CreateTagResponse/mail:tag", "id");
 
-		 // Create a contact with tag
-		ContactItem contactItem = ContactItem.generateContactItem(GenerateItemType.Basic);
-		contactItem.setId(tagid);
-		
+		String tagParam = " t='" + tagid + "'";;
+		String firstName = "first" + ZimbraSeleniumProperties.getUniqueString();		
+		String lastName = "last" + ZimbraSeleniumProperties.getUniqueString();
+	    String email = "email" +  ZimbraSeleniumProperties.getUniqueString() + "@zimbra.com";
+		//default value for file as is last, first
+		String fileAs = lastName + ", " + firstName;
+	
         app.zGetActiveAccount().soapSend(
                 "<CreateContactRequest xmlns='urn:zimbraMail'>" +
-                "<cn t='" + tagid + "' fileAsStr='" + contactItem.lastName + "," + contactItem.firstName + "' >" +
-                "<a n='firstName'>" + contactItem.firstName +"</a>" +
-                "<a n='lastName'>" + contactItem.lastName +"</a>" +
-                "<a n='email'>" + contactItem.email + "</a>" +               
+                "<cn " + tagParam + " fileAsStr='" + fileAs + "' >" +
+                "<a n='firstName'>" + firstName +"</a>" +
+                "<a n='lastName'>" + lastName +"</a>" +
+                "<a n='email'>" + email + "</a>" +               
                 "</cn>" +            
                 "</CreateContactRequest>");
+
+				        
+        ContactItem contactItem = ContactItem.importFromSOAP(app.zGetActiveAccount(), "FIELD[lastname]:" + lastName + "");
         
         // Refresh the view, to pick up the new contact
         FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
+        GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
         app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
                
         // Select the item
@@ -67,14 +74,16 @@ public class UnTagContact extends AjaxCommonTest  {
 		
 		app.zGetActiveAccount().soapSend(
 					"<GetContactsRequest xmlns='urn:zimbraMail'>" +
-						"<m id='"+ contactItem.getId() +"'/>" +
+						"<cn id='"+ contactItem.getId() +"'/>" +
 					"</GetContactsRequest>");
 		String contactTag = app.zGetActiveAccount().soapSelectValue("//mail:GetContactsResponse//mail:cn", "t");
 		
 		ZAssert.assertNull(contactTag, "Verify that the tag is removed from the contact");
 	      
 		//verify toasted message 'contact created'
-        ZAssert.assertStringContains(app.zPageAddressbook.sGetText("xpath=//div[@id='z_toast_text']"), "All tags removed from 1 contact", "Verify toast message 'All tags removed from 1 contact'");
+        Toaster toast = app.zPageMain.zGetToaster();
+        String toastMsg = toast.zGetToastMessage();
+        ZAssert.assertStringContains(toastMsg, "All tags removed from 1 contact", "Verify toast message 'All tags removed from 1 contact'");
 	 
    	}
 	

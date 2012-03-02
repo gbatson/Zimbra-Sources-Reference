@@ -269,16 +269,17 @@ function(htmlArr, idx, headerCol, i, numCols, id, defaultColumnSort) {
 	htmlArr[idx++] = "<td id='";
 	htmlArr[idx++] = id;
 	htmlArr[idx++] = "' class='";
-	htmlArr[idx++] = (id == this._currentColId)
-		? "DwtListView-Column DwtListView-ColumnActive'"
-		: "DwtListView-Column'";
+    var tmpClass = (id == this._currentColId) ? "DwtListView-Column DwtListView-ColumnActive"
+		: "DwtListView-Column";
+    tmpClass += headerCol._sortable ? "" : " DwtDefaultCursor";
+    htmlArr[idx++] = tmpClass + "'";
 	if (headerCol._width) {
 		htmlArr[idx++] = " width=";
 		htmlArr[idx++] = headerCol._width;
 		if (headerCol._widthUnits) {
 			htmlArr[idx++] = headerCol._widthUnits;
 		}
-	}
+    }
 	htmlArr[idx++] = ">";
 	// must add a div to force clipping :(
 	htmlArr[idx++] = "<div";
@@ -921,7 +922,7 @@ function(row) {
 		// is different from the old selection.
 		// In the case where a header item is dragged over, the row might be
 		// null or void.
-		if (!row || row.id != oldRow.id) {
+		if (!row || (oldRow && (row.id != oldRow.id))) {
 			this._updateDragSelection(oldRow, false);
 		}
 	}
@@ -946,6 +947,14 @@ function(row) {
 		this._updateDragSelection(oldRow, false);
 		this._dragHighlight = null;
 	}
+};
+
+DwtListView.prototype.scrollToItem =
+function(item){
+    var el = this._getElFromItem(item);
+    if(el){
+        this._listDiv.scrollTop = el.offsetTop;
+    }
 };
 
 DwtListView.prototype.scrollToTop =
@@ -1286,7 +1295,7 @@ DwtListView.prototype._getDivHtml =
 function(item, params, html, idx, count) {
 
 	html[idx++] = "<div class='";
-	html[idx++] = this._getDivClass(this._normalClass, item, params);
+	html[idx++] = this._getDivClass(params.divClass || this._normalClass, item, params);
 	html[idx++] = " ";
 	html[idx++] = (count % 2) ? DwtListView.ROW_CLASS_EVEN : DwtListView.ROW_CLASS_ODD;
 	html[idx++] = "'";
@@ -1703,7 +1712,9 @@ function(ev) {
 
 DwtListView.prototype._updateDragSelection =
 function(row, select) {
-    // TODO
+
+	if (!row) { return; }
+	
     if (!select) {
 		row.className = this._getItemData(row, "origClassName");
 	} else {
@@ -1734,6 +1745,9 @@ function(mouseEv, div) {
 		div.className = (div.id != this._currentColId)
 			? "DwtListView-Column"
 			: "DwtListView-Column DwtListView-ColumnActive";
+        var hdr = this.getItemFromElement(div);
+        if (!hdr._sortable)
+            div.className += " DwtDefaultCursor";
 	} else if (type == DwtListView.TYPE_HEADER_SASH) {
 		div.style.cursor = "auto";
 	}

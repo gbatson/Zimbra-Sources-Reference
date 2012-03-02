@@ -4167,12 +4167,54 @@ Dwt_Button_XFormItem.prototype.constructWidget = function () {
 		widget.setImage(icon);
 	}
 	
+	var isToolTip = false;	
 	var toolTipContent = this.getInheritedProperty("toolTipContent");
 	if(toolTipContent != null) {
 		widget.setToolTipContent(toolTipContent);
+		isToolTip = true;
 	}
 	
-	widget.setText(this.getLabel());
+        var labelContent = this.getLabel();
+	
+	try{
+		var size = Dwt.getSize(this.getContainer());
+		if(labelContent){
+			var totalCharWidth = AjxStringUtil.getWidth(labelContent);
+			var textLength;
+			if(icon){	
+				textLength = size.x - 42; // exclude icons, paddings, margin, borders
+			}
+			else{
+				textLength = size.x - 22; // exclude paddings, margin, borders
+			}
+			
+			if( (textLength > 0) && (totalCharWidth > textLength)){
+				if(!isToolTip){
+                                	widget.setToolTipContent(labelContent);
+                                }
+
+				var totalNumber = labelContent.length;
+				var textLength = textLength - AjxStringUtil.getWidth("..."); // three '.'
+				var maxNumberOfLetters= Math.floor(textLength * totalNumber / totalCharWidth);
+				if(textLength > 0){
+					labelContent = labelContent.substring(0, maxNumberOfLetters) + "...";
+				}
+				else{
+					labelContent = "";
+				}
+			}
+			 
+			el =  widget.getHtmlElement();
+                        var tableEl = el.firstChild;
+                       	if(!tableEl.style.width){
+                        	tableEl.style.width = "100%";
+                        }
+
+		}		
+	}catch(ex){
+	}
+
+	widget.setText(labelContent);
 
 	var onActivateMethod = this.getOnActivateMethod();
 	if (onActivateMethod != null) {
@@ -4849,6 +4891,31 @@ Dwt_Alert_XFormItem.prototype.constructWidget = function() {
 	alert.setTitle(title);
 	alert.setContent(content);
 	
+	// bug fix wrong IE box model when conculating the width
+	if(AjxEnv.isIE){
+		try{	
+			var htmlElement = alert.getHtmlElement();
+                	var size = Dwt.getSize(htmlElement);
+		
+			var container = this.getContainer();
+			var containerSize =  Dwt.getSize(container);
+			
+			var style = DwtCssStyle.getComputedStyleObject(htmlElement);	
+		        var bl = parseInt(style.borderLeftWidth)     || 1;
+                        var br = parseInt(style.borderRightWidth)    || 1;
+                        var pl = parseInt(style.paddingLeft)         || 5;
+                        var pr = parseInt(style.paddingRight)        || 5;
+                        var ml = parseInt(style.marginLeft)          || 5;
+                        var mr = parseInt(style.marginRight)         || 5;
+                        var extraWidth = bl + br + pl + pr + ml + mr;
+			
+			if(containerSize.x > extraWidth){
+				size.x = containerSize.x - extraWidth;
+				Dwt.setSize(htmlElement, size.x, size.y);
+			}
+		}catch(ex){
+		}
+	}	
 	return alert;
 }
 

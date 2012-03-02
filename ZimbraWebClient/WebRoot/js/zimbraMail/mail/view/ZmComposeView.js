@@ -45,6 +45,11 @@ ZmComposeView = function(parent, controller, composeMode) {
 	ZmComposeView.NOTIFY_ACTION_MAP[ZmOperation.REPLY_DECLINE]		= ZmOperation.REPLY_DECLINE_NOTIFY;
 	ZmComposeView.NOTIFY_ACTION_MAP[ZmOperation.REPLY_TENTATIVE]	= ZmOperation.REPLY_TENTATIVE_NOTIFY;
 
+	ZmComposeView.MOVE_TO_FIELD = {};
+	ZmComposeView.MOVE_TO_FIELD[ZmOperation.MOVE_TO_TO]		= AjxEmailAddress.TO;
+	ZmComposeView.MOVE_TO_FIELD[ZmOperation.MOVE_TO_CC]		= AjxEmailAddress.CC;
+	ZmComposeView.MOVE_TO_FIELD[ZmOperation.MOVE_TO_BCC]	= AjxEmailAddress.BCC;
+	
 	this._onMsgDataChange = new AjxCallback(this, this._onMsgDataChange);
 	this._useAcAddrBubbles = appCtxt.get(ZmSetting.USE_ADDR_BUBBLES);
 
@@ -150,6 +155,7 @@ function(params) {
 	// list of msg Id's to add as attachments
 	this._msgIds = params.msgIds;
 
+	AjxDebug.println(AjxDebug.REPLY, "Reset compose view: set compose view");
 	this.reset(true);
 
 	this._setFromSelect(msg);
@@ -379,7 +385,7 @@ function(msg) {
 ZmComposeView.prototype._handleInlineAtts =
 function(msg, handleInlineDocs){
 
-	var handled = false, ci, cid, dfsrc, inlineAtt;
+	var handled = false, ci, cid, dfsrc, inlineAtt, attached = {};
 
 	var idoc = this._htmlEditor._getIframeDoc();
 	var images = idoc.getElementsByTagName("img");
@@ -398,9 +404,12 @@ function(msg, handleInlineDocs){
 					if (!inlineAtt && this._msg) {
 						inlineAtt = this._msg.findInlineAtt(ci);
 					}
-					if (inlineAtt) {
-						msg.addInlineAttachmentId(cid, null, inlineAtt.part);
-						handled = true;
+                    if (inlineAtt) {
+                        if(!attached[(cid+"_"+inlineAtt.part)]){
+                            msg.addInlineAttachmentId(cid, null, inlineAtt.part);
+                            handled = true;
+                            attached[(cid+"_"+inlineAtt.part)] = true;
+                        }
 					}
 				}
 			}
@@ -612,15 +621,27 @@ function(attId, isDraft, dummyMsg, forceBail, contactId) {
 
 		htmlPart.setContent(defangedContent);
         
-        //set img src to cid and remove dfsrc before sending
+        //set img src to cid for inline or dfsrc if external image and remove dfsrc before sending
         var content = htmlPart.getContent();
         var imgContent = content.split(/<img/i);
         for(var i=0; i<imgContent.length; i++){
+            var externalImage = false;
             var dfsrc = imgContent[i].match(/cid:[^\"\']+/); //look for CID assignment in image
-            if (dfsrc && dfsrc.length > 0){
-                var tempStr = imgContent[i].replace(/\s+src=[\"\'][^\"\']+[\"\']/," src=\""+dfsrc[0]+"\"");
-                tempStr = tempStr.replace(/dfsrc=[\"\'][^\"\']+[\"\']+/,"");
+            if (!dfsrc){
+                dfsrc = imgContent[i].match(/\s+dfsrc=[\"\'][^\"\']+[\"\']+/); //look for dfsrc="" in image
+                externalImage = dfsrc ? true : false;
+            }
+            if (dfsrc && dfsrc.length > 0 && !externalImage){
+                var tempStr = imgContent[i].replace(/\s+src=[\"\'][^\"\']+[\"\']/," src=\""+dfsrc[0]+"\""); //set src to cid
+                tempStr = tempStr.replace(/\s+dfsrc=[\"\'][^\"\']+[\"\']+/,"");
                 content = content.replace(imgContent[i], tempStr);
+            }
+            else if (dfsrc && dfsrc.length > 0 && externalImage){
+                var tempArr = imgContent[i].match(/\s+dfsrc=[\"\']([^\"\']+)[\"\']/); //match dfsrc
+                if (tempArr && tempArr.length > 1) {
+                   var tempStr = imgContent[i].replace(/\s+dfsrc=[\"\'][^\"\']+[\"\']/," src=\""+tempArr[1]+"\"");
+                   content = content.replace(imgContent[i], tempStr);
+                }
             }
         }
 
@@ -872,7 +893,8 @@ function(type, addr) {
 		}
 		else {
 			if (addr.isAjxEmailAddress) {
-				addrInput.add(addrStr, {isDL: addr.isGroup && addr.canExpand, email: addrStr}, true);
+				var match = {isDL: addr.isGroup && addr.canExpand, email: addrStr};
+				addrInput.addBubble({address:addrStr, match:match, skipNotify:true});
 			}
 			else {
 				this._setAddrFieldValue(type, addrStr);
@@ -936,9 +958,11 @@ function(composeMode, switchPreface) {
 
 			// Do the mode switch
 			this._htmlEditor.setMode(composeMode, true);
-			// Re-set the whole body, with optional replied/forwarded msg and signature automatically added. baseContent is the text that the user may have written before switching
-			this._setBody(this._action, this._msg || null, baseContent || "\n", null, true);
-
+			
+			if (this._action != ZmOperation.DRAFT) {
+				// Re-set the whole body, with optional replied/forwarded msg and signature automatically added. baseContent is the text that the user may have written before switching
+				this._setBody(this._action, this._msg || null, baseContent || "\n", null, true);
+			}
 		} else {
 
 			var self = this;
@@ -1086,13 +1110,13 @@ function(msgObj) {
 };
 
 ZmComposeView.prototype._fixMultipartRelatedImages_onTimer =
-function(msg) {
+function(msg, account) {
 	// first time the editor is initialized, idoc.getElementsByTagName("img") is empty
 	// Instead of waiting for 500ms, trying to add this callback. Risky but works.
 	if (!this._firstTimeFixImages) {
-		this._htmlEditor.addOnContentInitializedListener(new AjxCallback(this, this._fixMultipartRelatedImages, [msg, this._htmlEditor._getIframeDoc()]));
+		this._htmlEditor.addOnContentInitializedListener(new AjxCallback(this, this._fixMultipartRelatedImages, [msg, this._htmlEditor._getIframeDoc(), account]));
 	} else {
-		this._fixMultipartRelatedImages(msg, this._htmlEditor._getIframeDoc());
+		this._fixMultipartRelatedImages(msg, this._htmlEditor._getIframeDoc(), account);
 	}
 };
 
@@ -1103,12 +1127,12 @@ function(msg) {
  * @private
  */
 ZmComposeView.prototype._fixMultipartRelatedImages =
-function(msg, idoc) {
+function(msg, idoc, account) {
 	if (!this._firstTimeFixImages) {
 		this._htmlEditor.removeOnContentInitializedListener();
 		var self = this; // Fix possible hiccups during compose in new window
 		setTimeout(function() {
-				self._fixMultipartRelatedImages(msg, self._htmlEditor._getIframeDoc());
+				self._fixMultipartRelatedImages(msg, self._htmlEditor._getIframeDoc(), account);
 		}, 10);
 		this._firstTimeFixImages = true;
 		return;
@@ -1138,19 +1162,19 @@ function(msg, idoc) {
 			if (dfsrc.substring(0,4) == "cid:") {
 				num++;
 				var cid = "<" + dfsrc.substring(4).replace("%40","@") + ">";
-				var src = msg.getContentPartAttachUrl(ZmMailMsg.CONTENT_PART_ID, cid);
-				//Cache cleared, becoz part id's may change.
-				src = src + "&t=" + (new Date()).getTime();
+				var src = msg && msg.getContentPartAttachUrl(ZmMailMsg.CONTENT_PART_ID, cid);
 				if (src) {
+                    //Cache cleared, becoz part id's may change.
+				    src = src + "&t=" + (new Date()).getTime();
 					images[i].src = src;
 					images[i].setAttribute("dfsrc", dfsrc);
 				}
 			} else if (dfsrc.substring(0,4) == "doc:") {
-				images[i].src = [appCtxt.get(ZmSetting.REST_URL), ZmFolder.SEP, dfsrc.substring(4)].join('');
-			} else if (msg && dfsrc.indexOf("//") == -1) { // check for content-location verison
-				var src = msg.getContentPartAttachUrl(ZmMailMsg.CONTENT_PART_LOCATION, dfsrc);
-				//Cache cleared, becoz part id's may change.
+				images[i].src = [appCtxt.get(ZmSetting.REST_URL, null, account), ZmFolder.SEP, dfsrc.substring(4)].join('');
+			} else if (dfsrc.indexOf("//") == -1) { // check for content-location verison
+				var src = msg && msg.getContentPartAttachUrl(ZmMailMsg.CONTENT_PART_LOCATION, dfsrc);
 				if (src) {
+                    //Cache cleared, becoz part id's may change.
 					src = src + "&t=" + (new Date()).getTime();
 					num++;
 					images[i].src = src;
@@ -1229,7 +1253,7 @@ function(idoc) {
 				img.setAttribute("doc", dfsrc.substring(4, dfsrc.length));
 			} else {
 				// If "Display External Images" is false then handle Reply/Forward
-				if (dfsrc)
+				if (dfsrc && (!this._msg || this._msg.showImages))
 					//IE: Over HTTPS, http src urls for images might cause an issue.
 					try{ img.src = dfsrc; }catch(ex){};
 				}
@@ -1468,7 +1492,7 @@ function(content, oldSignatureId, account, newSignatureId, skipSave) {
 	if (!donotsetcontent) {
 		this._htmlEditor.setContent(content);
 	}
-	this._fixMultipartRelatedImages_onTimer(this._msg, this.getHtmlEditor()._getIframeDoc());
+	this._fixMultipartRelatedImages_onTimer(this._msg, account);
 
 	//Caching previous Signature state.
 	this._previousSignature = signature;
@@ -1634,12 +1658,13 @@ function(content, sigStyle, sig, newLine) {
 	return content;
 };
 
-ZmComposeView.prototype._dispose =
+ZmComposeView.prototype.dispose =
 function() {
 	if (this._identityChangeListenerObj) {
 		var collection = appCtxt.getIdentityCollection();
 		collection.removeChangeListener(this._identityChangeListenerObj);
 	}
+	DwtComposite.prototype.dispose.call(this);
 };
 
 ZmComposeView.prototype.getSignatureById =
@@ -1910,29 +1935,65 @@ function(name) {
 	return forAttIds;
 };
 
-
 /**
  * a callback that's called when bubbles are added or removed, since we need to resize the msg body in those cases.
  */
 ZmComposeView.prototype._bubblesChangedCallback =
 function() {
-
-	if (!this._useAcAddrBubbles) {
-		return;
-	}
-
+	if (!this._useAcAddrBubbles) { return; }
 	this._resetBodySize(); // body size might change due to change in size of address field (due to new bubbles).
-
 };
 
+ZmComposeView.prototype._bubbleMenuCreated =
+function(addrInput, menu) {
+
+	if (!this._useAcAddrBubbles) { return; }
+
+	this._bubbleActionMenu = menu;
+
+	menu.addOp(ZmOperation.SEP);
+	var ops = [ZmOperation.MOVE_TO_TO, ZmOperation.MOVE_TO_CC, ZmOperation.MOVE_TO_BCC];
+	var listener = new AjxListener(this, this._bubbleMove);
+	for (var i = 0; i < ops.length; i++) {
+		menu.addOp(ops[i]);
+		menu.addSelectionListener(ops[i], listener);
+	}
+};
+
+ZmComposeView.prototype._bubbleMenuResetOperations =
+function(addrInput, menu) {
+	var sel = addrInput.getSelection();
+	var ops = [ZmOperation.MOVE_TO_TO, ZmOperation.MOVE_TO_CC, ZmOperation.MOVE_TO_BCC];
+	for (var i = 0; i < ops.length; i++) {
+		var op = ops[i];
+		var type = ZmComposeView.MOVE_TO_FIELD[op];
+		menu.enable(op, sel.length > 0 && (type != addrInput.type));
+	}
+};
+
+ZmComposeView.prototype._bubbleMove =
+function(ev) {
+
+	var sourceInput = ZmAddressInputField.menuContext.addrInput;
+	var op = ev && ev.item && ev.item.getData(ZmOperation.KEY_ID);
+	var type = ZmComposeView.MOVE_TO_FIELD[op];
+	var targetInput = this._addrInputField[type];
+	if (sourceInput && targetInput) {
+		var sel = sourceInput.getSelection();
+		if (sel.length) {
+			for (var i = 0; i < sel.length; i++) {
+				var bubble = sel[i];
+				targetInput.addBubble({bubble:bubble});
+				this._showAddressField(type, true);
+				sourceInput.removeBubble(bubble.id);
+			}
+		}
+	}
+};
 
 ZmComposeView.prototype._acCompHandler =
 function(text, el, match) {
-
-	if (this._useAcAddrBubbles) {
-		return;
-	}
-
+	if (this._useAcAddrBubbles) { return; }
 	this._adjustAddrHeight(el);
 };
 
@@ -2212,6 +2273,24 @@ function(action, msg, extraBodyText) {
 		if (this._isInviteReply(action)) {
 			body = body.replace(ZmItem.NOTES_SEPARATOR, "");
 		}
+		if (what == ZmSetting.INC_SMART) {
+			if (htmlMode) {
+				body = body.replace(this._preface,""); // Remove preface and anything inside <blockquote> tags
+				var lastTag = "</blockquote>";
+				var fidx = body.indexOf("<blockquote");
+				var lidx = body.lastIndexOf(lastTag);
+				if (fidx!=-1 && lidx!=-1) {
+					body = body.substring(0, fidx) + body.substring(lidx + lastTag.length);
+				}
+			} else {
+				if (this._preface) {
+					var idx = body.indexOf(this._preface); // Remove everything after preface
+					if (idx > 0) {
+						body = body.substr(0, idx);
+					}
+				}
+			}
+		}
 	}
 
 	var sigStyle, sig, sigId;
@@ -2321,10 +2400,12 @@ function(action, msg, extraBodyText) {
 	}
 
 	var isHtmlEditorInitd = this._htmlEditor.isHtmlModeInited();
-	if (!isHtmlEditorInitd && msg) {
+	if (!isHtmlEditorInitd) {
 		this._fixMultipartRelatedImages_onTimer(msg);
 	}
 
+	var vLen = value ? value.length : 0;
+	AjxDebug.println(AjxDebug.REPLY, "Compose view, reply length: " + vLen);
 	if (!isDraft && sigStyle == ZmSetting.SIG_INTERNET) {
 		this.addSignature(value);
 	} else {
@@ -2332,7 +2413,7 @@ function(action, msg, extraBodyText) {
 		this._htmlEditor.setContent(value);
 	}
 
-	if (isHtmlEditorInitd && msg) {
+	if (isHtmlEditorInitd) {
 		this._fixMultipartRelatedImages_onTimer(msg);
 	}
 
@@ -2666,10 +2747,14 @@ function(templateId, data) {
 		var aifId;
 		if (this._useAcAddrBubbles) {
 			var aifParams = {
-				autocompleteListView:	this._acAddrSelectList,
-				bubbleAddedCallback:	(new AjxCallback(this, this._bubblesChangedCallback)),
-				bubbleRemovedCallback:	(new AjxCallback(this, this._bubblesChangedCallback)),
-				inputId:				inputId
+				parent:								this,
+				autocompleteListView:				this._acAddrSelectList,
+				bubbleAddedCallback:				(new AjxCallback(this, this._bubblesChangedCallback)),
+				bubbleRemovedCallback:				(new AjxCallback(this, this._bubblesChangedCallback)),
+				bubbleMenuCreatedCallback:			(new AjxCallback(this, this._bubbleMenuCreated)),
+				bubbleMenuResetOperationsCallback:	(new AjxCallback(this, this._bubbleMenuResetOperations)),
+				inputId:							inputId,
+				type:								type
 			}
 			var aif = this._addrInputField[type] = new ZmAddressInputField(aifParams);
 			aifId = aif._htmlElId;
@@ -2681,7 +2766,9 @@ function(templateId, data) {
 		this._field[type] = document.getElementById(this._fieldId[type]);
 		if (this._field[type]) {
 			this._field[type].addrType = type;
-			this._setEventHandler(this._fieldId[type], "onFocus");
+			if (!this._useAcAddrBubbles) {
+				this._setEventHandler(this._fieldId[type], "onFocus");
+			}
 		}
 
 		// create picker

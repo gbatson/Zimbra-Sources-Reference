@@ -32,7 +32,7 @@
 ZmNewOrganizerDialog = function(parent, className, title, type) {
 	if (arguments.length == 0) return;
 	
-	ZmDialog.call(this, {parent:parent, className:className, title:title});
+	ZmDialog.call(this, {parent:parent, className:className, title:title, id:"CreateNewFolderDialog"});
 	this._organizerType = type;
 	this._setupControls();
 };
@@ -97,7 +97,8 @@ function(params, account) {
         var orgClass = ZmOrganizer.ORG_CLASS[orgType];
         if (orgClass) {
 			//to fix bug 55320 - got rid of the calling getIcon on the prototype hack - that caused isRemote to set _isRemote on the prototype thus causing every object to have it by default set.
-			var sample = new window[orgClass]({}); //get a sample object just for the icon
+            //bug 55491: pass tmp. organizer id to make sure this._isRemote is not true by default.
+			var sample = new window[orgClass]({id:Dwt.getNextId()}); //get a sample object just for the icon
 			icon = sample.getIcon();
         }
 

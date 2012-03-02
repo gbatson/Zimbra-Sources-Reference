@@ -79,6 +79,14 @@ function(needsRefresh) {
 	this._needsRefresh = needsRefresh;
 };
 
+ZmCalListView.prototype.searchRefresh =
+function(timeRange) {
+	this._segmentedDates = [];
+    this._segmentDates(timeRange.start, timeRange.end);
+    this.set((new AjxVector()), null, true); // clear the current list
+    this._search();
+};
+
 ZmCalListView.prototype.getDate =
 function() {
 	return this._date;
@@ -454,7 +462,7 @@ function(list) {
  *
  * @param	{array}		itemArray		an array of items
  */
-DwtListView.prototype.addItems =
+ZmCalListView.prototype.addItems =
 function(itemArray) {
 	if (AjxUtil.isArray(itemArray)) {
 		if (!this._list) {
@@ -467,6 +475,12 @@ function(itemArray) {
 		}
 		this._renderList(AjxVector.fromArray(itemArray), this._list.size() != 0, true);
 		this._list.addList(itemArray);
+        this._resetColWidth();
+        if(AjxEnv.isIE) {
+            //Does not make sense but required to make the scrollbar appear
+            var size = this.getSize();
+            this._listDiv.style.height = (size.y - DwtListView.HEADERITEM_HEIGHT)+"px";
+        }
 	}
 };
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -58,6 +58,7 @@ ZmKeyMap.prototype.constructor = ZmKeyMap;
 // translations for map names used in properties file
 ZmKeyMap.MAP_NAME = {};
 
+ZmKeyMap.MAP_NAME["address"]			= "ZmAddressBubble";
 ZmKeyMap.MAP_NAME["briefcase"]			= "ZmBriefcaseController";
 ZmKeyMap.MAP_NAME["calendar"]			= "ZmCalViewController";
 ZmKeyMap.MAP_NAME["call"]				= "ZmCallListController";
@@ -99,6 +100,7 @@ ZmKeyMap.CAL_WEEK_VIEW			= "WeekView";
 ZmKeyMap.CAL_WORK_WEEK_VIEW		= "WorkWeekView";
 ZmKeyMap.CALL_MANAGER       	= "CallManager";
 ZmKeyMap.CANCEL					= "Cancel";
+ZmKeyMap.COLLAPSE				= "Collapse";
 ZmKeyMap.COLLAPSE_ALL			= "CollapseAll";
 ZmKeyMap.COPY       			= "Copy";
 ZmKeyMap.DBG_NONE				= "DebugNone";
@@ -196,6 +198,7 @@ ZmKeyMap.SPAM					= "Spam";
 ZmKeyMap.SPELLCHECK				= "Spellcheck";
 ZmKeyMap.TAG					= "Tag";
 ZmKeyMap.TODAY					= "Today";
+ZmKeyMap.TOGGLE					= "Toggle";
 ZmKeyMap.UNDO					= "Undo";
 ZmKeyMap.UNTAG					= "Untag";
 ZmKeyMap.VIEW_BY_CONV			= "ViewByConversation";

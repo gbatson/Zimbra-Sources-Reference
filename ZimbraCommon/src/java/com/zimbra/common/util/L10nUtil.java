@@ -88,6 +88,7 @@ public class L10nUtil {
         taskReminderEmailBody,
         taskReminderEmailBodyHtml,
 
+        noLocation,
         apptReminderSmsText,
         taskReminderSmsText,
         deviceSendVerificationCodeText,
@@ -188,14 +189,17 @@ public class L10nUtil {
         errNotImplemented,
         errPartNotFound,
         errPermissionDenied,
-        errUnsupportedFormat
+        errUnsupportedFormat,
 
+        passwordViolation
+        
         // add other messages in the future...
     }
 
 
     public static final String MSG_FILE_BASENAME = "ZsMsg";
     public static final String L10N_MSG_FILE_BASENAME = "L10nMsg";
+    public static final String MSG_RIGHTS_FILE_BASENAME = "ZsMsgRights";
 
     public static final String P_LOCALE_ID = "loc";
     //	public static final String P_FALLBACK_LOCALE_ID = "javax.servlet.jsp.jstl.fmt.fallbackLocale";

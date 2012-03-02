@@ -297,7 +297,7 @@ public class BeanUtils {
         }                                                          
         else {
             String filler = (ellipses ? "..." : "");
-            return text.subSequence(0,length/2)+filler+text.subSequence((text.length() - length/2 - filler.length()),text.length()) ;
+            return text.subSequence(0,length/2)+filler+text.subSequence((text.length() - length/2 + filler.length()),text.length()) ;
         }
     }
 
@@ -850,7 +850,7 @@ public class BeanUtils {
                 if (dow != prefFirstDayOfWeek)
                     cal.add(Calendar.DAY_OF_MONTH, - (((dow-1) + (7- (int)prefFirstDayOfWeek)) % 7));
         }
-         return cal;
+        return cal;
      }
 
     public static void getNextDay(Calendar cal) {

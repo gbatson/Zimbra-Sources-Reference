@@ -24,6 +24,7 @@
 	<property name="server.dir" location="../ZimbraServer" />
 	<property name="common.dir" location="../ZimbraCommon" />
 	<property name="soap.dir" location="../ZimbraSoap" />
+	<property name="zimlet.dir" location="../Zimlet" />
 
 
 	<path id="class.path">
@@ -96,25 +97,59 @@
 	</target>
 
 	<target name="javadocs" description="Build javadocs">
-		<javadoc destdir="${generated.javadocs.dir}" classpathref="class.path" access="public">
+		<javadoc destdir="${generated.javadocs.dir}" classpathref="class.path" access="public" useexternalfile="yes">
 			<link offline="true" href="http://java.sun.com/j2se/1.5.0/docs/api package-list" packagelistLoc="." />
-			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/html/tests">
-				<include name="**/*.java" />
-				<exclude name="CommonTest.java" />
-			</fileset>
-			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/zcs/tests">
-				<include name="**/*.java" />
-				<exclude name="CommonTest.java" />
-			</fileset>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/framework" includes="**/*.java"/>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/ajax/core" includes="**/*.java"/>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/ajax/ui" includes="**/*.java"/>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/admin/core" includes="**/*.java"/>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/admin/ui" includes="**/*.java"/>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/mobile/core" includes="**/*.java"/>
+			<fileset dir="${src.java.dir}/com/zimbra/qa/selenium/projects/mobile/ui" includes="**/*.java"/>
 		</javadoc>
 	</target>
-
+	
 	<target name="bundles-classes" description="Copies the I18N properties files to build">
 		<copy todir="${build.resources.dir}">
 			<fileset dir="${webclient.dir}/WebRoot/messages/" />
 		</copy>
 		<copy todir="${build.resources.dir}">
 			<fileset dir="${server.dir}/conf/msgs/" />
+		</copy>
+		<copy todir="${build.resources.dir}">
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_attachcontacts/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_attachmail/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_date/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_dnd/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_email/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_linkedin/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_phone/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_social/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_srchhighlighter/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_url/">
+				<filename name="*.properties"/>
+			</fileset>
+			<fileset dir="${zimlet.dir}/src/zimlet/com_zimbra_webex/">
+				<filename name="*.properties"/>
+			</fileset>
 		</copy>
 	</target>
 
@@ -141,10 +176,11 @@
 				<include name="commons-configuration-1.5.jar" />
 				<include name="commons-lang-2.4.jar" />
 				<include name="ezmorph-1.0.6.jar" />
+				<include name="htmlcleaner-2.2.jar" />
 				<include name="json-lib-2.3-jdk15.jar" />
 				<include name="ocutil-2.4.2.jar" />
-				<include name="selenium-java-client-driver-1.0-SNAPSHOT.jar" />
-				<include name="selenium-server.jar" />
+				<include name="selenium-java-2.0b2.jar" />
+				<include name="selenium-server-standalone-2.0b2.jar" />
 				<include name="testng-5.12.1.jar" />
 				<include name="xalan.jar" />
 			</fileset>
@@ -181,13 +217,47 @@
 				<attribute name="Main-Class" value="staf.Driver" />
 				<section name="staf/service/info">
 					<attribute name="Service-Class" value="com.zimbra.qa.selenium.staf.StafIntegration" />
-					<attribute name="Packaged-Jars" value="guava-r07 commons-beanutils-1.7 commons-configuration-1.5 commons-lang-2.4 ezmorph-1.0.6 json-lib-2.3-jdk15 ocutil-2.4.2 selenium-java-client-driver-1.0-SNAPSHOT selenium-server testng-5.12.1 xalan apache-log4j-extras-1.0 commons-cli-1.2 commons-code-1.4 commons-configuration-1.5 commons-httpclient-3.1 commons-logging dom4j-1.5.2 jaxen-1.1.1 libidn-1.17 log4j-1.2.16 mail resources zimbracommon zimbra-native zimbrasoap zimbrastore" />
+					<attribute name="Packaged-Jars" value="guava-r07 commons-beanutils-1.7 commons-configuration-1.5 commons-lang-2.4 ezmorph-1.0.6 htmlcleaner-2.2 json-lib-2.3-jdk15 ocutil-2.4.2 selenium-java-2.0b2 selenium-server-standalone-2.0b2 testng-5.12.1 xalan apache-log4j-extras-1.0 commons-cli-1.2 commons-code-1.4 commons-configuration-1.5 commons-httpclient-3.1 commons-logging dom4j-1.5.2 jaxen-1.1.1 libidn-1.17 log4j-1.2.16 mail resources zimbracommon zimbra-native zimbrasoap zimbrastore" />
 				</section>
 			</manifest>
 		</jar>
 	</target>
 
-	<target name="jar-staf" depends="jar-staf-selenium" description="Creates all the STAF jar files">
+	<target name="jar-staf-results" depends="compile" description="Creates the STAF jar file for the results service">
+
+		<property name="build.staf.selenium" location="${build.dir}/staf/results" />
+		<property name="build.staf.selenium.jars.dir" location="${build.staf.selenium}/STAF-INF/jars" />
+		<property name="build.staf.selenium.classes.dir" location="${build.staf.selenium}/STAF-INF/classes" />
+
+		<copy todir="${build.staf.selenium.classes.dir}">
+			<fileset dir="${build.classes.dir}" />
+		</copy>
+
+		<copy todir="${build.staf.selenium.jars.dir}">
+			<fileset dir="${common.dir}/jars">
+				<include name="apache-log4j-extras-1.0.jar" />
+				<include name="commons-cli-1.2.jar" />
+				<include name="dom4j-1.5.2.jar" />
+				<include name="jaxen-1.1.1.jar" />
+				<include name="log4j-1.2.16.jar" />
+			</fileset>
+			<fileset dir="${common.dir}/build">
+				<include name="zimbracommon.jar" />
+			</fileset>
+		</copy>
+
+		<jar destfile="${dist.lib.dir}/zimbratestngresults.jar" basedir="${build.staf.selenium}">
+			<manifest>
+				<attribute name="Main-Class" value="staf.Driver" />
+				<section name="staf/service/info">
+					<attribute name="Service-Class" value="com.zimbra.qa.selenium.results.ResultsStaf" />
+					<attribute name="Packaged-Jars" value="guava-r07 commons-beanutils-1.7 commons-configuration-1.5 commons-lang-2.4 ezmorph-1.0.6 htmlcleaner-2.2 json-lib-2.3-jdk15 ocutil-2.4.2 selenium-java-2.0b2 selenium-server-standalone-2.0b2 testng-5.12.1 xalan apache-log4j-extras-1.0 commons-cli-1.2 commons-code-1.4 commons-configuration-1.5 commons-httpclient-3.1 commons-logging dom4j-1.5.2 jaxen-1.1.1 libidn-1.17 log4j-1.2.16 mail resources zimbracommon zimbra-native zimbrasoap zimbrastore" />
+				</section>
+			</manifest>
+		</jar>
+	</target>
+
+	<target name="jar-staf" depends="jar-staf-selenium, jar-staf-results" description="Creates all the STAF jar files">
 	</target>
 
 
@@ -218,13 +288,13 @@
 		<echo message="Creating TMS TGZ contents ..." />
 		<copy file="${dist.lib.dir}/zimbraselenium.jar" todir="${tms.dir}/jars/"/>
 		<copy file="${dist.lib.dir}/zimbrastaf.jar" todir="${tms.dir}/jars/"/>
-		<copy todir="${tms.dir}/bin/">
-			<fileset dir="src/bin">
+		<copy todir="${tms.dir}/conf/">
+			<fileset dir="conf">
 				<include name="**/*"/>
 			</fileset>
 		</copy>
-		<copy todir="${tms.dir}/conf/">
-			<fileset dir="conf">
+		<copy todir="${tms.dir}/src/CODECOVERAGE/">
+			<fileset dir="src/CODECOVERAGE/">
 				<include name="**/*"/>
 			</fileset>
 		</copy>

@@ -2,6 +2,7 @@ package com.zimbra.qa.selenium.projects.desktop.tests.addressbook.search;
 
 import org.testng.annotations.Test;
 
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.projects.desktop.core.DesktopCommonTest;
@@ -10,17 +11,17 @@ import com.zimbra.qa.selenium.projects.desktop.ui.PageMain;
 
 public class PeopleSearch extends DesktopCommonTest{
 
-   public PeopleSearch() {
+   public PeopleSearch() throws HarnessException {
       logger.info("New "+ PeopleSearch.class.getCanonicalName());
       
       // All tests start at the login page
       super.startingPage = app.zPageMain;
-      super.startingAccount = null;
    }
 
    @Test(   description = "Verifying People Search property",
-         groups = { "always" })
-   public void BasicSearch01() throws HarnessException {
+         groups = { "sanity" })
+   public void BasicPeopleSearch01() throws HarnessException {
+      GeneralUtility.waitForElementPresent(app.zPageMain, PageMain.Locators.zPeopleSearchField);
       String searchResult =
          app.zPageMain.sGetText(PageMain.Locators.zPeopleSearchField);
       logger.debug("Search result: " + searchResult);

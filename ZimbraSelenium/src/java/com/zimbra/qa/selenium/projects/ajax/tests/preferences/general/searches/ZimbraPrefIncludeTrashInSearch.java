@@ -1,5 +1,6 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.general.searches;
 
+import java.util.HashMap;
 import java.util.List;
 
 import org.testng.annotations.Test;
@@ -12,7 +13,6 @@ import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences.TreeItem;
@@ -20,6 +20,7 @@ import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences.TreeI
 
 public class ZimbraPrefIncludeTrashInSearch extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public ZimbraPrefIncludeTrashInSearch() {
 		logger.info("New "+ ZimbraPrefIncludeTrashInSearch.class.getCanonicalName());
 		
@@ -27,13 +28,11 @@ public class ZimbraPrefIncludeTrashInSearch extends AjaxCommonTest {
 		super.startingPage = app.zPagePreferences;
 
 		// Make sure we are using an account with conversation view
-		ZimbraAccount account = new ZimbraAccount();
-		account.provision();
-		account.authenticate();
-		account.modifyPreference("zimbraPrefIncludeTrashInSearch", "TRUE");
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefIncludeTrashInSearch", "TRUE");
+				}};
 
 			
-		super.startingAccount = account;		
 		
 	}
 	
@@ -107,7 +106,8 @@ public class ZimbraPrefIncludeTrashInSearch extends AjaxCommonTest {
 		app.zPageMail.zNavigateTo();
 		
 		// Search for the query
-		app.zPageSearch.zRunSearchQuery(query);
+		app.zPageSearch.zAddSearchQuery(query);
+		app.zPageSearch.zToolbarPressButton(Button.B_SEARCH);
 		
 		// Verify that both messages are in the list
 		List<ConversationItem> items = app.zPageMail.zListGetConversations();

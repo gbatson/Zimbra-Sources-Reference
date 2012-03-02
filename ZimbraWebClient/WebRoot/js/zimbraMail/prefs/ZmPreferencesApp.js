@@ -161,8 +161,11 @@ function(modifies, force) {
 };
 
 ZmPreferencesApp.prototype.refresh =
-function(refresh) {
-
+function(refresh, addr) {
+    var trustedPage = this.getPreferencesPage("TRUSTED_ADDR");
+    if(trustedPage && addr) {
+        trustedPage.addItem(addr);
+    }
 	if (!appCtxt.inStartup) {
 		var sharingView = this._getSharingView();
 		if (sharingView) {
@@ -258,6 +261,7 @@ function() {
                 ZmSetting.DEFAULT_PRINTFONTSIZE,
 				ZmSetting.OFFLINE_IS_MAILTO_HANDLER,
 				ZmSetting.OFFLINE_NOTEBOOK_SYNC_ENABLED, // offline
+				ZmSetting.SHORT_ADDRESS,
 				ZmSetting.USE_ADDR_BUBBLES
 			]
 		},
@@ -360,7 +364,8 @@ function() {
             priority: 140,
 			precondition: ZmSetting.CHECKED_ZIMLETS_ENABLED,
 			prefs: [
-				ZmSetting.CHECKED_ZIMLETS    
+				ZmSetting.CHECKED_ZIMLETS,
+                ZmSetting.OFFLINE_ZIMLET_SYNC_ACCOUNT_ID
 			],
             createView: function(parent, section, controller) {
 				return new ZmZimletsPage(parent, section, controller);
@@ -371,6 +376,7 @@ function() {
         sections["BACKUP"] = {
 			title: ZmMsg.offlineBackups,
 			icon: "backup",
+            manageDirty: true,
 			templateId: "prefs.Pages#BackUp",
 			priority: 130,
             prefs: [
@@ -428,6 +434,29 @@ function() {
         AjxMessageFormat.format(ZmMsg.pt,"24"), AjxMessageFormat.format(ZmMsg.pt,"36")];
     //Server values are stored with 'pt' to work irrespective of locale, while display options are as per the respective locale 
     var fontSizeValueOptions = ["8pt", "10pt", "12pt", "14pt", "18pt", "24pt", "36pt"];
+    var getZimbraAccountList = function(){
+        var visAccts = appCtxt.accountList.visibleAccounts;
+        var accts = [];
+        accts.push(ZmMsg.zimletPrefDontSync);
+        for (var k=0; k<visAccts.length; k++) {
+            if(visAccts[k].isZimbraAccount && !visAccts[k].isMain) {
+                accts.push([ZmMsg.zimletPrefSyncWith, " ", visAccts[k].name].join(""));
+            }
+        }
+        return accts;
+    };
+    var getZimbraAccountIds = function(){
+        var visAccts = appCtxt.accountList.visibleAccounts;
+        var accts = [];
+        accts.push("");
+        for (var k=0; k<visAccts.length; k++) {
+            if(visAccts[k].isZimbraAccount && !visAccts[k].isMain) {
+                accts.push(visAccts[k].id);
+            }
+        }
+        return accts;
+
+    };
 	ZmPref.registerPref("COMPOSE_INIT_FONT_SIZE", {
 		displayName:		null,
 		displayContainer:	ZmPref.TYPE_SELECT,
@@ -444,6 +473,13 @@ function() {
     ZmPref.registerPref("CHECKED_ZIMLETS", {
 		displayName:		ZmMsg.zimlets,
 		displayContainer:	ZmPref.TYPE_CUSTOM
+	});
+
+    ZmPref.registerPref("OFFLINE_ZIMLET_SYNC_ACCOUNT_ID", {
+		displayName:		ZmMsg.zimletSyncPref,
+		displayContainer:	ZmPref.TYPE_SELECT,
+        displayOptions:     getZimbraAccountList(),
+        options:            getZimbraAccountIds()
 	});
 
     ZmPref.registerPref("DEFAULT_TIMEZONE", {
@@ -544,6 +580,11 @@ function() {
 		displayContainer:	ZmPref.TYPE_CUSTOM
 	});
 
+	ZmPref.registerPref("SHORT_ADDRESS", {
+		displayName:		ZmMsg.shortAddress,
+		displayContainer:	ZmPref.TYPE_CHECKBOX
+	});
+	
 	ZmPref.registerPref("USE_ADDR_BUBBLES", {
 		displayName:		ZmMsg.useAddressBubbles,
 		displayContainer:	ZmPref.TYPE_CHECKBOX
@@ -555,13 +596,14 @@ function() {
 			displayContainer:	ZmPref.TYPE_CHECKBOX
 		});
 
-		// only offer "enable notebooks" pref if a ZCS account exists
-		if (appCtxt.accountList.accountTypeExists(ZmAccount.TYPE_ZIMBRA)) {
-			ZmPref.registerPref("OFFLINE_NOTEBOOK_SYNC_ENABLED", {
-				displayName:		ZmMsg.enableDocuments,
-				displayContainer:	ZmPref.TYPE_CHECKBOX
-			});
-		}
+		// Do not show enable document preference.
+        //		if (appCtxt.accountList.accountTypeExists(ZmAccount.TYPE_ZIMBRA)) {
+        //			ZmPref.registerPref("OFFLINE_NOTEBOOK_SYNC_ENABLED", {
+        //				displayName:		ZmMsg.enableDocuments,
+        //				displayContainer:	ZmPref.TYPE_CHECKBOX,
+        //                preCondition:       ZmSetting.NOTEBOOK_ENABLED
+        //			});
+        //		}
 
         ZmPref.registerPref("OFFLINE_BACKUP_ACCOUNT_ID", {
             displayName:		ZmMsg.offlineBackUpAccounts,
@@ -581,7 +623,7 @@ function() {
             displayName:		ZmMsg.offlineBackUpInterval,
             displayContainer:	ZmPref.TYPE_SELECT,
             displayOptions:		[ZmMsg.pollNever, ZmMsg.everyDay, ZmMsg.everyWeek, ZmMsg.everyMonth],
-            options:			[-1, ZmSetting.CAL_DAY, ZmSetting.CAL_WEEK, ZmSetting.CAL_MONTH]
+            options:			[0, 86400000, 604800000, 2628000000]
         });
 
         ZmPref.registerPref("OFFLINE_BACKUP_PATH", {
@@ -592,43 +634,52 @@ function() {
         ZmPref.registerPref("OFFLINE_BACKUP_KEEP", {
             displayName:		ZmMsg.offlineBackUpKeep,
             displayContainer:	ZmPref.TYPE_SELECT,
-            displayOptions:		["1", "2", "3"]
+            displayOptions:		["1", "2", "3", "4", "5"]
         });
 
 	}
 
 	// Polling Interval Options - Dynamically constructed according to MIN_POLLING_INTERVAL,POLLING_INTERVAL
-	var options = [525600];
+    var neverValue = 525600;
+    var numOptions = 10;
+	var options = [neverValue];
+    var displayOptions = [ZmMsg.pollManually];
+    var pollInstant = appCtxt.get(ZmSetting.INSTANT_NOTIFY) ? true : false;
 
-	var startValue = ZmPref.pollingIntervalDisplay(appCtxt.get(ZmSetting.MIN_POLLING_INTERVAL));
+    if (pollInstant) {
+        options.push(appCtxt.get(ZmSetting.INSTANT_NOTIFY_INTERVAL));
+        displayOptions.push(ZmMsg.pollInstant);
+    }
+
+    var startValue = ZmPref.pollingIntervalDisplay(appCtxt.get(ZmSetting.MIN_POLLING_INTERVAL));
 	startValue = (startValue < 1) ? 1 : Math.round(startValue);
 
 	var pollInterval = ZmPref.pollingIntervalDisplay(appCtxt.get(ZmSetting.POLLING_INTERVAL));
 	pollInterval = Math.round(pollInterval);
 
-	while (startValue <= 10) {
+	while (startValue <= numOptions) {
 		options.push(startValue);
 		startValue++;
 	}
 	startValue = startValue - 1;
 
 	var count = options.length;
-	while (count < 10) {
+	while (count < numOptions) {
 		startValue = startValue + 5;
 		options.push(startValue);
 		count++;
 	}
 
-	if (pollInterval > startValue) {
+	if (pollInterval > startValue && pollInterval !=neverValue && (pollInstant && pollInterval != appCtxt.get(ZmSetting.INSTANT_NOTIFY_INTERVAL))) {
+        //pollInterval may have been set by admin
 		var p = pollInterval % 5;
 		p = (p == 0) ? pollInterval : ((pollInterval / 5 + 1) * 5);
-		options.push(p);
+        options.push(p);
 	} else {
 		startValue = startValue + 5;
 		options.push(startValue);
 	}
 
-	var displayOptions = [ZmMsg.pollNever];
 	while (displayOptions.length <= count) {
 		displayOptions.push(ZmMsg.pollEveryNMinutes);
 	}
@@ -782,4 +833,11 @@ function() {
 	params.omit[ZmOrganizer.ID_ZIMLET] = true;
 
 	return params;
+};
+
+ZmPreferencesApp.getFilterRulesController =
+function(outgoing) {
+    var prefController = AjxDispatcher.run("GetPrefController");
+    var filterController = prefController.getFilterController();
+    return outgoing ? filterController.getOutgoingFilterRulesController() : filterController.getIncomingFilterRulesController();
 };

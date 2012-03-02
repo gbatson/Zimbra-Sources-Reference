@@ -5,27 +5,51 @@ import java.util.List;
 
 import org.apache.log4j.LogManager;
 
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
-
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
-import com.zimbra.qa.selenium.framework.items.ContactItem;
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.AbsTab;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
 import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
 
+import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
+import com.zimbra.qa.selenium.framework.items.*;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.TreeMail;
+import com.zimbra.qa.selenium.projects.ajax.ui.search.PageAdvancedSearch;
 
 public class PageAddressbook extends AbsTab {
 
+	public static class CONTEXT_MENU {
+		public static final String LOCATOR		= "id='zm__Contacts'";
+		
+		//contact's context menu	
+		public static final ContextMenuItem CONTACT_SEARCH = ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP ?
+		      new ContextMenuItem("zmi__Contacts__SEARCH","Find Emails From Contact","div[class='ImgSearch']"," div") :             
+		      new ContextMenuItem("zmi__Contacts__SEARCH_MENU","Find Emails...","div[class='ImgSearch']"," div[class='ImgCascade']");	
+		public static final ContextMenuItem CONTACT_ADVANCED_SEARCH = new ContextMenuItem("zmi__Contacts__BROWSE","Advanced Search","div[class='ImgSearchBuilder']","");	
+		public static final ContextMenuItem CONTACT_NEW_EMAIL = new ContextMenuItem("zmi__Contacts__NEW_MESSAGE","New Email","div[class='ImgNewMessage']",":contains('nm')");  	
+		public static final ContextMenuItem CONTACT_EDIT = new ContextMenuItem("zmi__Contacts__CONTACT","Edit Contact","div[class='ImgEdit']","");	
+		public static final ContextMenuItem CONTACT_FORWARD = new ContextMenuItem("zmi__Contacts__SEND_CONTACTS_IN_EMAIL","Forward Contact","div[class='ImgMsgStatusSent']","");	
+		public static final ContextMenuItem CONTACT_TAG = new ContextMenuItem("zmi__Contacts__TAG_MENU","Tag Contact","div[class='ImgTag']"," div[class='ImgCascade']");	
+		public static final ContextMenuItem CONTACT_DELETE = new ContextMenuItem("zmi__Contacts__DELETE","Delete","div[class='ImgDelete']",":contains('Del')");
+		public static final ContextMenuItem CONTACT_MOVE = new ContextMenuItem("zmi__Contacts__MOVE","Move","div[class='ImgMoveToFolder']","");
+		public static final ContextMenuItem CONTACT_PRINT = new ContextMenuItem("zmi__Contacts__PRINT_CONTACT","Print","div[class='ImgPrint']",":contains('p')");
+	   		
+	}
 
-
-
+	public static class CONTEXT_SUB_MENU {
+				
+		public static final ContextMenuItem CONTACT_SUB_NEW_TAG = new ContextMenuItem("zmi__Contacts__TAG_MENU|MENU|NEWTAG","New Tag","div[class='ImgNewTag']",":contains('nt')");
+		public static final ContextMenuItem CONTACT_SUB_REMOVE_TAG = new ContextMenuItem("zmi__Contacts__TAG_MENU|MENU|REMOVETAG","Remove Tag","div[class='ImgDeleteTag']","");
+		
+		//TODO: Need fixed id for the following:
+		public static final ContextMenuItem CONTACT_SUB_RECEIVED_FROM_CONTACT = new ContextMenuItem("zmi__Contacts__BROWSE","Advanced Search","div[class='ImgSearchBuilder']","");
+	    public static final ContextMenuItem CONTACT_SUB_SENT_TO_CONTACT = new ContextMenuItem("zmi__Contacts__BROWSE","Advanced Search","div[class='ImgSearchBuilder']","");
+	}
+	
 	public PageAddressbook(AbsApplication application) {
 		super(application);		
 		logger.info("new " + PageAddressbook.class.getCanonicalName());
@@ -48,11 +72,18 @@ public class PageAddressbook extends AbsTab {
 
 		boolean active=attrs.contains("ZSelected");
 
-		//make sure Addressbook folder is displayed
-		String locator = "xpath=//div[@id='ztih__main_Contacts__ADDRBOOK_div']";
+		String locator = null;
+		// On Zimbra Desktop, there is no Address book folder, but there is only
+		// account root folder
+      if(ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+	      locator = TreeMail.Locators.zTreeItems.replace(TreeMail.stringToReplace,
+	            AjaxCommonTest.defaultAccountName);
+	   } else {
+		   //make sure Addressbook folder is displayed
+		   locator = "xpath=//div[@id='ztih__main_Contacts__ADDRBOOK_div']";
+		}
 
-		active &= this.sIsElementPresent(locator);
-
+      active &= this.sIsElementPresent(locator);		   
 		return (active);
 
 	}
@@ -86,8 +117,14 @@ public class PageAddressbook extends AbsTab {
 			throw new HarnessException("Can't locate addressbook icon");
 		}
 
-		zClick(PageMain.Locators.zAppbarContact);
+		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+   		((AppAjaxClient) MyApplication).zPageMail.zNavigateTo();
+         GeneralUtility.waitForElementPresent(this,
+               PageMain.Locators.zAppbarBriefcase, 20000);
+         ((AppAjaxClient) MyApplication).zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+		}
 
+		zClick(PageMain.Locators.zAppbarContact);
 
 		zWaitForActive();
 
@@ -123,6 +160,7 @@ public class PageAddressbook extends AbsTab {
 		return list;		
 	}
 
+				
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
@@ -198,7 +236,12 @@ public class PageAddressbook extends AbsTab {
 
 		// Click it
 		this.zClick(locator);
-
+		zWaitForBusyOverlay();
+	
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
 		return (page);
 	}
 
@@ -248,7 +291,7 @@ public class PageAddressbook extends AbsTab {
 			}
 			
 			this.zClick(pulldownLocator);
-			SleepUtil.sleepSmall();
+			zWaitForBusyOverlay();
 			
 			if ( optionLocator != null ) {
 
@@ -258,7 +301,7 @@ public class PageAddressbook extends AbsTab {
 				}
 				
 				this.zClick(optionLocator);
-				SleepUtil.sleepSmall();
+				zWaitForBusyOverlay();
 
 			}
 			
@@ -272,73 +315,232 @@ public class PageAddressbook extends AbsTab {
 	    return page;
 	}
 
+	private String getContactLocator(String contact) throws HarnessException {
+		String listLocator = "//div[@id='zv__CNS']";
+		String rowLocator = "//div[contains(@id, 'zli__CNS__')]";
+		String contactLocator = null;
+		
+		if ( !this.sIsElementPresent(listLocator) )
+			throw new HarnessException("List View Rows is not present "+ listLocator);
+
+		if ( !this.sIsElementPresent(rowLocator) )
+			throw new HarnessException("List does not contain any items "+ rowLocator);
+
+		//Get the number of contacts (String) 
+		int count = this.sGetXpathCount(listLocator + rowLocator);
+		logger.debug(myPageName() + " zListItem: number of contacts: "+ count);
+
+		if ( count == 0 )
+			throw new HarnessException("List count was zero");
+
+		// Get each contact's data from the table list
+		for (int i = 1; i <= count; i++) {
+
+			String itemLocator = listLocator + rowLocator + "[" + i +"]";
+
+			if ( !this.sIsElementPresent(itemLocator) ) {
+				throw new HarnessException("unable to locate item " + itemLocator);
+			}
+
+			String contactDisplayedLocator = itemLocator + "//td[3]";
+			String displayAs = this.sGetText(contactDisplayedLocator);
+
+			// Log this item to the debug output
+			LogManager.getLogger("projects").info("zListItem: found contact "+ displayAs);
+
+			if ( contact.equals(displayAs) ) {
+			   contactLocator = contactDisplayedLocator;
+			   break;
+			}
+     		
+		} 
+	
+		if (contactLocator == null) {
+			throw new HarnessException("Never found the contact "+ contact);
+		}
+		
+		return contactLocator;
+	}
+	
+	
+	public AbsPage zListItem(Action action, Button option ,Button subOption, String contact) throws HarnessException {
+		String locator = null;			// If set, this will be clicked
+		AbsPage page = null;	// If set, this page will be returned
+		String id = null;
+        String contactLocator = getContactLocator(contact);
+        
+        if ( action == Action.A_RIGHTCLICK ) {
+			ContextMenuItem cmi=null;
+		    ContextMenuItem sub_cmi = null;
+		    this.zClick(contactLocator);
+		    this.zKeyboard.zTypeCharacters(Shortcut.S_RIGHTCLICK.getKeys());
+			//this.zRightClick(contactLocator);
+			
+			
+			if (option == Button.B_TAG) {
+		        
+				cmi=CONTEXT_MENU.CONTACT_TAG;
+													
+				if (subOption == Button.O_TAG_NEWTAG) {
+					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_NEW_TAG;
+					page = new DialogTag(this.MyApplication);
+				}
+				
+				else if (subOption == Button.O_TAG_REMOVETAG) {
+					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_REMOVE_TAG;
+					page = null;	
+				}
+			}
+			else if (option == Button.B_SEARCH) {
+				cmi=CONTEXT_MENU.CONTACT_SEARCH;
+				
+				
+				if (subOption == Button.O_SEARCH_MAIL_SENT_TO_CONTACT) {
+					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_SENT_TO_CONTACT;
+				    //TODO change DisplayMail constructor to public??					
+					//page = new DisplayMail(this.MyApplication); 
+				}
+			
+				else if (subOption == Button.O_SEARCH_MAIL_RECEIVED_FROM_CONTACT) {
+					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_RECEIVED_FROM_CONTACT;
+					//TODO change DisplayMail constructor to public??
+					//page = new DisplayMail(this.MyApplication); 
+				}
+			}
+			id = cmi.locator;
+			locator = "id="+ id;
+			//  Make sure the context menu exists
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("contextmenu is not present locator="+ locator +" context menu item="+ cmi.text);
+			
+			// Check if the item is enabled
+			String attrs = sGetAttribute("xpath=(//div[@id='"+ id +"'])@class");
+			if ( attrs.contains("ZDisabled") ) {
+				throw new HarnessException("Tried clicking on "+ cmi.text +" but it was disabled "+ attrs);
+			}
+			
+
+			// Mouse over the option
+			sMouseOver(locator);
+						
+			id = sub_cmi.locator;
+			locator = "id="+ id;
+		
+			
+			//  Make sure the sub context menu exists			
+			zWaitForElementPresent(locator) ;
+			
+			// make sure the sub context menu enabled			
+			zWaitForElementEnabled(id);
+			
+	
+        }
+        
+		// Click option
+		this.zClick(locator);
+		zWaitForBusyOverlay();
+		
+		
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		return (page);
+    
+	}
+	
 	@Override
-	public AbsPage zListItem(Action action, Action option, String subject) throws HarnessException {
-		throw new HarnessException("implement me!");
+	public AbsPage zListItem(Action action, Button option, String contact) throws HarnessException {
+		String locator = null;			// If set, this will be clicked
+		AbsPage page = null;	// If set, this page will be returned
+		String id = null;
+        String contactLocator = getContactLocator(contact);
+        
+		if ( action == Action.A_RIGHTCLICK ) {
+			ContextMenuItem cmi=null;
+								
+			this.zRightClick(contactLocator);
+		
+			if (option == Button.B_DELETE){
+                cmi=CONTEXT_MENU.CONTACT_DELETE;				
+			}
+			else if (option == Button.B_MOVE) {
+				cmi=CONTEXT_MENU.CONTACT_MOVE;
+				page = new DialogContactMove(MyApplication);	
+			}
+            
+			else if (option == Button.B_EDIT) {
+				cmi=CONTEXT_MENU.CONTACT_EDIT;
+				page = new FormContactNew(MyApplication);	
+			}
+
+			else if (option == Button.B_NEW) {
+				cmi=CONTEXT_MENU.CONTACT_NEW_EMAIL;
+				page = new FormMailNew(MyApplication);	
+			}
+
+			else if (option == Button.B_SEARCHADVANCED) {
+				cmi=CONTEXT_MENU.CONTACT_ADVANCED_SEARCH;
+				page = new PageAdvancedSearch(MyApplication);	
+			}
+			else if (option == Button.B_PRINT) {
+				cmi=CONTEXT_MENU.CONTACT_PRINT;				
+				page = new PagePrint(MyApplication);	
+			}
+			else {
+				throw new HarnessException("option " + option + " not supported");
+			}
+			
+			id = cmi.locator;
+			locator = "id="+ id;
+			//  Make sure the context menu exists
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("contextmenu is not present locator="+ locator +" context menu item="+ cmi.text);
+			
+			// Check if the item is enabled
+			String attrs = sGetAttribute("xpath=(//div[@id='"+ id +"'])@class");
+			if ( attrs.contains("ZDisabled") ) {
+				throw new HarnessException("Tried clicking on "+ cmi.text +" but it was disabled "+ attrs);
+			}
+
+			
+		}
+		
+				
+		// Click option
+		this.zClick(locator);
+		zWaitForBusyOverlay();
+		
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		return (page);
+
+		
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, String contact) throws HarnessException {
 		logger.info(myPageName() + " zListItem("+ action +", "+ contact +")");
-
-		AbsPage page = null;
-
+        String contactLocator=getContactLocator(contact);
+        
 		if ( action == Action.A_LEFTCLICK ) {
-
-			String listLocator = "//div[@id='zv__CNS']";
-			String rowLocator = "//div[contains(@id, 'zli__CNS__')]";
-
-			if ( !this.sIsElementPresent(listLocator) )
-				throw new HarnessException("List View Rows is not present "+ listLocator);
-
-			if ( !this.sIsElementPresent(rowLocator) )
-				throw new HarnessException("List does not contain any items "+ rowLocator);
-
-			//Get the number of contacts (String) 
-			int count = this.sGetXpathCount(listLocator + rowLocator);
-			logger.debug(myPageName() + " zListItem: number of contacts: "+ count);
-
-			if ( count == 0 )
-				throw new HarnessException("List count was zero");
-
-			// Get each contact's data from the table list
-			for (int i = 1; i <= count; i++) {
-
-				String itemLocator = listLocator + rowLocator + "[" + i +"]";
-
-				if ( !this.sIsElementPresent(itemLocator) ) {
-					throw new HarnessException("unable to locate item " + itemLocator);
-				}
-
-				String contactDisplayedLocator = itemLocator + "//td[3]";
-				String displayAs = this.sGetText(contactDisplayedLocator);
-
-				// Log this item to the debug output
-				LogManager.getLogger("projects").info("zListItem: found contact "+ displayAs);
-
-				if ( !contact.equals(displayAs) )
-					continue;
-
-				//click
-				this.zClick(contactDisplayedLocator);
-				SleepUtil.sleepSmall();
-
-				// All done
-				return (new DisplayContact(MyApplication));
-
-			}
-
-			throw new HarnessException("Never found the contact "+ contact);
-
-
+			//click
+			this.zClick(contactLocator);
+			zWaitForBusyOverlay();
+			return (new DisplayContact(MyApplication)); 
+			
 		}
-		else {
-			throw new HarnessException("implement me!");
+		else if (action == Action.A_RIGHTCLICK ) {
+			
+            this.zRightClick(contactLocator); 
+            zWaitForBusyOverlay();
+    		return (new ContextMenu(MyApplication));			
 		}
-
-		// return (new DisplayContact(MyApplication));
-
+			
+		
+		throw new HarnessException("action not supported ");
+	
 	}
-
-
 }

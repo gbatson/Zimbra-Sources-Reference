@@ -119,6 +119,15 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public static final String A_zimbraPrefOfflineBackupPath = "zimbraPrefOfflineBackupPath";
     public static final String A_zimbraPrefOfflineBackupKeep = "zimbraPrefOfflineBackupKeep";
     public static final String A_offlineBackupLastSuccess = "offlineBackupLastSuccess";
+    public static final String A_zimbraPrefOfflineAttrProxyMode = "zimbraPrefOfflineAttrProxyMode";
+    public static final String A_zimbraPrefOfflineHttpProxyHost = "zimbraPrefOfflineHttpProxyHost";
+    public static final String A_zimbraPrefOfflineHttpProxyPort = "zimbraPrefOfflineHttpProxyPort";
+    public static final String A_zimbraPrefOfflineHttpProxyUsername = "zimbraPrefOfflineHttpProxyUsername";
+    public static final String A_zimbraPrefOfflineHttpProxyPassword = "zimbraPrefOfflineHttpProxyPassword";
+    public static final String A_zimbraPrefOfflineSocksProxyHost = "zimbraPrefOfflineSocksProxyHost";
+    public static final String A_zimbraPrefOfflineSocksProxyPort = "zimbraPrefOfflineSocksProxyPort";
+    public static final String A_zimbraPrefOfflineSocksProxyUsername = "zimbraPrefOfflineSocksProxyUsername";
+    public static final String A_zimbraPrefOfflineSocksProxyPassword = "zimbraPrefOfflineSocksProxyPassword";
 
     public enum EntryType {
         ACCOUNT("acct"), DATASOURCE("dsrc", true), IDENTITY("idnt", true), SIGNATURE("sig", true), COS("cos"), CONFIG("conf"), ZIMLET("zmlt");
@@ -480,7 +489,16 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             A_zimbraPrefOfflineBackupInterval,
             A_zimbraPrefOfflineBackupKeep,
             A_zimbraPrefOfflineBackupPath,
-            A_zimbraPrefOfflineZimletSyncAccountId
+            A_zimbraPrefOfflineZimletSyncAccountId,
+            A_zimbraPrefOfflineAttrProxyMode,
+            A_zimbraPrefOfflineHttpProxyHost,
+            A_zimbraPrefOfflineHttpProxyPort,
+            A_zimbraPrefOfflineHttpProxyUsername,
+            A_zimbraPrefOfflineHttpProxyPassword,
+            A_zimbraPrefOfflineSocksProxyHost,
+            A_zimbraPrefOfflineSocksProxyPort,
+            A_zimbraPrefOfflineSocksProxyUsername,
+            A_zimbraPrefOfflineSocksProxyPassword
     ));
 
     @Override
@@ -561,9 +579,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.remove(A_zimbraPrefChildVisibleAccount);
 
         attrs.put(A_zimbraJunkMessagesIndexingEnabled, TRUE);
-
         attrs.put(A_zimbraMailQuota, "0");
-
+        attrs.put(A_offlineGalAccountSyncToken, "");
+        
         Account account = createAccountInternal(emailAddress, zgi.getId(), attrs, true, false);
 
         try {
@@ -811,8 +829,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_cn, id);
         attrs.put(A_sn, id);
         attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
-        attrs.put(A_offlineGalAccountSyncToken, "");
-        attrs.put(A_offlineGalAccountLastFullSync, "0");
+        attrs.put(A_offlineGalAccountLastRefresh, "0");
         attrs.put(A_offlineAccountFlavor, "Gal");
         setDefaultAccountAttributes(attrs);
 
@@ -884,6 +901,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_zimbraPrefCalendarAlwaysShowMiniCal , TRUE);
         attrs.put(A_zimbraPrefShareContactsInAutoComplete, TRUE);
         attrs.put(A_zimbraPrefGetMailAction, "update");
+        attrs.put(A_zimbraPrefOfflineBackupKeep, "2");
+        attrs.put(A_zimbraPrefOfflineBackupAccountId, new String[] {LOCAL_ACCOUNT_ID});
+        attrs.put(A_zimbraPrefOfflineBackupInterval, "0");
         setDefaultAccountAttributes(attrs);
 
         Account account = createAccountInternal(LOCAL_ACCOUNT_NAME, LOCAL_ACCOUNT_ID, attrs, true, false);
@@ -946,7 +966,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     public boolean isGalAccount(Account account) {
-        return account.getAttr(A_offlineGalAccountSyncToken, null) != null;
+        String flavor = account.getAttr(A_offlineAccountFlavor, null);
+        return flavor != null && flavor.equals("Gal");
     }
 
     public boolean isMountpointAccount(Account account) {
@@ -1430,7 +1451,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized void setPassword(Account acct, String newPassword) throws ServiceException {
+    public synchronized SetPasswordResult setPassword(Account acct, String newPassword) throws ServiceException {
         throw new UnsupportedOperationException();
     }
 

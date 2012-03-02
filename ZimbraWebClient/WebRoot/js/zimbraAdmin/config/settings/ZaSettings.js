@@ -65,7 +65,7 @@ ZaSettings.initRights = function () {
 		//if this is a system admin account - enable access to all UI elements
 		if(ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
 			ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI] = true;
-		}			
+		}	
 	} else {
 		if(typeof(ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraAdminConsoleUIComponents])=="string") {
 			ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraAdminConsoleUIComponents] = [ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraAdminConsoleUIComponents]];
@@ -147,6 +147,7 @@ ZaSettings.loadStyles = function(includes) {
     }
 };
 
+ZaSettings.EnabledZimlet = {};
 ZaSettings.init = function () {
 	if(ZaSettings.initialized || ZaSettings.initializing)
 		return;
@@ -156,21 +157,22 @@ ZaSettings.init = function () {
 	
 
 	try {
-		if(appDevMode || (DBG.getDebugLevel() > AjxDebug.NONE) || (location.search && (location.search.indexOf("mode=mjsf") != -1)) ) {
-			var soapDoc = AjxSoapDoc.create("GetAdminExtensionZimletsRequest", ZaZimbraAdmin.URN, null);	
-			var command = new ZmCsfeCommand();
-			var params = new Object();
-			params.soapDoc = soapDoc;	
-			var resp = command.invoke(params);
-			var zimlets = null;
-			try {
-				if(resp && resp.Body && resp.Body.GetAdminExtensionZimletsResponse && resp.Body.GetAdminExtensionZimletsResponse.zimlets && resp.Body.GetAdminExtensionZimletsResponse.zimlets.zimlet) {
-					zimlets = resp.Body.GetAdminExtensionZimletsResponse.zimlets.zimlet;
-				}
-			} catch (ex) {
-				//go on
-	            //if(window.console && window.console.log) console.log("Error Getting the Zimlets: " + ex.message);
-	        }
+		var soapDoc = AjxSoapDoc.create("GetAdminExtensionZimletsRequest", ZaZimbraAdmin.URN, null);
+                var command = new ZmCsfeCommand();
+                var params = new Object();
+                params.soapDoc = soapDoc;
+                var resp = command.invoke(params);
+                var zimlets = null;
+                try {
+                       if(resp && resp.Body && resp.Body.GetAdminExtensionZimletsResponse && resp.Body.GetAdminExtensionZimletsResponse.zimlets && resp.Body.GetAdminExtensionZimletsResponse.zimlets.zimlet) {
+                       		zimlets = resp.Body.GetAdminExtensionZimletsResponse.zimlets.zimlet;
+                       }
+               } catch (ex) {
+                                //go on
+                                //                    //if(window.console && window.console.log) console.log("Error Getting the Zimlets: " + ex.message);
+               }
+		
+		if(appDevMode || (DBG.getDebugLevel() > AjxDebug.NONE) || (location.search && (location.search.indexOf("mode=mjsf") != -1))) {
 			if(zimlets && zimlets.length > 0) {
 				var includes = new Array();	
 				var cssIncludes = new Array();	
@@ -179,9 +181,10 @@ ZaSettings.init = function () {
 					if(zimlets[ix] && zimlets[ix].zimlet && zimlets[ix].zimlet[0] && zimlets[ix].zimletContext && zimlets[ix].zimletContext[0]) {
 						var zimlet = zimlets[ix].zimlet[0];
 						var zimletContext = zimlets[ix].zimletContext[0];
+						ZaSettings.EnabledZimlet[zimlet.name] = true;
 	                    //if(window.console && window.console.log) console.log("Adding zimlet: " + zimlet.name);
 	                    //load message file first because consequent files may reference it
-	                    includes.push([appContextPath, "/res/", zimlet.name, ".js?v=",appVers,ZaZimbraAdmin.LOCALE_QS].join(""));
+	                    			includes.push([appContextPath, "/res/", zimlet.name, ".js?v=",appVers,ZaZimbraAdmin.LOCALE_QS].join(""));
 						if(zimlet.include && zimlet.include.length>0) {
 							var cnt2 = zimlet.include.length;
 							for (var j=0;j<cnt2;j++) {
@@ -219,6 +222,15 @@ ZaSettings.init = function () {
 				ZaSettings.postInit();
 			}
 		} else {
+			if(zimlets && zimlets.length > 0) {
+				var cnt = zimlets.length;
+				for(var ix = 0; ix < cnt; ix++) {
+					if(zimlets[ix] && zimlets[ix].zimlet && zimlets[ix].zimlet[0]){
+						var zimlet = zimlets[ix].zimlet[0];
+						ZaSettings.EnabledZimlet[zimlet.name] = true;
+					}
+				}
+			}
 			var zimletURL = ["/service/zimlet/res/Zimlets-nodev_all.js.zgz", ".js?v=",appVers,ZaZimbraAdmin.LOCALE_QS].join("");
 			AjxInclude([zimletURL], null,new AjxCallback(ZaSettings.postInit ));
 		}
@@ -378,6 +390,13 @@ ZaSettings.getAuthorizationScheme = function(){
 }
 ZaSettings.authorizationScheme  = ZaSettings.getAuthorizationScheme;
 
+ZaSettings.getExchangeServerType = function(){
+  return [
+    {value: "webdav", label: ZaMsg.choice_webdav},
+    {value: "ews", label: ZaMsg.choice_ews}
+    ];
+}
+ZaSettings.exchangeServerType = ZaSettings.getExchangeServerType;
 
 //List view groups
 ZaSettings.OVERVIEW_CONFIG_ITEMS = [ZaSettings.COS_LIST_VIEW,ZaSettings.ZIMLET_LIST_VIEW,ZaSettings.SERVER_LIST_VIEW,ZaSettings.ADMIN_ZIMLET_LIST_VIEW,

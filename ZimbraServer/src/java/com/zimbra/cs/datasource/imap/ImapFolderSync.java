@@ -33,6 +33,7 @@ import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.datasource.DataSourceManager;
+import com.zimbra.cs.datasource.IOExceptionHandler;
 import com.zimbra.cs.datasource.MessageContent;
 import com.zimbra.cs.datasource.SyncErrorManager;
 import com.zimbra.cs.datasource.SyncUtil;
@@ -79,6 +80,7 @@ class ImapFolderSync {
     private boolean completed;
     private int totalErrors;
     private boolean fullSync;
+    private boolean localDeleted;
 
     private static final Log LOG = ZimbraLog.datasource;
 
@@ -331,8 +333,9 @@ class ImapFolderSync {
         }
 
         // Fetch new messages
+        IOExceptionHandler.getInstance().resetSyncCounter(mailbox);
         maxUid = uidNext > 0 ? uidNext - 1 : 0;
-        if (maxUid <= 0 || lastFetchedUid < maxUid) {
+        if (mailboxInfo.getExists() > 0 && (maxUid <= 0 || lastFetchedUid < maxUid)) {
             List<Long> uids = remoteFolder.getUids(lastFetchedUid + 1, maxUid);
             if (uids.size() > 0) {
                 fetchMessages(uids);
@@ -342,6 +345,7 @@ class ImapFolderSync {
             Collections.sort(addedUids, Collections.reverseOrder());
             fetchMessages(addedUids);
         }
+        IOExceptionHandler.getInstance().checkpointIOExceptionRate(mailbox);
 
         // Delete and expunge messages
         if(!ds.isImportOnly()) {
@@ -470,8 +474,15 @@ class ImapFolderSync {
             LOG.debug("Local folder '%s' was deleted", tracker.getLocalPath());
             if (deleteRemoteFolder(remoteFolder, tracker.getItemId())) {
                 imapSync.deleteFolderTracker(tracker);
+                tracker = null;
+            } else if (localDeleted) {
+                LOG.error("Unable to delete remote folder, creating local folder with sync off");
+                createLocalFolder(ld);
+                SyncUtil.setSyncEnabled(mailbox, localFolder.getId(), false);
+                localDeleted = false;
+            } else {
+                tracker = null;
             }
-            tracker = null;
         } else if (!localFolder.getPath().equals(tracker.getLocalPath())) {
             // Local folder was renamed
             renameFolder(ld, localFolder.getId());
@@ -624,6 +635,7 @@ class ImapFolderSync {
                 if (msg != null) {
                     try {
                         appender.appendMessage(msg);
+                        localFolder.deleteMessage(id);
                     } catch (Exception e) {
                         syncMessageFailed(id, "Append message failed", e);
                     }
@@ -810,14 +822,17 @@ class ImapFolderSync {
         FetchResponseHandler handler = new FetchResponseHandler() {
             public void handleFetchResponse(MessageData md) throws Exception {
                 long uid = md.getUid();
+                IOExceptionHandler.getInstance().trackSyncItem(mailbox, uid);
                 try {
                     handleFetch(md, flagsByUid);
                     clearError(uid);
                 } catch (OutOfMemoryError e) {
                     Zimbra.halt("Out of memory");
                 } catch (Exception e) {
-                    syncFailed("Fetch failed for uid " + uid, e);
-                    SyncErrorManager.incrementErrorCount(ds, remoteId(uid));
+                    if (!IOExceptionHandler.getInstance().isRecoverable(mailbox, uid, "Exception syncing UID "+uid+" in folder "+remoteFolder.getPath(), e)) {
+                        syncFailed("Fetch failed for uid " + uid, e);
+                        SyncErrorManager.incrementErrorCount(ds, remoteId(uid));
+                    }
                 }
                 uidSet.remove(uid);
             }
@@ -1104,6 +1119,7 @@ class ImapFolderSync {
                     }
                 } catch (MailServiceException.NoSuchItemException ex) {
                     // Ignore if local folder has been deleted
+                    localDeleted = true;
                 }
                 // Clear error state in case folder sync reenabled
                 clearError(itemId);

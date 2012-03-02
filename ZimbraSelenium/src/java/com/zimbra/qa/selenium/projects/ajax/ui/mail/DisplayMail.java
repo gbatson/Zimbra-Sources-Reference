@@ -1,9 +1,7 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDisplay;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 
 
 /**
@@ -61,10 +59,6 @@ public class DisplayMail extends AbsDisplay {
 		super(application);
 		
 		logger.info("new " + DisplayMail.class.getCanonicalName());
-		
-		// Let the reading pane load
-		SleepUtil.sleepLong();
-
 
 	}
 	
@@ -78,18 +72,20 @@ public class DisplayMail extends AbsDisplay {
 	 * @return TBD: return the new window?
 	 * @throws HarnessException
 	 */
-	public Object zClickViewEntireMessage() throws HarnessException {
+	public AbsPage zClickViewEntireMessage() throws HarnessException {
 		logger.info(myPageName() + " zViewEntireMessage");
 		
-		if ( this.sIsElementPresent(Locators.zViewEntireMessage) )
+		AbsPage page = null;
+		String locator = Locators.zViewEntireMessage;
+		
+		if ( this.sIsElementPresent(locator) )
 			throw new HarnessException("'View Entire Message' link does not exist: "+ Locators.zViewEntireMessage);
 		
-		this.sClick(Locators.zViewEntireMessage);
+		this.sClick(locator);
 		
-		SleepUtil.sleepLong();	// Messages are usually large, let it load
-
-		// TODO: return the new window?
-		return (null);
+		this.zWaitForBusyOverlay();
+		
+		return (page);
 	}
 
 	/**
@@ -97,9 +93,45 @@ public class DisplayMail extends AbsDisplay {
 	 * @return TBD: return the new window?
 	 * @throws HarnessException
 	 */
-	public Object zClickHighlightObjects() throws HarnessException {
+	public AbsPage zClickHighlightObjects() throws HarnessException {
 		throw new HarnessException("implement me!");
 	}
+	
+	public HtmlElement zGetMailPropertyAsHtml(Field field) throws HarnessException {
+		
+		String source = null;
+		
+		if ( field == Field.Body) {
+			
+			try {
+				
+				this.sSelectFrame("//iframe[contains(@id, '__MSG_body__iframe')]");
+				
+				source = this.sGetHtmlSource();
+				
+				// For some reason, we don't get the <html/> tag.  Add it
+				source = "<html>" + source + "</html>";
+										
+			} finally {
+				// Make sure to go back to the original iframe
+				this.sSelectFrame("relative=top");
+			}
+
+		} else {
+			throw new HarnessException("not implemented for field "+ field);
+		}
+		
+		// Make sure source was found
+		if ( source == null )
+			throw new HarnessException("source was null for "+ field);
+
+		logger.info("DisplayMail.zGetMailPropertyAsHtml() = "+ source);
+
+		// Clean up the HTML code to be valid
+		return (HtmlElement.clean(source));
+
+	}
+	
 	
 	/**
 	 * Get the string value of the specified field
@@ -145,11 +177,19 @@ public class DisplayMail extends AbsDisplay {
 
 		} else if ( field == Field.Cc ) {
 			
-			locator = "css=tr[id$='_cc'] td[class~='LabelColValue']";
+			locator = "css=tr[id$='_cc'] td[class~='LabelColValue'] span[id$='_com_zimbra_email'] span span";
+			if ( !sIsElementPresent(locator) ) {
+				// no email zimlet case
+				locator = "css=tr[id$='_cc'] td[class~='LabelColValue']";
+			}
 			
 		} else if ( field == Field.From ) {
 			
-			locator = "css=tr[id$='_from']";
+			locator = "css=tr[id$='_from'] span[id$='_com_zimbra_email'] span span";
+			if ( !sIsElementPresent(locator) ) {
+				// no email zimlet case
+				locator = "css=tr[id$='_from']";
+			}
 
 		} else if ( field == Field.ReceivedDate ) {
 			
@@ -179,7 +219,7 @@ public class DisplayMail extends AbsDisplay {
 
 		} else if ( field == Field.To ) {
 			
-			locator = "css=tr[id$='_to'] td[class~='LabelColValue']";
+			locator = "css=tr[id$='_to'] td[class~='LabelColValue'] span[id$='_com_zimbra_email'] span span";
 
 		} else {
 			
@@ -209,7 +249,8 @@ public class DisplayMail extends AbsDisplay {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		throw new HarnessException("implement me");
+		logger.warn("implement me", new Throwable());
+		return (true);
 	}
 
 

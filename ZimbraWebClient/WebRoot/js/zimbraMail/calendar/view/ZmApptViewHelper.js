@@ -115,7 +115,7 @@ function(tabView, dateInfo) {
 };
 
 ZmApptViewHelper.handleDateChange = 
-function(startDateField, endDateField, isStartDate, skipCheck) {
+function(startDateField, endDateField, isStartDate, skipCheck, oldStartDate) {
 	var needsUpdate = false;
 	var sd = AjxDateUtil.simpleParseDateStr(startDateField.value);
 	var ed = AjxDateUtil.simpleParseDateStr(endDateField.value);
@@ -131,8 +131,13 @@ function(startDateField, endDateField, isStartDate, skipCheck) {
 			startDateField.value = AjxDateUtil.simpleComputeDateStr(sd);
 		}
 
-		if (ed.valueOf() < sd.valueOf())
+		if (ed.valueOf() < sd.valueOf()) {
 			endDateField.value = startDateField.value;
+        }else if(oldStartDate != null) {
+            var delta = ed.getTime() - oldStartDate.getTime();
+            var newEndDate = new Date(sd.getTime() + delta);
+            endDateField.value = AjxDateUtil.simpleComputeDateStr(newEndDate);
+        }
 		needsUpdate = true;
 	} else {
 		// if date was input by user and it's foobar, reset to today's date
@@ -281,7 +286,7 @@ function(folderSelect, folderRow, calendarOrgs, calItem) {
 		}
 
 		var selected = ((calItem.folderId == cal.id) || (calItem.folderId == id));
-		var icon = appCtxt.multiAccounts ? acct.getIcon() : null;
+		var icon = appCtxt.multiAccounts ? acct.getIcon() : (cal.getIcon() + ",color=" + cal.color);
 		var name = AjxStringUtil.htmlDecode(appCtxt.multiAccounts
 			? ([cal.getName(), " (", acct.getDisplayName(), ")"].join(""))
 			: cal.getName());
@@ -348,6 +353,9 @@ function(item, type, strictText, strictEmail, checkForAvailability) {
 													new ZmResource(type);
 			attendee.initFromEmail(item, true);
 		}
+		
+		attendee.isGroup = item.isGroup;
+		attendee.canExpand = item.canExpand;
 	} else if (typeof item == "string") {
 		item = AjxStringUtil.trim(item);	// trim white space
 		item = item.replace(/;$/, "");		// trim separator
@@ -369,6 +377,9 @@ function(item, type, strictText, strictEmail, checkForAvailability) {
 			} else if (attendee && type == ZmCalBaseItem.PERSON) {
 				// remember actual address (in case it's email2 or email3)
 				attendee._inviteAddress = addr;
+                attendee.getEmail = function() {
+				    return this._inviteAddress || this.constructor.prototype.getEmail.apply(this);
+			    }
 			}
 		}
 	}
@@ -535,4 +546,26 @@ function(id) {
 		case "O": return "ZmSchedulerApptBorder-outOfOffice";
 	}
 	return "ZmSchedulerApptBorder-busy";
+};
+
+/**
+ * Returns a list of attendees with the given role.
+ *
+ * @param	{array}		list		list of attendees
+ * @param	{constant}	role		defines the role of the attendee (required/optional)
+ *
+ * @return	{array}	a list of attendees
+ */
+ZmApptViewHelper.filterAttendeesByRole =
+function(list, role) {
+
+	var result = [];
+	for (var i = 0; i < list.length; i++) {
+		var attendee = list[i];
+		var attRole = attendee.getParticipantRole() || ZmCalItem.ROLE_REQUIRED;
+		if (attRole == role){
+			result.push(attendee);
+		}
+	}
+	return result;
 };

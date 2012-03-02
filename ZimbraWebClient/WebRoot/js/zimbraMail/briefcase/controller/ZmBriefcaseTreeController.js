@@ -61,17 +61,17 @@ ZmBriefcaseTreeController.prototype.resetOperations =
 function(actionMenu, type, id) {
 
 	var rootId = ZmOrganizer.getSystemId(ZmOrganizer.ID_ROOT);
-	if (actionMenu && id != rootId) {
+     if (actionMenu && id != rootId) {
 		var briefcase = appCtxt.getById(id);
 		if (!briefcase) { return; }
-
+        var nId = ZmOrganizer.normalizeId(id);
 		var briefcaseId = ZmOrganizer.getSystemId(ZmOrganizer.ID_BRIEFCASE);
-		var isRoot = (briefcase.id == rootId);
-		var isBriefcase = (briefcase.id == briefcaseId);
+		var isRoot = (nId == rootId);
+		var isBriefcase = (nId == briefcaseId);
 		var isTopLevel = (!isRoot && briefcase.parent.id == rootId);
 		var isLink = briefcase.link;
 		var isLinkOrRemote = isLink || briefcase.isRemote();
-        var isTrash = (briefcase.id == ZmFolder.ID_TRASH);
+        var isTrash = (nId == ZmFolder.ID_TRASH);
 
         var deleteText = ZmMsg.del;
 
@@ -89,17 +89,18 @@ function(actionMenu, type, id) {
 
             menuItem = actionMenu.getMenuItem(ZmOperation.NEW_BRIEFCASE);
             menuItem.setText(ZmMsg.newFolder);
-            menuItem.setImage("NewSection");
+            menuItem.setImage("NewFolder");
             menuItem.setEnabled(!isLinkOrRemote || ZmBriefcaseTreeController.__isAllowed(briefcase, ZmShare.PERM_CREATE_SUBDIR) || briefcase.isAdmin() || ZmShare.getRoleFromPerm(briefcase.perm) == ZmShare.ROLE_MANAGER);
 
             if (appCtxt.get(ZmSetting.SHARING_ENABLED)) {
-                isBriefcase = (!isRoot && briefcase.parent.id == rootId);
+                isBriefcase = (!isRoot && briefcase.parent.id == rootId) || type==ZmOrganizer.BRIEFCASE;
                 menuItem = actionMenu.getMenuItem(ZmOperation.SHARE_BRIEFCASE);
                 menuItem.setText(ZmMsg.shareFolder);
                 menuItem.setImage(isBriefcase ? "SharedMailFolder" : "Section");
                 var isShareVisible = (!isLinkOrRemote || briefcase.isAdmin());
                 if (appCtxt.isOffline) {
-                    isShareVisible = !briefcase.getAccount().isMain;
+                    var acct = briefcase.getAccount();
+                    isShareVisible = !acct.isMain && acct.isZimbraAccount;
                 }
                 menuItem.setEnabled(isShareVisible);
             }

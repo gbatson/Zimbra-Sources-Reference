@@ -84,14 +84,16 @@ function(parent, type, id) {
             isShareVisible = false;
         }
         if (appCtxt.isOffline) {
-            isShareVisible = !folder.getAccount().isMain;
+            var acct = folder.getAccount();
+            isShareVisible = !acct.isMain && acct.isZimbraAccount;
         }
         parent.enable([ZmOperation.SHARE_TASKFOLDER], isShareVisible);
         parent.enable(ZmOperation.SYNC, folder.isFeed());
 	}
 
     parent.enable(ZmOperation.EMPTY_FOLDER,((folder.numTotal > 0) || (folder.children && (folder.children.size() > 0))));
-	var isTrash = id == ZmOrganizer.ID_TRASH;
+    var nId = ZmOrganizer.normalizeId(id);
+    var isTrash = nId == ZmOrganizer.ID_TRASH;
 	this.setVisibleIfExists(parent, ZmOperation.EMPTY_FOLDER, isTrash);
 
 	parent.enable(ZmOperation.EDIT_PROPS, !isTrash);

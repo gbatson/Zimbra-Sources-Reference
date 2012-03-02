@@ -430,25 +430,25 @@
                 <mkdir dir="${build.dir}/ldap-config/config"/>
 
               <!-- Zimbra schema for pre OpenLDAP 2.4 - uses zimbra.schema-template, should eventually retire zimbra.schema-template and only use zimbra-ocs.xml -->
-                <java classname="com.zimbra.cs.account.AttributeManager" fork="true" classpathref="class.path"
+                <java classname="com.zimbra.cs.account.AttributeManagerUtil" fork="true" classpathref="class.path"
                       failonerror="true">
                     <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
                     <arg line="-a generateLdapSchema -i ${build.dir}/attrs -t ${config.dir}/ldap/zimbra.schema-template -o ${build.dir}/ldap-config/zimbra.schema"/>
                 </java>
 
               <!-- Zimbra schema for OpenLDAP 2.4 - use zimbra-ocs.xml -->
-                <java classname="com.zimbra.cs.account.AttributeManager" fork="true" classpathref="class.path"
+                <java classname="com.zimbra.cs.account.AttributeManagerUtil" fork="true" classpathref="class.path"
                       failonerror="true">
                     <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
                     <arg line="-a generateSchemaLdif -i ${build.dir}/attrs -o ${build.dir}/ldap-config/config/zimbra.ldif"/>
                 </java>
 
-                <java classname="com.zimbra.cs.account.AttributeManager" fork="true" classpathref="class.path"
+                <java classname="com.zimbra.cs.account.AttributeManagerUtil" fork="true" classpathref="class.path"
                       failonerror="true">
                     <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
                     <arg line="-a generateGlobalConfigLdif -i ${build.dir}/attrs -o ${build.dir}/ldap-config/zimbra_globalconfig.ldif"/>
                 </java>
-                <java classname="com.zimbra.cs.account.AttributeManager" fork="true" classpathref="class.path"
+                <java classname="com.zimbra.cs.account.AttributeManagerUtil" fork="true" classpathref="class.path"
                       failonerror="true">
                     <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
                     <arg line="-a generateDefaultCOSLdif -i ${build.dir}/attrs -o ${build.dir}/ldap-config/zimbra_defaultcos.ldif"/>
@@ -501,7 +501,7 @@
     </target>
 
     <target name="generate-getter">
-       <java classname="com.zimbra.cs.account.AttributeManager" fork="true" classpathref="class.path"
+       <java classname="com.zimbra.cs.account.AttributeManagerUtil" fork="true" classpathref="class.path"
               failonerror="true">
           <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
           <arg line="-a generateGetters -c ${getter.class} -i ${config.dir}/attrs -r ${src.java.dir}/com/zimbra/cs/account/${getter.output}"/>
@@ -509,7 +509,7 @@
     </target>
 
     <target name="generate-provisioning">
-       <java classname="com.zimbra.cs.account.AttributeManager" fork="true" classpathref="class.path"
+       <java classname="com.zimbra.cs.account.AttributeManagerUtil" fork="true" classpathref="class.path"
               failonerror="true">
           <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
           <arg line="-a generateProvisioning -i ${config.dir}/attrs -r ${src.java.dir}/com/zimbra/cs/account/ZAttrProvisioning.java"/>
@@ -593,6 +593,7 @@
           <include name="lucene*.jar"/>
           <include name="ant-tar*.jar"/>
           <include name="icu4j-*.jar"/>
+          <include name="ews.jar"/>  
         </lib>
         <lib dir="${im.jars.dir}" includes="*.jar"/>
         <classes dir="${config.dir}" includes="sieveConfig.xml"/>
@@ -994,7 +995,7 @@
 
     <target name="dev-dist-unix" if="is-unix">
         <copy tofile="${dist.dir}/lib/libzimbra-native.${native.so}"
-              file="${lib.dir}/libzimbra-native.${native.so}.${native.os}${native.arch}" verbose="true" failonerror="false"
+              file="${lib.dir}/libzimbra-native.${native.so}.${native.os}${native.arch}" verbose="true" failonerror="true"
               overwrite="true"/>
     </target>
 
@@ -1027,15 +1028,8 @@
         </copy>
     </target>
 
-    <target name="reset-jetty" depends="stop-webserver,build-init" description="Resets jetty">
-        <delete dir="${jetty.home.dir}"/>
+    <target name="init-jetty" depends="build-init" description="Initializes the jetty directory structure">
         <delete dir="${zimbra.home.dir}/data/tmp/jetty"/>
-        <gunzip src="${jetty.src.dir}/jetty-${jetty.version}.tar.gz" dest="${build.dir}/jetty-${jetty.version}.tar"/>
-        <untar src="${build.dir}/jetty-${jetty.version}.tar" dest="${zimbra.home.dir}" overwrite="true"/>
-        <move toDir="${jetty.home.dir}">
-            <fileset dir="${zimbra.home.dir}/jetty-${jetty.version}" />
-        </move>
-        <delete file="${build.dir}/jetty-${jetty.version}.tar"/>
         <mkdir dir="${jetty.home.dir}/logs"/>
         <mkdir dir="${jetty.home.dir}/webapps"/>
         <mkdir dir="${jetty.home.dir}/work"/>
@@ -1046,18 +1040,31 @@
         <mkdir dir="${zimbra.home.dir}/data/tmp/jetty"/>
     </target>
 
-    <target name="reset-open-ldap" description="Resets OpenLDAP" if="is-unix">
-        <if><available file="../ZimbraServer/src/perl/install-openldap"/> <!-- Not available for community build. -->
-            <then>
-            <antcall target="stop-ldap"/>
-            <exec failonerror="true" executable="../ZimbraServer/src/perl/install-openldap">
-                <arg line="HELIX"/>
-            </exec>
-            </then>
-        </if>
+    <target name="install-thirdparty" depends="install-thirdparty-unix,install-thirdparty-windows" description="Installs third party binaries" />
+
+    <target name="install-thirdparty-unix" description="Installs third party binaries on unix" if="is-unix">
+      <if><available file="../ZimbraServer/src/perl/install-thirdparty"/> <!-- Not available for community build. -->
+        <then>
+          <antcall target="stop-webserver"/>
+          <antcall target="stop-ldap"/>
+          <exec failonerror="true" executable="../ZimbraServer/src/perl/install-thirdparty">
+	    <arg line="HELIX"/>
+          </exec>
+        </then>
+      </if>
     </target>
 
-    <target name="reset-all" depends="reset-jetty,reset-open-ldap,reset-the-world" description="Reset the world plus jetty and OpenLDAP">
+    <target name="install-thirdparty-windows" depends="stop-webserver" description="Installs Jetty on Windows" if="is-windows">
+        <delete dir="${jetty.home.dir}"/>
+        <delete dir="${zimbra.home.dir}/data/tmp/jetty"/>
+        <untar src="${jetty.src.dir}/jetty-${jetty.version}.tar.gz" compression="gzip" dest="${zimbra.home.dir}" overwrite="true"/>
+        <move toDir="${jetty.home.dir}">
+            <fileset dir="${zimbra.home.dir}/jetty-${jetty.version}" />
+        </move>
+        <delete file="${build.dir}/jetty-${jetty.version}.tar"/>
+    </target>
+
+    <target name="reset-all" depends="install-thirdparty,init-jetty,reset-the-world" description="Reset the world plus jetty and OpenLDAP">
         <ant dir="../ZimbraWebClient" target="clean" inheritAll="false"/>
         <ant dir="../ZimbraWebClient" target="admin-deploy" inheritAll="false"/>
         <ant dir="../ZimbraWebClient" target="clean" inheritAll="false"/>
@@ -1716,7 +1723,10 @@
 
     <target name="stop-ldap-unix" if="is-unix">
         <if>
-            <available file="${zimbra.home.dir}/bin/ldap" type="file"/>
+            <and>
+                <available file="${zimbra.home.dir}/bin/ldap" type="file"/>
+                <available file="${zimbra.home.dir}/openldap"/>
+            </and>
             <then>
                 <exec executable="${zimbra.home.dir}/bin/ldap">
                     <arg value="stop"/>
@@ -1965,7 +1975,7 @@
     <delete dir="${zimbra.home.dir}/redolog-2"/>
     <mkdir dir="${zimbra.home.dir}/redolog-2/archive"/>
 
-    <antcall target="reset-jetty">
+    <antcall target="init-jetty">
       <param name="jetty.home.dir" value="${jetty.alt.dir}"/>
     </antcall>
     <antcall target="dir-init-jetty">
@@ -2037,9 +2047,17 @@
     </java>
   </target>
 
+  <target name="generate-rights-message-properties" depends="set-buildinfo-vars,compile">
+    <java classname="com.zimbra.cs.account.accesscontrol.RightManager" fork="true" classpathref="class.path" failonerror="true">
+      <sysproperty key="zimbra.version" value="${zimbra.buildinfo.all}"/>
+      <arg line="-a genMessageProperties -i conf/rights -r conf/msgs/ZsMsgRights.properties"/>
+    </java>
+  </target>
+	
   <target name="generate-rights">
     <antcall target="generate-domainadmin-rights-xml"/>
     <antcall target="generate-rights-java"/>
+  	<antcall target="generate-rights-message-properties"/>
   </target>
 
   <target name="generate-rights-txt">

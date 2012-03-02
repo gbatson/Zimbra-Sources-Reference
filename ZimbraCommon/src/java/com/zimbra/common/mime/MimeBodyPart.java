@@ -26,10 +26,16 @@ import java.io.UnsupportedEncodingException;
 import javax.activation.DataSource;
 
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.CharsetUtil;
+import com.zimbra.common.util.StringUtil;
 
 public class MimeBodyPart extends MimePart {
 
     private ContentTransferEncoding encoding, targetEncoding;
+
+    /** Maximum number of octets in a line before we force a content transfer
+     *  encoding.  Many MTAs will wrap lines over 998 octets. */
+    private static final int MAX_LINE_OCTETS = 900;
 
     public MimeBodyPart(ContentType ctype) {
         super(ctype != null ? ctype : new ContentType(ContentType.TEXT_PLAIN));
@@ -47,15 +53,16 @@ public class MimeBodyPart extends MimePart {
         targetEncoding = mbp.targetEncoding;
     }
 
-
-    @Override protected MimeBodyPart clone() {
+    @Override
+    protected MimeBodyPart clone() {
         return new MimeBodyPart(this);
     }
 
-    @Override void removeChild(MimePart mp)  {}
+    @Override
+    void removeChild(MimePart mp) {}
 
-
-    @Override ContentType updateContentType(ContentType ctype) {
+    @Override
+    ContentType updateContentType(ContentType ctype) {
         if (ctype != null && (ctype.getPrimaryType().equals("multipart") || ctype.getContentType().equals(ContentType.MESSAGE_RFC822))) {
             throw new UnsupportedOperationException("cannot change a part into a multipart or message: " + ctype);
         }
@@ -72,8 +79,8 @@ public class MimeBodyPart extends MimePart {
         return this;
     }
 
-
-    @Override public long getSize() throws IOException {
+    @Override
+    public long getSize() throws IOException {
         long size = super.getSize();
         if (size == -1) {
             size = recordSize(ByteUtil.countBytes(getRawContentStream()));
@@ -81,7 +88,8 @@ public class MimeBodyPart extends MimePart {
         return size;
     }
 
-    @Override public InputStream getRawContentStream() throws IOException {
+    @Override
+    public InputStream getRawContentStream() throws IOException {
         InputStream stream = super.getRawContentStream();
         if (encoding.normalize() != targetEncoding.normalize()) {
             // decode the raw version if necessary
@@ -100,7 +108,8 @@ public class MimeBodyPart extends MimePart {
         return stream;
     }
 
-    @Override public byte[] getRawContent() throws IOException {
+    @Override
+    public byte[] getRawContent() throws IOException {
         if (encoding.normalize() == targetEncoding.normalize()) {
             return super.getRawContent();
         } else {
@@ -108,7 +117,8 @@ public class MimeBodyPart extends MimePart {
         }
     }
 
-    @Override public InputStream getContentStream() throws IOException {
+    @Override
+    public InputStream getContentStream() throws IOException {
         InputStream raw = super.getRawContentStream();
         if (encoding == ContentTransferEncoding.BASE64) {
             return new ContentTransferEncoding.Base64DecoderStream(raw);
@@ -119,7 +129,8 @@ public class MimeBodyPart extends MimePart {
         }
     }
 
-    @Override public byte[] getContent() throws IOException {
+    @Override
+    public byte[] getContent() throws IOException {
         // certain encodings mean that the decoded content is the same as the raw content
         if (encoding.normalize() == ContentTransferEncoding.BINARY) {
             return super.getRawContent();
@@ -132,18 +143,20 @@ public class MimeBodyPart extends MimePart {
         InputStream is = getContentStream();
 
         String charset = getContentType().getParameter("charset");
-        if (charset != null) {
+        if (!StringUtil.isNullOrEmpty(charset)) {
             try {
-                return new InputStreamReader(is, HeaderUtils.normalizeCharset(charset));
-            } catch (UnsupportedEncodingException e) { }
+                return new InputStreamReader(is, CharsetUtil.normalizeCharset(charset));
+            } catch (UnsupportedEncodingException e) {
+            }
         }
 
         // if we're here, either there was no explicit charset or it was invalid, so try the default charset
         String defaultCharset = getDefaultCharset();
-        if (defaultCharset != null && !defaultCharset.trim().isEmpty()) {
+        if (!StringUtil.isNullOrEmpty(defaultCharset)) {
             try {
-                return new InputStreamReader(is, HeaderUtils.normalizeCharset(defaultCharset));
-            } catch (UnsupportedEncodingException e) { }
+                return new InputStreamReader(is, CharsetUtil.normalizeCharset(defaultCharset));
+            } catch (UnsupportedEncodingException e) {
+            }
         }
 
         // if we're here, the default charset was also either unspecified or unavailable, so go with the JVM's default charset
@@ -235,19 +248,19 @@ public class MimeBodyPart extends MimePart {
     }
 
     ContentTransferEncoding pickEncoding() throws IOException {
-        int encodeable = 0, toolong = 0, length = 0;
+        int encodeable = 0, toolong = 0, length = 0, column = 0;
 
         InputStream is = getRawContentStream();
         if (is != null) {
             try {
                 is = is instanceof ByteArrayInputStream || is instanceof BufferedInputStream ? is : new BufferedInputStream(is);
-                for (int octet = is.read(), column = 0; octet != -1; octet = is.read()) {
+                for (int octet = is.read(); octet != -1; octet = is.read()) {
                     // FIXME: bytes under 0x20 (except NUL) are actually OK to transmit via "7bit"
                     if (octet >= 0x7F || (octet < 0x20 && octet != '\t' && octet != '\r' && octet != '\n')) {
                         encodeable++;
                     }
                     if (octet == '\n') {
-                        if (column > 998) {
+                        if (column > MAX_LINE_OCTETS) {
                             toolong++;
                         }
                         column = 0;
@@ -260,6 +273,9 @@ public class MimeBodyPart extends MimePart {
                 ByteUtil.closeStream(is);
             }
         }
+        if (column > MAX_LINE_OCTETS) {
+            toolong++;
+        }
 
         if (encodeable == 0 && toolong == 0) {
             return ContentTransferEncoding.SEVEN_BIT;
@@ -270,7 +286,8 @@ public class MimeBodyPart extends MimePart {
         }
     }
 
-    @Override void markDirty(Dirty dirty) {
+    @Override
+    void markDirty(Dirty dirty) {
         ContentTransferEncoding cte = ContentTransferEncoding.forString(getMimeHeader("Content-Transfer-Encoding"));
         ContentTransferEncoding cteCurrent = targetEncoding == null ? ContentTransferEncoding.BINARY : targetEncoding;
         if (cte.normalize() != cteCurrent.normalize()) {

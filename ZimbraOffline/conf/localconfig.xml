@@ -16,6 +16,9 @@
   <key name="data_source_xsync_factory_class">
     <value>com.zimbra.zimbrasync.client.OfflineExchangeSyncFactory</value>
   </key>
+  <key name="data_source_ioexception_handler_class">
+    <value>com.zimbra.cs.mailbox.SyncExceptionHandler</value>
+  </key>
   <key name="debug_disable_mailbox_group">
     <value>true</value>
   </key>
@@ -98,7 +101,7 @@
     <value>ffffffff-ffff-ffff-ffff-ffffffffffff</value>
   </key>
   <key name="zdesktop_backup_dir">
-    <value>${zimbra_home}/backup</value>
+    <value>${zimbra_home}/../zd_backup</value>
   </key>
   <key name="zdesktop_sync_io_exception_limit">
     <value>10</value>  
@@ -147,6 +150,9 @@
   </key>
   <key name="zimbra_class_dbconnfactory">
     <value>com.zimbra.cs.db.RetryConnectionFactory</value>
+  </key>
+  <key name="zimbra_class_conditionalproxyselector">
+    <value>com.zimbra.cs.offline.net.AttrProxySelector</value>
   </key>
   <key name="zimbra_disk_cache_servlet_flush">
     <value>false</value>

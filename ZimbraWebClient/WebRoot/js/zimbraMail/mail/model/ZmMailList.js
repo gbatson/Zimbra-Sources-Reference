@@ -403,8 +403,8 @@ function(convs, msgs) {
 					AjxDebug.println(AjxDebug.NOTIFY, "conv is null!");
 				}
 				else {
-					var folders = AjxUtil.keys(conv.folders) || "";
-					AjxDebug.println(AjxDebug.NOTIFY, "conv folders: " + folders.join(" "));
+					var folders = AjxUtil.keys(conv.folders);
+					AjxDebug.println(AjxDebug.NOTIFY, "conv spans " + folders.length + " folder(s): " + folders.join(" "));
 				}
 			}
 		}
@@ -599,13 +599,6 @@ function(offset, limit) {
 		if (!msg) {
 			msg = list[0];	// no hot messages, use first msg
 		}
-
-        if(msg && msg.invite) {
-            var firstMsg = list[end-1];
-            if(firstMsg && firstMsg.invite && firstMsg.invite.isAllDayEvent()) {
-                msg.invite.setAllDayEvent(true);
-            }
-        }
 	}
 	
 	return msg;

@@ -1,10 +1,13 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.compose;
 
+import java.util.HashMap;
+
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
@@ -17,16 +20,16 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Field;
 
 public class ForwardMailHtml extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public ForwardMailHtml() {
 		logger.info("New "+ ForwardMailHtml.class.getCanonicalName());
 		
 		// All tests start at the login page
 		super.startingPage = app.zPageMail;
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefComposeFormat", "html");
-		
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefComposeFormat", "html");
+				}};
+
 	}
 	
 	@Test(	description = "Forward an html mail using html editor",
@@ -79,10 +82,11 @@ public class ForwardMailHtml extends AjaxCommonTest {
 		
 		// Send the message
 		mailform.zSubmit();
-				
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
 		// From the receiving end, verify the message details
-		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountB(), "subject:("+ mail.dSubject +")");
+      MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountB(), "subject:("+ mail.dSubject +")");
 
 		ZAssert.assertEquals(received.dFromRecipient.dEmailAddress, app.zGetActiveAccount().EmailAddress, "Verify the from field is correct");
 		ZAssert.assertEquals(received.dToRecipients.get(0).dEmailAddress, ZimbraAccount.AccountB().EmailAddress, "Verify the to field is correct");

@@ -31,6 +31,7 @@ import javax.mail.internet.MimeMultipart;
 
 import com.sun.mail.smtp.SMTPMessage;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.CharsetUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.EmailUtil;
 import com.zimbra.common.util.StringUtil;
@@ -183,15 +184,9 @@ public class Notification implements LmtpCallback {
         }
         destination = envSender.getAddress();
 
-        // If Auto-Submitted is present and not 'no'
-        String[] autoSubmitted = mm.getHeader("Auto-Submitted");
-        if (autoSubmitted != null) {
-            for (int i = 0; i < autoSubmitted.length; i++) {
-                if (!autoSubmitted[i].equalsIgnoreCase("no")) {
-                    ofailed("auto-submitted not no", destination, rcpt, msg);  
-                    return;
-                }
-            }
+        if (Mime.isAutoSubmitted(mm)) {
+            ofailed("auto-submitted not no", destination, rcpt, msg);  
+            return;
         }
 
         // If precedence is bulk, junk or list
@@ -333,7 +328,7 @@ public class Notification implements LmtpCallback {
     
     private String getCharset(Account account, String data) {
         String requestedCharset = account.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, MimeConstants.P_CHARSET_UTF8);
-        return StringUtil.checkCharset(data, requestedCharset);
+        return CharsetUtil.checkCharset(data, requestedCharset);
     }
 
     /**

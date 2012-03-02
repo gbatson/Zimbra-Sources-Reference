@@ -77,7 +77,8 @@ ZmDataSource.IDENTITY_ATTRS = {
 	"useAddressForForwardReply":	"setReplyTo",
 	"replyToAddress":				"setReplyToAddress",
 	"replyToDisplay":				"setReplyToDisplay",
-	"defaultSignature":				"signature"
+	"defaultSignature":				"signature",
+	"forwardReplySignature":		"replySignature"
 };
 
 //
@@ -361,10 +362,12 @@ ZmDataSource.prototype.reset = function() {
 	var identity = this.identity = new ZmIdentity();
 	identity.id = this.id;
 	identity.isFromDataSource = true;
-	// defensive programming
-	identity.create = null;
-	identity.save = null;
-	identity.doDelete = null;
+	
+	// saving the identity itself won't work; need to save the data source
+	var self = this;
+	identity.save = function(callback, errorCallback, batchCommand) {
+			ZmDataSource.prototype.save.apply(self, arguments);
+		};
 };
 
 ZmDataSource.prototype.getProvider = function() {

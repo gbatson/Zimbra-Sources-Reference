@@ -109,6 +109,10 @@ function() {
 	if (appCtxt.isOffline) {
 		this.getSetting(ZmSetting.OFFLINE_NOTEBOOK_SYNC_ENABLED).addChangeListener(listener);
 		this.getSetting(ZmSetting.OFFLINE_IS_MAILTO_HANDLER).addChangeListener(listener);
+        this.getSetting(ZmSetting.OFFLINE_BACKUP_ACCOUNT_ID).addChangeListener(listener);
+        this.getSetting(ZmSetting.OFFLINE_BACKUP_INTERVAL).addChangeListener(listener);
+        this.getSetting(ZmSetting.OFFLINE_BACKUP_PATH).addChangeListener(listener);
+        this.getSetting(ZmSetting.OFFLINE_BACKUP_KEEP).addChangeListener(listener);
 	}
 };
 
@@ -723,7 +727,7 @@ function() {
 	this.registerSetting("MAIL_ENABLED",					{name:"zimbraFeatureMailEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	this.registerSetting("MAIL_UPSELL_ENABLED",				{name:"zimbraFeatureMailUpsellEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("MAIL_UPSELL_URL",					{name:"zimbraFeatureMailUpsellURL", type:ZmSetting.T_COS});
-	this.registerSetting("NOTEBOOK_ENABLED",				{name:"zimbraFeatureNotebookEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
+	this.registerSetting("NOTEBOOK_ENABLED",				{type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("OPTIONS_ENABLED",					{name:"zimbraFeatureOptionsEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	this.registerSetting("PORTAL_ENABLED",					{name:"zimbraFeaturePortalEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("TASKS_ENABLED",					{name:"zimbraFeatureTasksEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
@@ -833,6 +837,7 @@ function() {
 	this.registerSetting("POLLING_INTERVAL_ENABLED",		{name:"zimbraFeatureMailPollingIntervalPreferenceEnabled", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	this.registerSetting("SEARCH_INCLUDES_SPAM",			{name:"zimbraPrefIncludeSpamInSearch", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	this.registerSetting("SEARCH_INCLUDES_TRASH",			{name:"zimbraPrefIncludeTrashInSearch", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
+	this.registerSetting("SHORT_ADDRESS",					{name:"zimbraPrefShortEmailAddress", type:ZmSetting.T_PREF, dataType: ZmSetting.D_BOOLEAN, defaultValue: true});
 	this.registerSetting("SHORTCUTS",						{name:"zimbraPrefShortcuts", type:ZmSetting.T_PREF});
 	this.registerSetting("SHOW_SEARCH_STRING",				{name:"zimbraPrefShowSearchString", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	this.registerSetting("SIGNATURES",						{type: ZmSetting.T_PREF, dataType: ZmSetting.D_HASH});
@@ -891,12 +896,13 @@ function() {
 	this.registerSetting("OFFLINE_SUPPORTS_MAILTO",			{type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	this.registerSetting("OFFLINE_SUPPORTS_DOCK_UPDATE",	{type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	this.registerSetting("OFFLINE_WEBAPP_URI",				{name:"offlineWebappUri", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING});
-    this.registerSetting("OFFLINE_BACKUP_INTERVAL",	        {name:"zimbraPrefOfflineBackupInterval", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_INT, defaultValue:0, isGlobal:true});
-    this.registerSetting("OFFLINE_BACKUP_PATH",	            {name:"zimbraPrefOfflineBackupPath", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_STRING, isGlobal:true});
-    this.registerSetting("OFFLINE_BACKUP_KEEP",	            {name:"zimbraPrefOfflineBackupKeep", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_INT, isGlobal:true});
-    this.registerSetting("OFFLINE_BACKUP_ACCOUNT_ID",       {name:"zimbraPrefOfflineBackupAccountId", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_INT, isGlobal:true});
-    this.registerSetting("OFFLINE_BACKUP_RESTORE",          {name:"zimbraPrefOfflineBackupRestore", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_INT, isGlobal:true});
-    this.registerSetting("OFFLINE_BACKUP_NOW_BUTTON",       {name:"zimbraPrefOfflineBackupAccount", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
+    this.registerSetting("OFFLINE_BACKUP_INTERVAL",	        {name:"zimbraPrefOfflineBackupInterval", type:ZmSetting.T_PREF, dataType:ZmSetting.D_INT, defaultValue:0, isGlobal:true});
+    this.registerSetting("OFFLINE_BACKUP_PATH",	            {name:"zimbraPrefOfflineBackupPath", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING, isGlobal:true});
+    this.registerSetting("OFFLINE_BACKUP_KEEP",	            {name:"zimbraPrefOfflineBackupKeep", type:ZmSetting.T_PREF, dataType:ZmSetting.D_INT, isGlobal:true});
+    this.registerSetting("OFFLINE_BACKUP_ACCOUNT_ID",       {name:"zimbraPrefOfflineBackupAccountId", type:ZmSetting.T_PREF, dataType:ZmSetting.D_INT, isGlobal:true});
+    this.registerSetting("OFFLINE_BACKUP_RESTORE",          {name:"zimbraPrefOfflineBackupRestore", dataType:ZmSetting.D_INT, isGlobal:true});
+    this.registerSetting("OFFLINE_BACKUP_NOW_BUTTON",       {name:"zimbraPrefOfflineBackupAccount", dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
+    this.registerSetting("OFFLINE_ZIMLET_SYNC_ACCOUNT_ID",  {name:"zimbraPrefOfflineZimletSyncAccountId", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING, isGlobal:true});
 	this.registerSetting("OFFLINE_WEBAPP_URI",				{name:"offlineWebappUri", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING});
 
 	// reset the help URI to zimbra.com for offline
@@ -950,7 +956,7 @@ function(ev) {
 		cd.setMessage(ZmMsg.accountChangeRestart, DwtMessageDialog.WARNING_STYLE);
 		cd.popup();
 	} else if (appCtxt.isOffline && id == ZmSetting.OFFLINE_IS_MAILTO_HANDLER) {
-		appCtxt.getAppController().registerMailtoHandler(true);
+		appCtxt.getAppController().registerMailtoHandler(true, ev.source.getValue());
 	}
 };
 

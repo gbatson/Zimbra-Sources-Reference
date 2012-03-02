@@ -344,6 +344,7 @@ public class TestDataSource extends TestCase {
         // Data source import runs asynchronously, so poll until the data source is gone.
         mbox.deleteFolder(rssFolder.getId());
         mbox.importData(list);
+
         for (int i = 1; i <= 10; i++) {
             ds = (ZRssDataSource) getDataSource(mbox, rssFolder.getId());
             if (ds == null) {

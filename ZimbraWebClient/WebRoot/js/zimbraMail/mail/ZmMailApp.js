@@ -762,6 +762,9 @@ function() {
 	ZmOperation.registerOp(ZmId.OP_MARK_READ, {textKey:"markAsRead", image:"ReadMessage", shortcut:ZmKeyMap.MARK_READ});
 	ZmOperation.registerOp(ZmId.OP_MARK_UNREAD, {textKey:"markAsUnread", image:"UnreadMessage", shortcut:ZmKeyMap.MARK_UNREAD});
 	ZmOperation.registerOp(ZmId.OP_MOVE_DOWN_FILTER_RULE, {textKey:"filterMoveDown", image:"DownArrow"}, ZmSetting.FILTERS_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_MOVE_TO_BCC, {textKey:"moveToBcc"});
+	ZmOperation.registerOp(ZmId.OP_MOVE_TO_CC, {textKey:"moveToCc"});
+	ZmOperation.registerOp(ZmId.OP_MOVE_TO_TO, {textKey:"moveToTo"});
 	ZmOperation.registerOp(ZmId.OP_MOVE_UP_FILTER_RULE, {textKey:"filterMoveUp", image:"UpArrow"}, ZmSetting.FILTERS_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_NEW_MESSAGE, {textKey:"newEmail", tooltipKey:"newMessageTooltip", image:"NewMessage", shortcut:ZmKeyMap.NEW_MESSAGE});
 	ZmOperation.registerOp(ZmId.OP_NEW_MESSAGE_WIN, {textKey:"newEmail", tooltipKey:"newMessageTooltip", image:"NewMessage", shortcut:ZmKeyMap.NEW_MESSAGE_WIN});
@@ -921,9 +924,6 @@ function(notify) {
 
 	if (!(notify.deleted && notify.created && notify.modified))	{ return notify; }
 
-	DBG.println(AjxDebug.NOTIFY, " ---------------- ZmMailApp::preNotify - entry");
-	DBG.dumpObj(AjxDebug.NOTIFY, notify);
-
 	// first, see if we are deleting any virtual convs (which have negative IDs)
 	var virtConvDeleted = false;
 	var deletedIds = notify.deleted.id && notify.deleted.id.split(",");
@@ -940,7 +940,6 @@ function(notify) {
 		}
 	}
 	if (!virtConvDeleted) {
-		DBG.println(AjxDebug.NOTIFY, "no virtual convs deleted, return");
 		return notify;
 	}
 
@@ -967,7 +966,6 @@ function(notify) {
 		}
 	}
 	if (!gotNewConv) {
-		DBG.println(AjxDebug.NOTIFY, "no virtual convs promoted, return");
 		return notify;
 	}
 
@@ -998,7 +996,6 @@ function(notify) {
 		}
 	}
 	if (!msgMoved) {
-		DBG.println(AjxDebug.NOTIFY, "no msgs changed cid, return");
 		return notify;
 	}
 
@@ -1059,8 +1056,6 @@ function(notify) {
 		mods["c"] = newMods;
 		appCtxt.getRequestMgr()._handleModifies(mods);
 	}
-	DBG.println(AjxDebug.NOTIFY, " ---------------- ZmMailApp::preNotify - exit");
-	DBG.dumpObj(AjxDebug.NOTIFY, notify);
     appCtxt.setNotifyDebug("Handling NOTIFY: in ZmMailApp - End of Prenotify");
 };
 
@@ -1345,7 +1340,6 @@ function(creates, type, items, currList, sortBy, convs, last) {
 		}
 
 		DBG.println(AjxDebug.DBG1, "ZmMailApp: handling CREATE for node: " + nodeName);
-		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: item passed _checkType " + create.id);
 
 		var item = appCtxt.getById(create.id);
 		if (!item) {
@@ -1785,6 +1779,24 @@ function() {
  */
 ZmMailApp.prototype.getMsgController =
 function(sessionId) {
+
+    //if message is already open get that session controller
+    var controllers = this._sessionController[ZmId.VIEW_MSG];
+    var controller;
+    for (var id in controllers) {
+        if (controllers[id].getMsg() && controllers[id].getMsg().nId == sessionId) {
+            controller = controllers[id];
+            break;
+        }
+    }
+
+    if (controller){
+        sessionId = controller.sessionId;
+        this._curSessionId[ZmId.VIEW_MSG] = sessionId;
+        controller.inactive = false;
+        return controller;
+    }
+        
 	return this.getSessionController(ZmId.VIEW_MSG, "ZmMsgController", sessionId);
 };
 
@@ -2102,3 +2114,4 @@ ZmMailApp.prototype.resetTrustedSendersList =
 function() {
     this._trustedList = null;
 };
+

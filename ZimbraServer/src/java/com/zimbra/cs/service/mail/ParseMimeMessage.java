@@ -50,6 +50,7 @@ import com.zimbra.common.mime.shim.JavaMailMimeMultipart;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.CharsetUtil;
 import com.zimbra.common.util.ExceptionToString;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
@@ -396,7 +397,7 @@ public class ParseMimeMessage {
 
             // deal with things that can be either <m> attributes or subelements
             String subject = msgElem.getAttribute(MailConstants.E_SUBJECT, "");
-            mm.setSubject(subject, StringUtil.checkCharset(subject, ctxt.defaultCharset));
+            mm.setSubject(subject, CharsetUtil.checkCharset(subject, ctxt.defaultCharset));
 
             String irt = msgElem.getAttribute(MailConstants.E_IN_REPLY_TO, null);
             if (irt != null) {
@@ -546,7 +547,7 @@ public class ParseMimeMessage {
         ctxt.incrementSize("message body", raw.length);
 
         // if the user has specified an alternative charset, make sure it exists and can encode the content
-        String charset = StringUtil.checkCharset(text, ctxt.defaultCharset);
+        String charset = CharsetUtil.checkCharset(text, ctxt.defaultCharset);
         ctype.setCharset(charset).setParameter(MimeConstants.P_CHARSET, charset);
 
         Object content = ctype.getContentType().equals(ContentType.MESSAGE_RFC822) ?
@@ -708,7 +709,7 @@ public class ParseMimeMessage {
 
         ctxt.incrementSize("contact", vcf.formatted.length());
         String filename = vcf.fn + ".vcf";
-        String charset = StringUtil.checkCharset(vcf.formatted, ctxt.defaultCharset);
+        String charset = CharsetUtil.checkCharset(vcf.formatted, ctxt.defaultCharset);
 
         MimeBodyPart mbp = new JavaMailMimeBodyPart();
         mbp.setText(vcf.formatted, charset);
@@ -769,11 +770,14 @@ public class ParseMimeMessage {
     private static void attachDocument(MimeMultipart mmp, Document doc, String contentID, ParseMessageContext ctxt)
     throws MessagingException, ServiceException {
         ctxt.incrementSize("attached document", (long) (doc.getSize() * 1.33));
-        String ct = doc.getContentType();
+        ContentType ct = new ContentType(doc.getContentType());
+        if (MimeConstants.isZimbraDocument(ct.getContentType())) {
+            ct = new ContentType(MimeConstants.CT_TEXT_HTML);
+        }
 
         MimeBodyPart mbp = new JavaMailMimeBodyPart();
-        mbp.setDataHandler(new DataHandler(new MailboxBlobDataSource(doc.getBlob(), ct)));
-        mbp.setHeader("Content-Type", new ContentType(ct).cleanup().setParameter("name", doc.getName()).setCharset(ctxt.defaultCharset).toString());
+        mbp.setDataHandler(new DataHandler(new MailboxBlobDataSource(doc.getBlob(), ct.getContentType())));
+        mbp.setHeader("Content-Type", ct.cleanup().setParameter("name", doc.getName()).setCharset(ctxt.defaultCharset).toString());
         mbp.setHeader("Content-Disposition", new ContentDisposition(Part.ATTACHMENT).setParameter("filename", doc.getName()).toString());
         mbp.setContentID(contentID);
         mmp.addBodyPart(mbp);
@@ -851,7 +855,7 @@ public class ParseMimeMessage {
             String personalName = elem.getAttribute(MailConstants.A_PERSONAL, null);
             String addressType = elem.getAttribute(MailConstants.A_ADDRESS_TYPE);
 
-            InternetAddress addr = new JavaMailInternetAddress(emailAddress, personalName, StringUtil.checkCharset(personalName, defaultCharset));
+            InternetAddress addr = new JavaMailInternetAddress(emailAddress, personalName, CharsetUtil.checkCharset(personalName, defaultCharset));
             if (elem.getAttributeBool(MailConstants.A_ADD_TO_AB, false))
                 newContacts.add(addr);
 

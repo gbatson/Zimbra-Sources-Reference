@@ -1,18 +1,13 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.mail;
 
+import java.util.HashMap;
+
 import org.testng.annotations.Test;
 
-import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.items.MailItem;
+import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 
 
@@ -20,6 +15,7 @@ public class MarkUnReadMail extends AjaxCommonTest {
 
 	public int delaySeconds = 5;
 	
+	@SuppressWarnings("serial")
 	public MarkUnReadMail() {
 		logger.info("New "+ MarkUnReadMail.class.getCanonicalName());
 		
@@ -27,11 +23,11 @@ public class MarkUnReadMail extends AjaxCommonTest {
 		super.startingPage = app.zPageMail;
 
 		// Make sure we are using an account with message view
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefGroupMailBy", "message");
-		super.startingAccount.modifyPreference("zimbraPrefMarkMsgRead", ""+ delaySeconds);
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefGroupMailBy", "message");
+				    put("zimbraPrefMarkMsgRead", ""+ delaySeconds);
+				}};
+
 
 	}
 	
@@ -72,9 +68,6 @@ public class MarkUnReadMail extends AjaxCommonTest {
 		// TODO: need to L10N this
 		app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_MARKUNREAD);
 
-		
-		// Wait for the client to send the information to the server
-		SleepUtil.sleepMedium();
 
 		// Verify the message is marked read in the server (flags attribute should not contain (u)nread)
 		mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");

@@ -1,19 +1,18 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import com.thoughtworks.selenium.DefaultSelenium;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
+import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseOpen;
-import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase.Locators;
-
 
 public class OpenDocument extends AjaxCommonTest {
 
@@ -22,109 +21,76 @@ public class OpenDocument extends AjaxCommonTest {
 
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccount = null;
-
-	}
-
-	@BeforeClass(groups = { "always" })
-	public void OpenDocumentBeforeClass() throws HarnessException {
-		logger.info(this.getClass().getSimpleName() + "BeforeClass start");
-		if (startingAccount == null) {
-			if (app.zPageMain.zIsActive()
-					&& app.zPageMain
-							.sIsElementPresent("css=[onclick='ZmZimbraMail._onClickLogOff();']"))
-				((DefaultSelenium) ClientSessionFactory.session().selenium())
-						.click("css=[onclick='ZmZimbraMail._onClickLogOff();']");
-			app.zPageLogin.zWaitForActive();
-			logger.info(this.getClass().getSimpleName() + "BeforeClass finish");
-		}
+		super.startingAccountPreferences = null;
 	}
 
 	@Test(description = "Create document through SOAP - open & verify through GUI", groups = { "smoke" })
 	public void OpenDocument_01() throws HarnessException {
+		ZimbraAccount account = app.zGetActiveAccount();
+
+		FolderItem briefcaseFolder = FolderItem.importFromSOAP(account,
+				SystemFolder.Briefcase);
 
 		// Create document item
 		DocumentItem document = new DocumentItem();
 
-		ZimbraAccount account = app.zGetActiveAccount();
-		String briefcaseFolderId = document.GetBriefcaseIdUsingSOAP(account);
+		String docName = document.getDocName();
+		String docText = document.getDocText();
+
+		// Create document using SOAP
+		String contentHTML = XmlStringUtil.escapeXml("<html>" + "<body>"
+				+ docText + "</body>" + "</html>");
 
 		account
 				.soapSend("<SaveDocumentRequest requestId='0' xmlns='urn:zimbraMail'>"
 						+ "<doc name='"
-						+ document.getDocName()
+						+ docName
 						+ "' l='"
-						+ briefcaseFolderId
+						+ briefcaseFolder.getId()
 						+ "' ct='application/x-zimbra-doc'>"
-						+ "<content>&lt;html>&lt;body>"
-						+ document.getDocText()
-						+ "&lt;/body>&lt;/html></content>"
+						+ "<content>"
+						+ contentHTML
+						+ "</content>"
 						+ "</doc>"
 						+ "</SaveDocumentRequest>");
 
-		// Select Briefcase tab
-		SleepUtil.sleepSmall();
-		app.zPageBriefcase.zNavigateTo();
-
-		// ClientSessionFactory.session().selenium().refresh();
 		// refresh briefcase page
-		app.zPageBriefcase.zClick(Locators.zBriefcaseFolderIcon);
+		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		// Click on created document
-		SleepUtil.sleepLong();
-
-		if (app.zPageBriefcase.sIsElementPresent("css=[id='zl__BDLV__rows']")
-				&& app.zPageBriefcase.sIsVisible("css=[id='zl__BDLV__rows']")) {
-			app.zPageBriefcase
-					.zClick("css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width='auto'] div:contains("
-							+ document.getDocName() + ")");
-		}
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docName);
 
 		// Click on open in a separate window icon in toolbar
 		DocumentBriefcaseOpen documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 				.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW);
 
-		// Select document opened in a separate window
-		SleepUtil.sleepLong();
+		app.zPageBriefcase.isOpenDocLoaded(docName, docText);
 
-		String windowName = document.getDocName();
 		String text = "";
+
+		// Select document opened in a separate window
 		try {
-			documentBriefcaseOpen.zSelectWindow(windowName);
-
-			// if name field appears in the toolbar then document page is opened
-			int i = 0;
-			for (; i < 90; i++) {
-				if (documentBriefcaseOpen
-						.sIsElementPresent("css=div[id='zdocument']")) {
-					break;
-				}
-				SleepUtil.sleepSmall();
-			}
-
-			if (!documentBriefcaseOpen.sIsVisible("css=div[id='zdocument']")) {
-				throw new HarnessException(
-						"could not open a file in a separate window");
-			}
+			app.zPageBriefcase.zSelectWindow(docName);
 
 			text = documentBriefcaseOpen.retriveDocumentText();
 
 			// close
-			documentBriefcaseOpen.zSelectWindow(windowName);
+			app.zPageBriefcase.zSelectWindow(docName);
 
-			ClientSessionFactory.session().selenium().close();
+			app.zPageBriefcase.closeWindow();
 		} finally {
 			app.zPageBriefcase.zSelectWindow("Zimbra: Briefcase");
 		}
 
-		ZAssert.assertEquals(text, document.getDocText(),
-				"Verify document name through GUI");
+		ZAssert.assertStringContains(text, docText,
+				"Verify document text through GUI");
 
 		/*
 		 * //name =ClientSessionFactory.session().selenium().getText(
-		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width='auto'] div[id^=zlif__BDLV__]"
+		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width*='auto'] div[id^=zlif__BDLV__]"
 		 * );//ClientSessionFactory.session().selenium().isElementPresent(
-		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width='auto']>div:contains[id*='zlif__BDLV__']"
+		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width*='auto']>div:contains[id*='zlif__BDLV__']"
 		 * );//ClientSessionFactory.session().selenium().isElementPresent(
 		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] div:contains('name')"
 		 * );

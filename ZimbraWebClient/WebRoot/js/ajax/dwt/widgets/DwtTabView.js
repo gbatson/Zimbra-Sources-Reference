@@ -577,6 +577,16 @@ DwtTabBar = function(parent, tabCssClass, btnCssClass) {
 	var myClass = tabCssClass || "ZTabBar";
 
 	DwtToolBar.call(this, {parent:parent, className:myClass, posStyle:DwtControl.STATIC_STYLE});
+
+	//Temp solution for bug 55391 
+	//It is caused by float attribute in the td. The best solution is just as the main tab. No td
+	//wrap the div. And this modification shouldn't affect the subclasses DwtTabBarFloat, otherwise, the _CASE_ 
+	//xform item will be affect.
+	//To do: modify it as the same as main tab
+	if(AjxEnv.isFirefox){
+		if(this._prefixEl && this.constructor == DwtTabBar)
+			this._prefixEl.style.cssFloat = "none";
+	}
 };
 
 DwtTabBar.prototype = new DwtToolBar;

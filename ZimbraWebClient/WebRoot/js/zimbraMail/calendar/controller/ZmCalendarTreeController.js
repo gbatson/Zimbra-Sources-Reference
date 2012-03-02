@@ -158,7 +158,8 @@ function(actionMenu, type, id) {
 			nId = calendar.nId;
             var isShareVisible = (!calendar.link || calendar.isAdmin()) && nId != ZmFolder.ID_TRASH;
             if (appCtxt.isOffline) {
-                isShareVisible = !calendar.getAccount().isMain;
+                var acct = calendar.getAccount();
+                isShareVisible = !acct.isMain && acct.isZimbraAccount;
             }
 			actionMenu.enable(ZmOperation.SHARE_CALENDAR, isShareVisible);
 			actionMenu.enable(ZmOperation.SYNC, calendar.isFeed());
@@ -204,7 +205,8 @@ function(ev){
 ZmCalendarTreeController.prototype._detachListener =
 function(ev){
 	var folder = this._getActionedOrganizer(ev);
-	var url = (folder) ? folder.getRestUrl() : null;
+    var acct = folder && folder.getAccount();
+	var url = (folder) ? folder.getRestUrl(acct) : null;
 	if (url) {
 		window.open(url+".html?tz=" + AjxTimezone.DEFAULT, "_blank");
 	}
@@ -345,7 +347,9 @@ function(ev) {
 	else if (ev.action == DwtDropEvent.DRAG_DROP) {
 		var ctlr = ev.srcData.controller;
 		var cc = AjxDispatcher.run("GetCalController");
-		if (!isShiftKey && cc.isMovingBetwAccounts(appts, dropFolder.id)) {
+        if (!isShiftKey && cc.isMovingBetwAccounts(appts, dropFolder.id)) {
+            var controller = appCtxt.getApp(ZmApp.CALENDAR).getCalController();
+            controller.apptCache.batchRequest({accountFolderIds:[dropFolder.id],callback:new AjxCallback(this, this._dropToRemoteFolder, [dropFolder.name])});
 			var dlg = appCtxt.getYesNoMsgDialog();
 			dlg.registerCallback(DwtDialog.YES_BUTTON, this._changeOrgCallback, this, [ctlr, dlg, appts, dropFolder]);
 			var msg = AjxMessageFormat.format(ZmMsg.orgChange, dropFolder.getOwner());
@@ -357,10 +361,23 @@ function(ev) {
 	}
 };
 
+ZmCalendarTreeController.prototype._dropToRemoteFolder =
+function(name) {
+    appCtxt.setStatusMsg(AjxMessageFormat.format(ZmMsg.calStatusUpdate, name));
+}
+
 ZmCalendarTreeController.prototype._changeOrgCallback =
 function(controller, dialog, appts, dropFolder) {
 	dialog.popdown();
-	controller._doMove(appts, dropFolder, null, false);
+    if(!dropFolder.noSuchFolder){
+	    controller._doMove(appts, dropFolder, null, false);
+    }
+    else{
+        var dialog = appCtxt.getMsgDialog();
+        var msg = AjxMessageFormat.format(ZmMsg.noFolderExists, dropFolder.name);
+        dialog.setMessage(msg);
+        dialog.popup();
+    }
 };
 
 /*
@@ -390,6 +407,8 @@ function(ev, treeView, overviewId) {
 
 		// if calendar is deleted, notify will initiate the refresh action
 		if (ev.event != ZmEvent.E_DELETE) {
+            var calIds = controller.getCheckedCalendarFolderIds();
+            AjxDebug.println(AjxDebug.CALENDAR, "tree change listener refreshing calendar event '" + ev.event + "' with checked folder ids " + calIds.join(","));
 			controller._refreshAction(true);
 			ev.handled = true;
 		}

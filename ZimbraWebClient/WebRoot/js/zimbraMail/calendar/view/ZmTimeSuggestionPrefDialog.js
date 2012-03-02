@@ -161,7 +161,6 @@ function(text) {
     disableCheckbox._dlgId = this._dlgId;
     var disableRoomCheckbox = document.getElementById(this.getHTMLElId() + "_" + ZmTimeSuggestionPrefDialog.SUGGESTROOMS_FIELD);
     disableRoomCheckbox._dlgId = this._dlgId;
-    Dwt.setHandler(disableCheckbox, DwtEvent.ONCLICK, ZmTimeSuggestionPrefDialog._handleDisableCheckbox);
     Dwt.setHandler(disableRoomCheckbox, DwtEvent.ONCLICK, ZmTimeSuggestionPrefDialog._handleRoomCheckbox);
 };
 
@@ -212,14 +211,14 @@ function(id, value) {
 };
 
 ZmTimeSuggestionPrefDialog.prototype.getSearchPreference =
-function(account) {
+function(account, prefSearchCallback) {
     var md = new ZmMetaData(account || this._account);
-    var callback = new AjxCallback(this, this.processSearchPreference);
+    var callback = new AjxCallback(this, this.processSearchPreference, [prefSearchCallback]);
     md.get(ZmTimeSuggestionPrefDialog.META_DATA_KEY, null, callback);
 };
 
 ZmTimeSuggestionPrefDialog.prototype.processSearchPreference =
-function(metadataResponse) {
+function(prefSearchCallback, metadataResponse) {
     this._prefs = {};
 
     var objPrefs = metadataResponse.getResponse().BatchResponse.GetMailboxMetadataResponse[0].meta[0]._attrs;
@@ -237,7 +236,7 @@ function(metadataResponse) {
         }
     }
 
-    this.handleDisableCheckbox();
+    if(prefSearchCallback) prefSearchCallback.run();
 };
 
 ZmTimeSuggestionPrefDialog.prototype.setSearchPreference =
@@ -276,28 +275,4 @@ function(ev) {
 	var dlg = AjxCore.objectWithId(el._dlgId);
 	if (!dlg) { return; }
     dlg.handleRoomCheckbox();
-};
-
-ZmTimeSuggestionPrefDialog.prototype.handleDisableCheckbox =
-function() {
-    var field = this._prefFields[ZmTimeSuggestionPrefDialog.DISABLE_SUGGESTIONS_FIELD];
-    var enableSuggestions = !field.checked;
-
-    field = this._prefFields[ZmTimeSuggestionPrefDialog.SUGGESTROOMS_FIELD];
-    field.disabled = !enableSuggestions;
-    this.enableLocationFields(field.checked && enableSuggestions);
-
-    field = this._prefFields[ZmTimeSuggestionPrefDialog.WORKING_HOURS_FIELD];
-    field.setEnabled(enableSuggestions);
-
-    field = this._prefFields[ZmTimeSuggestionPrefDialog.GREEN_SUGGESTIONS_FIELD];
-    field.disabled = !enableSuggestions;
-};
-
-ZmTimeSuggestionPrefDialog._handleDisableCheckbox =
-function(ev) {
-	var el = DwtUiEvent.getTarget(ev);
-	var dlg = AjxCore.objectWithId(el._dlgId);
-	if (!dlg) { return; }
-    dlg.handleDisableCheckbox();
 };

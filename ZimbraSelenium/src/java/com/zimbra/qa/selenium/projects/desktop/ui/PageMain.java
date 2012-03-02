@@ -5,8 +5,8 @@ import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-
 
 public class PageMain extends AbsTab{
 
@@ -14,14 +14,19 @@ public class PageMain extends AbsTab{
 
       // TextFields
       public static final String zPeopleSearchField =
-         "xpath=//*[@class=' people_search_input']";
-      public static final String zPeopleSearchResultsField =
-         "xpath=//*[@class='ZmPeopleSearch-noresults']";
+         "css=td#ztb_people_search_inputField div input[class*='people_search_input']";
 
       // Images
       // This is the search icon (magnifying glass)
-      public static final String zPeopleSearchImage =
-         "xpath=//*[@class='ImgSearch2']";
+      public static final String zPeopleSearchImage = "css=div[class*='ImgSearch2']";
+      
+      // Buttons
+      public static final String zSetupButton = "css=tbody td#skin_container_logoff a[onclick*='LogOff']";
+
+      // Tabs
+      public static final String zMailTabs = "css=td#zb__App__Mail_left_icon";
+      public static final String zAddressBookTabs = "css=td#zb__App__Contacts_left_icon";
+      public static final String zCalendarTabs = "css=td#zb__App__Calendar_left_icon";
    }
 
    public PageMain(AbsApplication application) {
@@ -64,7 +69,7 @@ public class PageMain extends AbsTab{
    }
 
    @Override
-	public AbsPage zListItem(Action action, Action option, String item)
+	public AbsPage zListItem(Action action, Button option, String item)
 		throws HarnessException {
 	   // TODO Auto-generated method stub
 	   return null;
@@ -72,8 +77,22 @@ public class PageMain extends AbsTab{
 
 	@Override
 	public void zNavigateTo() throws HarnessException {
-		// TODO Auto-generated method stub
-		
+	   if (zIsActive()) {
+         logger.debug("Main page has already been reached.");
+      } else {
+         if (sIsElementPresent(PageAccounts.Locators.zAddNewAccountButton)) {
+            throw new HarnessException("No account hasn't been created, please check your environment");
+         } else if (sIsElementPresent(PageAccounts.Locators.zLoginButton)) {
+            logger.debug("Currently in Accounts page, now navigating to main page");
+            sClick(PageAccounts.Locators.zLoginButton);
+         } else if (sIsElementPresent(PageAccounts.Locators.zAccountTypeDropDownList)) {
+            logger.debug("Currently in Add New Account Tab on Accounts page, now navigating to main page");
+            sClick(PageAccounts.Locators.zMyAccountsTab);
+            GeneralUtility.waitForElementPresent(this, PageAccounts.Locators.zLoginButton);
+            sClick(PageAccounts.Locators.zLoginButton);
+         }
+         GeneralUtility.waitForElementPresent(this, Locators.zSetupButton);
+      }
 	}
 	
 	@Override

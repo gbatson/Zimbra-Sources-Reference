@@ -276,7 +276,7 @@ InboxZero.prototype._doWithPrefix = function(prefix, msg, callback) {
 
     AjxDispatcher.require(["TasksCore", "Tasks"]);
     var task = new ZmTask();
-    task.setStartDate(AjxDateUtil.roundTimeMins(new Date, 30));
+    task.setEndDate(AjxDateUtil.roundTimeMins(new Date, 30));
     task.setFromMailMessage(msg, prefix+msg.subject);
     appCtxt.getApp(ZmApp.TASKS).getTaskController().show(task, ZmCalItem.MODE_NEW, true);
 };
@@ -400,7 +400,7 @@ InboxZero.prototype._pollRestoreItemsResponse = function(result) {
         var createdMsgs = created.m = created.m || [];
         for (var i = 0; i < messages.length; i++) {
             var message = messages[i];
-            if (appCtxt.getById(message.l).nId == ZmOrganizer.ID_INBOX) {
+            if (appCtxt.getById(message.l) && appCtxt.getById(message.l).nId == ZmOrganizer.ID_INBOX) {
                 // HACK: This uses the full msg info from the SearchResponse
                 // HACK: and puts it in the "created" list with the folder
                 // HACK: updated to the inbox. If there are any other fields

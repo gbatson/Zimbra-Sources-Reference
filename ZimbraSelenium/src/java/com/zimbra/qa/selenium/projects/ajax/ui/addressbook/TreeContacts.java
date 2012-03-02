@@ -3,14 +3,11 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
-import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.items.IItem;
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.AbsTree;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.items.*;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 
 
 /**
@@ -18,7 +15,8 @@ import com.zimbra.qa.selenium.framework.util.SleepUtil;
  *
  */
 public class TreeContacts extends AbsTree {
-
+    public static final String NEW_FOLDER="css=#ztih__main_Contacts__ADDRBOOK_table tbody tr td:nth-child(4)";
+    public static final String COLLAPSE_TREE="css#ztih__main_Contacts__ADDRBOOK_nodeCell";
 	public static class Locators {
 	}
 	
@@ -27,6 +25,21 @@ public class TreeContacts extends AbsTree {
 	public TreeContacts(AbsApplication application) {
 		super(application);
 		logger.info("new " + TreeContacts.class.getCanonicalName());
+	}
+	
+	
+	public AbsPage zTreeItem(Action action, String locator) throws HarnessException {
+		if ( action == Action.A_LEFTCLICK ) {
+		    if (locator.equals(NEW_FOLDER)) {
+		        this.zClick(locator);
+		    	//return create a new address book dialog
+		    }
+		    else if (locator.equals(COLLAPSE_TREE)) {
+		    	// collapse the tree folder
+		    }
+		    
+		}	
+		return null;
 	}
 	
 	/* (non-Javadoc)
@@ -50,18 +63,39 @@ public class TreeContacts extends AbsTree {
 		
 		if ( action == Action.A_LEFTCLICK ) {
 			
-			locator = "id=zti__main_Contacts__"+ folder.getId() +"_textCell";
-			
-			if ( !this.sIsElementPresent(locator) ) {
+			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+			   locator = "css=td[id^='zti__" +
+			         MyApplication.zGetActiveAccount().EmailAddress +
+			         ":main_Contacts__'][id$=':" + folder.getId() +"_textCell']";
+			} else {
+			   locator = "id=zti__main_Contacts__"+ folder.getId() +"_textCell";
+			}
+
+			if ( !GeneralUtility.waitForElementPresent(this, locator) ) {
 				throw new HarnessException("Unable to locator folder in tree "+ locator);
 			}
 
 			this.zClick(locator);
 			SleepUtil.sleepSmall();
 			page = null;
+		}  
+		else if ( action == Action.A_RIGHTCLICK ) {
+				
+			locator = "id=zti__main_Contacts__"+ folder.getId() +"_textCell";
+				
+			if ( !this.sIsElementPresent(locator) ) {
+					throw new HarnessException("Unable to locator folder in tree "+ locator);
+			}
 			
-			// FALL THROUGH
-
+			this.zClick(locator);			
+			zKeyboard.zTypeCharacters(Shortcut.S_RIGHTCLICK.getKeys());															
+			 
+			//TODO
+			//return a list of context menu's options
+			SleepUtil.sleepSmall();
+			page = null;
+				
+			
 		} else {
 			throw new HarnessException("Action "+ action +" not yet implemented");
 		}
@@ -69,6 +103,63 @@ public class TreeContacts extends AbsTree {
 		return (page);
 	}
 	
+
+	@Override
+	public AbsPage zPressButton(Button button) throws HarnessException {
+		
+		if ( button == null )
+			throw new HarnessException("Button cannot be null");
+			
+		AbsPage page = null;
+		String locator = null;
+		
+		if ( button == Button.B_TREE_NEWADDRESSBOOK ) {
+			
+			locator = null;
+			page = null;
+			
+			// TODO: implement me
+			
+			// FALL THROUGH
+
+		} else if ( button == Button.B_TREE_NEWTAG ) { 
+			
+			locator = null;
+			page = null;
+			
+			// TODO: implement me
+			
+			// FALL THROUGH
+
+		} else {
+			throw new HarnessException("no logic defined for button "+ button);
+		}
+
+		if ( locator == null ) {
+			throw new HarnessException("locator was null for button "+ button);
+		}
+		
+		// Default behavior, process the locator by clicking on it
+		//
+		
+		// Make sure the button exists
+		if ( !this.sIsElementPresent(locator) )
+			throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
+		
+		// Click it
+		this.zClick(locator);
+		
+		// If page was specified, make sure it is active
+		if ( page != null ) {
+			
+			// This function (default) throws an exception if never active
+			page.zWaitForActive();
+			
+		}
+
+		return (page);
+
+	}
 
 
 	/* (non-Javadoc)
@@ -84,5 +175,12 @@ public class TreeContacts extends AbsTree {
 		// TODO Auto-generated method stub
 		return false;
 	}
+
+
+	@Override
+	public AbsPage zTreeItem(Action action, Button option, IItem item) throws HarnessException {
+		throw new HarnessException("implement me!");
+	}
+
 
 }

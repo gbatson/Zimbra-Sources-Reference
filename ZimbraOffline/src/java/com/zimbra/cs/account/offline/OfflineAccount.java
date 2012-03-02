@@ -31,6 +31,7 @@ public class OfflineAccount extends Account {
 
     public static class Version {
         private static Version v6 = new Version("6.0.0");
+        private static Version v7 = new Version("7.0.0");
 
         private int major;
         private int minor;
@@ -71,6 +72,10 @@ public class OfflineAccount extends Account {
         public boolean isAtLeast6xx() {
             return isAtLeast(v6);
         }
+        
+        public boolean isAtLeast7xx() {
+            return isAtLeast(v7);
+        }
 
         public String toString() { return "" + major + "." + minor + "." + maintenance; }
     }
@@ -94,7 +99,9 @@ public class OfflineAccount extends Account {
 
     private static final String[] sDisabledFeatures = new String[] {
         Provisioning.A_zimbraFeatureIMEnabled,
-        Provisioning.A_zimbraFeatureViewInHtmlEnabled
+        Provisioning.A_zimbraFeatureViewInHtmlEnabled,
+        Provisioning.A_zimbraFeatureNotebookEnabled,
+        Provisioning.A_zimbraDumpsterEnabled
     };
 
     private static final Set<String> sDisabledFeaturesSet = new HashSet<String>();

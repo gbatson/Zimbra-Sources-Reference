@@ -132,14 +132,14 @@ function(msg) {
 				for (var i = 0; i < calendars.length; i++) {
 					var calendar = calendars[i];
 					var calAcct = calendar.getAccount();
-					var icon = appCtxt.multiAccounts ? calAcct.getIcon() : calendar.getIcon();
+					var icon = appCtxt.multiAccounts ? calAcct.getIcon() : (calendar.getIcon() + ",color=" + calendar.color);
 					var name = appCtxt.multiAccounts
 						? ([calendar.name, " (", calAcct.getDisplayName(), ")"].join(""))
 						: calendar.name;
 					var isSelected = (calAcct && msgAcct)
 						? (calAcct == msgAcct && calendar.nId == ZmOrganizer.ID_CALENDAR)
 						: calendar.nId == ZmOrganizer.ID_CALENDAR;
-					var option = new DwtSelectOptionData(calendar.id, name, isSelected, null);
+					var option = new DwtSelectOptionData(calendar.id, name, isSelected, null, icon);
 					this._inviteMoveSelect.addOption(option);
 				}
 
@@ -311,15 +311,15 @@ function(reset) {
                 if (this.mode && this.mode != "MSG") {
                     if (el){
                         el.style.height = mvHeight + "px";
-                        el.style.overflow = Dwt.Scroll
+                        Dwt.setScrollStyle(el, Dwt.SCROLL);
                     }
                 }
                 else {
                     var bodyDiv = this.parent.getMsgBodyElement();
-                    if (bodyDiv) bodyDiv.style.overflow  = Dwt.CLIP;
+                    if (bodyDiv) Dwt.setScrollStyle(bodyDiv, Dwt.CLIP);
                     if (el) {
-                        el.style.overflow = "auto";
-                        el.style.height = (mvHeight - this._inviteToolbar.getYH() + 10) + "px";
+                        Dwt.setScrollStyle(el, Dwt.SCROLL);
+                        el.style.height = (mvHeight - ( this._inviteToolbar ? this._inviteToolbar.getYH() : 0 ) + 10) + "px";
                     }
                 }
             }
@@ -419,16 +419,10 @@ function(subs, sentBy, sentByAddr) {
 	// convert to local timezone if necessary
 	var inviteTz = this._invite.getServerStartTimeTz();
 	var defaultTz = AjxTimezone.getServerId(AjxTimezone.DEFAULT);
-    var sd,
-        ed;
-    if(this._invite.isAllDayEvent()) {
-        sd = this._invite.getServerStartDate(null, true);
-        ed = this._invite.getServerEndDate(null, true);
-    }
-    else {
-	    sd = AjxTimezone.convertTimezone(this._invite.getServerStartDate(null, true), AjxTimezone.getClientId(inviteTz), AjxTimezone.DEFAULT);
-	    ed = AjxTimezone.convertTimezone(this._invite.getServerEndDate(null, true), AjxTimezone.getClientId(inviteTz), AjxTimezone.DEFAULT);
-    }
+
+    var sd = AjxTimezone.convertTimezone(this._invite.getServerStartDate(null, true), AjxTimezone.getClientId(inviteTz), AjxTimezone.DEFAULT);
+	var ed = AjxTimezone.convertTimezone(this._invite.getServerEndDate(null, true), AjxTimezone.getClientId(inviteTz), AjxTimezone.DEFAULT);
+
 	subs.timezone = AjxTimezone.getMediumName(defaultTz);
 
 	// duration text

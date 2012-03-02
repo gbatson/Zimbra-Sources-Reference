@@ -695,16 +695,19 @@ function(message) {
 	var attendees = message.invite.getAttendees();
 	if (attendees) {
 		for (var i = 0; i < attendees.length; i++) {
-			var addr = attendees[i].a;
-			var name = attendees[i].d;
+			var att = attendees[i];
+			var addr = att.a;
+			var name = att.d;
 			var email = new AjxEmailAddress(addr, null, name);
-            if (attendees[i].rsvp) {
+			email.isGroup = att.isGroup;
+			email.canExpand = att.exp;
+            if (att.rsvp) {
 				rsvp = true;
 			}
 			var attendee = ZmApptViewHelper.getAttendeeFromItem(email, ZmCalBaseItem.PERSON);
 			if (attendee) {
-				attendee.setParticipantStatus(ptstReplies[addr] || attendees[i].ptst);
-				attendee.setParticipantRole(attendees[i].role || ZmCalItem.ROLE_REQUIRED);
+				attendee.setParticipantStatus(ptstReplies[addr] || att.ptst);
+				attendee.setParticipantRole(att.role || ZmCalItem.ROLE_REQUIRED);
 				this._attendees[ZmCalBaseItem.PERSON].push(attendee);
 				this.origAttendees.push(attendee);
 			}
@@ -1116,6 +1119,27 @@ function(soapDoc, inv, m, notifyList, attendee, type) {
 		e.setAttribute("t", AjxEmailAddress.toSoapType[AjxEmailAddress.TO]);
 	}
 };
+
+ZmAppt.prototype.replaceAttendee =
+function(oldAttendee,newAttendee){
+   var attendees = this._attendees[ZmCalBaseItem.PERSON];
+   if(attendees && attendees.length){
+    for(var a=0;a<attendees.length;a++){
+        if(attendees[a].getEmail()==oldAttendee){
+            attendees[a]=this._createAttendeeFromMail(newAttendee);
+            break;
+        }
+    }
+   }
+   this._attendees[ZmCalBaseItem.PERSON]=attendees;
+}
+
+ZmAppt.prototype._createAttendeeFromMail=
+function(mailId){
+    var attendee=new ZmContact(null);
+    attendee.initFromEmail(mailId);
+    return attendee;
+}
 
 ZmAppt.prototype._getInviteFromError =
 function(result) {

@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20110117-1427 */
+    /* build: 7.0.0_BETA1_1111 jhahm 20110215-1542 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -244,6 +244,22 @@ public class ZAttrProvisioning {
         }
         public boolean isForm() { return this == form;}
         public boolean isBasic() { return this == basic;}
+    }
+
+    public static enum FreebusyExchangeServerType {
+        webdav("webdav"),
+        ews("ews");
+        private String mValue;
+        private FreebusyExchangeServerType(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static FreebusyExchangeServerType fromString(String s) throws ServiceException {
+            for (FreebusyExchangeServerType value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isWebdav() { return this == webdav;}
+        public boolean isEws() { return this == ews;}
     }
 
     public static enum GalLdapAuthMech {
@@ -3505,6 +3521,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFreebusyExchangeCachedIntervalStart = "zimbraFreebusyExchangeCachedIntervalStart";
 
     /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public static final String A_zimbraFreebusyExchangeServerType = "zimbraFreebusyExchangeServerType";
+
+    /**
      * URL to Exchange server for free/busy lookup and propagation
      *
      * @since ZCS 5.0.3
@@ -4464,6 +4489,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMailboxMoveSkipSearchIndex = "zimbraMailboxMoveSkipSearchIndex";
 
     /**
+     * temp directory for mailbox move
+     *
+     * @since ZCS 7.0.1
+     */
+    @ZAttr(id=1175)
+    public static final String A_zimbraMailboxMoveTempDir = "zimbraMailboxMoveTempDir";
+
+    /**
      * RFC822 email address for senders outbound messages
      */
     @ZAttr(id=213)
@@ -4608,6 +4641,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=147)
     public static final String A_zimbraMailIdleSessionTimeout = "zimbraMailIdleSessionTimeout";
+
+    /**
+     * When set to true, robots.txt on mailboxd will be set up to keep web
+     * crawlers out
+     *
+     * @since ZCS 7.0.1
+     */
+    @ZAttr(id=1161)
+    public static final String A_zimbraMailKeepOutWebCrawlers = "zimbraMailKeepOutWebCrawlers";
 
     /**
      * Deprecated since: 5.0.7. deprecated per bug 28842. Orig desc: The id
@@ -5348,6 +5390,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=795)
     public static final String A_zimbraMtaTlsSecurityLevel = "zimbraMtaTlsSecurityLevel";
+
+    /**
+     * certificate to be used for validating the SAML assertions received
+     * from myonelogin (tricipher)
+     *
+     * @since ZCS 7.0.1
+     */
+    @ZAttr(id=1169)
+    public static final String A_zimbraMyoneloginSamlSigningCert = "zimbraMyoneloginSamlSigningCert";
 
     /**
      * A signed activation key that authorizes this installation.
@@ -6905,6 +6956,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=396)
     public static final String A_zimbraPrefShortcuts = "zimbraPrefShortcuts";
+
+    /**
+     * show just the display name of email addresses in the message header
+     * area and compose pane
+     *
+     * @since ZCS 7.0.1
+     */
+    @ZAttr(id=1173)
+    public static final String A_zimbraPrefShortEmailAddress = "zimbraPrefShortEmailAddress";
 
     /**
      * show calendar week in calendar views

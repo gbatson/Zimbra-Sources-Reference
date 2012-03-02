@@ -194,7 +194,7 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
             boolean asAdmin, ViaGrant via) throws ServiceException {
         
         // check hard rules
-        Boolean hardRulesResult = AccessControlUtil.checkHardRules(grantee, asAdmin, target, rightNeeded);
+        Boolean hardRulesResult = HardRules.checkHardRules(grantee, asAdmin, target, rightNeeded);
         if (hardRulesResult != null)
             return hardRulesResult.booleanValue();
         
@@ -241,7 +241,7 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
     public boolean canGetAttrs(Account grantee, Entry target, Set<String> attrsNeeded, boolean asAdmin) throws ServiceException {
         
         // check hard rules
-        Boolean hardRulesResult = AccessControlUtil.checkHardRules(grantee, asAdmin, target, null);
+        Boolean hardRulesResult = HardRules.checkHardRules(grantee, asAdmin, target, null);
         if (hardRulesResult != null)
             return hardRulesResult.booleanValue();
         
@@ -256,7 +256,7 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
 
     @Override
     public AttrRightChecker canGetAttrs(Account credentials,   Entry target, boolean asAdmin) throws ServiceException {
-        Boolean hardRulesResult = AccessControlUtil.checkHardRules(credentials, asAdmin, target, null);
+        Boolean hardRulesResult = HardRules.checkHardRules(credentials, asAdmin, target, null);
         
         if (hardRulesResult == Boolean.TRUE)
             return AllowedAttrs.ALLOW_ALL_ATTRS();
@@ -277,7 +277,7 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
     public boolean canSetAttrs(Account grantee, Entry target, Set<String> attrsNeeded, boolean asAdmin) throws ServiceException {
         
         // check hard rules
-        Boolean hardRulesResult = AccessControlUtil.checkHardRules(grantee, asAdmin, target, null);
+        Boolean hardRulesResult = HardRules.checkHardRules(grantee, asAdmin, target, null);
         if (hardRulesResult != null)
             return hardRulesResult.booleanValue();
         
@@ -294,13 +294,13 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
     public boolean canSetAttrs(Account granteeAcct, Entry target, Map<String, Object> attrsNeeded, boolean asAdmin) throws ServiceException {
         
         // check hard rules
-        Boolean hardRulesResult = AccessControlUtil.checkHardRules(granteeAcct, asAdmin, target, null);
+        Boolean hardRulesResult = HardRules.checkHardRules(granteeAcct, asAdmin, target, null);
         if (hardRulesResult != null)
             return hardRulesResult.booleanValue();
         
         Grantee grantee = new Grantee(granteeAcct);
         AllowedAttrs allowedAttrs = CheckAttrRight.accessibleAttrs(grantee, target, AdminRight.PR_SET_ATTRS, false);
-        return allowedAttrs.canSetAttrs(grantee, target, attrsNeeded);
+        return allowedAttrs.canSetAttrsWithinConstraints(grantee, target, attrsNeeded);
     }
     
     @Override
@@ -352,7 +352,7 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
     throws ServiceException {
         
         // check hard rules
-        Boolean hardRulesResult = AccessControlUtil.checkHardRules(grantee, asAdmin, target, rightNeeded);
+        Boolean hardRulesResult = HardRules.checkHardRules(grantee, asAdmin, target, rightNeeded);
         if (hardRulesResult != null)
             return hardRulesResult.booleanValue();
         
@@ -506,21 +506,21 @@ public class ACLAccessManager extends AccessManager implements AdminConsoleCapab
             AttrRight rightNeeded, boolean canDelegateNeeded) throws ServiceException {
         AllowedAttrs allowedAttrs = 
             CheckAttrRight.accessibleAttrs(new Grantee(granteeAcct), target, rightNeeded, canDelegateNeeded);
-        return allowedAttrs.canAccessAttrs(rightNeeded.getAttrs(), target);
+        return allowedAttrs.canAccessAttrs(rightNeeded.getAttrs(), target, rightNeeded);
     }
     
     private boolean canGetAttrsInternal(Account granteeAcct, Entry target, 
             Set<String> attrsNeeded, boolean canDelegateNeeded) throws ServiceException {
         AllowedAttrs allowedAttrs = 
             CheckAttrRight.accessibleAttrs(new Grantee(granteeAcct), target, AdminRight.PR_GET_ATTRS, canDelegateNeeded);
-        return allowedAttrs.canAccessAttrs(attrsNeeded, target);
+        return allowedAttrs.canAccessAttrs(attrsNeeded, target, AdminRight.PR_GET_ATTRS);
     }
     
     private boolean canSetAttrsInternal(Account granteeAcct, Entry target, 
             Set<String> attrsNeeded, boolean canDelegateNeeded) throws ServiceException {
         AllowedAttrs allowedAttrs = 
             CheckAttrRight.accessibleAttrs(new Grantee(granteeAcct), target, AdminRight.PR_SET_ATTRS, canDelegateNeeded);
-        return allowedAttrs.canAccessAttrs(attrsNeeded, target);
+        return allowedAttrs.canAccessAttrs(attrsNeeded, target, AdminRight.PR_SET_ATTRS);
     }
 
     // ============

@@ -1,6 +1,7 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.mail;
 
 import java.awt.event.KeyEvent;
+import java.util.HashMap;
 import java.util.List;
 
 import org.testng.annotations.DataProvider;
@@ -19,6 +20,7 @@ import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 
 public class DeleteMail extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public DeleteMail() {
 		logger.info("New "+ DeleteMail.class.getCanonicalName());
 		
@@ -26,10 +28,9 @@ public class DeleteMail extends AjaxCommonTest {
 		super.startingPage = app.zPageMail;
 
 		// Make sure we are using an account with message view
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefGroupMailBy", "message");
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+					put("zimbraPrefGroupMailBy", "message");
+				}};
 		
 	}
 	
@@ -119,7 +120,6 @@ public class DeleteMail extends AjaxCommonTest {
 		}
 		ZAssert.assertNull(found, "Verify the message is no longer in the inbox");
 
-		
 	}
 
 	@DataProvider(name = "DataProviderDeleteKeys")
@@ -303,6 +303,49 @@ public class DeleteMail extends AjaxCommonTest {
 		ZAssert.assertNull(found3, "Verify the message "+ mail3.dSubject +" is no longer in the inbox");
 
 		
+	}
+
+
+	@Test(	description = "Delete a mail using context menu delete button",
+			groups = { "smoke" })
+	public void DeleteMail_06() throws HarnessException {
+		
+		// Create the message data to be sent
+		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();
+				
+		ZimbraAccount.AccountA().soapSend(
+					"<SendMsgRequest xmlns='urn:zimbraMail'>" +
+						"<m>" +
+							"<e t='t' a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+							"<su>"+ subject +"</su>" +
+							"<mp ct='text/plain'>" +
+								"<content>content"+ ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+							"</mp>" +
+						"</m>" +
+					"</SendMsgRequest>");
+
+		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
+		
+		// Click Get Mail button
+		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+				
+		// Right click the item, select delete
+		app.zPageMail.zListItem(Action.A_RIGHTCLICK, Button.B_DELETE, mail.dSubject);
+				
+		// Make sure the message no longer appears in the list
+		List<MailItem> messages = app.zPageMail.zListGetMessages();
+		ZAssert.assertNotNull(messages, "Verify the message list exists");
+
+		MailItem found = null;
+		for (MailItem m : messages) {
+			logger.info("Subject: looking for "+ mail.dSubject +" found: "+ m.gSubject);
+			if ( mail.dSubject.equals(m.gSubject) ) {
+				found = m;
+				break;
+			}
+		}
+		ZAssert.assertNull(found, "Verify the message is no longer in the inbox");
+	
 	}
 
 

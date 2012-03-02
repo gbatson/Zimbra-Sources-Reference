@@ -9,7 +9,7 @@ import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.*;
 
 
@@ -24,7 +24,7 @@ public class CreateContact extends AjaxCommonTest  {
 		super.startingPage = app.zPageAddressbook;
 
 		// Make sure we are using an account with conversation view
-		super.startingAccount = null;		
+		super.startingAccountPreferences = null;		
 		
 	}
 	
@@ -42,20 +42,19 @@ public class CreateContact extends AjaxCommonTest  {
 			
 		FormContactNew formContactNew = (FormContactNew)app.zPageAddressbook.zToolbarPressButton(Button.B_NEW);
 				
-			
 		//verify form contact new page is displayed
-		ZAssert.assertTrue(app.zPageAddressbook.sIsElementPresent("xpath=//div[@id='editcontactform']"),"new contact form not displayed");
+		ZAssert.assertTrue(formContactNew.zIsActive(),"Verify new contact form is displayed");
 		
         // Fill in the form
 	    formContactNew.zFill(contactItem);
 	    
 		// Save the contact
-        formContactNew.save();
+        formContactNew.zSubmit();
 		
-        SleepUtil.sleepMedium();
-
-        //verify toasted message 'contact created'
-        ZAssert.assertStringContains(app.zPageAddressbook.sGetText("xpath=//div[@id='z_toast_text']"), "Contact Created", "Verify toast message 'Contact Created'");
+        //verify toasted message 'contact created'  
+        Toaster toast = app.zPageMain.zGetToaster();
+        String toastMsg = toast.zGetToastMessage();
+        ZAssert.assertStringContains(toastMsg, "Contact Created", "Verify toast message 'Contact Created'");
 
         //verify contact "file as" is displayed
 		List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();

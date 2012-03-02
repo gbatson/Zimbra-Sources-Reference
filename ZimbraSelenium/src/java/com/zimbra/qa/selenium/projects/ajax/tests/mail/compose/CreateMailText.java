@@ -1,5 +1,7 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.compose;
 
+import java.util.HashMap;
+
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -7,6 +9,7 @@ import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.items.RecipientItem;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.ui.Shortcut;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
@@ -18,15 +21,15 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Field;
 
 public class CreateMailText extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public CreateMailText() {
 		logger.info("New "+ CreateMailText.class.getCanonicalName());
 		
 		// All tests start at the login page
 		super.startingPage = app.zPageMail;
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefComposeFormat", "text");
+		super.startingAccountPreferences = new HashMap<String , String>() {{
+				    put("zimbraPrefComposeFormat", "text");
+				}};
 		
 	}
 	
@@ -51,11 +54,13 @@ public class CreateMailText extends AjaxCommonTest {
 		
 		// Send the message
 		mailform.zSubmit();
-				
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ mail.dSubject +")");
-		
-		
+
+      logger.debug("===========received is: " + received);
+      logger.debug("===========app is: " + app);
 		// TODO: add checks for TO, Subject, Body
 		ZAssert.assertEquals(received.dFromRecipient.dEmailAddress, app.zGetActiveAccount().EmailAddress, "Verify the from field is correct");
 		ZAssert.assertEquals(received.dToRecipients.get(0).dEmailAddress, ZimbraAccount.AccountA().EmailAddress, "Verify the to field is correct");
@@ -94,10 +99,12 @@ public class CreateMailText extends AjaxCommonTest {
 		// Send the message
 		mailform.zFill(mail);
 		mailform.zSubmit();
-				
-		
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
 		// From the receipient end, make sure the message is received
 		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ mail.dSubject +")");
+
 		ZAssert.assertNotNull(received, "Verify the message is received");
 		
 	}

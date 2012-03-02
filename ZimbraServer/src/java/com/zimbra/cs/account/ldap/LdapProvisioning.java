@@ -21,6 +21,7 @@ import com.zimbra.common.service.ServiceException.Argument;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.EmailUtil;
+import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.StringUtil;
@@ -403,6 +404,7 @@ public class LdapProvisioning extends Provisioning {
             else
                 entry.setAttrs(attrs, defaults, secondaryDefaults);
 
+            extendLifeInCache(entry);
         } catch (NamingException e) {
             throw ServiceException.FAILURE("unable to refresh entry", e);
         } finally {
@@ -412,6 +414,29 @@ public class LdapProvisioning extends Provisioning {
 
     }
 
+    public void extendLifeInCache(Entry entry) {
+        if (entry instanceof Account) {
+            sAccountCache.replace((Account)entry);
+        } else if (entry instanceof LdapCos) {
+            sCosCache.replace((LdapCos)entry);
+        } else if (entry instanceof Domain) {
+            sDomainCache.replace((Domain)entry);
+        } else if (entry instanceof DistributionList) {
+            DistributionList dl = (DistributionList)entry;
+            if (dl.isAclGroup()) {
+                sAclGroupCache.replace((DistributionList)entry);
+            } else {
+                sDLCache.replace((DistributionList)entry);
+            }
+        } else if (entry instanceof Server) {
+            sServerCache.replace((Server)entry);
+        } else if (entry instanceof XMPPComponent) {
+            sXMPPComponentCache.replace((XMPPComponent)entry);
+        } else if (entry instanceof LdapZimlet) {
+            sZimletCache.replace((LdapZimlet)entry);
+        }
+    }
+    
     // TODO: not in use, delete after the new code is settled for a while
     void refreshEntry_old(Entry entry, ZimbraLdapContext initZlc, LdapProvisioning prov)
     throws ServiceException {
@@ -3713,7 +3738,7 @@ public class LdapProvisioning extends Provisioning {
         boolean locked = acct.getBooleanAttr(Provisioning.A_zimbraPasswordLocked, false);
         if (locked)
             throw AccountServiceException.PASSWORD_LOCKED();
-        setPassword(acct, newPassword, true);
+        setPassword(acct, newPassword, true, false);
     }
 
     /**
@@ -3785,8 +3810,27 @@ public class LdapProvisioning extends Provisioning {
     }
 
     @Override
-    public void setPassword(Account acct, String newPassword) throws ServiceException {
-        setPassword(acct, newPassword, false);
+    public SetPasswordResult setPassword(Account acct, String newPassword) throws ServiceException {
+        SetPasswordResult result = new SetPasswordResult();
+        String msg = null;
+        
+        try {
+            // dry run to pick up policy violation, if any
+            setPassword(acct, newPassword, false, true);
+        } catch (ServiceException e) {
+            msg = e.getMessage();
+        }
+        
+        setPassword(acct, newPassword, false, false);
+        
+        if (msg != null) {
+            msg = L10nUtil.getMessage(L10nUtil.MsgKey.passwordViolation, 
+                    acct.getLocale(), acct.getName(), msg);
+            
+            result.setMessage(msg);
+        }
+        
+        return result;
     }
 
     @Override
@@ -3794,20 +3838,26 @@ public class LdapProvisioning extends Provisioning {
         checkPasswordStrength(password, acct, null, null);
     }
 
-    private int getInt(Account acct, Cos cos, Attributes attrs, String name, int defaultValue) throws NamingException {
-        if (acct != null)
+    private int getInt(Account acct, Cos cos, Attributes attrs, String name, int defaultValue) 
+    throws ServiceException {
+        if (acct != null) {
             return acct.getIntAttr(name, defaultValue);
-
-        String v = LdapUtil.getAttrString(attrs, name);
-        if (v == null)
-            return cos.getIntAttr(name, defaultValue);
-        else {
-            try {
-                return Integer.parseInt(v);
-            } catch (NumberFormatException e) {
-                return defaultValue;
-            }
         }
+
+        try {
+            String v = LdapUtil.getAttrString(attrs, name);
+            if (v != null) {
+                try {
+                    return Integer.parseInt(v);
+                } catch (NumberFormatException e) {
+                    return defaultValue;
+                }
+            }
+        } catch (NamingException ne) {
+            throw ServiceException.FAILURE(ne.getMessage(), ne);
+        }
+        
+        return cos.getIntAttr(name, defaultValue);
     }
 
 
@@ -3820,43 +3870,65 @@ public class LdapProvisioning extends Provisioning {
      * @param attrs
      * @throws ServiceException
      */
-    private void checkPasswordStrength(String password, Account acct, Cos cos, Attributes attrs) throws ServiceException {
-        try {
-            int minLength = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinLength, 0);
-            if (minLength > 0 && password.length() < minLength)
-                throw AccountServiceException.INVALID_PASSWORD("too short", new Argument(Provisioning.A_zimbraPasswordMinLength, minLength, Argument.Type.NUM));
+    private void checkPasswordStrength(String password, Account acct, Cos cos, Attributes attrs) 
+    throws ServiceException {
+        int minLength = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinLength, 0);
+        if (minLength > 0 && password.length() < minLength) {
+            throw AccountServiceException.INVALID_PASSWORD("too short", 
+                    new Argument(Provisioning.A_zimbraPasswordMinLength, minLength, Argument.Type.NUM));
+        }
 
-            int maxLength = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMaxLength, 0);
-            if (maxLength > 0 && password.length() > maxLength)
-                throw AccountServiceException.INVALID_PASSWORD("too long", new Argument(Provisioning.A_zimbraPasswordMaxLength, maxLength, Argument.Type.NUM));
+        int maxLength = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMaxLength, 0);
+        if (maxLength > 0 && password.length() > maxLength) {
+            throw AccountServiceException.INVALID_PASSWORD("too long", 
+                    new Argument(Provisioning.A_zimbraPasswordMaxLength, maxLength, Argument.Type.NUM));
+        }
 
-            int minUpperCase = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinUpperCaseChars, 0);
-            int minLowerCase = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinLowerCaseChars, 0);
-            int minNumeric = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinNumericChars, 0);
-            int minPunctuation = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinPunctuationChars, 0);
+        int minUpperCase = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinUpperCaseChars, 0);
+        int minLowerCase = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinLowerCaseChars, 0);
+        int minNumeric = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinNumericChars, 0);
+        int minPunctuation = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinPunctuationChars, 0);
 
-            if (minUpperCase > 0 || minLowerCase > 0 || minPunctuation > 0 || minNumeric > 0) {
-                int upper=0, lower=0, punctuation = 0, numeric = 0;
-                for (int i=0; i < password.length(); i++) {
-                    int ch = password.charAt(i);
-                    if (Character.isUpperCase(ch)) upper++;
-                    else if (Character.isLowerCase(ch)) lower++;
-                    else if (Character.isDigit(ch)) numeric++;
-                    else if (isAsciiPunc(ch)) punctuation++;
-                }
+        boolean hasPolicies = minUpperCase > 0 || minLowerCase > 0 || minNumeric > 0 || minPunctuation > 0;
+            
+        if (!hasPolicies) {
+            return;
+        }
 
-                if (upper < minUpperCase) throw AccountServiceException.INVALID_PASSWORD("not enough upper case characters",
-                                                                                         new Argument(Provisioning.A_zimbraPasswordMinUpperCaseChars, minUpperCase, Argument.Type.NUM));
-                if (lower < minLowerCase) throw AccountServiceException.INVALID_PASSWORD("not enough lower case characters",
-                                                                                         new Argument(Provisioning.A_zimbraPasswordMinLowerCaseChars, minLowerCase, Argument.Type.NUM));
-                if (numeric < minNumeric) throw AccountServiceException.INVALID_PASSWORD("not enough numeric characters",
-                                                                                         new Argument(Provisioning.A_zimbraPasswordMinNumericChars, minNumeric, Argument.Type.NUM));
-                if (punctuation < minPunctuation) throw AccountServiceException.INVALID_PASSWORD("not enough punctuation characters",
-                                                                                         new Argument(Provisioning.A_zimbraPasswordMinPunctuationChars, minPunctuation, Argument.Type.NUM));
+        int upper = 0;
+        int lower = 0;
+        int punctuation = 0;
+        int numeric = 0;
+
+        for (int i=0; i < password.length(); i++) {
+            int ch = password.charAt(i);
+
+            if (Character.isUpperCase(ch)) {
+                upper++;
+            } else if (Character.isLowerCase(ch)) {
+                lower++;
+            } else if (Character.isDigit(ch)) {
+                numeric++;
+            } else if (isAsciiPunc(ch)) {
+                punctuation++;
             }
+        }
 
-        } catch (NamingException ne) {
-            throw ServiceException.FAILURE(ne.getMessage(), ne);
+        if (upper < minUpperCase) {
+            throw AccountServiceException.INVALID_PASSWORD("not enough upper case characters", 
+                    new Argument(Provisioning.A_zimbraPasswordMinUpperCaseChars, minUpperCase, Argument.Type.NUM));
+        }
+        if (lower < minLowerCase) {
+            throw AccountServiceException.INVALID_PASSWORD("not enough lower case characters", 
+                    new Argument(Provisioning.A_zimbraPasswordMinLowerCaseChars, minLowerCase, Argument.Type.NUM));
+        }
+        if (numeric < minNumeric) {
+            throw AccountServiceException.INVALID_PASSWORD("not enough numeric characters", 
+                    new Argument(Provisioning.A_zimbraPasswordMinNumericChars, minNumeric, Argument.Type.NUM));
+        }
+        if (punctuation < minPunctuation) {
+            throw AccountServiceException.INVALID_PASSWORD("not enough punctuation characters", 
+                    new Argument(Provisioning.A_zimbraPasswordMinPunctuationChars, minPunctuation, Argument.Type.NUM));
         }
     }
 
@@ -3884,11 +3956,11 @@ public class LdapProvisioning extends Provisioning {
     /* (non-Javadoc)
      * @see com.zimbra.cs.account.Account#setPassword(java.lang.String)
      */
-    void setPassword(Account acct, String newPassword, boolean enforcePolicy) throws ServiceException {
+    void setPassword(Account acct, String newPassword, boolean enforcePolicy, boolean dryRun) throws ServiceException {
 
         boolean mustChange = acct.getBooleanAttr(Provisioning.A_zimbraPasswordMustChange, false);
 
-        if (enforcePolicy) {
+        if (enforcePolicy || dryRun) {
             checkPasswordStrength(newPassword, acct, null, null);
 
             // skip min age checking if mustChange is set
@@ -3915,9 +3987,15 @@ public class LdapProvisioning extends Provisioning {
                     acct.getAttr(Provisioning.A_userPassword),
                     enforceHistory);
             attrs.put(Provisioning.A_zimbraPasswordHistory, newHistory);
-            checkHistory(newPassword, newHistory);
+            
+            if (enforcePolicy || dryRun)
+                checkHistory(newPassword, newHistory);
         }
 
+        if (dryRun) {
+            return;
+        }
+        
         String encodedPassword = PasswordUtil.SSHA.generateSSHA(newPassword, null);
 
         // unset it so it doesn't take up space...
@@ -4968,7 +5046,7 @@ public class LdapProvisioning extends Provisioning {
             if (token != null)
                 n = "";
 
-            query = GalUtil.expandFilter(tokenize, queryExpr, n, token, true);
+            query = GalUtil.expandFilter(tokenize, queryExpr, n, token);
         }
 
         SearchGalResult result = SearchGalResult.newSearchGalResult(visitor);
@@ -6116,7 +6194,7 @@ public class LdapProvisioning extends Provisioning {
      */
     public Right getRight(String rightName, boolean expandAllAttrs) throws ServiceException {
         if (expandAllAttrs)
-            throw ServiceException.FAILURE("expandAllAttrs == TRUE is not supported", null);
+            throw ServiceException.FAILURE("expandAllAttrs is not supported", null);
         return RightCommand.getRight(rightName);
     }
 

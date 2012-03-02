@@ -38,6 +38,7 @@ public class Action {
 	public static final Action A_CTRLSELECT = new Action("A_CTRLSELECT");
 	public static final Action A_RIGHTCLICK = new Action("A_RIGHTCLICK");
 
+
 	// Mail page actions
 	public static final Action A_MAIL_CHECKBOX = new Action("A_MAIL_CHECKBOX");
 	public static final Action A_MAIL_UNCHECKBOX = new Action("A_MAIL_UNCHECKBOX");

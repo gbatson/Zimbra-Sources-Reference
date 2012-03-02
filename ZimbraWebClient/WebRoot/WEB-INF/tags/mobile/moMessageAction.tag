@@ -33,7 +33,7 @@
 </c:forEach>
 <c:set var="selectedCidsString" scope="request" value=",${requestScope.selectedIdsString},"/>
 <c:set var="anAction"
-       value="${not empty paramValues.anAction[0] ? paramValues.anAction[0] :  paramValues.anAction[1]}"/>
+       value="${not empty paramValues.anAction[0] ? paramValues.anAction[0] :  (not empty paramValues.anAction[1] ? paramValues.anAction[1] : paramValues.anActionBottom[0])}"/>
 <c:catch var="msgActionException">
 <c:choose>
 <c:when test="${zm:actionSet(param,'moreActions') && anAction eq 'selectAll'}">
@@ -240,6 +240,9 @@
             <fmt:param value="${result.idCount}"/>
         </fmt:message>
     </mo:status>
+    <script type="text/javascript">
+        var elem = document.getElementById('inboxUnread'); var unreadCount = ${mailbox.inbox.unreadCount}; if(elem) {elem.innerHTML = (unreadCount > 0 ? unreadCount : '');} 
+    </script>
 </c:when>
 <c:when test="${zm:actionSet(param, 'actionMarkUnread') || (zm:actionSet(param,'moreActions') && anAction eq 'actionMarkUnread')}">
     <c:choose>
@@ -255,6 +258,9 @@
             <fmt:param value="${result.idCount}"/>
         </fmt:message>
     </mo:status>
+    <script type="text/javascript">
+        var elem = document.getElementById('inboxUnread'); var unreadCount = ${mailbox.inbox.unreadCount}; if(elem) {elem.innerHTML = (unreadCount > 0 ? unreadCount : '');}
+    </script>
     <c:set var="idsMarkedUnread" value="${paramValues.id}" scope="request"/>
 </c:when>
 <c:when test="${zm:actionSet(param, 'actionFlag') || (zm:actionSet(param,'moreActions') && anAction eq 'actionFlag')}">

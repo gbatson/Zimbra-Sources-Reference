@@ -158,15 +158,17 @@ DwtHtmlEditor.INIT_HTML = [ "<html><head><title>ZWC</title></head><body><p>",
                             "</p></body></html>" ].join("");
 
 DwtHtmlEditor.prototype.focus =
-function() {
+function(tryCount) {
 	DBG.println(AjxDebug.DBG1, "DwtHtmlEditor.prototype.focus");
 	if (!AjxEnv.isIE && this._mode == DwtHtmlEditor.TEXT) {
 		document.getElementById(this._textAreaId).focus();
 	} else {
 		try {
 			if (!this._htmlModeInited) {
-				// TODO: potential for a loop here
-				setTimeout(AjxCallback.simpleClosure(this.focus, this), DwtHtmlEditor._INITDELAY);
+				tryCount = tryCount || 0;
+				if (tryCount < 10) {
+					setTimeout(AjxCallback.simpleClosure(this.focus, this, tryCount + 1), DwtHtmlEditor._INITDELAY);
+				}
 				return;
 			}
 			if (AjxEnv.isSafari) {
@@ -259,6 +261,7 @@ function(listener) {
  */
 DwtHtmlEditor.prototype.clear =
 function() {
+	AjxDebug.println(AjxDebug.REPLY, "DwtHtmlEditor::clear");
 	this.setContent("");
 }
 
@@ -319,15 +322,19 @@ function(content) {
 		this._currInsPt = null; // reset insertion pointer, bug 11623
 	}
 
+	content = content || "";
 	if (this._mode == DwtHtmlEditor.HTML) {
 		// If the html editor is initialized then go ahead and set the content, else let
 		// _finishHtmlModeInit run before we try setting the content
-		this._pendingContent = content || "";
+		this._pendingContent = content;
+		AjxDebug.println(AjxDebug.REPLY, "Editor in HTML mode, initialized: " + this._htmlModeInited);
 		if (this._htmlModeInited) {
+			AjxDebug.println(AjxDebug.REPLY, "Editor in HTML mode, setting content on timer");
 			this._setContentOnTimer();
 		} // ELSE: _finishHtmlModeInit is about to run and it'll use _pendingContent
 	} else {
-		document.getElementById(this._textAreaId).value = (content || "");
+		AjxDebug.println(AjxDebug.REPLY, "Editor in text mode, content length: " + content.length);
+		document.getElementById(this._textAreaId).value = content;
 	}
 }
 
@@ -1373,6 +1380,8 @@ function(ev) {
 		}
 	}
 
+	var ctrlA = false;
+	
 	if (ev.type == "keydown") {
 		if (ev.keyCode == 9) {
 			if (AjxEnv.isIE) {
@@ -1384,7 +1393,7 @@ function(ev) {
 			}
 		} else if (DwtKeyboardMgr.isPossibleInputShortcut(ev)) {
 			// pass to keyboard mgr for kb nav
-			retVal = DwtKeyboardMgr.__keyDownHdlr(ev);
+			retVal = ctrlA = DwtKeyboardMgr.__keyDownHdlr(ev);
 		}
 	}
 
@@ -1400,6 +1409,17 @@ function(ev) {
 		if (iFrameDoc.selection.type == "None") {
 			this._currInsPt.collapse(false);
 		}
+		//IE Hack for Ctrl+A to create range and include all elements
+    	if(ctrlA && ev.keyCode == 65 && ev.ctrlKey) {
+        	var p = this._getParentElement();
+        	while (p && (p.nodeType == 1) && (p.tagName.toLowerCase() != 'body')) {
+            	p = p.parentNode;
+	    	}
+        	var idoc = this._getIframeDoc();
+        	this._currInsPt = idoc.selection.createRange();
+        	this._currInsPt.moveToElementText(p);
+        	this._currInsPt.select();
+    	}
 	}
 
 	if (this._stateUpdateActionId != null) {
@@ -1547,7 +1567,7 @@ function() {
 };
 
 DwtHtmlEditor.prototype._updateState =
-function() {
+function(defaultFontSize) {
 	if (this._mode != DwtHtmlEditor.HTML) { return; }
 
 	this._stateUpdateActionId = null;
@@ -1574,8 +1594,8 @@ function() {
 		//bug:25251
 		var fontSize = iFrameDoc.queryCommandValue(DwtHtmlEditor._FONT_SIZE);
 
-		if (fontSize == "") {
-			fontSize = (DwtHtmlEditor.FONT_SIZE_VALUES.indexOf(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE)) + 1);
+		if (!fontSize && defaultFontSize) {
+			fontSize = (DwtHtmlEditor.FONT_SIZE_VALUES.indexOf(defaultFontSize) + 1);
 		} else if (/\d+px/.test(fontSize)) {
 			 fontSize = Math.ceil(0.75 * parseInt(fontSize))+"pt"; // px and pt are USUALLY related this way
 		}
@@ -1656,7 +1676,9 @@ DwtHtmlEditor.prototype._setContentOnTimer =
 function() {
 	var iframeDoc = this._getIframeDoc();
 	try {
+		AjxDebug.println(AjxDebug.REPLY, "DwtHtmlEditor::_setContentOnTimer");
 		if (this._pendingContent != null) {
+			AjxDebug.println(AjxDebug.REPLY, "setting content, length: " + this._pendingContent.length);
 			iframeDoc.body.innerHTML = this._pendingContent;
 		}
 		// XXX: mozilla hack
@@ -1665,6 +1687,7 @@ function() {
 		}
 		this._onContentInitialized();
 	} catch (ex) {
+		AjxDebug.println(AjxDebug.REPLY, "_setContentOnTimer got exception, trying again - [" + ex + "]");
 		var ta = new AjxTimedAction(this, this._setContentOnTimer);
 		AjxTimedAction.scheduleAction(ta, 10);
 		return true;
@@ -1689,7 +1712,7 @@ DwtHtmlEditor.prototype._convertHtml2Text =
 function(convertor) {
 	var iFrameDoc = this._getIframeDoc();
 	return (iFrameDoc && iFrameDoc.body)
-		? AjxStringUtil.convertHtml2Text(iFrameDoc.body, convertor) : "";
+		? AjxStringUtil.convertHtml2Text(iFrameDoc.body, convertor, true) : "";
 };
 
 // params must contain:

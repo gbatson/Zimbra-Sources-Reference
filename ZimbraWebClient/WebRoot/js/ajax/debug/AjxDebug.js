@@ -87,13 +87,19 @@ AjxDebug.BUFFER_MAX	= {};
 
 // Special log types. These can be used to make high-priority log info available in prod mode.
 // To turn off logging for a type, set its BUFFER_MAX to 0.
-AjxDebug.RPC			= "rpc";	// for troubleshooting "Out of RPC cache" errors
-AjxDebug.NOTIFY			= "notify";	// for troubleshooting missing new mail
-AjxDebug.DEFAULT_TYPE	= "debug";	// regular DBG messages
+AjxDebug.DEFAULT_TYPE	= "debug";		// regular DBG messages
+AjxDebug.RPC			= "rpc";		// for troubleshooting "Out of RPC cache" errors
+AjxDebug.NOTIFY			= "notify";		// for troubleshooting missing new mail
+AjxDebug.EXCEPTION		= "exception";	// JS errors
+AjxDebug.CALENDAR		= "calendar";	// for troubleshooting calendar errors
+AjxDebug.REPLY			= "reply";		// bug 56308
 
+AjxDebug.BUFFER_MAX[AjxDebug.DEFAULT_TYPE]	= 0;	// this one can get big due to object dumps
 AjxDebug.BUFFER_MAX[AjxDebug.RPC]			= 200;
 AjxDebug.BUFFER_MAX[AjxDebug.NOTIFY]		= 400;
-AjxDebug.BUFFER_MAX[AjxDebug.DEFAULT_TYPE]	= 0;	// this one can get big due to object dumps
+AjxDebug.BUFFER_MAX[AjxDebug.EXCEPTION]		= 100;
+AjxDebug.BUFFER_MAX[AjxDebug.CALENDAR]		= 400;
+AjxDebug.BUFFER_MAX[AjxDebug.REPLY]			= 100;
 
 AjxDebug.MAX_OUT = 25000; // max length capable of outputting an XML msg
 
@@ -456,10 +462,10 @@ function(args) {
 		}
 	}
 
-	// check level if provided, strip it from args; level is either a number, or 1-8 lowercase letters
+	// check level if provided, strip it from args; level is either a number, or 1-8 lowercase letters/numbers
 	var userLevel = null;
 	var firstArg = argsArray[0];
-	var gotUserLevel = (typeof firstArg == "number" || ((origLen > 1) && firstArg.length <= 8 && /^[a-z]+$/.test(firstArg)));
+	var gotUserLevel = (typeof firstArg == "number" || ((origLen > 1) && firstArg.length <= 8 && /^[a-z0-9]+$/.test(firstArg)));
 	if (gotUserLevel) {
 		userLevel = firstArg;
 		argsArray.shift();
@@ -932,6 +938,11 @@ function(type, msg) {
 	AjxDebug._addMessageToBuffer(type, msg + "<br>");
 };
 
+AjxDebug.dumpObj =
+function(type, obj) {
+	AjxDebug._addMessageToBuffer(type, "<pre>" + AjxStringUtil.prettyPrint(obj, true) + "</pre>");
+};
+
 /**
  *
  * @param {hash}	params			hash of params:
@@ -940,6 +951,8 @@ function(type, msg) {
  */
 AjxDebug.logSoapMessage =
 function(params) {
+
+	if (params.methodNameStr == "NoOpRequest" || params.methodNameStr == "NoOpResponse") { return; }
 
 	var ts = AjxDebug._getTimeStamp();
 	var msg = ["<b>", params.methodNameStr, params.asyncMode ? "" : " (SYNCHRONOUS)" , " - ", ts, "</b>"].join("");

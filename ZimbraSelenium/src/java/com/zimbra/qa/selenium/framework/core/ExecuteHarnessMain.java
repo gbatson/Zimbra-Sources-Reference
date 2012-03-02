@@ -44,10 +44,7 @@ import org.testng.xml.XmlClass;
 import org.testng.xml.XmlSuite;
 import org.testng.xml.XmlTest;
 
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.TestStatusReporter;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 
 
@@ -130,12 +127,19 @@ public class ExecuteHarnessMain {
 	protected String testoutputfoldername = null;
 	public void setTestOutputFolderName(String path) {
 		
+		String browser = ZimbraSeleniumProperties.getStringProperty(
+				ZimbraSeleniumProperties.getLocalHost() + ".browser",
+				ZimbraSeleniumProperties.getStringProperty("browser"));
+		if(browser.charAt(0) == '*')
+			browser = browser.substring(1).split(" ")[0];		
+		
 		// Append the app, browser, locale
-		path += "/" +
-            ZimbraSeleniumProperties.getAppType() +"/" + 
-            ZimbraSeleniumProperties.getStringProperty("browser") + "/" +  
-            ZimbraSeleniumProperties.getStringProperty("locale") ;  		
-
+		path += "/"
+			+ ZimbraSeleniumProperties.getAppType()
+			+ "/"
+			+	browser						
+			+ "/" + ZimbraSeleniumProperties.getStringProperty("locale");
+		
 		// Make sure the path exists
 		File output = new File(path);
 		if ( !output.exists() )		output.mkdirs();
@@ -155,19 +159,24 @@ public class ExecuteHarnessMain {
 		File testng = new File(testoutputfoldername + "/TestNG");
 		if ( !testng.exists() )		testng.mkdirs();
 		
+		// Also, create the CodeCoverage folder
+		File coverage = new File(testoutputfoldername + "/coverage");
+		if ( !coverage.exists() )	coverage.mkdirs();
+		CodeCoverage.getInstance().setOutputFolder(coverage.getAbsolutePath());
+		
 	}
 	
 	/**
 	 * Where conf folder is located
 	 */
 	public String workingfoldername = ".";
-	
-	
+	 	
+	 	
 	// A list of classes to execute using TestNG from the jarfile
 	protected List<String> classes = null;
-	
-	
-	
+
+
+
 	/**
 	 * Determine all the classes in the specified jarfile filtered by a regex
 	 * @param jarfile The jarfile to inspect
@@ -342,7 +351,7 @@ public class ExecuteHarnessMain {
 	}
 	
 	/**
-	 * Start the selenium server (if configured) and run tests
+	 * Execute tests
 	 * @throws HarnessException 
 	 * @throws IOException 
 	 * @throws FileNotFoundException 
@@ -352,19 +361,24 @@ public class ExecuteHarnessMain {
 		
 		Date start = new Date();
 		Date finish;
-		
+
 		StringBuilder result = new StringBuilder();
+		FileAppender appender = new FileAppender(new PatternLayout("%-4r %-5p %c %x - %m%n"), testoutputfoldername + "/debug.txt", false);
+
 		try {
-			
+
 			// Always add a file appender for all debugging
-			Logger.getRootLogger().addAppender(new FileAppender(new PatternLayout("%-4r %-5p %c %x - %m%n"), testoutputfoldername + "/debug.txt", false));
+			Logger.getRootLogger().addAppender(appender);
 			
-			SeleniumService.getInstance().startSeleniumServer();
-			String response = executeTests();
+			// Each method handles different subsystem ...
+			// executeCodeCoverage() ... if configured, instrument/uninstrument server code
+			// executeSelenium() ... if configured, start/stop seleneium
+			// executeTests() ... execute TestNG tests
+			String response = executeCodeCoverage();
 			result.append(response).append('\n');
 			
 		} finally {
-			SeleniumService.getInstance().stopSeleniumServer();
+			Logger.getRootLogger().removeAppender(appender);
 			finish = new Date();
 		}
 		
@@ -373,6 +387,47 @@ public class ExecuteHarnessMain {
 		result.append("Duration: ").append(duration / 1000).append(" seconds\n");
 		
 		return (result.toString());
+
+	}
+	
+	/**
+	 * Instrument/Uninstrument server JS code for code coverage (if configured), and then run tests
+	 * @return
+	 * @throws FileNotFoundException
+	 * @throws HarnessException
+	 * @throws IOException
+	 */
+	protected String executeCodeCoverage() throws FileNotFoundException, HarnessException, IOException {
+		
+		try {
+			
+			CodeCoverage.getInstance().instrumentServer();
+			return (executeSelenium());
+			
+		} finally {
+			CodeCoverage.getInstance().instrumentServerUndo();
+		}
+
+	}
+	
+	
+	/**
+	 * Start/Stop the selenium server (if configured), and then run tests
+	 * @throws HarnessException 
+	 * @throws IOException 
+	 * @throws FileNotFoundException 
+	 */
+	protected String executeSelenium() throws HarnessException, FileNotFoundException, IOException {
+		
+		try {
+			
+			SeleniumService.getInstance().startSeleniumServer();
+			return (executeTests());
+			
+		} finally {
+			SeleniumService.getInstance().stopSeleniumServer();
+		}
+		
 	}
 	
 	/**
@@ -381,7 +436,7 @@ public class ExecuteHarnessMain {
 	 * @throws IOException
 	 * @throws HarnessException 
 	 */
-	public String executeTests() throws FileNotFoundException, IOException, HarnessException {
+	protected String executeTests() throws FileNotFoundException, IOException, HarnessException {
 		logger.info("Execute tests ...");
 		
 		ResultListener listener = null;
@@ -442,18 +497,17 @@ public class ExecuteHarnessMain {
 	protected static class MethodListener implements IInvokedMethodListener {
 		private static Logger logger = LogManager.getLogger(MethodListener.class);
 		
-		private static Logger openqaLogger = LogManager.getLogger("org.openqa");
-		private static Logger frameworkLogger = LogManager.getLogger("framework");
-		private static Logger projectsLogger = LogManager.getLogger("projects");
+		private static final String OpenQABasePackage = "org.openqa";
+		private static final String ZimbraQABasePackage = "com.zimbra.qa.selenium";
+		private static final Logger openqaLogger = LogManager.getLogger(OpenQABasePackage);
+		private static final Logger zimbraqaLogger = LogManager.getLogger(ZimbraQABasePackage);
 		
-		private Map<String, Appender> appenders = null;
-		private static Layout layout = null;
+		private final Map<String, Appender> appenders = new HashMap<String, Appender>();
+		private static final Layout layout = new PatternLayout("%-4r [%t] %-5p %c %x - %m%n");
 
 		private String outputFolder = null;
 		
 		protected MethodListener(String folder) {
-			layout = new PatternLayout("%-4r [%t] %-5p %c %x - %m%n");
-			appenders = new HashMap<String, Appender>();
 			outputFolder = (folder == null ? "logs" : folder);
 		}
 		
@@ -462,10 +516,20 @@ public class ExecuteHarnessMain {
 		}
 		
 		protected String getFilename(Method method) {
-			// String c = method.getDeclaringClass().getCanonicalName().replace('.', '/');
+			// Change the class name in two ways to build the file path:
+			// 1. Remove com.zimbra.qa.selenium (for brevity)
+			// 2. Change package names to directory names, by changing "." to "/"
+			//
+			String c = method.getDeclaringClass().getCanonicalName().replace(ZimbraQABasePackage, "").replace('.', '/');
+			String m = method.getName();
+			return (String.format("%s/debug/%s/%s.txt", outputFolder, c, m));
+		}
+		
+		protected String getTestCaseID(Method method) {
+			// The TestCaseId is the fully qualified name of the method
 			String c = method.getDeclaringClass().getCanonicalName();
 			String m = method.getName();
-			return (String.format("%s/debug/%s.%s.txt", outputFolder, c, m));
+			return (c + "." + m);
 		}
 		
 		/**
@@ -482,10 +546,9 @@ public class ExecuteHarnessMain {
 						Appender a = new FileAppender(layout, filename, false);
 						appenders.put(key, a);
 						openqaLogger.addAppender(a);
-						frameworkLogger.addAppender(a);
-						projectsLogger.addAppender(a);
+						zimbraqaLogger.addAppender(a);
 					}
-					logger.info("MethodListener: START: "+ method.getTestMethod().getMethodName());
+					logger.info("MethodListener: START: " + getTestCaseID(method.getTestMethod().getMethod()));
 				} catch (IOException e) {
 					logger.warn("Unable to add test class appender", e);
 				}
@@ -499,7 +562,7 @@ public class ExecuteHarnessMain {
 		@Override
 		public void afterInvocation(IInvokedMethod method, ITestResult result) {
 			if ( method.isTestMethod() ) {
-				logger.info("MethodListener: FINISH: "+ method.getTestMethod().getMethodName());
+				logger.info("MethodListener: FINISH: "+ getTestCaseID(method.getTestMethod().getMethod()));
 				Appender a = null;
 				String key = getKey(method.getTestMethod().getMethod());
 				if ( appenders.containsKey(key) ) {
@@ -508,8 +571,7 @@ public class ExecuteHarnessMain {
 				}
 				if ( a != null ) {
 					openqaLogger.removeAppender(a);
-					frameworkLogger.removeAppender(a);
-					projectsLogger.removeAppender(a);
+					zimbraqaLogger.removeAppender(a);
 					a.close();
 					a = null;
 				}
@@ -524,6 +586,8 @@ public class ExecuteHarnessMain {
 	 * @author Matt Rhoades
 	 */
 	protected static class ResultListener extends TestListenerAdapter {
+
+		private static final String ZimbraQABasePackage = "com.zimbra.qa.selenium";
 
 		private int testsTotal = 0;
 		private int testsPass = 0;
@@ -566,9 +630,9 @@ public class ExecuteHarnessMain {
 		 * @return
 		 */
 		protected String getScreenCaptureFilename(Method method) {
-			String c = method.getDeclaringClass().getCanonicalName();
+			String c = method.getDeclaringClass().getCanonicalName().replace(ZimbraQABasePackage, "").replace('.', '/');
 			String m = method.getName();
-			return (String.format("%s/debug/%s.%s.screenshot%d.png", outputFolder, c, m, ++screenshotcount));
+			return (String.format("%s/debug/%s/%sss%d.png", outputFolder, c, m, ++screenshotcount));
 		}
 
 		/**
@@ -578,6 +642,7 @@ public class ExecuteHarnessMain {
 		 */
 		protected void getScreenCapture(ITestResult result) {
 			String filename = getScreenCaptureFilename(result.getMethod().getMethod());
+			logger.warn("Creating screenshot: "+ filename);
 			ClientSessionFactory.session().selenium().captureScreenshot(filename);
 		}
 		
@@ -600,7 +665,8 @@ public class ExecuteHarnessMain {
 		@Override
 		public void onTestFailure(ITestResult result) {
 			testsFailed++;
-			failedTests.add(result.getName());
+			String fullname = result.getMethod().getMethod().getDeclaringClass().getName() +"."+ result.getMethod().getMethod().getName();
+			failedTests.add(fullname.replace("com.zimbra.qa.selenium.projects.", "..."));
 			this.getScreenCapture(result);
 		}
 
@@ -721,13 +787,15 @@ public class ExecuteHarnessMain {
 	        if ( cmd.hasOption('p') ) {
 	        	String filter = cmd.getOptionValue('p');
 	        	this.classfilter = filter;
-	        	Matcher m = Pattern.compile("projects.(.*).tests.*").matcher(filter);
-	        	if (m.find()){
-	        		if(m.group(1).equalsIgnoreCase("zcs"))
-	        			ZimbraSeleniumProperties.setAppType(AppType.AJAX);
-	        		else
-	        			ZimbraSeleniumProperties.setAppType(Enum.valueOf(AppType.class, m.group(1).toUpperCase()));	        			 	
-	        	}
+	        	
+	            // Set the app type on the properties
+	            for (AppType t : AppType.values()) {
+	            	// Look for ".type." (e.g. ".ajax.") in the pattern
+	            	if ( this.classfilter.contains(t.toString().toLowerCase()) ) {
+	            		ZimbraSeleniumProperties.setAppType(t);
+	                	break;
+	            	}
+	            }
 	        }
 
 	        if ( cmd.hasOption('e') ) {	        	
@@ -794,7 +862,8 @@ public class ExecuteHarnessMain {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-    	BasicConfigurator.configure();
+		
+		BasicConfigurator.configure();
 
     	
     	String result = "No results";

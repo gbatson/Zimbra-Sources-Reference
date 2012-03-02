@@ -58,7 +58,6 @@ import javax.mail.internet.ParseException;
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.net.QCodec;
 
-import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.collect.Sets;
 import com.ibm.icu.text.CharsetDetector;
@@ -72,6 +71,7 @@ import com.zimbra.common.mime.shim.JavaMailMimeMessage;
 import com.zimbra.common.mime.shim.JavaMailMimeMultipart;
 import com.zimbra.common.mime.shim.JavaMailShim;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.CharsetUtil;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.StringUtil;
@@ -116,10 +116,6 @@ public class Mime {
      * give up and wrap the whole multipart in a text/plain.
      */
     private static final int MAX_PREAMBLE_LENGTH = 1024;
-
-    private static final Charset CP1252 = toCharset(MimeConstants.P_CHARSET_CP1252);
-    private static final Charset GB2312 = toCharset(MimeConstants.P_CHARSET_GB2312);
-    private static final Charset GBK    = toCharset(MimeConstants.P_CHARSET_GBK);
 
     public static class FixedMimeMessage extends com.zimbra.common.mime.shim.JavaMailMimeMessage {
         public FixedMimeMessage(Session session)  {
@@ -650,16 +646,16 @@ public class Mime {
      * @return
      */
      private static boolean isFilterableAttachment(MPartInfo mpi, Set<MPartInfo> bodies) {
+        // multiparts are never attachments
+        if (mpi.isMultipart())
+            return false;
+
         MPartInfo parent = mpi.getParent();
         String ctype = mpi.getContentType();
 
-        // multiparts are never attachments
-        if (ctype.startsWith(MimeConstants.CT_MULTIPART_PREFIX))
-            return false;
-
         if (ctype.startsWith(MimeConstants.CT_TEXT_PREFIX)) {
             // ignore top-level text/* types
-            if (parent == null || (mpi.getPartNum() == 1 && parent.getContentType().equals(MimeConstants.CT_MESSAGE_RFC822)))
+            if (parent == null || (mpi.getPartNum() == 1 && parent.isMessage()))
                 return false;
 
             // inlined text parts are not filterable attachments
@@ -673,9 +669,9 @@ public class Mime {
             // ignore if: it is the first body part, and has a multipart/* parent, and that
             //   multipart's parent is null or message/rfc822
             if (mpi.getPartNum() == 1) {
-                if (parent.getContentType().startsWith(MimeConstants.CT_MULTIPART_PREFIX)) {
+                if (parent.isMultipart()) {
                     MPartInfo pp = parent.getParent();
-                    if (pp == null || pp.getContentType().equals(MimeConstants.CT_MESSAGE_RFC822))
+                    if (pp == null || pp.isMessage())
                         return false;
                 }
             }
@@ -898,42 +894,6 @@ public class Mime {
     }
 
     /**
-     * Returns a {@link Charset} for the name, or null if the name is invalid.
-     *
-     * @param name charset name
-     * @return charset or null
-     */
-    private static Charset toCharset(String name) {
-        if (Strings.isNullOrEmpty(name)) {
-            return null;
-        }
-        try {
-            return Charset.forName(name.trim());
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    /**
-     * Returns a superset of the charset if available.
-     *
-     * @param charset charset
-     * @return a superset of the charset, or the same charset
-     */
-    private static Charset normalizeCharset(Charset charset) {
-        // windows-1252 is a superset of iso-8859-1 and they're often confused, so use cp1252 in its place
-        if (CP1252 != null && Charsets.ISO_8859_1.equals(charset)) {
-            return CP1252;
-        }
-
-        if (GBK != null && charset.equals(GB2312)) {
-            return GBK;
-        }
-
-        return charset;
-    }
-
-    /**
      * Returns a {@link Reader} that decodes the specified {@link InputStream}.
      * <p>
      * {@code contentType} must of type "text/*". This method tries to detect a charset in the following order.
@@ -949,15 +909,15 @@ public class Mime {
      * @param defaultCharset  The user's default charset preference
      */
     public static Reader getTextReader(InputStream input, String contentType, String defaultCharset) {
-        Charset charset = toCharset(getCharset(contentType));
+        Charset charset = CharsetUtil.toCharset(getCharset(contentType));
         if (charset == null) {
             if (!input.markSupported()) {
                 input = new BufferedInputStream(input);
             }
-            charset = detectCharset(input, toCharset(defaultCharset));
+            charset = detectCharset(input, CharsetUtil.toCharset(defaultCharset));
         }
 
-        return new InputStreamReader(input, normalizeCharset(charset));
+        return new InputStreamReader(input, CharsetUtil.normalizeCharset(charset));
     }
 
     private static Charset detectCharset(InputStream input, Charset defaultCharset) {
@@ -1105,7 +1065,7 @@ public class Mime {
 
          // if top-level has no children, then it is the body
          MPartInfo top = parts.get(0);
-         if (!top.getContentType().startsWith(MimeConstants.CT_MULTIPART_PREFIX)) {
+         if (!top.isMultipart()) {
             if (!top.getDisposition().equals(Part.ATTACHMENT)) {
                 (bodies = new HashSet<MPartInfo>(1)).add(top);
             }
@@ -1215,10 +1175,10 @@ public class Mime {
 
     private static Set<MPartInfo> getBodySubparts(MPartInfo base, boolean preferHtml) {
         // short-circuit malformed messages and message subparts
-        String ctype = base.getContentType();
-        if (!base.hasChildren() || ctype.equals(MimeConstants.CT_MESSAGE_RFC822))
+        if (!base.hasChildren() || base.isMessage())
             return null;
 
+        String ctype = base.getContentType();
         List<MPartInfo> children;
         if (ctype.equals(MimeConstants.CT_MULTIPART_ALTERNATIVE))
             return getAlternativeBodySubpart(base.getChildren(), preferHtml);
@@ -1231,15 +1191,14 @@ public class Mime {
 
         Set<MPartInfo> bodies = null;
         for (MPartInfo mpi : children) {
-            String childType = mpi.getContentType();
-            if (childType.startsWith(MimeConstants.CT_MULTIPART_PREFIX)) {
+            if (mpi.isMultipart()) {
                 Set<MPartInfo> found = getBodySubparts(mpi, preferHtml);
                 if (found != null) {
                     if (bodies == null)
                         bodies = new LinkedHashSet<MPartInfo>(found.size());
                     bodies.addAll(found);
                 }
-            } else if (!mpi.getDisposition().equals(Part.ATTACHMENT) && !childType.equalsIgnoreCase(MimeConstants.CT_MESSAGE_RFC822)) {
+            } else if (!mpi.getDisposition().equals(Part.ATTACHMENT) && !mpi.isMessage()) {
                 if (bodies == null)
                     bodies = new LinkedHashSet<MPartInfo>(1);
                 bodies.add(mpi);
@@ -1268,9 +1227,10 @@ public class Mime {
             if (!isAttachment && ctype.equals(wantType)) {
                 return setContaining(mpi);
             } else if (!isAttachment && altTypes.contains(ctype)) {
-                if (alternative == null || !alternative.getContentType().equalsIgnoreCase(ctype))
+                if (alternative == null || !alternative.getContentType().equalsIgnoreCase(ctype)) {
                     alternative = mpi;
-            } else if (ctype.startsWith(MimeConstants.CT_MULTIPART_PREFIX)) {
+                }
+            } else if (mpi.isMultipart()) {
                 Set<MPartInfo> body;
                 if ((body = getBodySubparts(mpi, preferHtml)) != null)
                     return body;
@@ -1289,20 +1249,20 @@ public class Mime {
                 if (!parentCID.equals(mpi.getContentID()))
                     continue;
 
-                if (mpi.getContentType().startsWith(MimeConstants.CT_MULTIPART_PREFIX))
+                if (mpi.isMultipart()) {
                     return getBodySubparts(mpi, preferHtml);
-                else
+                } else {
                     return setContaining(mpi);
+                }
             }
         }
 
         // return the first text subpart, or, if none exists, the first subpart, period
         MPartInfo first = null;
         for (MPartInfo mpi : children) {
-            String ctype = mpi.getContentType();
-            if (ctype.startsWith(MimeConstants.CT_TEXT_PREFIX)) {
+            if (mpi.getContentType().startsWith(MimeConstants.CT_TEXT_PREFIX)) {
                 return setContaining(mpi);
-            } else if (ctype.startsWith(MimeConstants.CT_MULTIPART_PREFIX)) {
+            } else if (mpi.isMultipart()) {
                 return getBodySubparts(mpi, preferHtml);
             } else if (first == null) {
                 first = mpi;
@@ -1358,11 +1318,29 @@ public class Mime {
         if (size > 0) {
             if ("base64".equalsIgnoreCase(part.getEncoding())) {
                 // MimePart.getSize() returns the encoded size.
-                size = (int) ((size * 0.75) - (size / 76));
+                int lines = (size + 77) / 78;
+                size = (int) (0.75 * (size - 2 * lines));
             }
         } else {
             size = (int) ByteUtil.getDataLength(part.getInputStream());
         }
         return size;
+    }
+    
+    /**
+     * Returns {@code true} if the {@code Auto-Submitted} header is set
+     * to a value other than {@code no}.
+     */
+    public static boolean isAutoSubmitted(MimePart part)
+    throws MessagingException {
+        String[] autoSubmitted = part.getHeader("Auto-Submitted");
+        if (autoSubmitted != null) {
+            for (int i = 0; i < autoSubmitted.length; i++) {
+                if (!autoSubmitted[i].equalsIgnoreCase("no")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

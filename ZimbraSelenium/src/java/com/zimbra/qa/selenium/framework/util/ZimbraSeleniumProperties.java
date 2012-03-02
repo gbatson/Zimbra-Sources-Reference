@@ -2,38 +2,26 @@
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.File;
-import java.io.IOException;
+import java.net.InetAddress;
 import java.util.Locale;
 import java.util.ResourceBundle;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
-
-import com.zimbra.qa.selenium.framework.util.OperatingSystem.OsType;
-
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 
 public class ZimbraSeleniumProperties {
 	private static final Logger logger = LogManager.getLogger(ZimbraSeleniumProperties.class);
 	
 	// Use these strings as arguments for some standard properties, e.g. ZimbraSeleniumProperties.getStringProperty(PropZimbraServer, "default");
 	public static final String PropZimbraVersion = "zimbraserverversion"; 
-	
+	private static InetAddress localMachine;
 	private static ZimbraSeleniumProperties instance = null;
 	private File BaseDirectory = null;
 	private File PropertiesConfigurationFilename = null;	
 	private PropertiesConfiguration configProp;
-	
+
 	public static void setStringProperty(String key,String value) {
 		ZimbraSeleniumProperties.getInstance().getConfigProp().setProperty(key, value);
 	}
@@ -120,7 +108,8 @@ public class ZimbraSeleniumProperties {
 		} else {
 			try {
 				logger.info("config.properties is "+ PropertiesConfigurationFilename.getAbsolutePath());
-				configProp = new PropertiesConfiguration(PropertiesConfigurationFilename);
+				configProp = new PropertiesConfiguration();
+				configProp.load(PropertiesConfigurationFilename);
 			} catch (ConfigurationException e) {
 				ZimbraSeleniumLogger.mLog.error("Unable to open config file: " + PropertiesConfigurationFilename.getAbsolutePath(), e);
 				logger.info("config.properties is default");
@@ -224,121 +213,65 @@ public class ZimbraSeleniumProperties {
 	public static AppType getAppType() {
 		return (appType);
 	}
-
-	public final static String [] possibleFiles = {
-	   "/opt/zmdesktop/zimbra/zdesktop/conf/localconfig.xml",
-	   "/home/zmdesktop/zimbra/zdesktop/conf/localconfig.xml",
-	   "C:\\Documents and Settings\\<USER_NAME>\\Local Settings\\Application Data\\Zimbra\\Zimbra Desktop\\conf\\localconfig.xml"
-	};	   
-
-	/**
-    * Get value out of a specified element's name in XML file
-    * @param xmlFile XML File to look at
-    * @param elementName Element name, in which the value is wanted
-    * @return (String) Element's value
-    */
-	public static String parseXmlFile(String xmlFile, String elementName) {
-      DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-      String output = null;
-      try {
-         File file = new File(xmlFile);
-         DocumentBuilder db = dbf.newDocumentBuilder();
-         Document doc = db.parse(file);
-         doc.getDocumentElement().normalize();
-         NodeList nodeLst = doc.getDocumentElement().
-               getElementsByTagName("key");
-         for (int i = 0; i < nodeLst.getLength(); i++) {
-            Node currentNode = nodeLst.item(i);
-            Element currentElement = (Element)currentNode;
-            String keyName = currentElement.getAttribute("name");
-            if (!keyName.equals(elementName)) {
-               continue;
-            } else {
-               Element value = (Element)currentElement.
-                     getElementsByTagName("value").item(0);
-               output = value.getChildNodes().item(0).getNodeValue();
-               break;
-            }
-         }
-      } catch(ParserConfigurationException pce) {
-         pce.printStackTrace();
-      }catch(SAXException se) {
-         se.printStackTrace();
-      }catch(IOException ioe) {
-         ioe.printStackTrace();
-      }
-      return output;
-   }
+	
+	public static String getLocalHost() {
+		try {
+			localMachine = InetAddress.getLocalHost();
+			return localMachine.getHostName();
+		} catch (Exception e) {
+			logger.info(e.fillInStackTrace());
+			return "127.0.0.1";
+		}
+	}
 
 	/**
 	 * Get Base URL for selenium to open to access the application
 	 * under test
 	 * @return Base URL
+	 * @throws HarnessException 
 	 */
 	public static String getBaseURL() {
 		String scheme = ZimbraSeleniumProperties.getStringProperty("server.scheme", "http");
 		String host = ZimbraSeleniumProperties.getStringProperty("server.host", "localhost");
 		String port = ZimbraSeleniumProperties.getStringProperty("server.port", "7070");
-
+		String codeCoverage = "";
+		if ( CodeCoverage.getInstance().Enabled ) {
+			codeCoverage = "?dev=1&debug=0";
+		}
+		
 		if ( appType == AppType.DESKTOP ) {
-		   OsType osType = OperatingSystem.getOSType();
 		   logger.info("AppType is: " + appType);
-		   logger.info("OS Type is: " + osType);
 
-		   for (int i = 0; i < possibleFiles.length; i++) {
-		      if (osType == OsType.WINDOWS) {
-		         if (!possibleFiles[i].contains("C:\\")) {
-		            continue;
-		         } else {
-		            String currentLoggedInUser = System.getProperty(
-		                  "user.name");
-		            logger.info("currentLoggedInUser: " +
-		                  currentLoggedInUser);
-		            possibleFiles[i] = possibleFiles[i].replace(
-		                  "<USER_NAME>", currentLoggedInUser);
-		         }
-		      } else {
-		         if (possibleFiles[i].contains("C:\\")) {
-                  continue;
-		         }
-		      }
-		      logger.info("Parsing XML file: " + possibleFiles[i]);
-		      port = parseXmlFile(possibleFiles[i],
-		            "zimbra_admin_service_port");
-		      String serialNumber = parseXmlFile(possibleFiles[i],
-		            "zdesktop_installation_key");
-		      String baseUrl = scheme + "://" + host + ":" + port +
-            "/desktop/login.jsp?at=" + serialNumber;
+		      ZimbraDesktopProperties zdp = ZimbraDesktopProperties.getInstance();
+		      port = zdp.getConnectionPort();
+		      String desktop_host = ZimbraSeleniumProperties.getStringProperty("desktop.server.host", "localhost");
+		      String baseUrl = scheme + "://" + desktop_host + ":" + port +
+            "/desktop/login.jsp?at=" + zdp.getSerialNumber();;
 
 		      logger.info("Base URL is: " + baseUrl);
 
 		      return (baseUrl);
-		   }
 		}
 
 		if ( appType == AppType.AJAX ) {
-			return (scheme + "://"+ host + ":" + port);
+			return (scheme + "://"+ host + ":" + port +"/" + codeCoverage);
 		}
 
 		if ( appType == AppType.HTML ) {
-			return (scheme + "://"+ host + ":" + port + "/h/");
+			return (scheme + "://"+ host + ":" + port + "/h/" + codeCoverage);
 		}
 
 		if ( appType == AppType.MOBILE ) {
-			return (scheme + "://"+ host + ":" + port + "/m/");
-		}
-
-		if(ZimbraSeleniumProperties.getStringProperty("runCodeCoverage", "no").equalsIgnoreCase("yes")) {
-			return (scheme +"://"+ host + ":"+ port +"?dev=1&debug=0");
+			return (scheme + "://"+ host + ":" + port + "/m/" + codeCoverage);
 		}
 
 		if ( appType == AppType.ADMIN ) {
-			return ("https://"+ host +":7071");
+			return ("https://"+ host +":7071" +"/" + codeCoverage);
 		}
 
 		// Default
 		logger.warn("Using default URL");
-		return (scheme +"://"+ host);
+		return (scheme +"://"+ host +"/"+ codeCoverage);
 	}
 
 	public static String zimbraGetVersionString() throws HarnessException {		

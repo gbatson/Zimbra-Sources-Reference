@@ -1,10 +1,18 @@
 package com.zimbra.qa.selenium.framework.util;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.net.URLConnection;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
+
+import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 
 /**
  * This class contains general utilities methods that can be used across the framework
@@ -91,9 +99,9 @@ public class GeneralUtility {
       try {
          Method [] methodList = null;
          if (isStaticApi) {
-            methodList = Class.forName(apiClassPath).getDeclaredMethods();
+            methodList = Class.forName(apiClassPath).getMethods();
          } else {
-            methodList = nonStaticObject.getClass().getDeclaredMethods();
+            methodList = nonStaticObject.getClass().getMethods();
          }
          for (int i = 0; i < methodList.length; i++) {
             logger.debug("methodlist[" + i + "].getName: " + methodList[i].getName());
@@ -110,6 +118,12 @@ public class GeneralUtility {
                } catch (IllegalArgumentException e) {
                   logger.debug("Continue to find other method");
                   e.printStackTrace();
+               } catch (InvocationTargetException ive) {
+                  method = methodList[i];
+                  logger.debug("Hit InvocationTargetException");
+                  logger.debug("Method: " + method);
+                  ive.printStackTrace();
+                  break;
                } catch (Exception e) {
                   e.printStackTrace();
                }
@@ -130,11 +144,12 @@ public class GeneralUtility {
       }
 
       int i = 0;
-            
+
       while (i < iteration && !_waitforObjectComparator(output, comparingObject, operand)) {
+         SleepUtil.sleep(delayBetweenCheck);
          i++;
          logger.debug("Iteration: " + i);
-         logger.debug("Output is: " + output.toString());
+         logger.debug("Output is: " + output);
          try {
             if (isStaticApi) {
                output = method.invoke(Class.forName(apiClassPath), parameters);
@@ -153,10 +168,13 @@ public class GeneralUtility {
          } catch (ClassNotFoundException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+         } catch (Exception e) {
+            //TODO:
+            e.printStackTrace();
          }
-         SleepUtil.sleep(delayBetweenCheck);
       }
-      logger.info("Final Output is: " + output.toString());
+      logger.info("Final Iteration is: " + i);
+      logger.info("Final Output is: " + output);
       return output;
    }
 
@@ -171,13 +189,110 @@ public class GeneralUtility {
     */
    private static boolean _waitforObjectComparator(Object mainObject, Object compObject, WAIT_FOR_OPERAND operand)
    throws HarnessException {
+      logger.debug("waitForOperand is: " + operand.toString());
+      logger.debug("mainObject is: " + mainObject);
+      logger.debug("compObject is: " + compObject);
       switch (operand){
       case EQ:
-         return mainObject.equals(compObject);
+         if (mainObject == null) {
+            return compObject == null;
+         } else {
+            return mainObject.equals(compObject);
+         }
       case NEQ:
-         return !mainObject.equals(compObject);
+         if (mainObject == null) {
+            return compObject != null;
+         } else {
+            return !mainObject.equals(compObject);
+         }
       default:
          throw new HarnessException("Unsupported WaitFor operand: " + operand);
+      }
+   }
+
+   /**
+    * Finds whether the specified windows task name is running or not
+    * @param taskName Task's name to be queried
+    * @return true, if the task is running, otherwise, false
+    * @throws IOException
+    * @throws InterruptedException
+    */
+   public static boolean findWindowsRunningTask(String taskName) throws IOException, InterruptedException {
+      String output = CommandLine.cmdExecWithOutput("TASKLIST /FI \"IMAGENAME EQ " + taskName + "\"");
+      logger.debug("output: " + output);
+      if (output.contains(taskName)) {
+         return true;
+      } else {
+         return false;
+      }
+   }
+
+   /**
+    * Dynamically wait for element to be present with default timeout 30 seconds
+    * @param owner Page Object, which is the owner of the locator
+    * @param locator Locator of the element
+    * @throws HarnessException 
+    * @return true if element is present, or false if element is not present when timeout is hit
+    */
+   public static boolean waitForElementPresent(Object owner, String locator) throws HarnessException {
+      return waitForElementPresent(owner, locator, 30000);
+   }
+
+   /**
+    * Dynamically wait for element to be present with specified timeout
+    * @param owner Page Object, which is the owner of the locator
+    * @param locator Locator of the element
+    * @param timeout Timeout to be waited for
+    * @return true if element is present, or false if element is not present when timeout is hit
+    * @throws HarnessException
+    */
+   public static boolean waitForElementPresent(Object owner, String locator, long timeout) throws HarnessException {
+      Object[] params = {locator};
+      return (Boolean)GeneralUtility.waitFor(null, owner, false, "sIsElementPresent",
+            params, WAIT_FOR_OPERAND.EQ, true, timeout, 1000);
+   }
+
+   /**
+    * Do an HTTP Post with the given URL link
+    * @param Url URL to do HTTP Post
+    * @throws HarnessException
+    */
+   public static void doHttpPost(String Url) throws HarnessException {
+      try {
+         URL url = new URL(Url);
+         URLConnection conn = url.openConnection();
+         
+         //Get the response
+         BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+         StringBuffer sb = new StringBuffer();
+         String line;
+         while ((line = rd.readLine()) != null)
+         {
+            sb.append(line);
+         }
+         rd.close();
+         logger.info("HTTP POST information ==> " + sb.toString());
+         
+
+      } catch (IOException e) {
+         throw new HarnessException("HTTP Post failed!");
+      }
+   }
+
+   /**
+    * Synchronizing ZD client to ZCS through SOAP
+    * @param account Account
+    * @throws HarnessException
+    */
+   public static void syncDesktopToZcsWithSoap(ZimbraAccount account)
+   throws HarnessException {
+      if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+         String request =
+               "<SyncRequest xmlns=\"urn:zimbraOffline\"/>";
+
+         account.soapSend(request,
+               SOAP_DESTINATION_HOST_TYPE.CLIENT,
+               account.EmailAddress);
       }
    }
 }

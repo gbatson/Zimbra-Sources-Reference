@@ -41,6 +41,7 @@
             <tr><td class='ZmFieldLabelRight'><nobr><$= ZmMsg.subjectLabel $></nobr></td>
                 <td colspan='4' id='${id}_subject'></td>
             </tr>
+            <$ if(data.isGroupCalEnabled) { $>
             <tr id="${id}_attendeesContainer">
                 <td class='ZmFieldLabelRight'><div id='${id}_req_att_picker'><$= ZmMsg.attendeesLabel $></div></td>
                 <td colspan='3' id='${id}_person'></td>
@@ -50,12 +51,17 @@
                 <td class='ZmFieldLabelRight'><div id='${id}_opt_att_picker'><$= ZmMsg.optionalLabel $></div></td>
                 <td colspan='3' id='${id}_optional'></td>
             </tr>
+            <$ } $>
             <tr>
                 <td class='ZmFieldLabelRight'><div id='${id}_loc_picker'><$= ZmMsg.locationLabel $></div></td>
+                <$ if (data.isGalEnabled && data.isGroupCalEnabled) { $>
                 <td colspan='3' id='${id}_location'></td>
-                 <td id='${id}_show_resources' class='fakeAnchor'><$= ZmMsg.showResources $></td>
+                <td id='${id}_show_resources' class='fakeAnchor'><$= ZmMsg.showResources $></td>
+                <$ }else { $>
+                <td colspan='4' id='${id}_location'></td>
+                <$ } $>
             </tr>
-            <$ if (data.isGalEnabled) { $>
+            <$ if (data.isGalEnabled && data.isGroupCalEnabled) { $>
             <tr id='${id}_resourcesContainer'>
                 <td class='ZmFieldLabelRight'><div id='${id}_res_btn'><$= ZmMsg.resources $></div></td>
                 <td colspan='4' id='${id}_resourcesData'></td>
@@ -122,6 +128,10 @@
                 <td><table border=0>
                         <tr><td id='${id}_showAsSelect' align="right"></td>
                             <td id='${id}_folderSelect'></td>
+                            <td>
+                                <input type='checkbox' id='${id}_privateCheckbox'>
+                                <nobr>&nbsp;<label for="${id}_privateCheckbox"><$= ZmMsg._private $></label></nobr>
+                            </td>
                         </tr>
                     </table>
                 </td>
@@ -372,7 +382,7 @@
 <template id='calendar.Appointment#ZmApptQuickAddDialog'>
 	<table border=0 width=330>
 		<tr>
-			<td class='ZmApptTabViewPageField'><div style='width:70px'><sup>*</sup><$= ZmMsg.subjectLabel $></div></td>
+			<td class='ZmApptTabViewPageField'><div style='padding-left: 25px;'><sup>*</sup><$= ZmMsg.subjectLabel $></div></td>
 			<td colspan=2 id='${id}_subject'></td>
 		</tr>
 		<tr>
@@ -380,7 +390,7 @@
 			<td colspan=2 id='${id}_location'></td>
 		</tr>
 		<tr>
-			<td class='ZmApptTabViewPageField'><$= ZmMsg.showAs $></td>
+			<td class='ZmApptTabViewPageField'><$= ZmMsg.displayLabel $></td>
 			<td colspan=10>
 				<table border=0 cellpadding=0 cellspacing=2>
 					<tr>
@@ -881,7 +891,7 @@
 		$>
 				<tr valign='top'>
 					<td align='right' style='padding-right:5px;' nowrap>
-						<b><$= AjxMessageFormat.format(ZmMsg.makeLabel, AjxStringUtil.htmlEncode(i)) $></b>
+						<b><$= AjxMessageFormat.format(ZmMsg.makeLabel, AjxStringUtil.htmlEncode(i)+"&nbsp;(&nbsp;"+ptstStatus[i].split(",").length+"&nbsp;)&nbsp;") $></b>
 					</td>
 					<td nowrap>
 						<$= ptstStatus[i] $>
@@ -1008,6 +1018,15 @@
     </center>
 </template>
 
+<template id='calendar.Appointment#TimeSuggestion-ShowSuggestions'>
+    <center>
+        <div class='NoSuggestions'>
+            <br><br>
+            <br>${message}
+        </div>
+    </center>
+</template>
+
 <template id='calendar.Appointment#TimeSuggestion-Loading'>
     <center>
         <div>
@@ -1019,9 +1038,15 @@
 
 <template id='calendar.Appointment#TimeLocationPreference'>
     <table cellspacing="5" cellpadding="0" border="0">
-            <tbody>
-                <tr><td><input type="checkbox" id="${id}_disablesuggestions"><$= ZmMsg.turnOffSuggestions $></td></tr>
-            </tbody>
+        <tbody>
+            <tr>
+                <td align="right"><$= ZmMsg.suggestionsLabel $>&nbsp;</td>
+                <td>
+                    <input type='radio' name="suggestiontype" id='${id}_autosuggest' checked/>&nbsp;<label for="${id}_autosuggest"><$=ZmMsg.suggestionsAutomatic $></label>
+                    <input type='radio' name="suggestiontype" id='${id}_disablesuggestions'/>&nbsp;<label for="${id}_disablesuggestions"><$=ZmMsg.suggestionsManual $></label>
+                </td>
+            </tr>
+        </tbody>
     </table>
     <table cellspacing="5" cellpadding="0" border="0" id="${id}_locationpref">
         <tbody>

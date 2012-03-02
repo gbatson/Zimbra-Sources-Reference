@@ -577,13 +577,12 @@ function(ev) {
 	ev = DwtUiEvent.getEvent(ev);
 //	DBG.println("kbnav", "keyup: " + ev.keyCode);
 
-	var kbMgr = appCtxt.getKeyboardMgr();
+	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
 	if (kbMgr._evtMgr.notifyListeners(DwtEvent.ONKEYUP, ev) === false) {
 		return false;
 	}
 
 	// clear saved Gecko key
-	DwtKeyboardMgr.__geckoKeyCode = null;
 	if (AjxEnv.isMac && AjxEnv.isGeckoBased && ev.keyCode == 0) {
 		return DwtKeyboardMgr.__keyDownHdlr(ev);
 	} else {
@@ -599,18 +598,14 @@ function(ev) {
 	ev = DwtUiEvent.getEvent(ev);
 //	DBG.println("kbnav", "keypress: " + (ev.keyCode || ev.charCode));
 
-	var kbMgr = appCtxt.getKeyboardMgr();
+	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
 	if (kbMgr._evtMgr.notifyListeners(DwtEvent.ONKEYPRESS, ev) === false) {
 		return false;
 	}
 
-	if (DwtKeyboardMgr.__geckoKeyCode && AjxEnv.isGeckoBased) {
-//		DBG.println("kbnav", "Gecko: calling keydown on keypress event");
-		return DwtKeyboardMgr.__keyDownHdlr(ev);
-	} else {
-		DwtKeyboardMgr.__geckoKeyCode = DwtKeyEvent.getCharCode(ev);
-		return DwtKeyboardMgr.__handleKeyEvent(ev);
-	}
+	DwtKeyEvent.geckoCheck(ev);
+
+	return DwtKeyboardMgr.__handleKeyEvent(ev);
 };
 
 /**
@@ -620,10 +615,6 @@ DwtKeyboardMgr.__handleKeyEvent =
 function(ev) {
 
 	if (DwtKeyboardMgr.__shell._blockInput) { return false; }
-
-	if (ev.type == "keypress") {
-		DwtKeyEvent.geckoCheck(ev);
-	}
 
 	ev = DwtUiEvent.getEvent(ev, this);
 //	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
@@ -717,19 +708,18 @@ function(ev) {
 
 	try {
 
-	var kbMgr = appCtxt.getKeyboardMgr();
+	ev = DwtUiEvent.getEvent(ev, this);
+	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
 	if (kbMgr._evtMgr.notifyListeners(DwtEvent.ONKEYDOWN, ev) === false) {
 		return false;
 	};
 
 	if (DwtKeyboardMgr.__shell._blockInput) { return false; }
-	ev = DwtUiEvent.getEvent(ev, this);
 //	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
 	if (kbMgr && !kbMgr.isEnabled()) { return true; }  // Allow key events to propagate when keyboard manager is disabled (to avoid taking over browser shortcuts). Bugzilla #45469.
 	if (!kbMgr || !kbMgr.__checkStatus()) { return false; }
 	var kev = DwtShell.keyEvent;
 	kev.setFromDhtmlEvent(ev);
-	DwtKeyboardMgr.__geckoKeyCode = null;
 	var keyCode = DwtKeyEvent.getCharCode(ev);
 //	DBG.println("kbnav", "keydown: " + keyCode + " -------- " + ev.target);
 
@@ -824,7 +814,7 @@ function(ev) {
 	var handled = DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED;
 
 	// First see if the control that currently has focus can handle the key event
-	var obj = kbMgr.__focusObj;
+	var obj = ev.focusObj || kbMgr.__focusObj;
 	if (obj && (obj.handleKeyAction) && (kbMgr.__dwtCtrlHasFocus || kbMgr.__dwtInputCtrl || (obj.hasFocus && obj.hasFocus()))) {
 //		DBG.println("kbnav", obj + " has focus: " + obj.hasFocus());
 		handled = kbMgr.__dispatchKeyEvent(obj, kev);

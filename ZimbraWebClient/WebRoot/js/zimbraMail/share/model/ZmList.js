@@ -523,10 +523,12 @@ function(params, result) {
 		// batched change notification
 		var item = movedItems[0];
 		var list = item.list;
-		list._evt.batchMode = true;
-		list._evt.item = item;	// placeholder
-		list._evt.items = movedItems;
-		list._notify(ZmEvent.E_MOVE, details);
+        if (list) {
+            list._evt.batchMode = true;
+            list._evt.item = item;	// placeholder
+            list._evt.items = movedItems;
+            list._notify(ZmEvent.E_MOVE, details);
+        }
 	}
 
 	if (params.callback) {
@@ -655,7 +657,8 @@ function(accounts, params) {
 	if (items) {
 		delete accounts[i];
 
-		params.accountName = appCtxt.accountList.getAccount(i).name;
+        var ac = window.parentAppCtxt || window.appCtxt;
+        params.accountName = ac.accountList.getAccount(i).name;
 		params.items = items;
 		params.folder = appCtxt.getById(ZmFolder.ID_TRASH);
 
@@ -867,9 +870,10 @@ function(params, batchCmd) {
 	};
 
 	var dialog = ZmList.progressDialog;
-	if (idList.length > ZmList.CHUNK_SIZE) {
+	if (idList.length >= ZmList.CHUNK_SIZE) {
 		if (!dialog) {
 			dialog = ZmList.progressDialog = appCtxt.getCancelMsgDialog();
+			dialog.reset();
 			dialog.registerCallback(DwtDialog.CANCEL_BUTTON, new AjxCallback(this, this._cancelAction, [params1]));
 		}
 	}
@@ -954,7 +958,7 @@ function(params, result) {
 				summary = ZmList.getActionSummary(params.actionText, params.numItems, params.type, params.actionArg);
 			}
 			if (dialog && summary) {
-				dialog.setContent(summary);
+				dialog.setMessage(summary, DwtMessageDialog.INFO_STYLE, AjxMessageFormat.format(ZmMsg.inProgress));
 				if (!dialog.isPoppedUp()) {
 					dialog.popup();
 				}

@@ -63,8 +63,10 @@ ZmAutocomplete.AC_TYPE_EQUIPMENT	= "Equipment";	// same as ZmResource.ATTR_EQUIP
 
 // icons
 ZmAutocomplete.AC_ICON = {};
-ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_CONTACT]	= "Contact";
-ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_GAL]		= "GALContact";
+ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_CONTACT]	    = "Contact";
+ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_GAL]		    = "GALContact";
+ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_LOCATION]		= "Location";
+ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_EQUIPMENT]	= "Resource";
 
 // cache control
 ZmAutocomplete.GAL_RESULTS_TTL		= 900000;	// time-to-live for cached GAL autocomplete results (msec)
@@ -503,6 +505,9 @@ ZmAutocompleteMatch = function(match, options, isContact) {
 	this.icon = this.icon || ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_CONTACT];
 	this.acType = (this.type == ZmAutocomplete.AC_TYPE_LOCATION || this.type == ZmAutocomplete.AC_TYPE_EQUIPMENT)
 		? this.type : ZmAutocomplete.AC_TYPE_CONTACT;
+    if(this.type == ZmAutocomplete.AC_TYPE_LOCATION || this.type == ZmAutocomplete.AC_TYPE_EQUIPMENT) {
+        this.icon = ZmAutocomplete.AC_ICON[this.type];
+    }
 };
 
 /**
@@ -571,7 +576,7 @@ ZmSearchAutocomplete = function() {
 	var params = {
 		loader:		this._loadTags,
 		text:		function(o) { return o.getName(false, null, true, true); },
-		icon:		function(o) { return o.getIcon(); },
+		icon:		function(o) { return o.getIconWithColor(); },
 		matchText:	function(o) { return o.createQuery(); }
 	};
 	this._registerHandler("tag", params);
@@ -579,7 +584,7 @@ ZmSearchAutocomplete = function() {
 	params = {
 		listType:	ZmId.ORG_FOLDER,
 		text:		function(o) { return o.getPath(false, false, null, true, false); },
-		icon:		function(o) { return o.getIcon(); },
+		icon:		function(o) { return o.getIconWithColor(); },
 		matchText:	function(o) { return o.createQuery(); }
 	};
 	this._loadFunc[ZmId.ORG_FOLDER] = this._loadFolders;

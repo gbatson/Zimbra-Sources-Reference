@@ -36,6 +36,8 @@ public class Button {
 	public static final Button B_PRINT = new Button("B_PRINT");
 	public static final Button B_TAG = new Button("B_TAG");
 	public static final Button B_SAVE = new Button("B_SAVE");
+	public static final Button B_RENAME = new Button("B_RENAME");
+	public static final Button B_SHARE = new Button("B_SHARE");
 	
 	public static final Button O_NEW_MESSAGE = new Button("O_NEW_MESSAGE");
 	public static final Button O_NEW_CONTACT = new Button("O_NEW_CONTACT");
@@ -109,15 +111,42 @@ public class Button {
 	public static final Button O_SEARCHTYPE_FILES = new Button("O_SEARCHTYPE_FILES");
 	public static final Button O_SEARCHTYPE_INCLUDESHARED = new Button("O_SEARCHTYPE_INCLUDESHARED");
 
+	
 	//Briefcase buttons
 	public static final Button B_UPLOAD_FILE = new Button("B_UPLOAD_FILE");
 	public static final Button B_EDIT_FILE = new Button("B_EDIT_FILE");
 	public static final Button B_OPEN_IN_SEPARATE_WINDOW = new Button("B_OPEN_IN_SEPARATE_WINDOW");
+	public static final Button O_SEND_AS_ATTACHMENT = new Button("O_SEND_AS_ATTACHMENT");
+	public static final Button O_SEND_LINK = new Button("O_SEND_LINK");
 	
     //Addressbook button
 	public static final Button B_EDIT = new Button("zb__CNS__EDIT");
-	private final String ID;
+	public static final Button O_SEARCH_MAIL_SENT_TO_CONTACT = new Button("O_SEARCH_MAIL_SENT_TO_CONTACT");
+	public static final Button O_SEARCH_MAIL_RECEIVED_FROM_CONTACT = new Button("O_SEARCH_MAIL_RECEIVED_FROM_CONTACT");
 	
+	// Task buttons
+	public static final Button B_TASK_FILTERBY = new Button("B_TASK_FILTERBY");
+	public static final Button B_TASK_MARKCOMPLETED = new Button("B_TASK_FILTERBY");
+
+	
+	// Tree buttons
+	public static final Button B_TREE_NEWFOLDER = new Button("B_TREE_NEWFOLDER");
+	public static final Button B_TREE_NEWADDRESSBOOK = new Button("B_TREE_NEWADDRESSBOOK");
+	public static final Button B_TREE_NEWCALENDAR = new Button("B_TREE_NEWCALENDAR");
+	public static final Button B_TREE_NEWTASKLIST = new Button("B_TREE_NEWTASKLIST");
+	public static final Button B_TREE_NEWBRIEFCASE = new Button("B_TREE_NEWBRIEFCASE");
+	public static final Button B_TREE_BRIEFCASE_EXPANDCOLLAPSE = new Button("B_TREE_BRIEFCASE_EXPANDCOLLAPSE");
+	public static final Button B_TREE_NEWTAG = new Button("B_TREE_NEWTAG");
+	
+	// Tree buttons (Mail folders)
+	public static final Button B_TREE_FOLDER_MARKASREAD = new Button("B_TREE_FOLDER_MARKASREAD");
+	public static final Button B_TREE_FOLDER_EXPANDALL = new Button("B_TREE_FOLDER_EXPANDALL");
+	public static final Button B_TREE_FOLDER_EMPTY = new Button("B_TREE_FOLDER_EMPTY");
+
+	
+	// Button properties
+	private final String ID;
+
 	protected Button(String id) {
 		this.ID = id;
 	}

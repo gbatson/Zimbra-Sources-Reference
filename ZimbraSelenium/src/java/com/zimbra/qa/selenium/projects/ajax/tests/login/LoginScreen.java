@@ -20,7 +20,7 @@ public class LoginScreen extends AjaxCommonTest {
 
 		// All tests start at the login page
 		super.startingPage = app.zPageLogin;
-		super.startingAccount = null;
+		super.startingAccountPreferences = null;
 
 	}
 
@@ -38,7 +38,7 @@ public class LoginScreen extends AjaxCommonTest {
 	
 	@Test(	description = "Verify the copyright on the login screen contains the current year",
 			groups = { "functional" })
-	public void LoginScreen02() {
+	public void LoginScreen02() throws HarnessException {
 		
 		Calendar calendar = new GregorianCalendar();
 		String thisYear = "" + calendar.get(Calendar.YEAR);
@@ -74,7 +74,7 @@ public class LoginScreen extends AjaxCommonTest {
 	}
 
 	@Test(	description = "Verify tab order in the login screen (username, password, enter)",
-			groups = { "functional" })
+			groups = { "unstable" })
 	public void LoginScreen04() throws HarnessException {
 		
 		throw new HarnessException("implement me!");

@@ -3,12 +3,9 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.AbsTab;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 
 
 /**
@@ -25,7 +22,7 @@ public class PageMain extends AbsTab {
 		public static final String zAppbarContact		= "id=zb__App__Contacts_title";
 		public static final String zAppbarCal			= "id=zb__App__Calendar_title";
 		public static final String zAppbarTasks			= "id=zb__App__Tasks_title";
-		public static final String zAppbarBriefcase		= "css=td[id='zb__App__Briefcase_left_icon'] [class='ImgBriefcase']";
+		public static final String zAppbarBriefcase		= "css=td[id='zb__App__Briefcase_left_icon']";
 		public static final String zAppbarPreferences	= "id=zb__App__Options_title";
 
 		// For Social tab, see Zimlet classes
@@ -39,20 +36,42 @@ public class PageMain extends AbsTab {
 		logger.info("new " + PageMain.class.getCanonicalName());
 
 	}
+	
+	public Toaster zGetToaster() throws HarnessException {
+		return (new Toaster(this.MyApplication));
+	}
 
+	public boolean zIsZimletLoaded() throws HarnessException {
+		return (ClientSessionFactory
+	            .session()
+				.selenium()
+				.getEval(
+						"this.browserbot.getUserWindow().top.appCtxt.getZimletMgr().loaded")
+				.equals("true"));
+	}
+	
+	public boolean zIsMinicalLoaded() throws HarnessException {
+		return (ClientSessionFactory
+	            .session()
+				.selenium()
+				.getEval(
+						"this.browserbot.getUserWindow().top.appCtxt.getAppViewMgr().getCurrentViewComponent(this.browserbot.getUserWindow().top.ZmAppViewMgr.C_TREE_FOOTER) != null")
+				.equals("true"));
+	}
 	/* (non-Javadoc)
 	 * @see projects.admin.ui.AbsPage#isActive()
 	 */
 	@Override
 	public boolean zIsActive() throws HarnessException {
 
-		// Make sure the Mobile Client is loaded in the browser
-		if ( !MyApplication.zIsLoaded() )
-			throw new HarnessException("Admin Console application is not active!");
+		// Look for the Logout button 
+		// check if zimlet + minical loaded
+		boolean present = sIsElementPresent(Locators.zLogoffButton) 
+		               && zIsZimletLoaded()
+		           //    && zIsMinicalLoaded()
+		               ;
+			
 		
-
-		// Look for the Logout button
-		boolean present = sIsElementPresent(Locators.zLogoffButton);
 		if ( !present ) {
 			logger.debug("isActive() present = "+ present);
 			return (false);
@@ -82,15 +101,13 @@ public class PageMain extends AbsTab {
 			// This page is already active
 			return;
 		}
-		
-		
+			
 		// 1. Logout
 		// 2. Login as the default account
 		if ( !((AppAjaxClient)MyApplication).zPageLogin.zIsActive() ) {
 			((AppAjaxClient)MyApplication).zPageLogin.zNavigateTo();
 		}
-		((AppAjaxClient)MyApplication).zPageLogin.zLogin();
-
+		((AppAjaxClient)MyApplication).zPageLogin.zLogin(ZimbraAccount.AccountZWC());
 		zWaitForActive();
 		
 	}
@@ -138,7 +155,7 @@ public class PageMain extends AbsTab {
 	}
 
 	@Override
-	public AbsPage zListItem(Action action, Action option, String item) throws HarnessException {
+	public AbsPage zListItem(Action action, Button option, String item) throws HarnessException {
 		throw new HarnessException("Main page does not have lists");
 	}
 

@@ -26,6 +26,8 @@ package com.zimbra.qa.selenium.framework.ui;
 public class Shortcut {
 
 	// General shortcuts
+	public static final Shortcut S_RIGHTCLICK = new Shortcut("S_RIGHTCLICK",			",");
+
 	public static final Shortcut S_GOTOMAIL = new Shortcut("S_GOTOMAIL",			"gm");
 	public static final Shortcut S_GOTOCONTACTS = new Shortcut("S_GOTOCONTACTS",	"ga");
 	public static final Shortcut S_GOTOCALENDAR = new Shortcut("S_GOTOCALENDAR",	"gc");
@@ -53,7 +55,14 @@ public class Shortcut {
 	public static final Shortcut S_MAIL_MARKFLAG = new Shortcut("S_MAIL_MARKFLAG", 	"mf");
 	public static final Shortcut S_MAIL_MARKREAD = new Shortcut("S_MAIL_MARKFLAG", 	"mr");
 	public static final Shortcut S_MAIL_MARKUNREAD = new Shortcut("S_MAIL_MARKFLAG",		"mu");
+
+	// Folders shortcuts
+	public static final Shortcut S_NEWFOLDER = new Shortcut("S_NEWFOLDER", "nf");
 	
+	// Tag shortcuts
+	public static final Shortcut S_NEWTAG = new Shortcut("S_NEWTAG", "nt");
+
+	// Shortcut properties
 	private final String ID;
 	private final String Keys;
 	

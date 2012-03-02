@@ -159,6 +159,9 @@ function(msg, force) {
 	this._msg = msg;
 
 	if (!msg) {
+		if (this._inviteMsgView) {
+			this._inviteMsgView.resize(true); //make sure the msg preview pane takes the entire area, in case we were viewing an invite. (since then it was resized to allow for day view) - bug 53098
+		}
 		contentDiv.innerHTML = AjxTemplate.expand("mail.Message#viewMessage");
 		this.noTab = true;
 		return;
@@ -658,7 +661,13 @@ function(msg, idoc, id, iframe) {
         var target = DwtUiEvent.getTarget(ev),
             targetId = target ? target.id : null,
             addrToAdd = "";
-        if(targetId) {
+        var diEl = document.getElementById(id);
+        
+        //This is required in case of the address is marked as trusted, the function is called without any target being set
+        var force = (msg && msg.showImages) ||  appCtxt.get(ZmSetting.DISPLAY_EXTERNAL_IMAGES);
+
+        if(!force) {
+            if(!targetId) { return; }
             if(targetId.indexOf("domain") != -1) {
                 //clicked on domain
                 addrToAdd = msg.sentByDomain;
@@ -667,12 +676,26 @@ function(msg, idoc, id, iframe) {
                 //clicked on email
                 addrToAdd = msg.sentByAddr;
             }
-            //Create a modifyprefs req and add the addr to modify
-            if(addrToAdd) {
-                self.getTrustedSendersList().add(addrToAdd, null, true);
-                self._controller.addTrustedAddr(self.getTrustedSendersList().join(","), new AjxCallback(self, self._addTrustedAddrCallback, [addrToAdd]), new AjxCallback(self, self._addTrustedAddrErrorCallback, [addrToAdd]));
+            else if(targetId.indexOf("dispImgs") != -1) {
+               //do nothing here - just load the images
+            }
+            else if(targetId.indexOf("close") != -1) {
+                if (diEl) {
+                    diEl.style.display = "none";
+                }
+                return;
+            }
+            else {
+                //clicked elsewhere in the info bar - DO NOTHING AND RETURN
+                return;
             }
         }
+        //Create a modifyprefs req and add the addr to modify
+        if(addrToAdd) {
+            self.getTrustedSendersList().add(addrToAdd, null, true);
+            self._controller.addTrustedAddr(self.getTrustedSendersList().join(","), new AjxCallback(self, self._addTrustedAddrCallback, [addrToAdd]), new AjxCallback(self, self._addTrustedAddrErrorCallback, [addrToAdd]));
+        }
+
 		var images = idoc.getElementsByTagName("img");
 		var onload = function() {            
 			ZmMailMsgView._resetIframeHeight(self, iframe);
@@ -694,7 +717,7 @@ function(msg, idoc, id, iframe) {
 				}
 			}
 		}
-		var diEl = document.getElementById(id);
+
 		if (diEl) {
 			diEl.style.display = "none";
 		}
@@ -880,6 +903,8 @@ function(container, html, isTextMsg, isTruncated) {
 		? "MsgBody MsgBody-text"
 		: "MsgBody MsgBody-html";
 
+	idoc.body.style.height = ""; //see bug 56899 - if the body has height such as 100% or 94%, it causes a problem in FF in calcualting the iframe height. Make sure the height is clear.
+
 	ifw.getIframe().onload = AjxCallback.simpleClosure(this._onloadIframe, this, ifw);
 
 	// import the object styles
@@ -930,6 +955,11 @@ ZmMailMsgView.prototype._addTrustedAddrCallback =
 function(addr) {
     this.getTrustedSendersList().add(addr, null, true);
     appCtxt.set(ZmSetting.TRUSTED_ADDR_LIST, [this.getTrustedSendersList().getArray().join(",")]);
+    var prefApp = appCtxt.getApp(ZmApp.PREFERENCES);
+    var func = prefApp && prefApp["refresh"];
+    if (func && (typeof(func) == "function")) {
+        func.apply(prefApp, [null, addr]);
+    }
 };
 
 ZmMailMsgView.prototype._addTrustedAddrErrorCallback =
@@ -1010,6 +1040,7 @@ function(msg, container, callback) {
 
 	var options = {};
 	options.addrBubbles = appCtxt.get(ZmSetting.USE_ADDR_BUBBLES);
+	options.shortAddress = appCtxt.get(ZmSetting.SHORT_ADDRESS);
 	
 	if (this._objectManager) {
 		this._lazyCreateObjectManager();
@@ -1034,8 +1065,6 @@ function(msg, container, callback) {
 		}
 	}
 
-	var emailZimletEnabled = Boolean(appCtxt.getZimletMgr().getZimletByName("com_zimbra_email"));
-
 	var participants = [];
 	for (var i = 1; i < ZmMailMsg.ADDRS.length; i++) {
 		var type = ZmMailMsg.ADDRS[i];
@@ -1048,7 +1077,7 @@ function(msg, container, callback) {
 			for (var j = 0; j < addrs.length; j++) {
 				if (j > 0) {
 					// no need for semicolon if we're showing addr bubbles
-					parts[idx++] = emailZimletEnabled ? " " : AjxStringUtil.htmlEncode(AjxEmailAddress.SEPARATOR);
+					parts[idx++] = options.addrBubbles ? " " : AjxStringUtil.htmlEncode(AjxEmailAddress.SEPARATOR);
 				}
 
 				var email = addrs[j];
@@ -1219,6 +1248,11 @@ function(msg, container, callback) {
 						return partToCid[p2] ? [p1, '"cid:', partToCid[p2], '"', p3].join("") : s;
 					});
 				}
+
+                if(!c){
+                    c = AjxTemplate.expand("mail.Message#EmptyMessage", {isHtml: true});
+                }
+
 				this._makeIframeProxy(el, c, false, bodyPart.truncated);
 			} else if (ZmMimeTable.isRenderableImage(bodyPart.ct)) {
 				var html = [
@@ -1251,7 +1285,13 @@ function(msg, container, callback) {
 						c = this._inviteMsgView.truncateBodyContent(c);
 					}
 
-					this._makeIframeProxy(el, c, true, bodyPart.truncated);
+                    var isTextMsg = true;
+                    if(!c){
+                        c = AjxTemplate.expand("mail.Message#EmptyMessage", {isHtml: false});
+                        isTextMsg = false; //To make sure we display html content properly
+
+                    }
+					this._makeIframeProxy(el, c, isTextMsg, bodyPart.truncated);
 				}
 			}
 		}

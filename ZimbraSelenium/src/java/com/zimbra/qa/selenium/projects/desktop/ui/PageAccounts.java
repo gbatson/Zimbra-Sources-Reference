@@ -5,8 +5,8 @@ import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-
 
 public class PageAccounts extends AbsTab {
 
@@ -15,13 +15,19 @@ public class PageAccounts extends AbsTab {
    public static class Locators {
 
       // Tabs
-      public static final String zMyAccountsTab_Inactive = "xpath=//div[@class='ZPanelTabInactive ZPanelFirstTab']";
-      public static final String zAddNewAccountTab_Inactive = "xpath=//div[@class='ZPanelTabInactive ZPanelTab']";
-      public static final String zMyAccountsTab_Active = "xpath=//div[@class='ZPanelTabActive ZPanelFirstTab']";
-      public static final String zAddNewAccountTab_Active = "xpath=//div[@class='ZPanelTabActive ZPanelTab']";
+      public static final String zMyAccountsTab = "css=div[class$='ctive ZPanelFirstTab']";
+      public static final String zAddNewAccountTab = "css=div[class$='ctive ZPanelTab']";
 
-      // Drop Down List
-      public static final String zAccountType = "xpath=//*[@id='accountFlavor']";
+      // Dropdown list
+      public static final String zAccountTypeDropDownList = "css=select#accountFlavor";
+
+      // Buttons
+      public static final String zAddNewAccountButton = "css=td div[class*='ZPanelButton'][onclick*='OnAdd()']";
+      public static final String zLoginButton = "css=div[id*='loginButton']";
+      public static final String zDeleteButton = "css=div[class*='ZPanelInfoInner'] a[href*='OnDelete']";
+
+      // Tables
+      public static final String zAccountsTable = "css=div[class*='ZPanelInfoInner'] table";
    }
 
    public PageAccounts(AbsApplication application) {
@@ -37,8 +43,23 @@ public class PageAccounts extends AbsTab {
 
    @Override
    public boolean zIsActive() throws HarnessException {
-      // TODO Auto-generated method stub
-      return false;
+      // Check if the Add New Account Button is present
+      boolean present = sIsElementPresent(Locators.zAddNewAccountButton);
+      if ( !present ) {
+         logger.debug("isActive() present = "+ present);
+         return (false);
+      }
+
+      // Check if the Search People textfield is visible per position 
+      boolean visible = zIsVisiblePerPosition(Locators.zAddNewAccountButton,
+            0, 0);
+      if ( !visible ) {
+         logger.debug("isActive() visible = "+ visible);
+         return (false);
+      }
+      
+      logger.debug("isActive() = "+ true);
+      return (true);
    }
 	
 	@Override
@@ -48,16 +69,22 @@ public class PageAccounts extends AbsTab {
 	}
 	
 	@Override
-	public AbsPage zListItem(Action action, Action option, String item)
-			throws HarnessException {
+	public AbsPage zListItem(Action action, Button option, String item) throws HarnessException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 	
 	@Override
 	public void zNavigateTo() throws HarnessException {
-		// TODO Auto-generated method stub
-		
+		if (zIsActive()) {
+		   logger.debug("Accounts page has already been reached.");
+		} else {
+		   if (sIsElementPresent(PageMain.Locators.zPeopleSearchField)) {
+		      logger.debug("Currently in main page, now navigating to Accounts page");
+		      sClick(PageMain.Locators.zSetupButton);
+		   }
+		   GeneralUtility.waitForElementPresent(this, Locators.zLoginButton);
+		}
 	}
 	
 	@Override

@@ -8,8 +8,11 @@ import org.apache.log4j.Logger;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
+import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 
 
 /**
@@ -25,7 +28,7 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 	 *
 	 */
 	public static class SystemFolder {
-		
+		public static final SystemFolder UserRoot = new SystemFolder("USER_ROOT");
 		public static final SystemFolder Briefcase = new SystemFolder("Briefcase");
 		public static final SystemFolder Calendar = new SystemFolder("Calendar");
 		public static final SystemFolder Chats = new SystemFolder("Chats");
@@ -92,6 +95,42 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 	}
 
 	/**
+    * Delete a folder using SOAP with the default SERVER type destination host
+    * @param account Account used for deleting the folder
+    * @param folderName Folder name to be deleted
+    * @throws HarnessException
+    */
+	public static void deleteUsingSOAP(ZimbraAccount account, String folderName)
+	      throws HarnessException {
+	   deleteUsingSOAP(account, folderName, SOAP_DESTINATION_HOST_TYPE.SERVER, null);
+	}
+
+	/**
+	 * Delete a folder using SOAP with specific account name to be added to SOAP context
+	 * @param account Account used for deleting the folder
+	 * @param folderName Folder name to be deleted
+	 * @param destType Destination host type: CLIENT or SERVER
+	 * @param accountName Account name to be added to SOAP context
+	 * @throws HarnessException
+	 */
+	public static void deleteUsingSOAP(ZimbraAccount account, String folderName,
+	      SOAP_DESTINATION_HOST_TYPE destType, String accountName) throws HarnessException {
+	   account.soapSend("<GetFolderRequest xmlns='urn:zimbraMail'/>", destType, accountName);
+	   String id = account.soapSelectValue("//mail:folder[@name='"+ folderName +"']", "id");
+	   account.soapSend("<FolderActionRequest xmlns='urn:zimbraMail'>" +
+	                       "<action id='" + id + "' op='delete'/>" +
+	                    "</FolderActionRequest>", destType);
+	   Element[] response = account.soapSelectNodes("//mail:FolderActionResponse");
+      if ( response.length != 1 ) {
+         throw new HarnessException("Unable to delete folder "+ account.soapLastResponse());
+      }
+
+      Object[] params = {"//mail:folder[@name='"+ folderName +"']", "id"};
+      GeneralUtility.waitFor(null,
+            account, false, "soapSelectValue", params, WAIT_FOR_OPERAND.EQ, null, 30000, 1000);
+   }
+	
+	/**
 	 * Import a FolderItem specified in a GetFolderResponse
 	 * <br>
 	 * The GetFolderResponse should only contain a single <folder/> element
@@ -100,7 +139,6 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 	 * @throws HarnessException
 	 */
 	public static FolderItem importFromSOAP(Element response) throws HarnessException {
-		logger.debug("importFromSOAP("+ response.prettyPrint() +")");
 
 		// TODO: can the ZimbraSOAP methods be used to convert this response to item?
 		
@@ -111,6 +149,7 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 
 		if ( response == null )
 			throw new HarnessException("response was null");
+		logger.debug("importFromSOAP("+ response.prettyPrint() +")");
 		
 		Element fElement = ZimbraAccount.SoapClient.selectNode(response, "//mail:folder");
 		if ( fElement == null )
@@ -121,7 +160,7 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		try {
 			
 			item = new FolderItem();
-			item.setId(Integer.parseInt(fElement.getAttribute("id")));
+			item.setId(fElement.getAttribute("id"));
 			item.setName(fElement.getAttribute("name"));
 			
 			return (item);
@@ -146,26 +185,38 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 	public static FolderItem importFromSOAP(ZimbraAccount account, SystemFolder folder) throws HarnessException {
 		return (importFromSOAP(account, folder.name));
 	}
-	
+
+	public static FolderItem importFromSOAP(ZimbraAccount account, String name) throws HarnessException {
+	   return importFromSOAP(account, name, SOAP_DESTINATION_HOST_TYPE.SERVER, null);
+	}
+
 	/**
 	 * Import a folder by name
 	 * @param account
-	 * @param folder
-	 * @return
+	 * @param name Folder name to be imported
+	 * @param destType Destination Host Type: CLIENT or SERVER
+	 * @param accountName Account Name to be added in SOAP context while importing
+	 * @return (FolderItem)
 	 * @throws HarnessException
 	 */
-	public static FolderItem importFromSOAP(ZimbraAccount account, String name) throws HarnessException {
+	public static FolderItem importFromSOAP(ZimbraAccount account, String name,
+	      SOAP_DESTINATION_HOST_TYPE destType, String accountName) throws HarnessException {
 		logger.debug("importFromSOAP("+ account.EmailAddress +", "+ name +")");
 		
 		// Get all the folders
-		account.soapSend("<GetFolderRequest xmlns='urn:zimbraMail'/>");
+		account.soapSend("<GetFolderRequest xmlns='urn:zimbraMail'/>", destType, accountName);
 		String id = account.soapSelectValue("//mail:folder[@name='"+ name +"']", "id");
-		
+
+		if (id == null) {
+         throw new HarnessException("Folder with name: " + name + " is not found...");
+		}
+
 		// Get just the folder specified
 		account.soapSend(
 				"<GetFolderRequest xmlns='urn:zimbraMail'>" +
 					"<folder l='"+ id +"'/>" +
-				"</GetFolderRequest>");
+				"</GetFolderRequest>",
+				destType, accountName);
 		Element response = account.soapSelectNode("//mail:GetFolderResponse", 1);
 				
 		return (importFromSOAP(response));

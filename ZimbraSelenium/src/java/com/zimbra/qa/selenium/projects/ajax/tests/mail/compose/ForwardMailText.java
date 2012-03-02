@@ -1,10 +1,13 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.compose;
 
+import java.util.HashMap;
+
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
@@ -16,16 +19,16 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Field;
 
 public class ForwardMailText extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public ForwardMailText() {
 		logger.info("New "+ ForwardMailText.class.getCanonicalName());
 		
 		// All tests start at the login page
 		super.startingPage = app.zPageMail;
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefComposeFormat", "text");
-		
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefComposeFormat", "text");
+				}};
+
 	}
 	
 	@Test(	description = "Forward a plain text mail using Text editor",
@@ -66,7 +69,8 @@ public class ForwardMailText extends AjaxCommonTest {
 		
 		// Send the message
 		mailform.zSubmit();
-				
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
 		// From the receiving end, verify the message details
 		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountB(), "subject:("+ mail.dSubject +")");

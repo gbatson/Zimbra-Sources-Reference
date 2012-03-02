@@ -70,10 +70,6 @@ public class TcpLmtpHandler extends LmtpHandler {
     @Override
     protected void continueDATA() throws IOException {
         LmtpMessageInputStream min = new LmtpMessageInputStream(mInputStream, getAdditionalHeaders());
-        try {
-            processMessageData(min);
-        } catch (UnrecoverableLmtpException e) {
-            dropConnection();
-        }
+        processMessageData(min);
     }
 }

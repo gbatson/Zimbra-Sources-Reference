@@ -33,6 +33,7 @@ import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.cs.datasource.IOExceptionHandler;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.offline.OfflineLC;
@@ -41,7 +42,7 @@ import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.offline.util.RecoverableException;
 import com.zimbra.cs.util.JMSession;
 
-public class SyncExceptionHandler {
+public class SyncExceptionHandler extends IOExceptionHandler {
 
     private static final String MESSAGE_SYNC_FAILED = "message sync failed";
     private static final String CALENDAR_SYNC_FAILED = "calendar sync failed";
@@ -80,7 +81,13 @@ public class SyncExceptionHandler {
         }
     }
     
-    private static boolean isCausedBy(Exception exception, Class<? extends Throwable> targetCause) {
+    /**
+     * determine if a given exception is essentially caused by the target cause exception
+     * @param exception the exception to be checked
+     * @param targetCause the target cause exception
+     * @return true if given exception is caused by the target cause exception
+     */
+    public static boolean isCausedBy(Exception exception, Class<? extends Throwable> targetCause) {
         Throwable cause = exception;
         while (cause != null) {
             if (cause.getClass().isAssignableFrom(targetCause)) {
@@ -98,7 +105,7 @@ public class SyncExceptionHandler {
      * @throws ServiceException - if the exception is possibly recoverable
      * @return true if the exception has been handled (i.e. deferred)
      */
-    public static boolean isRecoverableException(DesktopMailbox mbox, int itemId, String message, Exception exception) throws ServiceException {
+    public static boolean isRecoverableException(DesktopMailbox mbox, long itemId, String message, Exception exception) throws ServiceException {
         if (isCausedBy(exception, RecoverableException.class)) {
             //avoid looping; the underlying exception is IOException but RecoverableException takes precedence
             throw ServiceException.FAILURE(message, exception);
@@ -123,7 +130,7 @@ public class SyncExceptionHandler {
      * Process an IOException. The exception is accumulated so it can be reported later. 
      * @throws ServiceException - If the accumulated exceptions exceed the maximum allowable
      */
-    public static void handleIOException(DesktopMailbox mbox, int itemId, String message, Exception exception) throws ServiceException {
+    public static void handleIOException(DesktopMailbox mbox, long itemId, String message, Exception exception) throws ServiceException {
         //lets see if we have reached IOException threshold
         List<SyncFailure> failures = ioExceptions.get(mbox);
         failures.add(new SyncFailure(itemId,exception,message));
@@ -364,6 +371,38 @@ public class SyncExceptionHandler {
             dmbx.addMessage(new ChangeTrackingMailbox.TracelessContext(), pm, DesktopMailbox.ID_FOLDER_FAILURE, true, Flag.BITMASK_UNREAD, null);
         } catch (Exception e) {
             OfflineLog.offline.warn("can't save failure report for id=" + id, e);
+        }
+    }
+
+    @Override
+    public boolean isRecoverable(Mailbox mbox, long itemId, String message,
+                    Exception exception) throws ServiceException {
+        if (mbox instanceof DesktopMailbox) {
+            return isRecoverableException((DesktopMailbox)mbox, itemId, message, exception);
+        } else {
+            return super.isRecoverable(mbox, itemId, message, exception);
+        }
+    }
+    
+    @Override
+    public void trackSyncItem(Mailbox mbox, long itemId) {
+        if (mbox instanceof SyncMailbox) {
+            ((SyncMailbox) mbox).recordItemSync(itemId);
+        }
+    }
+    
+    @Override
+    public void resetSyncCounter(Mailbox mbox) {
+        if (mbox instanceof SyncMailbox) {
+            ((SyncMailbox) mbox).resetSyncCounter();
+        }
+        clearIOExceptions(mbox);
+    }
+    
+    @Override
+    public void checkpointIOExceptionRate(Mailbox mbox) throws ServiceException {
+        if (mbox instanceof SyncMailbox) {
+            checkIOExceptionRate((SyncMailbox)mbox);
         }
     }
 }

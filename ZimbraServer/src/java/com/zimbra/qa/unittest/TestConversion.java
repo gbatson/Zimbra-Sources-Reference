@@ -30,6 +30,11 @@ public class TestConversion extends TestCase {
     private static final String USER_NAME = "user1";
     private static final String NAME_PREFIX = TestConversion.class.getSimpleName();
     
+    public void setUp()
+    throws Exception {
+        cleanUp();
+    }
+    
     /**
      * Tests downloading attachments from a TNEF message (bug 44263).
      */
@@ -50,12 +55,24 @@ public class TestConversion extends TestCase {
         assertEquals(851, data.length);
         
         ZMimePart part = TestUtil.getPart(msg, "upload.gif");
-        assertEquals(73, part.getSize());
+        checkPartSize(73, part.getSize());
         part = TestUtil.getPart(msg, "upload2.gif");
-        assertEquals(851, part.getSize());
+        checkPartSize(851, part.getSize());
+    }
+    
+    /**
+     * The part size is calculated from the base64 content, so it may be off by a few bytes.
+     */
+    private void checkPartSize(long expected, long actual) {
+        assertTrue("expected " + expected + " +/- 4 bytes, got " + actual, Math.abs(expected - actual) <= 4);
     }
     
     public void tearDown()
+    throws Exception {
+        cleanUp();
+    }
+    
+    private void cleanUp()
     throws Exception {
         TestUtil.deleteTestData(USER_NAME, NAME_PREFIX);
     }

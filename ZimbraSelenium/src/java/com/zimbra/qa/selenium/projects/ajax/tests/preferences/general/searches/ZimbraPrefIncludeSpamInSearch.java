@@ -1,17 +1,19 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.general.searches;
 
+import java.util.HashMap;
+
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences.TreeItem;
 
 
 public class ZimbraPrefIncludeSpamInSearch extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public ZimbraPrefIncludeSpamInSearch() {
 		logger.info("New "+ ZimbraPrefIncludeSpamInSearch.class.getCanonicalName());
 		
@@ -19,12 +21,10 @@ public class ZimbraPrefIncludeSpamInSearch extends AjaxCommonTest {
 		super.startingPage = app.zPagePreferences;
 
 		// Make sure we are using an account with conversation view
-		ZimbraAccount account = new ZimbraAccount();
-		account.provision();
-		account.authenticate();
-		account.modifyPreference("zimbraPrefIncludeSpamInSearch", "TRUE");
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefIncludeSpamInSearch", "TRUE");
+				}};
 			
-		super.startingAccount = account;		
 		
 	}
 	

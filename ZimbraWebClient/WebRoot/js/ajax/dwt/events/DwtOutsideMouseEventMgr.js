@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
  * Copyright (C) 2011 Zimbra, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -57,6 +57,7 @@ DwtOutsideMouseEventMgr = function() {
 	this._reset();
 	this._mouseEventListener = new AjxListener(null, DwtOutsideMouseEventMgr._mouseEventHdlr);
 	DwtOutsideMouseEventMgr.INSTANCE = this;
+	this.id = "DwtOutsideMouseEventMgr";
 };
 
 DwtOutsideMouseEventMgr.prototype.toString =
@@ -75,6 +76,7 @@ DwtOutsideMouseEventMgr.EVENTS_HASH = AjxUtil.arrayAsHash(DwtOutsideMouseEventMg
  * @param {DwtControl}	params.obj				control on behalf of whom we're listening
  * @param {string}		params.elementId		ID of reference element, if other than control's HTML element
  * @param {AjxListener}	params.outsideListener	listener to call when we get an outside mouse event
+ * @param {boolean}		params.noWindowBlur		if true, don't listen from window blur events; useful for dev
  */
 DwtOutsideMouseEventMgr.prototype.startListening =
 function(params) {
@@ -87,7 +89,7 @@ function(params) {
 	if (!this._menuCapObj) {
 		// we only need a single menu capture object, create it lazily
 		var mecParams = {
-			id:				"DwtOutsideMouseEventMgr",
+			id:		this.id,
 			hardCapture:	false,
 			mouseDownHdlr:	DwtOutsideMouseEventMgr._mouseEventHdlr,
 			mouseWheelHdlr:	DwtOutsideMouseEventMgr._mouseEventHdlr
@@ -129,7 +131,7 @@ function(params) {
 			}
 		}
 
-		if (!AjxEnv.isIE) {
+		if (!AjxEnv.isIE && !params.noWindowBlur) {
 			this._savedWindowBlurHandler = window.onblur;
 			window.onblur = DwtOutsideMouseEventMgr._mouseEventHdlr;
 		}
@@ -152,6 +154,7 @@ function(params) {
  * @param {string}		params.id			unique ID for this listening session
  * @param {DwtControl}	params.obj			control on behalf of whom we're listening
  * @param {string}		params.elementId	ID of element to remove from listening context
+ * @param {boolean}		params.noWindowBlur	if true, don't listen from window blur events; useful for dev
  */
 DwtOutsideMouseEventMgr.prototype.stopListening =
 function(params) {
@@ -190,7 +193,7 @@ function(params) {
 			}
 		}
 
-		if (!AjxEnv.isIE) {
+		if (!AjxEnv.isIE && !params.noWindowBlur) {
 			window.onblur = this._savedWindowBlurHandler;
 		}
 
@@ -250,12 +253,10 @@ function(ev) {
 		for (var i = 0; i < elementIds.length; i++) {
 			DBG.println("out", "check: " + elementIds[i]);
 			var el = document.getElementById(elementIds[i]);
-			if (Dwt.isAncestor(targetEl, el)) {
-				DBG.println("out", targetEl.id + " is an ancestor of " + el.id);
+			if (Dwt.isAncestor(el, targetEl)) {
 				runListener = false;
 				break;
 			}
-			DBG.println("out", targetEl.id + " is NOT an ancestor of " + el.id);
 		}
 		if (runListener) {
 			DBG.println("out", "run listener for: " + context.id);

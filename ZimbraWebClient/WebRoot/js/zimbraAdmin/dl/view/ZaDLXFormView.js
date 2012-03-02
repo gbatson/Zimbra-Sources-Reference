@@ -123,8 +123,15 @@ ZaDLXFormView.removeAllMembers = function(event) {
 	var form = this.getForm();
 	var tmpCurrentRemoveList = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_removeList);
 	var tmpCurrentMemberList = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberList);
-	
-	var newRemoveList = AjxUtil.mergeArrays(tmpCurrentRemoveList,tmpCurrentMemberList);
+	var tmpCurrentAddList = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_addList);
+        var removeExistedList = [];
+        for(var i = 0; i < tmpCurrentMemberList.length; i++) {
+                var removedItem = tmpCurrentMemberList[i];
+                if(!tmpCurrentAddList || tmpCurrentAddList.length == 0 || AjxUtil.indexOf(tmpCurrentAddList,removedItem,false) < 0)
+                        removeExistedList.push(removedItem);
+        }
+
+	var newRemoveList = AjxUtil.mergeArrays(tmpCurrentRemoveList,removeExistedList);
 	newRemoveList._version = tmpCurrentRemoveList._version+1;
 	
 	this.setInstanceValue([], ZaDistributionList.A2_addList);
@@ -153,9 +160,15 @@ ZaDLXFormView.removeMembers = function(event) {
 	var newAddList = AjxUtil.arraySubstract(tmpCurrentAddList,form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_membersSelected));
 	newAddList._version = tmpCurrentAddList._version + 1;
 	this.setInstanceValue(newAddList, ZaDistributionList.A2_addList);	
+
+        var removeExistedList = [];
+        for(var i = 0; i < tmpSelectedList.length; i++) {
+                var removedItem = tmpSelectedList[i];
+                if(!tmpCurrentAddList || tmpCurrentAddList.length == 0 ||AjxUtil.indexOf(tmpCurrentAddList,removedItem,false) < 0)
+                        removeExistedList.push(removedItem);
+        }	
 	
-	
-	var newRemoveList = AjxUtil.mergeArrays(tmpCurrentRemoveList,tmpSelectedList);	
+	var newRemoveList = AjxUtil.mergeArrays(tmpCurrentRemoveList,removeExistedList);	
 	newRemoveList._version = tmpCurrentRemoveList._version+1;
 	this.setInstanceValue(newRemoveList, ZaDistributionList.A2_removeList);
 	
@@ -331,14 +344,23 @@ ZaDLXFormView.shouldEnableMemBackButton = function () {
  */
 ZaDLXFormView.addAddressesToMembers = function (event) {
  	var form = this.getForm();
+	//Don't allow add self as member
+	var selectedAddArray = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberPoolSelected);
+	var newSelectedArray = [];
+	for(var i = 0; i < selectedAddArray.length; i++) {
+		var selectedItem = selectedAddArray[i];
+		if(selectedItem.name != form.getInstance().name)
+			newSelectedArray.push(selectedItem);
+	}
+
 	var tmpAddArray = AjxUtil.mergeArrays(form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_addList),
-		form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberPoolSelected));
+		newSelectedArray,ZaDistributionList.compareTwoMembers);
 	
 	tmpAddArray._version = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_addList)._version + 1; 
 	
 	var tmpMembersArray = AjxUtil.mergeArrays(form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberList),
-		form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberPoolSelected));
-	
+		newSelectedArray,ZaDistributionList.compareTwoMembers);
+
 	tmpMembersArray._version = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberList)._version + 1;
 	
 	this.setInstanceValue(tmpAddArray, ZaDistributionList.A2_addList);
@@ -351,13 +373,21 @@ ZaDLXFormView.addAddressesToMembers = function (event) {
 **/
 ZaDLXFormView.addAllAddressesToMembers = function (event) {
 	var form = this.getForm();
+	//Don't allow add self as member
+        var selectedAddArray = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberPool);
+        var newSelectedArray = [];
+        for(var i = 0; i < selectedAddArray.length; i++) {
+                var selectedItem = selectedAddArray[i];
+                if(selectedItem.name != form.getInstance().name)
+                        newSelectedArray.push(selectedItem);
+        }
 	var tmpAddArray = AjxUtil.mergeArrays(form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_addList),
-		form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberPool),ZaDistributionList.compareTwoMembers);
+		newSelectedArray,ZaDistributionList.compareTwoMembers);
 	
 	tmpAddArray._version = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_addList)._version + 1; 
 	
 	var tmpMembersArray = AjxUtil.mergeArrays(form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberList),
-		form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberPool),ZaDistributionList.compareTwoMembers);
+		newSelectedArray,ZaDistributionList.compareTwoMembers);
 	
 	tmpMembersArray._version = form.getModel().getInstanceValue(form.getInstance(),ZaDistributionList.A2_memberList)._version + 1;
 	

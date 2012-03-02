@@ -26,6 +26,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Map.Entry;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -33,7 +34,13 @@ import java.util.zip.ZipInputStream;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpStatus;
 
+import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.SoapFaultException;
+import com.zimbra.common.soap.SoapProtocol;
+import com.zimbra.common.soap.ZimbraNamespace;
 import com.zimbra.common.util.BufferStream;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Constants;
@@ -43,17 +50,11 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.tar.TarEntry;
 import com.zimbra.common.util.tar.TarInputStream;
 import com.zimbra.common.util.zip.ZipShort;
-import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.SoapFaultException;
-import com.zimbra.common.soap.SoapProtocol;
-import com.zimbra.common.soap.ZimbraNamespace;
-import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
-import com.zimbra.cs.account.offline.OfflineAccount.Version;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
+import com.zimbra.cs.account.offline.OfflineAccount.Version;
 import com.zimbra.cs.mailbox.ChangeTrackingMailbox.TracelessContext;
 import com.zimbra.cs.mailbox.MailItem.UnderlyingData;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
@@ -1371,7 +1372,8 @@ public class InitialSync {
             }
             TarInputStream tis = new TarInputStream(new GZIPInputStream(rs), "UTF-8");
             TarEntry te;
-
+            //track the folder where last revision (i.e. highest version #) is stored
+            Map<Integer, RevisionInfo> lastRevisions = new HashMap<Integer, RevisionInfo>();
             while ((te = tis.getNextEntry()) != null) {
                 if (!te.getName().endsWith(".meta")) {
                     OfflineLog.offline.warn("skipping tar entry " + te.getName());
@@ -1399,13 +1401,6 @@ public class InitialSync {
                     continue;
                 }
                 
-                if (id != lastId) {
-                    // delete the local item so it can be reconstructed from scratch
-                    int ids[] = new int[1];
-                    ids[0] = id;
-                    ombx.delete(sContext, ids, MailItem.TYPE_UNKNOWN, null);
-                    lastId = id;
-                }
                 InputStream eofIn = new EofInputStream(tis, te.getSize());
 
                 Document doc = (Document)item;
@@ -1414,12 +1409,30 @@ public class InitialSync {
                 player.setDocument(pd);
                 player.setItemType(doc.getType());
                 player.setMessageId(doc.getId());
-
-                // XXX sync tags
-
+                RevisionInfo lastRev = lastRevisions.get(doc.getId());
+                if (lastRev == null || lastRev.getVersion() < doc.getVersion()) {
+                    RevisionInfo rev = new RevisionInfo(doc.getVersion(), doc.getDate(), doc.getFolderId());
+                    lastRevisions.put(doc.getId(), rev);
+                }
+                if (id != lastId) {
+                    try {
+                        MailItem existingItem = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
+                        // if type changed delete the local item so it can be reconstructed from scratch
+                        if (existingItem.getType() != doc.getType()) {
+                            int ids[] = new int[1];
+                            ids[0] = id;
+                            ombx.delete(sContext, ids, MailItem.TYPE_UNKNOWN, null);
+                        }
+                    } catch (MailServiceException.NoSuchItemException nsie) {
+                        //do nothing; we're just trying to delete
+                    }
+                    lastId = id;
+                }
                 try {
-                    ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
-                    ombx.addDocumentRevision(new TracelessContext(player), id, pd);
+                    MailItem existingItem = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
+                    if (ombx.getItemRevision(sContext, existingItem.getId(), MailItem.TYPE_UNKNOWN, doc.getVersion()) == null) {
+                        ombx.addDocumentRevision(new TracelessContext(player), id, pd);
+                    }
                 } catch (MailServiceException.NoSuchItemException nsie) {
                     try {
                         ombx.createDocument(new TracelessContext(player), doc.getFolderId(), pd, doc.getType());
@@ -1444,11 +1457,19 @@ public class InitialSync {
                     }
                 }
                 int flags = doc.getFlagBitmask();
-                if (flags != 0)
-                    ombx.setTags(sContext, id, doc.getType(), flags, MailItem.TAG_UNCHANGED);
+                if (flags != 0) {
+                    ombx.setTags(sContext, id, doc.getType(), flags, doc.getTagBitmask());
+                }
                 ombx.syncDate(sContext, id, doc.getType(), (int)(doc.getDate() / 1000L));
                 //ombx.setSyncedVersionForMailItem(itemIdStr, version);
                 OfflineLog.offline.debug("initial: created document (" + id + "): " + doc.getName());
+            }
+            //put the documents in the folder corresponding to their latest revision
+            for (Entry<Integer, RevisionInfo> entry : lastRevisions.entrySet()) {
+                MailItem item = ombx.getItemById(sContext, entry.getKey(), MailItem.TYPE_UNKNOWN);
+                if (item.getFolderId() != entry.getValue().getFolderId()) {
+                    ombx.move(sContext, item.getId(), MailItem.TYPE_UNKNOWN, entry.getValue().getFolderId());
+                }
             }
         } catch (Exception x) {
             if (!SyncExceptionHandler.isRecoverableException(ombx, id, "InitialSync.syncDocument", x)) {

@@ -21,6 +21,8 @@ public class DialogWarning extends AbsDialog {
 	public static class DialogWarningID {
 		
 		public static DialogWarningID SaveCurrentMessageAsDraft = new DialogWarningID("YesNoCancel");
+
+		public static DialogWarningID SaveTaskChangeMessage = new DialogWarningID("YesNoCancel");
 		
 		private String Id;
 		private DialogWarningID(String id) {
@@ -77,15 +79,15 @@ public class DialogWarning extends AbsDialog {
 		
 		if ( button == Button.B_YES ) {
 
-			locator = buttonsTableLocator + "//table//table//tr/td[1]";
+			locator = buttonsTableLocator + "//table//table//tr/td[1]/div";
 
 		} else if ( button == Button.B_NO ) {
 
-			locator = buttonsTableLocator + "//table//table//tr/td[2]";
+			locator = buttonsTableLocator + "//table//table//tr/td[2]/div";
 
 		} else if ( button == Button.B_CANCEL ) {
 
-			locator = buttonsTableLocator + "//table//table//tr/td[3]";
+			locator = buttonsTableLocator + "//table//table//tr/td[3]/div";
 
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);
@@ -97,13 +99,12 @@ public class DialogWarning extends AbsDialog {
 		
 		// Default behavior, process the locator by clicking on it
 		//
-		
-		// Make sure the button exists
-		if ( !this.sIsElementPresent(locator) )
-			throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
-		
+				
 		// Click it
 		this.zClick(locator);
+		
+		// If the app is busy, wait for it to become active
+		this.zWaitForBusyOverlay();
 		
 		// If page was specified, make sure it is active
 		if ( page != null ) {

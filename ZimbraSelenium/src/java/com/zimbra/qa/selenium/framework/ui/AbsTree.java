@@ -31,13 +31,36 @@ public abstract class AbsTree extends AbsPage {
 	}
 	
 	/**
-	 * Apply the specified action on the specified address book
+	 * Click on a button
+	 * @param button
+	 * @return
+	 * @throws HarnessException
+	 */
+	public abstract AbsPage zPressButton(Button button) throws HarnessException;
+
+	/**
+	 * Apply the specified action on the specified item
 	 * @param action
 	 * @param addressbook
 	 * @return
 	 * @throws HarnessException
 	 */
 	public abstract AbsPage zTreeItem(Action action, IItem item) throws HarnessException;
+
+	/**
+	 * Apply the specified action with option on the specified item
+	 * <p>
+	 * For example, use this method to take an action using the context method.  The
+	 * Action is Action.A_LEFTCLICK and the Button would be the context menu item, such
+	 * as Button.B_DELETE
+	 * <p>
+	 * @param action
+	 * @param addressbook
+	 * @return
+	 * @throws HarnessException
+	 */
+	public abstract AbsPage zTreeItem(Action action, Button option, IItem item) throws HarnessException;
+
 
 	/**
 	 * Return the unique name for this page class

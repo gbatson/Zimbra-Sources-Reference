@@ -1104,7 +1104,7 @@ ZaAccountXFormView.getAddressFormItem = function(){
 
 ZaAccountXFormView.accountNameInfoPool = null;
 ZaAccountXFormView.getAccountNameInfoItem = function(){
-	if(AjxUtil.isEmpty(ZaAccountXFormView.addressItemsPool)){
+	if(AjxUtil.isEmpty(ZaAccountXFormView.accountNameInfoPool)){
 		ZaAccountXFormView.accountNameInfoPool = new Object();
 		ZaAccountXFormView.accountNameInfoPool[ZaAccount.A_name] = {ref:ZaAccount.A_name, type:_EMAILADDR_,
 					 msgName:ZaMsg.NAD_AccountName,label:ZaMsg.NAD_AccountName,
@@ -1544,7 +1544,9 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 			visibilityChecks:[], enableDisableChecks:[[ZaAccountXFormView.isAuthfromInternalSync, entry.name, ZaAccount.A_name]]
 		},
 		{ref:ZaAccount.A_zimbraAuthLdapExternalDn,type:_TEXTFIELD_,width:256,
-                                msgName:ZaMsg.NAD_AuthLdapExternalDn,label:ZaMsg.NAD_AuthLdapExternalDn, labelLocation:_LEFT_, align:_LEFT_}
+                       	msgName:ZaMsg.NAD_AuthLdapExternalDn,label:ZaMsg.NAD_AuthLdapExternalDn, labelLocation:_LEFT_, 
+			align:_LEFT_, toolTipContent: ZaMsg.tt_AuthLdapExternalDn
+		}
 		]
 	};
 	case1Items.push(passwordGroup);														

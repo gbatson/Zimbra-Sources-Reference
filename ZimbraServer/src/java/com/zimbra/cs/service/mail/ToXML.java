@@ -37,15 +37,12 @@ import com.zimbra.common.mime.MimeDetect;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
-import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.GalContact;
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.ZimbraACE;
-import com.zimbra.cs.account.accesscontrol.Rights.User;
 import com.zimbra.cs.fb.FreeBusy;
 import com.zimbra.cs.gal.GalGroup;
 import com.zimbra.cs.gal.GalGroup.GroupInfo;
@@ -1702,8 +1699,9 @@ public class ToXML {
 
     private enum VisitPhase { PREVISIT, POSTVISIT }
 
-    private static void addParts(Element root, MPartInfo mpi, Set<MPartInfo> bodies, String prefix, int maxSize,
+    private static void addParts(Element root, MPartInfo mpiRoot, Set<MPartInfo> bodies, String prefix, int maxSize,
                                  boolean neuter, boolean excludeCalendarParts, String defaultCharset) {
+        MPartInfo mpi = mpiRoot;
         LinkedList<Pair<Element, LinkedList<MPartInfo>>> queue = new LinkedList<Pair<Element, LinkedList<MPartInfo>>>();
         Pair<Element, LinkedList<MPartInfo>> level = new Pair<Element, LinkedList<MPartInfo>>(root, new LinkedList<MPartInfo>());
         level.getSecond().add(mpi);
@@ -1738,8 +1736,7 @@ public class ToXML {
             // A true calendar part has "method" parameter in the content type.  Otherwise it's just an attachment
             // that happens to be a .ics file.
             try {
-                String ctStr = mpi.getMimePart().getContentType();
-                ContentType ct = new ContentType(ctStr);
+                ContentType ct = new ContentType(mpi.getMimePart().getContentType());
                 if (ct.getParameter("method") != null)
                     return null;
             } catch (MessagingException e) {}
@@ -1759,8 +1756,7 @@ public class ToXML {
             try {
                 addContent(shr, mpi, maxSize, defaultCharset);
             } catch (IOException e) {
-                if (mLog.isWarnEnabled())
-                    mLog.warn("error writing body part: ", e);
+                mLog.warn("error writing body part: ", e);
             } catch (MessagingException e) {
             }
         } else if (MimeConstants.CT_TEXT_ENRICHED.equals(ctype)) {
@@ -1768,10 +1764,16 @@ public class ToXML {
             ctype = MimeConstants.CT_TEXT_HTML;
         } else if (fname != null && (MimeConstants.CT_APPLICATION_OCTET_STREAM.equals(ctype) || MimeConstants.CT_APPLICATION_TNEF.equals(ctype))) {
             String guess = MimeDetect.getMimeDetect().detect(fname);
-            if (guess != null)
+            if (guess != null) {
                 ctype = guess;
+            }
         }
         elem.addAttribute(MailConstants.A_CONTENT_TYPE, ctype);
+
+        if (mpi.isMultipart()) {
+            // none of the below stuff is relevant for a multipart, so just return now...
+            return elem;
+        }
 
         // figure out attachment size
         try {
@@ -1800,8 +1802,9 @@ public class ToXML {
                 if (content instanceof MimeMessage)
                     fname = Mime.getSubject((MimeMessage) content);
             }
-            if (fname != null && !fname.equals(""))
+            if (fname != null && !fname.equals("")) {
                 elem.addAttribute(MailConstants.A_CONTENT_FILENAME, StringUtil.stripControlCharacters(fname));
+            }
         } catch (MessagingException me) {
         } catch (IOException ioe) {
         }
@@ -1814,20 +1817,22 @@ public class ToXML {
         // figure out content-location (used in displaying attached images)
         try {
             String cl = mp.getHeader("Content-Location", null);
-            if (cl != null)
+            if (cl != null) {
                 elem.addAttribute(MailConstants.A_CONTENT_LOCATION, StringUtil.stripControlCharacters(cl));
+            }
         } catch (MessagingException me) { }
 
         // include the part's content if this is the displayable "memo part",
         // or if it was requested to include all parts
         if (bodies == null || bodies.contains(mpi)) {
-            if (bodies != null)
+            if (bodies != null) {
                 elem.addAttribute(MailConstants.A_BODY, true);
+            }
+
             try {
                 addContent(elem, mpi, maxSize, neuter, defaultCharset);
             } catch (IOException ioe) {
-                if (mLog.isWarnEnabled())
-                    mLog.warn("error writing body part: ", ioe);
+                mLog.warn("error writing body part: ", ioe);
             } catch (MessagingException me) {
             }
         }
@@ -2121,6 +2126,7 @@ public class ToXML {
         m.addAttribute(MailConstants.A_DS_EMAIL_ADDRESS, ds.getEmailAddress());
         m.addAttribute(MailConstants.A_DS_USE_ADDRESS_FOR_FORWARD_REPLY, ds.useAddressForForwardReply());
         m.addAttribute(MailConstants.A_DS_DEFAULT_SIGNATURE, ds.getDefaultSignature());
+        m.addAttribute(MailConstants.A_DS_FORWARD_REPLY_SIGNATURE, ds.getForwardReplySignature());
         m.addAttribute(MailConstants.A_DS_FROM_DISPLAY, ds.getFromDisplay());
         m.addAttribute(MailConstants.A_DS_FROM_ADDRESS, ds.getFromAddress());
         m.addAttribute(MailConstants.A_DS_REPLYTO_ADDRESS, ds.getReplyToAddress());
@@ -2356,15 +2362,15 @@ public class ToXML {
         return cn;
     }
     
-    private static void encodeAddrsWithGroupInfo(Provisioning prov, Element eMsg, 
-            Account requestedAcct, Account authedAcct) {
-        for (Element eEmail : eMsg.listElements(MailConstants.E_EMAIL)) {
+    private static void encodeAddrsWithGroupInfo(Provisioning prov, Element eParent,
+            String emailElem, Account requestedAcct, Account authedAcct) {
+        for (Element eEmail : eParent.listElements(emailElem)) {
             String addr = eEmail.getAttribute(MailConstants.A_ADDRESS, null);
             if (addr != null) {
                 // shortcut the check if the email address is the authed or requested account - it cannot be a group
                 if (addr.equalsIgnoreCase(requestedAcct.getName()) || addr.equalsIgnoreCase(authedAcct.getName()))
                     continue;
-                
+
                 GroupInfo groupInfo = GalGroup.getGroupInfo(addr, true, requestedAcct, authedAcct);
                 if (GroupInfo.IS_GROUP == groupInfo) {
                     eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
@@ -2376,23 +2382,31 @@ public class ToXML {
             }
         }
     }
-    
+
     public static void encodeMsgAddrsWithGroupInfo(Element response, Account requestedAcct, Account authedAcct) {
         Provisioning prov = Provisioning.getInstance();
         Element eMsg = response.getOptionalElement(MailConstants.E_MSG);
         if (eMsg != null) {
-            encodeAddrsWithGroupInfo(prov, eMsg, requestedAcct, authedAcct);
+            encodeAddrsWithGroupInfo(prov, eMsg, MailConstants.E_EMAIL, requestedAcct, authedAcct);
+            
+            Element eInvite = eMsg.getOptionalElement(MailConstants.E_INVITE);
+            if (eInvite != null) {
+                Element eComp = eInvite.getOptionalElement(MailConstants.E_INVITE_COMPONENT);
+                if (eComp != null) {
+                    encodeAddrsWithGroupInfo(prov, eComp, MailConstants.E_CAL_ATTENDEE, requestedAcct, authedAcct);
+                }
+            }
         }
     }
-    
-    public static void encodeConvAddrsWithGroupInfo(Element request, Element response, 
+
+    public static void encodeConvAddrsWithGroupInfo(Element request, Element response,
             Account requestedAcct, Account authedAcct) {
         Provisioning prov = Provisioning.getInstance();
         String fetch = request.getAttribute(MailConstants.A_FETCH, null);
         for (Element eMsg : response.listElements(MailConstants.E_MSG)) {
             String msgId = eMsg.getAttribute(MailConstants.A_ID, null);
             if (fetch != null && fetch.equals(msgId)) {
-                encodeAddrsWithGroupInfo(prov, eMsg, requestedAcct, authedAcct);
+                encodeAddrsWithGroupInfo(prov, eMsg, MailConstants.E_EMAIL, requestedAcct, authedAcct);
             }
         }
     }

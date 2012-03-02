@@ -297,7 +297,7 @@ public class PushChanges {
                             case MailItem.TYPE_APPOINTMENT: syncCalendarItem(id, true); break;
                             case MailItem.TYPE_TASK:        syncCalendarItem(id, false); break;
                             case MailItem.TYPE_WIKI:
-                            case MailItem.TYPE_DOCUMENT:    syncDocument(id);     break;
+                            case MailItem.TYPE_DOCUMENT:    syncDocument(id, tombstones);     break;
                         }
                     } catch (Exception x) {
                         if (!SyncExceptionHandler.isRecoverableException(ombx, id, "PushChanges.sync", x)) {
@@ -964,7 +964,7 @@ public class PushChanges {
         return true;
     }
     
-    private boolean syncDocument(int id) throws ServiceException {
+    private boolean syncDocument(int id, TypedIdList tombstones) throws ServiceException {
         if (!OfflineLC.zdesktop_sync_documents.booleanValue() ||
                 !ombx.getRemoteServerVersion().isAtLeast(InitialSync.sMinDocumentSyncVersion)) {
             return true;
@@ -986,15 +986,40 @@ public class PushChanges {
                 type == MailItem.TYPE_WIKI) {
             syncWikiItem((WikiItem)item, create);
         } else {
+            RevisionInfo lastRev = null;
             if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) && 
-                    !create)
-                checkDocumentSyncConflict(item);
-            Pair<Integer,Integer> resp = ombx.sendMailItem(item);
-            if (create) {
-                if (!ombx.renumberItem(sContext, id, type, resp.getFirst()))
-                    return true;
+                    !create) {
+                List<RevisionInfo> revInfo = checkDocumentSyncConflict(item);
+                if (revInfo.size() > 0) {
+                    //list documents always returns newest first
+                    lastRev = revInfo.get(0);
+                }
             }
-            ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
+            //only upload document if we have a newer revision or modified content
+            if (lastRev == null || !(lastRev.getVersion() == item.getVersion() && lastRev.getTimestamp() == item.getDate())) { 
+                Pair<Integer,Integer> resp = ombx.sendMailItem(item);
+                if (create) {
+                    if (!ombx.renumberItem(sContext, id, type, resp.getFirst()))
+                        return true;
+                    id = resp.getFirst();
+                    List<Integer> tombstonedDocs = tombstones.getIds(MailItem.TYPE_DOCUMENT);
+                    if (tombstonedDocs != null && tombstonedDocs.indexOf(id) > -1) {
+                        ombx.removePendingDelete(sContext, id, type);
+                        tombstonedDocs.remove(Integer.valueOf(id)); //remove(Object o), not remote(int idx)!!
+                        if (tombstonedDocs.isEmpty()) {
+                            tombstones.remove(MailItem.TYPE_DOCUMENT);
+                        }
+                    }
+                }
+                ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
+            }
+            //set tags
+            Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+            Element action = request.addElement(MailConstants.E_ACTION);
+            action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
+            action.addAttribute(MailConstants.A_TAGS, item.getTagString()); 
+            action.addAttribute(MailConstants.A_ID, id);
+            ombx.sendRequest(request);
         }
         
         synchronized (ombx) {
@@ -1007,7 +1032,7 @@ public class PushChanges {
         }
     }
     
-    private void checkDocumentSyncConflict(MailItem item) throws ServiceException {
+    private List<RevisionInfo> checkDocumentSyncConflict(MailItem item) throws ServiceException {
         int id = item.getId();
         int lastSyncVersion = ombx.getLastSyncedVersionForMailItem(id);
         Element request = new Element.XMLElement(MailConstants.LIST_DOCUMENT_REVISIONS_REQUEST);
@@ -1018,6 +1043,7 @@ public class PushChanges {
         Iterator<Element> iter = response.elementIterator(MailConstants.E_DOC);
         boolean conflict = false;
         ArrayList<SyncExceptionHandler.Revision> revisions = new ArrayList<SyncExceptionHandler.Revision>();
+        List<RevisionInfo> revInfo = new ArrayList<RevisionInfo>();
         while (iter.hasNext()) {
             Element e = iter.next();
             int ver = (int)e.getAttributeLong(MailConstants.A_VERSION);
@@ -1029,10 +1055,12 @@ public class PushChanges {
                 rev.modifiedDate = e.getAttributeLong(MailConstants.A_MODIFIED_DATE);
                 revisions.add(rev);
             }
+            revInfo.add(new RevisionInfo(ver, e.getAttributeLong(MailConstants.A_MODIFIED_DATE), (int) e.getAttributeLong(MailConstants.A_FOLDER)));
         }
         if (conflict) {
             SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
         }
+        return revInfo;
     }
     
     private boolean syncMessage(int id) throws ServiceException {
@@ -1155,17 +1183,18 @@ public class PushChanges {
         Element request = null;
         boolean create = false;
         String name = null;
-        
+        String uid = null;
         byte type = isAppointment ? MailItem.TYPE_APPOINTMENT : MailItem.TYPE_TASK;
-        
+        CalendarItem cal = null;
         synchronized (ombx) {
-            CalendarItem cal = ombx.getCalendarItemById(sContext, id);
+            cal = ombx.getCalendarItemById(sContext, id);
             name = cal.getSubject();
             date = cal.getDate();
             tags = cal.getTagBitmask();
             flags = cal.getFlagBitmask();
             folderId = cal.getFolderId();
             color = cal.getColor();
+            uid = cal.getUid();
             mask = ombx.getChangeMask(sContext, id, type);
 
             if ((mask & Change.MODIFIED_CONFLICT) != 0 || (mask & Change.MODIFIED_CONTENT) != 0 || (mask & Change.MODIFIED_INVITE) != 0) { // need to push to the server
@@ -1197,8 +1226,21 @@ public class PushChanges {
                 //Instead, we just let it bounce back as a calendar update from server.
                 //mod sequence will always be bounced back in the next sync so we'll set there.
                 if (serverItemId != id) { //new item
-                    if (!ombx.renumberItem(sContext, id, type, serverItemId))
-                        return true;
+                    try {
+                        CalendarItem calItem = ombx.getCalendarItemById(sContext, serverItemId);
+                        OfflineLog.offline.debug("New calendar item %d has been mapped to existing calendar item %d during push", id, serverItemId);
+                        boolean uidSame = (calItem.getUid() == null && uid == null) || (calItem.getUid() != null && calItem.getUid().equals(uid)); 
+                        if (!uidSame) {
+                            OfflineLog.offline.warn("calendar item %d UID %s differs from server-mapped item %d UID %s", id, uid, calItem.getId(), calItem.getUid());
+                            assert(uidSame);
+                        } else if (cal.getId() != calItem.getId()) {
+                            OfflineLog.offline.warn("Deleting ZD cal item %d with same UID as existing %d",cal.getId(), calItem.getId());
+                            ombx.delete(sContext, cal, null);
+                        }
+                    } catch (NoSuchItemException nsie) {
+                        if (!ombx.renumberItem(sContext, id, type, serverItemId))
+                            return true;
+                    }
                 }
                 id = serverItemId;
             } else {
@@ -1211,7 +1253,7 @@ public class PushChanges {
         }
 
         synchronized (ombx) {
-            CalendarItem cal = ombx.getCalendarItemById(sContext, id);
+            cal = ombx.getCalendarItemById(sContext, id);
             // check to see if the calendar item was changed while we were pushing the update...
             mask = 0;
             if (flags != cal.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;

@@ -205,7 +205,7 @@ public class InternetAddressTest {
                 "=?us-ascii?Q?Bob_th?= (Bob) =?us-ascii?Q?e_Builder?= <bob@example.com>",
                 "Bob the Builder", "bob@example.com");
         test("joining two 2047 encoded-words split by a comment containing an encoded-word",
-                "=?us-ascii?Q?Bob_th?= (=?us-ascii?Q?Bob=) =?us-ascii?Q?e_Builder?= <bob@example.com>",
+                "=?us-ascii?Q?Bob_th?= (=?us-ascii?Q?Bob?=) =?us-ascii?Q?e_Builder?= <bob@example.com>",
                 "Bob the Builder", "bob@example.com");
         test("joining two 2047 encoded-words with an encoded trailing space",
                 "=?us-ascii?q?Bob_?=\t=?us-ascii?Q?the_Builder?= <bob@example.com>",
@@ -240,6 +240,12 @@ public class InternetAddressTest {
         test("non-encoded double spaces inside encoded-word",
                 "=?us-ascii?Q?Bob the  Builder?= <bob@example.com>",
                 "Bob the Builder", "bob@example.com");
+        test("double quotes inside encoded-word",
+                "=?us-ascii?Q?\"Bob\"_the_Builder?= <bob@example.com>",
+                "\"Bob\" the Builder", "bob@example.com");
+        test("parentheses inside encoded-word",
+                "=?us-ascii?Q?(Bob)_the_Builder?= <bob@example.com>",
+                "(Bob) the Builder", "bob@example.com");
         test("spaces at end of encoded-word",
                 "=?us-ascii?Q?Bob the ?= Builder <bob@example.com>",
                 "Bob the  Builder", "bob@example.com");
@@ -264,6 +270,17 @@ public class InternetAddressTest {
         Assert.assertEquals("bob@example.com", members.get(0).getAddress());
         Assert.assertEquals("Bob the Builder 2", iaddrs.get(1).getPersonal());
         Assert.assertEquals("bob@example.com", iaddrs.get(1).getAddress());
+
+        src = "david_tycast@yahoo.com miketybo@aim.com miketybo@aim.com jabroni064@sbcglobal.net nobgr@wowway.comto ellencakes@hotmail.comsubject " +
+              "michaelggrankin@hotmail.com ikhardy44@hotmail.comto taraberry@aol.com flowerbug98@aol.com catherinedicker@comcast.netto " +
+              "ccrein@aol.com syoung@fwcjua.com michaelggrankin@hotmail.com ikhardy44@hotmail.com catherinedicker@comcast.net syoung@fwcjua.com " +
+              "michaelggrankin@hotmail.com ikhardy44@hotmail.com catherinedicker@comcast.net nobgr@wowway.comto nobgr@wowway.comto " +
+              "ellencakes@hotmail.comsubject ellencakes@hotmail.comsubject michaelggrankin@hotmail.com michaelggrankin@hotmail.com " +
+              "ikhardy44@hotmail.comto ikhardy44@hotmail.comto taraberry@aol.com taraberry@aol.com flowerbug98@aol.com flowerbug98@aol.com " +
+              "catherinedicker@comcast.netto catherinedicker@comcast.netto ccrein@aol.com ccrein@aol.com";
+        iaddrs = InternetAddress.parseHeader(src);
+        // space is not a valid address separator
+        Assert.assertEquals(1, iaddrs.size());
     }
 
     /**

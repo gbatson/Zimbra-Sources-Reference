@@ -1,10 +1,13 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.compose;
 
+import java.util.HashMap;
+
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
@@ -16,15 +19,16 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
 public class ReplyAllMailHtml extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public ReplyAllMailHtml() {
 		logger.info("New "+ ReplyAllMailHtml.class.getCanonicalName());
 		
 		// All tests start at the login page
 		super.startingPage = app.zPageMail;
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefComposeFormat", "html");
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefComposeFormat", "html");
+				}};
+
 		
 	}
 	
@@ -75,11 +79,12 @@ public class ReplyAllMailHtml extends AjaxCommonTest {
 		
 		// Send the message
 		mailform.zSubmit();
-				
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
 		// From the receiving end, verify the message details
 		// Need 'in:inbox' to seprate the message from the sent message
-		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "in:inbox subject:("+ mail.dSubject +")");
+      MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "in:inbox subject:("+ mail.dSubject +")");
 
 		ZAssert.assertEquals(received.dFromRecipient.dEmailAddress, app.zGetActiveAccount().EmailAddress, "Verify the from field is correct");
 		ZAssert.assertEquals(received.dToRecipients.get(0).dEmailAddress, ZimbraAccount.AccountA().EmailAddress, "Verify the to field is correct");

@@ -435,6 +435,7 @@ function() {
 	calMgr.getMiniCalendar();
 	appCtxt.getAppViewMgr().showTreeFooter(true);
     calMgr.highlightMiniCal();
+    calMgr.startDayRollTimer();
 };
 
 /**
@@ -506,12 +507,15 @@ function(params, result) {
 	}
 
 	if (!appCtxt.isOffline) {
-		this.setPollInterval(true);
+        if (appCtxt.get(ZmSetting.INSTANT_NOTIFY) && appCtxt.get(ZmSetting.INSTANT_NOTIFY_INTERVAL) == appCtxt.get(ZmSetting.POLLING_INTERVAL))
+            AjxTimedAction.scheduleAction(new AjxTimedAction(this, this.setInstantNotify, [true]), 4000);
+        else
+		    this.setPollInterval(true);
 	} else {
 		if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && window.platform && 
 			window.platform.isRegisteredProtocolHandler("mailto")) {  
 		    // bug fix #34342 - always register the protocol handler for mac and linux on start up
-		    this.registerMailtoHandler(!AjxEnv.isWindows);
+		    this.registerMailtoHandler(!AjxEnv.isWindows, true);
 		}    
 	}
 
@@ -694,6 +698,7 @@ function(params) {
 	if (!this._doingPostRenderStartup) {
 		this._postRenderStartup();
 	}
+
 };
 
 /**
@@ -779,6 +784,8 @@ function(online) {
 
 	this._networkStatusIcon.setToolTipContent(online ? ZmMsg.networkStatusOffline : ZmMsg.networkStatusOnline);
 	this._networkStatusIcon.getHtmlElement().innerHTML = AjxImg.getImageHtml(online ? "Connect" : "Disconnect");
+	var netStatus = online ? ZmMsg.imStatusOnline : ZmMsg.imStatusOffline;
+	this._networkStatusText.getHtmlElement().innerHTML = netStatus.substr(0, 1).toUpperCase() + netStatus.substr(1);
 };
 
 /**
@@ -1143,23 +1150,32 @@ function() {
 };
 
 ZmZimbraMail.prototype.registerMailtoHandler =
-function(regProto) {
+function(regProto, selected) {
 	if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && window.platform) {
 		try { // add try/catch - see bug #33870
-			// register mailto handler
-			if (regProto) {
-				var url = appCtxt.get(ZmSetting.OFFLINE_WEBAPP_URI, null, appCtxt.accountList.mainAccount);
-				window.platform.registerProtocolHandler("mailto", url + "&mailto=%s");
-			}
+			if (selected) { // user selected zd as default mail app 
+				// register mailto handler
+				if (regProto) {
+					var url = appCtxt.get(ZmSetting.OFFLINE_WEBAPP_URI, null, appCtxt.accountList.mainAccount);
+					window.platform.registerProtocolHandler("mailto", url + "&mailto=%s");
+				
+					// handle "send to mail recipient" on windows (requires mapi@zimbra.com extension)
+					if (AjxEnv.isWindows) {
+						var shell = new ZimbraDesktopShell;
+						shell.defaultClient = true;
+					}
+				}
 
-			// register mailto callback
-			var callback = AjxCallback.simpleClosure(this.handleOfflineMailTo, this);
-			window.platform.registerProtocolCallback("mailto", callback);
+				// register mailto callback
+				var callback = AjxCallback.simpleClosure(this.handleOfflineMailTo, this);
+				window.platform.registerProtocolCallback("mailto", callback);
+			} else { // unselected (box unchecked) 
+				window.platform.unregisterProtocolHandler("mailto");
 
-			// handle "send to mail recipient" on windows (requires mapi@zimbra.com extension)
-			if (AjxEnv.isWindows) {
-				var shell = new ZimbraDesktopShell;
-				shell.defaultClient = true;
+				if (AjxEnv.isWindows) {
+					var shell = new ZimbraDesktopShell;
+					shell.defaultClient = false;
+				}
 			}
 		} catch(ex) {
 			// do nothing
@@ -1962,6 +1978,12 @@ function() {
 	};
 	this._networkStatusIcon = new DwtComposite(params);
 
+	var params1 = {
+		parent: this._userNameField,
+		parentElement: (htmlElId+"_networkStatusText")
+	};
+	this._networkStatusText = new DwtComposite(params1);
+
 	var topTreeEl = document.getElementById("skin_container_tree_top");
 	if (topTreeEl) {
 		Dwt.setSize(topTreeEl, Dwt.DEFAULT, "20");
@@ -2327,7 +2349,7 @@ ZmZimbraMail.prototype._createBanner =
 function() {
 	var banner = new DwtComposite({parent:this._shell, posStyle:Dwt.ABSOLUTE_STYLE, id:ZmId.BANNER});
 	var logoUrl = appCtxt.getSkinHint("banner", "url") || appCtxt.get(ZmSetting.LOGO_URI);
-	var data = {url:logoUrl};
+	var data = {url:logoUrl, isOffline:appCtxt.isOffline};
 	banner.getHtmlElement().innerHTML  = AjxTemplate.expand('share.App#Banner', data);
 	return banner;
 };

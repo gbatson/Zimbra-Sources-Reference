@@ -54,7 +54,7 @@ ZmHtmlEditor.prototype.constructor = ZmHtmlEditor;
 ZmHtmlEditor._VALUE = "value";
 ZmHtmlEditor.FONT_SIZE_VALUES = ["8pt", "10pt", "12pt", "14pt", "18pt", "24pt", "36pt"];
 ZmHtmlEditor.__makeFontName = function(value) {
-	return value.replace(/,.*/,"").replace(/\b[a-z]/g, ZmHtmlEditor.__toUpperCase);
+	return value.replace(/,.*/,"").replace(/[']/g,"").replace(/\b[a-z]/g, ZmHtmlEditor.__toUpperCase);
 };
 ZmHtmlEditor.__toUpperCase = function(s) {
 	return s.toUpperCase();
@@ -685,7 +685,7 @@ function() {
 
 		function getURL() {
 				var url = dlg.linkTarget.getValue();
-				if (url && !/^(https?|ftp):\x2f\x2f/i.test(url)) {
+                if (url && !/^(https?|ftp):\x2f\x2f/i.test(url) && !/^mailto:([a-zA-Z0-9_.-])+@([a-zA-Z0-9_.-])+\.([a-zA-Z])+([a-zA-Z])+/i.test(url)){
 					url = "http://" + url;
 					dlg.linkTarget.setValue(url);
 				}
@@ -2304,10 +2304,16 @@ ZmHtmlEditor.prototype.__enableGeckoFocusHacks = function() {
 };
 
 ZmHtmlEditor.WRAP_LENGTH		= 72;
-ZmHtmlEditor.HTML_QUOTE_PRE		= '<blockquote style="border-left:2px solid ' +
+ZmHtmlEditor.HTML_QUOTE_PREFIX_PRE		= '<blockquote style="border-left:2px solid ' +
 									 AjxStringUtil.HTML_QUOTE_COLOR +
-									 ';margin-left:5px;padding-left:5px;">';
-ZmHtmlEditor.HTML_QUOTE_POST	= '</blockquote><br/>';
+									 ';margin-left:5px;padding-left:5px;'+
+									 AjxStringUtil.HTML_QUOTE_STYLE +
+									 '">';
+ZmHtmlEditor.HTML_QUOTE_PREFIX_POST	= '</blockquote><br/>';
+ZmHtmlEditor.HTML_QUOTE_NONPREFIX_PRE		= '<div style="' +
+									 AjxStringUtil.HTML_QUOTE_STYLE +
+									 '">';
+ZmHtmlEditor.HTML_QUOTE_NONPREFIX_POST	= '</div><br/>';
 
 // returns a standard set of params for wrapping text of HTML content
 ZmHtmlEditor.getWrapParams =
@@ -2320,10 +2326,16 @@ function(htmlMode, incOptions) {
 	params.len		= ZmHtmlEditor.WRAP_LENGTH;
 	params.eol		= htmlMode ? '<br/>' : '\n';
 	params.pre		= (htmlMode || !incOptions.prefix) ? "" : appCtxt.get(ZmSetting.REPLY_PREFIX) + " ";
-	params.before	= (htmlMode && incOptions.prefix) ? ZmHtmlEditor.HTML_QUOTE_PRE : "";
-	params.after	= (htmlMode && incOptions.prefix) ? ZmHtmlEditor.HTML_QUOTE_POST : "";
+	params.before	= (htmlMode) ? ((incOptions.prefix) ? ZmHtmlEditor.HTML_QUOTE_PREFIX_PRE : ZmHtmlEditor.HTML_QUOTE_NONPREFIX_PRE) : "";
+	params.after	= (htmlMode) ? ((incOptions.prefix) ? ZmHtmlEditor.HTML_QUOTE_PREFIX_POST : ZmHtmlEditor.HTML_QUOTE_NONPREFIX_POST) : "";
 
 	return params;
+};
+
+ZmHtmlEditor.prototype._updateState =
+function() {
+	var defaultFontSize = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
+	DwtHtmlEditor.prototype._updateState.call(this, defaultFontSize);
 };
 
 ZmHtmlEditorColorPicker = function(parent,style,className) {

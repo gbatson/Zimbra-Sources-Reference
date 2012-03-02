@@ -126,12 +126,19 @@ function(params) {
 		if (appCtxt.isOffline && acct.isMain && this._appName != ZmApp.PREFERENCES) { continue; }
 		if (!acct.active) { continue; }
 
-		params.omit = {};
+		 params.omit = {};
 
 		if (acct.type == ZmAccount.TYPE_POP) {
 			params.omit[ZmFolder.ID_SPAM]   = true;
 			params.omit[ZmFolder.ID_OUTBOX] = true;
 		}
+
+        if(params.overviewId && !params.isAppOverview) {
+            var overviewId = params.overviewId.split(":")[1];
+            if(overviewId && (overviewId == "ZmNewOrganizerDialog")){
+                params.omit[ZmFolder.ID_DRAFTS] = true;
+            }
+        }
 
 		if (this._appName == ZmApp.CALENDAR) {
 			params.selectable = false;
@@ -277,7 +284,7 @@ function(params) {
 		var headerDataId = params.overviewId = appCtxt.getOverviewId([this.containerId, headerLabel], null);
 		var headerParams = {
 			label: ZmMsg[headerLabel],
-			icon: "Resource",
+			icon: "Zimlet",
 			dataId: headerDataId,
 			className: "ZmOverviewZimletHeader"
 		};

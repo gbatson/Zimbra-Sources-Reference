@@ -3,21 +3,16 @@
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
-import com.zimbra.qa.selenium.framework.items.ConversationItem;
-import com.zimbra.qa.selenium.framework.items.MailItem;
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.AbsTab;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.ui.Shortcut;
+import com.zimbra.qa.selenium.framework.items.*;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 
 /**
@@ -163,6 +158,7 @@ public class PageMail extends AbsTab {
 		public static final String zCLVRows			= "zl__CLV__rows";
 		public static final String zTVRows			= "zl__TV__rows";
 
+		public static final String zLoadingImage_Desktop = "css=img[src='/img/animated/ImgSpinner.gif']";
 	}
 	
 	
@@ -228,13 +224,14 @@ public class PageMail extends AbsTab {
 			throw new HarnessException("Can't locate mail icon");
 		}
 
-		zClick(PageMain.Locators.zAppbarMail);
+		this.zClick(PageMain.Locators.zAppbarMail);
+		
+		this.zWaitForBusyOverlay();
 		
 		zWaitForActive();
 
 	}
-	
-	
+
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
@@ -253,15 +250,9 @@ public class PageMail extends AbsTab {
 		
 		if ( button == Button.B_NEW ) {
 			
+			// New button
 			locator = "css=div[id^='ztb__'] td[id$='__NEW_MENU_title']";
 			
-			// Make sure the button exists
-			if ( !this.sIsElementPresent(locator) )
-				throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
-			
-			// Click it
-			this.zClick(locator);
-
 			// Create the page
 			page = new FormMailNew(this.MyApplication);
 			
@@ -274,7 +265,6 @@ public class PageMail extends AbsTab {
 			} else {
 				locator = "id="+ Locators.zGetMailIconBtnCLVID;
 			}
-
 			
 		} else if ( button == Button.B_DELETE ) {
 			
@@ -304,9 +294,6 @@ public class PageMail extends AbsTab {
 
 			locator = "css=td[id$='__MOVE_left_icon']";
 			
-			// Click it
-			this.zClick(locator);
-
 			page = new DialogMove(MyApplication);
 
 			// FALL THROUGH
@@ -433,14 +420,24 @@ public class PageMail extends AbsTab {
 		
 		// Default behavior, process the locator by clicking on it
 		//
-		
-		// Make sure the button exists
-		if ( !this.sIsElementPresent(locator) )
-			throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
-		
-		// Click it
 		this.zClick(locator);
 		
+		// If the app is busy, wait for it to become active
+		this.zWaitForBusyOverlay();
+
+		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP &&
+		      button == Button.B_GETMAIL) {
+
+		   
+		   // Wait for the spinner image
+		   if (GeneralUtility.waitForElementPresent(this,
+		         PageMail.Locators.zLoadingImage_Desktop, 5000)) {
+		      Object[] params = {PageMail.Locators.zLoadingImage_Desktop};
+		      GeneralUtility.waitFor(null, this, false, "sIsElementPresent",
+		            params, WAIT_FOR_OPERAND.EQ, false, 30000, 1000);
+		   }
+		}
+
 		// If page was specified, make sure it is active
 		if ( page != null ) {
 			
@@ -449,6 +446,7 @@ public class PageMail extends AbsTab {
 			
 		}
 
+		
 		return (page);
 	}
 
@@ -563,7 +561,10 @@ public class PageMail extends AbsTab {
 			}
 			
 			this.zClick(pulldownLocator);
-			SleepUtil.sleepSmall();
+
+			// If the app is busy, wait for it to become active
+			this.zWaitForBusyOverlay();
+			
 			
 			if ( optionLocator != null ) {
 
@@ -573,10 +574,13 @@ public class PageMail extends AbsTab {
 				}
 				
 				this.zClick(optionLocator);
-				SleepUtil.sleepSmall();
 
+				// If the app is busy, wait for it to become active
+				this.zWaitForBusyOverlay();
+				
 			}
 			
+
 			// If we click on pulldown/option and the page is specified, then
 			// wait for the page to go active
 			if ( page != null ) {
@@ -877,6 +881,8 @@ public class PageMail extends AbsTab {
 			// Left-Click on the item
 			this.zClick(itemlocator);
 			
+			this.zWaitForBusyOverlay();
+
 			// Return the displayed mail page object
 			page = new DisplayMail(MyApplication);
 			
@@ -892,7 +898,13 @@ public class PageMail extends AbsTab {
 			
 		} else if ( action == Action.A_RIGHTCLICK ) {
 			
-			throw new HarnessException("implement me!  action = "+ action);
+			// Right-Click on the item
+			this.zRightClick(itemlocator);
+			
+			// Return the displayed mail page object
+			page = new ContextMenu(MyApplication);
+			
+			// FALL THROUGH
 			
 		} else if ( action == Action.A_MAIL_CHECKBOX ) {
 			
@@ -906,6 +918,8 @@ public class PageMail extends AbsTab {
 				
 			// Left-Click on the flag field
 			this.zClick(selectlocator);
+			
+			this.zWaitForBusyOverlay();
 			
 			// No page to return
 			page = null;
@@ -925,6 +939,8 @@ public class PageMail extends AbsTab {
 			// Left-Click on the flag field
 			this.zClick(selectlocator);
 			
+			this.zWaitForBusyOverlay();
+
 			// No page to return
 			page = null;
 
@@ -942,6 +958,8 @@ public class PageMail extends AbsTab {
 			// Left-Click on the flag field
 			this.zClick(flaglocator);
 			
+			this.zWaitForBusyOverlay();
+
 			// No page to return
 			page = null;
 
@@ -951,14 +969,123 @@ public class PageMail extends AbsTab {
 			throw new HarnessException("implement me!  action = "+ action);
 		}
 		
+
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		
 		// default return command
 		return (page);
 		
 	}
 
 	@Override
-	public AbsPage zListItem(Action action, Action option, String subject) throws HarnessException {
-		throw new HarnessException("implement me!");
+	public AbsPage zListItem(Action action, Button option, String subject) throws HarnessException {
+		logger.info(myPageName() + " zListItem("+ action +", "+ option +", "+ subject +")");
+		
+		if ( action == null )
+			throw new HarnessException("action cannot be null");
+		if ( option == null )
+			throw new HarnessException("button cannot be null");
+		if ( subject == null || subject.trim().length() == 0)
+			throw new HarnessException("subject cannot be null or blank");
+
+		AbsPage page = null;
+		String listLocator;
+		String rowLocator;
+		String itemlocator = null;
+		
+		
+		// Find the item locator
+		//
+		
+		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
+			listLocator = "//div[@id='zl__TV__rows']";
+			rowLocator = "//div[contains(@id, 'zli__TV__')]";
+		} else {
+			listLocator = "//div[@id='zl__CLV__rows']";
+			rowLocator = "//div[contains(@id, 'zli__CLV__')]";
+		}
+		
+		// TODO: how to handle both messages and conversations, maybe check the view first?
+		if ( !this.sIsElementPresent(listLocator) )
+			throw new HarnessException("List View Rows is not present "+ listLocator);
+		
+		// How many items are in the table?
+		int count = this.sGetXpathCount(listLocator + rowLocator);
+		logger.debug(myPageName() + " zListSelectItem: number of list items: "+ count);
+		
+		// Get each conversation's data from the table list
+		for (int i = 1; i <= count; i++) {
+			
+			itemlocator = listLocator + "/div["+ i +"]";
+			String subjectlocator;
+			
+			// Look for the subject
+			
+			// Subject - Fragment
+			subjectlocator = itemlocator + "//td[contains(@id, '__su')]";
+			String s = this.sGetText(subjectlocator).trim();
+			
+			if ( s.contains(subject) ) {
+				break; // found it
+			}
+			
+			itemlocator = null;
+		}
+		
+		if ( itemlocator == null ) {
+			throw new HarnessException("Unable to locate item with subject("+ subject +")");
+		}
+
+		if ( action == Action.A_RIGHTCLICK ) {
+			
+			// Right-Click on the item
+			this.zRightClick(itemlocator);
+			
+			// Now the ContextMenu is opened
+			// Click on the specified option
+			
+			String optionLocator = null;
+			
+			if (option == Button.B_DELETE) {
+				
+				// <div id="zmi__TV_DELETE" ... By Message
+				// <div id="zmi__CLV__Par__DELETE" ... By Conversation
+				
+				if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
+					optionLocator = "zmi__TV__DELETE";
+				} else {
+					optionLocator = "zmi__CLV__Par__DELETE";
+				}
+
+				page = null;
+				
+			} else {
+				throw new HarnessException("implement action:"+ action +" option:"+ option);
+			}
+			
+			// click on the option
+			this.zClick(optionLocator);
+						
+			this.zWaitForBusyOverlay();
+
+			// FALL THROUGH
+			
+		} else {
+			throw new HarnessException("implement me!  action = "+ action);
+		}
+	
+		
+
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+	
+
+		// Default behavior
+		return (page);
+		
 	}
 
 	/**
@@ -976,6 +1103,9 @@ public class PageMail extends AbsTab {
 	@Override
 	public AbsPage zKeyboardShortcut(Shortcut shortcut) throws HarnessException {
 
+		if (shortcut == null)
+			throw new HarnessException("Shortcut cannot be null");
+		
 		AbsPage page = null;
 		
 		if ( (shortcut == Shortcut.S_NEWITEM) ||
@@ -987,6 +1117,9 @@ public class PageMail extends AbsTab {
 		}
 		
 		zKeyboard.zTypeCharacters(shortcut.getKeys());
+		
+		// If the app is busy, wait for it to become active
+		this.zWaitForBusyOverlay();
 		
 		// If a page is specified, wait for it to become active
 		if ( page != null ) {

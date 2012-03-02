@@ -81,26 +81,7 @@ function() {
 
 // Constants
 ZmBriefcaseController._VIEWS = {};
-ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE]			= "ZmBriefcaseView";
 ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE_DETAIL]	= "ZmPreviewPaneView";
-ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE_COLUMN]	= "ZmMultiColView";
-
-// Stuff for the View menu
-ZmBriefcaseController.GROUP_BY_ICON = {};
-ZmBriefcaseController.GROUP_BY_MSG_KEY = {};
-ZmBriefcaseController.GROUP_BY_VIEWS = [];
-
-ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE]			= "explorerView";
-ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE_DETAIL]	= "previewView";
-ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE_COLUMN]	= "columnBrowserView";
-
-ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE]			= "IconView";
-ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE_DETAIL]		= "TasksListView";
-ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE_COLUMN]		= "ListView";
-
-ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE);
-ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE_DETAIL);
-ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE_COLUMN);
 
 ZmBriefcaseController.RP_IDS = [ZmSetting.RP_BOTTOM, ZmSetting.RP_RIGHT, ZmSetting.RP_OFF];
 
@@ -114,6 +95,12 @@ ZmBriefcaseController.PREVIEW_PANE_ICON = {};
 ZmBriefcaseController.PREVIEW_PANE_ICON[ZmSetting.RP_OFF]	    = "SplitPaneOff";
 ZmBriefcaseController.PREVIEW_PANE_ICON[ZmSetting.RP_BOTTOM]	= "SplitPane";
 ZmBriefcaseController.PREVIEW_PANE_ICON[ZmSetting.RP_RIGHT]	    = "SplitPaneVertical";
+
+// convert key mapping to view menu item
+ZmBriefcaseController.ACTION_CODE_TO_MENU_ID = {};
+ZmBriefcaseController.ACTION_CODE_TO_MENU_ID[ZmKeyMap.READING_PANE_OFF]		= ZmSetting.RP_OFF;
+ZmBriefcaseController.ACTION_CODE_TO_MENU_ID[ZmKeyMap.READING_PANE_BOTTOM]	= ZmSetting.RP_BOTTOM;
+ZmBriefcaseController.ACTION_CODE_TO_MENU_ID[ZmKeyMap.READING_PANE_RIGHT]	= ZmSetting.RP_RIGHT;
 
 //List Views
 
@@ -136,7 +123,7 @@ function(ev) {
 	var view = this._listView[this._currentView];
 	var div = view.getTargetItemDiv(ev.uiEvent);
 	var item = view.getItemFromElement(div);
-	if(!item || !item.isRevision) {
+	if(!item || !( item.isRevision || item.isFolder) ) {
 		ZmListController.prototype._dropListener.call(this,ev);
 	} else {
 		ev.doIt = false;
@@ -359,13 +346,16 @@ function(items) {
     if(item.isRevision){
         var view = this._parentView[this._currentView];
         view.deleteVersions(items);
-        //this._delVersionListener(items);
     }else if(item.isFolder){
         var delBatchCmd = new ZmBatchCommand(true), folder;
-        var trashFolder = appCtxt.getById(ZmFolder.ID_TRASH);
         for(var i=0; i< items.length; i++){
             folder = items[i].folder;
-            delBatchCmd.add(new AjxCallback(folder, folder.move, [trashFolder, false, null, delBatchCmd]));
+            if(folder.isHardDelete()){
+                delBatchCmd.add(new AjxCallback(folder, folder._delete, [delBatchCmd]));
+            }else{
+                var trashFolder = appCtxt.getById(ZmFolder.ID_TRASH);
+                delBatchCmd.add(new AjxCallback(folder, folder.move, [trashFolder, false, null, delBatchCmd]));
+            }
         }
         delBatchCmd.run();
     }else{
@@ -817,7 +807,9 @@ function(items){
 			restUrl = ZmBriefcaseApp.addEditorParam(restUrl);
 			restUrl += (restUrl.match(/\?/) ? "&" : "?") + "localeId=" + AjxEnv.DEFAULT_LOCALE;
 		} else {
-			if (!ZmMimeTable.isRenderable(item.contentType) && !ZmMimeTable.isMultiMedia(item.contentType)) {
+            // do not try to
+            //ZD doesn't support ConvertD.
+			if (!ZmMimeTable.isRenderable(item.contentType) && !ZmMimeTable.isMultiMedia(item.contentType) && !appCtxt.isOffline) {
                	restUrl += (restUrl.match(/\?/) ? "&" : "?") + "view=html";
 			}
         }
@@ -1050,8 +1042,7 @@ function(view, firstTime) {
 		if (!menu) {
 			menu = new ZmPopupMenu(btn);
 			btn.setMenu(menu);
-            
-            //this._setupGroupByMenu(menu);
+
             this._setupPreviewPaneMenu(menu);
 		}
 	}
@@ -1062,36 +1053,6 @@ function(view, firstTime) {
     }
 	
     this._resetPreviewPaneMenu(menu, view);
-};
-
-ZmBriefcaseController.prototype._groupbyListener =
-function(id, ev){
-    var view = this._parentView[this._currentView];
-    view.enableRevisionView((id == ZmId.VIEW_BRIEFCASE_REVISION));
-    view.reRenderListView(true);
-};
-
-
-ZmBriefcaseController.prototype._setupGroupByMenu =
-function(menu){
-
-    if (menu.getItemCount() > 0) {
-        new DwtMenuItem({parent:menu, style:DwtMenuItem.SEPARATOR_STYLE, id:"PREVIEW_SEPERATOR"});
-    }
-
-    var listViews = ZmBriefcaseController.LIST_VIEW, mi;
-    for(var id in listViews){
-        var desc = listViews[id];
-        if(!menu._menuItems[id]){
-            desc.style = DwtMenuItem.RADIO_STYLE;
-            desc.radioGroupId = "LV";
-            mi = menu.createMenuItem(id, desc);
-            mi.setData(ZmOperation.MENUITEM_ID, id);
-            mi.addSelectionListener(new AjxListener(this, this._groupbyListener, id));
-            if(id == ZmId.VIEW_BRIEFCASE_DETAIL)
-                mi.setChecked(true, true);
-        }
-    }
 };
 
 ZmBriefcaseController.prototype._setupPreviewPaneMenu =
@@ -1109,7 +1070,7 @@ function(menu){
 		if (!menu._menuItems[id]) {
 			miParams.text = ZmBriefcaseController.PREVIEW_PANE_TEXT[id];
 			miParams.image = ZmBriefcaseController.PREVIEW_PANE_ICON[id];
-			var mi = menu.createMenuItem(id, miParams);
+            var mi = menu.createMenuItem(id, miParams);
 			mi.setData(ZmOperation.MENUITEM_ID, id);
 			mi.addSelectionListener(new AjxListener(this, this._previewPaneListener, id));
 			if (id == pref) {
@@ -1512,3 +1473,26 @@ function(){
     return this._nameConflictDialog;
 };
 
+ZmBriefcaseController.prototype.getKeyMapName =
+function() {
+	return "ZmBriefcaseController";
+};
+
+ZmBriefcaseController.prototype.handleKeyAction =
+function(actionCode) {
+	DBG.println(AjxDebug.DBG3, "ZmBriefcaseController.handleKeyAction");
+
+    switch(actionCode) {
+
+        case ZmKeyMap.READING_PANE_BOTTOM:
+		case ZmKeyMap.READING_PANE_RIGHT:
+		case ZmKeyMap.READING_PANE_OFF:
+			var menuId = ZmBriefcaseController.ACTION_CODE_TO_MENU_ID[actionCode];
+			this._previewPaneListener(menuId, true);
+			break;
+
+        default:
+            return ZmListController.prototype.handleKeyAction.call(this, actionCode);
+    }
+    return true;
+};

@@ -1,23 +1,18 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.mail;
 
-import java.util.List;
+import java.util.*;
 
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.MailItem;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 
 
 public class FlagMail extends AjaxCommonTest {
 
+	@SuppressWarnings("serial")
 	public FlagMail() {
 		logger.info("New "+ FlagMail.class.getCanonicalName());
 		
@@ -25,10 +20,9 @@ public class FlagMail extends AjaxCommonTest {
 		super.startingPage = app.zPageMail;
 
 		// Make sure we are using an account with message view
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefGroupMailBy", "message");
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefGroupMailBy", "message");
+				}};
 		
 	}
 	
@@ -117,9 +111,6 @@ public class FlagMail extends AjaxCommonTest {
 		// Flag the item
 		app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_MARKFLAG);
 		
-		// Wait for the client to send the data
-		SleepUtil.sleepMedium();
-
 		// Get the item from the list
 		List<MailItem> messages = app.zPageMail.zListGetMessages();
 		ZAssert.assertNotNull(messages, "Verify the message list exists");

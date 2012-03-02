@@ -187,10 +187,17 @@ function(params) {
 
     //determine if call is from dialog/picker rather than nav tree
     var isApp = this._overview && this._overview.isAppOverview;
+    var isZimbraAccount = true;
+    var acct;
+    if(appCtxt.multiAccounts && params.account){
+        acct = params.account;
+        isZimbraAccount = acct.isZimbraAccount && !acct.isMain;
+    }
 
-    // TODO: Find a better way to indicate which trees show the share link 
+
+    // TODO: Find a better way to indicate which trees show the share link
     var addShareLink =
-        appCtxt.get(ZmSetting.SHARING_ENABLED)  && isApp  &&
+        appCtxt.get(ZmSetting.SHARING_ENABLED)  && isApp  && isZimbraAccount &&
         (
             this.type == ZmOrganizer.FOLDER   ||
             this.type == ZmOrganizer.ADDRBOOK ||
@@ -200,8 +207,12 @@ function(params) {
         )
     ;
     if (addShareLink) {
+        //bug 56122: If folderes are deferred for creation, the sort order is messed up.
+        var parentNode = this._treeItemHash[root.id];
+        parentNode._realizeDeferredChildren();
+
         var item = new DwtTreeItem({
-            parent:this._treeItemHash[root.id],
+            parent: parentNode,
             deferred:false // NOTE: Needed so we can grab link element
         });
         item.setImage("Blank_16");
@@ -211,7 +222,7 @@ function(params) {
         var id = item.getHTMLElId();
         item.setText(AjxTemplate.expand(this.SHARE_LINK_TEMPLATE, id));
         var linkEl = document.getElementById(id+"_addshare_link");
-        linkEl.onclick = AjxCallback.simpleClosure(this._handleAddShareLink, this);
+        linkEl.onclick = AjxCallback.simpleClosure(this._handleAddShareLink, this, (acct? acct.id : null));
         this._addShareLink = item;
     }
 
@@ -635,7 +646,14 @@ function() {
 	return null;
 };
 
-ZmTreeView.prototype._handleAddShareLink = function(htmlEvent) {
+ZmTreeView.prototype._handleAddShareLink = function(acctId, htmlEvent) {
+
+    if( appCtxt.multiAccounts && acctId) {
+        var account  = appCtxt.accountList.getAccount(acctId);
+        if (account && account.isZimbraAccount) {
+            appCtxt.accountList.setActiveAccount(account);
+        }
+    }
     try {
         var dialog = appCtxt.getShareSearchDialog();
         var addCallback = new AjxCallback(this, this._handleAddShare);

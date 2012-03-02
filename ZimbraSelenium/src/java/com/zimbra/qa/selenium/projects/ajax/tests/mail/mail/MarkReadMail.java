@@ -1,5 +1,7 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.mail;
 
+import java.util.HashMap;
+
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.MailItem;
@@ -18,6 +20,7 @@ public class MarkReadMail extends AjaxCommonTest {
 
 	public int delaySeconds = 5;
 	
+	@SuppressWarnings("serial")
 	public MarkReadMail() {
 		logger.info("New "+ MarkReadMail.class.getCanonicalName());
 		
@@ -25,11 +28,11 @@ public class MarkReadMail extends AjaxCommonTest {
 		super.startingPage = app.zPageMail;
 
 		// Make sure we are using an account with message view
-		super.startingAccount = new ZimbraAccount();
-		super.startingAccount.provision();
-		super.startingAccount.authenticate();
-		super.startingAccount.modifyPreference("zimbraPrefGroupMailBy", "message");
-		super.startingAccount.modifyPreference("zimbraPrefMarkMsgRead", ""+ delaySeconds);
+		super.startingAccountPreferences = new HashMap<String, String>() {{
+				    put("zimbraPrefGroupMailBy", "message");
+				    put("zimbraPrefMarkMsgRead", "" + delaySeconds);
+				}};
+
 
 	}
 	
@@ -63,9 +66,9 @@ public class MarkReadMail extends AjaxCommonTest {
 		
 		// Wait to read the message
 		SleepUtil.sleep((delaySeconds) * 1000);
-		
+
 		// Wait the for the client to send the change to the server
-		SleepUtil.sleepMedium();
+		app.zPageMail.zWaitForBusyOverlay();
 		
 		// Verify the message is marked read in the server (flags attribute should not contain (u)nread)
 		mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");

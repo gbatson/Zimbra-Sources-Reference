@@ -214,7 +214,7 @@
 
   <target name="offline-jar" depends="offline-compile" description="Creates the jar file">
     <jar destfile="${build.dir}/${jarfile}" basedir="${build.classes.dir}" excludes="com/zimbra/cs/offline/jsp/**"/>
-    <jar destfile="${build.dir}/offlinejsp.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/common/*.class,com/zimbra/cs/offline/jsp/*.class,com/zimbra/cs/offline/backup/BackupIntervalCallback.class,com/zimbra/cs/datasource/offline/*.class,com/zimbra/cs/account/offline/OfflineDataSource.class"/>
+    <jar destfile="${build.dir}/offlinejsp.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/common/*.class,com/zimbra/cs/offline/jsp/*.class,com/zimbra/cs/offline/backup/*.class,com/zimbra/cs/datasource/offline/*.class,com/zimbra/cs/account/offline/OfflineDataSource.class"/>
     <jar destfile="${build.dir}/zdesktop.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/start/Main.class,com/zimbra/cs/offline/wrapper/WrapperUtil.class" />
     <jar destfile="${build.dir}/offlinecfgtool.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/OfflineConfigTool.class" />
   </target>
@@ -231,10 +231,10 @@
   </target>
 
   <target name="offline-webroot">
-    <copy todir="${param.jetty.dir}/webapps/zimbra">
+    <copy todir="${param.jetty.dir}/webapps/zimbra" overwrite="true">
       <fileset dir="${web.dir}" includes="**/*" excludes="WEB-INF/classes/desktop/*"/>
     </copy>
-    <copy todir="${param.jetty.dir}/webapps/zimbra/WEB-INF/classes/messages">
+    <copy todir="${param.jetty.dir}/webapps/zimbra/WEB-INF/classes/messages" overwrite="true">
       <fileset dir="${web.dir}/WEB-INF/classes/desktop" includes="**/*"/>
     </copy>
   </target>
@@ -898,9 +898,9 @@
     <copy todir="${dist.app.dir}/win32/prism" file="src/installer/win32/prism/application.ini" overwrite="true"/>
   </target>
 
-  <property name="prism.version.macos" value="110910"/>
-  <property name="prism.version.win32" value="110910"/>
-  <property name="prism.version.linux" value="110910"/>
+  <property name="prism.version.macos" value="012011"/>
+  <property name="prism.version.win32" value="012011"/>
+  <property name="prism.version.linux" value="012011"/>
   <property name="prism.extroot.macos" value="${dist.app.dir}/macos/prism/Prism.app/Contents/Resources"/>
   <property name="prism.extroot.win32" value="${dist.app.dir}/win32/prism"/>
   <property name="prism.extroot.linux" value="${dist.app.dir}/linux/prism"/>
@@ -1033,7 +1033,7 @@
 
     <!-- unzip zimbra mapi extension for windows -->
     <if><isset property="is-windows" /><then>
-        <unzip src="src/installer/extensions/zimbramapi-0.4.1.xpi" dest="${dist.app.dir}/win32/prism/extensions/mapi@zimbra.com" overwrite="true"/>
+        <unzip src="src/installer/extensions/zimbramapi-0.6.xpi" dest="${dist.app.dir}/win32/prism/extensions/mapi@zimbra.com" overwrite="true"/>
     </then></if>
 
     <!-- unzip inquisitor extension

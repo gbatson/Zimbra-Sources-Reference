@@ -5,15 +5,12 @@ import java.util.List;
 
 import org.testng.annotations.Test;
 
-import com.zimbra.qa.selenium.framework.items.ContactItem;
-import com.zimbra.qa.selenium.framework.items.FolderItem;
+import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.ui.Toaster;
 
 
 public class DeleteContact extends AjaxCommonTest  {
@@ -23,7 +20,7 @@ public class DeleteContact extends AjaxCommonTest  {
 		// All tests start at the Address page
 		super.startingPage = app.zPageAddressbook;
 
-		super.startingAccount = null;		
+		super.startingAccountPreferences = null;		
 		
 	}
 	
@@ -47,6 +44,7 @@ public class DeleteContact extends AjaxCommonTest  {
         
         // Refresh the view, to pick up the new contact
         FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
+        GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
         app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
         
         // Select the item
@@ -55,10 +53,12 @@ public class DeleteContact extends AjaxCommonTest  {
 
         //delete contact
         app.zPageAddressbook.zToolbarPressButton(Button.B_DELETE);
-        SleepUtil.sleepSmall();
+       
         
         //verify toasted message 1 contact moved to Trash
-        ZAssert.assertStringContains(app.zPageAddressbook.sGetText("xpath=//div[@id='z_toast_text']"), "1 contact moved to Trash", "Verify toast message '1 contact moved to Trash'");
+        Toaster toast = app.zPageMain.zGetToaster();
+        String toastMsg = toast.zGetToastMessage();
+        ZAssert.assertStringContains(toastMsg, "1 contact moved to Trash", "Verify toast message '1 contact moved to Trash'");
 
         //verify deleted contact not displayed
         List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts(); 

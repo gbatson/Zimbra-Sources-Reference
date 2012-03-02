@@ -306,13 +306,16 @@ function(actionCode) {
 		case ZmKeyMap.SHOW_FRAGMENT:
 			if (num == 1) {
 				var item = lv.getSelection()[0];
-				var id = lv._getFieldId(item, ZmItem.F_SUBJECT);
-				var subjectField = document.getElementById(id);
-				if (subjectField) {
-					var loc = Dwt.getLocation(subjectField);
+                if (!item) { break; }
+                var id = lv._getFieldId(item, ZmItem.F_SUBJECT);
+                var subjectField = document.getElementById(id);
+                if (subjectField) {
+                    var loc = Dwt.getLocation(subjectField);
 					var frag;
-					if (item.type == ZmItem.MSG && item.isInvite() && item.needsRsvp()) {
-						frag = item.invite.getToolTip();
+					if ((item.type == ZmItem.MSG && item.isInvite() && item.needsRsvp()) ||
+                        (item.type == ZmId.ITEM_CONV && this.getMsg() && this.getMsg().isInvite() && this.getMsg().needsRsvp()))
+                    {
+						frag = item.invite ? item.invite.getToolTip() : this.getMsg().invite.getToolTip();
 					} else {
 						frag = item.fragment ? item.fragment : ZmMsg.fragmentIsEmpty;
 						if (frag != "") { lv.setToolTipContent(AjxStringUtil.htmlEncode(frag)); }
@@ -320,7 +323,7 @@ function(actionCode) {
 					var tooltip = this._shell.getToolTip();
 					tooltip.popdown();
 					if (frag != "") {
-						tooltip.setContent(AjxStringUtil.htmlEncode(frag));
+						tooltip.setContent(frag);
 						tooltip.popup(loc.x, loc.y);
 					}
 				}
@@ -441,8 +444,12 @@ function() {
 		if (ops && ops.length) {
 			menuItems = menuItems.concat(ops);
 		}
+
 		this._participantActionMenu = new ZmActionMenu({parent:this._shell, menuItems:menuItems, controller:this,
 														context:this._currentView, menuType:ZmId.MENU_PARTICIPANT});
+        if (appCtxt.get(ZmSetting.SEARCH_ENABLED)) {
+            this._setSearchMenu(this._participantActionMenu);
+        }
 		this._addMenuListeners(this._participantActionMenu);
 		this._participantActionMenu.addPopdownListener(this._menuPopdownListener);
 		this._setupTagMenu(this._participantActionMenu);
@@ -456,7 +463,7 @@ function() {
 
 ZmMailListController.prototype._initializeDraftsActionMenu =
 function() {
-	if (!this._draftsActionMenu) {
+    if (!this._draftsActionMenu) {
 		var menuItems = [
 			ZmOperation.EDIT,
 			ZmOperation.SEP,
@@ -466,10 +473,35 @@ function() {
 		];
 		this._draftsActionMenu = new ZmActionMenu({parent:this._shell, menuItems:menuItems,
 												   context:this._currentView, menuType:ZmId.MENU_DRAFTS});
+        if (appCtxt.get(ZmSetting.SEARCH_ENABLED)) {
+            this._setSearchMenu(this._draftsActionMenu);
+        }
 		this._addMenuListeners(this._draftsActionMenu);
 		this._draftsActionMenu.addPopdownListener(this._menuPopdownListener);
 		this._setupTagMenu(this._draftsActionMenu);
 	}
+};
+
+ZmMailListController.prototype._setDraftSearchMenu =
+function(address, item, ev){
+   if (address && appCtxt.get(ZmSetting.SEARCH_ENABLED) && (ev.field == ZmItem.F_PARTICIPANT || ev.field == ZmItem.F_FROM)){
+        if (!this._draftsActionMenu.getOp(ZmOperation.SEARCH_MENU)) {
+            ZmOperation.addOperation(this._draftsActionMenu, ZmOperation.SEARCH_MENU, [ZmOperation.SEARCH_MENU, ZmOperation.SEP], 0);
+            this._setSearchMenu(this._draftsActionMenu);
+        }
+        if (item && (item.getAddresses(AjxEmailAddress.TO).getArray().length + item.getAddresses(AjxEmailAddress.CC).getArray().length) > 1){
+            ZmOperation.setOperation(this._draftsActionMenu.getSearchMenu(), ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToRecipients);
+            ZmOperation.setOperation(this._draftsActionMenu.getSearchMenu(), ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromRecipients);
+        }
+        else{
+            ZmOperation.setOperation(this._draftsActionMenu.getSearchMenu(), ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToRecipient);
+            ZmOperation.setOperation(this._draftsActionMenu.getSearchMenu(), ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromRecipient);
+        }
+     }
+     else if (this._draftsActionMenu.getOp(ZmOperation.SEARCH_MENU)) {
+            this._draftsActionMenu = null;
+            this._initializeDraftsActionMenu();
+     }
 };
 
 ZmMailListController.prototype._initializeToolBar =
@@ -622,6 +654,9 @@ function(ev) {
 	if (folder && folder.nId == ZmFolder.ID_DRAFTS || (item && item.isDraft)) {
 		// show drafts menu
 		this._initializeDraftsActionMenu();
+        this._setDraftSearchMenu(address, item, ev);
+        if (address)
+            this._actionEv.address = address;
 		this._setTagMenu(this._draftsActionMenu);
         this._resetOperations(this._draftsActionMenu, items.length);
 		this._draftsActionMenu.popup(0, ev.docX, ev.docY);
@@ -671,6 +706,27 @@ function(ev) {
 			actionMenu.setSelectedItem(0);
 		}
 	}
+
+    if (!folder) {
+        //might have come from searching on sent items and want to stay in search sent view (i.e. recipient instead of sender)
+        folder = this._getActiveSearchFolder();
+    }
+
+    if (folder && (folder.nId == ZmFolder.ID_SENT  &&
+                  (this._participantActionMenu && this._participantActionMenu.getOp(ZmOperation.SEARCH_MENU)))) {
+        if (item && (item.getAddresses(AjxEmailAddress.TO).getArray().length + item.getAddresses(AjxEmailAddress.CC).getArray().length) > 1){
+            ZmOperation.setOperation(this._participantActionMenu.getSearchMenu(), ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToRecipients);
+            ZmOperation.setOperation(this._participantActionMenu.getSearchMenu(), ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromRecipients);
+        }
+        else{
+            ZmOperation.setOperation(this._participantActionMenu.getSearchMenu(), ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToRecipient);
+            ZmOperation.setOperation(this._participantActionMenu.getSearchMenu(), ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromRecipient);
+        }
+    }
+    else if (this._participantActionMenu && this._participantActionMenu.getOp(ZmOperation.SEARCH_MENU)) {
+        ZmOperation.setOperation(this._participantActionMenu.getSearchMenu(), ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToSender);
+        ZmOperation.setOperation(this._participantActionMenu.getSearchMenu(), ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromSender);
+    }
 };
 
 ZmMailListController.prototype._handleResponseGetContact =
@@ -1757,3 +1813,20 @@ function(addr, callback, errorCallback) {
    });
 };
 
+/**
+ * @private
+ */
+ZmMailListController.prototype._getActiveSearchFolderId =
+function() {
+	var s = this._activeSearch && this._activeSearch.search;
+	return s && s.folderId;
+};
+
+/**
+ * @private
+ */
+ZmMailListController.prototype._getActiveSearchFolder =
+function() {
+	var id = this._getActiveSearchFolderId();
+	return id && appCtxt.getById(id);
+};

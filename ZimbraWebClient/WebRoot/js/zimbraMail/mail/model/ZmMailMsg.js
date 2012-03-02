@@ -1268,6 +1268,10 @@ function(request, isDraft, accountName, requestReadReceipt, sendTime) {
 			} else {
 				msgNode.id = this.nId;
 			}
+
+			if (!isDraft) { // not saveDraftRequest 
+				msgNode.did = this.nId || this.id; // set draft id
+			}
 		}
 	}
 
@@ -1847,15 +1851,22 @@ function(msgNode) {
 		this._convCreateNode = msgNode._convCreateNode;
 	}
 
+	AjxDebug.println(AjxDebug.NOTIFY, "ZmMailMsg::_loadFromDom - msg ID: " + msgNode.id);
+	AjxDebug.println(AjxDebug.NOTIFY, "cid: " + msgNode.cid + ", folder: " + msgNode.l);
 	if (msgNode.cid && msgNode.l) {
 		var conv = appCtxt.getById(msgNode.cid);
 		if (conv) {
 			// update conv's folder list
 			conv.folders[msgNode.l] = true;
+			var folders = AjxUtil.keys(conv.folders);
+			AjxDebug.println(AjxDebug.NOTIFY, "update conv folder list: conv spans " + folders.length + " folder(s): " + folders.join(" "));
 			// update msg list if none exists since we know this conv has at least one msg
 			if (!conv.msgIds) {
 				conv.msgIds = [this.id];
 			}
+		}
+		else {
+			AjxDebug.println(AjxDebug.NOTIFY, "could not find conv with ID: " + msgNode.cid);
 		}
 	}
 

@@ -122,29 +122,32 @@ function(ev) {
 EmailTooltipZimlet.prototype.generateSpan =
 function(html, idx, obj, spanId, context, options) {
 
-	if (options && options.addrBubbles) {
+	options = options || {};
+	if (options.addrBubbles) {
 		this._isBubble[spanId] = true;
 		var canExpand = obj.isGroup && obj.canExpand;
 		if (canExpand && !this._aclv) {
 			// create a ZmAutocompleteListView to handle DL expansion; it's never shown
-			var params = {
+			var aclvParams = {
 				dataClass:		appCtxt.getAutocompleter(),
 				matchValue:		ZmAutocomplete.AC_VALUE_FULL,
 				options:		{addrBubbles:true, massDLComplete:true},
 				compCallback:	new AjxCallback(this, this._dlAddrSelected)
 			};
-			this._aclv = new ZmAutocompleteListView(params);
+			this._aclv = new ZmAutocompleteListView(aclvParams);
 		}
 
-		var params = {
-			parentId:	this._internalId,	// pretend to be a ZmAddressInputField
-			address:	obj.toString(),
+		var bubbleParams = {
+			addrObj:	obj,
 			id:			spanId,
 			canExpand:	canExpand,
-			dlAddress:	canExpand && obj.address,
+			email:		this._getAddress(obj),
 			separator:	AjxEmailAddress.SEPARATOR
 		};
-		html[idx++] = ZmAddressInputField.getBubble(params);
+		ZmAddressInputField.BUBBLE_OBJ_ID[spanId] = this._internalId;	// pretend to be a ZmAddressInputField
+		html[idx++] = "<span class='addrBubble' id='" + spanId + "'>";
+		html[idx++] = ZmAddressBubble.getContent(bubbleParams);
+		html[idx++] = "</span>";
 		return idx;
 	} else {
 		return ZmObjectHandler.prototype.generateSpan.apply(this, arguments);
@@ -170,7 +173,7 @@ function(obj, context, spanId) {
 };
 
 EmailTooltipZimlet.prototype._getHtmlContent =
-function(html, idx, obj, context, spanId) {
+function(html, idx, obj, context, spanId, options) {
 	if (obj instanceof AjxEmailAddress) {
 		var context = window.parentAppCtxt || window.appCtxt;
 		var contactsApp = context.getApp(ZmApp.CONTACTS);
@@ -178,11 +181,11 @@ function(html, idx, obj, context, spanId) {
 		var buddy = this._getBuddy(contact, obj.address);
 		if (contactsApp && !contact && contact !== null) {
 			// search for contact
-			var respCallback = new AjxCallback(this, this._handleResponseGetContact, [html, idx, obj, spanId]);
+			var respCallback = new AjxCallback(this, this._handleResponseGetContact, [html, idx, obj, spanId, options]);
 			contactsApp.getContactByEmail(obj.address, respCallback);
 		}
 		// return content for what we have now (may get updated after search)
-		return this._updateHtmlContent(html, idx, obj, contact, buddy);
+		return this._updateHtmlContent(html, idx, obj, contact, buddy, spanId, options);
 	} else {
 		html[idx++] = AjxStringUtil.htmlEncode(obj);
 		return idx;
@@ -195,7 +198,7 @@ function(html, idx, obj, context, spanId) {
  * with the results of a search.
  */
 EmailTooltipZimlet.prototype._updateHtmlContent =
-function(html, idx, obj, contact, buddy, spanId) {
+function(html, idx, obj, contact, buddy, spanId, options) {
 
 	var content;
 	var pres = buddy && buddy.getPresence();
@@ -222,19 +225,12 @@ function(html, idx, obj, contact, buddy, spanId) {
 
 		this._getRoster();
 	} else {
-		if (contact && contact.toString() == "ZmContact") {
-			content = AjxStringUtil.htmlEncode(contact.getFullName());
-		}
-		if (!content) {
-			content = AjxStringUtil.htmlEncode(obj.toString());
-		}
+		content = AjxStringUtil.htmlEncode(obj.toString(options && options.shortAddress));
 	}
 
-	if (spanId) {
-		var span = document.getElementById(spanId);
-		if (span) {
-			span.innerHTML = content;
-		}
+	var span = spanId && document.getElementById(spanId);
+	if (span) {
+		span.innerHTML = content;
 	} else {
 		html[idx++] = content;
 		return idx;
@@ -242,10 +238,10 @@ function(html, idx, obj, contact, buddy, spanId) {
 };
 
 EmailTooltipZimlet.prototype._handleResponseGetContact =
-function(html, idx, obj, spanId, contact) {
+function(html, idx, obj, spanId, options, contact) {
 	if (contact) {
 		var buddy = this._getBuddy(contact, obj.address);
-		this._updateHtmlContent(html, idx, obj, contact, buddy, spanId);
+		this._updateHtmlContent(html, idx, obj, contact, buddy, spanId, options);
 	}
 };
 
@@ -451,6 +447,22 @@ function(actionMenu) {
 	this._resetFilterMenu();
 };
 
+EmailTooltipZimlet.prototype.createSearchMenu =
+function(actionMenu) {
+	if (this._searchMenu) { return; }
+
+    var list = [ZmOperation.SEARCH, ZmOperation.SEARCH_TO];
+    var overrides = {};
+    overrides[ZmOperation.SEARCH] = {textKey:"findEmailFromRecipient"};
+    overrides[ZmOperation.SEARCH_TO] = {textKey:"findEmailToRecipient"};
+
+    this._searchMenu = new ZmActionMenu({parent:actionMenu, menuItems:list, overrides:overrides});
+    var searchOp = actionMenu.getOp("SEARCHEMAILS");
+    searchOp.setMenu(this._searchMenu);
+};
+
+
+
 EmailTooltipZimlet.prototype._resetFilterMenu =
 function() {
 	var filterItems = this._filterMenu.getItems();
@@ -531,7 +543,11 @@ function(obj, span, context) {
 		this.createFilterMenu(actionMenu);
 	}
 
-	var addr = (obj instanceof AjxEmailAddress) ? obj.getAddress() : obj;
+    if (!isDetachWindow && appCtxt.get(ZmSetting.SEARCH_ENABLED) && actionMenu.getOp("SEARCHEMAILS")) {
+        this.createSearchMenu(actionMenu);
+    }
+
+	var addr = this._getAddress(obj);
 	if (this.isMailToLink(addr)) {
 		addr = (this.parseMailToLink(addr)).to || addr;
 	}
@@ -553,13 +569,22 @@ function(obj, span, context) {
 		}
 	}
 
-	if (actionMenu.getOp("SEARCH") && (isDetachWindow || !appCtxt.get(ZmSetting.SEARCH_ENABLED))) {
-		ZmOperation.removeOperation(actionMenu, "SEARCH", actionMenu._menuItems);
+	if (actionMenu.getOp("SEARCHEMAILS") && (isDetachWindow || !appCtxt.get(ZmSetting.SEARCH_ENABLED))) {
+		ZmOperation.removeOperation(actionMenu, "SEARCHEMAILS", actionMenu._menuItems);
 	}
-    else{
+    else {
         if (obj && obj.type) {
-            var findEmailMsg = obj.type=="TO" ? ZmMsg.findEmailByToRecpt : obj.type=="CC" ? ZmMsg.findEmailByCCRecpt : ZmMsg.findEmailBySender;
-            ZmOperation.setOperation(actionMenu, ZmOperation.SEARCH, ZmOperation.SEARCH, findEmailMsg);
+            if (actionMenu.getOp("SEARCHEMAILS")){
+                 if (obj.type == "FROM"){
+                    ZmOperation.setOperation(this._searchMenu, ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromSender);
+                    ZmOperation.setOperation(this._searchMenu, ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToSender);
+                 } else{
+                    ZmOperation.setOperation(this._searchMenu, ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailFromRecipient);
+                    ZmOperation.setOperation(this._searchMenu, ZmOperation.SEARCH_TO, ZmOperation.SEARCH_TO, ZmMsg.findEmailToRecipient);
+                 }
+                 this._searchMenu.addSelectionListener("SEARCH", new AjxListener(this, this.menuItemSelected,["SEARCH",obj]));
+                 this._searchMenu.addSelectionListener("SEARCH_TO", new AjxListener(this, this.menuItemSelected,["SEARCH_TO", obj]));
+            }
         }
     }
 
@@ -651,6 +676,7 @@ EmailTooltipZimlet.prototype.menuItemSelected =
 function(itemId, item, ev) {
 	switch (itemId) {
 		case "SEARCH":			this._searchListener();		break;
+        case "SEARCH_TO":        this._searchToListener();   break;
 		case "SEARCHBUILDER":	this._browseListener();		break;
 		case "NEWEMAIL":		this._composeListener(ev);	break;
 		case "NEWIM":			this._newImListener(ev);	break;
@@ -776,6 +802,15 @@ function() {
 		addr = (this.parseMailToLink(addr)).to || addr;
 	}
 	appCtxt.getSearchController().fromSearch(this._getAddress(addr));
+};
+
+EmailTooltipZimlet.prototype._searchToListener =
+function() {
+	var addr = this._getAddress(this._actionObject);
+	if (this.isMailToLink(addr)) {
+		addr = (this.parseMailToLink(addr)).to || addr;
+	}
+	appCtxt.getSearchController().toSearch(this._getAddress(addr));
 };
 
 EmailTooltipZimlet.prototype._filterListener =

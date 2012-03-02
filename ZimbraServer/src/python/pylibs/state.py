@@ -189,7 +189,7 @@ class State:
 				elif val == False:
 					val = "no"
 				Log.logMsg(5, "Adding postconf %s = %s" % (key, val))
-				self.current["postconf"][key] = val
+				self.current["postconf"][key] = val.replace('\n', ' ')
 			try:
 				return self.current["postconf"][key]
 			except Exception, e:
@@ -530,11 +530,11 @@ class State:
 	def doPostconf(self):
 		if self.curPostconf():
 			c = commands.commands["postconf"]
-			s = ["%s='%s'" % (postconf, val) for (postconf, val) in self.curPostconf().items()]
-			try:
-				rc = c.execute((" ".join(s),))
-			except Exception, e:
-				return rc
+			for (postconf, val) in self.curPostconf().items():
+				try:
+					rc = c.execute("%s='%s'" % (postconf, val))
+				except Exception, e:
+					return rc
 			self.clearPostconf()
 			return rc
 		return 0

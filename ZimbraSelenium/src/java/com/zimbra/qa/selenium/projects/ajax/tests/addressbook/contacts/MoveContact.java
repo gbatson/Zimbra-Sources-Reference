@@ -10,8 +10,8 @@ import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.Toaster;
+import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.DialogContactMove;
 
 
 public class MoveContact extends AjaxCommonTest  {
@@ -21,7 +21,7 @@ public class MoveContact extends AjaxCommonTest  {
 		// All tests start at the Address page
 		super.startingPage = app.zPageAddressbook;
 
-		super.startingAccount = null;		
+		super.startingAccountPreferences = null;		
 		
 	}
 	
@@ -45,6 +45,7 @@ public class MoveContact extends AjaxCommonTest  {
        
         // Refresh the view, to pick up the new contact
         FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
+        GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
         app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
         
         
@@ -54,15 +55,15 @@ public class MoveContact extends AjaxCommonTest  {
 
         //click Move icon 
         DialogContactMove dialogContactMove = (DialogContactMove) app.zPageAddressbook.zToolbarPressButton(Button.B_MOVE);
-        SleepUtil.sleepLong();
-        
+     
         //enter the moved folder
         dialogContactMove.zEnterFolderName("Emailed Contacts");        		
         dialogContactMove.zClickButton(Button.B_OK);
-        SleepUtil.sleepLong();
-        
+       
         //verify toasted message 1 contact moved to "Emailed Contacts"
-        ZAssert.assertStringContains(app.zPageAddressbook.sGetText("xpath=//div[@id='z_toast_text']"), "1 contact moved to \"Emailed Contacts\"", "Verify toast message '1 contact moved to \"Emailed Contacts\"'");
+        Toaster toast = app.zPageMain.zGetToaster();
+        String toastMsg = toast.zGetToastMessage();
+        ZAssert.assertStringContains(toastMsg, "1 contact moved to \"Emailed Contacts\"", "Verify toast message '1 contact moved to \"Emailed Contacts\"'");
 
         //verify moved contact not displayed
         List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts(); 

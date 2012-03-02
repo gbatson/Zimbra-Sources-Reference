@@ -250,8 +250,18 @@ function(list, noResultsOk, doAdd) {
                 currentSec = null;
             }
 
-			var div = this._createItemHtml(item, {now:now}, !doAdd, i);
-			if (div) {
+            var taskStatusClass = this._normalClass;
+
+            if(item.status == ZmCalendarApp.STATUS_COMP && currentSec != ZmTaskListView.SEC_PASTDUE) {
+               taskStatusClass += " ZmCompletedtask"
+            } else if(item.status == ZmCalendarApp.STATUS_COMP && currentSec == ZmTaskListView.SEC_PASTDUE) {
+               taskStatusClass += " ZmOverdueCompletedtask"
+            } else if(item.status != ZmCalendarApp.STATUS_COMP && currentSec == ZmTaskListView.SEC_PASTDUE) {
+               taskStatusClass += " ZmOverduetask"
+            }
+
+			var div = this._createItemHtml(item, {now:now,divClass:taskStatusClass}, !doAdd, i);
+            if (div) {
 				if (div instanceof Array) {
 					for (var j = 0; j < div.length; j++){
 						this._addRow(div[j]);
@@ -259,8 +269,7 @@ function(list, noResultsOk, doAdd) {
 				} else if (div.tagName || doAdd) {
 					this._addRow(div);
 				} else {
-					
-					//bug:47781
+                    //bug:47781
 					if(this._controller.getAllowableTaskStatus() == ZmTaskListController.SOAP_STATUS[ZmId.VIEW_TASK_TODO] && item.status == ZmCalendarApp.STATUS_WAIT) {
 							if(currentSec == ZmTaskListView.SEC_PASTDUE) {
 								htmlPastDueArr.push(div);
@@ -575,7 +584,7 @@ function(parent) {
         if (appCtxt.get(ZmSetting.TAGGING_ENABLED)) {
             hList.push(new DwtListHeaderItem({field:ZmItem.F_TAG, icon:"Tag", width:ZmListView.COL_WIDTH_ICON, name:ZmMsg.tag}));
         }
-        hList.push(new DwtListHeaderItem({field:ZmItem.F_PRIORITY, icon:"TaskHigh", width:ZmListView.COL_WIDTH_ICON, name:ZmMsg.priority}));
+        hList.push(new DwtListHeaderItem({field:ZmItem.F_PRIORITY, icon:"PriorityHigh_list", width:ZmListView.COL_WIDTH_ICON, name:ZmMsg.priority}));
         hList.push(new DwtListHeaderItem({field:ZmItem.F_ATTACHMENT, icon:"Attachment", width:ZmListView.COL_WIDTH_ICON, name:ZmMsg.attachment}));
         hList.push(new DwtListHeaderItem({field:ZmItem.F_SUBJECT, text:ZmMsg.subject, sortable:ZmItem.F_SUBJECT, resizeable:true, noRemove:true}));
         hList.push(new DwtListHeaderItem({field:ZmItem.F_STATUS, text:ZmMsg.status, width:ZmTaskListView.COL_WIDTH_STATUS, resizeable:true, sortable:ZmItem.F_STATUS}));

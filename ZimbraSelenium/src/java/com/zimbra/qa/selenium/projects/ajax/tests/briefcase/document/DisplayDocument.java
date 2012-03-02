@@ -1,17 +1,15 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
-import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
-import com.thoughtworks.selenium.DefaultSelenium;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
+import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase.Locators;
-
 
 public class DisplayDocument extends AjaxCommonTest {
 
@@ -20,73 +18,55 @@ public class DisplayDocument extends AjaxCommonTest {
 
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccount = null;
-
-	}
-
-	@BeforeClass(groups = { "always" })
-	public void DisplayDocumentBeforeClass() throws HarnessException {
-		logger.info(this.getClass().getSimpleName() + "BeforeClass start");
-		if (startingAccount == null) {
-			if (app.zPageMain.zIsActive()
-					&& app.zPageMain
-							.sIsElementPresent("css=[onclick='ZmZimbraMail._onClickLogOff();']"))
-				((DefaultSelenium) ClientSessionFactory.session().selenium())
-						.click("css=[onclick='ZmZimbraMail._onClickLogOff();']");
-			app.zPageLogin.zWaitForActive();
-			logger.info(this.getClass().getSimpleName() + "BeforeClass finish");
-		}
+		super.startingAccountPreferences = null;
 	}
 
 	@Test(description = "Create document through SOAP - verify through GUI", groups = { "smoke" })
 	public void DisplayDocument_01() throws HarnessException {
+		ZimbraAccount account = app.zGetActiveAccount();
+
+		FolderItem briefcaseFolder = FolderItem.importFromSOAP(account,
+				SystemFolder.Briefcase);
 
 		// Create document item
 		DocumentItem document = new DocumentItem();
 
-		ZimbraAccount account = app.zGetActiveAccount();
-		String briefcaseFolderId = document.GetBriefcaseIdUsingSOAP(account);
+		String docName = document.getDocName();
+		String docText = document.getDocText();
+
+		// Create document using SOAP
+		String contentHTML = XmlStringUtil.escapeXml("<html>" + "<body>"
+				+ docText + "</body>" + "</html>");
 
 		account
 				.soapSend("<SaveDocumentRequest requestId='0' xmlns='urn:zimbraMail'>"
 						+ "<doc name='"
-						+ document.getDocName()
+						+ docName
 						+ "' l='"
-						+ briefcaseFolderId
+						+ briefcaseFolder.getId()
 						+ "' ct='application/x-zimbra-doc'>"
-						+ "<content>&lt;html>&lt;body>"
-						+ document.getDocText()
-						+ "&lt;/body>&lt;/html></content>"
+						+ "<content>"
+						+ contentHTML
+						+ "</content>"
 						+ "</doc>"
 						+ "</SaveDocumentRequest>");
 
-		// Select Briefcase tab
-		SleepUtil.sleepSmall();
-		app.zPageBriefcase.zNavigateTo();
-
-		// ClientSessionFactory.session().selenium().refresh();
 		// refresh briefcase page
-		app.zPageBriefcase.zClick(Locators.zBriefcaseFolderIcon);
+		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		// Verify document is created
-		SleepUtil.sleepLong();
+		// String name = app.zPageBriefcase.getText(docName);
+		// ZAssert.assertEquals(name, docName,
+		// "Verify document name through GUI");
+		boolean present = app.zPageBriefcase.isPresent(docName);
 
-		String name = "";
-		if (app.zPageBriefcase.sIsElementPresent("css=[id='zl__BDLV__rows']")
-				&& app.zPageBriefcase.sIsVisible("css=[id='zl__BDLV__rows']")) {
-			name = app.zPageBriefcase
-					.sGetText("css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width='auto'] div:contains("
-							+ document.getDocName() + ")");
-		}
-
-		ZAssert.assertEquals(name, document.getDocName(),
-				"Verify document name through GUI");
+		ZAssert.assertTrue(present, "Verify document name through GUI");
 
 		/*
 		 * //name =ClientSessionFactory.session().selenium().getText(
-		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width='auto'] div[id^=zlif__BDLV__]"
+		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width*='auto'] div[id^=zlif__BDLV__]"
 		 * );//ClientSessionFactory.session().selenium().isElementPresent(
-		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width='auto']>div:contains[id*='zlif__BDLV__']"
+		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] td[width*='auto']>div:contains[id*='zlif__BDLV__']"
 		 * );//ClientSessionFactory.session().selenium().isElementPresent(
 		 * "css=div[id='zl__BDLV__rows'][class='DwtListView-Rows'] div:contains('name')"
 		 * );

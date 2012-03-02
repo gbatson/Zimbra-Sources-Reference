@@ -31,6 +31,7 @@
  */
 ZmBackupPage = function(parent, section, controller) {
     ZmPreferencesPage.call(this, parent, section, controller);
+    //this.backupDetailsLoaded = false;
 };
 
 ZmBackupPage.prototype = new ZmPreferencesPage;
@@ -54,7 +55,7 @@ function(){
 
     if (this._restoreListView) {
         var r = this._restoreListView.getSelection();
-        this._restoreListView.set(this.getBackups()._vector.clone());
+        this._restoreListView.set(this.getBackups(true)._vector.clone());
         if (r && r[0]) {
             this._restoreListView.setSelection(r[0]);
         }
@@ -85,9 +86,9 @@ ZmBackupPage.prototype._createControls =
 function() {
 
     // add "Backup" button
-    this._uploadButton = new DwtButton({parent:this, parentElement: this._htmlElId+"_button"});
-    this._uploadButton.setText(ZmMsg.offlineBackUpButton);
-    this._uploadButton.addSelectionListener(new AjxListener(this, this._handleBackupAccountsButton));
+    this._backupButton = new DwtButton({parent:this, parentElement: this._htmlElId+"_button"});
+    this._backupButton.setText(ZmMsg.offlineBackUpButton);
+    this._backupButton.addSelectionListener(new AjxListener(this, this._handleBackupAccountsButton));
 
     this._restoreButton = new DwtButton({parent:this, parentElement: this._htmlElId+"_restore_button"});
     this._restoreButton.setText(ZmMsg.offlineBackUpRestore);
@@ -98,7 +99,7 @@ function() {
 
 ZmBackupPage.prototype._handleBackupAccountsButton =
 function() {
-    this._uploadButton.setEnabled(false);
+    this._backupButton.setEnabled(false);
 
     var accts = this.getAccounts()._vector.getArray();
 
@@ -112,7 +113,7 @@ function() {
         }
     }
     if(checked.length < 1) {
-        this._uploadButton.setEnabled(true);
+        this._backupButton.setEnabled(true);
         return;
     }
 
@@ -137,10 +138,41 @@ function() {
     appController.sendRequest(params);
 };
 
+ZmBackupPage._handleBackupNowLink =
+function(id, obj) {
+    var backupPage = DwtControl.fromElementId(obj);
+    backupPage._handleBackupNowLink(id);
+};
+
+ZmBackupPage.prototype._handleBackupNowLink =
+function(id) {
+
+    try{
+        var soapDoc = AjxSoapDoc.create("AccountBackupRequest", "urn:zimbraOffline");
+        var method = soapDoc.getMethod();
+        method.setAttribute("id", id);
+        var respCallback = new AjxCallback(this, this._handleBackupAcctStarted , id);
+        var params = {
+            soapDoc:soapDoc,
+            callback:respCallback,
+            asyncMode:true
+        };
+        appCtxt.getAppController().sendRequest(params);
+    }
+    finally { // do
+        return false;
+    }
+};
+
+ZmBackupPage.prototype._handleBackupAcctStarted =
+function(id) {
+    appCtxt.setStatusMsg(AjxMessageFormat.format(ZmMsg.offlineBackupStartedForAcct, appCtxt.accountList.getAccount(id).getDisplayName()));
+};
+
 ZmBackupPage.prototype._handleBackupStarted =
 function(result) {
     appCtxt.setStatusMsg(ZmMsg.offlineBackUpStarted);
-    this._uploadButton.setEnabled(true);
+    this._backupButton.setEnabled(true);
 };
 
 ZmBackupPage.prototype._handleRestoreBackupButton =
@@ -185,6 +217,27 @@ function(id, resp) {
     }
 };
 
+ZmBackupPage.prototype.addCommand  =
+function(batchCommand) {
+
+    var soapDoc = AjxSoapDoc.create("ModifyPrefsRequest", "urn:zimbraAccount");
+    var accts = this.getAccounts()._vector.getArray();
+
+    var settingsObj = appCtxt.getSettings();
+    var setting = settingsObj.getSetting(ZmSetting.OFFLINE_BACKUP_ACCOUNT_ID);
+
+    var checked = [];
+    for (var i = 0; i < accts.length; i++) {
+        if (accts[i].active) {
+            checked.push(accts[i].id);
+        }
+    }
+    var node = soapDoc.set("pref", checked.join(","));
+    node.setAttribute("name", "zimbraPrefOfflineBackupAccountId");
+    setting.setValue(checked.join(", "));
+    batchCommand.addNewRequestParams(soapDoc);
+};
+
 /**
  * Gets the account preferences.
  *
@@ -205,16 +258,44 @@ function() {
 
 ZmBackupPage._getAccounts =
 function() {
+    var savedAccounts = appCtxt.get(ZmSetting.OFFLINE_BACKUP_ACCOUNT_ID);
+    savedAccounts = savedAccounts && savedAccounts.split(",") || [];
     var accounts = new ZmPrefAccounts();
     var visAccts = appCtxt.accountList.visibleAccounts;
     for (var i=0; i< visAccts.length; i++) {
         var name =  visAccts[i].getDisplayName();
         var desc = visAccts[i].name;
         var id = visAccts[i].id;
-        accounts.addPrefAccount(new ZmPrefAccount(name, false, desc, id));
+
+        loop1: for (var k=0; k < savedAccounts.length ; k++)  {
+                var checked = (id == AjxStringUtil.trim(savedAccounts[k]));
+                if(checked) { break loop1; }
+            }
+        accounts.addPrefAccount(new ZmPrefAccount(name, checked, desc, id));
     }
     return accounts;
 };
+
+ZmBackupPage.prototype._isChecked =
+function(name) {
+    var z = this.getAccounts().getPrefAccountByName(name);
+    return (z && z.active);
+};
+
+ZmBackupPage.prototype.isDirty =
+function() {
+    var allAccountss = this.getAccounts();
+    var r = false;
+    var arr = allAccountss._vector.getArray();
+    for (var i = 0; i < arr.length; i++) {
+        if (arr[i]._origStatus != arr[i].active) {
+            r = true;
+            break;
+        }
+    }
+    return r;
+};
+
 
 /**
  * ZmPrefAcctListView
@@ -331,8 +412,10 @@ function(html, idx, item, field, colIdx, params) {
         html[idx++] = AjxStringUtil.stripTags(item.name, true);
         html[idx++] = "</div>";
     } else if (field == ZmPrefAcctListView.COL_ACTION) {
-        html[idx++] = "<a href='javascript:;' onclick='alert(";
-        html[idx++] = '"' + item.name + '"';
+        html[idx++] = "<a href='javascript:;' onclick='ZmBackupPage._handleBackupNowLink(";
+        var accId = appCtxt.accountList.getAccountByName(AjxStringUtil.trim(item.desc)).id;
+        html[idx++] = '"' + accId.toString();
+        html[idx++] = '","' + this.parent._htmlElId + '"';
         html[idx++] = ");'>";
         html[idx++] = ZmMsg.offlineBackUpNow;
         html[idx++] = "</a>";
@@ -423,27 +506,35 @@ ZmPrefAccount = function(name, active, desc, id) {
 };
 
 ZmBackupPage.prototype.getBackups =
-function() {
-    if (!this._backups) {
+function(force) {
+    if (!this._backups || force) {
         this._backups = ZmBackupPage._getBackups();
     }
     return this._backups;
 };
 
 
-ZmBackupPage._getBackups = function(evt) {
+ZmBackupPage._getBackups =
+function(evt) {
 
-    var backups = new ZmPrefBackups();
     var soapDoc = AjxSoapDoc.create("AccountBackupEnumerationRequest", "urn:zimbraOffline");
     var result = appCtxt.getAppController().sendRequest({soapDoc:soapDoc, asyncMode:false});
 
-    this.backupDetailsLoaded = true;
     var _restoreAccts = result.AccountBackupEnumerationResponse.account;
+    var backups = new ZmPrefBackups();
     for (var i=0; i< _restoreAccts.length; i++) {
-        var fileSize = _restoreAccts[i].backup[0].fileSize;
-        var timestamp = _restoreAccts[i].backup[0].time;
         var acct =  _restoreAccts[i].id;
-        backups.addPrefBackup(new ZmPrefBackup(timestamp, false, fileSize, acct));
+        var backupArray = _restoreAccts[i].backup;
+        if(!backupArray) {
+            continue;
+        }
+
+        for(var k=0; k<backupArray.length; k++) {
+            var fileSize = backupArray[k].fileSize;
+            var timestamp = backupArray[k].time;
+            backups.addPrefBackup(new ZmPrefBackup(timestamp, false, fileSize, acct));
+        }
+
     }
     return backups;
 };
@@ -489,9 +580,7 @@ ZmPrefBackupListView.prototype.set =
 function(list) {
     this._checkboxIds = [];
     DwtListView.prototype.set.call(this, list);
-    //    if (!this.backupDetailsLoaded) {
-    this.loadBackupDetails();
-    //    }
+    //this.loadBackupDetails();
 };
 
 ZmPrefBackupListView.prototype.loadBackupDetails =
@@ -501,6 +590,7 @@ function() {
     for (var i = 0; i < restoreArr.length; i++) {
         item.timestamp = restoreArr[i].timestamp;
         item.size = restoreArr[i].fileSize;
+        item.acct = restoreArr[i].acct;
         this.setCellContents(item, ZmPrefBackupListView.COL_NAME, item.timestamp);
         this.setCellContents(item, ZmPrefBackupListView.COL_DESC, item.size);
     }
@@ -538,8 +628,12 @@ function(html, idx, item, field, colIdx, params) {
         html[idx++] = item.active ? "checked " : "";
         html[idx++] = "id='";
         html[idx++] = item.timestamp;
+        html[idx++] = "_";
+        html[idx++] = item.acct;
         html[idx++] = "_backupCheckbox' _name='";
         html[idx++] = item.timestamp;
+        html[idx++] = "_";
+        html[idx++] = item.acct;
         html[idx++] = "' _bkId='";
         html[idx++] = this._internalId;
         html[idx++] = "' onchange='ZmPrefBackupListView._activeStateChange'>";
@@ -547,23 +641,34 @@ function(html, idx, item, field, colIdx, params) {
         html[idx++] = "<div id='";
         html[idx++] = this._getCellId(item, ZmPrefBackupListView.COL_DESC);
         html[idx++] = "'>";
-        html[idx++] = item.fileSize;
+        var fSize = item.fileSize;
+        var numFormater = AjxNumberFormat.getInstance();
+        if (fSize != null && fSize >= 0) {
+            if (fSize < 1024) { //" B";
+                fSize = numFormater.format(fSize) + " "+ZmMsg.b;
+            }
+            else if (fSize < (1024*1024) ) { //" KB";
+                fSize = numFormater.format(Math.round((fSize / 1024) * 10) / 10) + " "+ZmMsg.kb;
+            }
+            else { //" MB";
+                fSize = numFormater.format(Math.round((fSize / (1024*1024)) * 10) / 10) + " "+ZmMsg.mb;
+            }
+        } else { fSize = 0+" "+ZmMsg.b; }
+        html[idx++] = fSize;
         html[idx++] = "</div>";
     }
     else if (field == ZmPrefBackupListView.COL_NAME) {
         html[idx++] = "<div id='";
         html[idx++] = this._getCellId(item, ZmPrefBackupListView.COL_NAME);
-        html[idx++] = "' title='";
-        html[idx++] = item.name;
         html[idx++] = "'>";
-        html[idx++] = item.timestamp;
+        html[idx++] = AjxDateFormat.getDateTimeInstance(AjxDateFormat.MEDIUM).format(new Date(item.timestamp));
         html[idx++] = "</div>";
     }
     else if (field == ZmPrefBackupListView.COL_ACTION) {
         html[idx++] = "<div id='";
         html[idx++] = this._getCellId(item, ZmPrefBackupListView.COL_ACTION);
         html[idx++] = "'>";
-        html[idx++] = appCtxt.accountList.getAccount(item.id).name;
+        html[idx++] = appCtxt.accountList.getAccount(item.acct).name;
         html[idx++] = "</div>";
     }
     return idx;
@@ -575,7 +680,17 @@ function(ev) {
     var bkId = target.getAttribute("_bkId");
     var bk = AjxCore.objectWithId(bkId);
     var name = target.getAttribute("_name");
-    var z = bk.parent.getBackups().getPrefBackupByName(name);
+    var bkups = bk.parent.getBackups();
+    var z = bkups.getPrefBackupByName(name);
+    var bkarray = bkups._vector.getArray();
+    // Make checkbox behave like radio button
+    for (var k=0; k<bkarray.length; k++) {
+        if(bkarray[k].active && (bkarray[k].timestamp != z.timestamp)) {
+            var y = document.getElementById([bkarray[k].timestamp, "_", bkarray[k].acct, "_backupCheckbox"].join(""));
+            y.checked = false;
+            bkarray[k].active = false;
+        }
+    }
     if (z) {
         z.active = !z.active;
     }
@@ -614,18 +729,20 @@ function() {
 ZmPrefBackups.prototype.addPrefBackup =
 function(Backup) {
     this._vector.add(Backup);
-    this._zNameHash[Backup.timestamp] = Backup;
+    var hash = [Backup.timestamp, "_", Backup.acct].join("");
+    this._zNameHash[hash] = Backup;
 };
 
 ZmPrefBackups.prototype.removePrefBackup =
 function(Backup) {
-    delete this._zNameHash[Backup.timestamp];
+    var hash = [Backup.timestamp, "_", Backup.acct].join("");
+    delete this._zNameHash[hash];
     this._vector.remove(Backup);
 };
 
 ZmPrefBackups.prototype.getPrefBackupByName =
-function(timestamp) {
-    return this._zNameHash[timestamp];
+function(hash) {
+    return this._zNameHash[hash];
 };
 
 /**

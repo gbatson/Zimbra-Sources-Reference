@@ -341,11 +341,6 @@ function() {
         }
     }
 
-    // pull out the account from the fully-qualified ID
-    if (!this.account) {
-        this.account = ZmOrganizer.parseId(this.id).account;
-    }
-
     // fallback on the active account if account not found from parsed ID (most
     // likely means this is a conv inside a shared folder of the active acct)
     if (!this.account) {
@@ -384,6 +379,9 @@ function(obj, batchMode) {
 			}
 		}
 		conv.folders = AjxUtil.hashCopy(this.folders);
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmConv::notifyModify - conv changed ID from " + conv._oldId + " to " + conv.id);
+		var folders = AjxUtil.keys(conv.folders);
+		AjxDebug.println(AjxDebug.NOTIFY, "copied " + folders.length + " folders: " + folders.join(" "));
 		if (conv.list && conv._oldId && conv.list._idHash[conv._oldId]) {
 			delete conv.list._idHash[conv._oldId];
 			conv.list._idHash[conv.id] = conv;
@@ -588,6 +586,7 @@ function(msg, callback) {
 
 ZmConv.prototype._loadFromDom =
 function(convNode) {
+	AjxDebug.println(AjxDebug.NOTIFY, "ZmConv::_loadFromDom - conv ID: " + convNode.id);
 	this.numMsgs = convNode.n;
 	this.date = convNode.d;
 	this._parseFlags(convNode.f);
@@ -609,6 +608,7 @@ function(convNode) {
 			this.msgIds.push(convNode.m[i].id);
 		}
 		if (count == 1) {
+			AjxDebug.println(AjxDebug.NOTIFY, "single msg conv");
 			var msgNode = convNode.m[0];
 
 			// bug 49067 - SearchConvResponse does not return the folder ID w/in
@@ -618,9 +618,14 @@ function(convNode) {
 			if (searchFolderId) {
 				this.folderId = searchFolderId;
 				this.folders[searchFolderId] = true;
+				AjxDebug.println(AjxDebug.NOTIFY, "added folder (from search): " + searchFolderId);
 			} else if (msgNode.l) {
 				this.folderId = msgNode.l;
 				this.folders[msgNode.l] = true;
+				AjxDebug.println(AjxDebug.NOTIFY, "added folder (from msg): " + msgNode.l);
+			}
+			else {
+				AjxDebug.println(AjxDebug.NOTIFY, "no folder added for conv");
 			}
 			if (msgNode.s) {
 				this.size = msgNode.s;
@@ -647,6 +652,8 @@ function(convNode) {
 			}
 		}
 	}
+	var folders = AjxUtil.keys(this.folders);
+	AjxDebug.println(AjxDebug.NOTIFY, "ZmConv::_loadFromDom - conv spans " + folders.length + " folder(s): " + folders.join(" "));
 };
 
 ZmConv.prototype._loadFromMsg =
@@ -685,7 +692,7 @@ function(ev) {
 		// a msg was moved or deleted, see if this conv's row should remain
 		if (this.list && this.list.search && !this.hasMatchingMsg(this.list.search, true)) {
             this.moveLocal(ev.item && ev.item.folderId);
-			this._notify(ZmEvent.E_MOVE);
+			this._notify(ev.event);
 		}
 	}
 };

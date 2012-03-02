@@ -40,6 +40,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.base.Strings;
 import com.zimbra.cs.upgrade.MailboxUpgrade;
 import com.zimbra.common.util.MapUtil;
@@ -145,7 +146,6 @@ import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.JMSession;
 import com.zimbra.cs.util.Zimbra;
-import com.zimbra.cs.wiki.MigrateToDocuments;
 import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.cs.zclient.ZMailbox.Options;
 
@@ -1317,10 +1317,11 @@ public class Mailbox {
     }
 
     private void clearItemCache() {
-        if (mCurrentChange.isActive())
+        if (mCurrentChange.isActive()) {
             mCurrentChange.itemCache.clear();
-        else
+        } else {
             mItemCache.clear();
+        }
     }
 
     void cache(MailItem item) throws ServiceException {
@@ -1333,14 +1334,14 @@ public class Mailbox {
                 mTagCache.put(item.getName().toLowerCase(), (Tag) item);
             }
         } else if (item instanceof Folder) {
-            if (mFolderCache != null)
+            if (mFolderCache != null) {
                 mFolderCache.put(item.getId(), (Folder) item);
+            }
         } else {
             getItemCache().put(item.getId(), item);
         }
 
-        if (ZimbraLog.cache.isDebugEnabled())
-            ZimbraLog.cache.debug("cached " + MailItem.getNameForType(item) + " " + item.getId() + " in mailbox " + getId());
+        ZimbraLog.cache.debug("cached %s %d in mailbox %d", MailItem.getNameForType(item), item.getId(), getId());
     }
 
     protected void uncache(MailItem item) throws ServiceException {
@@ -1905,46 +1906,52 @@ public class Mailbox {
         throw ServiceException.PERM_DENIED("you do not have sufficient permissions");
     }
 
-    /** Makes a copy of the given item with {@link Flag#BITMASK_UNCACHED} set.                                                                                                                                                 
-     *  This copy is not linked to its {@code Mailbox} and thus will not change                                                                                                                                                
-     *  when modifications are subsequently made to the original item.  The                                                                                                                                                    
-     *  original item is unchanged.                                                                                                                                                                                            
-     *  <p>                                                                                                                                                                                                                    
-     *  This method should only be called <i>immediately</i> before returning                                                                                                                                                  
-     *  an item from a public {@code Mailbox} method.  In order to handle                                                                                                                                                      
-     *  recursive calls, item duplication occurs only when we're in a top-level                                                                                                                                                
-     *  transaction; otherwise, the original item is returned.                                                                                                                                                                 
+    /** Makes a copy of the given item with {@link Flag#BITMASK_UNCACHED} set.
+     *  This copy is not linked to its {@code Mailbox} and thus will not change
+     *  when modifications are subsequently made to the original item.  The
+     *  original item is unchanged.
+     *  <p>
+     *  This method should only be called <i>immediately</i> before returning
+     *  an item from a public {@code Mailbox} method.  In order to handle
+     *  recursive calls, item duplication occurs only when we're in a top-level
+     *  transaction; otherwise, the original item is returned.
      * @see #snapshotFolders() */
     @SuppressWarnings("unchecked")
     private <T extends MailItem> T snapshotItem(T item) throws ServiceException {
-        if (item == null || item.isTagged(Flag.ID_FLAG_UNCACHED) || mCurrentChange.depth != 1)
+        if (item == null || item.isTagged(Flag.ID_FLAG_UNCACHED) || mCurrentChange.depth > 1) {
             return item;
+        }
 
         if (item instanceof Folder) {
-            return (T) snapshotFolders().get(item.getId());
-        } else if (item instanceof VirtualConversation) {
-            // snapshotting the wrapped message passes BITMASK_UNCACHED onto the virual conversation                                                                                                                           
-            return (T) new VirtualConversation(this, snapshotItem(((VirtualConversation) item).getMessage()));
+            return mFolderCache == null ? item : (T) snapshotFolders().get(item.getId());
         }
 
         MailItem.UnderlyingData data = item.getUnderlyingData().clone();
         data.flags   |= Flag.BITMASK_UNCACHED;
         data.metadata = item.encodeMetadata();
-        return (T) MailItem.constructItem(this, data);
+        if (item instanceof VirtualConversation) {
+            // VirtualConversations need to be special-cased since MailItem.constructItem() returns null for them
+            return (T) new VirtualConversation(this, data);
+        } else {
+            return (T) MailItem.constructItem(this, data);
+        }
     }
 
-    /** Makes a copy of the {@code Mailbox}'s entire {@code Folder} tree with                                                                                                                                                  
-     *  {@link Flag#BITMASK_UNCACHED} set on each copied folder.  This copy is                                                                                                                                                 
-     *  not linked to its {@code Mailbox} and thus will not change when                                                                                                                                                        
-     *  modifications are subsequently made to any of the folders.  The                                                                                                                                                        
-     *  original folders are unchanged.                                                                                                                                                                                        
-     *  <p>                                                                                                                                                                                                                    
-     *  This method should only be called <i>immediately</i> before returning                                                                                                                                                  
-     *  the folder set from a public {@code Mailbox} method.  In order to                                                                                                                                                      
-     *  handle recursive calls, item duplication occurs only when we're in a                                                                                                                                                   
-     *  top-level transaction; otherwise, the live folder cache is returned. */
+    /** Makes a copy of the {@code Mailbox}'s entire {@code Folder} tree with
+     *  {@link Flag#BITMASK_UNCACHED} set on each copied folder.  This copy is
+     *  not linked to its {@code Mailbox} and thus will not change when
+     *  modifications are subsequently made to any of the folders.  The
+     *  original folders are unchanged.
+     *  <p>
+     *  This method should only be called <i>immediately</i> before returning
+     *  the folder set from a public {@code Mailbox} method.  In order to
+     *  handle recursive calls, item duplication occurs only when we're in a
+     *  top-level transaction; otherwise, the live folder cache is returned.
+     *  <p>
+     *  If the {@code Mailbox}'s folder cache is {@code null}, this method will
+     *  also return {@code null}. */
     private Map<Integer, Folder> snapshotFolders() throws ServiceException {
-        if (mCurrentChange.depth > 1)
+        if (mCurrentChange.depth > 1 || mFolderCache == null)
             return mFolderCache;
 
         Map<Integer, Folder> copies = new HashMap<Integer, Folder>();
@@ -1967,15 +1974,15 @@ public class Mailbox {
                                             MailItem.typeToBitmask(MailItem.TYPE_SEARCHFOLDER) |
                                             MailItem.typeToBitmask(MailItem.TYPE_MOUNTPOINT);
 
-    /** Makes a deep copy of the {@code PendingModifications} object with                                                                                                                                                      
-     *  {@link Flag#BITMASK_UNCACHED} set on each {@code MailItem} present in                                                                                                                                                  
-     *  the {@code created} and {@code modified} hashes.  These copied {@code                                                                                                                                                  
-     *  MailItem}s are not linked to their {@code Mailbox} and thus will not                                                                                                                                                   
-     *  change when modifications are subsequently made to the contents of the                                                                                                                                                 
-     *  {@code Mailbox}.  The original {@code PendingModifications} object and                                                                                                                                                 
-     *  the {@code MailItem}s it references are unchanged.                                                                                                                                                                     
-     *  <p>                                                                                                                                                                                                                    
-     *  This method should only be called <i>immediately</i> before notifying                                                                                                                                                  
+    /** Makes a deep copy of the {@code PendingModifications} object with
+     *  {@link Flag#BITMASK_UNCACHED} set on each {@code MailItem} present in
+     *  the {@code created} and {@code modified} hashes.  These copied {@code
+     *  MailItem}s are not linked to their {@code Mailbox} and thus will not
+     *  change when modifications are subsequently made to the contents of the
+     *  {@code Mailbox}.  The original {@code PendingModifications} object and
+     *  the {@code MailItem}s it references are unchanged.
+     *  <p>
+     *  This method should only be called <i>immediately</i> before notifying
      *  listeners of the changes from the currently-ending transaction. */
     private PendingModifications snapshotModifications(PendingModifications pms) throws ServiceException {
         if (pms == null)
@@ -1983,7 +1990,7 @@ public class Mailbox {
         assert(mCurrentChange.depth == 0);
 
         Map<Integer, MailItem> cache = mItemCache.get();
-        Map<Integer, Folder> folders = (pms.changedTypes & FOLDER_TYPES) == 0 ? mFolderCache : snapshotFolders();
+        Map<Integer, Folder> folders = mFolderCache == null || (pms.changedTypes & FOLDER_TYPES) == 0 ? mFolderCache : snapshotFolders();
 
         PendingModifications snapshot = new PendingModifications();
 
@@ -1993,14 +2000,15 @@ public class Mailbox {
 
         if (pms.created != null && !pms.created.isEmpty()) {
             for (MailItem item : pms.created.values()) {
-                if (item instanceof Folder) {
+                if (item instanceof Folder && folders != null) {
                     Folder folder = folders.get(item.getId());
-                    if (folder != null) {
-                        snapshot.recordCreated(folder);
-                    } else {
-                        ZimbraLog.mailbox.warn("folder missing from snapshotted folder set: " + item.getId());
+                    if (folder == null) {
+                        ZimbraLog.mailbox.warn("folder missing from snapshotted folder set: %d", item.getId());
+                        folder = (Folder) item;
                     }
+                    snapshot.recordCreated(folder);
                 } else {
+                    // NOTE: if the folder cache is null, folders fall down here and should always get copy == false
                     boolean copy = item instanceof Tag || (cache != null && cache.containsKey(item.getId()));
                     snapshot.recordCreated(copy ? snapshotItem(item) : item);
                 }
@@ -2016,14 +2024,15 @@ public class Mailbox {
                 }
 
                 MailItem item = (MailItem) chg.what;
-                if (item instanceof Folder) {
+                if (item instanceof Folder && folders != null) {
                     Folder folder = folders.get(item.getId());
-                    if (folder != null) {
-                        snapshot.recordModified(folder, chg.why);
-                    } else {
-                        ZimbraLog.mailbox.warn("folder missing from snapshotted folder set: " + item.getId());
+                    if (folder == null) {
+                        ZimbraLog.mailbox.warn("folder missing from snapshotted folder set: %d", item.getId());
+                        folder = (Folder) item;
                     }
+                    snapshot.recordModified(folder, chg.why);
                 } else {
+                    // NOTE: if the folder cache is null, folders fall down here and should always get copy == false
                     boolean copy = item instanceof Tag || (cache != null && cache.containsKey(item.getId()));
                     snapshot.recordModified(copy ? snapshotItem(item) : item, chg.why);
                 }
@@ -3000,32 +3009,27 @@ public class Mailbox {
      * If the returned folder is a Mountpoint, then it can be assumed that the remaining part is a subfolder in
      * the remote mailbox.
      *
-     * @param octxt
-     * @param startingFolderId Folder to start from (pass Mailbox.ID_FOLDER_ROOT to start from the root)
-     * @param path
-     * @return
-     * @throws ServiceException if the folder with <tt>startingFolderId</tt> does not exist
-     * or <tt>path</tt> is <tt>null</tt> or empty.
+     * @param baseFolderId Folder to start from (pass Mailbox.ID_FOLDER_ROOT to start from the root)
+     * @throws ServiceException if the folder with {@code startingFolderId} does not exist or {@code path} is
+     * {@code null} or empty.
      */
-    public synchronized Pair<Folder, String> getFolderByPathLongestMatch(OperationContext octxt, int startingFolderId, String path) throws ServiceException {
-        if (path == null)
+    public synchronized Pair<Folder, String> getFolderByPathLongestMatch(OperationContext octxt, int baseFolderId,
+            String path) throws ServiceException {
+        if (Strings.isNullOrEmpty(path)) {
             throw MailServiceException.NO_SUCH_FOLDER(path);
-        while (path.startsWith("/"))
-            path = path.substring(1);                         // strip off the optional leading "/"
-        while (path.endsWith("/"))
-            path = path.substring(0, path.length() - 1);      // strip off the optional trailing "/"
-
-        if (path.length() == 0)
-            throw MailServiceException.NO_SUCH_FOLDER("/" + path);
-
-        Folder folder = getFolderById(null, startingFolderId);
+        }
+        Folder folder = getFolderById(null, baseFolderId);  // Null ctxt avoids PERM_DENIED error when requester != owner.
         assert(folder != null);
+        path = CharMatcher.is('/').trimFrom(path); // trim leading and trailing '/'
+        if (path.isEmpty()) { // relative root to the base folder
+            return new Pair<Folder, String>(checkAccess(folder), null);
+        }
 
         boolean success = false;
         try {
             beginTransaction("getFolderByPathLongestMatch", octxt);
-
-            String unmatched = null, segments[] = path.split("/");
+            String unmatched = null;
+            String[] segments = path.split("/");
             for (int i = 0; i < segments.length; i++) {
                 Folder subfolder = folder.findSubfolder(segments[i]);
                 if (subfolder == null) {
@@ -6627,8 +6631,14 @@ public class Mailbox {
                                     // with the same RECURRENCE-ID.  Treat it as a changed item.
                                     changed = true;
                                 } else {
-                                    changed = inv.getSeqNo() > curInv.getSeqNo() ||
-                                              (inv.getSeqNo() == curInv.getSeqNo() && inv.getDTStamp() > curInv.getDTStamp());
+                                    if (inv.getSeqNo() > curInv.getSeqNo()) {
+                                        changed = true;
+                                    } else if (inv.getSeqNo() == curInv.getSeqNo()) {
+                                        // Compare LAST-MODIFIED rather than DTSTAMP. (bug 55735)
+                                        changed = inv.getLastModified() > curInv.getLastModified();
+                                    } else {
+                                        changed = false;
+                                    }
                                 }
                                 importIt = sameFolder && changed;
                             }
@@ -7028,20 +7038,20 @@ public class Mailbox {
 
     public WikiItem createWiki(OperationContext octxt, int folderId, String wikiword, String author, String description, InputStream data)
     throws ServiceException {
-        return (WikiItem) createDocument(octxt, folderId, wikiword, WikiItem.WIKI_CONTENT_TYPE, author, description, data, MailItem.TYPE_WIKI);
+        return (WikiItem) createDocument(octxt, folderId, wikiword, WikiItem.WIKI_CONTENT_TYPE, author, description, true, data, MailItem.TYPE_WIKI);
     }
 
     public Document createDocument(OperationContext octxt, int folderId, String filename, String mimeType, String author, String description, InputStream data)
     throws ServiceException {
-        return createDocument(octxt, folderId, filename, mimeType, author, description, data, MailItem.TYPE_DOCUMENT);
+        return createDocument(octxt, folderId, filename, mimeType, author, description, true, data, MailItem.TYPE_DOCUMENT);
     }
 
-    public Document createDocument(OperationContext octxt, int folderId, String filename, String mimeType, String author, String description,
+    public Document createDocument(OperationContext octxt, int folderId, String filename, String mimeType, String author, String description, boolean descEnabled,
                                    InputStream data, byte type)
     throws ServiceException {
         mIndexHelper.maybeIndexDeferredItems();
         try {
-            ParsedDocument pd = new ParsedDocument(data, filename, mimeType, System.currentTimeMillis(), author, description);
+            ParsedDocument pd = new ParsedDocument(data, filename, mimeType, System.currentTimeMillis(), author, description, descEnabled);
             return createDocument(octxt, folderId, pd, type);
         } catch (IOException ioe) {
             throw ServiceException.FAILURE("error writing document blob", ioe);
@@ -7101,7 +7111,19 @@ public class Mailbox {
         mIndexHelper.maybeIndexDeferredItems();
         Document doc = getDocumentById(octxt, docId);
         try {
-            ParsedDocument pd = new ParsedDocument(data, name, doc.getContentType(), System.currentTimeMillis(), author, description);
+            ParsedDocument pd = new ParsedDocument(data, name, doc.getContentType(), System.currentTimeMillis(), author, description, doc.isDescriptionEnabled());
+            return addDocumentRevision(octxt, docId, pd);
+        } catch (IOException ioe) {
+            throw ServiceException.FAILURE("error writing document blob", ioe);
+        }
+    }
+
+    public Document addDocumentRevision(OperationContext octxt, int docId, String author, String name, String description, boolean descEnabled, InputStream data)
+    throws ServiceException {
+        mIndexHelper.maybeIndexDeferredItems();
+        Document doc = getDocumentById(octxt, docId);
+        try {
+            ParsedDocument pd = new ParsedDocument(data, name, doc.getContentType(), System.currentTimeMillis(), author, description, descEnabled);
             return addDocumentRevision(octxt, docId, pd);
         } catch (IOException ioe) {
             throw ServiceException.FAILURE("error writing document blob", ioe);
@@ -7127,7 +7149,6 @@ public class Mailbox {
                 redoRecorder.setDocument(pd);
                 redoRecorder.setDocId(docId);
                 redoRecorder.setItemType(doc.getType());
-                redoRecorder.setDescription(doc.getDescription());
                 // TODO: simplify the redoRecorder by not subclassing from CreateMessage
 
                 // Get the redolog data from the mailbox blob.  This is less than ideal in the
@@ -7450,6 +7471,20 @@ public class Mailbox {
         mCurrentChange.addIndexItem(item);
     }
 
+    /**
+     * for folder view migration
+     */
+    synchronized void migrateFolderView(OperationContext octxt, Folder f, byte newView) throws ServiceException {
+        boolean success = false;
+        try {
+            beginTransaction("migrateFolderView", octxt, null);
+            f.migrateDefaultView(newView);
+            success = true;
+        } finally {
+            endTransaction(success);
+        }
+    }
+    
     /**
      * Be very careful when changing code in this method.  The order of almost
      * every line of code is important to ensure correct redo logging and crash
@@ -7931,22 +7966,11 @@ public class Mailbox {
 
     protected void migrateWikiFolders() throws ServiceException {
         MigrateToDocuments migrate = new MigrateToDocuments();
-        boolean success = false;
         try {
             migrate.handleMailbox(this);
-            OperationContext octxt = new OperationContext(this);
-            beginTransaction("migrateWikiFolders", octxt, null);
-            for (Folder f : mFolderCache.values()) {
-                if (f.getDefaultView() == MailItem.TYPE_WIKI) {
-                    f.migrateDefaultView(MailItem.TYPE_DOCUMENT);
-                }
-            }
-            success = true;
             ZimbraLog.mailbox.info("wiki folder migration finished");
         } catch (Exception e) {
             ZimbraLog.mailbox.warn("wiki folder migration failed for "+getAccount().getName(), e);
-        } finally {
-            endTransaction(success);
         }
     }
 

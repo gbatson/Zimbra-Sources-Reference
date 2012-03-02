@@ -78,7 +78,8 @@
             <span class="" >${fn:escapeXml(to)}</span>
         </div></c:if>
         <c:if test="${not empty cc}"><div class="View address"><span valign='top' class='label' width="35" nowrap="nowrap" align="right"><fmt:message key="ccLabel"/></span><span class="" >${fn:escapeXml(cc)}</span></div></c:if>
-    </div><script type="text/javascript">var elem =  document.getElementById('d_div');if(elem) elem.style.display = 'none';elem = document.getElementById('d_btn_td');if(elem) elem.style.display = 'block';</script>
+    </div><script type="text/javascript">var elem =  document.getElementById('d_div');if(elem) elem.style.display = 'none';elem = document.getElementById('d_btn_td');if(elem) elem.style.display = 'block';
+elem = document.getElementById('inboxUnread'); var unreadCount = ${mailbox.inbox.unreadCount}; if(elem) {elem.innerHTML = (unreadCount > 0 ? unreadCount : '');}</script>
 </c:if>
 
 
@@ -158,6 +159,8 @@
 
 </div>
 </div>
+<c:if test="${ua.isiPad == true}">
 </div>
 </div>
 </div>
+</c:if> 

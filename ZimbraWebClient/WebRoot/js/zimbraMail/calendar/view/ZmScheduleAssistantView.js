@@ -84,7 +84,6 @@ function() {
     this._customizeBtn.setToolTipContent(ZmMsg.customizeSuggestions);
     this._customizeBtn.addSelectionListener(new AjxListener(this, this._prefListener));
 
-
     this._createMiniCalendar();
 
     var id = this.getHTMLElId();
@@ -92,7 +91,14 @@ function() {
 
     var prefDlg = this.getPrefDialog();
     prefDlg.setCallback(new AjxCallback(this, this._prefChangeListener));
-    prefDlg.getSearchPreference(appCtxt.getActiveAccount());
+    prefDlg.getSearchPreference(appCtxt.getActiveAccount(), new AjxCallback(this, this.onSearchPrefLoaded));
+};
+
+ZmScheduleAssistantView.prototype.onSearchPrefLoaded =
+function() {
+    if(!this.isSuggestionsEnabled()) {
+        this.reset();
+    }
 };
 
 ZmScheduleAssistantView.prototype._setSuggestionLabel =
@@ -215,7 +221,14 @@ function(clearSelection, forceRefresh) {
     if(clearSelection) this._date = null;
     var tf = this._getTimeFrame();
     this._miniCalendar.setDate(tf.start, true);
-    this.reset(tf.start, this._attendees, forceRefresh);    
+    this.reset(tf.start, this._attendees, forceRefresh);
+};
+
+//shows a link which triggers on demand suggestions
+ZmScheduleAssistantView.prototype.showSuggestActionLinks =
+function() {
+    var date = this._date || this._miniCalendar.getDate();
+    this._timeSuggestions.setShowSuggestionsHTML(date);
 };
 
 ZmScheduleAssistantView.prototype.addOrganizer =
@@ -273,8 +286,13 @@ function(date, attendees, forceRefresh) {
     if(!this._editView.isSuggestionsNeeded() || !this.isSuggestionsEnabled()) {
         if(this._timeSuggestions) this._timeSuggestions.removeAll();
         this.clearMiniCal();
+        if(!this.isSuggestionsEnabled()) {
+            this._date = date || this._miniCalendar.getDate();
+            if(appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED) && appCtxt.get(ZmSetting.GAL_ENABLED)) this._timeSuggestions.setShowSuggestionsHTML(this._date);
+        }
         return;
     }
+
 
     var newDuration = this._editView.getDuration();
     var newKey = this.getFormKey(date, attendees);
@@ -583,7 +601,13 @@ function() {
 
 ZmScheduleAssistantView.prototype.isSuggestionsEnabled =
 function() {
-      return this._prefDialog ? (this._prefDialog.getPreference(ZmTimeSuggestionPrefDialog.DISABLE_SUGGESTIONS_FIELD) != 'true') : true;
+    if(!appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED) || !appCtxt.get(ZmSetting.GAL_ENABLED)) return false;
+    return this._manualOverrideFlag || (this._prefDialog ? (this._prefDialog.getPreference(ZmTimeSuggestionPrefDialog.DISABLE_SUGGESTIONS_FIELD) != 'true') : true);
+};
+
+ZmScheduleAssistantView.prototype.overrideManualSuggestion =
+function(enable) {
+    this._manualOverrideFlag = enable;
 };
 
 ZmScheduleAssistantView.prototype.isSuggestRooms =
@@ -710,7 +734,8 @@ function(slots, startTime, endTime) {
     for (var i = 0; i < slots.length; i++) {
         var startConflict = startTime >= slots[i].s && startTime < slots[i].e;
         var endConflict = endTime > slots[i].s && endTime <= slots[i].e;
-        if(startConflict || endConflict) {
+        var inlineSlotConflict = slots[i].s >= startTime && slots[i].e <= endTime;
+        if(startConflict || endConflict || inlineSlotConflict) {
             return false;
         }
     };

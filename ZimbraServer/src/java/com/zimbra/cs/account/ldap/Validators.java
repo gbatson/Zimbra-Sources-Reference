@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,64 +38,64 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.CosBy;
 import com.zimbra.cs.account.Provisioning.CountObjectsType;
-import com.zimbra.cs.account.ldap.LdapProvisioning.ProvisioningValidator;
 
-public class Validators {
-    
-    public static void init() {
-        LdapProvisioning.register(new DomainAccountValidator());
-        LdapProvisioning.register(new DomainMaxAccountsValidator());
+final class Validators {
+
+    private Validators() {
     }
 
     // cache the result for 1 min unless the count is within 5 of the limit.
-    private static class DomainAccountValidator implements ProvisioningValidator {
+    static class DomainAccountValidator implements Provisioning.ProvisioningValidator {
         private static final long LDAP_CHECK_INTERVAL  = 60 * 1000;  // 1 min
         private static final long NUM_ACCT_THRESHOLD = 5;
-        
+
         private long mNextCheck;
         private long mLastUserCount; // PFN: this isn't counted per-domain, is it?
-        
+
+        @Override
         public void refresh() {
             setNextCheck(0);
         }
-        
+
         private synchronized void setNextCheck(long nextCheck) {
             mNextCheck = nextCheck;
         }
-        
+
         private synchronized long getNextCheck() {
             return mNextCheck;
         }
-        
-        public void validate(LdapProvisioning prov, String action, Object... args) throws ServiceException {
+
+        @Override
+        public void validate(Provisioning prov, String action, Object... args) throws ServiceException {
             if (args.length < 1) return;
-            if (!(action.equals("createAccount") || action.equals("renameAccount")) || !(args[0] instanceof String))
+            if (!(action.equals(CREATE_ACCOUNT) || action.equals(RENAME_ACCOUNT)) || !(args[0] instanceof String))
                 return;
-            
+
             if (args.length > 1 && args[1] instanceof String[] &&
                     Arrays.asList((String[]) args[1]).contains(LdapProvisioning.C_zimbraCalendarResource)) {
                 return; // as in LicenseManager, don't want to count calendar resources
             }
-            
+
             if (args.length > 2 && args[2] instanceof Map) {
-                Map<String,Object> acctAttrs = (Map) args[2];
+                @SuppressWarnings("unchecked")
+                Map<String, Object> acctAttrs = (Map<String, Object>) args[2];
                 if (isSystemProperty(acctAttrs))
                     return;
             }
-            
+
             String emailAddr = (String)args[0];
             String domain = null;
             int index = emailAddr.indexOf('@');
             if (index != -1)
                 domain = emailAddr.substring(index+1);
-            
+
             if (domain == null)
                 return;
 
             Domain d = prov.get(Provisioning.DomainBy.name, domain);
             if (d == null)
                 return;
-            
+
             String limit = d.getAttr(Provisioning.A_zimbraDomainMaxAccounts);
             if (limit == null)
                 return;
@@ -108,38 +108,38 @@ public class Validators {
                 } catch (ServiceException e) {
                     Throwable cause = e.getCause();
                     String causeMsg = cause.getMessage();
-                    
+
 
                     if (causeMsg != null && causeMsg.contains("timeout"))
                         throw ServiceException.FAILURE("The directory may not be responding or is responding slowly.  " +
                                 "The directory may need tuning or the LDAP read timeout may need to be raised.  " +
-                                "Otherwise, removing the zimbraDomainMaxAccounts restriction will avoid this check.", e); 
+                                "Otherwise, removing the zimbraDomainMaxAccounts restriction will avoid this check.", e);
                     else
                         throw ServiceException.FAILURE("Unable to count users for setting zimbraDomainMaxAccounts=" +  limit + "" +
                                 " in domain " + d.getName(), e);
 
                 }
-                long nextCheck = (maxAccount - mLastUserCount) > NUM_ACCT_THRESHOLD ? 
+                long nextCheck = (maxAccount - mLastUserCount) > NUM_ACCT_THRESHOLD ?
                         LDAP_CHECK_INTERVAL : 0;
                 setNextCheck(nextCheck);
             }
-            
+
             if (maxAccount <= mLastUserCount)
                 throw AccountServiceException.TOO_MANY_ACCOUNTS("domain="+domain+" ("+maxAccount+")");
         }
-        
+
     }
-    
+
     private static boolean isSystemProperty(Map<String,Object> attrs) {
         if (attrs == null)
             return false;
-        
+
         Object o = attrs.get(Provisioning.A_zimbraIsSystemResource);
         if (o != null && "true".equalsIgnoreCase(o.toString()))
             return true; // is system resource, do not check
-        
-        // if we are restoring, the OC array would be empty and 
-        // all object classes will be in the attr map.  
+
+        // if we are restoring, the OC array would be empty and
+        // all object classes will be in the attr map.
         // Skip license check if we are restoring a calendar resource
         o = attrs.get(Provisioning.A_objectClass);
         if (o instanceof String[]) {
@@ -147,32 +147,34 @@ public class Validators {
             if (ocs.contains(LdapProvisioning.C_zimbraCalendarResource))
                 return true;
         }
-        
+
         return false;
     }
-    
-    
+
+
     /**
      * Validate that we are not exceeding max feature and cos counts for the given domain.
      * <p>
      * arg is an Object[] consisting of:
-     * 
+     *
      * @author pfnguyen
      */
-    @SuppressWarnings("unchecked")
-    private static class DomainMaxAccountsValidator implements ProvisioningValidator {
-        
+    static class DomainMaxAccountsValidator implements Provisioning.ProvisioningValidator {
+
+        @Override
         public void refresh() {
             // do nothing
         }
-        
-        public void validate(LdapProvisioning prov, String action, Object... args) throws ServiceException {
-            
-            if (!"createAccountCheckDomainCosAndFeature".equals(action) &&
-            		!"renameAccountCheckDomainCosAndFeature".equals(action) &&
-                    !"modifyAccountCheckDomainCosAndFeature".equals(action))
+
+        @Override
+        public void validate(Provisioning prov, String action, Object... args) throws ServiceException {
+
+            if (!CREATE_ACCOUNT_CHECK_DOMAIN_COS_AND_FEATURE.equals(action) &&
+                    !RENAME_ACCOUNT_CHECK_DOMAIN_COS_AND_FEATURE.equals(action) &&
+                    !MODIFY_ACCOUNT_CHECK_DOMAIN_COS_AND_FEATURE.equals(action)) {
                 return;
-            
+            }
+
             if (args.length < 2)
                 return;
 
@@ -186,10 +188,11 @@ public class Validators {
             if (emailAddress == null)
                 return;
 
-            Map<String, Object> attrs = (Map) args[1];
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attrs = (Map<String, Object>) args[1];
             if (isSystemProperty(attrs))
                 return;
-            
+
             Account account = null;
             if (args.length == 3)
                 account = (Account) args[2];
@@ -197,14 +200,14 @@ public class Validators {
             int index = emailAddress.indexOf('@');
             if (index != -1)
                 domainName = emailAddress.substring(index+1);
-            
+
             if (domainName == null)
                 return;
-            
+
             Domain domain = prov.get(Provisioning.DomainBy.name, domainName);
             if (domain == null)
                 return;
-            
+
             String defaultCosId = domain.getAttr(Provisioning.A_zimbraDomainDefaultCOSId);
             if (defaultCosId == null) {
                 Cos defaultCos = prov.get(CosBy.name, Provisioning.DEFAULT_COS_NAME);
@@ -224,18 +227,17 @@ public class Validators {
                 parseLimit(cosLimitMap, limit);
             for (String limit : featureLimit)
                 parseLimit(featureLimitMap, limit);
-            
+
             // populate count maps with the cos and features we are interested in
             for (Map.Entry<String,Integer> e : cosLimitMap.entrySet())
                 cosCountMap.put(e.getKey(), 0);
             for (Map.Entry<String,Integer> e : featureLimitMap.entrySet())
                 featureCountMap.put(e.getKey(), 0);
             
-            
             boolean isModifyingCosId = (attrs.get(Provisioning.A_zimbraCOSId) != null);
-            boolean isCreatingEntry = "createAccountCheckDomainCosAndFeature".equals(action);
+            boolean isCreatingEntry = CREATE_ACCOUNT_CHECK_DOMAIN_COS_AND_FEATURE.equals(action);
             
-            String desiredCosId = null;
+            String desiredCosId;
             
             if (isModifyingCosId || isCreatingEntry) {
                 desiredCosId = (String) attrs.get(Provisioning.A_zimbraCOSId);
@@ -253,7 +255,7 @@ public class Validators {
                     throw ServiceException.FAILURE("accunt object is null", null);
                 }
             }
-            
+
             Set<String> cosFeatures = getCosFeatures(prov, cosFeatureMap, desiredCosId, defaultCosId);
             Set<String> desiredFeatures = new HashSet<String>();
             // add all new requested features
@@ -327,8 +329,8 @@ public class Validators {
                 }
             }
         }
-        
-        private static Set<String> getCosFeatures(LdapProvisioning prov, Map<String,Set<String>> cosFeatureMap,
+
+        private static Set<String> getCosFeatures(Provisioning prov, Map<String,Set<String>> cosFeatureMap,
                 String cosId, String defaultCosId)
         throws ServiceException {
             if (!cosFeatureMap.containsKey(cosId)) {
@@ -373,9 +375,9 @@ public class Validators {
                 return;
             map.put(parts[0], max);
         }
-        
+
         // mostly pawned off from LdapProvisioning.countAccounts(domain)
-        private void buildDomainCounts(LdapProvisioning prov, String domain, String defaultCos,
+        private void buildDomainCounts(Provisioning prov, String domain, String defaultCos,
                 Map<String,Integer> cosCount, Map<String,Integer> featureCount, Map<String,Set<String>> cosFeatureMap)
         throws ServiceException {
             String query = LdapFilter.allNonSystemAccounts();
@@ -384,13 +386,14 @@ public class Validators {
             try {
                 zlc = new ZimbraLdapContext();
 
-                SearchControls searchControls = 
+                SearchControls searchControls =
                     new SearchControls(SearchControls.SUBTREE_SCOPE,
                             0, 0, null, false, false);
 
                 NamingEnumeration<SearchResult> ne = null;
 
-                String searchDN = prov.getDIT().domainToAccountSearchDN(domain);
+                // TODO: remove dependency on LDAP
+                String searchDN = ((LdapProvisioning) prov).getDIT().domainToAccountSearchDN(domain);
                 int pageSize = 1000;
                 byte[] cookie = null;
                 do {

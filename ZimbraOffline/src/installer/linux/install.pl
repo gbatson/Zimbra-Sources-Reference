@@ -35,7 +35,7 @@ my $messages = {
         Success => 'You have finished installing application files.',
         UserInstall => "Would you like to continue to install data files for user: {0}?",
         UserInstallNote => "To install data files for additional users, please login as the user and run this command:", 
-        Welcome => "Welcome to Zimbra Desktop setup wizard. This will install Zimbra Desktop on you computer.",
+        Welcome => "Welcome to Zimbra Desktop setup wizard. This will install Zimbra Desktop on your computer.",
         YesNo => "(Y)es or (N)o"
     }
 };
@@ -127,8 +127,9 @@ sub dialog_app_root() {
 }
 
 sub dialog_user_install() {
-    print get_message('UserInstall', [$ENV{USER}]), "\n";
-    return lc(get_input(get_message('YesNo'), 'Y'));
+    my $user = $ENV{USER};
+    print get_message('UserInstall', [$user]), "\n";
+    return lc(get_input(get_message('YesNo'), $user eq 'root' ? 'N' : 'Y'));
 }
 
 # main

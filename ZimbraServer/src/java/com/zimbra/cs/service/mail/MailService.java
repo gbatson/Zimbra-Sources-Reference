@@ -46,6 +46,9 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.SEARCH_REQUEST, new Search());
         dispatcher.registerHandler(MailConstants.SEARCH_CONV_REQUEST, new SearchConv());
 
+        // dumpster
+        dispatcher.registerHandler(MailConstants.EMPTY_DUMPSTER_REQUEST, new EmptyDumpster());
+
         // items
         dispatcher.registerHandler(MailConstants.GET_ITEM_REQUEST, new GetItem());
         dispatcher.registerHandler(MailConstants.ITEM_ACTION_REQUEST, new ItemAction());
@@ -114,6 +117,9 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.GET_FILTER_RULES_REQUEST, new GetFilterRules());
         dispatcher.registerHandler(MailConstants.MODIFY_FILTER_RULES_REQUEST, new ModifyFilterRules());
         dispatcher.registerHandler(MailConstants.APPLY_FILTER_RULES_REQUEST, new ApplyFilterRules());
+        dispatcher.registerHandler(MailConstants.GET_OUTGOING_FILTER_RULES_REQUEST, new GetOutgoingFilterRules());
+        dispatcher.registerHandler(MailConstants.MODIFY_OUTGOING_FILTER_RULES_REQUEST, new ModifyOutgoingFilterRules());
+        dispatcher.registerHandler(MailConstants.APPLY_OUTGOING_FILTER_RULES_REQUEST, new ApplyOutgoingFilterRules());
 
         // Calendar
 
@@ -152,6 +158,7 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.SEND_INVITE_REPLY_REQUEST, new SendInviteReply());
         dispatcher.registerHandler(MailConstants.ICAL_REPLY_REQUEST, new ICalReply());
         dispatcher.registerHandler(MailConstants.GET_FREE_BUSY_REQUEST, new GetFreeBusy());
+        dispatcher.registerHandler(MailConstants.GET_WORKING_HOURS_REQUEST, new GetWorkingHours());
         dispatcher.registerHandler(MailConstants.GET_ICAL_REQUEST, new GetICal());
         dispatcher.registerHandler(MailConstants.ANNOUNCE_ORGANIZER_CHANGE_REQUEST, new AnnounceOrganizerChange());
         dispatcher.registerHandler(MailConstants.DISMISS_CALITEM_ALARM_REQUEST, new DismissCalendarItemAlarm());
@@ -159,6 +166,10 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.GET_RECUR_REQUEST, new GetRecur());
         dispatcher.registerHandler(MailConstants.EXPAND_RECUR_REQUEST, new ExpandRecur());
         dispatcher.registerHandler(MailConstants.CHECK_RECUR_CONFLICTS_REQUEST, new CheckRecurConflicts());
+
+        dispatcher.registerHandler(MailConstants.SEND_VERIFICATION_CODE_REQUEST, new SendVerificationCode());
+        dispatcher.registerHandler(MailConstants.VERIFY_CODE_REQUEST, new VerifyCode());
+        dispatcher.registerHandler(MailConstants.INVALIDATE_REMINDER_DEVICE_REQUEST, new InvalidateReminderDevice());
 
         // spell check
         dispatcher.registerHandler(MailConstants.CHECK_SPELLING_REQUEST, new CheckSpelling());
@@ -172,6 +183,7 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.WIKI_ACTION_REQUEST, new com.zimbra.cs.service.wiki.WikiAction());
         dispatcher.registerHandler(MailConstants.DIFF_DOCUMENT_REQUEST, new com.zimbra.cs.service.wiki.DiffDocument());
         dispatcher.registerHandler(MailConstants.LIST_DOCUMENT_REVISIONS_REQUEST, new com.zimbra.cs.service.wiki.ListDocumentRevisions());
+        dispatcher.registerHandler(MailConstants.PURGE_REVISION_REQUEST, new com.zimbra.cs.service.mail.PurgeRevision());
 
         // data source
         dispatcher.registerHandler(MailConstants.GET_DATA_SOURCES_REQUEST, new GetDataSources());

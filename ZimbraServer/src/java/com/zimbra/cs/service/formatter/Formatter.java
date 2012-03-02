@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,35 +18,41 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletResponse;
 
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.SoapProtocol;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.index.MailboxIndex;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
-import com.zimbra.cs.index.queryparser.ParseException;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.operation.BlockingOperation;
-import com.zimbra.cs.operation.Requester;
-import com.zimbra.cs.operation.Scheduler.Priority;
+import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.soap.SoapProtocol;
-import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 
 public abstract class Formatter {
-    public abstract String getType();
+
+    protected static final int TIME_UNSPECIFIED = -1;
+
+    public abstract FormatType getType();
+    
     private static String PROGRESS = "-progress";
 
     public String[] getDefaultMimeTypes() {
@@ -59,45 +65,81 @@ public abstract class Formatter {
     public boolean requiresAuth() {
         return true;
     }
-    
-    /**
-     * 
-     * @return true if this formatter can be blocked by zimbraAttachmentsBlocked attr.
-     */
-    public abstract boolean canBeBlocked();
-    
+
+
     // eventually get this from query param ?start=long|YYYYMMMDDHHMMSS
     public long getDefaultStartTime() {
-        return -1;
+        return TIME_UNSPECIFIED;
     }
-    
+
     public long getDefaultEndTime() {
-        return -1;
+        return TIME_UNSPECIFIED;
     }
-    
+
     public String getDefaultSearchTypes() {
         return MailboxIndex.SEARCH_FOR_MESSAGES;
     }
+    
+    private static Map<Class<? extends Formatter>,FormatListener> listeners = new ConcurrentHashMap<Class<? extends Formatter>, FormatListener>();
+    
+    public static void registerListener(Class<? extends Formatter> clazz, FormatListener listener) {
+        listeners.put(clazz, listener);
+    }
+    
+    private Set<FormatListener> getClassListeners() {
+        Set<FormatListener> set = new HashSet<FormatListener>();
+        for (Class<? extends Formatter> clazz : listeners.keySet()) {
+            if (clazz.isAssignableFrom(this.getClass())) {
+                set.add(listeners.get(clazz));
+            }
+        }
+        return set;
+    }
 
-    public final void format(UserServlet.Context context) throws UserServletException, IOException, ServletException, ServiceException {
-        BlockingOperation op = BlockingOperation.schedule(this.getClass().getSimpleName()+"(FORMAT)", null, context.opContext, context.targetMailbox, Requester.REST, Priority.BATCH, 1);
+    private void formatStarted(UserServletContext context) throws ServiceException {
+        for (FormatListener listener : getClassListeners()) {
+            listener.formatCallbackStarted(context);
+        }
+    }
+    
+    private void formatEnded(UserServletContext context) throws ServiceException {
+        for (FormatListener listener : getClassListeners()) {
+            listener.formatCallbackEnded(context);
+        }
+    }
+    
+    private void saveStarted(UserServletContext context) throws ServiceException {
+        for (FormatListener listener : getClassListeners()) {
+            listener.saveCallbackStarted(context);
+        }
+    }
+    
+    private void saveEnded(UserServletContext context) throws ServiceException {
+        for (FormatListener listener : getClassListeners()) {
+            listener.saveCallbackEnded(context);
+        }
+    }
+    
+    public final void format(UserServletContext context)
+        throws UserServletException, IOException, ServletException, ServiceException {
 
         try {
+            formatStarted(context);
             formatCallback(context);
             updateClient(context, null);
         } catch (Exception e) {
             updateClient(context, e);
         } finally {
-            op.finish();
+            formatEnded(context);
         }
     }
 
-    public final void save(UserServlet.Context context, String contentType, Folder folder, String filename)
-    throws UserServletException, IOException, ServletException, ServiceException {
-        BlockingOperation op = BlockingOperation.schedule(this.getClass().getSimpleName()+"(SAVE)", null, context.opContext, context.targetMailbox, Requester.REST, Priority.BATCH, 1);
+    public final void save(UserServletContext context, String contentType, Folder folder, String filename)
+        throws UserServletException, IOException, ServletException, ServiceException {
 
         Mailbox mbox = context.targetMailbox;
         try {
+            saveStarted(context);
             mbox.setIndexImmediatelyMode();
             saveCallback(context, contentType, folder, filename);
             updateClient(context, null);
@@ -105,15 +147,16 @@ public abstract class Formatter {
             updateClient(context, e);
         } finally {
             mbox.clearIndexImmediatelyMode();
-            op.finish();
+            saveEnded(context);
         }
     }
 
-    public abstract void formatCallback(UserServlet.Context context)
-    throws UserServletException, ServiceException, IOException, ServletException;
+    public abstract void formatCallback(UserServletContext context)
+        throws UserServletException, ServiceException, IOException, ServletException;
 
-    public void saveCallback(UserServlet.Context context, String contentType, Folder folder, String filename)
-    throws UserServletException, ServiceException, IOException, ServletException {
+    public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename)
+        throws UserServletException, ServiceException, IOException, ServletException {
+
         throw new UserServletException(HttpServletResponse.SC_BAD_REQUEST, "format not supported for save");
     }
 
@@ -123,11 +166,11 @@ public abstract class Formatter {
 
     // Caller is responsible for filtering out Appointments/Tasks marked private if the requester
     // is not the mailbox owner.
-    public Iterator<? extends MailItem> getMailItems(Context context, long startTime, long endTime, long chunkSize) throws ServiceException {
+    public Iterator<? extends MailItem> getMailItems(UserServletContext context, long startTime, long endTime, long chunkSize) throws ServiceException {
         if (context.respListItems != null) {
             return context.respListItems.iterator();
         }
-        
+
         assert(context.target != null);
         String query = context.getQueryString();
         if (query != null) {
@@ -135,18 +178,15 @@ public abstract class Formatter {
                 if (context.target instanceof Folder) {
                     Folder f = (Folder) context.target;
                     if (f.getId() != Mailbox.ID_FOLDER_USER_ROOT)
-                        query = "in:" + f.getPath() + " " + query; 
+                        query = "in:" + f.getPath() + " " + query;
                 }
                 String searchTypes = context.getTypesString();
                 if (searchTypes == null)
                     searchTypes = getDefaultSearchTypes();
                 byte[] types = MailboxIndex.parseTypesString(searchTypes);
                 ZimbraQueryResults results = context.targetMailbox.search(context.opContext, query, types, SortBy.DATE_DESCENDING, context.getOffset() + context.getLimit());
-                return new QueryResultIterator(results);                
+                return new QueryResultIterator(results);
             } catch (IOException e) {
-                // TODO Auto-generated catch block
-                throw ServiceException.FAILURE("search error", e);
-            } catch (ParseException e) {
                 throw ServiceException.FAILURE("search error", e);
             }
         } else if (context.target instanceof Folder) {
@@ -159,7 +199,7 @@ public abstract class Formatter {
         }
     }
 
-    protected Collection<? extends MailItem> getMailItemsFromFolder(Context context, Folder folder, long startTime, long endTime, long chunkSize) throws ServiceException {
+    protected Collection<? extends MailItem> getMailItemsFromFolder(UserServletContext context, Folder folder, long startTime, long endTime, long chunkSize) throws ServiceException {
         switch (folder.getDefaultView()) {
             case MailItem.TYPE_APPOINTMENT:
             case MailItem.TYPE_TASK:
@@ -173,9 +213,9 @@ public abstract class Formatter {
                 return context.targetMailbox.getItemList(context.opContext, MailItem.TYPE_MESSAGE, folder.getId());
         }
     }
-    
+
     /**
-     * 
+     *
      * @param attr
      * @param accountId
      * @return
@@ -192,11 +232,12 @@ public abstract class Formatter {
 
     protected static class QueryResultIterator implements Iterator<MailItem> {
         private ZimbraQueryResults mResults;
-        
+
         QueryResultIterator(ZimbraQueryResults results) {
             mResults = results;
         }
 
+        @Override
         public boolean hasNext() {
             if (mResults == null)
                 return false;
@@ -208,6 +249,7 @@ public abstract class Formatter {
             }
         }
 
+        @Override
         public MailItem next() {
             if (mResults == null)
                 return null;
@@ -216,11 +258,12 @@ public abstract class Formatter {
                 if (hit != null)
                     return hit.getMailItem();
             } catch (ServiceException e) {
-                ZimbraLog.misc.warn("caught exception", e);                
+                ZimbraLog.misc.warn("caught exception", e);
             }
             return null;
         }
 
+        @Override
         public void remove() {
             throw new UnsupportedOperationException();
         }
@@ -233,10 +276,10 @@ public abstract class Formatter {
             mResults = null;
         }
     }
-    
-    protected PrintWriter updateClient(Context context, boolean flush) throws IOException {
+
+    protected PrintWriter updateClient(UserServletContext context, boolean flush) throws IOException {
         PrintWriter pw;
-        
+
         if (context.params.get(PROGRESS) == null) {
             context.resp.reset();
             context.resp.setContentType("text/html; charset=\"utf-8\"");
@@ -253,19 +296,18 @@ public abstract class Formatter {
         return pw;
     }
 
-    protected void updateClient(UserServlet.Context context, Exception e)
+    protected void updateClient(UserServletContext context, Exception e)
         throws UserServletException, IOException, ServletException,
         ServiceException {
         updateClient(context, e, null);
     }
 
-    protected void updateClient(UserServlet.Context context, Exception e,
+    protected void updateClient(UserServletContext context, Exception e,
         List<ServiceException> w) throws UserServletException, IOException,
         ServletException, ServiceException {
         String callback = context.params.get("callback");
         Throwable exception = null;
-        PrintWriter out;
-        ServiceException se = null;
+        PrintWriter out = null;
 
         if (e != null) {
             Throwable cause = e.getCause();
@@ -274,10 +316,7 @@ public abstract class Formatter {
                 cause instanceof ServletException ||
                 cause instanceof IOException ? cause : e;
         }
-        if (exception != null)
-            se = exception instanceof ServiceException ?
-                (ServiceException) exception :
-                FormatterServiceException.UNKNOWN_ERROR(exception);
+
         if (callback == null || callback.equals("")) {
             if (context.params.get(PROGRESS) == null) {
                 if (exception == null)
@@ -288,10 +327,17 @@ public abstract class Formatter {
                     throw (ServletException)exception;
                 else if (exception instanceof IOException)
                     throw (IOException)exception;
+                else if (exception instanceof NoSuchItemException)
+                    throw (ServiceException)exception;
                 throw ServiceException.FAILURE(
                     getType() + " formatter failure", exception);
             }
-            out = updateClient(context, false);
+            try {
+                out = updateClient(context, false);
+            } catch (IllegalStateException ise) {
+                ZimbraLog.misc.warn("format output has already been written.");
+                return;
+            }
             if (exception == null && w == null) {
                 out.println("<body></body>\n</html>");
             } else {
@@ -307,30 +353,47 @@ public abstract class Formatter {
                 out.println("</pre>\n</body>\n</html>");
             }
         } else if (!"2".equals(context.params.get(PROGRESS))) {
-            out = updateClient(context, false);
+            String result;
+            if (exception != null) {
+                ZimbraLog.misc.warn(getType() + " formatter exception",
+                        exception);
+                result = "fail";
+            } else if (w == null || w.size() == 0) {
+                if (context.req.getMethod().equals("GET")) {
+                    return;
+                }
+                result = "success";
+            } else {
+                result = "warn";
+            }
+            try {
+                out = updateClient(context, false);
+            } catch (IllegalStateException ise) {
+                ZimbraLog.misc.warn("format output has already been written.");
+                return;
+            }
             // mark done no matter what happens next
             context.params.put(PROGRESS, "2");
             out.println("<body onload='onLoad()'>");
             out.println("<script>");
             out.println("function onLoad() {");
-            if (exception == null && (w == null || w.size() == 0)) {
-                out.print("    window.parent." + callback + "('success');");
-            } else {
-                String result = exception != null ? "fail" : "warn";
-                
-                out.print("    window.parent." + callback + "('" + result + "'");
-                if (exception != null) {
-                    out.print(",\n\t");
-                    out.print(SoapProtocol.SoapJS.soapFault(se));
-                }
-                if (w != null) {
-                    for (ServiceException warning : w) {
-                        out.print(",\n\t");
-                        out.print(SoapProtocol.SoapJS.soapFault(warning));
-                    }
-                }
-                out.println(");");
+
+            out.print("    window.parent." + callback + "('" + result + "'");
+            if (exception != null) {
+                ServiceException se = 
+                    exception instanceof ServiceException ?
+                            (ServiceException) exception :
+                                FormatterServiceException.UNKNOWN_ERROR(exception);
+                            out.print(",\n\t");
+                            out.print(SoapProtocol.SoapJS.soapFault(se));
             }
+            if (w != null) {
+                for (ServiceException warning : w) {
+                    out.print(",\n\t");
+                    out.print(SoapProtocol.SoapJS.soapFault(warning));
+                }
+            }
+            out.println(");");
             out.println("}");
             out.println("</script>");
             out.println("</body>");
@@ -338,7 +401,7 @@ public abstract class Formatter {
         }
     }
 
-    protected String getContentType(Context context, String fallback) {
+    protected String getContentType(UserServletContext context, String fallback) {
         String mime = context.req.getParameter("mime");
         if (mime != null && !mime.equals("")) {
             return mime;
@@ -349,7 +412,7 @@ public abstract class Formatter {
         }
     }
 
-    protected boolean mayAttach(Context context) {
+    protected boolean mayAttach(UserServletContext context) {
         String noAttach = context.req.getParameter("noAttach");
         return !(noAttach != null && (noAttach.equals("1") || noAttach.equalsIgnoreCase("true")));
     }

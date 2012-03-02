@@ -24,34 +24,40 @@ public class HeaderUtils {
 
     static String decodeWord(byte[] word) {
         int length = word.length;
-        if (length <= 8 || word[0] != '=' || word[1] != '?' || word[length-2] != '?' || word[length-1] != '=')
+        if (length <= 8 || word[0] != '=' || word[1] != '?' || word[length - 2] != '?' || word[length - 1] != '=') {
             return null;
+        }
 
         byte b;
         int pos = 2, star = -1;
         while (pos < length && (b = word[pos]) != '?') {
             // handle RFC 2231 "*lang" in the charset portion of the encoded-word
-            if (star == -1 && b == '*')
+            if (star == -1 && b == '*') {
                 star = pos;
+            }
             pos++;
         }
-        if (pos >= length - 4 || pos == 2)
+        if (pos >= length - 4 || pos == 2) {
             return null;
+        }
         String charset = new String(word, 2, (star == -1 ? pos : star) - 2);
 
         InputStream decoder;
         byte encoding = word[++pos];
-        if (word[++pos] != '?')
+        if (word[++pos] != '?') {
             return null;
+        }
         int remaining = length - pos - 3;
-        if (remaining == 0)
+        if (remaining == 0) {
             return "";
-        if (encoding == 'Q' || encoding == 'q')
+        }
+        if (encoding == 'Q' || encoding == 'q') {
             decoder = new QP2047Decoder(new ByteArrayInputStream(word, pos + 1, remaining));
-        else if (encoding == 'B' || encoding == 'b')
+        } else if (encoding == 'B' || encoding == 'b') {
             decoder = new ContentTransferEncoding.Base64DecoderStream(new ByteArrayInputStream(word, pos + 1, remaining));
-        else
+        } else {
             return null;
+        }
 
         try {
             byte[] dbuffer = new byte[word.length];
@@ -59,7 +65,7 @@ public class HeaderUtils {
             return new String(dbuffer, 0, dsize, normalizeCharset(charset));
         } catch (OutOfMemoryError oome) {
             throw oome;
-        } catch (Error e) {            // bug 40926 - catch java.lang.Error thrown by String class for invalid charset issues 
+        } catch (Error e) { // bug 40926 - catch java.lang.Error thrown by String class for invalid charset issues 
             return null;
         } catch (Exception e) {
             return null;
@@ -69,54 +75,141 @@ public class HeaderUtils {
     private static final String P_CHARSET_CP1252 = "windows-1252";
     private static final String P_CHARSET_EUC_CN = "euc_cn";
     private static final String P_CHARSET_GB2312 = "gb2312";
-    private static final String P_CHARSET_GBK = "gbk";
+    private static final String P_CHARSET_GBK    = "gbk";
     private static final String P_CHARSET_LATIN1 = "iso-8859-1";
 
     private static final boolean SUPPORTS_CP1252 = Charset.isSupported(P_CHARSET_CP1252);
-    private static final boolean SUPPORTS_GBK = Charset.isSupported(P_CHARSET_GBK);
+    private static final boolean SUPPORTS_GBK    = Charset.isSupported(P_CHARSET_GBK);
 
-    static String normalizeCharset(String charset) {
-        if (charset == null || charset.equals(""))
-            return charset;
-        charset = charset.trim();
-        String lccharset = charset.toLowerCase();
-        if (SUPPORTS_CP1252 && lccharset.equals(P_CHARSET_LATIN1))
+    static String normalizeCharset(String enc) {
+        if (enc == null || enc.equals("")) {
+            return enc;
+        }
+
+        String charset = enc.trim(), lccharset = charset.toLowerCase();
+        if (SUPPORTS_CP1252 && lccharset.equals(P_CHARSET_LATIN1)) {
             return P_CHARSET_CP1252;
-        if (SUPPORTS_GBK && (lccharset.equals(P_CHARSET_GB2312) || lccharset.equals(P_CHARSET_EUC_CN)))
+        } else if (SUPPORTS_GBK && (lccharset.equals(P_CHARSET_GB2312) || lccharset.equals(P_CHARSET_EUC_CN))) {
             return P_CHARSET_GBK;
+        }
         return charset;
     }
 
     private static class QP2047Decoder extends ContentTransferEncoding.QuotedPrintableDecoderStream {
-        QP2047Decoder(ByteArrayInputStream bais)  { super(bais); }
+        QP2047Decoder(ByteArrayInputStream bais) {
+            super(bais);
+            disableTrimming();
+        }
 
-        @Override protected int nextByte() throws IOException {
-            int c = super.nextByte();  return c == '_' ? ' ' : c;
+        @Override
+        protected int nextByte() throws IOException {
+            int c = super.nextByte();
+            return c == '_' ? ' ' : c;
         }
     }
 
 
     static class ByteBuilder extends ByteArrayOutputStream {
-        private String mCharset;
+        private String charset;
 
-        ByteBuilder()          { super(); }
-        ByteBuilder(int size)  { super(size); }
-        ByteBuilder(String charset)            { this();  mCharset = charset; }
-        ByteBuilder(int size, String charset)  { this(size);  mCharset = charset; }
+        ByteBuilder() {
+            super();
+        }
 
-        ByteBuilder pop()      { if (count > 0) count--;  return this; }
-        boolean isEmpty()      { return count == 0; }
+        ByteBuilder(int size) {
+            super(size);
+        }
+
+        ByteBuilder(String charset) {
+            this();
+            this.charset = charset;
+        }
+
+        ByteBuilder(int size, String charset) {
+            this(size);
+            this.charset = charset;
+        }
+
+        ByteBuilder(byte[] b) {
+            super((int) (b.length * 1.5 + 1));
+            append(b);
+        }
+
+        ByteBuilder pop() {
+            if (count > 0) {
+                count--;
+            }
+            return this;
+        }
+
+        ByteBuilder setCharset(String charset) {
+            this.charset = charset;
+            return this;
+        }
+
+        boolean isEmpty() {
+            return count == 0;
+        }
+
+        public int length() {
+            return count;
+        }
+
+        ByteBuilder append(ByteBuilder bb) {
+            write(bb.buf, 0, bb.count);
+            return this;
+        }
+
+        ByteBuilder append(byte b) {
+            write(b);
+            return this;
+        }
+
+        ByteBuilder append(byte[] b) {
+            write(b, 0, b.length);
+            return this;
+        }
+
+        ByteBuilder append(char c) {
+            return append((byte) c);
+        }
+
+        ByteBuilder append(String s) {
+            return append(s.getBytes());
+        }
+
+        byte byteAt(int index) {
+            return buf[index];
+        }
+
+        int indexOf(byte b) {
+            for (int i = 0; i < count; i++) {
+                if (buf[i] == b)
+                    return i;
+            }
+            return -1;
+        }
+
+        boolean startsWith(byte b) {
+            return count > 0 && buf[0] == b;
+        }
+
+        boolean endsWith(byte b) {
+            return count > 0 && buf[count - 1] == b;
+        }
+
+        @Override
+        public synchronized String toString() {
+            try {
+                if (charset != null && !charset.isEmpty()) {
+                    return super.toString(charset);
+                }
+            } catch (Exception e) { }
+            return super.toString();
+        }
 
         String appendTo(String prefix) {
             return prefix == null ? toString() : prefix + this;
-        }
-
-        @Override public String toString() {
-            try {
-                if (mCharset != null && !mCharset.trim().equals(""))
-                    return super.toString(mCharset);
-            } catch (Exception e) { }
-            return super.toString();
         }
     }
 }

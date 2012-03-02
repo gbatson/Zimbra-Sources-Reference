@@ -320,6 +320,13 @@ ZmShare._XML = null;
 
 // Utility methods
 
+ZmShare.getDefaultMountpointName = function(owner, name) {
+    if (!ZmShare._defaultNameFormatter) {
+        ZmShare._defaultNameFormatter = new AjxMessageFormat(ZmMsg.shareNameDefault);
+    }
+    return ZmShare._defaultNameFormatter.format([owner, name]);
+};
+
 /**
  * Gets the role name.
  * 
@@ -344,7 +351,8 @@ function(role) {
 	if (perm) {
 		for (var i = 0; i < perm.length; i++) {
 			var c = perm.charAt(i);
-			if (c == "-") {
+			if(c == 'x') continue;
+            if (c == "-") {
 				c += perm.charAt(++i);
 			}
 			actions.push(ZmShare.PERMS[c]);
@@ -426,7 +434,7 @@ function() {
 ZmShare.prototype.setPermissions =
 function(perm) {
 	this.link.perm = perm;
-	this.link.role = ZmShare._getRoleFromPerm(perm);
+	this.link.role = ZmShare.getRoleFromPerm(perm);
 };
 
 /**
@@ -674,6 +682,12 @@ function(name, color, replyType, notes, callback, owner) {
 		color: color,
 		view: this.link.view
 	};
+
+	if (String(color).match(/^#/)) {
+		params.rgb = color;
+		delete params.color;
+	}
+
 	if (appCtxt.get(ZmSetting.CALENDAR_ENABLED) && ZmOrganizer.VIEW_HASH[ZmOrganizer.CALENDAR][this.link.view]) {
 		params.f = ZmOrganizer.FLAG_CHECKED;
 	}
@@ -931,7 +945,7 @@ function(ex) {
 		if (!this._unknownUserFormatter) {
 			this._unknownUserFormatter = new AjxMessageFormat(ZmMsg.unknownUser);
 		}
-		message = this._unknownUserFormatter.format(AjxStringUtil.htmlEncode(this.grantee.name));
+		message = this._unknownUserFormatter.format(this.grantee.name);
 		// NOTE: This prevents details from being shown
 		ex = null;
 	}
@@ -1056,25 +1070,19 @@ function(mode) {
  */
 ZmShare.prototype._createContent =
 function(formatter) {
-	var role = ZmShare._getRoleFromPerm(this.link.perm);
-	var owner = this.object ?  (this.object.owner || this.grantor.name) : this.grantor.name;
-	owner = AjxStringUtil.htmlEncode(owner);
+	var role = ZmShare.getRoleFromPerm(this.link.perm);
 	var params = [
-		AjxStringUtil.htmlEncode(this.link.name), 
+		this.link.name, 
 		"(" + ZmShare._getFolderType(this.link.view) + ")",
-		owner,
-		AjxStringUtil.htmlEncode(this.grantee.name),
+		(this.object ? (this.object.owner || this.grantor.name) : this.grantor.name),
+		this.grantee.name,
 		ZmShare.getRoleName(role),
 		ZmShare.getRoleActions(role)
 	];
 	return formatter.format(params);
 };
 
-/**
- * @private
- */
-ZmShare._getRoleFromPerm =
-function(perm) {
+ZmShare.getRoleFromPerm = function(perm) {
 	if (!perm) { return ZmShare.ROLE_NONE; }
 
 	if (perm.indexOf(ZmShare.PERM_ADMIN) != -1) {
@@ -1089,6 +1097,12 @@ function(perm) {
 
 	return ZmShare.ROLE_NONE;
 };
+
+/**
+ * Backwards compatibility.
+ * @private
+ */
+ZmShare._getRoleFromPerm = ZmShare.getRoleFromPerm;
 
 /**
  * Revokes all grants for the given zid (one whose account has been

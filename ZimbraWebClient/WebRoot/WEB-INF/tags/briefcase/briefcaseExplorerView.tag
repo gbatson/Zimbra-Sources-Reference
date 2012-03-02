@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -74,7 +74,7 @@
                             </div>
                             <div class="ZhThumbnailName">
                             <span>
-                                <c:set var="briefUrl" value="/service/home/~/?id=${briefHit.id}&auth=co"/>                                
+                                <c:set var="briefUrl" value="/home/${mailbox.accountInfo.name}/Briefcase/${briefHit.document.name}?auth=co"/>                                
                                 <a target="_blank" href="${fn:escapeXml(briefUrl)}" id="${aid}">
                                     <c:set var='docName' value="${empty briefHit.document.name ? unknownSubject : zm:truncate(briefHit.document.name,16,true)}"/>
                                     <c:out value="${docName}"/>
@@ -99,7 +99,7 @@
                                  </div>
                                  <div class="ZhThumbnailName">
                                     <span>
-                                        <a href="${fn:escapeXml(url)}" id="${aid}">${empty subFolder.name ? unknownSubject : zm:truncate(zm:cook(subFolder.name),16,true)}</a>
+                                        <a href="${fn:escapeXml(url)}" id="${aid}">${empty subFolder.name ? unknownSubject : zm:truncate(subFolder.name,16,true)}</a>
                                     </span>
                                  </div>
                              </div>

@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.google.common.base.Objects;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.filter.RuleManager;
 import com.zimbra.cs.session.PendingModifications.Change;
@@ -52,7 +53,7 @@ public class Tag extends MailItem {
 
     /** Returns whether this id falls in the acceptable tag ID range (64..127).
      *  Does <u>not</u> verify that such a tag exists.
-     * 
+     *
      * @param id  Item id to check.
      * @see MailItem#TAG_ID_OFFSET
      * @see MailItem#MAX_TAG_COUNT */
@@ -95,7 +96,7 @@ public class Tag extends MailItem {
                     ZimbraLog.mailbox.error("unable to parse tags: '" + csv + "'", e);
                     throw e;
                 }
-                
+
                 if (!validateId(value))
                     continue;
                 // FIXME: should really check this against the existing tags in the mailbox
@@ -181,7 +182,7 @@ public class Tag extends MailItem {
      *  change to the database and cache, and also updates the unread counts
      *  for the tag and the affected items' parents and {@link Folder}s
      *  appropriately.  <i>Note: Tags may only be marked read, not unread.</i>
-     * 
+     *
      * @perms {@link ACL#RIGHT_READ} on the folder,
      *        {@link ACL#RIGHT_WRITE} on all affected messages. */
     @Override void alterUnread(boolean unread) throws ServiceException {
@@ -206,7 +207,7 @@ public class Tag extends MailItem {
                 targets.add(msg.getId());
             } else {
                 missed = true;
-            }   
+            }
         }
 
         // Mark all messages with this tag as read in the database
@@ -279,12 +280,11 @@ public class Tag extends MailItem {
 
     private static final String CN_DELETED_UNREAD = "del_unread";
 
-    @Override public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append("tag: {");
-        appendCommonMembers(sb).append(", ");
-        sb.append(CN_DELETED_UNREAD).append(": ").append(mDeletedUnreadCount);
-        sb.append("}");
-        return sb.toString();
+    @Override
+    public String toString() {
+        Objects.ToStringHelper helper = Objects.toStringHelper(this);
+        appendCommonMembers(helper);
+        helper.add(CN_DELETED_UNREAD, mDeletedUnreadCount);
+        return helper.toString();
     }
 }

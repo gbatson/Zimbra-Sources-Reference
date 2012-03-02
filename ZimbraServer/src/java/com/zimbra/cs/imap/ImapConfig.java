@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 public class ImapConfig extends ServerConfig {
     private static final String PROTOCOL = "IMAP4rev1";
+    private static final int UNAUTHENTICATED_MAX_IDLE_SECONDS = 60;
     private static final int DEFAULT_MAX_MESSAGE_SIZE = 100 * 1024 * 1024;
 
     public ImapConfig(boolean ssl) {
@@ -77,7 +78,7 @@ public class ImapConfig extends ServerConfig {
 
     @Override
     public int getMaxIdleSeconds() {
-        return LC.imap_max_idle_time.intValue();
+        return UNAUTHENTICATED_MAX_IDLE_SECONDS;
     }
 
     @Override
@@ -91,12 +92,27 @@ public class ImapConfig extends ServerConfig {
     }
 
     @Override
+    public String getConnectionRejected() {
+        return "* BYE " + getDescription() + " closing connection; service busy";
+    }
+
+    @Override
     public int getShutdownGraceSeconds() {
        return getIntAttr(A_zimbraImapShutdownGraceSeconds, super.getShutdownGraceSeconds());
     }
 
+    @Override
+    public int getNioMinThreads() {
+        return LC.nio_imap_min_threads.intValue();
+    }
+
+    @Override
+    public int getNioThreadKeepAliveTime() {
+        return LC.nio_imap_thread_keep_alive_time.intValue();
+    }
+
     public int getAuthenticatedMaxIdleSeconds() {
-        return LC.imap_authenticated_max_idle_time.intValue();
+        return ImapSession.IMAP_IDLE_TIMEOUT_SEC;
     }
 
     public boolean isCleartextLoginEnabled() {
@@ -126,5 +142,4 @@ public class ImapConfig extends ServerConfig {
         return Provisioning.getInstance().getConfig()
                 .getLongAttr(A_zimbraMtaMaxMessageSize, DEFAULT_MAX_MESSAGE_SIZE);
     }
-
 }

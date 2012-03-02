@@ -19,30 +19,34 @@ import com.zimbra.common.service.ServiceException;
 /**
  * Zimbra extension. An extension to the Zimbra server is packaged as a jar
  * file with its manifest containing the header:
- * 
- *   Zimbra-Extension-Class: <name of implementation class of this interface>
- * 
- * The extension is deployed by dropping the jar file into the 
- * <zimbra_home>/lib/ext/<ext> directory. It is loaded upon server startup.
+ * <p>
+ * <code>
+ *   Zimbra-Extension-Class: <i>name of implementation class of this interface</i>
+ * </code>
+ * <p>
+ * The extension is deployed by dropping the jar file into the
+ * <i>zimbra_home</i>/lib/ext/<i>ext</i> directory. It is loaded upon server startup.
  */
 public interface ZimbraExtension {
-    
+
     /**
      * Defines a name for the extension. It must be an identifier.
-     * @return
+     *
+     * @return extension name
      */
-    public String getName();
-    
+    String getName();
+
     /**
      * Initializes the extension. Called when the extension is loaded.
-     * 
-     * @throws ServiceException
-     */
-	public void init() throws ServiceException;
-	
-    /**
-     * Terminates the extension. Called when the server is shut down.
      *
+     * @throws ExtnsionException voluntarily resign from the registration
+     * @throws ServiceException error
      */
-	public void destroy();
+    void init() throws ExtensionException, ServiceException;
+
+    /**
+     * Terminates the extension. Called when the server is shut down or this
+     * extension is unregistered.
+     */
+    void destroy();
 }

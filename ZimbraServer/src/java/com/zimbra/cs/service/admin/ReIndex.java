@@ -36,117 +36,143 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.soap.ZimbraSoapContext;
 
-public class ReIndex extends AdminDocumentHandler {
+/**
+ * Admin operation handler for {@code reIndexMailbox(rim)}.
+ */
+public final class ReIndex extends AdminDocumentHandler {
 
-    private final String ACTION_START = "start";
-    private final String ACTION_STATUS = "status";
-    private final String ACTION_CANCEL = "cancel";
+    private static final String ACTION_START = "start";
+    private static final String ACTION_STATUS = "status";
+    private static final String ACTION_CANCEL = "cancel";
 
-    private static final String[] TARGET_ACCOUNT_PATH = new String[] { AdminConstants.E_MAILBOX, AdminConstants.A_ACCOUNTID };
-    protected String[] getProxiedAccountPath()  { return TARGET_ACCOUNT_PATH; }
+    private static final String STATUS_STARTED = "started";
+    private static final String STATUS_RUNNING = "running";
+    private static final String STATUS_IDLE = "idle";
+    private static final String STATUS_CANCELLED = "cancelled";
+
+    private static final String[] TARGET_ACCOUNT_PATH = new String[] {
+        AdminConstants.E_MAILBOX, AdminConstants.A_ACCOUNTID
+    };
+
+    @Override
+    protected String[] getProxiedAccountPath() {
+        return TARGET_ACCOUNT_PATH;
+    }
 
     /**
-     * must be careful and only allow access to domain if domain admin
+     * must be careful and only allow access to domain if domain admin.
      */
-    public boolean domainAuthSufficient(Map context) {
+    @Override
+    public boolean domainAuthSufficient(Map<String, Object> context) {
         return true;
     }
 
-    public Element handle(Element request, Map<String, Object> context) throws ServiceException {
+    @Override
+    public Element handle(Element request, Map<String, Object> context)
+        throws ServiceException {
+
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
 
         String action = request.getAttribute(MailConstants.E_ACTION);
 
         Element mreq = request.getElement(AdminConstants.E_MAILBOX);
         String accountId = mreq.getAttribute(AdminConstants.A_ACCOUNTID);
-        
+
         Provisioning prov = Provisioning.getInstance();
         Account account = prov.get(AccountBy.id, accountId, zsc.getAuthToken());
-        if (account == null)
+        if (account == null) {
             throw AccountServiceException.NO_SUCH_ACCOUNT(accountId);
-        
+        }
+
         if (account.isCalendarResource()) {
             // need a CalendarResource instance for RightChecker
-            CalendarResource resource = prov.get(CalendarResourceBy.id, account.getId());
-            checkCalendarResourceRight(zsc, resource, Admin.R_reindexCalendarResourceMailbox);
-        } else
+            CalendarResource resource = prov.get(CalendarResourceBy.id,
+                    account.getId());
+            checkCalendarResourceRight(zsc, resource,
+                    Admin.R_reindexCalendarResourceMailbox);
+        } else {
             checkAccountRight(zsc, account, Admin.R_reindexMailbox);
+        }
 
-        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(account, false);
-        if (mbox == null)
-            throw ServiceException.FAILURE("mailbox not found for account " + accountId, null);
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(
+                account, false);
+        if (mbox == null) {
+            throw ServiceException.FAILURE(
+                    "mailbox not found for account " + accountId, null);
+        }
 
         Element response = zsc.createElement(AdminConstants.REINDEX_RESPONSE);
 
-        if (action.equalsIgnoreCase(ACTION_START)) {
+        if (ACTION_START.equalsIgnoreCase(action)) {
             if (mbox.isReIndexInProgress()) {
-                throw ServiceException.ALREADY_IN_PROGRESS(accountId, "ReIndex");
-            }
-            
-            byte[] types = null;
-            String typesStr = mreq.getAttribute(MailConstants.A_SEARCH_TYPES, null);
-            if (typesStr != null) {
-                types = MailboxIndex.parseTypesString(typesStr);
-            }
-            
-            Set<Integer> itemIds = null;
-            String idsStr = mreq.getAttribute(MailConstants.A_IDS, null);
-            if (idsStr != null) {
-                itemIds = new HashSet<Integer>();
-                String targets[] = idsStr.split(",");
-                for (String target : targets)
-                    itemIds.add(Integer.parseInt(target));
-            }
-
-            HashSet<Byte> typesSet;
-            if (types == null)
-            	typesSet = null;
-            else {
-                typesSet = new HashSet<Byte>();
-                for (byte b : types) {
-                	typesSet.add(b);
+                response.addAttribute(AdminConstants.A_STATUS, STATUS_RUNNING);
+            } else {
+                byte[] types = null;
+                String typesStr = mreq.getAttribute(MailConstants.A_SEARCH_TYPES, null);
+                if (typesStr != null) {
+                    types = MailboxIndex.parseTypesString(typesStr);
                 }
+
+                Set<Integer> itemIds = null;
+                String idsStr = mreq.getAttribute(MailConstants.A_IDS, null);
+                if (idsStr != null) {
+                    itemIds = new HashSet<Integer>();
+                    String targets[] = idsStr.split(",");
+                    for (String target : targets) {
+                        itemIds.add(Integer.parseInt(target));
+                    }
+                }
+
+                Set<Byte> typesSet;
+                if (types == null) {
+                    typesSet = null;
+                } else {
+                    typesSet = new HashSet<Byte>();
+                    for (byte b : types) {
+                        typesSet.add(b);
+                    }
+                }
+                mbox.reIndex(getOperationContext(zsc, context), typesSet, itemIds, false);
+                response.addAttribute(AdminConstants.A_STATUS, STATUS_STARTED);
             }
-            
-            mbox.reIndex(getOperationContext(zsc, context), typesSet, itemIds, false);
-            
-            response.addAttribute(AdminConstants.A_STATUS, "started");
-        } else if (action.equalsIgnoreCase(ACTION_STATUS)) {
+        } else if (ACTION_STATUS.equalsIgnoreCase(action)) {
             synchronized (mbox) {
-                if (!mbox.isReIndexInProgress()) {
-                    throw ServiceException.NOT_IN_PROGRESS(accountId, "ReIndex");
+                if (mbox.isReIndexInProgress()) {
+                    Mailbox.BatchedIndexStatus status = mbox.getReIndexStatus();
+                    addProgressInfo(response, status);
+                    response.addAttribute(AdminConstants.A_STATUS, STATUS_RUNNING);
+                } else {
+                    response.addAttribute(AdminConstants.A_STATUS, STATUS_IDLE);
                 }
-                Mailbox.BatchedIndexStatus status = mbox.getReIndexStatus();
-                addStatus(response, status);
             }
-            response.addAttribute(AdminConstants.A_STATUS, "running");
-
-        } else if (action.equalsIgnoreCase(ACTION_CANCEL)) {
+        } else if (ACTION_CANCEL.equalsIgnoreCase(action)) {
             synchronized (mbox) {
-                if (!mbox.isReIndexInProgress()) {
-                    throw ServiceException.NOT_IN_PROGRESS(accountId, "ReIndex");
+                if (mbox.isReIndexInProgress()) {
+                    Mailbox.BatchedIndexStatus status = mbox.getReIndexStatus();
+                    status.mCancel = true;
+                    response.addAttribute(AdminConstants.A_STATUS, STATUS_CANCELLED);
+                    addProgressInfo(response, status);
+                } else {
+                    response.addAttribute(AdminConstants.A_STATUS, STATUS_IDLE);
                 }
-
-                Mailbox.BatchedIndexStatus status = mbox.getReIndexStatus();
-                status.mCancel = true;
-
-                response.addAttribute(AdminConstants.A_STATUS, "cancelled");
-                addStatus(response, status);
             }
         } else {
-            throw ServiceException.INVALID_REQUEST("Unknown action: "+action, null);
+            throw ServiceException.INVALID_REQUEST(
+                    "Unknown action: " + action, null);
         }
 
         return response;
     }
 
-    public static void addStatus(Element response, Mailbox.BatchedIndexStatus status) {
+    private void addProgressInfo(Element response, Mailbox.BatchedIndexStatus status) {
         Element prog = response.addElement(AdminConstants.E_PROGRESS);
-        prog.addAttribute(AdminConstants.A_NUM_SUCCEEDED, (status.mNumProcessed-status.mNumFailed));
+        prog.addAttribute(AdminConstants.A_NUM_SUCCEEDED,
+                status.mNumProcessed - status.mNumFailed);
         prog.addAttribute(AdminConstants.A_NUM_FAILED, status.mNumFailed);
-        prog.addAttribute(AdminConstants.A_NUM_REMAINING, (status.mNumToProcess-status.mNumProcessed));
+        prog.addAttribute(AdminConstants.A_NUM_REMAINING,
+                status.mNumToProcess - status.mNumProcessed);
     }
-    
+
     @Override
     public void docRights(List<AdminRight> relatedRights, List<String> notes) {
         relatedRights.add(Admin.R_reindexMailbox);

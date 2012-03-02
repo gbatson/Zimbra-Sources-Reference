@@ -24,6 +24,8 @@ import javax.mail.internet.MimeMessage;
 
 import junit.framework.TestCase;
 
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.mime.shim.JavaMailMimeMessage;
 import com.zimbra.common.service.ServiceException.Argument;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
@@ -52,8 +54,7 @@ extends TestCase {
         mOriginalAllowAnyFrom = TestUtil.getAccountAttr(SENDER_NAME, Provisioning.A_zimbraAllowAnyFromAddress);
     }
     
-    // XXX bburtin: disabling test until we're back to using our own SMTP client
-    public void disabledTestRejectRecipient()
+    public void testRejectRecipient()
     throws Exception {
         String errorMsg = "Sender address rejected: User unknown in relay recipient table";
         String bogusAddress = TestUtil.getAddress("bogus");
@@ -62,7 +63,7 @@ extends TestCase {
         server.setSmtpPort(TEST_SMTP_PORT);
 
         String content = TestUtil.getTestMessage(NAME_PREFIX + " testRejectSender", bogusAddress, SENDER_NAME, null);
-        MimeMessage msg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
+        MimeMessage msg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
         Mailbox mbox = TestUtil.getMailbox(SENDER_NAME);
 
         // Test reject first recipient, get partial send value from LDAP.
@@ -80,7 +81,7 @@ extends TestCase {
         startDummySmtpServer(bogusAddress, errorMsg);
         sendFailed = false;
         server.setSmtpSendPartial(true);
-        MailSender sender = mbox.getMailSender().setForceSendPartial(false);
+        MailSender sender = mbox.getMailSender().setSendPartial(false);
         
         try {
             sender.sendMimeMessage(null, mbox, msg);
@@ -95,8 +96,8 @@ extends TestCase {
         sendFailed = false;
         String validAddress = TestUtil.getAddress(RECIPIENT_NAME);
         InternetAddress[] recipients = new InternetAddress[2];
-        recipients[0] = new InternetAddress(validAddress);
-        recipients[1] = new InternetAddress(bogusAddress);
+        recipients[0] = new JavaMailInternetAddress(validAddress);
+        recipients[1] = new JavaMailInternetAddress(bogusAddress);
         msg.setRecipients(MimeMessage.RecipientType.TO, recipients);
         server.setSmtpSendPartial(false);
         try {
@@ -106,7 +107,7 @@ extends TestCase {
             sendFailed = true;
         }
         assertTrue(sendFailed);
-        
+
         // Test partial send, get value from LDAP.
         startDummySmtpServer(bogusAddress, errorMsg);
         server.setSmtpSendPartial(true);
@@ -114,7 +115,7 @@ extends TestCase {
         try {
             mbox.getMailSender().sendMimeMessage(null, mbox, msg);
         } catch (MailServiceException e) {
-            validateException(e, MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE, bogusAddress, errorMsg);
+            validateException(e, MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE, bogusAddress, null);
             sendFailed = true;
         }
         assertTrue(sendFailed);
@@ -122,13 +123,14 @@ extends TestCase {
         // Test partial send, specify value explicitly.
         server.setSmtpSendPartial(false);
         startDummySmtpServer(bogusAddress, errorMsg);
-        server.setSmtpSendPartial(true);
         sendFailed = false;
-        sender = mbox.getMailSender().setForceSendPartial(true);
+        sender = mbox.getMailSender().setSendPartial(true);
         try {
             sender.sendMimeMessage(null, mbox, msg);
         } catch (MailServiceException e) {
-            validateException(e, MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE, bogusAddress, errorMsg);
+            // Don't check error message.  JavaMail does not give us the SMTP protocol error in the
+            // partial send case.
+            validateException(e, MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE, bogusAddress, null);
             sendFailed = true;
         }
         assertTrue(sendFailed);
@@ -145,7 +147,7 @@ extends TestCase {
         // Create a message with a different From header value.
         String from = TestUtil.getAddress("testRestrictEnvelopeSender");
         String subject = NAME_PREFIX + " testRestrictEnvelopeSender";
-        MessageBuilder builder = new MessageBuilder().withFrom(from).withRecipient(RECIPIENT_NAME)
+        MessageBuilder builder = new MessageBuilder().withFrom(from).withToRecipient(RECIPIENT_NAME)
             .withSubject(subject).withBody("Who are you?");
         String content = builder.create();
         MimeMessage msg = new FixedMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
@@ -211,6 +213,9 @@ extends TestCase {
     
     private void validateException(MailServiceException e, String expectedCode, String invalidRecipient, String errorSubstring) {
         assertEquals(expectedCode, e.getCode());
+        if (errorSubstring != null) {
+            assertTrue("Error did not contain '" + errorSubstring + "': " + e.getMessage(), e.getMessage().contains(errorSubstring));
+        }
         
         boolean foundRecipient = false;
         for (Argument arg : e.getArgs()) {

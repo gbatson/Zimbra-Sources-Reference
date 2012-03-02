@@ -12,10 +12,6 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on May 26, 2004
- */
 package com.zimbra.cs.service.account;
 
 import java.util.Map;
@@ -24,17 +20,18 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.gal.GalSearchControl;
 import com.zimbra.cs.gal.GalSearchParams;
 import com.zimbra.soap.ZimbraSoapContext;
 
 /**
+ * @since May 26, 2004
  * @author schemers
  */
-public class SearchGal extends AccountDocumentHandler {
-    
+public class SearchGal extends GalDocumentHandler {
+
+    @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Account account = getRequestedAccount(getZimbraSoapContext(context));
@@ -42,32 +39,22 @@ public class SearchGal extends AccountDocumentHandler {
         if (!canAccessAccount(zsc, account))
             throw ServiceException.PERM_DENIED("can not access account");
         
-        String n = request.getAttribute(AccountConstants.E_NAME);
-        while (n.endsWith("*"))
-            n = n.substring(0, n.length() - 1);
-
+        String name = request.getAttribute(AccountConstants.E_NAME);
         String typeStr = request.getAttribute(AccountConstants.A_TYPE, "all");
-        Provisioning.GAL_SEARCH_TYPE type;
-        if (typeStr.equals("all"))
-            type = Provisioning.GAL_SEARCH_TYPE.ALL;
-        else if (typeStr.equals("account"))
-            type = Provisioning.GAL_SEARCH_TYPE.USER_ACCOUNT;
-        else if (typeStr.equals("resource"))
-            type = Provisioning.GAL_SEARCH_TYPE.CALENDAR_RESOURCE;
-        else
-            throw ServiceException.INVALID_REQUEST("Invalid search type: " + typeStr, null);
-        String galAcctId = request.getAttribute(AccountConstants.A_ID, null);
+        Provisioning.GalSearchType type = Provisioning.GalSearchType.fromString(typeStr);
 
-        String query = null;
-        if (n.compareTo(".") != 0)
-        	query = n + "*";
+        boolean needCanExpand = request.getAttributeBool(AccountConstants.A_NEED_EXP, false);
+
+        String galAcctId = request.getAttribute(AccountConstants.A_GAL_ACCOUNT_ID, null);
+
         GalSearchParams params = new GalSearchParams(account, zsc);
         params.setType(type);
         params.setRequest(request);
-        params.setQuery(query);
+        params.setQuery(name);
+        params.setNeedCanExpand(needCanExpand);
         params.setResponseName(AccountConstants.SEARCH_GAL_RESPONSE);
         if (galAcctId != null)
-        	params.setGalSyncAccount(Provisioning.getInstance().getAccountById(galAcctId));
+            params.setGalSyncAccount(Provisioning.getInstance().getAccountById(galAcctId));
         GalSearchControl gal = new GalSearchControl(params);
         gal.search();
         return params.getResultCallback().getResponse();

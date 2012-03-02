@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -36,6 +36,7 @@
  */
 ZmContactListController = function(container, contactsApp) {
 
+	if (arguments.length == 0) { return; }
 	ZmListController.call(this, container, contactsApp);
 
 	this._viewFactory = {};
@@ -49,7 +50,7 @@ ZmContactListController = function(container, contactsApp) {
 
 	this._listeners[ZmOperation.EDIT] = new AjxListener(this, this._editListener);
 	this._listeners[ZmOperation.PRINT] = null; // override base class to do nothing
-	this._listeners[ZmOperation.PRINT_CONTACT] = new AjxListener(this, this._printContactListener);
+	this._listeners[ZmOperation.PRINT_CONTACT] = new AjxListener(this, this._printListener);
 	this._listeners[ZmOperation.PRINT_ADDRBOOK] = new AjxListener(this, this._printAddrBookListener);
     this._listeners[ZmOperation.CHECK_MAIL] = new AjxListener(this, this._syncAllListener);
 
@@ -286,7 +287,7 @@ function(actionCode) {
 
 		case ZmKeyMap.PRINT:
 			if (appCtxt.get(ZmSetting.PRINT_ENABLED)) {
-				this._printContactListener();
+				this._printListener();
 			}
 			break;
 
@@ -472,6 +473,8 @@ function(view) {
 	}
 
 	ZmOperation.setOperation(this._actionMenu, ZmOperation.CONTACT, ZmOperation.EDIT_CONTACT);
+    if (this._actionMenu.getOp("SEARCH"))
+        ZmOperation.setOperation(this._actionMenu, ZmOperation.SEARCH, ZmOperation.SEARCH, ZmMsg.findEmailByContact);
 };
 
 /**
@@ -674,9 +677,11 @@ function(parent, num) {
 
 	var printOp = (parent instanceof ZmActionMenu) ? ZmOperation.PRINT_CONTACT : ZmOperation.PRINT;
 
+    
 	if (!this.isGalSearch()) {
 		parent.enable([ZmOperation.SEARCH, ZmOperation.BROWSE, ZmOperation.NEW_MENU, ZmOperation.VIEW_MENU], true);
 		parent.enable(printOp, num > 0);
+        appCtxt.notifyZimlets("resetToolbarOperations",[parent, num]);
 
 		// a valid folderId means user clicked on an addrbook
 		if (this._folderId) {
@@ -688,6 +693,7 @@ function(parent, num) {
 			parent.enable([ZmOperation.TAG_MENU], (!isShare && num > 0));
 			parent.enable([ZmOperation.DELETE, ZmOperation.MOVE], canEdit && num > 0);
 			parent.enable([ZmOperation.EDIT, ZmOperation.CONTACT], canEdit && num == 1 && !isInTrash);
+
 
 			if (printMenuItem) {
 				var text = isShare ? ZmMsg.printResults : ZmMsg.printAddrBook;
@@ -773,7 +779,7 @@ function(ev) {
         contact = selection[i];
         email   = contact.isGroup() ? contact.getGroupMembers().good : contact.getEmail();
         if(email){
-            email   = contact.isGroup() ? email : new AjxEmailAddress(email);
+            email   = contact.isGroup() ? email : new AjxEmailAddress(email, AjxEmailAddress.TO, contact.getFullName());
             email   = email.toString(AjxEmailAddress.SEPARATOR) + AjxEmailAddress.SEPARATOR;
             name   += email;
         }
@@ -851,7 +857,7 @@ function(ev) {
 /**
  * @private
  */
-ZmContactListController.prototype._printContactListener =
+ZmContactListController.prototype._printListener =
 function(ev) {
 	var contacts = this._listView[this._currentView].getSelection();
 	var ids = [];
@@ -863,8 +869,10 @@ function(ev) {
 		url = "/h/printcontacts?id=" + ids.join("&id=");
 		url = url + "&st=gal";
 		var query = this._currentSearch && this._currentSearch.query;
-		if (query)
+		if (query && contacts.length > 1)
 			url += "&sq="+query;
+        else if(contacts.length==1)
+            url += "&sq=" + contacts[0].getFileAs();
 	}
 	if (appCtxt.isOffline) {
 		var folderId = this._folderId || ZmFolder.ID_CONTACTS;
@@ -880,7 +888,6 @@ function(ev) {
 ZmContactListController.prototype._printAddrBookListener =
 function(ev) {
 	var url;
-
 	if (this._folderId && !this._list._isShared) {
 		url = "/h/printcontacts?sfi=" + this._folderId;
 	} else {
@@ -905,8 +912,10 @@ function(ev) {
 	if (this.isGalSearch()) {
 		url = url + "&st=gal";
 		var query = this._currentSearch && this._currentSearch.query;
-		if (query)
+		if (query && list && list.length > 1)
 			url += "&sq="+query;
+        else if (list && list.length == 1)
+            url += "&sq="+list[0].getFileAs();
 	}
 	if (appCtxt.isOffline) {
 		var folderId = this._folderId || ZmFolder.ID_CONTACTS;
@@ -1034,3 +1043,5 @@ function() {
 	lv.set(this._list);
 	lv._setNextSelection();
 };
+
+

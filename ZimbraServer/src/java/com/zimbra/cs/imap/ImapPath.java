@@ -61,17 +61,17 @@ public class ImapPath implements Comparable<ImapPath> {
     private ImapCredentials mCredentials;
     private String mOwner;
     private String mPath;
-    private Object mMailbox;
-    private Object mFolder;
     private ItemId mItemId;
     private Scope mScope = Scope.CONTENT;
-    private ImapPath mReferent;
+    private transient Object mMailbox;
+    private transient Object mFolder;
+    private transient ImapPath mReferent;
 
     /** Takes a user-supplied IMAP mailbox path and converts it to a Zimbra
      *  folder pathname.  Applies all special, hack-specific folder mappings.
      *  Does <b>not</b> do IMAP-UTF-7 decoding; this is assumed to have been
      *  already done by the appropriate method in {@link ImapRequest}.
-     *  
+     *
      * @param imapPath   The client-provided logical IMAP pathname.
      * @param creds      The authenticated user's login credentials.
      * @see #exportPath(String, ImapCredentials) */
@@ -169,7 +169,7 @@ public class ImapPath implements Comparable<ImapPath> {
         return asImapPath().equalsIgnoreCase(((ImapPath) obj).asImapPath());
     }
 
-    public int compareTo(ImapPath o) {
+    @Override public int compareTo(ImapPath o) {
         return asImapPath().compareToIgnoreCase(o.asImapPath());
     }
 
@@ -353,7 +353,7 @@ public class ImapPath implements Comparable<ImapPath> {
         if (mReferent != null)
             return mReferent;
 
-        // while calculating, use the base 
+        // while calculating, use the base
         mReferent = this;
 
         // only follow the authenticated user's own mountpoints
@@ -396,8 +396,8 @@ public class ImapPath implements Comparable<ImapPath> {
                         ZFolder zfolder = zmbx.getFolderByPath(path.substring(0, index));
                         if (zfolder != null) {
                             subpathRemote = path.substring(Math.min(path.length(), index + 1));
-    
-                            if (zfolder instanceof ZMountpoint || subpathRemote.equals("")) {
+
+                            if (zfolder instanceof ZMountpoint || subpathRemote.isEmpty()) {
                                 mFolder = zfolder;
                                 mItemId = new ItemId(zfolder.getId(), accountId);
                             }
@@ -575,7 +575,7 @@ public class ImapPath implements Comparable<ImapPath> {
                 return false;
             // search folder visibility depends on an account setting
             if (folder instanceof SearchFolder)
-                return ((SearchFolder) folder).isImapVisible();
+                return ((SearchFolder) folder).isImapVisible() && ImapFolder.getTypeConstraint((SearchFolder) folder).length > 0;
         } else {
             ZFolder zfolder = (ZFolder) mFolder;
             // the mailbox root folder is not visible
@@ -635,7 +635,12 @@ public class ImapPath implements Comparable<ImapPath> {
     /** Formats a folder path as an IMAP-UTF-7 quoted-string.  Applies all
      *  special hack-specific path transforms. */
     String asUtf7String() {
-        ByteBuffer bb = FOLDER_ENCODING_CHARSET.encode(asImapPath());
+        return asUtf7String(asImapPath());
+    }
+
+    /** Formats a folder path as an IMAP-UTF-7 quoted-string. */
+    static String asUtf7String(String imapPath) {
+        ByteBuffer bb = FOLDER_ENCODING_CHARSET.encode(imapPath);
         byte[] content = new byte[bb.limit() + 2];
         content[0] = '"';
         System.arraycopy(bb.array(), 0, content, 1, content.length - 2);

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -33,7 +33,7 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.util.Zimbra;
 
-public class ZRecur implements Cloneable {
+public class ZRecur {
 
     public static enum Frequency { DAILY, HOURLY, MINUTELY, MONTHLY, SECONDLY, WEEKLY, YEARLY }
     
@@ -458,28 +458,7 @@ public class ZRecur implements Cloneable {
     public ZRecur(String str, TimeZoneMap tzmap) throws ServiceException {
         parse(str, tzmap);
     }
-
-    private ZRecur(ZRecur other) {
-        mByDayList.addAll(other.mByDayList);
-        mByHourList.addAll(other.mByHourList);
-        mByMinuteList.addAll(other.mByMinuteList);
-        mByMonthDayList.addAll(other.mByMonthDayList);
-        mByMonthList.addAll(other.mByMonthList);
-        mBySecondList.addAll(other.mBySecondList);
-        mBySetPosList.addAll(other.mBySetPosList);
-        mByWeekNoList.addAll(other.mByWeekNoList);
-        mByYearDayList.addAll(other.mByYearDayList);
-        mCount = other.mCount;
-        mFreq = other.mFreq;
-        mInterval = other.mInterval;
-        mUntil = other.mUntil == null ? null : (ParsedDateTime) other.mUntil.clone();
-        mWkSt = other.mWkSt;
-    }
-
-    public Object clone() {
-        return new ZRecur(this);
-    }
-
+    
     public List<Integer> getByHourList() {
         return this.mByHourList;
     }
@@ -639,6 +618,7 @@ public class ZRecur implements Cloneable {
 
         GregorianCalendar cur = dtStart.getCalendarCopy();
         int baseMonthDay = cur.get(Calendar.DAY_OF_MONTH);
+        boolean baseIsLeapDay = ((baseMonthDay == 29) && (cur.get(Calendar.MONTH) == Calendar.FEBRUARY));
         
         // until we hit rangeEnd, or we've SAVED count entries:
         //
@@ -843,6 +823,16 @@ public class ZRecur implements Cloneable {
                  * BYWEEKNO - specified week
                  * BYMONTH - once
                  */
+                if (baseIsLeapDay) {
+                    // previously adding a year to a leap day will have rounded down to the 28th.
+                    // If this happened, we need to be sure that if we are back in a leap
+                    // year, it is back at 29th
+                    cur.set(Calendar.DAY_OF_MONTH, cur.getActualMaximum(Calendar.DAY_OF_MONTH));
+                }
+                if (ignoreYearForRecurrenceExpansion(cur, baseIsLeapDay)) {
+                    cur.add(Calendar.YEAR, interval);
+                    break;
+                }
                 addList.add((Calendar)(cur.clone()));
                 
                 cur.add(Calendar.YEAR, interval);
@@ -1155,6 +1145,49 @@ public class ZRecur implements Cloneable {
         
         return toRet;
     }
+
+    /**
+     * rfc5545 says :
+     *    Recurrence rules may generate recurrence instances with an invalid
+     *    date (e.g., February 30) or nonexistent local time (e.g., 1:30 AM
+     *    on a day where the local time is moved forward by an hour at 1:00
+     *    AM).  Such recurrence instances MUST be ignored and MUST NOT be
+     *    counted as part of the recurrence set.
+     * Therefore, ignore this year if the last day isn't 29th for patterns:
+     *     RRULE:FREQ=YEARLY;BYMONTHDAY=29;BYMONTH=2
+     *     and "RRULE:FREQ=YEARLY" where DTSTART is a leap day
+     * 
+     * @param cur
+     * @param baseIsLeapDay
+     * @return
+     */
+    private boolean ignoreYearForRecurrenceExpansion(Calendar cur, boolean baseIsLeapDay) {
+        boolean ignoreThisYear = false;
+        if (baseIsLeapDay && (cur.get(Calendar.DAY_OF_MONTH) != 29)) {
+            ignoreThisYear = isSimpleRecurrence();
+            if (!ignoreThisYear) {
+                if ((mByMonthDayList.size() == 1) && (mByMonthDayList.get(0) == 29)) {
+                    ignoreThisYear = (mByMonthList.isEmpty() ||
+                                    ((mByMonthList.size() == 1) && (mByMonthList.get(0) == 2)));
+                }
+            }
+        }
+        return ignoreThisYear;
+    }
+
+    private boolean isSimpleRecurrence() {
+        if (!mByDayList.isEmpty()) return false;
+        if (!mByHourList.isEmpty()) return false;
+        if (!mByMinuteList.isEmpty()) return false;
+        if (!mByMonthDayList.isEmpty()) return false;
+        if (!mByMonthList.isEmpty()) return false;
+        if (!mBySecondList.isEmpty()) return false;
+        if (!mBySetPosList.isEmpty()) return false;
+        if (!mByWeekNoList.isEmpty()) return false;
+        if (!mByYearDayList.isEmpty()) return false;
+        return true;
+    }
+
     /**
      * Very simple function b/c it can completely ignore the Ordinal value
      * 

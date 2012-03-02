@@ -21,6 +21,7 @@ import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.mailbox.ChangeTrackingMailbox.TracelessContext;
+import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.redolog.op.CreateFolder;
 
 public abstract class DesktopMailbox extends Mailbox {
@@ -46,7 +47,7 @@ public abstract class DesktopMailbox extends Mailbox {
     public static final String FAILURE_PATH = "Error Reports";
     public static final String NOTIFICATIONS_PATH = "Notification Mountpoints";
     public static final String OUTBOX_PATH = "Outbox";
-    
+
     public static final int ID_FOLDER_NOTIFICATIONS = 250;
     public static final int ID_FOLDER_FAILURE = 252;
     public static final int ID_FOLDER_OUTBOX = 254;
@@ -75,8 +76,8 @@ public abstract class DesktopMailbox extends Mailbox {
     }
 
     @Override
-    synchronized boolean finishInitialization() throws ServiceException {
-        if (super.finishInitialization()) {
+    boolean open() throws ServiceException {
+        if (super.open()) {
             ensureSystemFolderExists();
             checkOfflineVersion();
             return true;
@@ -118,12 +119,22 @@ public abstract class DesktopMailbox extends Mailbox {
             CreateFolder redo = new CreateFolder(getId(), FAILURE_PATH,
                 ID_FOLDER_USER_ROOT, Folder.FOLDER_IS_IMMUTABLE,
                 MailItem.TYPE_MESSAGE, 0, MailItem.DEFAULT_COLOR_RGB, null);
-            
+
             redo.setFolderId(ID_FOLDER_FAILURE);
             redo.start(System.currentTimeMillis());
             createFolder(new TracelessContext(redo), FAILURE_PATH,
                 ID_FOLDER_USER_ROOT, Folder.FOLDER_IS_IMMUTABLE,
                 MailItem.TYPE_MESSAGE, 0, MailItem.DEFAULT_COLOR_RGB, null);
         }
+    }
+
+    @Override
+    public boolean dumpsterEnabled() {
+        return false;
+    }
+    
+    @Override
+    protected void migrateWikiFolders() throws ServiceException {
+        OfflineLog.offline.debug("wiki folder migration skipped");
     }
 }

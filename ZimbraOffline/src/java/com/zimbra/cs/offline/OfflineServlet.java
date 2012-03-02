@@ -29,7 +29,6 @@ import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.offline.OfflineDataSource;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.account.soap.SoapProvisioning;
 import com.zimbra.cs.zclient.ZMailbox;
@@ -90,7 +89,6 @@ public class OfflineServlet extends HttpServlet {
             LOCALHOST_ADMIN_URL = LOCALHOST_URL_PREFIX + port + AdminConstants.ADMIN_SERVICE_URI;
             LOCALHOST_MAIL_URL = LOCALHOST_URL_PREFIX + port + "/zimbra/mail";
 
-            OfflineDataSource.init();
             OfflineProvisioning.getOfflineInstance().getLocalAccount();
             OfflineSyncManager.getInstance().init();
         } catch (Exception x) {

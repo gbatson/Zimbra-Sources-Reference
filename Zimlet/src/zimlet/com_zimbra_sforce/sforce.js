@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1455,7 +1455,7 @@ function(caseNumber) {
 	var pickListNames = [];
 	for (var el in this._sforceCaseObject) {
 		var obj = this._sforceCaseObject[el];
-		if (obj.type != "picklist") {
+		if(!obj.picklistValues) {
 			continue;
 		}
 		try {
@@ -2610,7 +2610,7 @@ Com_Zimbra_SForce.prototype.done_login = function(callback, result) {
 					this.__dynamicMenuItems_links.push({id:Dwt.getNextId(),icon:"SFORCE-panelIcon", label:obj.label, itemName:itemName});
 					continue;
 				}
-				if (obj.type != "picklist") {
+				if (!obj.picklistValues) {
 					continue;
 				}
 				var subMenuItems = obj.picklistValues.split("=::=");

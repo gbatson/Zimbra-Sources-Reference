@@ -16,6 +16,8 @@
 package com.zimbra.cs.util;
 
 import java.io.UnsupportedEncodingException;
+import java.util.HashSet;
+import java.util.Set;
 
 import javax.mail.Address;
 import javax.mail.MessagingException;
@@ -29,6 +31,7 @@ import com.zimbra.common.util.SystemUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
@@ -56,17 +59,17 @@ public class AccountUtil {
         }
 
         try {
-            return new InternetAddress(address, personalPart, MimeConstants.P_CHARSET_UTF8);
+            return new JavaMailInternetAddress(address, personalPart, MimeConstants.P_CHARSET_UTF8);
         } catch (UnsupportedEncodingException e) { }
 
         // UTF-8 should *always* be supported (i.e. this is actually unreachable)
         try {
             // fall back to using the system's default charset (also pretty much guaranteed not to be "unsupported")
-            return new InternetAddress(address, personalPart);
+            return new JavaMailInternetAddress(address, personalPart);
         } catch (UnsupportedEncodingException e) { }
 
         // if we ever reached this point (which we won't), just return an address with no personal part
-        InternetAddress ia = new InternetAddress();
+        InternetAddress ia = new JavaMailInternetAddress();
         ia.setAddress(address);
         return ia;
     }
@@ -82,10 +85,10 @@ public class AccountUtil {
         String address = SystemUtil.coalesce(acct.getPrefFromAddress(), acct.getName());
         String personal = SystemUtil.coalesce(acct.getPrefFromDisplay(), acct.getDisplayName(), acct.getCn());
         try {
-            return new InternetAddress(address, personal, MimeConstants.P_CHARSET_UTF8);
+            return new JavaMailInternetAddress(address, personal, MimeConstants.P_CHARSET_UTF8);
         } catch (UnsupportedEncodingException e) {
             ZimbraLog.system.error("Unable to encode address %s <%s>", personal, address);
-            InternetAddress ia = new InternetAddress();
+            InternetAddress ia = new JavaMailInternetAddress();
             ia.setAddress(address);
             return ia;
         }
@@ -109,10 +112,10 @@ public class AccountUtil {
         }
         String personal = acct.getPrefReplyToDisplay();
         try {
-            return new InternetAddress(address, personal, MimeConstants.P_CHARSET_UTF8);
+            return new JavaMailInternetAddress(address, personal, MimeConstants.P_CHARSET_UTF8);
         } catch (UnsupportedEncodingException e) {
             ZimbraLog.system.error("Unable to encode address %s <%s>", personal, address);
-            InternetAddress ia = new InternetAddress();
+            InternetAddress ia = new JavaMailInternetAddress();
             ia.setAddress(address);
             return ia;
         }
@@ -199,6 +202,29 @@ public class AccountUtil {
         String[] accountAliases = acct.getMailAlias();
         String[] allowedFromAddrs = acct.getMultiAttr(Provisioning.A_zimbraAllowFromAddress);
         return addressMatchesAccount(accountAddress, canonicalAddress, accountAliases, allowedFromAddrs, givenAddress);
+    }
+    
+    /**
+     * Returns all account email addresses in lower case in a hash set.
+     * @param acct user's account
+     * @return Set containing all account email addresses in lower case or, empty if no email address is found
+     * @throws ServiceException
+     */
+    public static Set<String> getEmailAddresses(Account acct) throws ServiceException {
+        Set<String> addrs = new HashSet<String> ();
+        
+        addrs.add(acct.getName().toLowerCase());
+        addrs.add(AccountUtil.getCanonicalAddress(acct).toLowerCase());
+
+        String[] accountAliases = acct.getMailAlias();
+        for (String addr : accountAliases)
+            addrs.add(addr.toLowerCase());
+        
+        String[] allowedFromAddrs = acct.getMultiAttr(Provisioning.A_zimbraAllowFromAddress);
+        for (String addr : allowedFromAddrs)
+            addrs.add(addr.toLowerCase());
+        
+        return addrs;
     }
 
     private static boolean addressMatchesAccount(

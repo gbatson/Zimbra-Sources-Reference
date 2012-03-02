@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,7 +20,7 @@
 <%@ taglib prefix="app" uri="com.zimbra.htmlclient" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <rest:handleError>
-    <zm:getItemInfoJSON var="fileInfoJSON" box="${mailbox}" id="${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}"/>
+    <zm:getItemInfoJSON var="fileInfoJSON" authtoken="${requestScope.zimbra_authToken}" id="${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}"/>
 <c:if test="${not empty param.dev and param.dev eq '1'}">
     <c:set var="mode" value="mjsf" scope="request"/>
     <c:set var="gzip" value="false" scope="request"/>
@@ -147,13 +147,16 @@
 
     window.contextPath = '${pageContext.request.contextPath}';
     window.appContextPath = '${pageContext.request.contextPath}';
-     window.appDevMode     = ${isDevMode};
+    window.appRequestLocaleId = "${zm:cook(localeId)}";
+    window.appDevMode     = ${isDevMode};
 
-    ZmSpreadSheetApp._createDBG('${isDevMode}');
+    window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
 
     ZmSpreadSheetApp.setFile('${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}');
 
     var itemInfo = ${fileInfoJSON};
+    itemInfo = itemInfo.Body && itemInfo.Body.GetItemResponse;
+    
     if(itemInfo && itemInfo.doc && (itemInfo.doc.length==1)) {
         var item = ZmDocletMgr.createItem(itemInfo);
         //REST URL will not be generated on server side

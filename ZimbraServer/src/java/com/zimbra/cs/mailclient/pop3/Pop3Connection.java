@@ -20,9 +20,7 @@ import java.io.OutputStream;
 
 import javax.security.auth.login.LoginException;
 
-import com.zimbra.common.util.ZimbraLog;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
 
 import com.zimbra.cs.mailclient.CommandFailedException;
 import com.zimbra.cs.mailclient.MailConnection;
@@ -36,8 +34,6 @@ public final class Pop3Connection extends MailConnection {
     private int messageCount;
     private long maildropSize;
 
-    private static final Logger LOGGER = Logger.getLogger(Pop3Connection.class);
-    
     private static final String PASS = "PASS";
     private static final String USER = "USER";
     private static final String AUTH = "AUTH";
@@ -58,17 +54,20 @@ public final class Pop3Connection extends MailConnection {
 
     @Override
     protected MailInputStream newMailInputStream(InputStream is) {
-        return new MailInputStream(is);
+        if (getLogger().isTraceEnabled()) {
+            return new MailInputStream(is, getLogger());
+        } else {
+            return new MailInputStream(is);
+        }
     }
 
     @Override
     protected MailOutputStream newMailOutputStream(OutputStream os) {
-        return new MailOutputStream(os);
-    }
-
-    @Override
-    public Logger getLogger() {
-        return LOGGER;
+        if (getLogger().isTraceEnabled()) {
+            return new MailOutputStream(os, getLogger());
+        } else {
+            return new MailOutputStream(os);
+        }
     }
 
     @Override
@@ -89,14 +88,14 @@ public final class Pop3Connection extends MailConnection {
         capabilities = capa();
         stat();
     }
-    
+
     @Override
     public void authenticate(String pass) throws LoginException, IOException {
         super.authenticate(pass);
         capabilities = capa();
         stat();
     }
-    
+
     @Override
     public void logout() throws IOException {
         quit();
@@ -145,7 +144,7 @@ public final class Pop3Connection extends MailConnection {
                 maildropSize = Long.parseLong(parts[1]);
                 return;
             } catch (NumberFormatException e) {
-                ZimbraLog.pop.error("Invalid STAT response: " + res.getMessage(), e);
+                getLogger().error("Invalid STAT response: " + res.getMessage(), e);
                 // Fall through...
             }
         }
@@ -156,7 +155,7 @@ public final class Pop3Connection extends MailConnection {
     public Pop3Capabilities getCapabilities() {
         return capabilities;
     }
-    
+
     public int getMessageCount() {
         return messageCount;
     }
@@ -164,7 +163,7 @@ public final class Pop3Connection extends MailConnection {
     public long getMaildropSize() {
         return maildropSize;
     }
-    
+
     public int getMessageSize(int msgno) throws IOException {
         Pop3Response res = sendCommand(LIST, msgno);
         if (res.isOK()) {
@@ -256,7 +255,7 @@ public final class Pop3Connection extends MailConnection {
     public ContentInputStream getMessage(int msgno) throws IOException {
         return sendCommandCheckStatus(RETR, msgno).getContentInputStream();
     }
-    
+
     public boolean deleteMessage(int msgno) throws IOException {
         return sendCommand(DELE, msgno).isOK();
     }
@@ -264,7 +263,7 @@ public final class Pop3Connection extends MailConnection {
     public void reset() throws IOException {
         sendCommandCheckStatus(RSET, null);
     }
-    
+
     public void noop() throws IOException {
         sendCommandCheckStatus(NOOP, null);
     }
@@ -274,7 +273,7 @@ public final class Pop3Connection extends MailConnection {
         sendCommandCheckStatus(QUIT, null);
         setState(State.CLOSED);
     }
-    
+
     public boolean hasCapability(String cap) {
         return capabilities != null && capabilities.hasCapability(cap);
     }
@@ -282,7 +281,7 @@ public final class Pop3Connection extends MailConnection {
     public Pop3Config getPop3Config() {
         return (Pop3Config) config;
     }
-    
+
     public Pop3Response sendCommand(String cmd, Object args) throws IOException {
         mailOut.write(cmd);
         if (args != null) {
@@ -295,6 +294,7 @@ public final class Pop3Connection extends MailConnection {
         }
         mailOut.newLine();
         mailOut.flush();
+        mailOut.trace();
         while (true) {
             Pop3Response res = Pop3Response.read(cmd, mailIn);
             if (!res.isContinuation()) {
@@ -305,15 +305,9 @@ public final class Pop3Connection extends MailConnection {
     }
 
     private void writePass(String pass) throws IOException {
-        if (traceOut != null && traceOut.suspendTrace("<password>")) {
-            try {
-                mailOut.write(pass);
-            } finally {
-                traceOut.resumeTrace();
-            }
-        } else {
-            mailOut.write(pass);
-        }
+        mailOut.setPrivacy(true);
+        mailOut.write(pass);
+        mailOut.setPrivacy(false);
     }
 
     public Pop3Response sendCommandCheckStatus(String cmd, Object args)

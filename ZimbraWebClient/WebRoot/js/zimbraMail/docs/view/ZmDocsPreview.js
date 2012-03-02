@@ -18,12 +18,18 @@ ZmDocsPreview = function(container, params){
     this._container = document.getElementById(container);
 
     params = params || {};
+    if(params.versionCont)
+        params.versionCont = document.getElementById(params.versionCont);
+    this._params = params;
 
     if(!params.deferInit)   this.init();
 
 };
 
 ZmDocsPreview.prototype.constructor = ZmDocsPreview;
+
+//TODO: Make ZmPreview base class sto isolate all the common methods for Documents/Spreadsheets/Slides
+//ZmDocsPreview.prototype = new ZmPreview
 
 ZmDocsPreview.launch =
 function(container, params){
@@ -55,7 +61,19 @@ function(callback){
 
     var serverUrl = window.location.href;
     serverUrl = serverUrl.replace(/\?.*/,''); //Cleanup Params
-    AjxRpc.invoke("fmt=html", serverUrl, null, new AjxCallback(this, this._handleFetchContent, callback), true );
+
+    var urlParams = [];
+    urlParams.push("fmt=native");
+
+    var version = this._params.version;
+    if(version)
+        urlParams.push("ver="+version);
+
+    urlParams = urlParams.join('&');
+    serverUrl = serverUrl + ( urlParams.length > 0 ? "?" : "" ) + urlParams;
+
+    AjxRpc.invoke(urlParams, serverUrl, null, new AjxCallback(this, this._handleFetchContent, callback), true);
+    
 };
 
 ZmDocsPreview.prototype._handleFetchContent =
@@ -69,30 +87,7 @@ ZmDocsPreview.prototype.show =
 function(){
     var previewHTML = this._content;
     this._container.innerHTML = previewHTML;
-};
-
-ZmDocsPreview._createDBG = function(devMode){
-
-    var isDevMode = /^(1|true|on|yes)$/i.test(devMode);
-
-    if(isDevMode){
-        AjxDispatcher.require("Debug");
-        window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
-    }else {
-        window.AjxDebug = function() {};
-        window.AjxDebug.prototype.toString		= function() { return "dummy DBG class"};
-        window.AjxDebug.prototype.display		= function() {};
-        window.AjxDebug.prototype.dumpObj		= function() {};
-        window.AjxDebug.prototype.getDebugLevel	= function() {};
-        window.AjxDebug.prototype.isDisabled	= function() {};
-        window.AjxDebug.prototype.println		= function() {};
-        window.AjxDebug.prototype.printRaw		= function() {};
-        window.AjxDebug.prototype.printXML		= function() {};
-        window.AjxDebug.prototype.setDebugLevel	= function() {};
-        window.AjxDebug.prototype.setTitle		= function() {};
-        window.AjxDebug.prototype.showTiming	= function() {};
-        window.AjxDebug.prototype._getTimeStamp	= function() {};
-        window.AjxDebug.prototype.timePt		= function() {};
-        window.DBG = new window.AjxDebug();
+    if(this._params.versionCont){
+        this._params.versionCont.innerHTML = this._params.version;
     }
 };

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,36 +24,43 @@ import java.util.regex.Pattern;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.Version;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.util.BuildInfo;
 
 public class AttributeInfo {
-    
+
     //  8        4  4     4      12
     //8cf3db5d-cfd7-11d9-884f-e7b38f15492d
-    private static Pattern ID_PATTERN = 
+    private static Pattern ID_PATTERN =
         Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
-                
+
     //yyyyMMddHHmmssZ
     private static Pattern GENTIME_PATTERN = Pattern.compile("^\\d{14}[zZ]$");
 
     private static Pattern DURATION_PATTERN = Pattern.compile("^\\d+([hmsd]|ms)?$");
     
+    public static String DURATION_PATTERN_DOC =
+        "Must be in valid duration format: {digits}{time-unit}.  " + 
+        "digits: 0-9, time-unit: [hmsd]|ms.  " + 
+        "h - hours, m - minutes, s - seconds, d - days, ms - milliseconds.  " + 
+        "If time unit is not specified, the default is s(seconds).";
+
     /** attribute name */
     protected String mName;
-    
+
     /** attribute type */
     protected AttributeType mType;
-    
+
     /** sort order */
     private AttributeOrder mOrder;
-    
+
     /** for enums */
     private HashSet<String> mEnumSet;
-    
+
     /** for regex */
     private Pattern mRegex;
 
@@ -65,41 +72,41 @@ public class AttributeInfo {
 
     /** whether this attribute can be modified directly */
     private boolean mImmutable;
-    
+
     private AttributeCardinality mCardinality;
-    
-    private Set<AttributeClass> mRequiredInClasses; 
+
+    private Set<AttributeClass> mRequiredInClasses;
 
     private Set<AttributeClass> mOptionalInClasses;
-    
+
     private Set<AttributeFlag> mFlags;
-    
+
     private List<String> mGlobalConfigValues;
-    
+
     private List<String> mGlobalConfigValuesUpgrade;
-    
+
     protected List<String> mDefaultCOSValues;
-    
+
     private List<String> mDefaultCOSValuesUpgrade;
-    
+
     private long mMin = Long.MIN_VALUE, mMax = Long.MAX_VALUE;
-    
-    private String mMinDuration = null, mMaxDuration = null; 
+
+    private String mMinDuration = null, mMaxDuration = null;
 
     private int mId;
-    
+
     private String mParentOid;
-    
+
     private int mGroupId;
-    
+
     private String mDescription;
-    
+
     private List<AttributeServerType> mRequiresRestart;
-    
-    private BuildInfo.Version mSince;
-    
-    private BuildInfo.Version mDeprecatedSince;
-    
+
+    private Version mSince;
+
+    private Version mDeprecatedSince;
+
     private static Integer parseInt(String value) {
         try {
             return Integer.parseInt(value);
@@ -115,7 +122,7 @@ public class AttributeInfo {
             return null;
         }
     }
-    
+
     private static Long parseLong(String attrName, String propName, String value, long defaultValue) {
         if (!StringUtil.isNullOrEmpty(value)) {
             try {
@@ -126,19 +133,19 @@ public class AttributeInfo {
                 return defaultValue;
             }
         } else
-            return defaultValue; 
+            return defaultValue;
     }
 
-    
-    protected AttributeInfo (String attrName, int id, String parentId, int groupId, AttributeCallback callback, AttributeType type,
-                   AttributeOrder order, String value, boolean immutable, String min, String max, 
-                   AttributeCardinality cardinality, Set<AttributeClass> requiredIn, 
-                   Set<AttributeClass> optionalIn, Set<AttributeFlag> flags,
-                   List<String> globalConfigValues, List<String> defaultCOSValues, 
-                   List<String> globalConfigValuesUpgrade, List<String> defaultCOSValuesUpgrade, 
-                   String description, List<AttributeServerType> requiresRestart,
-                   BuildInfo.Version since, BuildInfo.Version deprecatedSince)
-    {
+
+    protected AttributeInfo (String attrName, int id, String parentId, int groupId,
+            AttributeCallback callback, AttributeType type,  AttributeOrder order,
+            String value, boolean immutable, String min, String max,
+            AttributeCardinality cardinality, Set<AttributeClass> requiredIn,
+            Set<AttributeClass> optionalIn, Set<AttributeFlag> flags,
+            List<String> globalConfigValues, List<String> defaultCOSValues,
+            List<String> globalConfigValuesUpgrade, List<String> defaultCOSValuesUpgrade,
+            String description, List<AttributeServerType> requiresRestart,
+            Version since, Version deprecatedSince) {
         mName = attrName;
         mImmutable = immutable;
         mCallback = callback;
@@ -160,15 +167,15 @@ public class AttributeInfo {
         mRequiresRestart = requiresRestart;
         mSince = since;
         mDeprecatedSince = deprecatedSince;
-        
+
         mMin = parseLong(attrName, AttributeManager.A_MIN, min, Long.MIN_VALUE);
         mMax = parseLong(attrName, AttributeManager.A_MAX, max, Long.MAX_VALUE);
-        
+
         switch (mType) {
         case TYPE_INTEGER:
             mMin = Integer.MIN_VALUE;
             mMax = Integer.MAX_VALUE;
-            
+
             if (!StringUtil.isNullOrEmpty(min)) {
                 Integer i = parseInt(min);
                 if (i == null) {
@@ -191,7 +198,7 @@ public class AttributeInfo {
         case TYPE_LONG:
             mMin = Long.MIN_VALUE;
             mMax = Long.MAX_VALUE;
-            
+
             if (!StringUtil.isNullOrEmpty(min)) {
                 Long l = parseLong(min);
                 if (l == null) {
@@ -226,7 +233,7 @@ public class AttributeInfo {
             mMax = Long.MAX_VALUE;
             mMinDuration = "0";
             mMaxDuration = Long.toString(mMax);
-            
+
             if (!StringUtil.isNullOrEmpty(min)) {
                 mMin = DateUtil.getTimeInterval(min, -1);
                 if (mMin < 0) {
@@ -249,7 +256,7 @@ public class AttributeInfo {
             }
             break;
         }
-            
+
     }
 
     public int getEnumValueMaxLength() {
@@ -263,7 +270,7 @@ public class AttributeInfo {
         }
         return max;
     }
-    
+
     public void checkValue(Object value, boolean checkImmutable, Map attrsToModify) throws ServiceException {
         if ((value == null) || (value instanceof String)) {
             checkValue((String) value, checkImmutable, attrsToModify);
@@ -294,7 +301,7 @@ public class AttributeInfo {
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be TRUE or FALSE", null);
         case TYPE_DURATION:
             if (!DURATION_PATTERN.matcher(value).matches())
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid duration: nnnn[hsmd]", null);
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName + " " + DURATION_PATTERN_DOC, null);
             long l = DateUtil.getTimeInterval(value, 0);
             if (l < mMin)
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName+" is shorter than minimum allowed: "+mMinDuration, null);
@@ -303,17 +310,17 @@ public class AttributeInfo {
             return;
         case TYPE_EMAIL:
             if (value.length() > mMax)
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger than max allowed: "+mMax, null);              
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger than max allowed: "+mMax, null);
             validEmailAddress(value, false);
-            return;           
+            return;
         case TYPE_EMAILP:
             if (value.length() > mMax)
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger than max allowed: "+mMax, null);              
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger than max allowed: "+mMax, null);
             validEmailAddress(value, true);
             return;
         case TYPE_CS_EMAILP:
             if (value.length() > mMax)
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger than max allowed: "+mMax, null);              
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger than max allowed: "+mMax, null);
             String[] emails = value.split(",");
             for (String email : emails)
                 validEmailAddress(email, true);
@@ -334,11 +341,11 @@ public class AttributeInfo {
             //
             if (!Provisioning.getInstance().idIsUUID())
                 return;
-            
+
             if (ID_PATTERN.matcher(value).matches())
                 return;
             else
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid id", null); 
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid id", null);
         case TYPE_INTEGER:
             try {
                 int v = Integer.parseInt(value);
@@ -366,7 +373,7 @@ public class AttributeInfo {
                 int v = Integer.parseInt(value);
                 if (v >= 0 && v <= 65535)
                     return;
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid port: "+value, null);               
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid port: "+value, null);
             } catch (NumberFormatException e) {
                 throw AccountServiceException.INVALID_ATTR_VALUE(mName+" must be a valid port: "+value, null);
             }
@@ -376,7 +383,7 @@ public class AttributeInfo {
         case TYPE_CSTRING:
         case TYPE_PHONE:
             if (value.length() > mMax)
-                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger then max allowed: "+mMax, null);   
+                throw AccountServiceException.INVALID_ATTR_VALUE(mName+" value length("+value.length()+") larger then max allowed: "+mMax, null);
             // TODO
             return;
         case TYPE_REGEX:
@@ -389,30 +396,30 @@ public class AttributeInfo {
             return;
         }
     }
-   
+
     public static void validEmailAddress(String addr, boolean personal) throws ServiceException {
         if (addr.indexOf('@') == -1)
-            throw AccountServiceException.INVALID_ATTR_VALUE("must include domain", null);
+            throw AccountServiceException.INVALID_ATTR_VALUE("address '" + addr + "' does not include domain", null);
 
         try {
-            InternetAddress ia = new InternetAddress(addr, true);
+            InternetAddress ia = new JavaMailInternetAddress(addr, true);
             // is this even needed?
             ia.validate();
             if (!personal && ia.getPersonal() != null && !ia.getPersonal().equals(""))
-                throw AccountServiceException.INVALID_ATTR_VALUE("invalid email address", null);
+                throw AccountServiceException.INVALID_ATTR_VALUE("invalid email address: " + addr, null);
         } catch (AddressException e) {
-            throw AccountServiceException.INVALID_ATTR_VALUE("invalid email address", e);
+            throw AccountServiceException.INVALID_ATTR_VALUE("invalid email address: " + addr, e);
         }
     }
 
     AttributeCallback getCallback() {
         return mCallback;
     }
-   
+
     String getName() {
         return mName;
     }
-   
+
     boolean hasFlag(AttributeFlag flag) {
         if (mFlags == null) {
             return false;
@@ -420,7 +427,7 @@ public class AttributeInfo {
         boolean result = mFlags.contains(flag);
         return result;
     }
-   
+
     int getId() {
         return mId;
     }
@@ -428,35 +435,38 @@ public class AttributeInfo {
     Set<String> getEnumSet() {
         return mEnumSet;
     }
-   
+
     String getParentOid() {
         return mParentOid;
     }
-   
+
     int getGroupId() {
         return mGroupId;
     }
-   
+
     AttributeType getType() {
         return mType;
     }
 
     AttributeOrder getOrder() {
- 	   return mOrder;
+        return mOrder;
     }
-   
+
     String getDescription() {
-        return mDescription;
+        if (AttributeType.TYPE_DURATION == getType())
+            return mDescription + "  " + DURATION_PATTERN_DOC;
+        else    
+            return mDescription;
     }
 
     long getMax() {
         return mMax;
     }
-    
+
     long getMin() {
         return mMin;
     }
-   
+
     boolean requiredInClass(AttributeClass cls) {
         return mRequiredInClasses != null && mRequiredInClasses.contains(cls);
     }
@@ -464,11 +474,11 @@ public class AttributeInfo {
     boolean optionalInClass(AttributeClass cls) {
         return mOptionalInClasses != null && mOptionalInClasses.contains(cls);
     }
-    
+
     Set<AttributeClass> getRequiredIn() {
         return mRequiredInClasses;
     }
-    
+
     Set<AttributeClass> getOptionalIn() {
         return mOptionalInClasses;
     }
@@ -476,19 +486,19 @@ public class AttributeInfo {
     public AttributeCardinality getCardinality() {
         return mCardinality;
     }
-   
+
     public List<String> getGlobalConfigValues() {
         return mGlobalConfigValues;
     }
-    
+
     public List<String> getGlobalConfigValuesUpgrade() {
         return mGlobalConfigValuesUpgrade;
     }
-   
+
     public List<String> getDefaultCosValues() {
         return mDefaultCOSValues;
     }
-    
+
     public List<String> getDefaultCosValuesUpgrade() {
         return mDefaultCOSValuesUpgrade;
     }
@@ -496,20 +506,20 @@ public class AttributeInfo {
     boolean isImmutable() {
         return mImmutable;
     }
-    
+
     String getValue() {
         return mValue;
     }
-    
+
     public List<AttributeServerType> getRequiresRestart() {
         return mRequiresRestart;
     }
-    
-    public BuildInfo.Version getSince() {
+
+    public Version getSince() {
         return mSince;
     }
-    
-    public BuildInfo.Version getDeprecatedSince() {
+
+    public Version getDeprecatedSince() {
         return mDeprecatedSince;
     }
 }

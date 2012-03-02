@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -139,7 +139,7 @@ public class CalSummaryCache {
             String defaultEffectivePartStat = calItem.getEffectivePartStat(defaultInvite, null);
             FullInstanceData defaultData =
                 new FullInstanceData(defaultInvite, null, defDtStartLong, defDurationLong,
-                                     defaultEffectivePartStat, defaultFba, null, null);
+                                     defaultEffectivePartStat, defaultFba, null);
             calItemData = new CalendarItemData(
                     calItem.getType(), calItem.getFolderId(), calItem.getId(),
                     calItem.getFlagString(), calItem.getTagString(),
@@ -162,14 +162,14 @@ public class CalSummaryCache {
                     // For an instance whose alarm time is within the time range, we must
                     // include it even if its start time is after the range.
                     long startOrAlarm = instStart == alarmInst ? alarmTime : instStart;
-
-                    if (!inst.isTimeless() &&
+                    boolean hasTimes = inst.hasStart() && inst.hasEnd();
+                    if (hasTimes &&
                         (startOrAlarm >= rangeEnd || inst.getEnd() <= rangeStart)) {
                         continue;
                     }
                     numInstances++;
 
-                    if (!inst.isTimeless()) {
+                    if (hasTimes) {
                         if (actualRangeStart == 0 || startOrAlarm < actualRangeStart)
                             actualRangeStart = startOrAlarm;
                         if (inst.getEnd() > actualRangeEnd)
@@ -187,7 +187,7 @@ public class CalSummaryCache {
                     InstanceData instData;
                     if (!inst.isException()) {
                         String ridZ = inst.getRecurIdZ();
-                        Long tzOffset = instStartLong != null ? new Long(inst.getTzOffset()) : null;
+                        Long tzOffset = instStartLong != null && inst.isAllDay() ? new Long(inst.getStartTzOffset()) : null;
                         instData = new InstanceData(
                                 ridZ, instStartLong, durationLong, alarmAt, tzOffset,
                                 effectivePartStat, fba, inv.getPercentComplete(),
@@ -196,7 +196,7 @@ public class CalSummaryCache {
                         String ridZ = null;
                         if (inv.hasRecurId())
                             ridZ = inv.getRecurId().getDtZ();
-                        instData = new FullInstanceData(inv, ridZ, instStartLong, durationLong, effectivePartStat, fba, alarmAt, defaultData);
+                        instData = new FullInstanceData(inv, ridZ, instStartLong, durationLong, effectivePartStat, fba, alarmAt);
                     }
                     calItemData.addInstance(instData);
                 } catch (MailServiceException.NoSuchItemException e) {
@@ -685,7 +685,7 @@ public class CalSummaryCache {
     private void invalidateSummary(Mailbox mbox, int folderId) {
         if (!LC.calendar_cache_enabled.booleanValue())
             return;
-        long mboxId = mbox.getId();
+        int mboxId = mbox.getId();
         CalSummaryKey key = new CalSummaryKey(mbox.getAccountId(), folderId);
         synchronized (mSummaryCache) {
             mSummaryCache.remove(key);

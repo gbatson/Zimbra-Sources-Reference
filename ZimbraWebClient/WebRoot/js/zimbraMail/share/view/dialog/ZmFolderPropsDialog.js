@@ -75,25 +75,17 @@ ZmFolderPropsDialog.prototype.popup =
 function(organizer) {
 	this._organizer = organizer;
 	organizer.addChangeListener(this._folderChangeListener);
-
-	// dont allow "None" option in color picker
-	// bug 22490 removed None option when not in use
-	if (this._color &&
-		organizer.type != ZmOrganizer.FOLDER &&
-		organizer.type != ZmOrganizer.TASKS &&
-		organizer.type != ZmOrganizer.ADDRBOOK)
-	{
-		this._color.clearOptions();
-		for (var i = 1; i < ZmOrganizer.COLOR_CHOICES.length; i++) {
-			var color = ZmOrganizer.COLOR_CHOICES[i];
-			this._color.addOption(color.label, false, color.value);
+	var colorCode = 0;
+	if (this._color) {
+        var icon = organizer.getIcon(); 
+        this._color.setImage(icon);
+		if(ZmOrganizer.COLOR_VALUES[organizer.color] && (organizer.rgb != ZmOrganizer.COLOR_VALUES[organizer.color])) {
+			colorCode = organizer.rgb;
+		} else {
+			colorCode = organizer.color;
 		}
-	} else {
-		this._color.clearOptions();
-		for (var i = 0; i < ZmOrganizer.COLOR_CHOICES.length; i++) {
-			var color = ZmOrganizer.COLOR_CHOICES[i];
-			this._color.addOption(color.label, false, color.value);
-		}
+        this._color.setValue(colorCode);
+        this._color.setEnabled(organizer.id != ZmFolder.ID_DRAFTS);
 	}
 
 	this._handleFolderChange();
@@ -206,13 +198,6 @@ function(event) {
 	if (!organizer.isSystem() && !organizer.isDataSource()) {
 		var name = this._nameInputEl.value;
 		if (organizer.name != name) {
-			var error = ZmOrganizer.checkName(name);
-			if (error) {
-				var dialog = appCtxt.getMsgDialog();
-				dialog.setMessage(error, DwtMessageDialog.WARNING_STYLE);
-				dialog.popup();
-				return;
-			}
 			organizer.rename(name, callback, this._handleRenameErrorCallback);
 			return;
 		}
@@ -227,9 +212,14 @@ function(response) {
 	// change color
 	var callback = new AjxCallback(this, this._handleFreeBusy);
 	var organizer = this._organizer;
-	var color = this._color.getValue();
+	var color = this._color.getValue() || ZmOrganizer.DEFAULT_COLOR[organizer.type];
 	if (organizer.color != color) {
-		organizer.setColor(color, callback, this._handleErrorCallback);
+        if (String(color).match(/^#/)) {
+            organizer.setRGB(color, callback, this._handleErrorCallback);
+        }
+        else {
+            organizer.setColor(color, callback, this._handleErrorCallback);
+        }
 		return;
 	}
 
@@ -262,20 +252,15 @@ function(response) {
 ZmFolderPropsDialog.prototype._handleRenameError =
 function(response) {
 	var value = this._nameInputEl.value;
-	var msg;
-	var noDetails = false;
+	var msg, detail;
 	if (response.code == ZmCsfeException.MAIL_ALREADY_EXISTS) {
 		msg = AjxMessageFormat.format(ZmMsg.errorAlreadyExists, [value]);
 	} else if (response.code == ZmCsfeException.MAIL_IMMUTABLE) {
 		msg = AjxMessageFormat.format(ZmMsg.errorCannotRename, [value]);
-	} else if (response.code == ZmCsfeException.SVC_INVALID_REQUEST) {
+	} else if (response.code == ZmCsfeException.SVC_INVALID_REQUEST) { 
 		msg = response.msg; // triggered on an empty name
-	} else if (response.code == ZmCsfeException.MAIL_INVALID_NAME) {
-		//I add this here despite checking upfront using ZmOrganizer.checkName, since there might be more restrictions for different types of organizers. so just in case the server still returns an error in the name.
-		msg = AjxMessageFormat.format(ZmMsg.invalidName, [AjxStringUtil.htmlEncode(value)]);
-		noDetails = true;
 	}
-	appCtxt.getAppController().popupErrorDialog(msg, noDetails ? null : response.msg, null, true);
+	appCtxt.getAppController().popupErrorDialog(msg, response.msg, null, true);
 	return true;
 };
 
@@ -302,7 +287,13 @@ function(event) {
 	this._typeEl.innerHTML = ZmMsg[ZmOrganizer.FOLDER_KEY[organizer.type]] || ZmMsg.folder;
 	this._urlEl.innerHTML = organizer.url || "";
 	if (this._color) {
-		this._color.setSelectedValue(organizer.color);
+		var colorCode = 0;
+		if(ZmOrganizer.COLOR_VALUES[organizer.color] && (organizer.rgb != ZmOrganizer.COLOR_VALUES[organizer.color])) {
+			colorCode = organizer.rgb;
+		} else {
+			colorCode = organizer.color;
+		}
+		this._color.setValue(colorCode);
 		var isVisible = (organizer.type != ZmOrganizer.FOLDER ||
 						 (organizer.type == ZmOrganizer.FOLDER && appCtxt.get(ZmSetting.MAIL_FOLDER_COLORS_ENABLED)));
 		this._props.setPropertyVisible(this._colorId, isVisible);
@@ -492,11 +483,7 @@ function() {
 	propsGroup.setLabel(ZmMsg.properties);
 
 	this._props = new DwtPropertySheet(propsGroup);
-	this._color = new DwtSelect({parent:this._props});
-	for (var i = 0; i < ZmOrganizer.COLOR_CHOICES.length; i++) {
-		var color = ZmOrganizer.COLOR_CHOICES[i];
-		this._color.addOption(color.label, false, color.value);
-	}
+	this._color = new ZmColorButton({parent:this});
 
 	this._props.addProperty(ZmMsg.nameLabel, nameEl);
 	this._props.addProperty(ZmMsg.typeLabel, this._typeEl);

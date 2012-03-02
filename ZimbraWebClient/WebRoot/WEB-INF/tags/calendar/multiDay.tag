@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -77,6 +77,7 @@
             <td class='ZhCalDayHSB' height="100%" width="1px">&nbsp;</td>
         </c:otherwise>
     </c:choose>
+    <c:set var="preDay" value="" />
     <c:forEach var="day" items="${layout.days}">
         <td nowrap class='ZhCalDaySEP ZhCalDayHeader${(day.startTime eq today.timeInMillis and empty day.folderId) ? 'Today':''}' colspan="${day.maxColumns}" width="${day.width}%">
             <c:choose>
@@ -90,7 +91,13 @@
                         <a href="${fn:escapeXml(dayUrl)}">
                     </c:if>
                     <fmt:message var="titleFormat" key="CAL_${numdays > 1 ? 'MDAY_':''}DAY_TITLE_FORMAT"/>
-                    <fmt:formatDate value="${zm:getCalendar(day.startTime, timezone).time}" pattern="${titleFormat}"/>
+                    <fmt:formatDate var="currDay" value="${zm:getCalendar(day.startTime, timezone).time}" pattern="${titleFormat}"/>
+                    <%-- Bug:49466 - fix for day light saving --%>
+                    <c:if test="${currDay eq preDay}">
+                        <fmt:formatDate var="currDay" value="${zm:addDay(zm:getCalendar(day.startTime, timezone),1).time}" pattern="${titleFormat}"/>
+                    </c:if>
+                    ${currDay}
+                    <c:set var="preDay" value="${currDay}" />
                     <c:if test="${not print}">
                         </a>
                     </c:if>
@@ -163,7 +170,8 @@
     <tr style="height:100%">
         <c:if test="${row.rowNum % 4 eq 0}">
             <td valign=top class='ZhCalDayHour' nowrap width="1%" rowspan="4" style='border-left:none;color:blue;'>
-                <app:calendarUrl var="newAppt" timezone="${timezone}" rawdate="${date}" action="edit"/>
+                <fmt:formatDate var="dateDf" value="${row.date}" pattern="yyyyMMdd'T'HHmmss" timeZone="${timezone}"/>
+                <app:calendarUrl var="newAppt" timezone="${timezone}" date="${dateDf}" action="edit"/>
                 <c:if test="${not print}"><a href="${newAppt}"></c:if><fmt:formatDate value="${row.date}" type="time" timeStyle="short"/>
                 <c:if test="${not print}"></a></c:if>
                     <fmt:formatDate var="timetitle" value="${row.date}" type="time" timeStyle="long"/>

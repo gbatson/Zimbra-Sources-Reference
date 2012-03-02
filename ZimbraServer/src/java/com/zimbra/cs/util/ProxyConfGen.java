@@ -21,7 +21,11 @@ import java.io.BufferedWriter;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.PrintStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
@@ -30,6 +34,8 @@ import java.util.SortedSet;
 import java.util.Formatter;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -49,6 +55,8 @@ import com.zimbra.common.service.ServiceException;
 
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.ServerBy;
+import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.extension.ExtensionDispatcherServlet;
@@ -148,30 +156,29 @@ class ProxyConfVar
         } else if (mValueType == ProxyConfValueType.BOOLEAN) {
             updateBoolean();
         } else if (mValueType == ProxyConfValueType.ENABLER) {
-        	updateEnabler();
-        	/* web.http.enabled and web.https.enabled are special ENABLER that need CUSTOM override */
-        	if ("web.http.enabled".equalsIgnoreCase(mKeyword))
-			{
-				/* if mailmode is https (only), then http needs to be disabled */
-				
-				String mailmode = serverSource.getAttr(Provisioning.A_zimbraReverseProxyMailMode,"both");
-				if ("https".equalsIgnoreCase(mailmode)) {
-				     mValue = false;
-				} else {
-				     mValue = true;
-				}
-	         }
-	         else if ("web.https.enabled".equalsIgnoreCase(mKeyword))
-	         {
-	             /* if mailmode is http (only), then https needs to be disabled */
-	
-	             String mailmode = serverSource.getAttr(Provisioning.A_zimbraReverseProxyMailMode,"both");
-	             if ("http".equalsIgnoreCase(mailmode)) {
-	                 mValue = false;
-	             } else {
-	                 mValue = true;
-	             }
-	         }
+            updateEnabler();
+            /* web.http.enabled and web.https.enabled are special ENABLER that need CUSTOM override */
+            if ("web.http.enabled".equalsIgnoreCase(mKeyword))
+            {
+                /* if mailmode is https (only), then http needs to be disabled */
+                
+                String mailmode = serverSource.getAttr(Provisioning.A_zimbraReverseProxyMailMode,"both");
+                if ("https".equalsIgnoreCase(mailmode)) {
+                     mValue = false;
+                } else {
+                     mValue = true;
+                }
+            }
+            else if ("web.https.enabled".equalsIgnoreCase(mKeyword))
+            {
+                 /* if mailmode is http (only), then https needs to be disabled */
+                 String mailmode = serverSource.getAttr(Provisioning.A_zimbraReverseProxyMailMode,"both");
+                 if ("http".equalsIgnoreCase(mailmode)) {
+                     mValue = false;
+                 } else {
+                     mValue = true;
+                 }
+            }
         } else if (mValueType == ProxyConfValueType.TIME) {
             updateTime();
         } else if (mValueType == ProxyConfValueType.CUSTOM) {
@@ -519,6 +526,22 @@ class ProxyConfVar
     }
 }
 
+/**
+ * A simple class of Triple<VirtualHostName, VirtualIPAddress, DomainName>. Uses
+ * this only for convenient and HashMap can't guarantee order
+ * @author jiankuan
+ */
+class DnVhnVIPItem {
+    public String domainName;
+    public String virtualHostname;
+    public String virtualIPAddress;
+    public DnVhnVIPItem(String dn, String vhn, String vip) {
+        this.domainName = dn;
+        this.virtualHostname = vhn;
+        this.virtualIPAddress = vip;
+    }
+}
+
 public class ProxyConfGen
 {
     private static Log mLog = LogFactory.getLog (ProxyConfGen.class);
@@ -528,7 +551,12 @@ public class ProxyConfGen
     private static String mTemplateDir = mWorkingDir + "/conf/nginx/templates";
     private static String mConfDir = mWorkingDir + "/conf";
     private static String mIncDir = "nginx/includes";
-    private static String mConfIncludesDir = mConfDir + "/" + mIncDir;
+    private static String mDomainSSLDir = mConfDir + File.separator + "domaincerts";
+    private static String mSSLCrtExt = ".crt";
+    private static String mSSLKeyExt = ".key";
+    private static String mDefaultSSLCrt = mConfDir + File.separator + "nginx.crt";
+    private static String mDefaultSSLKey = mConfDir + File.separator + "nginx.key";
+    private static String mConfIncludesDir = mConfDir + File.separator + mIncDir;
     private static String mConfPrefix = "nginx.conf";
     private static String mTemplatePrefix = mConfPrefix;
     private static String mTemplateSuffix = ".template";
@@ -537,7 +565,10 @@ public class ProxyConfGen
     private static Server mServer = null;
     private static Map<String, ProxyConfVar> mConfVars = new HashMap<String, ProxyConfVar>();
     private static Map<String, String> mVars = new HashMap<String, String>();
+    private static List<DnVhnVIPItem> mQualifiedVhnsAndVIPs;
 
+    /** the pattern for custom header cmd, such as "!{explode domain} */
+    private static Pattern cmdPattern = Pattern.compile("(.*)\\!\\{([^\\}]+)\\}(.*)", Pattern.DOTALL);
 
     static
     {
@@ -583,6 +614,69 @@ public class ProxyConfGen
 
         return cl;
     }
+    
+    /**
+     * Retrieve all the zimbraVirtualHostname and zimbraVirtualIPAddress pairs
+     * for all domains which contain custom certificates and private keys.
+     * 
+     * @return a list of <code>DnVhnVIPItem</code>
+     * @throws ServiceException
+     *             this method can work only when LDAP is available
+     * @author Jiankuan
+     */
+    private static List<DnVhnVIPItem> loadReverseProxyVhnAndVIP()
+            throws ServiceException {
+
+        if (!(mProv instanceof LdapProvisioning))
+            throw ServiceException.INVALID_REQUEST(
+                "The method can work only when LDAP is available", null);
+
+        final Set<String> attrsNeeded = new HashSet<String>();
+        attrsNeeded.add(Provisioning.A_zimbraVirtualHostname);
+        attrsNeeded.add(Provisioning.A_zimbraSSLCertificate);
+        attrsNeeded.add(Provisioning.A_zimbraSSLPrivateKey);
+
+        final List<DnVhnVIPItem> result = new ArrayList<DnVhnVIPItem>();
+
+        // visit domains
+        NamedEntry.Visitor visitor = new NamedEntry.Visitor() {
+            public void visit(NamedEntry entry) throws ServiceException {
+                String domainName = entry
+                    .getAttr(Provisioning.A_zimbraDomainName);
+                String[] virtualHostnames = entry
+                    .getMultiAttr(Provisioning.A_zimbraVirtualHostname);
+                String certificate = entry
+                    .getAttr(Provisioning.A_zimbraSSLCertificate);
+                String privateKey = entry
+                    .getAttr(Provisioning.A_zimbraSSLPrivateKey);
+                if (virtualHostnames.length == 0 ||certificate == null ||
+                                privateKey == null) {
+                    return; // ignore the items that don't have virtual host
+                            // name, cert or key. Those domains will use the
+                            // config
+                }
+
+                //Here assume virtualHostnames and virtualIPAddresses are
+                //same in number
+                int i = 0;
+                try {
+                    for(; i < virtualHostnames.length; i++) {
+                        String vip = InetAddress.getByName(virtualHostnames[i])
+                                                    .getHostAddress();
+                        result.add(new DnVhnVIPItem(domainName,
+                            virtualHostnames[i], vip));
+                    }
+                } catch (UnknownHostException e) {
+                    throw ServiceException.
+                        FAILURE("Cannot find the IP of " + virtualHostnames[i], e);
+                }
+            }
+        };
+
+        mProv.getAllDomains(visitor,
+            attrsNeeded.toArray(new String[attrsNeeded.size()]));
+        return result;
+    }
 
     /* Guess how to find a server object -- taken from ProvUtil::guessServerBy */
     public static ServerBy guessServerBy(String value) {
@@ -608,103 +702,31 @@ public class ProxyConfGen
         return s;
     }
 
-    public static String getCoreConf () {
+    private static String getCoreConf () {
         return mConfPrefix;
     }
 
-    public static String getCoreConfTemplate () {
+    private static String getCoreConfTemplate () {
         return mTemplatePrefix + mTemplateSuffix;
     }
-
-    public static String getMainConf () {
-        return mConfPrefix + ".main";
+    
+    private static String getConfFileName(String name) {
+        return mConfPrefix + "." + name;
+    }
+    
+    private static String getConfTemplateFileName(String name) {
+        return mTemplatePrefix + "." + name + mTemplateSuffix;
     }
 
-    public static String getMainConfTemplate () {
-        return mTemplatePrefix + ".main" + mTemplateSuffix;
-    }
-
-    public static String getMemcacheConf () {
-        return mConfPrefix + ".memcache";
-    }
-
-    public static String getMemcacheConfTemplate () {
-        return mTemplatePrefix + ".memcache" + mTemplateSuffix;
-    }
-
-    public static String getMailConf () {
-        return mConfPrefix + ".mail";
-    }
-
-    public static String getMailConfTemplate () {
-        return mTemplatePrefix + ".mail" + mTemplateSuffix;
-    }
-
-    public static String getMailImapConf () {
-        return mConfPrefix + ".mail.imap";
-    }
-
-    public static String getMailImapConfTemplate () {
-        return mTemplatePrefix + ".mail.imap" + mTemplateSuffix;
-    }
-
-    public static String getMailImapSConf () {
-        return mConfPrefix + ".mail.imaps";
-    }
-
-    public static String getMailImapSConfTemplate () {
-        return mTemplatePrefix + ".mail.imaps" + mTemplateSuffix;
-    }
-
-    public static String getMailPop3Conf () {
-        return mConfPrefix + ".mail.pop3";
-    }
-
-    public static String getMailPop3ConfTemplate () {
-        return mTemplatePrefix + ".mail.pop3" + mTemplateSuffix;
-    }
-
-    public static String getMailPop3SConf () {
-        return mConfPrefix + ".mail.pop3s";
-    }
-
-    public static String getMailPop3SConfTemplate () {
-        return mTemplatePrefix + ".mail.pop3s" + mTemplateSuffix;
-    }
-
-    public static String getWebConf () {
-        return mConfPrefix + ".web";
-    }
-
-    public static String getWebConfTemplate () {
-        return mTemplatePrefix + ".web" + mTemplateSuffix;
-    }
-
-    public static String getWebHttpConf () {
-        return mConfPrefix + ".web.http";
-    }
-
-    public static String getWebHttpConfTemplate () {
-        return mTemplatePrefix + ".web.http" + mTemplateSuffix;
-    }
-
-    public static String getWebHttpSConf () {
-        return mConfPrefix + ".web.https";
-    }
-
-    public static String getWebHttpSConfTemplate () {
-        return mTemplatePrefix + ".web.https" + mTemplateSuffix;
-    }
-
-    public static String getWebHttpModeConf (String mode) {
+    private static String getWebHttpModeConf (String mode) {
         return mConfPrefix + ".web.http.mode-" + mode;
     }
 
-    public static String getWebHttpModeConfTemplate (String mode) {
+    private static String getWebHttpModeConfTemplate (String mode) {
         return mTemplatePrefix + ".web.http.mode-" + mode + mTemplateSuffix;
     }
 
-    public static String getWebHttpSModeConf (String mode) {
+    private static String getWebHttpSModeConf (String mode) {
         return mConfPrefix + ".web.https.mode-" + mode;
     }
 
@@ -715,6 +737,8 @@ public class ProxyConfGen
     public static void expandTemplate (File tFile, File wFile)
         throws ProxyConfException
     {
+        BufferedReader r = null;
+        BufferedWriter w = null;
         try {
             String tf = tFile.getAbsolutePath();
             String wf = wFile.getAbsolutePath();
@@ -728,26 +752,127 @@ public class ProxyConfGen
             if (!tFile.exists()) {
                 throw new ProxyConfException("Template file " + tf + " does not exist");
             }
+            r = new BufferedReader(new FileReader(tf));
+            w = new BufferedWriter(new FileWriter(wf));
 
-            try {
-                BufferedReader r = new BufferedReader(new FileReader (tFile));
-                BufferedWriter w = new BufferedWriter(new FileWriter (wf));
-                String i;
-
-                while ((i = r.readLine()) != null) {
-                    i = StringUtil.fillTemplate(i,mVars);
-                    w.write(i);
-                    w.newLine();
+            String line;
+            
+            //for the first line of template, check the custom header command
+            r.mark(100); //assume the first line won't beyond 100
+            line = r.readLine();
+            Matcher cmdMatcher = cmdPattern.matcher(line);
+            if(cmdMatcher.matches()) {
+                //the command is found
+                String[] cmd_arg = cmdMatcher.group(2).split("[ \t]+", 2);
+                //command selection can be extracted if more commands are introduced
+                if(cmd_arg.length == 2 && 
+                        cmd_arg[0].compareTo("explode") == 0 && 
+                        cmd_arg[1].compareTo("vhn_vip_ssl") == 0) {
+                    expandTemplateExplodeSSLConfigsForAllVhnsAndVIPs(r, w);
+                } else {
+                    throw new ProxyConfException("Illegal custom header command: " + cmdMatcher.group(2));
                 }
-
-                w.close();
-                r.close();
-            } catch (IOException ie) {
-                throw new ProxyConfException("Cannot expand template file: " + ie.getMessage());
+            } else {
+                r.reset(); //reset to read the first line
+                expandTemplateSimple(r, w);
             }
+           
+        } catch (IOException ie) {
+                throw new ProxyConfException("Cannot expand template file: "
+                    + ie.getMessage());
 
         } catch (SecurityException se) {
-            throw new ProxyConfException ("Cannot expand template: " + se.getMessage());
+            throw new ProxyConfException("Cannot expand template: "
+                + se.getMessage());
+        }finally {
+            try {
+                if (w != null)
+                    w.close();
+                if (r != null)
+                    r.close();
+            } catch (IOException e) {
+                throw new ProxyConfException("Cannot expand template file: " +
+                    e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Enumerate all virtual host names and virtual ip addresses and 
+     * apply them into the var replacement.
+     * @author Jiankuan
+     */
+    private static void expandTemplateExplodeSSLConfigsForAllVhnsAndVIPs(
+        BufferedReader temp, BufferedWriter conf) throws IOException {
+        int size = mQualifiedVhnsAndVIPs.size();
+        List<String> cache = null;
+        if (size > 0) {
+
+            Iterator<DnVhnVIPItem> it = mQualifiedVhnsAndVIPs.iterator();
+            DnVhnVIPItem item = it.next();
+            mVars.put("vhn", item.virtualHostname);
+            mVars.put("vip", item.virtualIPAddress);
+            mVars.put("ssl.crt", mDomainSSLDir + File.separator +
+                item.domainName + mSSLCrtExt);
+            mVars.put("ssl.key", mDomainSSLDir + File.separator +
+                item.domainName + mSSLKeyExt);
+            cache = expandTemplateAndCache(temp, conf);
+            conf.newLine();
+            while (it.hasNext()) {
+                item = it.next();
+                mVars.put("vhn", item.virtualHostname);
+                mVars.put("vip", item.virtualIPAddress);
+                mVars.put("ssl.crt", mDomainSSLDir + File.separator +
+                    item.domainName + mSSLCrtExt);
+                mVars.put("ssl.key", mDomainSSLDir + File.separator +
+                    item.domainName + mSSLKeyExt);
+                expandTempateFromCache(cache, conf);
+                conf.newLine();
+            }
+        }
+    }
+    
+    /**
+     * Read from template file and translate the contents to conf.
+     * The template will be cached and returned
+     */
+    private static List<String> expandTemplateAndCache(BufferedReader temp,
+        BufferedWriter conf) throws IOException {
+        String line;
+        ArrayList<String> cache = new ArrayList<String>(50);
+        while ((line = temp.readLine()) != null) {
+            if (!line.startsWith("#"))
+                cache.add(line); // cache only non-comment lines
+            line = StringUtil.fillTemplate(line, mVars);
+            conf.write(line);
+            conf.newLine();
+        }
+        return cache;
+    }
+
+    /**
+     * Read from template file and translate the contents to conf
+     */
+    private static void expandTemplateSimple(BufferedReader temp,
+        BufferedWriter conf) throws IOException {
+        String line;
+        while ((line = temp.readLine()) != null) {
+            line = StringUtil.fillTemplate(line, mVars);
+            conf.write(line);
+            conf.newLine();
+        }
+    }
+
+    /**
+     * Read from cache that holding template file's content and translate to
+     * conf
+     */
+    private static void expandTempateFromCache(List<String> cache,
+        BufferedWriter conf) throws IOException {
+        for (String line : cache) {
+            line = StringUtil.fillTemplate(line, mVars);
+            conf.write(line);
+            conf.newLine();
         }
     }
 
@@ -786,14 +911,16 @@ public class ProxyConfGen
     public static void buildDefaultVars ()
     {
         mConfVars.put("core.workdir", new ProxyConfVar("core.workdir", null, mWorkingDir, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Working Directory for NGINX worker processes"));
-        mConfVars.put("core.includes", new ProxyConfVar("core.includes", null, mIncDir, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Include directory (relative to ${core.workdir}/conf)"));
+        mConfVars.put("core.includes", new ProxyConfVar("core.includes", null, mConfIncludesDir, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Include directory (relative to ${core.workdir}/conf)"));
         mConfVars.put("core.cprefix", new ProxyConfVar("core.cprefix", null, mConfPrefix, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Common config file prefix"));
         mConfVars.put("core.tprefix", new ProxyConfVar("core.tprefix", null, mTemplatePrefix, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Common template file prefix"));
+        mConfVars.put("ssl.crt.default", new ProxyConfVar("ssl.crt.default", null, mDefaultSSLCrt, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "default nginx certificate file path"));
+        mConfVars.put("ssl.key.default", new ProxyConfVar("ssl.key.default", null, mDefaultSSLKey, ProxyConfValueType.STRING, ProxyConfOverride.NONE, "default nginx private key file path"));
         mConfVars.put("main.user", new ProxyConfVar("main.user", null, "zimbra", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "The user as which the worker processes will run"));
         mConfVars.put("main.group", new ProxyConfVar("main.group", null, "zimbra", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "The group as which the worker processes will run"));
         mConfVars.put("main.workers", new ProxyConfVar("main.workers", "zimbraReverseProxyWorkerProcesses", new Integer(4), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER, "Number of worker processes"));
-        mConfVars.put("main.pidfile", new ProxyConfVar("main.pidfile", null, "log/nginx.pid", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "PID file path (relative to ${core.workdir})"));
-        mConfVars.put("main.logfile", new ProxyConfVar("main.logfile", null, "log/nginx.log", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Log file path (relative to ${core.workdir})"));
+        mConfVars.put("main.pidfile", new ProxyConfVar("main.pidfile", null, mWorkingDir + "/log/nginx.pid", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "PID file path (relative to ${core.workdir})"));
+        mConfVars.put("main.logfile", new ProxyConfVar("main.logfile", null, mWorkingDir + "/log/nginx.log", ProxyConfValueType.STRING, ProxyConfOverride.NONE, "Log file path (relative to ${core.workdir})"));
         mConfVars.put("main.loglevel", new ProxyConfVar("main.loglevel", "zimbraReverseProxyLogLevel", "info", ProxyConfValueType.STRING, ProxyConfOverride.SERVER, "Log level - can be debug|info|notice|warn|error|crit"));
         mConfVars.put("main.connections", new ProxyConfVar("main.connections", "zimbraReverseProxyWorkerConnections", new Integer(10240), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER, "Maximum number of simultaneous connections per worker process"));
         mConfVars.put("main.krb5keytab", new ProxyConfVar("main.krb5keytab", "krb5_keytab", "/opt/zimbra/conf/krb5.keytab", ProxyConfValueType.STRING, ProxyConfOverride.LOCALCONFIG, "Path to kerberos keytab file used for GSSAPI authentication"));
@@ -825,8 +952,6 @@ public class ProxyConfGen
         mConfVars.put("mail.upstream.pop3xoip", new ProxyConfVar("mail.upstream.pop3xoip", "zimbraReverseProxySendPop3Xoip", true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Whether NGINX issues the POP3 XOIP command to the upstream server prior to logging in (audit purpose)"));
         mConfVars.put("mail.upstream.imapid", new ProxyConfVar("mail.upstream.imapid", "zimbraReverseProxySendImapId", true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Whether NGINX issues the IMAP ID command to the upstream server prior to logging in (audit purpose)"));
         mConfVars.put("mail.ssl.preferserverciphers", new ProxyConfVar("mail.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires protocols SSLv3 and TLSv1 server ciphers be preferred over the client's ciphers"));
-        mConfVars.put("mail.ssl.cert", new ProxyConfVar("mail.ssl.cert", null, "/opt/zimbra/conf/nginx.crt", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Mail Proxy SSL certificate file"));
-        mConfVars.put("mail.ssl.key", new ProxyConfVar("mail.ssl.key", null, "/opt/zimbra/conf/nginx.key", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Mail Proxy SSL certificate key"));
         mConfVars.put("mail.ssl.ciphers", new ProxyConfVar("mail.ssl.ciphers", "zimbraReverseProxySSLCiphers", "!SSLv2:!MD5:HIGH", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Permitted ciphers for mail proxy"));
         mConfVars.put("mail.imap.authplain.enabled", new ProxyConfVar("mail.imap.authplain.enabled", "zimbraReverseProxyImapSaslPlainEnabled", true, ProxyConfValueType.ENABLER, ProxyConfOverride.CONFIG,"Whether SASL PLAIN is enabled for IMAP"));
         mConfVars.put("mail.imap.authgssapi.enabled", new ProxyConfVar("mail.imap.authgssapi.enabled", "zimbraReverseProxyImapSaslGssapiEnabled", false, ProxyConfValueType.ENABLER, ProxyConfOverride.SERVER,"Whether SASL GSSAPI is enabled for IMAP"));
@@ -852,8 +977,8 @@ public class ProxyConfGen
         mConfVars.put("web.http.maxbody", new ProxyConfVar("web.http.maxbody", "zimbraFileUploadMaxSize", new Long(10485760), ProxyConfValueType.LONG, ProxyConfOverride.SERVER,"Maximum accepted client request body size (indicated by Content-Length) - if content length exceeds this limit, then request fails with HTTP 413"));
         mConfVars.put("web.https.port", new ProxyConfVar("web.https.port", Provisioning.A_zimbraMailSSLProxyPort, new Integer(0), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER,"Web Proxy HTTPS Port"));
         mConfVars.put("web.https.maxbody", new ProxyConfVar("web.https.maxbody", "zimbraFileUploadMaxSize", new Long(10485760), ProxyConfValueType.LONG, ProxyConfOverride.SERVER,"Maximum accepted client request body size (indicated by Content-Length) - if content length exceeds this limit, then request fails with HTTP 413"));
-        mConfVars.put("web.ssl.cert", new ProxyConfVar("web.ssl.cert", null, "/opt/zimbra/conf/nginx.crt", ProxyConfValueType.STRING, ProxyConfOverride.NONE,"Web Proxy SSL certificate path"));
-        mConfVars.put("web.ssl.key", new ProxyConfVar("web.ssl.key", null, "/opt/zimbra/conf/nginx.key", ProxyConfValueType.STRING, ProxyConfOverride.NONE,"Web Proxy SSL certificate key"));
+        mConfVars.put("web.ssl.preferserverciphers", new ProxyConfVar("web.ssl.preferserverciphers", null, true, ProxyConfValueType.BOOLEAN, ProxyConfOverride.CONFIG,"Requires protocols SSLv3 and TLSv1 server ciphers be preferred over the client's ciphers"));
+        mConfVars.put("web.ssl.ciphers", new ProxyConfVar("web.ssl.ciphers", "zimbraReverseProxySSLCiphers", "!SSLv2:!MD5:HIGH", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG, "Permitted ciphers for mail proxy"));
         mConfVars.put("web.http.uport", new ProxyConfVar("web.http.uport", Provisioning.A_zimbraMailPort, new Integer(80), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER,"Web upstream server port"));
         mConfVars.put("web.enabled", new ProxyConfVar("web.enabled", "zimbraReverseProxyHttpEnabled", false, ProxyConfValueType.ENABLER, ProxyConfOverride.SERVER, "Indicates whether HTTP proxying is enabled"));
         mConfVars.put("web.http.enabled", new ProxyConfVar("web.http.enabled", null, true, ProxyConfValueType.ENABLER, ProxyConfOverride.CUSTOM,"Indicates whether HTTP Proxy will accept connections on HTTP (true unless zimbraReverseProxyMailMode is 'https')"));
@@ -922,8 +1047,8 @@ public class ProxyConfGen
         return validConf;
     }
 
-	public static int createConf (String[] args) throws ServiceException, ProxyConfException
-	{
+    public static int createConf(String[] args) throws ServiceException,
+        ProxyConfException {
         int exitCode = 0;
         CommandLine cl = parseArgs(args);
 
@@ -932,15 +1057,15 @@ public class ProxyConfGen
             return(exitCode);
         }
 
-        mProv = Provisioning.getInstance();
-        ProxyConfVar.configSource = mProv.getConfig();
-        ProxyConfVar.serverSource = ProxyConfVar.configSource;
-
-        if (cl.hasOption('v')) {
+        if (cl.hasOption('v')) { //BUG 51624, must initialize log4j first
             CliUtil.toolSetup("DEBUG");
         } else {
             CliUtil.toolSetup("INFO");
         }
+        
+        mProv = Provisioning.getInstance();
+        ProxyConfVar.configSource = mProv.getConfig();
+        ProxyConfVar.serverSource = ProxyConfVar.configSource;
 
         if (cl.hasOption('h')) {
             usage(null);
@@ -1015,7 +1140,10 @@ public class ProxyConfGen
 
         mLog.debug("Processing Config Overrides");
         overrideDefaultVars(cl);
-
+        
+        mLog.debug("Loading virtual host names and domain names");
+        mQualifiedVhnsAndVIPs = loadReverseProxyVhnAndVIP();
+        
         if (cl.hasOption('D')) {
             displayVariables();
             exitCode = 0;
@@ -1043,27 +1171,37 @@ public class ProxyConfGen
             if (!confDir.exists()) {
                 throw new ProxyConfException ("Configuration directory " + confDir.getAbsolutePath() + " does not exist");
             }
-            expandTemplate(new File(mTemplateDir,getCoreConfTemplate()), new File(mConfDir,getCoreConf())); /* Only core nginx conf goes to mConfDir, rest to mConfIncludesDir */
-            expandTemplate(new File(mTemplateDir,getMainConfTemplate()), new File(mConfIncludesDir,getMainConf()));
-            expandTemplate(new File(mTemplateDir,getMemcacheConfTemplate()), new File(mConfIncludesDir,getMemcacheConf()));
-            expandTemplate(new File(mTemplateDir,getMailConfTemplate()), new File(mConfIncludesDir,getMailConf()));
-            expandTemplate(new File(mTemplateDir,getMailImapConfTemplate()), new File(mConfIncludesDir,getMailImapConf()));
-            expandTemplate(new File(mTemplateDir,getMailImapSConfTemplate()), new File(mConfIncludesDir,getMailImapSConf()));
-            expandTemplate(new File(mTemplateDir,getMailPop3ConfTemplate()), new File(mConfIncludesDir,getMailPop3Conf()));
-            expandTemplate(new File(mTemplateDir,getMailPop3SConfTemplate()), new File(mConfIncludesDir,getMailPop3SConf()));
-            expandTemplate(new File(mTemplateDir,getWebConfTemplate()), new File(mConfIncludesDir,getWebConf()));
-            expandTemplate(new File(mTemplateDir,getWebHttpConfTemplate()), new File(mConfIncludesDir,getWebHttpConf()));
-            expandTemplate(new File(mTemplateDir,getWebHttpSConfTemplate()), new File(mConfIncludesDir,getWebHttpSConf()));
-            expandTemplate(new File(mTemplateDir,getWebHttpModeConfTemplate("http")), new File(mConfIncludesDir,getWebHttpModeConf("http")));
-            expandTemplate(new File(mTemplateDir,getWebHttpModeConfTemplate("https")), new File(mConfIncludesDir,getWebHttpModeConf("https")));
-            expandTemplate(new File(mTemplateDir,getWebHttpModeConfTemplate("both")), new File(mConfIncludesDir,getWebHttpModeConf("both")));
-            expandTemplate(new File(mTemplateDir,getWebHttpModeConfTemplate("redirect")), new File(mConfIncludesDir,getWebHttpModeConf("redirect")));
-            expandTemplate(new File(mTemplateDir,getWebHttpModeConfTemplate("mixed")), new File(mConfIncludesDir,getWebHttpModeConf("mixed")));
-            expandTemplate(new File(mTemplateDir,getWebHttpSModeConfTemplate("http")), new File(mConfIncludesDir,getWebHttpSModeConf("http")));
-            expandTemplate(new File(mTemplateDir,getWebHttpSModeConfTemplate("https")), new File(mConfIncludesDir,getWebHttpSModeConf("https")));
-            expandTemplate(new File(mTemplateDir,getWebHttpSModeConfTemplate("both")), new File(mConfIncludesDir,getWebHttpSModeConf("both")));
-            expandTemplate(new File(mTemplateDir,getWebHttpSModeConfTemplate("redirect")), new File(mConfIncludesDir,getWebHttpSModeConf("redirect")));
-            expandTemplate(new File(mTemplateDir,getWebHttpSModeConfTemplate("mixed")), new File(mConfIncludesDir,getWebHttpSModeConf("mixed")));
+            File wDir = new File(mConfIncludesDir, "");
+            if(!wDir.exists()) {
+                wDir.mkdirs();
+            }
+            expandTemplate(new File(mTemplateDir, getCoreConfTemplate()), new File(mConfDir,getCoreConf())); /* Only core nginx conf goes to mConfDir, rest to mConfIncludesDir */
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("main")), new File(mConfIncludesDir, getConfFileName("main")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("memcache")), new File(mConfIncludesDir,getConfFileName("memcache")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail")), new File(mConfIncludesDir, getConfFileName("mail")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.imap")), new File(mConfIncludesDir, getConfFileName("mail.imap")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.imap.default")), new File(mConfIncludesDir, getConfFileName("mail.imap.default")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.imaps")), new File(mConfIncludesDir, getConfFileName("mail.imaps")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.imaps.default")), new File(mConfIncludesDir, getConfFileName("mail.imaps.default")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.pop3")), new File(mConfIncludesDir, getConfFileName("mail.pop3")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.pop3.default")), new File(mConfIncludesDir, getConfFileName("mail.pop3.default")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.pop3s")), new File(mConfIncludesDir, getConfFileName("mail.pop3s")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("mail.pop3s.default")), new File(mConfIncludesDir, getConfFileName("mail.pop3s.default")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("web")), new File(mConfIncludesDir,getConfFileName("web")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("web.http")), new File(mConfIncludesDir, getConfFileName("web.http")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("web.http.default")), new File(mConfIncludesDir, getConfFileName("web.http.default")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("web.https")), new File(mConfIncludesDir, getConfFileName("web.https")));
+            expandTemplate(new File(mTemplateDir, getConfTemplateFileName("web.https.default")), new File(mConfIncludesDir, getConfFileName("web.https.default")));
+            expandTemplate(new File(mTemplateDir, getWebHttpModeConfTemplate("http")), new File(mConfIncludesDir, getWebHttpModeConf("http")));
+            expandTemplate(new File(mTemplateDir, getWebHttpModeConfTemplate("https")), new File(mConfIncludesDir, getWebHttpModeConf("https")));
+            expandTemplate(new File(mTemplateDir, getWebHttpModeConfTemplate("both")), new File(mConfIncludesDir, getWebHttpModeConf("both")));
+            expandTemplate(new File(mTemplateDir, getWebHttpModeConfTemplate("redirect")), new File(mConfIncludesDir, getWebHttpModeConf("redirect")));
+            expandTemplate(new File(mTemplateDir, getWebHttpModeConfTemplate("mixed")), new File(mConfIncludesDir, getWebHttpModeConf("mixed")));
+            expandTemplate(new File(mTemplateDir, getWebHttpSModeConfTemplate("http")), new File(mConfIncludesDir, getWebHttpSModeConf("http")));
+            expandTemplate(new File(mTemplateDir, getWebHttpSModeConfTemplate("https")), new File(mConfIncludesDir, getWebHttpSModeConf("https")));
+            expandTemplate(new File(mTemplateDir, getWebHttpSModeConfTemplate("both")), new File(mConfIncludesDir, getWebHttpSModeConf("both")));
+            expandTemplate(new File(mTemplateDir, getWebHttpSModeConfTemplate("redirect")), new File(mConfIncludesDir, getWebHttpSModeConf("redirect")));
+            expandTemplate(new File(mTemplateDir, getWebHttpSModeConfTemplate("mixed")), new File(mConfIncludesDir, getWebHttpSModeConf("mixed")));
         } catch (ProxyConfException pe) {
             mLog.error("Error while expanding templates: " + pe.getMessage());
             exitCode = 1;
@@ -1071,12 +1209,18 @@ public class ProxyConfGen
             mLog.error("Error while expanding templates: " + se.getMessage());
             exitCode = 1;
         }
-		return(exitCode);
-	}
+        if (exitCode != 1) {
+            mLog.info("Proxy configuration files are generated successfully");
+        } else {
+            mLog.info("Proxy configuration files generation is interrupted by errors");
+        }
+        
+        return (exitCode);
+    }
 
-    public static void main (String[] args) throws ServiceException, ProxyConfException
-    {
-		int exitCode = createConf(args);
+    public static void main(String[] args) throws ServiceException,
+        ProxyConfException {
+        int exitCode = createConf(args);
         System.exit(exitCode);
     }
 }

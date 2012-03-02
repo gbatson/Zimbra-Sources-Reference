@@ -14,11 +14,12 @@
  */
 package com.zimbra.common.util;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,6 +28,8 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.apache.commons.httpclient.HttpURL;
 import org.apache.commons.httpclient.HttpsURL;
+
+import com.google.common.primitives.Bytes;
 
 public class HttpUtil {
 
@@ -38,7 +41,7 @@ public class HttpUtil {
     }
 
     /**
-     * 
+     *
      * @param ua User-Agent string
      * @return
      */
@@ -60,23 +63,30 @@ public class HttpUtil {
     }
 
     public static String encodeFilename(HttpServletRequest req, String filename) {
-        if (StringUtil.isAsciiString(filename) && filename.indexOf('"') == -1)
-            return '"' + filename.replace('\t', ' ') + '"';
+        if (StringUtil.isAsciiString(filename) && filename.indexOf('"') == -1) {
+            return '"' + StringUtil.sanitizeFilename(filename) + '"';
+        }
         return encodeFilename(guessBrowser(req), filename);
     }
 
     public static String encodeFilename(Browser browser, String filename) {
-        // Windows does not allow tabs in filenames - replacing with ' ' is safe
-        filename = filename.replace('\t', ' ');
-        if (StringUtil.isAsciiString(filename) && filename.indexOf('"') == -1)
+        filename = StringUtil.sanitizeFilename(filename);
+        if (StringUtil.isAsciiString(filename) && filename.indexOf('"') == -1) {
             return '"' + filename + '"';
+        }
         try {
-            if (browser == Browser.IE)
-                return URLEncoder.encode(filename, "utf-8");
-            else if (browser == Browser.FIREFOX)
-                return '"' + MimeUtility.encodeText(filename, "utf-8", "B") + '"';
-            else
-                return '"' + MimeUtility.encodeText(filename, "utf-8", "B") + '"';
+            switch (browser) {
+                case IE:
+                    return URLEncoder.encode(filename, "utf-8");
+                case SAFARI:
+                    // Safari doesn't support any encoding. The only solution is
+                    // to let Safari use the path-info in URL by returning no
+                    // filename here.
+                    return "";
+                case FIREFOX:
+                default:
+                    return '"' + MimeUtility.encodeText(filename, "utf-8", "B") + '"';
+            }
         } catch (UnsupportedEncodingException uee) {
             return filename;
         }
@@ -120,17 +130,15 @@ public class HttpUtil {
 
         for (String pair : queryString.split("&")) {
             String[] keyVal = pair.split("=");
-            try {
-                String value = keyVal.length > 1 ? URLDecoder.decode(keyVal[1], "utf-8") : "";
-                params.put(URLDecoder.decode(keyVal[0], "utf-8"), value);
-            } catch (UnsupportedEncodingException uee) { }
+            String value = keyVal.length > 1 ? urlUnescape(keyVal[1]) : "";
+            params.put(urlUnescape(keyVal[0]), value);
         }
         return params;
     }
-
+    
     /**
      * URL-encodes the given URL path.
-     * 
+     *
      * @return the encoded path, or the original path if it
      * is malformed
      */
@@ -144,23 +152,143 @@ public class HttpUtil {
         }
         return encoded;
     }
-    
+
     /**
      * bug 32207
-     * 
-     * The apache reverse proxy is re-writing the Host header to be the MBS IP.  It sets 
-     * the original request hostname in the X-Forwarded-Host header.  To work around it, 
+     *
+     * The apache reverse proxy is re-writing the Host header to be the MBS IP.  It sets
+     * the original request hostname in the X-Forwarded-Host header.  To work around it,
      * we first check for X-Forwarded-Host and then fallback to Host.
      *
      * @param req
-     * @return the original request hostname 
+     * @return the original request hostname
      */
     public static String getVirtualHost(HttpServletRequest req) {
         String virtualHost = req.getHeader("X-Forwarded-Host");
         if (virtualHost != null)
             return virtualHost;
-        else 
+        else
             return req.getServerName();
+    }
+
+    private static final Map<Character,String> sUrlEscapeMap = new HashMap<Character,String>();
+    
+    static {
+        sUrlEscapeMap.put(' ', "%20");
+        sUrlEscapeMap.put('"', "%22");
+        sUrlEscapeMap.put('#', "%23");
+        sUrlEscapeMap.put('%', "%25");
+        sUrlEscapeMap.put('&', "%26");
+        sUrlEscapeMap.put('?', "%3F");
+        sUrlEscapeMap.put('[', "%5B");
+        sUrlEscapeMap.put('\\', "%5C");
+        sUrlEscapeMap.put(']', "%5D");
+        sUrlEscapeMap.put('^', "%5E");
+        sUrlEscapeMap.put('`', "%60");
+        sUrlEscapeMap.put('{', "%7B");
+        sUrlEscapeMap.put('|', "%7C");
+        sUrlEscapeMap.put('}', "%7D");
+    }
+    
+    /**
+     * urlEscape method will encode '?' and '&', so make sure
+     * the passed in String does not have query string in it.
+     * Or call urlEscape on each segment and append query
+     * String afterwards.
+     * 
+     * from RFC 3986:
+     * 
+     * pchar       = unreserved / pct-encoded / sub-delims / ":" / "@"
+     *
+     * sub-delims  = "!" / "$" / "&" / "'" / "(" / ")"
+     *                   / "*" / "+" / "," / ";" / "="
+     *
+     * unreserved  = ALPHA / DIGIT / "-" / "." / "_" / "~"
+     *
+     */
+    public static String urlEscape(String str) {
+    	// rfc 2396 url escape.
+    	StringBuilder buf = null;
+    	for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            String escaped = null;
+            if (c < 0x7F)
+            	escaped = sUrlEscapeMap.get(c);
+            
+            if (escaped != null || c >= 0x7F) {
+                if (buf == null) {
+                    buf = new StringBuilder();
+                    buf.append(str.substring(0, i));
+                }
+                if (escaped != null)
+                	buf.append(escaped);
+                else {
+                	try {
+                        byte[] raw = Character.valueOf(c).toString().getBytes("UTF-8");
+                    	for (byte b : raw) {
+                    		int unsignedB = b & 0xFF;  // byte is signed
+                    		buf.append("%").append(Integer.toHexString(unsignedB).toUpperCase());
+                    	}
+                	} catch (IOException e) {
+                		buf.append(c);
+                	}
+                }
+            } else if (buf != null) {
+                buf.append(c);
+            }
+    	}
+        if (buf != null)
+            return buf.toString();
+        return str;
+    }
+
+    /**
+     * The main difference between java.net.URLDecoder.decode()
+     * and this method is the handling of "+" sign.  URLDecoder
+     * will turn + into ' ' (space), and not suitable for
+     * decoding URL used in HTTP request.
+     */
+    public static String urlUnescape(String escaped) {
+        // all the encoded byte groups should be converted to
+        // string together
+        ArrayList<Byte> segment = new ArrayList<Byte>();
+        StringBuilder buf = null;
+        for (int i = 0; i < escaped.length(); i++) {
+            char c = escaped.charAt(i);
+            if (c == '%' && i < (escaped.length() - 2)) {
+                String bytes = escaped.substring(i+1, i+3);
+                try {
+                    // java Byte type is signed with range of -0x80 to 0x7F.
+                    // it cannot convert segment of encoded UTF-8 string 
+                    // with high bit set.  we'll parse using Integer
+                    // then cast the result back to signed Byte.
+                    // e.g. 0xED becomes 237 as Integer, then -19 as Byte
+                    int b = Integer.parseInt(bytes, 16);
+                    segment.add(Byte.valueOf((byte)b));
+                } catch (NumberFormatException e) {
+                }
+                if (buf == null) {
+                    buf = new StringBuilder(escaped.substring(0, i));
+                }
+                i += 2;
+                // append to the buffer if we are at the end of the string,
+                // or if this is the last encoded character in the segment.
+                if (i + 1 == escaped.length() || escaped.charAt(i + 1) != '%') {
+                    try {
+                        buf.append(new String(Bytes.toArray(segment), "UTF-8"));
+                    } catch (UnsupportedEncodingException e) {
+                    }
+                    segment.clear();
+                }
+                continue;
+            }
+            if (buf != null) {
+                buf.append(c);
+            }
+        }
+        if (buf != null)
+            return buf.toString();
+        return escaped;
     }
 
     public static void main(String[] args) {

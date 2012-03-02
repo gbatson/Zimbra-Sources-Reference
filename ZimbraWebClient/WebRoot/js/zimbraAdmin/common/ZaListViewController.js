@@ -82,7 +82,7 @@ function(list, openInNewTab, openInSearchTab) {
 		}
 		//add the default column sortable
 		this._contentView._bSortAsc = (this._currentSortOrder=="1");
-		this._contentView.set(AjxVector.fromArray(tmpArr), this._contentView._defaultColumnSortable);	
+		this._contentView.set(AjxVector.fromArray(tmpArr), this._contentView._defaultColumnSortable);
 	}
 	this._removeList = new Array();
 	this.changeActionsState();
@@ -229,7 +229,7 @@ function(preParams, paramsArr) {
 				var subList = new ZaItemList(preParams.CONS);
 
 		                subList.loadFromJS(resp);
-
+				//combine the search results
 				if(!this._list) this._list = subList;
 				else {
 					if(this._list instanceof ZaItemList && subList.size() > 0) {
@@ -260,6 +260,8 @@ function(preParams, paramsArr) {
 		}
 	}
 }
+
+
 
 ZaListViewController.prototype.searchCallback =
 function(params, resp) {

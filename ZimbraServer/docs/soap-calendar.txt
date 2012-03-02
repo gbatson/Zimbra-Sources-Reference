@@ -46,7 +46,10 @@
 //    This is the API to create a new Appointment, optionally  sending out
 //  meeting Invitations to other people.
 //
-<CreateAppointmentRequest>
+<CreateAppointmentRequest
+    [echo="1"]  // if specified, the created appointment is echoed back in the response as if a GetMsgRequest was made
+    [max="{max-inlined-length}"] [html="*0|1"] [neuter="0|*1"]  // options for echoing
+>
   <m f="{flags}" l="{folder}">  // See soap.txt for complete list of attrs on <m>
      [<e .../>*]  // users to send request to
      <su>{subject}</su>
@@ -116,6 +119,10 @@
             [completed="yyyyMMddThhmmssZ"]  // VTODO COMPLETED DATE-TIME
             [url="url"]         // URL
             [noBlob="1"]        // set if invite has no blob data, i.e. all data is in db metadata
+            [changes="comma-separated list of changed data in an updated invite"]
+                // Possible values are "subject", "location", "time" (start time, end time, or duration), and "recurrence".
+            [draft="0|1"]       // set to 1 if invite has changes that haven't been sent to attendees; for organizer only
+            [neverSent="0|1"]   // set to 1 if attendees have never been notified for this invite; for organizer only, used in SetAppointmentRequest only
         >
 
            <s DATETIME> // Start date-time (required)
@@ -423,7 +430,9 @@ RECURRENCE SPECIFIERS!
  <bymonth>,<byweekno>.... --- TODO 
 ----------------------
 
-<CreateAppointmentResponse calItemId="APPOINTMENT-ID" invId="invite-message-id"/>
+<CreateAppointmentResponse calItemId="APPOINTMENT-ID" invId="invite-message-id" ms="change-sequence" rev="revision">
+  [<echo><m .../></echo>]  // if echo="1" was specified in the request
+</CreateAppointmentResponse>
 
 
 //////////////////////////////////////////////////////////////////////
@@ -583,6 +592,8 @@ OR
 //      status="TENT|CONF|CANC"
 //      ptst="NE|TE|AC|DE|DG"
 //      [allDay="1"]             // if set, this is an "all day" appointment
+//      [draft="1"]              // set if invite has changes that haven't been sent to attendees; for organizer only
+//      [neverSent="0|1"]        // set if attendees were never notified of this invite; for organizer only
 //      [otherAtt="1"]           // if set, this appointment has other attendees
 //      [alarm="1"] [recur="1"]
 //      [name="NAME"] [loc="LOCATION"]
@@ -674,10 +685,32 @@ OR
     <b s="START_MSECS_GMT" e="END_MSECS_GMT"/>*
     <t s="START_MSECS_GMT" e="END_MSECS_GMT"/>*
     <u s="START_MSECS_GMT" e="END_MSECS_GMT"/>* // a.k.a. out of office
-    <n s="START_MSECS_GMT" e="END_MSECS_GMT"/>* // could not retreive data for that user
+    <n s="START_MSECS_GMT" e="END_MSECS_GMT"/>* // could not retrieve data for that user
   </usr>  
 <GetFreeBusyResponse>
 
+
+//////////////////////////////////////////////////////////////////////
+//
+// GetWorkingHoursRequest
+//
+// (f)ree busy-(u)navailable or (n)o-data elements
+//
+// User's working hours within the given time range are expressed in a similar format as GetFreeBusy.
+// Working hours are indicated as free, non-working hours as unavailable/out of office.  The entire time
+// range is marked as unknown if there was an error determining the working hours, e.g. unknown user.
+//
+<GetWorkingHoursRequest s="RANGE_START_MSECS_GMT" e="RANGE_END_MSECS_GMT"
+  [id="zimbraId,..."]         // comma-separated list of zimbraId
+  [name="email,..."]          // comma-separated list of email
+/>
+<GetWorkingHoursResponse>
+  <usr id="id">  // id is always account email; it is not zimbraId as the attribute name may suggest
+    <f s="START_MSECS_GMT" e="END_MSECS_GMT"/>* // working hours
+    <u s="START_MSECS_GMT" e="END_MSECS_GMT"/>* // non-working hours
+    <n s="START_MSECS_GMT" e="END_MSECS_GMT"/>* // could not retrieve data for that user
+  </usr>  
+<GetWorkingHoursResponse>
 
 
 //////////////////////////////////////////////////////////////////////
@@ -711,7 +744,9 @@ OR
 // CALENDAR PART for Invite messages
 //
 <GetMsgResponse> // mesage with invite
-  <m id="{message-id}" f="{flags}" t="{tags}" s="{size}" d="{date}" l="{folder}">
+  <m id="{message-id}" f="{flags}" t="{tags}" s="{size}" d="{date}" l="{folder}"
+     rev="{revision-number}" md="{date-metadata-changed}" ms="{change-sequence}"
+  >
      [<e .../>*]  // optional users to send request to
 
      <inv type="appt|task" id="{invId}">
@@ -744,13 +779,21 @@ OR
                                                       
             [isOrg="1"] // 1 if you are the Organizer of this event
             [ridZ="YYYYMMDD[ThhmmssZ]"]   // RECURRENCE-ID in "Z" (UTC) timezone, if this is an exception
+            [changes="comma-separated list of changed data in an updated invite"]
+                // Possible values are "subject", "location", "time" (start time, end time, or duration), and "recurrence".
+            [draft="0|1"]  // set to 1 if invite has changes that haven't been sent to attendees; for organizer only
+            [neverSent="0|1"]  // set if attendees were never notified of this invite; for organizer only
            >
 
-           <s DATETIME> // Start date-time (required)
+           <s DATETIME
+              [u="millis since epoch"]  // set if non-all-day
+           /> // Start date-time (required)
            (
-              <e DATETIME> // End date-time
+              <e DATETIME
+                 [u="millis since epoch"]  // set if non-all-day
+              /> // End date-time
               OR
-              <dur DURATION>
+              <dur DURATION/>
            )
 
            [<exceptId .../>]  // RECURRENCE-ID, if this is an exception
@@ -791,12 +834,21 @@ OR
 //        
 //   -- If any of: START, DURATION, END or RECUR change, then all exceptions are implicitly canceled!
 //
-<ModifyAppointmentRequest id="INVITE_ID_OF_DEFAULT_INVITE" comp="COMPONENT_NUM_DEFAULT_INVITE">
+<ModifyAppointmentRequest id="INVITE_ID_OF_DEFAULT_INVITE" comp="COMPONENT_NUM_DEFAULT_INVITE"
+    ms="change-sequence of fetched version" rev="revision of fetched version"
+    [echo="1"]  // if specified, the modified appointment is echoed back in the response as if a GetMsgRequest was made
+    [max="{max-inlined-length}"] [html="*0|1"] [neuter="0|*1"]  // options for echoing
+>
    rest is SAME as CreateAppointmentRequest
 </ModifyAppointmentRequest>
 
-<ModifyAppointmentResponse calItemId="appointment-id" invId="invite-message-id/>
+<ModifyAppointmentResponse calItemId="appointment-id" invId="invite-message-id" ms="change-sequence" rev="revision">
+  [<echo><m .../></echo>]  // if echo="1" was specified in the request
+</ModifyAppointmentResponse>
 
+"ms" and "rev" are used for conflict detection.  By setting these, the request indicates
+which version of the appointment it is attempting to modify.  If the appointment was updated on
+the server between the fetch and modify, an INVITE_OUT_OF_DATE exception will be thrown.
 
 
 //////////////////////////////////////////////////////////////////////
@@ -829,7 +881,11 @@ OR
 //  On the other hand, if a user clicks on the 6/15 9am appointment and wants to modify it,
 //  then this is the right API to use.
 //
-<CreateAppointmentExceptionRequest id="ID_DEFAULT_INVITE" comp="COMP_DEFAULT_INVITE">
+<CreateAppointmentExceptionRequest id="ID_DEFAULT_INVITE" comp="COMP_DEFAULT_INVITE"
+    ms="change-sequence of fetched series" rev="revision of fetched series"
+    [echo="1"]  // if specified, the created exception is echoed back in the response as if a GetMsgRequest was made
+    [max="{max-inlined-length}"] [html="*0|1"] [neuter="0|*1"]  // options for echoing
+>
 
   Just like CreateAppointmentRequest above:
   <m f="{flags}" l="{folder}">
@@ -844,6 +900,10 @@ OR
 </CreateAppointmentExceptionRequest>
 
 <CreateAppointmentExceptionResponse>...
+
+"ms" and "rev" are used for conflict detection.  The create exception request indicates the baseline
+series version.  If the appointment was modified on the server between the series fetch and exception
+creation, an INVITE_OUT_OF_DATE exception will be thrown.
 
 
 //////////////////////////////////////////////////////////////////////
@@ -1206,6 +1266,10 @@ OR
 
 <GetMiniCalResponse>
   [<date>yyyymmdd</date>]*   // e.g. 20080221
+  [<error  // error for each calendar folder that couldn't be accessed
+     id="folder id"
+     code="ServiceException error code"  // e.g. service.PERM_DENIED, mail.NO_SUCH_FOLDER, account.NO_SUCH_ACCOUNT, etc.
+   >error message from the exception (but no stack trace)</error>]*
 </GetMiniCalResponse>
 
 Date is returned if there is at least one appointment on that date.  The date computation

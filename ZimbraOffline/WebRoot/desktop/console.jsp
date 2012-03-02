@@ -1,7 +1,7 @@
 <!--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -225,7 +225,7 @@ function submit(id, name, type, flavor, verb) {
 																							<c:if test="${not default}">
 																								<td>
 																									<a title='<fmt:message key="SetAsDefault"/>' href="javascript:OnDefault('${account.id}', '${fn:replace(account.name, "'", "\\'")}', '${account.type}', '${account.flavor}')">
-																										<img src="/zimbra/img/startup/ImgAccordionClosed.gif" width=12 height=12 align="absbottom" border="0"></a>
+																										<img src="/img/imgSetDefault.png" width=12 height=12 align="absbottom" border="0"></a>
 																								</td>
 																							</c:if>
 																						</tr>
@@ -257,19 +257,19 @@ function submit(id, name, type, flavor, verb) {
 																							<td class="ZAccountStatus">
 																								<c:choose>
 																									<c:when test="${account.statusUnknown}">
-																										<img src="/zimbra/img/startup/ImgOffline.gif" align="absmiddle">&nbsp;<fmt:message key='StatusUnknown'/>
+																										<img src="/img/imgPaused.gif" align="absmiddle">&nbsp;<fmt:message key='StatusUnknown'/>
 																									</c:when>
 																									<c:when test="${account.statusOffline}">
-																										<img src="/zimbra/img/startup/ImgImAway.gif" align="absmiddle">&nbsp;<fmt:message key='StatusOffline'/>
+																										<img src="/img/imgOffline.gif" align="absmiddle">&nbsp;<fmt:message key='StatusOffline'/>
 																									</c:when>
 																									<c:when test="${account.statusOnline}">
-																										<img src="/zimbra/img/startup/ImgImAvailable.gif" align="absmiddle">&nbsp;<fmt:message key='StatusOnline'/>
+																										<img src="/img/imgOnline.gif" align="absmiddle">&nbsp;<fmt:message key='StatusOnline'/>
 																									</c:when>
 																									<c:when test="${account.statusRunning}">
 																										<img src="/zimbra/img/animated/ImgSpinner.gif" align="absmiddle">&nbsp;<fmt:message key='StatusInProg'/>
 																									</c:when>
 																									<c:when test="${account.statusAuthFailed}">
-																										<img src="/zimbra/img/startup/ImgImDnd.gif" align="absmiddle">&nbsp;<fmt:message key='StatusCantLogin'/>
+																										<img src="/img/imgCantLogin.gif" align="absmiddle">&nbsp;<fmt:message key='StatusCantLogin'/>
 																									</c:when>
 																									<c:when test="${account.statusError}">
 																										<img height="14" width="14" src="/zimbra/img/dwt/ImgCritical.gif" align="absmiddle">&nbsp;<fmt:message key='StatusErr'/>

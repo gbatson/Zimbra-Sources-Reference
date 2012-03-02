@@ -7,7 +7,7 @@
 <!--
 ***** BEGIN LICENSE BLOCK *****
 Zimbra Collaboration Suite Web Client
-Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
 
 The contents of this file are subject to the Zimbra Public License
 Version 1.3 ("License"); you may not use this file except in
@@ -48,7 +48,9 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
         request.setAttribute("packages", "dev");
     }
 
-    boolean isTinyMce = getParameter(request, "editor", "").equals("tinymce");
+    //  boolean isTinyMce = getParameter(request, "editor", "").equals("tinymce");
+    //  Support for TinyMCE suspended.
+    boolean isTinyMce = false;
 
     final String SKIN_COOKIE_NAME = "ZM_SKIN";
     String skin = application.getInitParameter("zimbraDefaultSkin");
@@ -81,6 +83,7 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
     Locale locale = request.getLocale();
     String localeId = getAttribute(request, "localeId", null);
     if (localeId != null) {
+        localeId = BeanUtils.cook(localeId);
         int index = localeId.indexOf("_");
         if (index == -1) {
             locale = new Locale(localeId);
@@ -157,13 +160,12 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
 <script type="text/javascript" language="JavaScript">
 
     window.appContextPath = '<%= contextPath %>';
+    window.appRequestLocaleId = "${locale}";
     window.contextPath = '<%= contextPath %>';
     window.isRestView = false;
     window.isTinyMCE = <%= isTinyMce %>;
     window.appDevMode     = ${isDevMode};
-    
-    ZmDocsEditApp._createDBG(${isDevMode});
-
+	window.DBG = new AjxDebug(AjxDebug.NONE, null, false);  
     ZmDocsEditApp.setFile('${fileId}', '${fileName}', '${folderId}');
 
 </script>

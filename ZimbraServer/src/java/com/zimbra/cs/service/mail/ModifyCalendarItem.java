@@ -26,12 +26,14 @@ import javax.mail.internet.InternetAddress;
 
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.mailbox.CalendarItem;
+import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
@@ -105,6 +107,25 @@ public class ModifyCalendarItem extends CalendarRequest {
             if (calItem == null) {
                 throw MailServiceException.NO_SUCH_CALITEM(iid.toString(), "Could not find calendar item");
             }
+
+            // Reject the request if calendar item is under trash or is being moved to trash.
+            if (calItem.inTrash())
+                throw ServiceException.INVALID_REQUEST("cannot modify a calendar item under trash", null);
+            if (!isInterMboxMove && iidFolder != null) {
+                if (iidFolder.getId() != calItem.getFolderId()) {
+                    Folder destFolder = mbox.getFolderById(octxt, iidFolder.getId());
+                    if (destFolder.inTrash())
+                        throw ServiceException.INVALID_REQUEST("cannot combine with a move to trash", null);
+                }
+            }
+
+            // Conflict detection.  Do it only if requested by client.  (for backward compat)
+            int modSeq = (int) request.getAttributeLong(MailConstants.A_MODIFIED_SEQUENCE, 0);
+            int revision = (int) request.getAttributeLong(MailConstants.A_REVISION, 0);
+            if (modSeq != 0 && revision != 0 &&
+                (modSeq < calItem.getModifiedSequence() || revision < calItem.getSavedSequence()))
+                throw MailServiceException.INVITE_OUT_OF_DATE(iid.toString());
+
             Invite inv = calItem.getInvite(iid.getSubpartId(), compNum);
             if (inv == null) {
                 throw MailServiceException.INVITE_OUT_OF_DATE(iid.toString());
@@ -150,16 +171,31 @@ public class ModifyCalendarItem extends CalendarRequest {
                     calItem.getId(), folderId, dat.mInvite.isPublic() ? dat.mInvite.getName() : "(private)",
                     dat.mInvite.getUid(), dat.mInvite.getRecurId().getDtZ());
 
-        // If we are sending this update to other people, then we MUST be the organizer!
-        if (!inv.isOrganizer()) {
-            try {
-                Address[] rcpts = dat.mMm.getAllRecipients();
-                if (rcpts != null && rcpts.length > 0) {
-                    throw MailServiceException.MUST_BE_ORGANIZER("ModifyCalendarItem");
-                }
-            } catch (MessagingException e) {
-                throw ServiceException.FAILURE("Checking recipients of outgoing msg ", e);
-            }
+        boolean hasRecipients;
+        try {
+            Address[] rcpts = dat.mMm.getAllRecipients();
+            hasRecipients = rcpts != null && rcpts.length > 0;
+        } catch (MessagingException e) {
+            throw ServiceException.FAILURE("Checking recipients of outgoing msg ", e);
+        }
+        // If we are sending this to other people, then we MUST be the organizer!
+        if (!dat.mInvite.isOrganizer() && hasRecipients)
+            throw MailServiceException.MUST_BE_ORGANIZER("ModifyCalendarItem");
+
+        if (!dat.mInvite.isOrganizer()) {
+            // neverSent is always false for attendee users.
+            dat.mInvite.setNeverSent(false);
+        } else if (!dat.mInvite.hasOtherAttendees()) {
+            // neverSent is always false for appointments without attendees.
+            dat.mInvite.setNeverSent(false);
+        } else if (hasRecipients) {
+            // neverSent is set to false when attendees are notified.
+            dat.mInvite.setNeverSent(false);
+        } else {
+            // This is the case of organizer saving an invite with attendees, but without sending the notification.
+            // Set neverSent to false, but only if it wasn't already set to true before.
+            // !inv.isNeverSent() ? false : true ==> inv.isNeverSent()
+            dat.mInvite.setNeverSent(inv.isNeverSent());
         }
 
         // If updating recurrence series, remove newly added attendees from the email
@@ -203,6 +239,14 @@ public class ModifyCalendarItem extends CalendarRequest {
 
         // Apply the change and notify existing attendees.
         sendCalendarMessage(zsc, octxt, folderId, acct, mbox, dat, response, true);
+        boolean echo = request.getAttributeBool(MailConstants.A_CAL_ECHO, false);
+        if (echo && dat.mAddInvData != null) {
+            ItemIdFormatter ifmt = new ItemIdFormatter(zsc);
+            int maxSize = (int) request.getAttributeLong(MailConstants.A_MAX_INLINED_LENGTH, 0);
+            boolean wantHTML = request.getAttributeBool(MailConstants.A_WANT_HTML, false);
+            boolean neuter = request.getAttributeBool(MailConstants.A_NEUTER, true);
+            echoAddedInvite(response, ifmt, octxt, mbox, dat.mAddInvData, maxSize, wantHTML, neuter);
+        }
 
         // Notify removed attendees.
         List<ZAttendee> atsCanceled = parser.getAttendeesCanceled();

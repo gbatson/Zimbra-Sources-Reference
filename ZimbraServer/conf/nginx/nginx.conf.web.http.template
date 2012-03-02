@@ -1,12 +1,15 @@
+!{explode vhn_vip_ssl}
 # HTTP Proxy Configuration
 # 
 server
 {
-    listen ${web.http.port};
+    server_name         ${vhn}; 
+    listen              ${vip}:${web.http.port};
     client_max_body_size 0;
+
     location /
     {
-        include             conf/${core.includes}/${core.cprefix}.web.http.mode-${web.mailmode};
+        include             ${core.includes}/${core.cprefix}.web.http.mode-${web.mailmode};
 
         # Begin stray redirect hack
         # 
@@ -42,7 +45,6 @@ server
 
         # For Virtual Hosting
         proxy_set_header Host            $http_host;
-	proxy_set_header X-Forwarded-Host	$host;
 
         # Fudge inter-mailbox redirects (kludge)
         proxy_redirect http://$relhost/ http://$http_host/;

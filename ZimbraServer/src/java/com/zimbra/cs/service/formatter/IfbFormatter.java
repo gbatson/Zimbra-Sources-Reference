@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,8 +25,9 @@ import com.zimbra.cs.index.MailboxIndex;
 import com.zimbra.cs.mailbox.Appointment;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
@@ -36,8 +37,9 @@ public class IfbFormatter extends Formatter {
    
     private static final long ONE_MONTH = Constants.MILLIS_PER_DAY*31;
     
-    public String getType() {
-        return "ifb";
+    @Override
+    public FormatType getType() {
+        return FormatType.IFB;
     }
 
     public boolean requiresAuth() {
@@ -48,12 +50,12 @@ public class IfbFormatter extends Formatter {
         return MailboxIndex.SEARCH_FOR_APPOINTMENTS;
     }
 
-    public void formatCallback(Context context) throws IOException, ServiceException, UserServletException {
+    public void formatCallback(UserServletContext context) throws IOException, ServiceException, UserServletException {
         context.resp.setCharacterEncoding("UTF-8");
         context.resp.setContentType(MimeConstants.CT_TEXT_CALENDAR);
 
-        long rangeStart = Math.max(context.getStartTime(), getDefaultStartTime());
-        long rangeEnd = Math.max(context.getEndTime(), getDefaultEndTime());
+        long rangeStart = context.getStartTime();
+        long rangeEnd = context.getEndTime();
         
         if (rangeEnd < rangeStart)
             throw new UserServletException(HttpServletResponse.SC_BAD_REQUEST, "End time must be after Start time");
@@ -92,10 +94,6 @@ public class IfbFormatter extends Formatter {
     // eventually get this from query param ?end=long|YYYYMMMDDHHMMSS
     public long getDefaultEndTime() {
         return System.currentTimeMillis() + (2 * ONE_MONTH);
-    }
-
-    public boolean canBeBlocked() {
-        return false;
     }
 
     private String fixupAccountName(String emailAddress) throws ServiceException {

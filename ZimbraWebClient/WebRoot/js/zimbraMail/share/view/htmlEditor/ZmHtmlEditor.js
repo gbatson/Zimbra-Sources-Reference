@@ -20,7 +20,7 @@
  * @class
  * @constructor
  */
-ZmHtmlEditor = function(parent, posStyle, content, mode, withAce, enablePaste) {
+ZmHtmlEditor = function(parent, posStyle, content, mode, withAce) {
 	if (arguments.length == 0) return;
 	this._toolbars = [];
 
@@ -31,10 +31,6 @@ ZmHtmlEditor = function(parent, posStyle, content, mode, withAce, enablePaste) {
 	if (this.ACE_ENABLED) {
 		this._ace_componentsLoading = 0;
 	}
-
-    if(enablePaste){
-        this._isPasteEnabled = enablePaste;
-    }
 
 	DwtHtmlEditor.call(this, {parent:parent, className:"ZmHtmlEditor", posStyle:posStyle,
 							  content:content, mode:mode, blankIframeSrc:appContextPath+"/public/blank.html"});
@@ -63,6 +59,19 @@ ZmHtmlEditor.__makeFontName = function(value) {
 ZmHtmlEditor.__toUpperCase = function(s) {
 	return s.toUpperCase();
 };
+
+ZmHtmlEditor.FONT_FAMILY = {};
+(function() {
+	var KEYS = [ "fontFamilyIntl", "fontFamilyBase" ];
+	var i, j, key, value, name;
+	for (j = 0; j < KEYS.length; j++) {
+		for (i = 1; value = AjxMsg[KEYS[j]+i+".css"]; i++) {
+			if (value.match(/^#+$/)) break;
+			name = AjxMsg[KEYS[j]+i+".display"];
+			ZmHtmlEditor.FONT_FAMILY[value] = {name:name, value:value};
+		}
+	}
+})();
 
 // Big ugly RegExp, looking for iframe tags where the id starts with "ACE-"
 ZmHtmlEditor.ACE_IFRAME_RE = new RegExp("<iframe\\s+.*?\\bid\\s*=\\s*[\"']?(ace-[^\"'\\s]*).*?>.*?</iframe(\\s.*?)?>", "ig");
@@ -93,10 +102,10 @@ ZmHtmlEditor.prototype.setContent = function(content) {
 };
 
 ZmHtmlEditor.prototype.setMode =
-function(mode, convert) {
+function(mode, convert, convertor) {
 	this.discardMisspelledWords();
 
-	DwtHtmlEditor.prototype.setMode.call(this, mode, convert);
+	DwtHtmlEditor.prototype.setMode.call(this, mode, convert, convertor);
 
 	if (mode == DwtHtmlEditor.HTML) {
 		this._createToolbars();
@@ -150,12 +159,12 @@ function() {
 	}
 };
 
-ZmHtmlEditor.prototype.addOnContentIntializedListener =
+ZmHtmlEditor.prototype.addOnContentInitializedListener =
 function(callback) {
 	this._onContentInitializeCallback = callback;
 };
 
-ZmHtmlEditor.prototype.removeOnContentIntializedListener =
+ZmHtmlEditor.prototype.removeOnContentInitializedListener =
 function() {
 	this._onContentInitializeCallback = null;
 };
@@ -311,7 +320,7 @@ function() {
 
 ZmHtmlEditor.prototype._resetFormatControlDefaults =
 function() {
-	this._fontFamilyButton.setText(DwtHtmlEditor._normalizeFontName(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY)));
+	this._fontFamilyButton.setText(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
 	this._fontSizeButton.setText(this._getFontSizeLabel(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE)));
 	this._fontColorButton.setColor(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_COLOR));
 	this._styleMenu.checkItem(ZmHtmlEditor._VALUE, DwtHtmlEditor.PARAGRAPH, true);
@@ -336,7 +345,7 @@ function(path) {
 		// servlet caches CSS unless there's a debug param
 		var debugLevel = DBG && DBG.getDebugLevel();
 		if (debugLevel) {
-			style_url = style_url + "&debug=" + debugLevel; 
+			style_url = style_url + "&debug=" + debugLevel;
 		}
 		style.href = style_url;
 		var head = doc.getElementsByTagName("head")[0];
@@ -355,8 +364,9 @@ ZmHtmlEditor.prototype._setFontStyles =
 function() {
 	var doc = this._getIframeDoc();
 	var style = doc.body && doc.body.style;
+
 	if (style) {
-		style.fontFamily = DwtHtmlEditor._normalizeFontValue(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
+		style.fontFamily = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY);
 		style.fontSize = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
 		style.color = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_COLOR);
 	}
@@ -576,7 +586,7 @@ function(x, y) {
 
 		// bug fix #6786 - normalize width/height if less than zero
 		if (x < 0) x = 0;
-	
+
 		main.style.width = x + 5 + "px";
 		if (div) {
 			if (!AjxEnv.isIE) {
@@ -641,8 +651,9 @@ function(ev) {
 
 ZmHtmlEditor.prototype._fontFamilyListener =
 function(ev) {
-	this.setFont(DwtHtmlEditor._normalizeFontValue(ev.item.getData(ZmHtmlEditor._VALUE)));
-	//this._fontFamilyButton.setText(DwtHtmlEditor.FONT_FAMILY[id] && DwtHtmlEditor.FONT_FAMILY[id].name || ZmHtmlEditor.__makeFontName(id));
+	var id = ev.item.getData(ZmHtmlEditor._VALUE);
+	this.setFont(ZmHtmlEditor.FONT_FAMILY[id].value);
+	this._fontFamilyButton.setText(ZmHtmlEditor.FONT_FAMILY[id].name);
 };
 
 ZmHtmlEditor.prototype._fontSizeListener =
@@ -1004,32 +1015,17 @@ function(html, insertFontStyle, onlyInnerContent) {
 			return DwtHtmlEditor.prototype._embedHtmlContent.call(this, html);
 	}
 
-	if (onlyInnerContent) {
-		var cont = [], idx=0;
-
-		if (insertFontStyle) {
-			cont[idx++] = "<div";
-			cont[idx++] = " style='font-family:";
-			cont[idx++] = DwtHtmlEditor._normalizeFontValue(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
-			cont[idx++] = "; font-size: ";
-			cont[idx++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
-			cont[idx++] = "; color: ";
-			cont[idx++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_COLOR);
-			cont[idx++] = ";'>";
-			cont[idx++] = html;
-			cont[idx++] = "</div>";
-		} else {
-			cont[idx++] = html;
-		}
-
-		return cont.join("");
-	}
-
-	var p_style = "<style type='text/css'>p { margin: 0; }</style>"; // bug 3264
 	if (insertFontStyle) {
 		html = this._getFontStyle(html);
 	}
+
+	if (onlyInnerContent) {
+		return html;
+	}
+
 	var headContent = this._headContent ? this._headContent.join("") : "";
+
+	var p_style = "<style type='text/css'>p { margin: 0; }</style>"; // bug 3264
 
 	return [
 		"<html><head>",
@@ -1044,7 +1040,7 @@ ZmHtmlEditor.prototype._getFontStyle =
 function(html) {
 	var a = [], i = 0;
 	a[i++] = "<div style='font-family: ";
-	a[i++] = DwtHtmlEditor._normalizeFontValue(appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY));
+	a[i++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_FAMILY);
 	a[i++] = "; font-size: ";
 	a[i++] = appCtxt.get(ZmSetting.COMPOSE_INIT_FONT_SIZE);
 	a[i++] = "; color: ";
@@ -1326,11 +1322,11 @@ function(tb) {
 	var menu = new ZmPopupMenu(this._fontFamilyButton);
 	var listener = new AjxListener(this, this._fontFamilyListener);
 
-	for (var id in DwtHtmlEditor.FONT_FAMILY) {
-		var name = DwtHtmlEditor.FONT_FAMILY[id] && DwtHtmlEditor.FONT_FAMILY[id].name || ZmHtmlEditor.__makeFontName(id);
-		var mi = menu.createMenuItem(name, {text:name});
+	for (var id in ZmHtmlEditor.FONT_FAMILY) {
+		var item = ZmHtmlEditor.FONT_FAMILY[id];
+		var mi = menu.createMenuItem(item.name, {text:item.name});
 		mi.addSelectionListener(listener);
-		mi.setData(ZmHtmlEditor._VALUE, DwtHtmlEditor.FONT_FAMILY[id] && DwtHtmlEditor.FONT_FAMILY[id].value || ZmHtmlEditor.__makeFontName(id));
+		mi.setData(ZmHtmlEditor._VALUE, item.value);
 	}
 
 	this._fontFamilyButton.setMenu(menu);
@@ -1401,7 +1397,10 @@ function(ev) {
 		// and an un-updated toolbar, rather than the other way around.
 
 		if (ev.fontFamily) {
-			this._fontFamilyButton.setText(DwtHtmlEditor._normalizeFontName(ev.fontFamily));
+			var id = ev.fontFamily;
+			var name = ZmHtmlEditor.FONT_FAMILY[id] && ZmHtmlEditor.FONT_FAMILY[id].name;
+			name = name || ZmHtmlEditor.__makeFontName(id);
+			this._fontFamilyButton.setText(name);
 		}
 
 		if (ev.fontSize) {
@@ -1515,7 +1514,7 @@ function(blockquote, element) {
 		range = iFrameDoc.selection.createRange();
 		range.collapse(false);
 		el = element;
-		
+
 		// IE doesn't let us get the offset directly, so we count the number of times we can use moveStart() until we're out of the containing element
 		var dummy = "###"+Dwt.getNextId()+"###";
 		range.pasteHTML(dummy);
@@ -1548,7 +1547,7 @@ function(blockquote, element) {
 			el = range.startContainer;
 		}
 	}
-	
+
 
 	var id = el.id = el.id || Dwt.getNextId();
 	var blockquote2 = blockquote.cloneNode(true); // Create an orphaned clone of the blockquote. This will be meddled with before getting attached to the DOM tree
@@ -1585,7 +1584,6 @@ function(blockquote, element) {
 		blockquote.parentNode.appendChild(blockquote2);
 	}
 
-	
 	if (AjxEnv.isIE) {
 		// Hack to get IE to properly place the cursor between the two blockquotes
 		var p = document.createElement("p");
@@ -1685,7 +1683,7 @@ ZmHtmlEditor.prototype._nextElement = function(el) {
 
 ZmHtmlEditor.prototype._elementIsIEFiller =
 function(el) {
-	if (el && el.attributes) {
+	if (el.attributes) {
 		for (var i=0; i<el.attributes.length; i++) {
 			if (el.attributes[i].name=="_ieFiller") {
 				return true;
@@ -2075,7 +2073,7 @@ function(ev) {
 	// but that's even uglier:
 	if (ev && word && (suggestions = sc.suggestions[word]) &&
 	    (/mouseup|contextmenu/i.test(ev.type) ||
-	     (plainText && /(click|mousedown|contextmenu)/i.test(ev.type))) && 
+	     (plainText && /(click|mousedown|contextmenu)/i.test(ev.type))) &&
 		(word == AjxUtil.getInnerText(p) && !this._ignoreWords[word]))
 	{
 		sc.menu = this._spellCheckCreateMenu(this, 0, suggestions, word, p.id, modified);

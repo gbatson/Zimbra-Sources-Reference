@@ -50,7 +50,7 @@
   <desc>get all groups the account is a member of</desc>
 </right>
 
-<right name="adminLoginAs" type="preset" targetType="account">
+<right name="adminLoginAs" type="preset" targetType="account" cache="1">
   <desc>login as the user as an admin.
         This is different from the loginAs user right as follows:
             - loginAs is effective only when login as an user
@@ -475,10 +475,6 @@
   <desc>check exchange auth config</desc>
 </right>
 
-<right name="checkExternalGALConfig" type="preset" targetType="domain">
-  <desc>check external GAL config</desc>
-</right>
-
 <right name="configureWikiAccount" type="setAttrs" targetType="domain,config">
   <desc>configure attributes for wiki account</desc>
    <attrs>
@@ -504,11 +500,6 @@
     <a n="zimbraGalSyncLdapBindDn"/>
     <a n="zimbraGalSyncLdapBindPassword"/>                                   
   </attrs> 
-</right>
-
-
-<right name="checkExternalAuthConfig" type="preset" targetType="domain">
-  <desc>check auth config for external auth</desc>
 </right>
 
 <right name="configureExternalAuth" type="setAttrs" targetType="domain">
@@ -584,10 +575,6 @@
   <desc>create, volumes</desc>
 </right>  
 
-<right name="manageWaitSet" type="preset" targetType="server">
-  <desc>create, destroy, wait, query wait sets</desc>
-</right>  
-
 <right name="deployZimlet" type="preset" targetType="server">
   <desc>deploy and undeploy zimlets on a server</desc>
 </right>
@@ -624,6 +611,17 @@
   <desc>get stats of server</desc>
 </right>
 
+<right name="getHSMStatus" type="preset" targetType="server">
+  <desc>get HSM process status for a server</desc>
+</right>
+
+<right name="moveBlobs" type="preset" targetType="server">
+  <desc>move blobs, start and abort HSM thread on a server</desc>
+</right>
+
+<right name="createMigrationTask" type="preset" targetType="server">
+    <desc>create bulk migration task on a server</desc>
+</right>
 <!-- 
   TODO:
           - deployAdminExtension             : deploy admin extensions
@@ -638,7 +636,6 @@
           - configureIMAP                    : configure IMAP
           - configurePOPProxy                : configure POP3 proxy
           - configureIMAPProxy               : configure IMAP proxy
-          - configureVolumes                 : configure volumes
           - configureServiceEnabled          : configure services enabled
 -->
 
@@ -714,7 +711,6 @@
 <right name="createZimlet" type="preset" targetType="global">
   <desc>create zimlet</desc>
 </right>
-
 
 <!-- 
 ========================================================

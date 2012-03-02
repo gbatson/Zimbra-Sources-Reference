@@ -13,9 +13,6 @@
  * ***** END LICENSE BLOCK *****
  */
 
-/*
- * Created on Nov 30, 2004
- */
 package com.zimbra.cs.service.mail;
 
 import java.util.ArrayList;
@@ -32,16 +29,13 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.index.MailboxIndex;
-import com.zimbra.cs.index.MessageHit;
 import com.zimbra.cs.index.SearchParams;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
 import com.zimbra.cs.index.SearchParams.ExpandResults;
-import com.zimbra.cs.index.queryparser.ParseException;
 import com.zimbra.cs.mailbox.Conversation;
 import com.zimbra.cs.mailbox.Flag;
-import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
@@ -50,15 +44,20 @@ import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.soap.ZimbraSoapContext;
 
+/**
+ * @since Nov 30, 2004
+ */
 public class SearchConv extends Search {
     private static Log sLog = LogFactory.getLog(Search.class);
 
-    private static final int CONVERSATION_FIELD_MASK = Change.MODIFIED_SIZE | Change.MODIFIED_TAGS | Change.MODIFIED_FLAGS;
+    private static final int CONVERSATION_FIELD_MASK =
+        Change.MODIFIED_SIZE | Change.MODIFIED_TAGS | Change.MODIFIED_FLAGS;
 
     @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
-        if (sLog.isDebugEnabled())
+        if (sLog.isDebugEnabled()) {
             sLog.debug("**Start SearchConv");
+        }
 
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Mailbox mbox = getRequestedMailbox(zsc);
@@ -66,9 +65,10 @@ public class SearchConv extends Search {
         ItemIdFormatter ifmt = new ItemIdFormatter(zsc);
 
         boolean nest = request.getAttributeBool(MailConstants.A_NEST_MESSAGES, false);
-        
+
         Account acct = getRequestedAccount(zsc);
-        SearchParams params = SearchParams.parse(request, zsc, acct.getAttr(Provisioning.A_zimbraPrefMailInitialSearch));
+        SearchParams params = SearchParams.parse(request, zsc,
+                acct.getAttr(Provisioning.A_zimbraPrefMailInitialSearch));
 
         // append (conv:(convid)) onto the beginning of the queryStr
         ItemId cid = new ItemId(request.getAttribute(MailConstants.A_CONV_ID), zsc);
@@ -81,52 +81,61 @@ public class SearchConv extends Search {
 
         // force to group-by-message
         params.setTypesStr(MailboxIndex.GROUP_BY_MESSAGE);
-        
-        if (cid.belongsTo(mbox)) {
-            // LOCAL!
+
+        Element response = null;
+        if (cid.belongsTo(mbox)) { // local
             ZimbraQueryResults results = this.doSearch(zsc, octxt, mbox, params);
-            
+
             try {
-                Element response = zsc.createElement(MailConstants.SEARCH_CONV_RESPONSE);
+                response = zsc.createElement(MailConstants.SEARCH_CONV_RESPONSE);
                 response.addAttribute(MailConstants.A_QUERY_OFFSET, Integer.toString(params.getOffset()));
-                
+
                 SortBy sort = results.getSortBy();
                 response.addAttribute(MailConstants.A_SORTBY, sort.toString());
-                
+
                 List<Message> msgs = mbox.getMessagesByConversation(octxt, cid.getId(), sort);
-                if (msgs.isEmpty() && zsc.isDelegatedRequest())
+                if (msgs.isEmpty() && zsc.isDelegatedRequest()) {
                     throw ServiceException.PERM_DENIED("you do not have sufficient permissions");
-                
+                }
+
                 // filter out IMAP \Deleted messages from the message lists
                 Conversation conv = mbox.getConversationById(octxt, cid.getId());
                 if (conv.isTagged(Flag.ID_FLAG_DELETED)) {
                     List<Message> raw = msgs;
                     msgs = new ArrayList<Message>();
                     for (Message msg : raw) {
-                        if (!msg.isTagged(Flag.ID_FLAG_DELETED))
+                        if (!msg.isTagged(Flag.ID_FLAG_DELETED)) {
                             msgs.add(msg);
+                        }
                     }
                 }
-                
-                Element container = nest ? ToXML.encodeConversationSummary(response, ifmt, octxt, conv, CONVERSATION_FIELD_MASK): response;
-                
-                boolean more = putHits(octxt, ifmt, container, msgs, results, params);
+
+                Element container = nest ? ToXML.encodeConversationSummary(
+                        response, ifmt, octxt, conv, CONVERSATION_FIELD_MASK): response;
+                SearchResponse builder = new SearchResponse(zsc, octxt, container, params);
+
+                boolean more = putHits(octxt, ifmt, builder, msgs, results, params);
                 response.addAttribute(MailConstants.A_QUERY_MORE, more);
-                
-                // call me AFTER putHits since some of the <info> is generated by the getting of the hits!
-                putInfo(response, params, results);
-                
-                return response;
+
+                // call me AFTER putHits since some of the <info> is generated
+                // by the getting of the hits!
+                builder.add(results.getResultInfo(), results.estimateResultSize());
             } finally {
                 results.doneWithSearchResults();
             }
-        } else {
+            
+            if (request.getAttributeBool(MailConstants.A_NEED_EXP, false))
+                ToXML.encodeConvAddrsWithGroupInfo(request, response, getRequestedAccount(zsc), getAuthenticatedAccount(zsc));
+            return response;
+            
+        } else { // remote
             Element proxyRequest = zsc.createElement(MailConstants.SEARCH_CONV_REQUEST);
 
             params.encodeParams(proxyRequest);
             proxyRequest.addAttribute(MailConstants.A_NEST_MESSAGES, nest);
             proxyRequest.addAttribute(MailConstants.A_CONV_ID, cid.toString());
-                
+
+
             try {
                 // okay, lets run the search through the query parser -- this has the side-effect of
                 // re-writing the query in a format that is OK to proxy to the other server -- since the
@@ -138,103 +147,115 @@ public class SearchConv extends Search {
                     
                 // proxy to remote account
                 Account target = Provisioning.getInstance().get(AccountBy.id, cid.getAccountId(), zsc.getAuthToken());
-                Element response = proxyRequest(proxyRequest, context, target.getId());
+                response = proxyRequest(proxyRequest, context, target.getId());
                 return response.detach();
-            } catch (ParseException e) {
-                MailServiceException me = null;
-                String message = e.getMessage();
-                if (e.code != null)
-                    message = e.code;
-                if (e.expectedTokenSequences != null) {
-                    // this is a direct ParseException from JavaCC - don't return their long message as the code
-                    message = "PARSER_ERROR";
-                }
-                if (e.currentToken != null)
-                    me = MailServiceException.QUERY_PARSE_ERROR(params.getQueryStr(), e, e.currentToken.image, e.currentToken.beginColumn, message);
-                else 
-                    me = MailServiceException.QUERY_PARSE_ERROR(params.getQueryStr(), e, "", -1, message);
-                throw me;
-            } catch (SoapFaultException ex) {
-                throw ServiceException.FAILURE("SoapFaultException: ", ex);
-            }                    
+            } catch (SoapFaultException e) {
+                throw ServiceException.FAILURE("SoapFaultException: ", e);
+            }
         }
     }
 
     /**
-     * NOTE - this version will only work for messages.  That's OK since we force GROUP_BY_MESSAGE here
-     * @param octxt TODO
-     * @param response - soap container to put response data in
-     * @param msgs - list of messages in this conversation
-     * @param results - set of HITS for messages in this conv which match the search
-     * @param offset - offset in conv to start at 
-     * @param limit - number to return
-     * 
-     * @return whether there are more more messages in the conversation past the specified limit
+     * This will only work for messages. That's OK since we force
+     * GROUP_BY_MESSAGE here.
+     *
+     * @param octxt operation context
+     * @param el SOAP container to put response data in
+     * @param msgs list of messages in this conversation
+     * @param results set of HITS for messages in this conversation which
+     *  matches the search
+     * @param offset offset in conversation to start at
+     * @param limit number to return
+     * @return whether there are more messages in the conversation past
+     *  the specified limit
      * @throws ServiceException
      */
-    private boolean putHits(OperationContext octxt, ItemIdFormatter ifmt, Element response, List<Message> msgs, ZimbraQueryResults results, SearchParams params)
-    throws ServiceException {
+    private boolean putHits(OperationContext octxt, ItemIdFormatter ifmt,
+            SearchResponse resp, List<Message> msgs, ZimbraQueryResults results,
+            SearchParams params) throws ServiceException {
+
         int offset = params.getOffset();
         int limit  = params.getLimit();
 
         if (sLog.isDebugEnabled()) {
-            sLog.debug("SearchConv beginning with offset "+offset);
+            sLog.debug("SearchConv beginning with offset " + offset);
         }
 
         int iterLen = limit;
-//      boolean hasMoreHits = false;
 
-        if (msgs.size() > iterLen + offset) {
-//          hasMoreHits = true;
-        } else {
-            // iterLen+offset <= msgs.length
+        if (msgs.size() <= iterLen + offset) {
             iterLen = msgs.size() - offset;
         }
 
         if (iterLen > 0) {
+            // Array of ZimbraHit ptrs for matches, 1 entry for every message
+            // we might return from conv. NULL means no ZimbraHit presumably b/c
+            // the message didn't match the search.
             //
-            // Array of ZimbraHit ptrs for matches, 1 entry for every message we might return from conv.
-            // NULL means no ZimbraHit presumably b/c the message didn't match the search
-            //
-            // ***Note that the match for msgs[i] is matched[i-offset]!!!!
-            //
+            // Note that the match for msgs[i] is matched[i-offset]!!!!
             ZimbraHit matched[] = new ZimbraHit[iterLen];
 
-            //
-            // Foreach hit, see if the hit message is in msgs[] (list of msgs in this conv), and if so 
-            //
-            HitIter: 
-                for (ZimbraHit curHit = results.getFirstHit(); curHit != null; curHit = results.getNext()) {
-                    // we only bother checking the messages between offset and offset+iterLen, since only they
-                    // are getting returned.
-                    for (int i = offset; i < offset + iterLen; i++) {
-                        if (curHit.getItemId() == msgs.get(i).getId()) {
-                            matched[i-offset] = curHit;
-                            continue HitIter; 
-                        }
+            // For each hit, see if the hit message is in this conv (msgs).
+            while (results.hasNext()) {
+                ZimbraHit hit = results.getNext();
+                // we only bother checking the messages between offset and
+                // offset + iterLen, since only they are getting returned.
+                for (int i = offset; i < offset + iterLen; i++) {
+                    if (hit.getItemId() == msgs.get(i).getId()) {
+                        matched[i - offset] = hit;
+                        break;
                     }
                 }
+            }
 
-            //
-            // Okay, we've built the matched[] array.  Now iterate through all the messages, and put the message
-            // or the MATCHED entry into the result
-            //
-            ExpandResults expand = params.getInlineRule();
+            // Okay, we've built the matched[] array. Now iterate through all
+            // the messages, and put the message or the MATCHED entry
+            // into the result
             for (int i = offset; i < offset + iterLen; i++) {
-                if (matched[i-offset] != null) {
-                    MessageHit mhit = (MessageHit) matched[i-offset];
-                    boolean inline = expand == ExpandResults.FIRST || expand == ExpandResults.ALL || expand == ExpandResults.HITS || expand.matches(mhit.getParsedItemID());
-                    addMessageHit(mhit, response, octxt, ifmt, inline, params);
-                    if (expand == ExpandResults.FIRST)
-                        expand = ExpandResults.NONE;
+                if (matched[i - offset] != null) {
+                    resp.add(matched[i - offset]);
                 } else {
                     Message msg = msgs.get(i);
+                    ExpandResults expand = params.getInlineRule();
                     boolean inline = expand == ExpandResults.ALL || expand.matches(msg);
-                    addMessageMiss(msg, response, octxt, ifmt, inline, params);
+                    addMessageMiss(msg, resp.toElement(), octxt, ifmt, inline, params);
                 }
             }
         }
 
         return offset + iterLen < msgs.size();
     }
+
+    private Element addMessageMiss(Message msg, Element response,
+            OperationContext octxt, ItemIdFormatter ifmt, boolean inline,
+            SearchParams params) throws ServiceException {
+
+        // for bug 7568, mark-as-read must happen before the response is encoded.
+        if (inline && msg.isUnread() && params.getMarkRead()) {
+            // Mark the message as READ
+            try {
+                msg.getMailbox().alterTag(octxt, msg.getId(), msg.getType(),
+                        Flag.ID_FLAG_UNREAD, false);
+            } catch (ServiceException e) {
+                mLog.warn("problem marking message as read (ignored): " +
+                        msg.getId(), e);
+            }
+        }
+
+        Element el;
+        if (inline) {
+            el = ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null,
+                    params.getMaxInlinedLength(), params.getWantHtml(),
+                    params.getNeuterImages(), null, true);
+            if (!msg.getFragment().equals("")) {
+                el.addAttribute(MailConstants.E_FRAG, msg.getFragment(),
+                        Element.Disposition.CONTENT);
+            }
+        } else {
+            el = ToXML.encodeMessageSummary(response, ifmt, octxt, msg,
+                    params.getWantRecipients());
+        }
+        return el;
+    }
+
 }

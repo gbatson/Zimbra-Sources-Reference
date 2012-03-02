@@ -16,18 +16,19 @@ package com.zimbra.cs.index;
 
 import com.zimbra.common.soap.Element;
 
-public class WildcardExpansionQueryInfo implements  QueryInfo {
-    
+public final class WildcardExpansionQueryInfo implements QueryInfo {
+
     private String mStr;
     private int mNumExpanded;
     private boolean mExpandedAll;
-    
-    WildcardExpansionQueryInfo(String baseStr, int numExpanded, boolean expandedAll) {
+
+    public WildcardExpansionQueryInfo(String baseStr, int numExpanded, boolean expandedAll) {
         mStr = baseStr;
         mNumExpanded = numExpanded;
         mExpandedAll = expandedAll;
     }
-    
+
+    @Override
     public Element toXml(Element parent) {
         Element qinfo = parent.addElement("wildcard");
         qinfo.addAttribute("str", mStr);
@@ -35,8 +36,10 @@ public class WildcardExpansionQueryInfo implements  QueryInfo {
         qinfo.addAttribute("numExpanded", mNumExpanded);
         return qinfo;
     }
-    
+
+    @Override
     public String toString() {
-        return "WILDCARD("+mStr+","+mNumExpanded+","+ (mExpandedAll ? "ALL" : "PARTIAL")+")";
+        return "WILDCARD(" + mStr + "," + mNumExpanded + "," +
+            (mExpandedAll ? "ALL" : "PARTIAL") + ")";
     }
 }

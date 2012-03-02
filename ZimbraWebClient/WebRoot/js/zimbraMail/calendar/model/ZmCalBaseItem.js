@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -56,7 +56,6 @@ ZmCalBaseItem = function(type, list, id, folderId) {
 
 ZmCalBaseItem.prototype = new ZmItem;
 ZmCalBaseItem.prototype.constructor = ZmCalBaseItem;
-
 /**
  * Returns a string representation of the object.
  * 
@@ -73,6 +72,10 @@ function() {
  * Defines the "person" resource type.
  */
 ZmCalBaseItem.PERSON				= "PERSON";
+/**
+ * Defines the "optional person" resource type.
+ */
+ZmCalBaseItem.OPTIONAL_PERSON		= "OPT_PERSON";
 /**
  * Defines the "location" resource type.
  */
@@ -241,12 +244,18 @@ ZmCalBaseItem.prototype.isMultiDay =
 function() {
 	var start = this.startDate;
 	var end = this.endDate;
+
+    if(!start && !end) { return false; }
+
+    if(!start) { return false; }
+
 	if (end.getHours() == 0 && end.getMinutes() == 0 && end.getSeconds() == 0) {
 		// if end is the beginning of day, then disregard that it
 		// technically crossed a day boundary for the purpose of
 		// determining if it is a multi-day appt
 		end = new Date(end.getTime() - 2 * AjxDateUtil.MSEC_PER_HOUR);
 	}
+
 	return (start.getDate() != end.getDate()) ||
 		   (start.getMonth() != end.getMonth()) ||
 		   (start.getFullYear() != end.getFullYear());
@@ -349,12 +358,13 @@ function(calItemNode, instNode) {
 	this.uid 			= calItemNode.uid;
 	this.folderId 		= calItemNode.l || this._getDefaultFolderId();
 	this.invId			= calItemNode.invId;
+	this.isException 	= instNode.ex; 
 	this.id 			= this._getAttr(calItemNode, instNode, "id");
 	this.name 			= this._getAttr(calItemNode, instNode, "name");
 	this.fragment 		= this._getAttr(calItemNode, instNode, "fr");
 	this.status 		= this._getAttr(calItemNode, instNode, "status");
 	this.ptst 			= this._getAttr(calItemNode, instNode, "ptst");
-	this.isException 	= this._getAttr(calItemNode, instNode, "ex");
+	
 	this.allDayEvent	= (instNode.allDay || calItemNode.allDay)  ? "1" : "0";
 	this.organizer		= calItemNode.or && calItemNode.or.a;
 	this.isOrg 			= this._getAttr(calItemNode, instNode, "isOrg");
@@ -372,7 +382,7 @@ function(calItemNode, instNode) {
 
 	this.fba = this._getAttr(calItemNode, instNode, "fba");
 
-	var sd = this._getAttr(calItemNode, instNode, "s");
+	var sd = instNode.s !=null ? instNode.s : calItemNode.inst && calItemNode.inst.length > 0 &&  calItemNode.inst[0].s;
 	if (sd) {
         var tzo = this.tzo = instNode.tzo != null ? instNode.tzo : calItemNode.tzo;
 		var adjustMs = this.isAllDayEvent() ? (tzo + new Date(instNode.s).getTimezoneOffset()*60*1000) : 0;
@@ -404,7 +414,7 @@ function() {
  */
 ZmCalBaseItem.prototype._getAttr =
 function(calItem, inst, name) {
-	return inst[name] != null ? inst[name] : calItem[name];
+	return inst[name] != null ? inst[name] : inst.ex ? null : calItem[name];
 };
 
 /**
@@ -475,7 +485,7 @@ function() {
 	// if server doesn't tell us what URL to use, do our best to generate
 	var organizer = appCtxt.getById(this.folderId);
 	var url = organizer
-		? ([organizer.getRestUrl(), "/?id=", AjxStringUtil.urlComponentEncode(this.id)].join(""))
+		? ([organizer.getRestUrl(), "/?id=", AjxStringUtil.urlComponentEncode(this.id || this.invId)].join(""))
 		: null;
 
 	DBG.println(AjxDebug.DBG3, "NO REST URL FROM SERVER. GENERATED URL: " + url);

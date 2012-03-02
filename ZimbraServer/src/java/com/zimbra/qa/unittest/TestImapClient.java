@@ -15,6 +15,8 @@
 
 package com.zimbra.qa.unittest;
 
+import com.zimbra.common.mime.shim.JavaMailMimeMessage;
+import com.zimbra.common.util.Log;
 import com.zimbra.cs.datasource.imap.ImapAppender;
 import com.zimbra.cs.mailclient.imap.MailboxInfo;
 import org.junit.*;
@@ -72,7 +74,7 @@ public class TestImapClient {
     private ImapConnection connection;
 
     private static final Logger LOG = Logger.getLogger(TestImapClient.class);
-    
+
     private static final String HOST = "localhost";
     private static final int PORT = 7143;
     private static final int SSL_PORT = 7993;
@@ -86,8 +88,6 @@ public class TestImapClient {
         "To: bozo <bozo@foo.com>\r\n" +
         "\r\n" +
         "This is a test message.\r\n";
-
-    private static final boolean DEBUG = true;
 
     static {
         BasicConfigurator.configure();
@@ -171,6 +171,7 @@ public class TestImapClient {
         final AtomicLong exists = new AtomicLong(-1);
         // Start IDLE...
         connection.idle(new ResponseHandler() {
+            @Override
             public void handleResponse(ImapResponse res) {
                 System.out.println("XXX res = " + res);
                 if (res.getCCode() == CAtom.EXISTS) {
@@ -224,7 +225,7 @@ public class TestImapClient {
             }
         }
     }
-    
+
     @Test
     public void testAppend() throws Exception {
         login();
@@ -272,6 +273,7 @@ public class TestImapClient {
         MailboxInfo mb = connection.select("INBOX");
         final AtomicLong count = new AtomicLong(mb.getExists());
         connection.uidFetch("1:*", "(FLAGS INTERNALDATE RFC822.SIZE ENVELOPE BODY BODY.PEEK[])", new ResponseHandler() {
+            @Override
             public void handleResponse(ImapResponse res) throws Exception {
                 if (res.getCCode() != CAtom.FETCH) return;
                 MessageData md = (MessageData) res.getData();
@@ -322,8 +324,7 @@ public class TestImapClient {
     @Test
     public void testYahoo() throws Exception {
         ImapConfig config = new ImapConfig();
-        config.setDebug(true);
-        config.setTrace(true);
+        config.getLogger().setLevel(Log.Level.trace);
         config.setHost("imap.mail.yahoo.com");
         config.setAuthenticationId("dacztest");
         connection = new ImapConnection(config);
@@ -340,8 +341,7 @@ public class TestImapClient {
     @Test
     public void testGMailAppend() throws Exception {
         ImapConfig config = new ImapConfig();
-        config.setDebug(true);
-        config.setTrace(true);
+        config.getLogger().setLevel(Log.Level.trace);
         config.setHost("imap.gmail.com");
         config.setSecurity(MailConfig.Security.SSL);
         config.setSSLSocketFactory(SSLUtil.getDummySSLContext().getSocketFactory());
@@ -382,7 +382,7 @@ public class TestImapClient {
             fail();
         } catch (IllegalArgumentException e) {}
     }
-    
+
     private byte[] getBytes(MimeMessage mm) throws MessagingException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         mm.writeTo(baos);
@@ -403,7 +403,7 @@ public class TestImapClient {
     }
 
     private static MimeMessage newTestMessage(int num) throws MessagingException {
-        MimeMessage mm = new MimeMessage(JMSession.getSession());
+        MimeMessage mm = new JavaMailMimeMessage(JMSession.getSession());
         mm.setHeader("Message-Id", "<test-" + num + "@foo.com>");
         mm.setHeader("To", "nobody@foo.com");
         mm.setHeader("From", "nobody@bar.com");
@@ -412,7 +412,7 @@ public class TestImapClient {
         mm.setContent("This is test message " + num, "text/plain");
         return mm;
     }
-    
+
     private long uidAppend(MimeMessage msg, Flags flags, Date date)
         throws IOException {
         String name = connection.getMailboxInfo().getName();
@@ -460,7 +460,7 @@ public class TestImapClient {
         assertEquals(decoded2, decoded1);
     }
     */
-    
+
     /*
     public void testLiteral() throws Exception {
         connect(false);
@@ -508,11 +508,11 @@ public class TestImapClient {
         assertTrue(cap.hasCapability(ImapCapabilities.UIDPLUS));
         assertTrue(cap.hasCapability("UNSELECT"));
     }
-    
+
     private void connect() throws IOException {
         connect(null);
     }
-    
+
     private void connect(MailConfig.Security security) throws IOException {
         if (config == null) {
             config = getConfig(security);
@@ -522,7 +522,7 @@ public class TestImapClient {
         connection.connect();
     }
 
-    private static ImapConfig getConfig(MailConfig.Security security) throws IOException {
+    private static ImapConfig getConfig(MailConfig.Security security) {
         ImapConfig config = new ImapConfig(HOST);
         config.setPort(PORT);
         if (security != null) {
@@ -532,8 +532,7 @@ public class TestImapClient {
                 config.setSSLSocketFactory(SSLUtil.getDummySSLContext().getSocketFactory());
             }
         }
-        config.setDebug(DEBUG);
-        config.setTrace(true);
+        config.getLogger().setLevel(Log.Level.trace);
         config.setMechanism("PLAIN");
         config.setAuthenticationId(USER);
         //config.setRawMode(true);

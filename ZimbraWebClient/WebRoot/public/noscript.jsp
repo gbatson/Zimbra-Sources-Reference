@@ -23,7 +23,7 @@
  noscript.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -41,73 +41,42 @@
 </head>
 <body>
 
-<!-- BEGIN SPLASH SCREEN -->
-<div id='skin_container_splash_screen'>
-	<table style='width:100%;height:100%'>
-		<tr>
-			<td align=center valign=middle>
-				<div id='ZSplashPanel'>
-					<table class='zLoginTable' width='100%' cellpadding=0 cellspacing=0>
-						<tr>
-							<td id='ZLoginHeaderContainer'>
-								<center>
-									<table class='zLoginTable'>
-										<tr>
-											<td id='ZLoginBannerContainer'>
-												<div id='ZLoginBannerPanel'>
-													<table class='zLoginTable'>
-														<tr>
-															<td>
-																<div style='cursor:pointer' id='ZLoginBannerImage' class='ImgLoginBanner'></div>
-															</td>
-															<td valign=top id='ZLoginShortVersion'>
-															</td>
-														</tr>
-													</table>
-													<div id='ZLoginAppName'>
-														<fmt:message key="splashScreenAppName" />
-													</div>
-												</div>
-											</td>
-										</tr>
-									</table>
-								</center>
-							</td>
-						</tr>
-						<tr>
-							<td id='ZSplashBodyContainer'>
-								<div id='ZLoginLoadingPanel'>
-									<table>
-										<tr>
-											<td>
-												<fmt:message key="errorJavaScriptRequired">
-													<fmt:param>
-														<c:url value='/'></c:url>
-													</fmt:param>
-													<fmt:param>
-														<c:url value='/h/'></c:url>
-													</fmt:param>
-												</fmt:message>
-											</td>
-										</tr>
-									</table>
-								</div>
-								<table class='zLoginTable' width='100%' cellpadding=0 cellspacing=0>
-									<tr>
-										<td id='ZLoginLicenseContainer'>
-											<fmt:message key="splashScreenCopyright" />
-										</td>
-									</tr>
-								</table>
-							</td>
-						</tr>
-					</table>
-				</div>
-			</td>
-		</tr>
-	</table>
+<!-- BEGIN ERROR SCREEN -->
+<div class="LoginScreen">
+<div id='skin_container_splash_screen' class='SplashScreen'>
+	<script language='javascript'>
+		function showCompanyUrl() {
+			window.open(ZmMsg.splashScreenCompanyURL, '_blank');
+		}
+	</script>
+	
+
+<div class="center">
+        <div class="ImgAltBanner"></div>    
+		<h1><div id='ZLoginBannerImage' class='ImgLoginBanner' onclick='showCompanyUrl()'></div></h1>
+		<h2><script>document.write(ZmMsg.splashScreenAppName)</script></h2>
+
+		<div id="#ZSplashBodyContainer" class="content">
+			<div class="offline" id='ZLoginLoadingPanel'>
+			 <div class="spacer">	
+				<fmt:message key="errorJavaScriptRequired">
+					<fmt:param>
+						<c:url value='/'></c:url>
+					</fmt:param>
+					<fmt:param>
+						<c:url value='/h/'></c:url>
+					</fmt:param>
+				</fmt:message>
+			 </div>
+			</div>
+			<div class="switch"></div>
+			<div class="copyright" id='ZLoginLicenseContainer'><fmt:message key="splashScreenCopyright" /></div>
+		<div> 
+		<div class="decor1"></div>
+	</div>
+	
+  </div>
 </div>
-<!-- END SPLASH SCREEN -->
 
 </body>
 </html>

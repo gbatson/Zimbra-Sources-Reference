@@ -43,7 +43,7 @@ public class ExportAndDeleteItems extends AdminDocumentHandler {
         
         // Parse request.
         Element mboxEl = request.getElement(AdminConstants.E_MAILBOX);
-        long mboxId = mboxEl.getAttributeLong(AdminConstants.A_ID);
+        int mboxId = (int) mboxEl.getAttributeLong(AdminConstants.A_ID);
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(mboxId);
         List<Integer> itemIds = new ArrayList<Integer>();
         for (Element itemEl : mboxEl.listElements(AdminConstants.E_ITEM)) {
@@ -68,12 +68,18 @@ public class ExportAndDeleteItems extends AdminDocumentHandler {
                     conn = DbPool.getConnection();
                     String filePath = makePath(dirPath, DbMailItem.TABLE_MAIL_ITEM, prefix);
                     export(conn, mbox, DbMailItem.TABLE_MAIL_ITEM, "id", itemIds, filePath);
+                    filePath = makePath(dirPath, DbMailItem.TABLE_MAIL_ITEM, prefix);
+                    export(conn, mbox, DbMailItem.TABLE_MAIL_ITEM_DUMPSTER, "id", itemIds, filePath);
 
                     filePath = makePath(dirPath, DbMailItem.TABLE_REVISION, prefix);
                     export(conn, mbox, DbMailItem.TABLE_REVISION, "item_id", itemIds, filePath);
+                    filePath = makePath(dirPath, DbMailItem.TABLE_REVISION, prefix);
+                    export(conn, mbox, DbMailItem.TABLE_REVISION_DUMPSTER, "item_id", itemIds, filePath);
 
                     filePath = makePath(dirPath, DbMailItem.TABLE_APPOINTMENT, prefix);
                     export(conn, mbox, DbMailItem.TABLE_APPOINTMENT, "item_id", itemIds, filePath);
+                    filePath = makePath(dirPath, DbMailItem.TABLE_APPOINTMENT, prefix);
+                    export(conn, mbox, DbMailItem.TABLE_APPOINTMENT_DUMPSTER, "item_id", itemIds, filePath);
                 } finally {
                     DbPool.quietClose(conn);
                 }

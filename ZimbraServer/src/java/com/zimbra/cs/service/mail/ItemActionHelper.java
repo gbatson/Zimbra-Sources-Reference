@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,7 +30,9 @@ import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.SoapHttpTransport;
 import com.zimbra.common.soap.SoapProtocol;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraLog;
@@ -47,6 +49,7 @@ import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.service.util.SpamHandler;
+import com.zimbra.cs.service.util.SpamHandler.SpamReport;
 import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.Zimbra;
@@ -96,6 +99,23 @@ public class ItemActionHelper {
                 List<Integer> ids, byte type, TargetConstraint tcon)
     throws ServiceException {
         ItemActionHelper ia = new ItemActionHelper(octxt, mbox, responseProto, ids, Op.HARD_DELETE, type, true, tcon);
+        ia.schedule();
+        return ia;
+    }
+
+    public static ItemActionHelper RECOVER(OperationContext octxt, Mailbox mbox, SoapProtocol responseProto,
+                List<Integer> ids, byte type, TargetConstraint tcon, ItemId iidFolder)
+    throws ServiceException {
+        ItemActionHelper ia = new ItemActionHelper(octxt, mbox, responseProto, ids, Op.RECOVER, type, true, tcon);
+        ia.setIidFolder(iidFolder);
+        ia.schedule();
+        return ia;
+    }
+
+    public static ItemActionHelper DUMPSTER_DELETE(OperationContext octxt, Mailbox mbox, SoapProtocol responseProto,
+                List<Integer> ids, byte type, TargetConstraint tcon)
+    throws ServiceException {
+        ItemActionHelper ia = new ItemActionHelper(octxt, mbox, responseProto, ids, Op.DUMPSTER_DELETE, type, true, tcon);
         ia.schedule();
         return ia;
     }
@@ -152,19 +172,37 @@ public class ItemActionHelper {
         return ia;
     }
                 
-    
+    public static ItemActionHelper LOCK(OperationContext octxt, Mailbox mbox, SoapProtocol responseProto,
+            List<Integer> ids, byte type, TargetConstraint tcon)
+    throws ServiceException {
+        ItemActionHelper ia = new ItemActionHelper(octxt, mbox, responseProto, ids, Op.LOCK, type, true, tcon);
+        ia.schedule();
+        return ia;
+    }
+
+    public static ItemActionHelper UNLOCK(OperationContext octxt, Mailbox mbox, SoapProtocol responseProto,
+            List<Integer> ids, byte type, TargetConstraint tcon)
+    throws ServiceException {
+        ItemActionHelper ia = new ItemActionHelper(octxt, mbox, responseProto, ids, Op.UNLOCK, type, true, tcon);
+        ia.schedule();
+        return ia;
+    }
+
     public static enum Op {
         TAG("tag"),
         FLAG("flag"),
         READ("read"),
         COLOR("color"),
         HARD_DELETE("delete"),
+        RECOVER("recover"),
+        DUMPSTER_DELETE("dumpsterdelete"),
         MOVE("move"),
         COPY("copy"),
         SPAM("spam"),
         RENAME("rename"),
-        UPDATE("update")
-        ;
+        UPDATE("update"),
+        LOCK("lock"),
+        UNLOCK("unlock");
         
         private String mStr;
 
@@ -244,7 +282,7 @@ public class ItemActionHelper {
         mName = name; 
     }
     public void setIidFolder(ItemId iidFolder)  { 
-        assert(mOperation == Op.MOVE || mOperation == Op.SPAM || mOperation == Op.COPY || mOperation == Op.RENAME || mOperation == Op.UPDATE);
+        assert(mOperation == Op.MOVE || mOperation == Op.SPAM || mOperation == Op.COPY || mOperation == Op.RENAME || mOperation == Op.UPDATE || mOperation == Op.RECOVER);
         mIidRequestedFolder = mIidFolder = iidFolder; 
     }
     public void setFlags(String flags) {
@@ -345,6 +383,13 @@ public class ItemActionHelper {
             case HARD_DELETE:
                 getMailbox().delete(getOpCtxt(), mIds, mItemType, mTargetConstraint);
                 break;
+            case RECOVER:
+                getMailbox().recover(getOpCtxt(), mIds, mItemType, mIidFolder.getId());
+                getMailbox().deleteFromDumpster(getOpCtxt(), mIds);
+                break;
+            case DUMPSTER_DELETE:
+                getMailbox().deleteFromDumpster(getOpCtxt(), mIds);
+                break;
             case SPAM:
             case MOVE:
                 getMailbox().move(getOpCtxt(), mIds, mItemType, mIidFolder.getId(), mTargetConstraint);
@@ -370,6 +415,14 @@ public class ItemActionHelper {
                     getMailbox().setTags(getOpCtxt(), mIds, mItemType, mFlags, mTags, mTargetConstraint);
                 if (mColor != null)
                     getMailbox().setColor(getOpCtxt(), mIds, mItemType, mColor);
+                break;
+            case LOCK:
+                for (int id : mIds)
+                    getMailbox().lock(getOpCtxt(), id, mItemType, mAuthenticatedAccount.getId());
+                break;
+            case UNLOCK:
+                for (int id : mIds)
+                    getMailbox().unlock(getOpCtxt(), id, mItemType, mAuthenticatedAccount.getId());
                 break;
             default:
                 throw ServiceException.INVALID_REQUEST("unknown operation: " + mOperation, null);
@@ -397,7 +450,6 @@ public class ItemActionHelper {
         
         ZMailbox.Options zoptions = new ZMailbox.Options(zat, AccountUtil.getSoapUri(target));
         zoptions.setNoSession(true);
-        zoptions.setResponseProtocol(mResponseProtocol);
         zoptions.setTargetAccount(target.getId());
         zoptions.setTargetAccountBy(Provisioning.AccountBy.id);
         ZMailbox zmbx = ZMailbox.getMailbox(zoptions);
@@ -458,8 +510,12 @@ public class ItemActionHelper {
             boolean fromSpam = item.inSpam();
             if ((fromSpam && toMailbox) || (!fromSpam && toSpam)) {
                 try {
-                    SpamHandler.getInstance().handle(mOpCtxt, mMailbox, item.getId(), item.getType(), toSpam);
-                    ZimbraLog.mailop.info("sent to spam filter for training (marked as " + (toSpam ? "" : "not ") + "spam): " + new ItemId(item).toString());
+                    Folder dest = mMailbox.getFolderById(mOpCtxt, mIidFolder.getId());
+                    SpamReport report = new SpamReport(toSpam, "remote " + mOperation, dest.getPath());
+                    Folder source = mMailbox.getFolderById(mOpCtxt, item.getFolderId());
+                    report.setSourceFolderPath(source.getPath());
+                    report.setDestAccountName(target.getName());
+                    SpamHandler.getInstance().handle(mOpCtxt, mMailbox, item.getId(), item.getType(), report);
                 } catch (OutOfMemoryError e) {
                     Zimbra.halt("out of memory", e);
                 } catch (Throwable t) {
@@ -506,12 +562,27 @@ public class ItemActionHelper {
 
                 case MailItem.TYPE_DOCUMENT:
                     Document doc = (Document) item;
+                    SoapHttpTransport transport = new SoapHttpTransport(zoptions.getUri());
                     try {
                         in = StoreManager.getInstance().getContent(doc.getBlob());
                         String uploadId = zmbx.uploadContentAsStream(name, in, doc.getContentType(), doc.getSize(), 4000);
-                        createdId = zmbx.createDocument(folderStr, name, uploadId);
+                        // instead of using convenience method from ZMailbox
+                        // we need to hand marshall the request and set the
+                        // response protocol explicitly to what was requested
+                        // from the client.
+                        Element req = new XMLElement(MailConstants.SAVE_DOCUMENT_REQUEST);
+                        Element edoc = req.addUniqueElement(MailConstants.E_DOC);
+                        edoc.addAttribute(MailConstants.A_NAME, name);
+                        edoc.addAttribute(MailConstants.A_FOLDER, folderStr);
+                        Element upload = edoc.addElement(MailConstants.E_UPLOAD);
+                        upload.addAttribute(MailConstants.A_ID, uploadId);
+                        transport.setResponseProtocol(mResponseProtocol);
+                        transport.setAuthToken(zat);
+                        Element response = transport.invoke(req);
+                        createdId = response.getElement(MailConstants.E_DOC).getAttribute(MailConstants.A_ID);
                     } finally {
                         ByteUtil.closeStream(in);
+                        transport.shutdown();
                     }
                     mCreatedIds.add(createdId);
                     break;

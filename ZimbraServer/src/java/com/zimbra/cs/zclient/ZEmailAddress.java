@@ -15,6 +15,7 @@
 
 package com.zimbra.cs.zclient;
 
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -37,23 +38,30 @@ public class ZEmailAddress implements ToZJSONObject {
     public static final String EMAIL_TYPE_REPLY_TO = "r";
     
 
-    private String mAddress;
-    private String mDisplay;
-    private String mPersonal;
-    private String mType;
+    private String address;
+    private String display;
+    private String personal;
+    private String type;
+    private boolean add;
 
     public ZEmailAddress(String address, String display, String personal, String type) {
-        mAddress = address;
-        mDisplay = display;
-        mPersonal = personal;
-        mType = type;
+        this(address, display, personal, type, false);
+    }
+
+    public ZEmailAddress(String address, String display, String personal, String type, boolean add) {
+        this.address = address;
+        this.display = display;
+        this.personal = personal;
+        this.type = type;
+        this.add = add;
     }
 
     public ZEmailAddress(Element e) throws ServiceException {
-        mAddress = e.getAttribute(MailConstants.A_ADDRESS, null);
-        mDisplay = e.getAttribute(MailConstants.A_DISPLAY, null);
-        mPersonal = e.getAttribute(MailConstants.A_PERSONAL, null);
-        mType = e.getAttribute(MailConstants.A_TYPE, "");
+        address = e.getAttribute(MailConstants.A_ADDRESS, null);
+        display = e.getAttribute(MailConstants.A_DISPLAY, null);
+        personal = e.getAttribute(MailConstants.A_PERSONAL, null);
+        type = e.getAttribute(MailConstants.A_TYPE, "");
+        add = e.getAttributeBool(MailConstants.A_ADD_TO_AB, false);
     }
 
     /**
@@ -63,21 +71,21 @@ public class ZEmailAddress implements ToZJSONObject {
      * the senders. 
      */
     public String getType() {
-        return mType;
+        return type;
     }
 
     /**
      * the comment/name part of an address
      */
     public String getPersonal() {
-        return mPersonal;
+        return personal;
     }
     
     /**
      * the user@domain part of an address
      */
     public String getAddress() {
-        return mAddress;
+        return address;
     }
     
     /**
@@ -85,9 +93,15 @@ public class ZEmailAddress implements ToZJSONObject {
      * if no personal, take string before "@" in email-address.
      */
     public String getDisplay() {
-        return mDisplay;
+        return display;
     }
 
+    /**
+     * Indicates whether the address needs to be added to address book (Emailed Contacts folder)
+     */
+    public boolean isAdd() {
+        return add;
+    }
 
     private String quoteAddress(String addr) {
         if (addr == null)
@@ -99,27 +113,27 @@ public class ZEmailAddress implements ToZJSONObject {
     }
 
     public String getFullAddressQuoted() {
-        if (mPersonal == null) {
-            return quoteAddress(mAddress);
+        if (personal == null) {
+            return quoteAddress(address);
         } else {
-            String p = mPersonal;
+            String p = personal;
             if (p.indexOf("\"") != -1)
                 p = p.replaceAll("\"", "\\\"");
-            return "\"" + p + "\" "+ quoteAddress(mAddress);
+            return "\"" + p + "\" "+ quoteAddress(address);
         }
     }
 
     public String getFullAddress() {
         try {
-            if (mPersonal == null)
-                return mAddress;
+            if (personal == null)
+                return address;
             else
-                return new InternetAddress(mAddress, mPersonal).toUnicodeString();
+                return new JavaMailInternetAddress(address, personal).toUnicodeString();
         } catch (UnsupportedEncodingException e) {
-            if (mPersonal == null)
-                return mAddress;
+            if (personal == null)
+                return address;
             else {
-                String p = mPersonal;
+                String p = personal;
                 if (p.indexOf("\"") != -1)
                     p = p.replaceAll("\"", "\\\"");
                 return p + " "+getAddress();
@@ -134,16 +148,18 @@ public class ZEmailAddress implements ToZJSONObject {
     public boolean  isTo()         { return ZEmailAddress.EMAIL_TYPE_TO.equals(getType()); }
     public boolean  isReplyTo()    { return ZEmailAddress.EMAIL_TYPE_REPLY_TO.equals(getType()); }
     
+    @Override
     public ZJSONObject toZJSONObject() throws JSONException {
         ZJSONObject jo = new ZJSONObject();
-        jo.put("address", mAddress);
-        jo.put("display", mDisplay);
-        jo.put("personal", mPersonal);
-        jo.put("type", mType);
+        jo.put("address", address);
+        jo.put("display", display);
+        jo.put("personal", personal);
+        jo.put("type", type);
         jo.put("fullAddressQuoted", getFullAddressQuoted());
         return jo;
     }
 
+    @Override
     public String toString() {
         return String.format("[ZEmailAddress %s]", getFullAddressQuoted());
     }
@@ -162,7 +178,7 @@ public class ZEmailAddress implements ToZJSONObject {
     public static List<ZEmailAddress> parseAddresses(String line, String type) throws ServiceException {
         try {
             line = line.replace(";", ",");
-            InternetAddress[] inetAddrs = InternetAddress.parseHeader(line, false);
+            InternetAddress[] inetAddrs = JavaMailInternetAddress.parseHeader(line, false);
             List<ZEmailAddress> result = new ArrayList<ZEmailAddress>(inetAddrs.length);
             for (InternetAddress ia : inetAddrs) {
                 result.add(new ZEmailAddress(ia.getAddress().replaceAll("\"",""), null, ia.getPersonal(), type));
@@ -172,5 +188,4 @@ public class ZEmailAddress implements ToZJSONObject {
             throw MailServiceException.ADDRESS_PARSE_ERROR(e);
         }
     }
-    
 }

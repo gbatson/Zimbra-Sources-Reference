@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1106,7 +1106,8 @@ DwtListView.prototype.setListDivHeight =
 function (listViewHeight) {
 	if (this._listDiv && this._listColDiv) {
 		var headerHeight = Dwt.getSize (this._listColDiv).y ;
-		var listDivHeight = listViewHeight - headerHeight - 10 ;
+		//the 10px allows for the diff between container and list for all browsers and eliminates vertical unnecessary scrolls
+		var listDivHeight = listViewHeight - headerHeight - 10; 
 		Dwt.setSize(this._listDiv, Dwt.DEFAULT, listDivHeight);
 	}
 };
@@ -1969,7 +1970,6 @@ function(itemDiv, ev) {
 
 		// save new left click selection
 		this._selectedItems.add(itemDiv);
-		this._selectedItem = this.getItemFromElement(itemDiv); //hack since selectedItems is also for checkboxed items but this item was just selected for view
 
 		this._selAnchor = this._kbAnchor = itemDiv;
 		Dwt.delClass(itemDiv, this._styleRe, this._selectedClass);

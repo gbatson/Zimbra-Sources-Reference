@@ -58,7 +58,7 @@ public class TestDocument extends TestCase {
         // Create first revision.
         String content = "one";
         ParsedDocument pd = new ParsedDocument(
-            new ByteArrayInputStream(content.getBytes()), NAME_PREFIX + "-testDeleteRevisions.txt", "text/plain", System.currentTimeMillis(), USER_NAME);
+            new ByteArrayInputStream(content.getBytes()), NAME_PREFIX + "-testDeleteRevisions.txt", "text/plain", System.currentTimeMillis(), USER_NAME, "one");
         Document doc = mbox.createDocument(null, Mailbox.ID_FOLDER_BRIEFCASE, pd, MailItem.TYPE_DOCUMENT);
         int docId = doc.getId();
         byte type = doc.getType();
@@ -70,7 +70,7 @@ public class TestDocument extends TestCase {
         // Add a second revision.
         content = "two";
         pd = new ParsedDocument(
-            new ByteArrayInputStream(content.getBytes()), NAME_PREFIX + "-testDeleteRevisions2.txt", "text/plain", System.currentTimeMillis(), USER_NAME);
+            new ByteArrayInputStream(content.getBytes()), NAME_PREFIX + "-testDeleteRevisions2.txt", "text/plain", System.currentTimeMillis(), USER_NAME, "two");
         doc = mbox.addDocumentRevision(null, docId, pd);
         assertEquals(2, mbox.getAllRevisions(null, docId, type).size());
         assertEquals(2, getBlobCount(blobDir, docId));
@@ -78,6 +78,7 @@ public class TestDocument extends TestCase {
         // Move to trash, empty trash, and confirm that both blobs were deleted.
         mbox.move(null, doc.getId(), doc.getType(), Mailbox.ID_FOLDER_TRASH);
         mbox.emptyFolder(null, Mailbox.ID_FOLDER_TRASH, false);
+        mbox.emptyDumpster(null);
         assertEquals(0, getBlobCount(blobDir, docId));
     }
     
@@ -111,8 +112,8 @@ public class TestDocument extends TestCase {
             true, 1);
         String content = "<wiklet class='TOC' format=\"template\" bodyTemplate=\"_TocBodyTemplate\" itemTemplate=\"_TocItemTemplate\">abc</wiklet>";
         Mailbox mbox = TestUtil.getMailbox(USER_NAME);
-        WikiItem wiki = mbox.createWiki(null, Mailbox.ID_FOLDER_NOTEBOOK, NAME_PREFIX + "-testCompressedVolume",
-            "Unit Test", new ByteArrayInputStream(content.getBytes()));
+        WikiItem wiki = mbox.createWiki(null, Mailbox.ID_FOLDER_BRIEFCASE, NAME_PREFIX + "-testCompressedVolume",
+            "Unit Test", null, new ByteArrayInputStream(content.getBytes()));
         assertEquals("abc", wiki.getFragment());
     }
     

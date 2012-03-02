@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -57,7 +57,7 @@ AjxVector.fromArray =
 function(list) {
 	var vec = new AjxVector();
 	vec._array.length = 0;
-	if (list instanceof Array) {
+	if (AjxUtil.isArray1(list)) {
 		vec._array = list;
 	}
 	return vec;
@@ -520,4 +520,9 @@ AjxVector.prototype.sub = function(f, obj) {
 			a.push(el);
 	}
 	return AjxVector.fromArray(a);
+};
+
+AjxVector.prototype.slice =
+function(start, end) {
+	return AjxVector.fromArray(this._array.slice(start, end));
 };

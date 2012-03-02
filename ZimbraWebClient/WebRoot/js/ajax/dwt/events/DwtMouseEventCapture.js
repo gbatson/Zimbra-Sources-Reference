@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,17 +21,17 @@
  *
  * @author Ross Dargahi
  *
- * @param {hash}	params			a hash of parameters
- * @param {Element}      params.targetObj			the target element
- * @param {string}      params.id				the ID for this capture instance.
- * @param {function}      params.mouseOverHdlr		the browser event handler
- * @param {function}      params.mouseDownHdlr		the browser event handler
- * @param {function}      params.mouseMoveHdlr		the browser event handler
- * @param {function}      params.mouseUpHdlr		the browser event handler
- * @param {function}      params.mouseOutHdlr		the browser event handler
- * @param {function}      params.mouseWheelHdlr	the browser event handler
- * @param {boolean}      params.hardCapture		if <code>true</code>, event propagation is halted at this element (IE only)
- * 
+ * @param {hash}		params					a hash of parameters:
+ * @param {Element}		params.targetObj		the target element
+ * @param {string}		params.id				the ID for this capture instance.
+ * @param {function}	params.mouseOverHdlr	the browser event handler
+ * @param {function}	params.mouseDownHdlr	the browser event handler
+ * @param {function}	params.mouseMoveHdlr	the browser event handler
+ * @param {function}	params.mouseUpHdlr		the browser event handler
+ * @param {function}	params.mouseOutHdlr		the browser event handler
+ * @param {function}	params.mouseWheelHdlr	the browser event handler
+ * @param {boolean}		params.hardCapture		if <code>true</code>, event propagation is halted at this element (IE only)
+ *
  * @private
  */
 DwtMouseEventCapture = function(params) {
@@ -81,6 +81,7 @@ function() {
 
 DwtMouseEventCapture.prototype.capture =
 function() {
+
 	if (window._mouseEventCaptureObj) {
 		window._mouseEventCaptureObj.release();
 	}
@@ -116,6 +117,7 @@ function() {
 
 DwtMouseEventCapture.prototype.release = 
 function() {
+
 	if (window._mouseEventCaptureObj == null) { return; }
 
 	var obj = window._shellCaptureObj;

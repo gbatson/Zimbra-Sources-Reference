@@ -35,7 +35,6 @@ ZmAddrBookTreeController = function() {
 
 	this._listeners[ZmOperation.NEW_ADDRBOOK] = new AjxListener(this, this._newListener);
 	this._listeners[ZmOperation.SHARE_ADDRBOOK] = new AjxListener(this, this._shareAddrBookListener);
-	this._listeners[ZmOperation.MOUNT_ADDRBOOK] = new AjxListener(this, this._mountAddrBookListener);
     this._listeners[ZmOperation.BROWSE] = new AjxListener(this, function(){ appCtxt.getSearchController().fromBrowse(""); });
 
 	this._app = appCtxt.getApp(ZmApp.CONTACTS);
@@ -115,14 +114,17 @@ function(parent, type, id) {
 	var deleteText = ZmMsg.del;
 	var addrBook = appCtxt.getById(id);
 	var nId = addrBook ? addrBook.nId : ZmOrganizer.normalizeId(id);
-    var hasContent = ((addrBook.numTotal > 0) || (addrBook.children && (addrBook.children.size() > 0)));
+
+	this.setVisibleIfExists(parent, ZmOperation.EMPTY_FOLDER, nId == ZmFolder.ID_TRASH);
 
 	if (nId == ZmFolder.ID_TRASH) {
 		parent.enableAll(false);
-        parent.enable(ZmOperation.DELETE, hasContent);
-		deleteText = ZmMsg.emptyTrash;
+        parent.enable(ZmOperation.DELETE, false);
+        var hasContent = ((addrBook.numTotal > 0) || (addrBook.children && (addrBook.children.size() > 0)));
+        parent.enable(ZmOperation.EMPTY_FOLDER,hasContent);
+        parent.getOp(ZmOperation.EMPTY_FOLDER).setText(ZmMsg.emptyTrash);        
 	} else {
-		parent.enableAll(true);
+		parent.enableAll(true);        
         if (addrBook) {
             if (addrBook.isSystem()) {
                 parent.enable([ZmOperation.DELETE, ZmOperation.RENAME_FOLDER], false);
@@ -146,7 +148,6 @@ function(parent, type, id) {
 
 	// we always enable sharing in case we're in multi-mbox mode
 	this._resetButtonPerSetting(parent, ZmOperation.SHARE_ADDRBOOK, appCtxt.get(ZmSetting.SHARING_ENABLED));
-	this._resetButtonPerSetting(parent, ZmOperation.MOUNT_ADDRBOOK, appCtxt.get(ZmSetting.SHARING_ENABLED));
 };
 
 
@@ -174,9 +175,6 @@ function() {
 	if (appCtxt.get(ZmSetting.NEW_ADDR_BOOK_ENABLED)) {
 		ops.push(ZmOperation.NEW_ADDRBOOK);
 	}
-	ops.push(ZmOperation.MOUNT_ADDRBOOK,
-			ZmOperation.EXPAND_ALL,
-			ZmOperation.BROWSE);
 	return ops;
 };
 
@@ -195,7 +193,8 @@ function() {
 			ZmOperation.DELETE,
 			ZmOperation.RENAME_FOLDER,
 			ZmOperation.EDIT_PROPS,
-			ZmOperation.EXPAND_ALL);
+			ZmOperation.EXPAND_ALL,
+            ZmOperation.EMPTY_FOLDER);
 
 	return ops;
 };
@@ -233,14 +232,6 @@ function(ev) {
 };
 
 /**
- * @private
- */
-ZmAddrBookTreeController.prototype._mountAddrBookListener =
-function(ev) {
-	appCtxt.getMountFolderDialog().popup(ZmOrganizer.ADDRBOOK);
-};
-
-/**
  * Called when a left click occurs (by the tree view listener). The folder that
  * was clicked may be a search, since those can appear in the folder tree. The
  * appropriate search will be performed.
@@ -275,7 +266,10 @@ function(folder) {
 
 		if (folder.id != ZmFolder.ID_TRASH) {
 			var clc = AjxDispatcher.run("GetContactListController");
-			clc.getParentView().getAlphabetBar().reset();
+			var view = clc.getParentView();
+			if (view) {
+				view.getAlphabetBar().reset();
+			}
 		}
 	}
 };

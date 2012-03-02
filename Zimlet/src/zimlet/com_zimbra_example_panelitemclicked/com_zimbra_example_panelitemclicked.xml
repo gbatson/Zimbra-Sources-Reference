@@ -1,4 +1,4 @@
-<!--
+/*
  * ***** BEGIN LICENSE BLOCK *****
  * 
  * Zimbra Collaboration Suite Zimlets
@@ -13,7 +13,7 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * 
  * ***** END LICENSE BLOCK *****
--->
+ */
 <zimlet name="com_zimbra_example_panelitemclicked" version="1.0" description="Demos panel item single and double clicked">
 	<include>com_zimbra_example_panelitemclicked.js</include>
 	<handlerObject>com_zimbra_example_panelitemclicked_HandlerObject</handlerObject>

@@ -26,12 +26,14 @@ import java.util.Map;
 import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AttributeFlag;
 import com.zimbra.cs.account.AttributeManager;
+import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DataSource;
@@ -40,19 +42,17 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Signature;
 import com.zimbra.cs.account.Zimlet;
-import com.zimbra.cs.account.AuthToken;
-import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.session.Session;
 import com.zimbra.cs.session.SoapSession;
 import com.zimbra.cs.util.BuildInfo;
-import com.zimbra.cs.zimlet.ZimletProperty;
-import com.zimbra.cs.zimlet.ZimletUserProperties;
 import com.zimbra.cs.zimlet.ZimletPresence;
+import com.zimbra.cs.zimlet.ZimletUserProperties;
 import com.zimbra.cs.zimlet.ZimletUtil;
 import com.zimbra.soap.SoapEngine;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.account.type.Prop;
 
 /**
  * @author schemers
@@ -111,9 +111,9 @@ public class GetInfo extends AccountDocumentHandler  {
             if (server != null)
                 response.addAttribute(AccountConstants.A_DOCUMENT_SIZE_LIMIT, server.getFileUploadMaxSize());
             Config config = prov.getConfig();
-            if (config != null)
+            if (config != null) {
                 response.addAttribute(AccountConstants.A_ATTACHMENT_SIZE_LIMIT, config.getMtaMaxMessageSize());
-            
+            }
         } catch (ServiceException e) {}
         
         if (sections.contains(Section.MBOX) && Provisioning.onLocalServer(account)) {
@@ -181,18 +181,29 @@ public class GetInfo extends AccountDocumentHandler  {
     }
     
     static void doCos(Account acct, Element response) throws ServiceException {
-	Cos cos = Provisioning.getInstance().getCOS(acct);
-	if (cos != null) {
-	    Element eCos = response.addUniqueElement(AccountConstants.E_COS);
-	    eCos.addAttribute(AccountConstants.A_ID, cos.getId());
-	    eCos.addAttribute(AccountConstants.A_NAME, cos.getName());
-	}
+        Cos cos = Provisioning.getInstance().getCOS(acct);
+        if (cos != null) {
+            Element eCos = response.addUniqueElement(AccountConstants.E_COS);
+            eCos.addAttribute(AccountConstants.A_ID, cos.getId());
+            eCos.addAttribute(AccountConstants.A_NAME, cos.getName());
+        }
     }
 
-    static void doAttrs(Account acct, String locale, Element response, Map attrsMap) throws ServiceException {
+    static void doAttrs(Account acct, String locale, Element response, Map<String,Object> attrsMap) throws ServiceException {
         Set<String> attrList = AttributeManager.getInstance().getAttrsWithFlag(AttributeFlag.accountInfo);
-        for (String key : attrList)
-            doAttr(response, key, key.equals(Provisioning.A_zimbraLocale) ? locale : attrsMap.get(key));
+        Config config = Provisioning.getInstance().getConfig();
+        for (String key : attrList) {
+            Object value = null;
+            if (Provisioning.A_zimbraLocale.equals(key)) {
+                value = locale;
+            } else if (Provisioning.A_zimbraAttachmentsBlocked.equals(key)) {
+                value = config.isAttachmentsBlocked() || acct.isAttachmentsBlocked() ? Provisioning.TRUE : Provisioning.FALSE;
+            } else {
+                value = attrsMap.get(key);
+            }
+
+            doAttr(response, key, value);
+        }
     }
     
     static void doAttr(Element response, String key, Object value) {
@@ -208,12 +219,13 @@ public class GetInfo extends AccountDocumentHandler  {
                 response.addKeyValuePair(key, (String) value, AccountConstants.E_ATTR, AccountConstants.A_NAME);
         }        
     }
-
+    
+    
     private static void doZimlets(Element response, Account acct) {
-    	try {
-    	    // bug 34517
+        try {
+            // bug 34517
             ZimletUtil.migrateUserPrefIfNecessary(acct);
-    	    
+            
             ZimletPresence userZimlets = ZimletUtil.getUserZimlets(acct);
             List<Zimlet> zimletList = ZimletUtil.orderZimletsByPriority(userZimlets.getZimletNamesAsArray());
             int priority = 0;
@@ -225,18 +237,18 @@ public class GetInfo extends AccountDocumentHandler  {
     
             // load the zimlets in the dev directory and list them
             ZimletUtil.listDevZimlets(response);
-    	} catch (ServiceException se) {
-    	    ZimbraLog.account.error("can't get zimlets", se);
-    	}
+        } catch (ServiceException se) {
+            ZimbraLog.account.error("can't get zimlets", se);
+        }
     }
 
     private static void doProperties(Element response, Account acct) {
         ZimletUserProperties zp = ZimletUserProperties.getProperties(acct);
-        Set<? extends ZimletProperty> props = zp.getAllProperties();
-        for (ZimletProperty prop : props) {
+        Set<? extends Prop> props = zp.getAllProperties();
+        for (Prop prop : props) {
             Element elem = response.addElement(AccountConstants.E_PROPERTY);
-            elem.addAttribute(AccountConstants.A_ZIMLET, prop.getZimletName());
-            elem.addAttribute(AccountConstants.A_NAME, prop.getKey());
+            elem.addAttribute(AccountConstants.A_ZIMLET, prop.getZimlet());
+            elem.addAttribute(AccountConstants.A_NAME, prop.getName());
             elem.setText(prop.getValue());
         }
     }
@@ -265,7 +277,8 @@ public class GetInfo extends AccountDocumentHandler  {
         try {
             List<DataSource> dataSources = Provisioning.getInstance().getAllDataSources(acct);
             for (DataSource ds : dataSources)
-                com.zimbra.cs.service.mail.ToXML.encodeDataSource(response, ds);
+                if (!ds.isInternal())
+                    com.zimbra.cs.service.mail.ToXML.encodeDataSource(response, ds);
         } catch (ServiceException se) {
             ZimbraLog.mailbox.error("Unable to get data sources", se);
         }

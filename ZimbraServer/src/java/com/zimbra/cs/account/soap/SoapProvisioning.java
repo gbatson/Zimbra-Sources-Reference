@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,27 +24,28 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.Map.Entry;
 
+import com.google.common.collect.Lists;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapHttpTransport;
-import com.zimbra.common.soap.SoapTransport;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.SoapHttpTransport.HttpDebugListener;
+import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.soap.SoapTransport.DebugListener;
 import com.zimbra.common.util.AccountLogger;
 import com.zimbra.common.util.CliUtil;
-import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.Log.Level;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zclient.ZClientException;
 import com.zimbra.cs.account.*;
 import com.zimbra.cs.account.NamedEntry.Visitor;
@@ -748,7 +749,7 @@ public class SoapProvisioning extends Provisioning {
         return result;        
     }
     
-    public void addAccountLogger(Account account, String category, String level, String server)
+    public List<AccountLogger> addAccountLogger(Account account, String category, String level, String server)
     throws ServiceException {
         XMLElement req = new XMLElement(AdminConstants.ADD_ACCOUNT_LOGGER_REQUEST);
         
@@ -763,11 +764,21 @@ public class SoapProvisioning extends Provisioning {
         if (server == null) {
             server = getServer(account).getName();
         }
-        invoke(req, server);
+        return accountLoggersFromElement(invoke(req, server), account.getName());
+    }
+    
+    private List<AccountLogger> accountLoggersFromElement(Element parent, String accountName)
+    throws ServiceException {
+        List<AccountLogger> loggers = Lists.newArrayList();
+        for (Element eLogger : parent.listElements(AdminConstants.E_LOGGER)) {
+            String category = eLogger.getAttribute(AdminConstants.A_CATEGORY);
+            Level level = Level.valueOf(eLogger.getAttribute(AdminConstants.A_LEVEL));
+            loggers.add(new AccountLogger(category, accountName, level));
+        }
+        return loggers;
     }
     
     public List<AccountLogger> getAccountLoggers(Account account, String server) throws ServiceException {
-        List<AccountLogger> result = new ArrayList<AccountLogger>();
         XMLElement req = new XMLElement(AdminConstants.GET_ACCOUNT_LOGGERS_REQUEST);
         Element eAccount = req.addElement(AdminConstants.E_ACCOUNT);
         eAccount.addAttribute(AdminConstants.A_BY, AdminConstants.BY_ID);
@@ -775,14 +786,7 @@ public class SoapProvisioning extends Provisioning {
         if (server == null) {
             server = getServer(account).getName();
         }
-        Element resp = invoke(req, server);
-        
-        for (Element eLogger : resp.listElements(AdminConstants.E_LOGGER)) {
-            String category = eLogger.getAttribute(AdminConstants.A_CATEGORY);
-            Level level = Level.valueOf(eLogger.getAttribute(AdminConstants.A_LEVEL));
-            result.add(new AccountLogger(category, account.getName(), level));
-        }
-        return result;
+        return accountLoggersFromElement(invoke(req, server), account.getName());
     }
     
     /**
@@ -801,24 +805,18 @@ public class SoapProvisioning extends Provisioning {
         Map<String, List<AccountLogger>> result = new HashMap<String, List<AccountLogger>>();
         
         for (Element eAccountLogger : resp.listElements(AdminConstants.E_ACCOUNT_LOGGER)) {
-            for (Element eLogger : eAccountLogger.listElements(AdminConstants.E_LOGGER)) {
-                String accountName = eAccountLogger.getAttribute(AdminConstants.A_NAME);
-                String category = eLogger.getAttribute(AdminConstants.A_CATEGORY);
-                Level level = Level.valueOf(eLogger.getAttribute(AdminConstants.A_LEVEL));
-
-                if (!result.containsKey(accountName)) {
-                    result.put(accountName, new ArrayList<AccountLogger>());
-                }
-                result.get(accountName).add(new AccountLogger(category, accountName, level));
-            }
+            String accountName = eAccountLogger.getAttribute(AdminConstants.A_NAME);
+            List<AccountLogger> loggers = accountLoggersFromElement(eAccountLogger, accountName);
+            result.put(accountName, loggers);
         }
         return result;
     }
 
     /**
      * Removes one or more account loggers.
-     * @param account the account, or <tt>null</tt> for all accounts on the given server
-     * @param category the log category, or <tt>null</tt> for all log categories
+     * @param account the account, or {@code null} for all accounts on the given server
+     * @param category the log category, or {@code null} for all log categories
+     * @param server the server name, or {@code null} for the local server
      */
     public void removeAccountLoggers(Account account, String category, String server) throws ServiceException {
         XMLElement req = new XMLElement(AdminConstants.REMOVE_ACCOUNT_LOGGER_REQUEST);
@@ -1455,13 +1453,8 @@ public class SoapProvisioning extends Provisioning {
     }
 
     @Override
-    public SearchGalResult autoCompleteGal(Domain d, String query, GAL_SEARCH_TYPE type, int limit) throws ServiceException {
-        String typeStr = null;
-
-        if (type == GAL_SEARCH_TYPE.ALL) typeStr = "all";
-        else if (type == GAL_SEARCH_TYPE.USER_ACCOUNT) typeStr = "account";
-        else if (type == GAL_SEARCH_TYPE.CALENDAR_RESOURCE) typeStr = "resource";
-        else typeStr = "all";
+    public SearchGalResult autoCompleteGal(Domain d, String query, GalSearchType type, int limit) throws ServiceException {
+        String typeStr = type == null ? GalSearchType.all.name() : type.name();
         
         XMLElement req = new XMLElement(AdminConstants.AUTO_COMPLETE_GAL_REQUEST);
         req.addElement(AdminConstants.E_NAME).setText(query);
@@ -1472,7 +1465,7 @@ public class SoapProvisioning extends Provisioning {
         Element resp = invoke(req);
 
         SearchGalResult result = SearchGalResult.newSearchGalResult(null);
-        result.setHadMore(resp.getAttributeBool(AdminConstants.A_MORE));
+        result.setHadMore(resp.getAttributeBool(AdminConstants.A_MORE, false));
         result.setTokenizeKey(resp.getAttribute(AccountConstants.A_TOKENIZE_KEY, null));
         for (Element e: resp.listElements(AdminConstants.E_CN)) {
             result.addMatch(new GalContact(AdminConstants.A_ID, getAttrs(e)));
@@ -1559,17 +1552,12 @@ public class SoapProvisioning extends Provisioning {
     }
 
     @Override
-    public SearchGalResult searchGal(Domain d, String query, GAL_SEARCH_TYPE type, String token) throws ServiceException {
+    public SearchGalResult searchGal(Domain d, String query, GalSearchType type, String token) throws ServiceException {
     	return searchGal(d, query, type, token, 0, 0, null);
     }
     
-    public SearchGalResult searchGal(Domain d, String query, GAL_SEARCH_TYPE type, String token, int limit, int offset, String sortBy) throws ServiceException {
-        String typeStr = null;
-
-        if (type == GAL_SEARCH_TYPE.ALL) typeStr = "all";
-        else if (type == GAL_SEARCH_TYPE.USER_ACCOUNT) typeStr = "account";
-        else if (type == GAL_SEARCH_TYPE.CALENDAR_RESOURCE) typeStr = "resource";
-        else typeStr = "all";
+    public SearchGalResult searchGal(Domain d, String query, GalSearchType type, String token, int limit, int offset, String sortBy) throws ServiceException {
+        String typeStr = type == null ? GalSearchType.all.name() : type.name();
         
         XMLElement req = new XMLElement(AdminConstants.SEARCH_GAL_REQUEST);
         req.addElement(AdminConstants.E_NAME).setText(query);
@@ -1588,7 +1576,7 @@ public class SoapProvisioning extends Provisioning {
 
         SearchGalResult result = SearchGalResult.newSearchGalResult(null);
         result.setToken(resp.getAttribute(AdminConstants.A_TOKEN, null));
-        result.setHadMore(resp.getAttributeBool(AdminConstants.A_MORE));
+        result.setHadMore(resp.getAttributeBool(AdminConstants.A_MORE, false));
         result.setTokenizeKey(resp.getAttribute(AccountConstants.A_TOKENIZE_KEY, null));
         for (Element e: resp.listElements(AdminConstants.E_CN)) {
             result.addMatch(new GalContact(AdminConstants.A_ID, getAttrs(e)));
@@ -2005,10 +1993,11 @@ public class SoapProvisioning extends Provisioning {
     }
     
     @Override
-    public List<Right> getAllRights(String targetType, boolean expandAllAttrs)  throws ServiceException {
+    public List<Right> getAllRights(String targetType, boolean expandAllAttrs, String rightClass)  throws ServiceException {
         XMLElement req = new XMLElement(AdminConstants.GET_ALL_RIGHTS_REQUEST);
         req.addAttribute(AdminConstants.A_TARGET_TYPE, targetType);
         req.addAttribute(AdminConstants.A_EXPAND_ALL_ATTRS, expandAllAttrs);
+        req.addAttribute(AdminConstants.A_RIGHT_CLASS, rightClass);
         Element resp = invoke(req);
         
         List<Right> rights = new ArrayList<Right>();

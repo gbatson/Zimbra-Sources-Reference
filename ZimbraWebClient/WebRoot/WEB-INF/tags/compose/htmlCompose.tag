@@ -20,15 +20,10 @@
 <%@ taglib prefix="app" uri="com.zimbra.htmlclient" %>
 <%@ attribute name="isHtmlCont" rtexprvalue="true" required="true" %>
 <%@ attribute name="mailbox" rtexprvalue="true" required="true" type="com.zimbra.cs.taglib.bean.ZMailboxBean" %>
-<fmt:setBundle basename='/messages/AjxMsg' var='AjxMsg' scope='request' />
 
 <!-- yui js-->
 <app:yuiInclude/>
-<style media="screen" type="text/css">
-    .yui-skin-sam .yui-toolbar-container .yui-toolbar-fontsize2 {
-        width: 50px;
-    }
-</style>
+
 <script type="text/javascript">
 <!--             
 var myEditor;
@@ -51,52 +46,12 @@ var myEditor;
         document.getElementById("body").value = "<html><head><style> body {height: 100%; color:${mailbox.prefs.htmlEditorDefaultFontColor}; font-size:${mailbox.prefs.htmlEditorDefaultFontSize}; font-family:${mailbox.prefs.htmlEditorDefaultFontFamily};}</style></head><body>"+_htmlval+"</body></html>";
     }
 
-    //The sizes to map to the names
-    var sizes = {
-        ' 8pt' : 11,
-        '10pt': 13,
-        '12pt': 16,
-        '14pt': 19,
-        '18pt': 24,
-        '24pt': 32,
-        '36pt': 46
-    };
-
-    <%-- Get font definitions from AjxMsg --%>
-    var fonts = [];
-    var defaultFont;
-    <c:forEach var="KEY" items="fontFamilyIntl,fontFamilyBase">
-    <c:forEach var="i" begin="1" end="30">
-        <fmt:message var="style" bundle='${AjxMsg}' key="${KEY}${i}.css"/>
-        <c:choose>
-            <c:when test="${fn:startsWith(style, '#') or fn:startsWith(style, '?')}">
-                <%-- Do nothing --%>
-            </c:when>
-            <c:otherwise>
-                <c:set var="style" value="${fn:replace(style,', ',',')}"/>
-                <fmt:message var="name" bundle='${AjxMsg}' key="${KEY}${i}.display"/>
-                <c:set var="selected" value="${fn:replace(mailbox.prefs.htmlEditorDefaultFontFamily,', ',',') eq style}"/>
-                fonts.push({text:"${name}",value:"${style}"<c:if test="${selected}">,checked:true</c:if>});
-                <c:if test="${selected}">
-                defaultFont="${name}";
-                </c:if>
-            </c:otherwise>
-        </c:choose>
-    </c:forEach>
-    </c:forEach>
-
-    var Dom = YAHOO.util.Dom;
-
     myEditor = new YAHOO.widget.Editor('body', {
         height: '300px',
         width: '100%',
         dompath: false, //Turns on the bar at the bottom
         animate: true, //Animates the opening, closing and moving of Editor windows
-        <c:choose> <c:when test="${isHtmlCont}">
         plainText: false,
-        </c:when><c:otherwise>
-        plainText: true,
-        </c:otherwise></c:choose>
         <c:if test="${param.op eq 'reply' or param.op eq 'replyAll'}" >
         focusAtStart: true,
         </c:if>
@@ -104,44 +59,8 @@ var myEditor;
         extracss: '.yui-spellcheck { background-color: yellow; }',
         collapse: true,
         draggable: false,
-        buttonType: 'advanced',
-        fonts: fonts,
-        defaultFont: defaultFont
+        buttonType: 'advanced'
     });
-
-    //Change the default toolbar button for fontsize to a new one.
-    myEditor._defaultToolbar.buttons[0].buttons[1] = {
-        type: 'select', label: '<c:out value="${mailbox.prefs.htmlEditorDefaultFontSize}"/>', value: 'fontsize2', disabled: false,
-            menu: [
-                { text: ' 8pt' },
-                { text: '10pt' },
-                { text: '12pt' },
-                { text: '14pt' },
-                { text: '18pt' },
-                { text: '24pt' },
-                { text: '36pt' }
-            ]
-    };
-
-    //Override the _handleFontSize method with our own
-    myEditor._handleFontSize = function(o) {
-        var button = this.toolbar.getButtonById(o.button.id);
-        var value = o.button.value; //The selected value
-        var out = sizes[value]; //The pixel size
-        button.set('label', value);
-        this._updateMenuChecked('fontsize2', value);
-
-        if (!this._hasSelection()) {
-            el = this._createInsertElement({ fontSize: value });
-            this.currentElement[0] = el;
-            this._selectNode(this.currentElement[0]);
-            return false;
-        } else {
-            this.execCommand('fontsize', out + 'px');
-        }
-        this.STOP_EXEC_COMMAND = true;
-    };
-
     myEditor.on('editorContentLoaded', function() {
         var html = document.getElementById('body').innerHTML;;
         if(html==""){
@@ -161,11 +80,6 @@ var myEditor;
                 }
             }
         }
-
-        this.toolbar.on('fontsize2Click', function(o) {
-            this._handleFontSize(o);
-        }, this, true);
-
     }, myEditor, true);
 
     /*hide titlebar*/
@@ -194,35 +108,29 @@ var myEditor;
             }
         }, this, true);
 
-        //to set fontsize from preferrence
-        var fsObj = this.toolbar.getButtonByValue('fontsize2');
-        fsObj.checkValue('<c:out value="${mailbox.prefs.htmlEditorDefaultFontSize}"/>');
-
+        this.toolbar.on('fontsizeClick', function(o) {
+            if (!this._hasSelection()) {
+                var button = o.button;
+                this._createCurrentElement('span', {
+                    fontSize: button.get('label') + 'px'
+                });
+                var el = this.currentElement[0];
+                if (this.browser.webkit) {
+                    //Little Safari Hackery here..
+                    el.innerHTML = '<span class="yui-non"> </span>';
+                    el = el.firstChild;
+                    this._getSelection().setBaseAndExtent(el, 1, el, el.innerText.length);
+                } else if (this.browser.ie || this.browser.opera) {
+                    el.innerHTML = ' ';
+                }
+                this._focusWindow();
+                this._selectNode(el);
+                return false;
+            }
+        }, this, true);
     });
     /*enable buttons that are disabled by default */
     myEditor.on('afterNodeChange', function() {
-
-        var elm = this._getSelectedElement(),
-            button = this.toolbar.getButtonByValue('fontsize2'),
-            label = '<c:out value="${mailbox.prefs.htmlEditorDefaultFontSize}"/>';
-
-        if (!this._isElement(elm, 'body') && !this._isElement(elm, 'img')) {
-            this.toolbar.enableButton('fontsize2');
-            var fs = parseInt(Dom.getStyle(elm, 'fontSize'),10);
-            for (var i in sizes) {
-                if (fs == sizes[i]) {
-                    label = i;
-                    break;
-                }
-            }
-            button.set('label', label);
-            button.checkValue(label);
-        } else {
-            button.set('label', label);
-            button.checkValue(label);
-        }
-
-
         this.toolbar.enableButton('fontname');
         this.toolbar.enableButton('fontsize');
         this.toolbar.enableButton('subscript');

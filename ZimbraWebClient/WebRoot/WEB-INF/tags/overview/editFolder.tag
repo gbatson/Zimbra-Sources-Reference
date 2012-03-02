@@ -24,10 +24,11 @@
 <c:set var="label" value="${zm:getFolderName(pageContext, folder.id)}"/>
 <c:choose>
     <c:when test="${folder.isAppointmentView or folder.isContactView or folder.isTaskView or folder.isDocumentView}">
-        <c:set var="colorStyle" value="${folder.styleColor}${folder.styleColor ne 'Gray' ? 'Bg' :''}"/>
+        <c:set var="color" value="${zm:lightenColor((folder.rgb != 'null') ? folder.rgb : folder.rgbColor)}"/>
     </c:when>
     <c:otherwise>
-        <c:set var="colorStyle" value="Gray"/>
+        <c:set var="colorGray"><fmt:message key="colorGray"/></c:set>
+        <c:set var="color" value="${zm:lightenColor(colorGray)}"/>
     </c:otherwise>
 </c:choose>
 
@@ -36,7 +37,7 @@
 <tr>
     <td class='ZhBottomSep'>
         <table width="100%" cellspacing="0" cellpadding="1">
-            <tr valign="middle" class='${colorStyle}'>
+            <tr valign="middle" style="background-color:${color}">
                 <td valign="middle" width=20 style='padding-left:5px'>
                     <app:img src="${folder.image}" alt='${fn:escapeXml(label)}'/>
                 </td>
@@ -130,7 +131,7 @@
                     &nbsp;
                 </td>
             </tr>
-            <tr class='${colorStyle}'>
+            <tr style="background-color:${color}">
                 <td colspan="3">
                     <c:choose>
                         <c:when test="${not (folder.isMountPoint or folder.isSearchFolder)}">
@@ -201,7 +202,7 @@
                         <c:if test="${folder.parentId eq 1}">selected</c:if> value="1"/>
                 <fmt:message key="rootFolder"/>
                 <zm:forEachFolder var="parent">
-                    <c:if test="${parent.isMessageMoveTarget and !parent.isTrash and !parent.isSpam}">
+                    <c:if test="${(parent.isMessageMoveTarget and !parent.isSpam) or parent.isTrash}">
                         <c:if test="${parent.id ne folder.id}">
                             <option
                                     <c:if test="${parent.id eq folder.parentId}">selected</c:if> value="${parent.id}"/>
@@ -295,7 +296,7 @@
                             <c:param name="sync" value="${folder.id}"/>
                         </c:url>                        
                         <a href="${fn:escapeXml(syncUrl)}">
-                            <app:img src="startup/ImgRefresh.gif" title="refresh"/>
+                            <app:img src="startup/ImgRefresh.png" title="refresh"/>
                         </a>
                     </td>
                 </tr>

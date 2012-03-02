@@ -13,7 +13,7 @@
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.datasource.imap;
-                             
+
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.datasource.MailItemImport;
 import com.zimbra.cs.datasource.SyncUtil;
@@ -42,6 +42,8 @@ import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static com.zimbra.common.util.SystemUtil.coalesce;
+
 public class ImapSync extends MailItemImport {
     private ImapConnection connection;
     private SyncState syncState;
@@ -52,7 +54,7 @@ public class ImapSync extends MailItemImport {
     private boolean fullSync;
     private Authenticator authenticator;
     private boolean reuseConnections;
-
+    
     private static final Pattern ILLEGAL_FOLDER_CHARS = Pattern.compile("[:\\*\\?\"<>\\|]");
     private static final Log LOG = ZimbraLog.datasource;
 
@@ -224,14 +226,18 @@ public class ImapSync extends MailItemImport {
     
     private void syncFolders(Set<Integer> folderIds) throws ServiceException, IOException {
         // For offline full sync automatically re-enable sync on INBOX
-        if (dataSource.isOffline() && fullSync) {
+        if (dataSource.isImportOnly() || (dataSource.isOffline() && fullSync)) {
             SyncUtil.setSyncEnabled(mbox, Mailbox.ID_FOLDER_INBOX, true);
         }
         localRootFolder = getMailbox().getFolderById(dataSource.getFolderId());
         trackedFolders = ImapFolder.getFolders(dataSource);
         delimiter = connection.getDelimiter();
         syncRemoteFolders(ImapUtil.listFolders(connection, "*"));
-        syncLocalFolders(getLocalFolders());
+        if(!dataSource.isImportOnly()) {
+        	syncLocalFolders(getLocalFolders());
+        } else {
+        	purgeLocalFolders(getLocalFolders());
+        }
         syncMessages(folderIds);
         finishSync();
     }
@@ -249,7 +255,7 @@ public class ImapSync extends MailItemImport {
         return mailFolders;
     }
 
-    public boolean isFullSync() {
+	public boolean isFullSync() {
         return fullSync;
     }
     
@@ -268,6 +274,27 @@ public class ImapSync extends MailItemImport {
         }
     }
 
+    /*
+     * Check if any of local folders have been deleted remotely
+     */
+    private void purgeLocalFolders(List<Folder> folders) throws ServiceException {
+        for (Folder folder : folders) {
+            checkIsEnabled();
+            int id = folder.getId();
+            if (id != localRootFolder.getId() && !syncedFolders.containsKey(id)) {
+                try {
+                    folder = getFolder(id);
+                    if (folder != null) {
+                        ImapFolderSync ifs = new ImapFolderSync(this);
+                        ifs.purgeLocalFolder(folder);
+                    }
+                } catch (Exception e) {
+                    syncFailed(folder.getPath(), e);
+                }
+            }
+        }
+    }
+    
     private void syncLocalFolders(List<Folder> folders) throws ServiceException {
         for (Folder folder : folders) {
             checkIsEnabled();
@@ -407,18 +434,8 @@ public class ImapSync extends MailItemImport {
             return null; // Do not synchronize folder
         }
 
-        String localPath = dataSource.mapRemoteToLocalPath(relativePath);
-        if (localPath == null) {
-            // Remove leading slashes and append to root folder
-            while (relativePath.startsWith("/")) {
-                relativePath = relativePath.substring(1);
-            }
-            if (localRootFolder.getId() == com.zimbra.cs.mailbox.Mailbox.ID_FOLDER_USER_ROOT) {
-                localPath = "/" + relativePath;
-            } else {
-                localPath = localRootFolder.getPath() + "/" + relativePath;
-            }
-        }
+        String localPath = joinPath(localRootFolder.getPath(),
+                coalesce(dataSource.mapRemoteToLocalPath(relativePath), relativePath));
 
         if (isUniqueLocalPathNeeded(localPath)) {
             int count = 1;
@@ -433,6 +450,18 @@ public class ImapSync extends MailItemImport {
         }
     }
 
+    private static String removeLeadingSlashes(String path) {
+        while (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        return path;
+    }
+
+    private static String joinPath(String parent, String child) {
+        child = removeLeadingSlashes(child);
+        return parent.endsWith("/") ? parent + child : parent + "/" + child;
+    }
+    
     /*
      * When mapping a new remote folder, check if original local path can be
      * used or a new unique name must be generated. A unique name must be

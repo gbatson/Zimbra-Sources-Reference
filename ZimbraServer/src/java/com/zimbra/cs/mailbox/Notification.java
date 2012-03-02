@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,7 +15,6 @@
 
 package com.zimbra.cs.mailbox;
 
-import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -37,6 +36,10 @@ import com.zimbra.common.util.EmailUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.mime.shim.JavaMailMimeBodyPart;
+import com.zimbra.common.mime.shim.JavaMailMimeMessage;
+import com.zimbra.common.mime.shim.JavaMailMimeMultipart;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.db.DbMailbox;
@@ -48,8 +51,7 @@ import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.JMSession;
 
-public class Notification
-implements LmtpCallback {
+public class Notification implements LmtpCallback {
     
     /**
      * Do not send someone an out of office reply within this number of days.
@@ -74,12 +76,11 @@ implements LmtpCallback {
      * Subclass of <tt>MimeMessage</tt> that allows the caller to set an explicit <tt>Message-ID</tt>
      * header (see JavaMail FAQ for details).
      */
-    private class MimeMessageWithId
-    extends MimeMessage {
+    private class MimeMessageWithId extends JavaMailMimeMessage {
         
         private String mMessageId;
         
-        private MimeMessageWithId(String messageId) throws MessagingException {
+        private MimeMessageWithId(String messageId) {
             super(JMSession.getSession());
             mMessageId = messageId;
         }
@@ -90,6 +91,7 @@ implements LmtpCallback {
         }
     }
     
+    @Override
     public void afterDelivery(Account account, Mailbox mbox, String envelopeSender,
                               String recipientEmail, Message newMessage) {
         // If notification fails, log a warning and continue so that message delivery
@@ -123,11 +125,10 @@ implements LmtpCallback {
      */
     private void outOfOfficeIfNecessary(Account account, Mailbox mbox, Message msg,
                                         String rcpt, String envSenderString)
-        throws ServiceException, MessagingException
-    {
+    throws ServiceException, MessagingException {
         String destination = null;
         
-        boolean replyEnabled = account.getBooleanAttr(Provisioning.A_zimbraPrefOutOfOfficeReplyEnabled, false);
+        boolean replyEnabled = account.isPrefOutOfOfficeReplyEnabled();
         if (ZimbraLog.mailbox.isDebugEnabled()) {
             ZimbraLog.mailbox.debug("outofoffice reply enabled=" + replyEnabled + " rcpt='" + rcpt + "' mid=" + msg.getId());
         }
@@ -175,16 +176,22 @@ implements LmtpCallback {
         InternetAddress envSender;
         try {
             // NB: 'strict' being 'true' causes <> to except
-            envSender = new InternetAddress(envSenderString, true);
+            envSender = new JavaMailInternetAddress(envSenderString, true);
         } catch (AddressException ae) {
             ofailed("envelope sender invalid", envSenderString, rcpt, msg, ae);
             return;
         }
         destination = envSender.getAddress();
 
-        if (Mime.isAutoSubmitted(mm)) {
-            ofailed("auto-submitted not no", destination, rcpt, msg);  
-            return;
+        // If Auto-Submitted is present and not 'no'
+        String[] autoSubmitted = mm.getHeader("Auto-Submitted");
+        if (autoSubmitted != null) {
+            for (int i = 0; i < autoSubmitted.length; i++) {
+                if (!autoSubmitted[i].equalsIgnoreCase("no")) {
+                    ofailed("auto-submitted not no", destination, rcpt, msg);  
+                    return;
+                }
+            }
         }
 
         // If precedence is bulk, junk or list
@@ -348,7 +355,7 @@ implements LmtpCallback {
             return;
         }
         try { 
-            new InternetAddress(destination);
+            new JavaMailInternetAddress(destination);
         } catch (AddressException ae) {
             nfailed("invalid destination", destination, rcpt, msg, ae);
             return;
@@ -421,9 +428,9 @@ implements LmtpCallback {
         try {
             SMTPMessage out = new SMTPMessage(JMSession.getSmtpSession());
             out.setHeader("Auto-Submitted", "auto-replied (notification; " + rcpt + ")");
-            InternetAddress address = new InternetAddress(from);
+            InternetAddress address = new JavaMailInternetAddress(from);
             out.setFrom(address);
-            address = new InternetAddress(destination);
+            address = new JavaMailInternetAddress(destination);
             out.setRecipient(javax.mail.Message.RecipientType.TO, address);
             
             String charset = getCharset(account, subject);
@@ -446,7 +453,6 @@ implements LmtpCallback {
         } catch (MessagingException me) {
             nfailed("send failed", destination, rcpt, msg, me);
         }
-
     }
     
     private static String getDomain(String address) {
@@ -507,31 +513,32 @@ implements LmtpCallback {
                             attached.addHeaderLine((String) e.nextElement());
                         }
                         attached.setContent("", msg.getContentType());
+                        attached.saveChanges();
                     }
 
                     SMTPMessage out = new SMTPMessage(JMSession.getSmtpSession());
                     out.setHeader("Auto-Submitted", "auto-replied (zimbra; intercept)");
-                    InternetAddress address = new InternetAddress(from);
+                    InternetAddress address = new JavaMailInternetAddress(from);
                     out.setFrom(address);
 
-                    address = new InternetAddress(interceptAddress);
+                    address = new JavaMailInternetAddress(interceptAddress);
                     out.setRecipient(javax.mail.Message.RecipientType.TO, address);
 
                     String charset = getCharset(account, subject);
                     out.setSubject(subject, charset);
                     charset = getCharset(account, bodyText);
 
-                    MimeMultipart multi = new MimeMultipart();
+                    MimeMultipart multi = new JavaMailMimeMultipart();
 
                     // Add message body
-                    MimeBodyPart part = new MimeBodyPart(); 
+                    MimeBodyPart part = new JavaMailMimeBodyPart(); 
                     part.setText(bodyText, charset);
                     multi.addBodyPart(part);
 
                     // Add original message
-                    part = new MimeBodyPart();
-                    part.setContent(attached, MimeConstants.CT_MESSAGE_RFC822);
-                    multi.addBodyPart(part);
+                    MimeBodyPart part2 = new JavaMailMimeBodyPart();
+                    part2.setContent(attached, MimeConstants.CT_MESSAGE_RFC822);
+                    multi.addBodyPart(part2);
 
                     out.setContent(multi);
                     String envFrom = "<>";
@@ -539,6 +546,9 @@ implements LmtpCallback {
 
                     out.saveChanges();
                     Transport.send(out);
+
+                    // clean up after ourselves...
+                    multi.removeBodyPart(part2);
                 } catch (MessagingException e) {
                     ZimbraLog.lmtp.warn("Unable to send intercept message to %s.", interceptAddress, e);
                 }

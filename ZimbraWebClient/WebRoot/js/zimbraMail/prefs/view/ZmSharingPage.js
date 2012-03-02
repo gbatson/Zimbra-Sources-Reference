@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -114,6 +114,7 @@ ZmSharingView = function(params) {
 	this._shareByDomId = {};
 
 	this._initialize();
+	ZmFolderTree.createAllDeferredFolders();
 };
 
 ZmSharingView.prototype = new DwtComposite;
@@ -400,7 +401,7 @@ function() {
 
 	// form for creating a new share
 	var options = [];
-	var orgTypes = [ZmOrganizer.FOLDER, ZmOrganizer.CALENDAR, ZmOrganizer.ADDRBOOK, ZmOrganizer.NOTEBOOK,
+	var orgTypes = [ZmOrganizer.FOLDER, ZmOrganizer.CALENDAR, ZmOrganizer.ADDRBOOK, 
 					ZmOrganizer.TASKS, ZmOrganizer.BRIEFCASE];
 	var orgKey = {};
 	orgKey[ZmOrganizer.FOLDER]		= "mailFolder";

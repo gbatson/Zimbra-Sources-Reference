@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,9 +20,9 @@
  */
 
 /**
- * Creates a new appointment controller to manage appointment creation/editing.
+ * Creates a new task controller to manage task creation/editing.
  * @class
- * This class manages appointment creation/editing.
+ * This class manages task creation/editing.
  *
  * @author Parag Shah
  *
@@ -38,6 +38,8 @@ ZmTaskController = function(container, app) {
 
 ZmTaskController.prototype = new ZmCalItemComposeController;
 ZmTaskController.prototype.constructor = ZmTaskController;
+
+ZmTaskController.DEFAULT_TAB_TEXT = ZmMsg.task;
 
 /**
  * Returns a string representation of the object.
@@ -56,14 +58,22 @@ function(attId) {
 	var calItem = this._composeView.getCalItem(attId);
 	if (calItem) {
 		this._saveCalItemFoRealz(calItem, attId);
+		return true;
 	}
-	return true;
+	return false;
+};
+
+ZmTaskController.prototype.isCloseAction =
+function() {
+    return this._action == ZmCalItemComposeController.SAVE;
 };
 
 ZmTaskController.prototype._handleResponseSave =
-function(calItem) {
+function(calItem, result) {
 	ZmCalItemComposeController.prototype._handleResponseSave.call(this, calItem);
-
+	if(this._action == ZmCalItemComposeController.SAVE) {
+		this.closeView();	
+	}
 	// XXX: null out message so we re-fetch task next time its opened
 	// To optimize, we should save the modified contents into cache'd task item
 	if (calItem && calItem._orig)
@@ -71,8 +81,13 @@ function(calItem) {
 
     //Cache the item for further processing
     calItem.cache();
-
+    //need to set rev,ms for next soap request
+    calItem.setFromSavedResponse(result);
+    
 	appCtxt.setStatusMsg(ZmMsg.taskSaved);
+    if(calItem.alarm == true || calItem.isAlarmModified()) {
+        this._app.getReminderController().refresh();
+    }    
 };
 
 ZmTaskController.prototype._createComposeView =
@@ -129,22 +144,23 @@ function(task, newFolderId) {
 
 // Private / Protected methods
 
-ZmTaskController.prototype._getViewType =
+ZmTaskController.prototype._getTabParams =
 function() {
-	return ZmId.VIEW_TASKEDIT;
+	return {id:this.tabId, image:"NewTask", text:ZmTaskController.DEFAULT_TAB_TEXT, textPrecedence:77,
+			tooltip:ZmTaskController.DEFAULT_TAB_TEXT};
 };
 
 // Callbacks
 
 ZmTaskController.prototype._printListener =
 function() {
-	var url = ("/h/printtasks?id=" + this._composeView._calItem.invId);
-	window.open(appContextPath+url, "_blank");
-};
-
-ZmTaskController.prototype._closeView = function() {
-    appCtxt.getAppViewMgr().showPendingView(true);
-	this._composeView.cleanup();
+	var url = ["/h/printtasks?id=", this._composeView._calItem.invId];
+    
+    if (appCtxt.isOffline) {
+        var acctName = this._composeView._calItem.getAccount().name;
+        url.push("&acct=", acctName);
+    }
+	window.open([appContextPath, url.join(""), "&tz=", AjxTimezone.getServerId(AjxTimezone.DEFAULT)].join(""), "_blank");
 };
 
 ZmTaskController.prototype.closeView = function() {

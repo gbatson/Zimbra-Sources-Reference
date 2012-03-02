@@ -395,9 +395,9 @@ public class Recurrence
                 ParsedDateTime valStart = val.getStartTime();
                 ParsedDateTime valEnd = val.getEndTime();
                 boolean allDay = !valStart.hasTime() || (valStart.hasZeroTime() && mDefaultDuration != null && mDefaultDuration.isMultipleOfDays());
-                list.add(new Instance(calItemId, mInvId, false,
+                list.add(new Instance(calItemId, mInvId, true, true,
                                       valStart.getUtcTime(), valEnd.getUtcTime(),
-                                      allDay, valStart.getOffset(), 
+                                      allDay, valStart.getOffset(), valEnd.getOffset(),
                                       true, true));
             }
             Collections.sort(list);
@@ -460,9 +460,7 @@ public class Recurrence
         }
 
         public Object clone() {
-            return new SingleDates(mRdateExdate == null ? null : (RdateExdate) mRdateExdate.clone(),
-                                   mDefaultDuration == null ? null : (ParsedDuration) mDefaultDuration.clone(),
-                                   mInvId == null ? null : (InviteInfo) mInvId.clone());
+            return new SingleDates(mRdateExdate, mDefaultDuration, mInvId);
         }
 
         private RdateExdate mRdateExdate;
@@ -694,9 +692,11 @@ public class Recurrence
                         instEnd = instStart;
                     }
                     if (instStart < end && instEnd > start) {
-                        int tzOffset = tz.getOffset(instStart);
+                        int startTzo = tz.getOffset(instStart);
+                        int endTzo = tz.getOffset(instEnd);
                         boolean allDay = !mDtStart.hasTime() || (mDtStart.hasZeroTime() && mDuration != null && mDuration.isMultipleOfDays());
-                        toRet.add(num++, new Instance(calItemId, mInvId, false, instStart, instEnd, allDay, tzOffset, false, false));
+                        toRet.add(num++, new Instance(calItemId, mInvId, true, true, instStart, instEnd,
+                                allDay, startTzo, endTzo, false, false));
                     }
                 }
             } catch (ServiceException se) {
@@ -765,11 +765,9 @@ public class Recurrence
             return meta;
         }
         
-        public Object clone() {
-            return new SimpleRepeatingRule(mDtStart == null ? null : (ParsedDateTime) mDtStart.clone(),
-                                           mDuration == null ? null : (ParsedDuration) mDuration.clone(),
-                                           mRecur == null ? null : (ZRecur) mRecur.clone(),
-                                           mInvId == null ? null : (InviteInfo) mInvId.clone());
+        public Object clone()
+        {
+            return new SimpleRepeatingRule(mDtStart, mDuration, mRecur, mInvId);
         }
         
         public SimpleRepeatingRule(Metadata meta, TimeZoneMap tzmap) throws ServiceException {
@@ -887,7 +885,8 @@ public class Recurrence
 
             // DTSTART
             long firstStart = mDtStart.getUtcTime();
-            long firstEnd = mDuration != null ? mDtStart.add(mDuration).getUtcTime() : firstStart;
+            ParsedDateTime dtFirstEnd = mDuration != null ? mDtStart.add(mDuration) : null;
+            long firstEnd = dtFirstEnd != null ? dtFirstEnd.getUtcTime() : firstStart;
             if (firstStart < end && firstEnd > start) {
                 CalendarItem.Instance first = null;
                 if (toAdd.size() > 0) {
@@ -896,7 +895,9 @@ public class Recurrence
 
                 boolean allDay = !mDtStart.hasTime() || (mDtStart.hasZeroTime() && mDuration != null && mDuration.isMultipleOfDays());
                 CalendarItem.Instance dtstartInst = new CalendarItem.Instance(
-                        calItemId, mInvId, false, firstStart, firstEnd, allDay, mDtStart.getOffset(), false, true);
+                        calItemId, mInvId, true, true, firstStart, firstEnd,
+                        allDay, mDtStart.getOffset(), dtFirstEnd != null ? dtFirstEnd.getOffset() : 0,
+                        false, true);
                 if (first == null || first.compareTo(dtstartInst) != 0)
                     toAdd.add(0,dtstartInst);
             }
@@ -1139,7 +1140,7 @@ public class Recurrence
         }
 
         public Object clone() {
-            return new CancellationRule(mRecurRange == null ? null : (RecurId) mRecurRange.clone());
+            return new CancellationRule(mRecurRange);
         }
         
         public Element toXml(Element parent) {
@@ -1241,12 +1242,11 @@ public class Recurrence
         }
         
         private ExceptionRule(ExceptionRule other) {
-            super(other.mDtStart == null ? null : (ParsedDateTime) other.mDtStart.clone(),
-                  other.mDuration == null ? null : (ParsedDuration) other.mDuration.clone(),
+            super(other.mDtStart, other.mDuration,
                   other.mAddRules == null ? null : (MultiRuleSorter) other.mAddRules.clone(),
                   other.mSubtractRules == null ? null : (MultiRuleSorter) other.mSubtractRules.clone(),
-                  other.mInvId == null ? null : (InviteInfo) other.mInvId.clone());
-            mRecurRange = other.mRecurRange == null ? null : (RecurId) other.mRecurRange.clone();
+                  other.mInvId);
+            mRecurRange = other.mRecurRange;
         }
         
         public Object clone() {
@@ -1387,7 +1387,7 @@ public class Recurrence
                                     RecurId eRid = except.getRecurId();
                                     if (eRid != null && eRid.getDt() != null) {
                                         long eOffset = eRid.getDt().getOffset();
-                                        long iOffset = inst.getTzOffset();
+                                        long iOffset = inst.getStartTzOffset();
                                         if (iOffset != eOffset)
                                             instStart += iOffset - eOffset;
                                     }
@@ -1476,11 +1476,10 @@ public class Recurrence
         }
         
         private RecurrenceRule(RecurrenceRule other) {
-            super(other.mDtStart == null ? null : (ParsedDateTime) other.mDtStart.clone(),
-                  other.mDuration == null ? null : (ParsedDuration) other.mDuration.clone(),
-                  other.mAddRules == null ? null : (MultiRuleSorter) other.mAddRules.clone(),
-                  other.mSubtractRules == null ? null : (MultiRuleSorter) other.mSubtractRules.clone(),
-                  other.mInvId == null ? null : (InviteInfo) other.mInvId.clone());
+            super(other.mDtStart, other.mDuration, 
+                  other.mAddRules == null ? null : (MultiRuleSorter)other.mAddRules.clone(), 
+                  other.mSubtractRules == null ? null : (MultiRuleSorter)other.mSubtractRules.clone(), 
+                  other.mInvId);
             mExceptions = new ArrayList<IException>();
             for (Iterator iter = other.mExceptions.iterator(); iter.hasNext();) {
                 IException cur = (IException)iter.next();

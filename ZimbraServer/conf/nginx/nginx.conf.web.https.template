@@ -1,16 +1,20 @@
+!{explode vhn_vip_ssl}
 # HTTPS Proxy Configuration
 # 
 server
 {
-    listen                  ${web.https.port};
+    server_name             ${vhn}; 
+    listen                  ${vip}:${web.https.port};
     client_max_body_size    0;
     ssl                     on;
-    ssl_certificate         ${web.ssl.cert};
-    ssl_certificate_key     ${web.ssl.key};
+    ssl_prefer_server_ciphers ${web.ssl.preferserverciphers};
+    ssl_ciphers             ${web.ssl.ciphers};
+    ssl_certificate         ${ssl.crt};
+    ssl_certificate_key     ${ssl.key};
 
     location /
     {
-        include             conf/${core.includes}/${core.cprefix}.web.https.mode-${web.mailmode};
+        include             ${core.includes}/${core.cprefix}.web.https.mode-${web.mailmode};
 
         # Begin stray redirect hack
         # 
@@ -46,7 +50,6 @@ server
 
         # For Virtual Hosting
         proxy_set_header Host            $http_host;
-	proxy_set_header X-Forwarded-Host	$host;
 
         # Location header fudging
         # Because NGINX SSL speaks plain HTTP to upstream, therefore any

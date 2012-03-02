@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,8 +22,9 @@
 package com.zimbra.cs.account;
 
 import java.util.List;
+import java.util.Map;
 
-import org.apache.commons.collections.map.LRUMap;
+import com.zimbra.common.util.MapUtil;
 
 import com.zimbra.common.stats.Counter;
 
@@ -32,8 +33,8 @@ import com.zimbra.common.stats.Counter;
  **/
 public class NamedEntryCache<E extends NamedEntry> {
     
-    private LRUMap mNameCache;
-    private LRUMap mIdCache;
+    private Map mNameCache;
+    private Map mIdCache;
     
     private long mRefreshTTL;
     private Counter mHitRate = new Counter();
@@ -56,8 +57,8 @@ public class NamedEntryCache<E extends NamedEntry> {
  * @param refreshTTL
  */
     public NamedEntryCache(int maxItems, long refreshTTL) {
-        mNameCache = new LRUMap(maxItems);
-        mIdCache = new LRUMap(maxItems);
+        mNameCache = MapUtil.newLruMap(maxItems);
+        mIdCache = MapUtil.newLruMap(maxItems);
         mRefreshTTL = refreshTTL;
     }
 
@@ -85,11 +86,6 @@ public class NamedEntryCache<E extends NamedEntry> {
             mIdCache.put(entry.getId(), cacheEntry);
         }
     }
-    
-    public synchronized void replace(E entry) {
-        remove(entry);
-        put(entry);
-    }
 
     public synchronized void put(List<E> entries, boolean clear) {
         if (entries != null) {
@@ -100,7 +96,7 @@ public class NamedEntryCache<E extends NamedEntry> {
     }
 
     @SuppressWarnings("unchecked")
-    private E get(String key, LRUMap cache) {
+    private E get(String key, Map cache) {
         CacheEntry<E> ce = (CacheEntry<E>) cache.get(key);
         if (ce != null) {
             if (mRefreshTTL != 0 && ce.isStale()) {

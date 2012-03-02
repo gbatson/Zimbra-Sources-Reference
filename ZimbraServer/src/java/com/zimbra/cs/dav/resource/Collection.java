@@ -14,23 +14,22 @@
  */
 package com.zimbra.cs.dav.resource;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletResponse;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.DavException;
 import com.zimbra.cs.dav.DavProtocol;
 import com.zimbra.cs.dav.property.Acl;
-import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.Document;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
@@ -38,7 +37,6 @@ import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.service.FileUploadServlet;
-import com.zimbra.cs.service.formatter.VCard;
 
 /**
  * RFC 2518bis section 5.
@@ -50,7 +48,7 @@ public class Collection extends MailItemResource {
 
     protected byte mView;
     protected byte mType;
-    protected long mMailboxId;
+    protected int mMailboxId;
 
     public Collection(DavContext ctxt, Folder f) throws DavException, ServiceException {
         super(ctxt, f);
@@ -78,6 +76,25 @@ public class Collection extends MailItemResource {
         }
     }
 
+    @Override
+    public String getContentType(DavContext ctxt) {
+        if (ctxt.isWebRequest())
+            return MimeConstants.CT_TEXT_PLAIN;
+        return MimeConstants.CT_TEXT_XML;
+    }
+    
+    @Override
+    public boolean hasContent(DavContext ctxt) {
+        return true;
+    }
+    
+    @Override
+    public InputStream getContent(DavContext ctxt) throws IOException, DavException {
+        if (ctxt.isWebRequest())
+            return new ByteArrayInputStream(getTextContent(ctxt).getBytes("UTF-8"));
+        return new ByteArrayInputStream(getPropertiesAsText(ctxt).getBytes("UTF-8"));
+    }
+    
     @Override
     public boolean isCollection() {
         return true;
@@ -162,7 +179,7 @@ public class Collection extends MailItemResource {
             MailItem item = mbox.getItemByPath(ctxt.getOperationContext(), ctxt.getPath());
             if (item.getType() != MailItem.TYPE_DOCUMENT && item.getType() != MailItem.TYPE_WIKI)
                 throw new DavException("no DAV resource for " + MailItem.getNameForType(item.getType()), HttpServletResponse.SC_NOT_ACCEPTABLE, null);
-            Document doc = mbox.addDocumentRevision(ctxt.getOperationContext(), item.getId(), upload.getInputStream(), author, name);
+            Document doc = mbox.addDocumentRevision(ctxt.getOperationContext(), item.getId(), author, name, null, upload.getInputStream());
             return new Notebook(ctxt, doc);
         } catch (ServiceException e) {
             if (!(e instanceof NoSuchItemException))
@@ -171,7 +188,7 @@ public class Collection extends MailItemResource {
 
         // create
         try {
-            Document doc = mbox.createDocument(ctxt.getOperationContext(), mId, name, ctype, author, upload.getInputStream());
+            Document doc = mbox.createDocument(ctxt.getOperationContext(), mId, name, ctype, author, null, upload.getInputStream());
             Notebook notebook =  new Notebook(ctxt, doc);
             notebook.mNewlyCreated = true;
             return notebook;
@@ -179,48 +196,9 @@ public class Collection extends MailItemResource {
             throw new DavException("cannot create ", HttpServletResponse.SC_INTERNAL_SERVER_ERROR, se);
         }
     }
-
+    
     protected DavResource createVCard(DavContext ctxt, String name) throws DavException, IOException {
-        FileUploadServlet.Upload upload = ctxt.getUpload();
-        String buf = new String(ByteUtil.getContent(upload.getInputStream(), (int)upload.getSize()), MimeConstants.P_CHARSET_UTF8);
-        Mailbox mbox = null;
-        try {
-            String url = ctxt.getItem();
-            if (url.endsWith(".vcf"))
-                url = url.substring(0, url.length()-4);
-            mbox = getMailbox(ctxt);
-            DavResource res = null;
-            for (VCard vcard : VCard.parseVCard(buf)) {
-                if (vcard.fields.isEmpty())
-                    continue;
-                vcard.fields.put(ContactConstants.A_vCardURL, url);
-                String uid = vcard.uid;
-                Contact c = null;
-                // check for existing contact
-                if (uid != null) {
-                    vcard.fields.put(ContactConstants.A_vCardUID, uid);
-                    res = UrlNamespace.getResourceAt(ctxt, ctxt.getUser(), ctxt.getPath());
-                }
-                if (res == null) {
-                    String ifnonematch = ctxt.getRequest().getHeader(DavProtocol.HEADER_IF_NONE_MATCH);
-                    if (ifnonematch == null)
-                        throw new DavException("item does not exists", HttpServletResponse.SC_CONFLICT);
-                    c = mbox.createContact(ctxt.getOperationContext(), vcard.asParsedContact(), mId, null);
-                    res = new AddressObject(ctxt, c);
-                    res.mNewlyCreated = true;
-                } else {
-                    String etag = ctxt.getRequest().getHeader(DavProtocol.HEADER_IF_MATCH);
-                    String itemEtag = res.getEtag();
-                    if (etag != null && !etag.equals(itemEtag))
-                        throw new DavException("item etag does not match", HttpServletResponse.SC_CONFLICT);
-                    mbox.modifyContact(ctxt.getOperationContext(), ((MailItemResource)res).getId(), vcard.asParsedContact());
-                    res = UrlNamespace.getResourceAt(ctxt, ctxt.getUser(), ctxt.getPath());
-                }
-            }
-            return res;
-        } catch (ServiceException e) {
-            throw new DavException("cannot parse vcard ", HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e);
-        }
+        return AddressObject.create(ctxt, name, this);
     }
     
     @Override public void delete(DavContext ctxt) throws DavException {

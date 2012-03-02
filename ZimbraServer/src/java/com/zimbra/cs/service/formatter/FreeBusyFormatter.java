@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,16 +19,17 @@ import java.io.IOException;
 import javax.servlet.ServletException;
 
 import com.zimbra.cs.index.MailboxIndex;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.common.service.ServiceException;
 
 public class FreeBusyFormatter extends Formatter {
 
     private static final String ATTR_FREEBUSY = "zimbra_freebusy";
 
-    public String getType() {
-        return "freebusy";
+    public FormatType getType() {
+        return FormatType.FREE_BUSY;
     }
 
     public boolean requiresAuth() {
@@ -39,13 +40,10 @@ public class FreeBusyFormatter extends Formatter {
         return MailboxIndex.SEARCH_FOR_APPOINTMENTS;
     }
 
-    public void formatCallback(Context context)
+    public void formatCallback(UserServletContext context)
     throws IOException, ServiceException, UserServletException, ServletException {
         context.req.setAttribute(ATTR_FREEBUSY, "true");
         HtmlFormatter.dispatchJspRest(context.getServlet(), context);
     }
 
-    public boolean canBeBlocked() {
-        return false;
-    }
 }

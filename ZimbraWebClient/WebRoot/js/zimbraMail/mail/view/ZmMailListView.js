@@ -705,68 +705,71 @@ function(isFlagged, isMouseover) {
 		: (this._isMultiColumn ? "Blank_16" : "FlagDis");
 };
 
-// Figure out how many of the participants will fit into a given pixel width.
-// We always include the originator, and then as many of the most recent participants
-// as possible. If any have been elided (either by the server or because they don't
-// fit), there will be an ellipsis after the originator.
-//
-// The length of a participants string is determined mathematically. Since each letter
-// is assumed to be an em in width, the calculated length is significantly longer than
-// the actual length. The only way I've found to get the actual length is to create
-// invisible divs and measure them, but that's expensive. The calculated length seems to
-// run about 50% greater than the actual length, so we use a 30% fudge factor. The text 
-// that's tested is bolded, since that's bigger and the conv may be unread.
-//
-// Returns a list of objects with name and original index.
-ZmMailListView.prototype._fitParticipants = 
-function(participants, participantsElided, width) {
-	// fudge factor since we're basing calc on em width; the actual ratio is around 1.5
-	width = width * 1.3;
-	// only one participant, no need to test width
-	if (participants.length == 1) {
-		var p = participants[0];
-		var name = p.name || p.dispName || p.address;
-		var tmp = {name: AjxStringUtil.htmlEncode(name), index: 0};
-		return [tmp];
+/**
+ * Returns a list of the largest subset of the given participants that will fit within the
+ * given width. The participants are assumed to be ordered oldest to most recent. We return
+ * as many of the most recent as possible.
+ *
+ * @private
+ * @param {array}		participants		list of AjxEmailAddress
+ * @param {ZmMailItem}	item				item that contains the participants
+ * @param {int}			width				available space in pixels
+ * 
+ * @return list of participant objects with 'name' and 'index' fields
+ */
+ZmMailListView.prototype._fitParticipants =
+function(participants, item, availWidth) {
+
+	availWidth -= 15;	// safety margin
+
+	var sepWidth = AjxStringUtil.getWidth(AjxStringUtil.LIST_SEP, item.isUnread);
+	var ellWidth = AjxStringUtil.getWidth(AjxStringUtil.ELLIPSIS, item.isUnread);
+
+	// first see if we can fit everyone with their full names
+	var list = [];
+	var pLen = participants.length;
+	var width = 0;
+	for (var i = 0; i < pLen; i++) {
+		var p = participants[i];
+		var field = p.name || p.address || p.company || "";
+		width += AjxStringUtil.getWidth(field, item.isUnread);
+		list.push({name:field, index:i});
 	}
-	// create a list of "others" (not the originator)
-	var list = new Array();
-	for (var i = 0; i < participants.length; i++) {
-		var tmp = {name: AjxStringUtil.htmlEncode(participants[i].dispName || participants[i].address), index: i};
-		list.push(tmp);
+	width += (pLen - 1) * sepWidth;
+	if (width < availWidth) {
+		return list;
 	}
-	var origLen = list.length;
-	var originator = list.shift();
-	// test originator + others
-	// if it's too big, remove the oldest from others
+
+	// now try with display (first) names; fit as many of the most recent as we can
+	list = [];
+	for (var i = 0; i < pLen; i++) {
+		var p = participants[i];
+		var field = p.dispName || p.address || p.company || "";
+		list.push({name:field, index:i});
+	}
 	while (list.length) {
-		var test = [originator];
-		test = test.concat(list);
-		var text;
-		var tmp = [];
-		var w = 0;
-		for (var i = 0; i < test.length; i++)
-			w = w + (test[i].name.length * DwtUnits.WIDTH_EM); // total width of names
-		if ((test.length == origLen) && !participantsElided) {
-			w = w + (test.length - 1) * DwtUnits.WIDTH_SEP; // none left out, comma join
-			for (var i = 0; i < test.length; i++)
-				tmp.push(test[i].name);
-			text = tmp.join(", ");
-		} else {
-			w = w + DwtUnits.WIDTH_ELLIPSIS;				// some left out, add in ellipsis
-			w = w + (test.length - 2) * DwtUnits.WIDTH_SEP; // and remaining commas
-			for (var i = 0; i < list.length; i++)
-				tmp.push(list[i].name);
-			text = originator.name + AjxStringUtil.ELLIPSIS + tmp.join(", ");
+		var width = 0;
+		// total the width of the names
+		for (var i = 0; i < list.length; i++) {
+			width += AjxStringUtil.getWidth(list[i].name, item.isUnread);
 		}
-		//DBG.println(AjxDebug.DBG3, "calc width of [" + text + "] = " + w);
-		if (w <= width) {
-			return test;
+		// add the width of the separators
+		width += (list.length - 1) * sepWidth;
+		// add the width of the ellipsis if we've dropped anyone
+		if (list.length < pLen) {
+			width += ellWidth;
+		}
+		if (width < availWidth) {
+			return list;
 		} else {
 			list.shift();
 		}
 	}
-	return [originator];
+
+	// not enough room for even one participant, just return the last one
+	var p = participants[pLen - 1];
+	var field = p.dispName || p.address || p.company || "";
+	return [{name:field, index:pLen - 1}];
 };
 
 ZmMailListView.prototype._getActionMenuForColHeader =
@@ -774,20 +777,7 @@ function(force) {
 
 	if (!this.isMultiColumn()) {
 		if (!this._colHeaderActionMenu || force) {
-			// create a action menu for the header list
-			var menu = this._colHeaderActionMenu = new ZmPopupMenu(this);
-			var actionListener = new AjxListener(this, this._colHeaderActionListener);
-
-			for (var i = 0; i < ZmMailListView.SINGLE_COLUMN_SORT.length; i++) {
-				var column = ZmMailListView.SINGLE_COLUMN_SORT[i];
-				var label = AjxMessageFormat.format(ZmMsg.arrangedBy, ZmMsg[column.msg]);
-				var mi = menu.createMenuItem(column.field, {text:label, style:DwtMenuItem.RADIO_STYLE});
-				if (column.field == ZmItem.F_DATE) {
-					mi.setChecked(true, true);
-				}
-				mi.setData(ZmListView.KEY_ID, column.field);
-				menu.addSelectionListener(column.field, actionListener);
-			}
+			this._colHeaderActionMenu = this._getSortMenu(ZmMailListView.SINGLE_COLUMN_SORT, ZmItem.F_DATE);
 		}
 		var mi = this._colHeaderActionMenu.getItemById(ZmItem.F_FROM);
 		if (mi) {
@@ -810,13 +800,7 @@ function(force) {
 ZmMailListView.prototype._colHeaderActionListener =
 function(ev) {
 	if (!this.isMultiColumn()) {
-		var column = this._headerHash[ZmItem.F_SORTED_BY];
-		var cell = document.getElementById(DwtId.getListViewHdrId(DwtId.WIDGET_HDR_LABEL, this._view, column._field));
-		if (cell) {
-			cell.innerHTML = ev.item.getText();
-		}
-		column._sortable = ev.item.getData(ZmListView.KEY_ID);
-		this._sortColumn(column, this._bSortAsc);
+		this._sortMenuListener(ev);
 	}
 	else {
 		ZmListView.prototype._colHeaderActionListener.apply(this, arguments);
@@ -866,9 +850,14 @@ ZmMailListView.prototype._changeListener =
 function(ev) {
 
 	var item = this._getItemFromEvent(ev);
-	if (!item || ev.handled || !this._handleEventType[item.type]) { return; }
+	if (!item || ev.handled || !this._handleEventType[item.type]) {
+		if (ev && ev.event == ZmEvent.E_CREATE) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailListView: initial check failed");
+		}
+		return;
+	}
 
-	if (ev.event == ZmEvent.E_FLAGS) { // handle "unread" flag
+	if (ev.event == ZmEvent.E_FLAGS) { // handle "unread" and "isScheduled" flag
 		DBG.println(AjxDebug.DBG2, "ZmMailListView: FLAGS");
 		var flags = ev.getDetail("flags");
 		for (var j = 0; j < flags.length; j++) {
@@ -876,12 +865,15 @@ function(ev) {
 			if (flag == ZmItem.FLAG_UNREAD) {
 				var on = item[ZmItem.FLAG_PROP[flag]];
 				this.markUIAsRead(item, !on);
+			} else if (flag == ZmItem.FLAG_ISSCHEDULED) {
+				this._setImage(item, ZmItem.F_STATUS, "SendLater");
 			}
 		}
 	}
 	
 	if (ev.event == ZmEvent.E_CREATE) {
 		DBG.println(AjxDebug.DBG2, "ZmMailListView: CREATE");
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailListView: handle create " + item.id);
 
 		if (this._controller.actionedMsgId) {
 			var newMsg = appCtxt.getById(this._controller.actionedMsgId);
@@ -890,8 +882,14 @@ function(ev) {
 			this._controller.actionedMsgId = null;
 		}
 
-		if (this._list && this._list.contains(item)) { return; } // skip if we already have it
-		if (!this._handleEventType[item.type]) { return; }
+		if (this._list && this._list.contains(item)) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailListView: list already has item " + item.id);
+			return;
+		}
+		if (!this._handleEventType[item.type]) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailListView: list view of type " + this._mode + " does not handle " + item.type);
+			return;
+		}
 
 		// Check to see if ZmMailList::notifyCreate gave us an index for the item.
 		// If not, we assume that the new conv/msg is the most recent one. The only case
@@ -899,7 +897,9 @@ function(ev) {
 		//
 		// TODO: handle other sort orders, arbitrary insertion points
 		if ((this._isPageless || this.offset == 0) && (!this._sortByString || this._sortByString == ZmSearch.DATE_DESC)) {
-			this.addItem(item, ev.getDetail("sortIndex") || 0);
+			var sortIndex = ev.getDetail("sortIndex") || 0;
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailListView: adding item " + item.id + " at index " + sortIndex);
+			this.addItem(item, sortIndex);
 
 			if (appCtxt.isOffline && appCtxt.getActiveAccount().isOfflineInitialSync()) {
 				this._controller._app.numEntries++;
@@ -949,7 +949,7 @@ function() {
 	if (this._itemToSelect) {
 		var item = this._getItemToSelect();
 		if (item) {
-			DBG.println("kbnav", "ZmMailListView._setNextSelection: select item with ID: " + item.id);
+			DBG.println("focus", "ZmMailListView._setNextSelection: select item with ID: " + item.id);
 			this.setSelection(item, false);
 			this._itemToSelect = null;
 		}

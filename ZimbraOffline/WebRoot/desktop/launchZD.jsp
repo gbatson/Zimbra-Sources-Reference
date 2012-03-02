@@ -40,7 +40,7 @@
  launchZD.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -134,8 +134,10 @@
     appContextPath = "${zm:jsEncode(contextPath)}";
     appCurrentSkin = "${zm:jsEncode(skin)}";
     appExtension   = "${zm:jsEncode(ext)}";
+	appRequestLocaleId = "${locale}";
     appDevMode     = ${isDevMode};
-    isTinyMCE      = true;
+    // support for TinyMCE suspended.
+    isTinyMCE      = false;
     window.isScriptErrorOn = ${isScriptErrorOn};
     window.isNotifyDebugOn = ${isNotifyDebugOn};
 </script>
@@ -260,16 +262,12 @@
 
 	var prodMode = ${isProdMode};
 	var debugLevel = "<%= (debug != null) ? debug : "" %>";
-
-	if (!prodMode || debugLevel) {
-	    AjxDispatcher.require("Debug");
-	    DBG = new AjxDebug(AjxDebug.NONE, null, false);
-	    // figure out the debug level
-	    if (debugLevel == 't') {
+	window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
+    // figure out the debug level
+	if (debugLevel == 't') {
 		DBG.showTiming(true);
-	    } else {
+	} else if (debugLevel) {
 		DBG.setDebugLevel(debugLevel);
-	    }
 	}
 
 	AjxHistoryMgr.BLANK_FILE = "${contextPath}/public/blankHistory.html";

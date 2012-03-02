@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -117,18 +117,16 @@
 </span>
 </span></div></div></c:if>
 <c:if test="${!isTop && '1' eq  btm_stb }"> <%-- no_btm_stb => no bottom sub toolbar, set this param to disable bottom subtoolbar --%>
-    <div class="stb tbl btm_${context.isContactSearch ? 'cont' : (context.isMessageSearch ? 'mesg' : 'conv') }_lv_subtoolbar"><div class="tr"><div class="td">
-                    <c:choose>
-                    <c:when test="${context.isContactSearch}">
+    <div class="stb tbl btm_${context.isContactSearch ? 'cont' : (context.isMessageSearch ? 'mesg' : 'conv') }_lv_subtoolbar"><div class="tr"><div class="td"><c:choose><c:when test="${context.isContactSearch}">
                         <a accesskey="${requestScope.navlink_accesskey}" href="${urlTarget}?st=ab&_pv=1"><fmt:message key="addressBooksLabel"/></a><c:if test="${btm_fldr_select eq '0'}">${fn:escapeXml(zm:truncateFixed(context.shortBackTo,12,true))}</c:if><c:if test="${btm_fldr_select ne '0'}">
-                        <select class="_zo_select_button" name="sfi" onchange="fetchIt('?sfi='+this.value+'&amp;st=${context.st}', GC());"><c:set var="count" value="${0}"/>
+                        <select class="_zo_select_button" name="sfi" onchange="fetchIt('?sfi='+this.value+'&amp;st=${context.st}');"><c:set var="count" value="${0}"/>
                             <zm:forEachFolder var="fldr" skiproot="true"><c:if test="${count lt sessionScope.F_LIMIT and fldr.isContactView}"><option ${param.sfi eq fldr.id || context.folder.id eq fldr.id ? 'selected="selected"' : ''} value="${fldr.id}">${fn:escapeXml(zm:truncateFixed(zm:getFolderName(pageContext,fldr.id),15,true))}</option><c:set var="count" value="${count+1}"/></c:if></zm:forEachFolder>
                         </select></c:if>
                     </c:when>
                     <c:otherwise>                           
                         <a accesskey="${requestScope.navlink_accesskey}" href="${urlTarget}?st=folders&_pv=1"><fmt:message key="foldersLabel"/></a>
                         <c:if test="${btm_fldr_select eq '0'}"> ${fn:escapeXml(zm:truncateFixed(context.shortBackTo,12,true))}</c:if>
-                        <c:if test="${btm_fldr_select ne '0'}"><select class="_zo_select_button" name="sfi" onchange="fetchIt('?sfi='+this.value+'&amp;st=${context.st}', GC());"><c:set var="count" value="${0}"/>
+                        <c:if test="${btm_fldr_select ne '0'}"><select class="_zo_select_button" name="sfi" onchange="fetchIt('?sfi='+this.value+'&amp;st=${context.st}');"><c:set var="count" value="${0}"/>
                             <zm:forEachFolder var="fldr" skiproot="true"><c:if test="${count lt sessionScope.F_LIMIT and fldr.isMailView and (not fldr.isChats or mailbox.features.IM)}"><option ${param.sfi eq fldr.id || context.folder.id eq fldr.id ? 'selected="selected"' : ''} value="${fldr.id}">${fn:escapeXml(zm:truncateFixed(zm:getFolderName(pageContext,fldr.id),15,true))}</option><c:set var="count" value="${count+1}"/></c:if></zm:forEachFolder>
                         </select></c:if>
                     </c:otherwise>
@@ -204,6 +202,6 @@
 <span class=" f-right"><input type='button' class='zo_button' value='<fmt:message key="to"/>' onclick="$('zForm').anAction[0].value='composeTo';submitForm($('zForm'));">
 </span>
 </c:if>
-<span class="zo_button1" onclick="return checkAll($('zForm').getElementsByClassName('chk'),false);"><span class="SmlIcnHldr Cancel"></span></span></span></div>
+<span class="zo_button1" onclick="return checkAll($('zForm').getElementsByClassName('chk'),false);"><span class="ImgCancel"></span></span></span></div>
 </div>
 </c:if>

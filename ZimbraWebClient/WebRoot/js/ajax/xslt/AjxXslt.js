@@ -81,9 +81,11 @@ function(str) {
 AjxXslt.prototype.createProcessor =
 function() {
 	var doc = this._doc.getDoc();
-	if (AjxEnv.isNav) {
+	if (AjxEnv.isNav || AjxEnv.isChrome || AjxEnv.isSafari) {
 		this._processor = new XSLTProcessor();
-		this._processor.importStylesheet(doc);
+		if(this._processor) {
+			this._processor.importStylesheet(doc);
+		}
 	} else if (AjxEnv.isIE) {
 		var err = doc.parseError;
 	    if (err.errorCode != 0) {
@@ -104,7 +106,9 @@ function() {
 			throw new AjxException("XSLTemplate", AjxException.UNSUPPORTED, "AjxXslt.createProcessor");
 		}
         this._processor = proc;
-        this._processor.stylesheet = doc;
+		if(this._processor) {
+			this._processor.stylesheet = doc;
+		}
 	}
 };
 
@@ -126,7 +130,7 @@ function(url) {
 
 	doc.loadFromUrl(url);
 
-	if (AjxEnv.isIE) {
+	if (AjxEnv.isIE || AjxEnv.isChrome || AjxEnv.isSafari) {
 		this.createProcessor();
 	}
 };
@@ -151,7 +155,7 @@ function(dom) {
 	var ret;
 	if (AjxEnv.isIE) {
 		return this.transformIE(dom);  // already in str
-	} else if (AjxEnv.isNav) {
+	} else if (AjxEnv.isNav || AjxEnv.isChrome || AjxEnv.isSafari) {
 		ret = this.transformNav(dom);
 	} else {
 		DBG.println(AjxDebug.DBG1, "No XSL transformation due to browser incompatibility.");
@@ -196,6 +200,9 @@ function(dom) {
 */
 AjxXslt.prototype.transformNav =
 function(dom) {
+	if(!this._processor) {
+		return "";
+	}
 	return this._processor.transformToDocument(dom);
 };
 
@@ -205,5 +212,8 @@ function(dom) {
 AjxXslt.prototype.transformNav2 =
 function(dom) {
 	this._fragment = document.implementation.createDocument("", "", null);
+	if(!this._processor) {
+		return "";
+	}
 	return this._processor.transformToFragment(dom, this._fragment);
 };

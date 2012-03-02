@@ -23,42 +23,37 @@ import com.zimbra.cs.index.ZimbraAnalyzer;
 import com.zimbra.common.service.ServiceException;
 
 /**
- * 
- * A sample Zimbra Extension which provides a custom
- * Lucene analyzer.  The extension must call ZimbraAnalyzer.registerAnalyzer()
- * on startup to register itself with the system.  The custom analyzer is
- * invoked based on the COS or Account setting zimbraTextAnalyzer.
- * 
+ * A sample Zimbra Extension which provides a custom Lucene analyzer.
+ * <p>
+ * The extension must call {@link ZimbraAnalyzer#registerAnalyzer(String, org.apache.lucene.analysis.Analyzer)})
+ * on startup to register itself with the system. The custom analyzer is invoked
+ * based on the COS or Account setting {@code zimbraTextAnalyzer}.
  */
 public class AnalyzerSample implements ZimbraExtension {
 
     private static Log sLog = LogFactory.getLog(AnalyzerSample.class);
 
-    public AnalyzerSample() {
-    }
-
-    /* (non-Javadoc)
-     * @see com.zimbra.cs.extension.ZimbraExtension#init()
-     * 
-     * The extension can provide any name to ZimbraAnalyzer.registerAnalyzer() 
-     * however that name must be unique or else the registration will fail.
-     * 
-     */
+    @Override
     public synchronized void init() {
         sLog.info("Initializing "+getName());
         try {
+            // The extension can provide any name, however that name must be
+            // unique or else the registration will fail.
             ZimbraAnalyzer.registerAnalyzer(getName(), new Analyzer());
         } catch (ServiceException e) {
             sLog.error("Error while registering extension "+getName(), e);
         }
-    }            
+    }
 
+    @Override
     public synchronized void destroy() {
         sLog.info("Destroying "+getName());
         ZimbraAnalyzer.unregisterAnalyzer(getName());
     }
 
+    @Override
     public String getName() {
         return "AnalyzerSample";
     }
+
 }

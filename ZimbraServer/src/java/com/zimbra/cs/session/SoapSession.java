@@ -39,9 +39,11 @@ import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.httpclient.URLUtil;
 import com.zimbra.cs.im.IMNotification;
 import com.zimbra.cs.index.ZimbraQueryResults;
@@ -73,6 +75,7 @@ public class SoapSession extends Session {
     public class DelegateSession extends Session {
         private long mNextFolderCheck;
         private Set<Integer> mVisibleFolderIds;
+        private boolean mParentHasFullAccess = false;
 
         DelegateSession(String authId, String targetId) {
             super(authId, targetId, Type.SOAP);
@@ -124,10 +127,33 @@ public class SoapSession extends Session {
             }
         }
 
+        /**
+         * Returns true if the MailItem should be excluded from notification serialization
+         * @throws ServiceException 
+         */
+        protected boolean skipChangeSerialization(Mailbox mbox, MailItem item) throws ServiceException {
+            // don't serialize out changes on too-large delegated conversation
+            return (mbox != item.getMailbox() && item instanceof Conversation && ((Conversation) item).getMessageCount() > DELEGATED_CONVERSATION_SIZE_LIMIT && !mParentHasFullAccess);
+        }
+        
+        /**
+         * Fetch account level access and store it in cache to be used in skipChangeSerialization
+         * We assume here that ACL will never change between this call and the call to skipChangeSerialization()
+         * We also assume that it *might* change between invocations of calculateVisibileFolders (i.e. check accessmgr each time)
+         * @throws ServiceException
+         */
+        protected void cacheAccountAccess(String authedAcctId, String targetAcctId) throws ServiceException {
+            Provisioning prov = Provisioning.getInstance();
+            mParentHasFullAccess = AccessManager.getInstance().canAccessAccount(
+                prov.get(AccountBy.id, authedAcctId), prov.get(AccountBy.id, targetAcctId),
+                getParentSession().asAdmin());
+        }
+
         private boolean calculateVisibleFolders(boolean force) throws ServiceException {
             long now = System.currentTimeMillis();
 
             Mailbox mbox = mMailbox;
+            cacheAccountAccess(mAuthenticatedAccountId, mTargetAccountId);
             if (mbox == null) {
                 mVisibleFolderIds = Collections.emptySet();
                 return true;
@@ -137,17 +163,10 @@ public class SoapSession extends Session {
                 if (!force && mNextFolderCheck > now)
                     return mVisibleFolderIds != null;
 
-                Set<Folder> visible = mbox.getVisibleFolders(new OperationContext(getAuthenticatedAccountId()));
-                Set<Integer> ids = null;
-                if (visible != null) {
-                    ids = new HashSet<Integer>(visible.size());
-                    for (Folder folder : visible)
-                        ids.add(folder.getId());
-                }
-    
-                mVisibleFolderIds = ids;
+                Set<Integer> visible = mbox.getVisibleFolderIds(new OperationContext(getAuthenticatedAccountId()));
+                mVisibleFolderIds = visible;
                 mNextFolderCheck = now + SOAP_SESSION_TIMEOUT_MSEC / 2;
-                return ids != null;
+                return visible != null;
             }
         }
 
@@ -194,6 +213,12 @@ public class SoapSession extends Session {
                 for (Change chg : pms.modified.values()) {
                     if (chg.what instanceof MailItem) {
                         MailItem item = (MailItem) chg.what;
+                        if (skipChangeSerialization(getParentSession().getMailbox(), item)) {
+                            if (ZimbraLog.session.isDebugEnabled()) {
+                                ZimbraLog.session.debug("skipping serialization of too-large remote conversation: " + new ItemId(item));
+                            }
+                            continue;
+                        }
                         boolean isVisible = visible.contains(item instanceof Folder ? item.getId() : item.getFolderId());
                         boolean moved = (chg.why & Change.MODIFIED_FOLDER) != 0;
                         if (item instanceof Conversation) {
@@ -285,7 +310,7 @@ public class SoapSession extends Session {
             return this;
         }
 
-        int getNotificationCount() {
+        int getScaledNotificationCount() {
             if (count == -1) {
                 count = 0;
                 if (deleted != null)   count += StringUtil.countOccurrences(deleted, ',') / 4 + 1;
@@ -301,14 +326,6 @@ public class SoapSession extends Session {
             if (modified != null && !modified.isEmpty())  return true;
             return false;
         }
-    }
-
-    static int getNotificationCount(PendingModifications pms) {
-        int count = 0;
-        if (pms.deleted != null)   count += (pms.deleted.size() + 3) / 4;
-        if (pms.created != null)   count += pms.created.size();
-        if (pms.modified != null)  count += pms.modified.size();
-        return count;
     }
 
     class QueuedNotifications {
@@ -339,9 +356,9 @@ public class SoapSession extends Session {
             return false;
         }
 
-        int getNotificationCount() {
-            return (mMailboxChanges == null ? 0 : SoapSession.getNotificationCount(mMailboxChanges)) +
-                   (mRemoteChanges == null  ? 0 : mRemoteChanges.getNotificationCount());
+        int getScaledNotificationCount() {
+            return (mMailboxChanges == null ? 0 : mMailboxChanges.getScaledNotificationCount()) +
+                   (mRemoteChanges == null  ? 0 : mRemoteChanges.getScaledNotificationCount());
         }
 
         void addNotification(IMNotification imn) {
@@ -395,6 +412,8 @@ public class SoapSession extends Session {
     private Map<String, DelegateSession> mDelegateSessions = new HashMap<String, DelegateSession>(3);
     private List<RemoteSessionInfo> mRemoteSessions;
 
+    private boolean mAsAdmin;
+    
     static final long SOAP_SESSION_TIMEOUT_MSEC = Math.max(5, LC.zimbra_session_timeout_soap.intValue()) * Constants.MILLIS_PER_SECOND;
 
     // if a keepalive request to a remote session failed, how long to wait before a new ping is permitted
@@ -406,8 +425,9 @@ public class SoapSession extends Session {
     /** Creates a <tt>SoapSession</tt> owned by the given account and
      *  listening on its {@link Mailbox}.
      * @see Session#register() */
-    public SoapSession(String authenticatedId) {
+    public SoapSession(String authenticatedId, boolean asAdmin) {
         super(authenticatedId, Session.Type.SOAP);
+        mAsAdmin = asAdmin;
     }
 
     @Override public SoapSession register() throws ServiceException {
@@ -480,7 +500,10 @@ public class SoapSession extends Session {
     public boolean isOfflineSoapSession()  { return mIsOffline; }
     public void setOfflineSoapSession()    { mIsOffline = true; }
 
-
+    private boolean asAdmin() {
+        return mAsAdmin;
+    }
+    
     public Session getDelegateSession(String targetAccountId) {
         if (mUnregistered || targetAccountId == null)
             return null;
@@ -523,10 +546,7 @@ public class SoapSession extends Session {
                 return;
         }
         synchronized (mSentChanges) {
-            int force = mChanges.getSequence();
-            if (ZimbraLog.session.isDebugEnabled())
-                ZimbraLog.session.debug("removeDelegateSession: changing mForceRefresh: " + mForceRefresh + " -> " + force);
-            mForceRefresh = force;
+            mForceRefresh = mChanges.getSequence();
         }
     }
 
@@ -582,21 +602,21 @@ public class SoapSession extends Session {
             refreshExpected = registerRemoteSessionId(server, sessionId);
 
         // remote refresh should cause overall refresh
-        if (!ignoreRefresh && !refreshExpected && context.getOptionalElement(ZimbraNamespace.E_REFRESH) != null) {
-            int force = getCurrentNotificationSequence();
-            if (ZimbraLog.session.isDebugEnabled())
-                ZimbraLog.session.debug("handleRemoteNotifications: changing mForceRefresh: " + mForceRefresh + " -> " + force);
-            mForceRefresh = force;
-        }
+        if (!ignoreRefresh && !refreshExpected && context.getOptionalElement(ZimbraNamespace.E_REFRESH) != null)
+            mForceRefresh = getCurrentNotificationSequence();
 
         Element eNotify = context.getOptionalElement(ZimbraNamespace.E_NOTIFY);
         if (eNotify != null) {
             RemoteNotifications rns = new RemoteNotifications(eNotify);
             synchronized (mSentChanges) {
-                if (!skipNotifications(rns.getNotificationCount(), !isPing))
-                    mChanges.addNotification(rns);
+                if (!skipNotifications(rns.getScaledNotificationCount(), !isPing))
+                    addRemoteNotifications(rns);
             }
         }
+    }
+    
+    protected void addRemoteNotifications(RemoteNotifications rns) {
+        mChanges.addNotification(rns);
     }
 
     private void pingRemoteSessions(ZimbraSoapContext zsc) {
@@ -836,7 +856,7 @@ public class SoapSession extends Session {
         // XXX: should constrain to folders, tags, and stuff relevant to the current query?
 
         synchronized (mSentChanges) {
-            if (!skipNotifications(getNotificationCount(pms), fromThisSession)) {
+            if (!skipNotifications(pms.getScaledNotificationCount(), fromThisSession)) {
                 // if we're here, these changes either
                 //   a) do not cause the session's notification cache to overflow, or
                 //   b) originate from this session and hence must be notified back to the session
@@ -854,24 +874,18 @@ public class SoapSession extends Session {
         // determine whether this set of notifications would cause the cached set to overflow
         if (mForceRefresh != currentSequence && MAX_QUEUED_NOTIFICATIONS > 0) {
             // XXX: more accurate would be to combine pms and mChanges and take the count...
-            int count = notificationCount + mChanges.getNotificationCount();
+            int count = notificationCount + mChanges.getScaledNotificationCount();
             if (count > MAX_QUEUED_NOTIFICATIONS) {
                 // if we've overflowed, jettison the pending change set
                 mChanges.clearMailboxChanges();
-                int force = currentSequence;
-                if (ZimbraLog.session.isDebugEnabled())
-                    ZimbraLog.session.debug("skipNotifications: changing mForceRefresh: " + mForceRefresh + " -> " + force);
-                mForceRefresh = force;
+                mForceRefresh = currentSequence;
             }
 
             for (QueuedNotifications ntfn : mSentChanges) {
-                count += ntfn.getNotificationCount();
+                count += ntfn.getScaledNotificationCount();
                 if (count > MAX_QUEUED_NOTIFICATIONS) {
                     ntfn.clearMailboxChanges();
-                    int force = Math.max(mForceRefresh, ntfn.getSequence());
-                    if (ZimbraLog.session.isDebugEnabled())
-                        ZimbraLog.session.debug("skipNotifications: changing mForceRefresh: " + mForceRefresh + " -> " + force);
-                    mForceRefresh = force;
+                    mForceRefresh = Math.max(mForceRefresh, ntfn.getSequence());
                 }
             }
         }
@@ -905,16 +919,10 @@ public class SoapSession extends Session {
 
     public boolean requiresRefresh(final int lastSequence) {
         synchronized (mSentChanges) {
-            boolean required = false;
-            int currentSeq = getCurrentNotificationSequence();
             if (lastSequence <= 0)
-                required = mForceRefresh == currentSeq;
+                return mForceRefresh == getCurrentNotificationSequence();
             else
-                required = mForceRefresh > Math.min(lastSequence, currentSeq);
-            if (required && ZimbraLog.session.isDebugEnabled())
-                ZimbraLog.session.debug("refresh required: mForceRefresh=" + mForceRefresh + ", lastSequence=" + lastSequence +
-                        ", currentSequence=" + currentSeq);
-            return required;
+                return mForceRefresh > Math.min(lastSequence, getCurrentNotificationSequence());
         }
     }
 
@@ -1350,12 +1358,6 @@ public class SoapSession extends Session {
                 for (Change chg : pms.modified.values()) {
                     if (chg.why != 0 && chg.what instanceof MailItem) {
                         MailItem item = (MailItem) chg.what;
-                        // don't serialize out changes on too-large delegated conversation
-                        if (mbox != item.getMailbox() && item instanceof Conversation && ((Conversation) item).getMessageCount() > DELEGATED_CONVERSATION_SIZE_LIMIT) {
-                            if (debug)
-                                ZimbraLog.session.debug("skipping serialization of too-large remote conversation: " + new ItemId(item));
-                            continue;
-                        }
     
                         ItemIdFormatter ifmt = new ItemIdFormatter(mAuthenticatedAccountId, item.getMailbox(), false);
                         try {

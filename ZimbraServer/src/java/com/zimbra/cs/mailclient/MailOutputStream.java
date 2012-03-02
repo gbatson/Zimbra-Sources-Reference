@@ -14,19 +14,25 @@
  */
 package com.zimbra.cs.mailclient;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+
+import com.zimbra.common.util.Log;
 
 /**
  * An output stream for writing line-oriented mail protocol data.
  */
 public class MailOutputStream extends OutputStream {
+    private Log log;
+    private ByteArrayOutputStream logbuf;
+    private boolean privacy = false;
+
     /** The underlying output stream */
     protected final OutputStream out;
 
     /**
-     * Creates a new <tt>MailOutputStream</tt> for the specified underlying
-     * output stream.
+     * Creates a new {@link MailOutputStream} for the specified underlying output stream.
      *
      * @param out the underlying output stream
      */
@@ -34,13 +40,35 @@ public class MailOutputStream extends OutputStream {
         this.out = out;
     }
 
+    public MailOutputStream(OutputStream out, Log log) {
+        this(out);
+        this.log = log;
+        logbuf = new ByteArrayOutputStream(1024);
+    }
+
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
+        if (logbuf != null) {
+            if (privacy) {
+                for (int i = 0; i < len; i++) {
+                    logbuf.write('*');
+                }
+            } else {
+                logbuf.write(b, off, len);
+            }
+        }
         out.write(b, off, len);
     }
 
     @Override
     public void write(int b) throws IOException {
+        if (logbuf != null) {
+            if (privacy) {
+                logbuf.write('*');
+            } else {
+                logbuf.write(b);
+            }
+        }
         out.write(b);
     }
 
@@ -79,6 +107,7 @@ public class MailOutputStream extends OutputStream {
         write('\n');
     }
 
+    @Override
     public void flush() throws IOException {
         out.flush();
     }
@@ -87,4 +116,22 @@ public class MailOutputStream extends OutputStream {
     public void close() throws IOException {
         out.close();
     }
+
+    /**
+     * Mask the trace log.
+     *
+     * @param value true to start masking, false to stop masking
+     */
+    public final void setPrivacy(boolean value) {
+        privacy = value;
+    }
+
+    public final void trace() {
+        if (logbuf == null || logbuf.size() == 0) {
+            return;
+        }
+        log.trace("C: %s", logbuf.toString());
+        logbuf.reset();
+    }
+
 }

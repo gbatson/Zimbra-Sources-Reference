@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,8 +15,8 @@
 package com.zimbra.cs.service.wiki;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
 
 import javax.mail.MessagingException;
@@ -28,42 +28,45 @@ import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.methods.GetMethod;
 
-import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.AuthToken;
-import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.mailbox.Document;
-import com.zimbra.cs.mailbox.MailItem;
-import com.zimbra.cs.mailbox.MailServiceException;
-import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.mailbox.Message;
-import com.zimbra.cs.mime.Mime;
-import com.zimbra.cs.service.FileUploadServlet;
-import com.zimbra.cs.service.FileUploadServlet.Upload;
-import com.zimbra.cs.service.UserServlet;
-import com.zimbra.cs.service.util.ItemId;
-import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.mime.ContentType;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.service.ServiceException.Argument;
 import com.zimbra.common.service.ServiceException.InternalArgument;
-import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraHttpConnectionManager;
-import com.zimbra.cs.wiki.WikiPage;
+import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.cs.account.ZAttrProvisioning;
+import com.zimbra.cs.mailbox.Document;
+import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailServiceException;
+import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.Message;
+import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mime.Mime;
+import com.zimbra.cs.service.FileUploadServlet;
+import com.zimbra.cs.service.FileUploadServlet.Upload;
+import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class SaveDocument extends WikiDocumentHandler {
 
     private static String[] TARGET_DOC_ID_PATH = new String[] { MailConstants.E_DOC, MailConstants.A_ID };
     private static String[] TARGET_DOC_FOLDER_PATH = new String[] { MailConstants.E_DOC, MailConstants.A_FOLDER };
+
     @Override protected String[] getProxiedIdPath(Element request) {
         String id = getXPath(request, TARGET_DOC_ID_PATH);
-        return id == null ? TARGET_DOC_FOLDER_PATH : TARGET_DOC_ID_PATH; 
+        return id == null ? TARGET_DOC_FOLDER_PATH : TARGET_DOC_ID_PATH;
     }
 
     private static final String DEFAULT_DOCUMENT_FOLDER = "" + Mailbox.ID_FOLDER_BRIEFCASE;
@@ -84,41 +87,58 @@ public class SaveDocument extends WikiDocumentHandler {
             //bug 37180, extract the filename from the path (for IE). IE sends the full path.
             if (explicitName != null) {
                 try {
-                    explicitName = explicitName.replaceAll("\\\\","/");
-                    explicitName = explicitName.substring(explicitName.lastIndexOf("/")+1);
+                    explicitName = explicitName.replaceAll("\\\\", "/");
+                    explicitName = explicitName.substring(explicitName.lastIndexOf("/") + 1);
                 } catch (Exception e) {
                     //Do nothing
                 }
             }
 
-            Element attElem = docElem.getOptionalElement(MailConstants.E_UPLOAD);
-            Element msgElem = docElem.getOptionalElement(MailConstants.E_MSG);
-            if (attElem != null) {
-                String aid = attElem.getAttribute(MailConstants.A_ID, null);
-                Upload up = FileUploadServlet.fetchUpload(zsc.getAuthtokenAccountId(), aid, zsc.getAuthToken());
-                doc = new Doc(up, explicitName, explicitCtype);
-            } else if (msgElem != null) {
-                String part = msgElem.getAttribute(MailConstants.A_PART);
-                ItemId iid = new ItemId(msgElem.getAttribute(MailConstants.A_ID), zsc);
-                doc = fetchMimePart(octxt, iid, part, explicitName, explicitCtype, zsc.getAuthToken());
-            } else {
-                String inlineContent = docElem.getAttribute(MailConstants.E_CONTENT);
-                doc = new Doc(inlineContent, explicitName, explicitCtype);
-            }
-            if (doc.name == null || doc.name.trim().equals(""))
-                throw ServiceException.INVALID_REQUEST("missing required attribute: " + MailConstants.A_NAME, null);
-            if (doc.contentType == null || doc.contentType.trim().equals(""))
-                throw ServiceException.INVALID_REQUEST("missing required attribute: " + MailConstants.A_CONTENT_TYPE, null);
-
+            String description = docElem.getAttribute(MailConstants.A_DESC, null);
             ItemId fid = new ItemId(docElem.getAttribute(MailConstants.A_FOLDER, DEFAULT_DOCUMENT_FOLDER), zsc);
 
             String id = docElem.getAttribute(MailConstants.A_ID, null);
-            int itemId = (id == null ? 0 : new ItemId(id, zsc).getId());
+            int itemId = id == null ? 0 : new ItemId(id, zsc).getId();
             int ver = (int) docElem.getAttributeLong(MailConstants.A_VERSION, 0);
 
-            Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(zsc.getRequestedAccountId());
+            Mailbox mbox = getRequestedMailbox(zsc);
+            Element attElem = docElem.getOptionalElement(MailConstants.E_UPLOAD);
+            Element msgElem = docElem.getOptionalElement(MailConstants.E_MSG);
+            Element docRevElem = docElem.getOptionalElement(MailConstants.E_DOC);
+            if (attElem != null) {
+                String aid = attElem.getAttribute(MailConstants.A_ID, null);
+                Upload up = FileUploadServlet.fetchUpload(zsc.getAuthtokenAccountId(), aid, zsc.getAuthToken());
+                doc = new Doc(up, explicitName, explicitCtype, description);
+            } else if (msgElem != null) {
+                String part = msgElem.getAttribute(MailConstants.A_PART);
+                ItemId iid = new ItemId(msgElem.getAttribute(MailConstants.A_ID), zsc);
+                doc = fetchMimePart(octxt, zsc.getAuthToken(), iid, part, explicitName, explicitCtype, description);
+            } else if (docRevElem != null) {
+                ItemId iid = new ItemId(docRevElem.getAttribute(MailConstants.A_ID), zsc);
+                int revSource = (int) docRevElem.getAttributeLong(MailConstants.A_VERSION, 0);
+                Account sourceAccount = Provisioning.getInstance().getAccountById(iid.getAccountId());
+                if (sourceAccount.getId().equals(zsc.getRequestedAccountId())) {
+                    Document docRev;
+                    if (revSource == 0) {
+                        docRev = mbox.getDocumentById(octxt, iid.getId());
+                    } else {
+                        docRev = (Document) mbox.getItemRevision(octxt, iid.getId(), MailItem.TYPE_DOCUMENT, revSource);
+                    }
+                    doc = new Doc(docRev);
+                } else {
+                    doc = new Doc(zsc.getAuthToken(), sourceAccount, iid.getId(), revSource);
+                }
+                // preserve the old name when adding a new revision with
+                // the content from another document
+                if (ver != 0) {
+                    doc.name = null;
+                }
+            } else {
+                String inlineContent = docElem.getAttribute(MailConstants.E_CONTENT);
+                doc = new Doc(inlineContent, explicitName, explicitCtype, description);
+            }
+
             Document docItem = null;
-            WikiPage.WikiContext ctxt = new WikiPage.WikiContext(octxt, zsc.getAuthToken());
             InputStream is = null;
             try {
                 is = doc.getInputStream();
@@ -127,31 +147,36 @@ public class SaveDocument extends WikiDocumentHandler {
             }
             if (itemId == 0) {
                 // create a new page
+                if (doc.name == null || doc.name.trim().equals("")) {
+                    throw ServiceException.INVALID_REQUEST("missing required attribute: " + MailConstants.A_NAME, null);
+                } else if (doc.contentType == null || doc.contentType.trim().equals("")) {
+                    throw ServiceException.INVALID_REQUEST("missing required attribute: " + MailConstants.A_CONTENT_TYPE, null);
+                }
                 try {
-                    docItem = mbox.createDocument(octxt, fid.getId(), doc.name, doc.contentType, getAuthor(zsc), is, MailItem.TYPE_DOCUMENT);
+                    docItem = mbox.createDocument(octxt, fid.getId(), doc.name, doc.contentType, getAuthor(zsc), doc.description, is, MailItem.TYPE_DOCUMENT);
                 } catch (ServiceException e) {
                     if (e.getCode().equals(MailServiceException.ALREADY_EXISTS)) {
                         MailItem item = mbox.getItemByPath(octxt, doc.name, fid.getId());
-                        if (item != null && item instanceof Document)
-                            throw MailServiceException.ALREADY_EXISTS("name "+doc.name+" in folder "+fid.getId(),
-                                    new Argument(MailConstants.A_NAME, doc.name, Argument.Type.STR),
-                                    new Argument(MailConstants.A_ID, item.getId(), Argument.Type.IID),
-                                    new Argument(MailConstants.A_VERSION, ((Document)item).getVersion(), Argument.Type.NUM));
+                        if (item != null && item instanceof Document) {
+                            throw MailServiceException.ALREADY_EXISTS("name " + doc.name + " in folder " + fid.getId(), new Argument(MailConstants.A_NAME, doc.name,
+                                    Argument.Type.STR), new Argument(MailConstants.A_ID, item.getId(), Argument.Type.IID),
+                                    new Argument(MailConstants.A_VERSION, ((Document) item).getVersion(), Argument.Type.NUM));
+                        }
                     }
                     throw e;
                 }
             } else {
                 // add a new revision
-                WikiPage oldPage = WikiPage.findPage(ctxt, zsc.getRequestedAccountId(), itemId);
-                if (oldPage == null)
-                    throw new WikiServiceException.NoSuchWikiException("page id="+id+" not found");
-                if (oldPage.getLastVersion() != ver) {
-                    throw MailServiceException.MODIFY_CONFLICT(
-                            new Argument(MailConstants.A_NAME, doc.name, Argument.Type.STR),
-                            new Argument(MailConstants.A_ID, oldPage.getId(), Argument.Type.IID),
-                            new Argument(MailConstants.A_VERSION, oldPage.getLastVersion(), Argument.Type.NUM));
+                docItem = mbox.getDocumentById(octxt, itemId);
+                if (docItem.getVersion() != ver) {
+                    throw MailServiceException.MODIFY_CONFLICT(new Argument(MailConstants.A_NAME, doc.name, Argument.Type.STR), new Argument(MailConstants.A_ID, itemId,
+                            Argument.Type.IID), new Argument(MailConstants.A_VERSION, docItem.getVersion(), Argument.Type.NUM));
                 }
-                docItem = mbox.addDocumentRevision(octxt, itemId, is, getAuthor(zsc), doc.name);
+                String name = docItem.getName();
+                if (doc.name != null) {
+                    name = doc.name;
+                }
+                docItem = mbox.addDocumentRevision(octxt, itemId, getAuthor(zsc), name, doc.description, is);
             }
 
             response = zsc.createElement(MailConstants.SAVE_DOCUMENT_RESPONSE);
@@ -161,13 +186,14 @@ public class SaveDocument extends WikiDocumentHandler {
             m.addAttribute(MailConstants.A_NAME, docItem.getName());
             success = true;
         } finally {
-            if (success && doc != null)
+            if (success && doc != null) {
                 doc.cleanup();
+            }
         }
         return response;
     }
 
-    private Doc fetchMimePart(OperationContext octxt, ItemId itemId, String partId, String name, String ct, AuthToken authtoken) throws ServiceException {
+    private Doc fetchMimePart(OperationContext octxt, AuthToken authtoken, ItemId itemId, String partId, String name, String ct, String description) throws ServiceException {
         String accountId = itemId.getAccountId();
         Account acct = Provisioning.getInstance().get(AccountBy.id, accountId);
         if (Provisioning.onLocalServer(acct)) {
@@ -176,25 +202,26 @@ public class SaveDocument extends WikiDocumentHandler {
             try {
                 return new Doc(Mime.getMimePart(msg.getMimeMessage(), partId), name, ct);
             } catch (MessagingException e) {
-                throw ServiceException.RESOURCE_UNREACHABLE("can't fetch mime part msgId="+itemId+", partId="+partId, e);
+                throw ServiceException.RESOURCE_UNREACHABLE("can't fetch mime part msgId=" + itemId + ", partId=" + partId, e);
             } catch (IOException e) {
-                throw ServiceException.RESOURCE_UNREACHABLE("can't fetch mime part msgId="+itemId+", partId="+partId, e);
+                throw ServiceException.RESOURCE_UNREACHABLE("can't fetch mime part msgId=" + itemId + ", partId=" + partId, e);
             }
         }
 
         String url = UserServlet.getRestUrl(acct) + "?auth=co&id=" + itemId + "&part=" + partId;
         HttpClient client = ZimbraHttpConnectionManager.getInternalHttpConnMgr().newHttpClient();
         GetMethod get = new GetMethod(url);
-        authtoken.encode(client, get, false, acct.getAttr(Provisioning.A_zimbraMailHost));
+        authtoken.encode(client, get, false, acct.getAttr(ZAttrProvisioning.A_zimbraMailHost));
         try {
             int statusCode = HttpClientUtil.executeMethod(client, get);
-            if (statusCode != HttpStatus.SC_OK)
+            if (statusCode != HttpStatus.SC_OK) {
                 throw ServiceException.RESOURCE_UNREACHABLE("can't fetch remote mime part", null, new InternalArgument(ServiceException.URL, url, Argument.Type.STR));
+            }
 
             Header ctHeader = get.getResponseHeader("Content-Type");
             ContentType contentType = new ContentType(ctHeader.getValue());
 
-            return new Doc(get.getResponseBodyAsStream(), contentType, name, ct);
+            return new Doc(get.getResponseBodyAsStream(), contentType, name, ct, description);
         } catch (HttpException e) {
             throw ServiceException.PROXY_ERROR(e, url);
         } catch (IOException e) {
@@ -205,6 +232,7 @@ public class SaveDocument extends WikiDocumentHandler {
     private static class Doc {
         String name;
         String contentType;
+        String description;
         private Upload up;
         private MimePart mp;
         private String sp;
@@ -217,61 +245,100 @@ public class SaveDocument extends WikiDocumentHandler {
             overrideProperties(filename, ctype);
         }
 
-        Doc(Upload upload, String filename, String ctype) {
+        Doc(Upload upload, String filename, String ctype, String d) {
             up = upload;
             name = upload.getName();
             contentType = upload.getContentType();
+            description = d;
             overrideProperties(filename, ctype);
-            if (contentType == null)
+            if (contentType == null) {
                 contentType = "application/octet-stream";
+            }
         }
 
-        Doc(String content, String filename, String ctype) {
+        Doc(String content, String filename, String ctype, String d) {
             sp = content;
+            description = d;
             overrideProperties(filename, ctype);
-            if (contentType != null)
+            if (contentType != null) {
                 contentType = new ContentType(contentType).setParameter("charset", "utf-8").toString();
+            }
         }
 
-        Doc(InputStream in, ContentType ct, String filename, String ctype) {
+        Doc(InputStream in, ContentType ct, String filename, String ctype, String d) {
             this.in = in;
-            name = ct.getParameter("name");
-            if (name == null)
+            description = d;
+            name = ct == null ? null : ct.getParameter("name");
+            if (name == null) {
                 name = "New Document";
-            contentType = ct.getValue();
-            if (contentType == null)
+            }
+            contentType = ct == null ? null : ct.getContentType();
+            if (contentType == null) {
                 contentType = MimeConstants.CT_APPLICATION_OCTET_STREAM;
+            }
             overrideProperties(filename, ctype);
+        }
+
+        Doc (Document d) throws ServiceException {
+            in = d.getContentStream();
+            contentType = d.getContentType();
+            name = d.getName();
+            description = d.getDescription();
+        }
+        Doc(AuthToken auth, Account acct, int id, int ver) throws ServiceException {
+            String url = UserServlet.getRestUrl(acct) + "?fmt=native&disp=attachment&id=" + id;
+            if (ver > 0) {
+                url += "&ver=" + ver;
+            }
+            Pair<Header[], byte[]> resource = UserServlet.getRemoteResource(auth.toZAuthToken(), url);
+            int status = 0;
+            for (Header h : resource.getFirst()) {
+                if (h.getName().equalsIgnoreCase("X-Zimbra-Http-Status")) {
+                    status = Integer.parseInt(h.getValue());
+                } else if (h.getName().equalsIgnoreCase("X-Zimbra-ItemName")) {
+                    name = h.getValue();
+                } else if (h.getName().equalsIgnoreCase("Content-Type")) {
+                    contentType = h.getValue();
+                }
+            }
+            if (status != 200) {
+                throw ServiceException.RESOURCE_UNREACHABLE("http error " + status, null);
+            }
+            in = new ByteArrayInputStream(resource.getSecond());
         }
 
         private void overrideProperties(String filename, String ctype) {
-            if (filename != null && !filename.trim().equals(""))
+            if (filename != null && !filename.trim().equals("")) {
                 name = filename;
-            if (ctype != null && !ctype.trim().equals(""))
+            }
+            if (ctype != null && !ctype.trim().equals("")) {
                 contentType = ctype;
+            }
         }
 
         public InputStream getInputStream() throws IOException {
             try {
-                if (up != null)
+                if (up != null) {
                     return up.getInputStream();
-                else if (mp != null)
+                } else if (mp != null) {
                     return mp.getInputStream();
-                else if (sp != null)
+                } else if (sp != null) {
                     return new ByteArrayInputStream(sp.getBytes("utf-8"));
-                else if (in != null)
+                } else if (in != null) {
                     return in;
-                else
+                } else {
                     throw new IOException("no contents");
+                }
             } catch (MessagingException e) {
                 throw new IOException(e.getMessage());
             }
         }
+
         public void cleanup() {
-            if (up != null)
+            if (up != null) {
                 FileUploadServlet.deleteUpload(up);
-            if (in != null)
-                try { in.close(); } catch (IOException e) {}
+            }
+            ByteUtil.closeStream(in);
         }
     }
 

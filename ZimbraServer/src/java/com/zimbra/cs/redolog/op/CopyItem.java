@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,13 +34,14 @@ public class CopyItem extends RedoableOp {
     private Map<Integer, Integer> mDestIds = new HashMap<Integer, Integer>();
     private byte mType;
     private int mDestFolderId;
+    private boolean mFromDumpster;  // false in this class, true in subclass RecoverItem
 
     public CopyItem() {
         mType = MailItem.TYPE_UNKNOWN;
         mDestFolderId = 0;
     }
 
-    public CopyItem(long mailboxId, byte type, int folderId) {
+    public CopyItem(int mailboxId, byte type, int folderId) {
         setMailboxId(mailboxId);
         mType = type;
         mDestFolderId = folderId;
@@ -63,12 +64,19 @@ public class CopyItem extends RedoableOp {
         return OP_COPY_ITEM;
     }
 
-    @Override protected String getPrintableData() {
+    protected void setFromDumpster(boolean fromDumpster) {
+        mFromDumpster = fromDumpster;
+    }
+
+    @Override
+    protected String getPrintableData() {
         StringBuilder sb = new StringBuilder("type=").append(mType);
         sb.append(", destFolder=").append(mDestFolderId);
         sb.append(", [srcId, destId, srcImap]=");
         for (Map.Entry<Integer, Integer> entry : mDestIds.entrySet())
             sb.append('[').append(entry.getKey()).append(',').append(entry.getValue()).append(']');
+        if (mFromDumpster)
+            sb.append(", fromDumpster=").append(mFromDumpster);
         return sb.toString();
     }
 
@@ -83,6 +91,8 @@ public class CopyItem extends RedoableOp {
             out.writeInt(entry.getKey());
             out.writeInt(entry.getValue());
         }
+        if (getVersion().atLeast(1, 30))
+            out.writeBoolean(mFromDumpster);
     }
 
     @Override protected void deserializeData(RedoLogInput in) throws IOException {
@@ -102,10 +112,14 @@ public class CopyItem extends RedoableOp {
                 mDestIds.put(srcId, in.readInt());
             }
         }
+        if (getVersion().atLeast(1, 30))
+            mFromDumpster = in.readBoolean();
+        else
+            mFromDumpster = false;
     }
 
     @Override public void redo() throws Exception {
-        long mboxId = getMailboxId();
+        int mboxId = getMailboxId();
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(mboxId);
 
         int i = 0, itemIds[] = new int[mDestIds.size()];
@@ -113,7 +127,10 @@ public class CopyItem extends RedoableOp {
             itemIds[i++] = id;
 
         try {
-            mbox.copy(getOperationContext(), itemIds, mType, mDestFolderId);
+            if (!mFromDumpster)
+                mbox.copy(getOperationContext(), itemIds, mType, mDestFolderId);
+            else
+                mbox.recover(getOperationContext(), itemIds, mType, mDestFolderId);
         } catch (MailServiceException e) {
             if (e.getCode() == MailServiceException.ALREADY_EXISTS) {
                 mLog.info("Item is already in mailbox " + mboxId);

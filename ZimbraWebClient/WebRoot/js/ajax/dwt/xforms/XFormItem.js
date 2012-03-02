@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -2259,7 +2259,7 @@ Textarea_XFormItem.prototype.getKeyPressHandlerHTML = function () {
         }
         return AjxBuffer.concat(" ", keydownEv,"=\"",this.getGlobalRef(), ".handleKeyDown(event, this)\"",
                                                    " onkeyup=\"", this.getGlobalRef(), ".handleKeyUp(event, this)\"");
-}
+};
 
 /**
  * @class defines XFormItem type _CHECKBOX_
@@ -4290,7 +4290,7 @@ Dwt_ColorPicker_XFormItem.prototype.updateWidget = function (newValue) {
 	if(!this.widget)
 		return;
 		
-	//if (AjxEnv.hasFirebug) console.log ("new color = " + newValue) ;
+	//if(window.console && window.console.log) console.log ("new color = " + newValue) ;
 	if (newValue != null) {
 		this.widget.setColor(newValue);
 	}else { //ensure the empty color can be set in the UI

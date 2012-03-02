@@ -25,7 +25,7 @@
     <td class='ZhBottomSep'>
         <table width="100%" cellspacing="0" cellpadding="0">
     <tr class='contactHeaderRow'>
-        <td width="20"><center><app:img src="mail/ImgMailRule.gif" altkey="filterRule"/></center></td>
+        <td width="20"><center><app:img src="mail/ImgMailRule.png" altkey="filterRule"/></center></td>
         <td class='contactHeader'>${fn:escapeXml(rule.name)}</td>
     </tr>
 </table>
@@ -81,7 +81,7 @@
                 <c:when test="${zm:isHeaderCondition(condition)}">
                     <c:set var="hdr" value="${zm:getHeader(condition)}"/>
                     <c:choose>
-                        <c:when test="${hdr.headerName eq 'subject' or hdr.headerName eq 'to' or hdr.headerName eq 'cc' or hdr.headerName eq 'from'}">
+                        <c:when test="${hdr.headerName eq 'subject' or hdr.headerName eq 'to' or hdr.headerName eq 'cc' or hdr.headerName eq 'to,cc' or hdr.headerName eq 'from'}">
                             <fmt:message key="FILT_COND_HEADER_${hdr.headerOp}">
                                 <fmt:param><fmt:message key="FILT_COND_HEADER_${hdr.headerName}"/></fmt:param>
                                 <fmt:param>${fn:escapeXml(hdr.headerValue)}</fmt:param>

@@ -15,39 +15,25 @@
 
 package com.zimbra.qa.unittest;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.junit.*;
+import org.junit.runner.*;
+import static org.junit.Assert.*;
 
-import java.io.File;
-import java.io.FileWriter;
+import com.zimbra.common.util.Log;
+import com.zimbra.cs.mailclient.imap.ImapConnection;
+import com.zimbra.cs.mailclient.imap.ImapConfig;
+import com.zimbra.cs.mailclient.imap.AppendResult;
+import com.zimbra.cs.mailclient.imap.Literal;
+import com.zimbra.cs.mailclient.imap.MessageData;
+import com.zimbra.cs.mailclient.imap.Body;
+import com.zimbra.cs.mailclient.imap.AppendMessage;
+import com.zimbra.cs.mailclient.imap.Flags;
+
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.net.SocketException;
+import java.io.File;
+import java.io.FileWriter;
 import java.sql.Date;
-
-import junit.framework.Assert;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.JUnitCore;
-import org.junit.runner.Request;
-
-import com.zimbra.cs.mailclient.imap.AppendMessage;
-import com.zimbra.cs.mailclient.imap.AppendResult;
-import com.zimbra.cs.mailclient.imap.Body;
-import com.zimbra.cs.mailclient.imap.CAtom;
-import com.zimbra.cs.mailclient.imap.Flags;
-import com.zimbra.cs.mailclient.imap.ImapConfig;
-import com.zimbra.cs.mailclient.imap.ImapConnection;
-import com.zimbra.cs.mailclient.imap.ImapRequest;
-import com.zimbra.cs.mailclient.imap.ImapResponse;
-import com.zimbra.cs.mailclient.imap.Literal;
-import com.zimbra.cs.mailclient.imap.MailboxName;
-import com.zimbra.cs.mailclient.imap.MessageData;
 
 /**
  * IMAP server tests.
@@ -59,7 +45,7 @@ public class TestImap {
     private static final String PASS = "test123";
 
     private static ImapConnection connection;
-    
+
     @BeforeClass
     public static void setUp() throws Exception {
         connection = connect();
@@ -87,48 +73,11 @@ public class TestImap {
             msg.dispose();
         }
     }
-    
-    @Test
-    public void testOverflowAppend() throws Exception {
-        assertTrue(connection.hasCapability("UIDPLUS"));
-        int oldReadTimeout = connection.getConfig().getReadTimeout();
-        try {
-            connection.setReadTimeout(10);
-            Flags flags = Flags.fromSpec("afs");
-            Date date = new Date(System.currentTimeMillis());
-            ImapRequest req = connection.newRequest(CAtom.APPEND, new MailboxName("INBOX"));
-            req.addParam("{"+((long)(Integer.MAX_VALUE)+1)+"+}");
-            ImapResponse resp = req.send();
-            Assert.assertTrue(resp.isNO());
-            
-            req = connection.newRequest(CAtom.APPEND, new MailboxName("INBOX"));
-            req.addParam("{"+((long)(Integer.MAX_VALUE)+1)+"}");
-            resp = req.send();
-            Assert.assertTrue(resp.isNO());
-        } finally {
-            connection.setReadTimeout(oldReadTimeout);
-        }
-    }
-    
-    @Test
-    public void testOverflowNotAppend() throws Exception {
-        int oldReadTimeout = connection.getConfig().getReadTimeout();
-        try {
-            connection.setReadTimeout(10);
-            Flags flags = Flags.fromSpec("afs");
-            Date date = new Date(System.currentTimeMillis());
-            ImapRequest req = connection.newRequest(CAtom.FETCH, "1:*");
-            req.addParam("{"+((long)(Integer.MAX_VALUE)+1)+"+}");
-            ImapResponse resp = req.send();
-            Assert.assertTrue(resp.isNO());
-        } finally {
-            connection.setReadTimeout(oldReadTimeout);
-        }
-    }
 
     @Test
     public void testAppendNoLiteralPlus() throws Exception {
         withLiteralPlus(false, new RunnableTest() {
+            @Override
             public void run() throws Exception {
                 testAppend();
             }
@@ -153,6 +102,7 @@ public class TestImap {
     @Test
     public void testCatenateSimpleNoLiteralPlus() throws Exception {
         withLiteralPlus(false, new RunnableTest() {
+            @Override
             public void run() throws Exception {
                 testCatenateSimple();
             }
@@ -190,6 +140,7 @@ public class TestImap {
     @Test
     public void testMultiappendNoLiteralPlus() throws Exception {
         withLiteralPlus(false, new RunnableTest() {
+            @Override
             public void run() throws Exception {
                 testMultiappend();
             }
@@ -200,11 +151,11 @@ public class TestImap {
         return String.format("/%s;UIDVALIDITY=%d/;UID=%d",
                              mbox, res.getUidValidity(), res.getUid());
     }
-    
+
     private static Literal literal(String s) {
         return new Literal(bytes(s));
     }
-    
+
     private static byte[] bytes(String s) {
         try {
             return s.getBytes("UTF8");
@@ -241,7 +192,7 @@ public class TestImap {
         }
         return new Literal(file, true);
     }
-    
+
     private static String simpleMessage(String text) {
         return "Return-Path: dac@zimbra.com\r\n" +
             "Date: Fri, 27 Feb 2004 15:24:43 -0800 (PST)\r\n" +
@@ -264,12 +215,12 @@ public class TestImap {
     private static interface RunnableTest {
         void run() throws Exception;
     }
-    
+
     private static ImapConnection connect() throws IOException {
         ImapConfig config = new ImapConfig(HOST);
         config.setPort(PORT);
         config.setAuthenticationId(USER);
-        config.setTrace(true);
+        config.getLogger().setLevel(Log.Level.trace);
         ImapConnection connection = new ImapConnection(config);
         connection.connect();
         connection.login(PASS);

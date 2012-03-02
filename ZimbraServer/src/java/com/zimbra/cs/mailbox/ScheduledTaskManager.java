@@ -26,6 +26,7 @@ import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.db.DbScheduledTask;
 import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.mailbox.alerts.CalItemReminderTaskCallback;
 
 /**
  * Manages persistent scheduled tasks.  Properties of recurring tasks
@@ -34,7 +35,7 @@ import com.zimbra.cs.db.DbPool.Connection;
  */
 public class ScheduledTaskManager {
 
-    private static TaskScheduler<Void> sScheduler;
+    private static TaskScheduler<ScheduledTaskResult> sScheduler;
     private static Random sRandom = new Random();
     
     public static void startup()
@@ -48,9 +49,9 @@ public class ScheduledTaskManager {
         Provisioning prov = Provisioning.getInstance();
         int numThreads = prov.getLocalServer().getIntAttr(Provisioning.A_zimbraScheduledTaskNumThreads, 20);
         int minThreads = numThreads / 2;
-        sScheduler = new TaskScheduler<Void>(null, minThreads, numThreads);
+        sScheduler = new TaskScheduler<ScheduledTaskResult>(null, minThreads, numThreads);
         sScheduler.addCallback(new TaskCleanup());
-
+        sScheduler.addCallback(new CalItemReminderTaskCallback());
         
         for (ScheduledTask task : DbScheduledTask.getTasks(null, 0)) {
             try {
@@ -113,14 +114,14 @@ public class ScheduledTaskManager {
         }
     }
     
-    public static ScheduledTask getTask(String className, String taskName, long mailboxId) {
+    public static ScheduledTask getTask(String className, String taskName, int mailboxId) {
         return (ScheduledTask) sScheduler.getTask(getKey(className, taskName, mailboxId));
     }
     
     /**
      * Cancels a persistent task.
      */
-    public static ScheduledTask cancel(String className, String taskName, long mailboxId, boolean mayInterruptIfRunning)
+    public static ScheduledTask cancel(String className, String taskName, int mailboxId, boolean mayInterruptIfRunning)
     throws ServiceException {
         Connection conn = null;
         ScheduledTask task = null;
@@ -144,7 +145,7 @@ public class ScheduledTaskManager {
      * @return the task, or <tt>null</tt> if the task could not be found
      */
     public static ScheduledTask cancel(Connection conn, String className, String taskName,
-                                       long mailboxId, boolean mayInterruptIfRunning)
+                                       int mailboxId, boolean mayInterruptIfRunning)
     throws ServiceException {
         if (conn != null) {
             DbScheduledTask.deleteTask(conn, className, taskName);
@@ -152,7 +153,7 @@ public class ScheduledTaskManager {
         return (ScheduledTask) sScheduler.cancel(getKey(className, taskName, mailboxId), mayInterruptIfRunning);
     }
     
-    private static String getKey(String className, String taskName, long mailboxId) {
+    private static String getKey(String className, String taskName, int mailboxId) {
         StringBuilder sb = new StringBuilder();
         sb.append(className).append(':').append(taskName);
         if (mailboxId > 0) {
@@ -170,10 +171,10 @@ public class ScheduledTaskManager {
      * Only deletes single-run tasks, not recurring tasks. 
      */
     private static class TaskCleanup
-    implements ScheduledTaskCallback<Void> {
+    implements ScheduledTaskCallback<ScheduledTaskResult> {
         TaskCleanup()  { }
 
-        public void afterTaskRun(Callable<Void> c) {
+        public void afterTaskRun(Callable<ScheduledTaskResult> c, ScheduledTaskResult lastResult) {
             Connection conn = null;
             ScheduledTask task = (ScheduledTask) c;
             if (task.isRecurring()) {

@@ -1,0 +1,564 @@
+I. The SPNEGO SSO Feature
+
+   The SPNEGO SSO feature allows AD domain users to enter their Zimbra mailbox without 
+   having to re-authenticate themselves to Zimbra by entering their Zimbra credentials.
+    
+   Microsoft's Active Directory/Kerberos implementation is the single authentication store.
+   
+   It is essential that a user must logon to an AD domain, local logons will not work.
+   
+   Supported browsers and platforms:
+   Windows:
+     - Internet Explorer 6.0 or later
+     - Firefox 3.0 or later
+     - Chrome
+     - Safari
+     
+   Mac:
+     - Safari
+   
+   A high level description of the Authentication flow:
+   (see http://msdn.microsoft.com/en-us/library/ms995329.aspx for more information)
+   
+   - User logon to a Windows/AD domain.
+   - The logged-on user must have acquired Kerberos credentials from the domain.
+   - The logged-on user then attempts to access Zimbra. 
+   - Zimbra is configured to redirect the request to a URL under SPNEGO protection. 
+   - The Zimbra server asks for authentication with Kerberos (by using SPNEGO). 
+   - The client obtains a ticket for the requested service from the KDC and presents these credentials back to Zimbra server.
+   - The Zimbra server extracts the user's credentials and authenticates the request and identifies the user.
+   - The request is then redirected to Zimbra's preauth servlet with all required preauth parameters for the identified user.
+   - The Zimbra preauth servlet verifies the preauth parameters and redirect the user into the Zimbra mail page.
+
+   Important notes:
+       If you enable the SPNEGO SSO feature on a domain, you must inform/instruct all
+       users to configure their browsers properly.  Improperly configured browser will
+       behave differently depending on the browser.  The fix being to properly
+       configure the browser.
+
+
+II. Zimbra UI Flow
+
+1. user login to Windows or Mac as an AD domain user or a local user
+
+2. user browses to the regular Zimbra entry URL, e.g. http://dogfood.zimbra.com
+
+3. a domain(e.g. zimbra.com) gets resolved by virtual host name (dogfood.zimbra.com)
+
+4. zimbraWebClientLoginURL on domain redirects user to a preauth jsp under a spnego protected webapp/URL.
+
+5. spnego authentication happens (by jetty)
+
+6. if spnego auth succeeds, goto 7, if failed goto step 13
+   local user will fail.
+   domain user will pass, in the rare case when spnego auth fails for a domain user, the flow goes to step 13.
+
+7. user is redirected to the Zimbra preauth servlet
+
+8. Zimbra preauth happens and succeeds
+
+9. user gets redirected to the Zimbra mail app, all is well.
+
+10. user clicks on the "logout" button, and gets redirected to the zimbraWebClientLogOutURL 
+    configured on the domain.
+
+11. the logout URL points to the page UI, which has a "Launch" button.  The only action user can take is clicking 
+    on the "Launch" button.
+
+12. user clicks on "Launch", and gets redirected to the regular Zimbra entry page (goto step 2)
+ 
+13. (spnego auth failed) user is redirected to the error URL, which we set to /zimbra/?ignoreLoginURL=1
+    User will be redirected to the regular Zimbra entry page (i.e. login.jsp), with query parameter "ignoreLoginURL=1".
+
+14. zimbraWebClientLoginURL will be ignored in login.jsp, because of the "?igoreLoginURL=1", and user will see the Zimbra user/pass page.
+
+15. user enters his Zimbra user/pass to login, all is well.
+
+
+III. Configuration
+======================================
+1. Create and Set Up the Keytab File
+======================================
+
+On the Windows Server AD domain controller:
+
+(A) Create an Active Directory service account.
+    This is the account you use to generate the keytab.
+       
+    - programs -> Administrative Tools -> Active Directory Users and Computers
+    
+    - right click on "Users" under the domain
+    
+    - new -> User 
+    
+    - Fill in the following:
+          Full name: {a display name}
+
+          User Logon Name: HTTP/{zimbra-mailbox-server-name} (the domain is automatically filled)
+          (Note: this is the value for the {zimbra-mailbox-server-name} parameter in the setspn command (see below), and 
+                 this is the value to be set for the zimbraSpnegoAuthTargetName server attribute in LDAP.)
+
+          User Logon Name (pre-Windows 2000): {Active Directory service account name} 
+          (Note: this is the name you use for the -mapUser {AD-user} parameter in the setspn and ktpass commands (see below).)
+
+      e.g.
+          Full name: zimbra-dogfood
+
+          User Logon Name: HTTP/dogfood.zimbra.com
+
+          User Logon Name (pre-Windows 2000): zimbra-dogfood 
+      
+    - click on Next
+
+    - enter and confirm the password (e.g. test123)
+      (Note: this is the password you use for the -pass {AD-user-password} parameter in the ktpass command (see below))
+      
+      check "password never expires"
+      
+    - click on "Next"
+    
+    - click on "Finish" to create the user.   
+
+
+(B) Add the Service Principal Names (SPN) directory property for an Active Directory service account. 
+
+    setspn -A {zimbra-mailbox-server-name} {AD-user}
+    
+    e.g.
+    - list registered SPNs (there is none)
+      C:\>setspn -L zimbra-dogfood
+      Registered ServicePrincipalNames for CN=zimbra-dogfood,CN=Users,DC=vmware,DC=com:
+
+    - add SPN for the service account
+      C:\>setspn -A HTTP/dogfood.zimbra.com zimbra-dogfood
+      Registering ServicePrincipalNames for CN=zimbra-dogfood,CN=Users,DC=vmware,DC=com HTTP/dogfood.zimbra.com
+      Updated object
+
+    - list registered SPNs (should see the one we just added)
+      C:\>setspn -L zimbra-dogfood
+      Registered ServicePrincipalNames for CN=zimbra-dogfood,CN=Users,DC=vmware,DC=com:
+      HTTP/dogfood.zimbra.com
+
+
+(C) Create the keytab file
+   
+    ktpass -out {keytab-file-to-produce} -princ {Service-Principal-Name}@{the-kerberos-realm} -mapUser {AD-user} -mapOp set -pass {AD-user-password} -crypto RC4-HMAC-NT -pType KRB5_NT_PRINCIPAL
+    
+    e.g.
+    The following will create jetty.keytab file under c:\Temp\spnego:
+    
+    C:\>ktpass -out c:\Temp\spnego\jetty.keytab -princ HTTP/dogfood.zimbra.com@VMWARE.COM -mapUser zimbra-dogfood -mapOp set -pass test123 -crypto RC4-HMAC-NT -pType KRB5_NT_PRINCIPAL
+    Targeting domain controller: test-dc.vmware.com
+    Using legacy password setting method
+    Successfully mapped HTTP/dogfood.zimbra.com to zimbra-dogfood.
+    Key created.
+    Output keytab to c:\Temp\spnego\jetty.keytab:
+    Keytab version: 0x502
+    keysize 71 HTTP/dogfood.zimbra.com@VMWARE.COM ptype 1 (KRB5_NT_PRINCIPAL) vno3 etype 0x17 (RC4-HMAC) keylength 16 (0xc383f6a25f1e195d5aef495c980c2bfe)
+    
+    
+(D) Place the Keytab File on Zimbraserver   
+    copy jetty.keytab created in step (C) to the zimbra server (e.g. dogfood.zimbra.com) under /opt/zimbra/jetty/etc.
+    
+    Note: Do not rename the keytab file, the name(jetty.keytab) is referenced from various configuration files.
+
+
+Repeat steps (A) to (D) for each zimbra server(e.g. catfood.zimbra.com, corp.zimbra.com).
+
+
+=====================
+2. Configure Zimbra
+=====================
+- For production system, do 2.1, 2.2, 2.3.
+
+- For dev system: do "ant spnego-dev-deploy" under ZimbraServer.
+
+
+2.1. Configure Global Config
+----------------------------
+We support only one REALM per Zimbra installation.
+
+Modify the following global config attributes with "zmprov mcf" command.
+
+zimbraSpnegoAuthEnabled     : TRUE
+                              e.g. zmprov mcf zimbraSpnegoAuthEnabled TRUE
+
+zimbraSpnegoAuthErrorURL    : URL to redirect users to on spnego auth failure 
+                              Setting it to "/zimbra/?ignoreLoginURL=1"
+                              will redirect user to the regular Zimbra login page, where 
+                              user will be prompted or the zimbra user name and password.
+                              e.g. zmprov mcf zimbraSpnegoAuthErrorURL '/zimbra/?ignoreLoginURL=1'                    
+                     
+zimbraSpnegoAuthRealm       : the kerberos realm in the domain controller
+                              e.g. zmprov mcf zimbraSpnegoAuthRealm VMWARE.COM
+
+
+2.2. Configure Servers
+----------------------
+On each zimbra server, modify the following global config attributes with "zmprov ms" command.
+
+zimbraSpnegoAuthTargetName  : the name for the service user in III. 1. (A), 
+                              e.g. zmprov ms dogfood.zimbra.com zimbraSpnegoAuthTargetName HTTP/dogfood.zimbra.com
+                                   zmprov ms catfood.zimbra.com zimbraSpnegoAuthTargetName HTTP/catfood.zimbra.com
+
+zimbraSpnegoAuthPrincipal   : {zimbraSpnegoAuthTargetName}@{zimbraSpnegoAuthRealm}
+                              e.g. zmprov ms dogfood.zimbra.com zimbraSpnegoAuthPrincipal HTTP/dogfood.zimbra.com@VMWARE.COM
+                                   zmprov ms catfood.zimbra.com zimbraSpnegoAuthPrincipal HTTP/catfood.zimbra.com@VMWARE.COM
+  
+
+2.3. Configure Domain
+---------------------
+(A) Setup preauth for the domain.
+    - Generate a preauth key using zmprov gdpak
+      zmprov gdpak {domain}
+      e.g.
+      zmprov gdpak zimbra.com
+      preAuthKey: 4e2816f16c44fab20ecdee39fb850c3b0bb54d03f1d8e073aaea376a4f407f0c
+
+    - Set the preauth key on the domain
+      mprov md {domain} zimbraPreAuthKey {the-preauth-key}
+      e.g.
+      mprov md zimbra.com zimbraPreAuthKey 4e2816f16c44fab20ecdee39fb850c3b0bb54d03f1d8e073aaea376a4f407f0c
+      
+    - Modify /opt/zimbra/jetty/webapps/spnego/spnego_preauth.jsp with the preauth key.
+      edit the spnego_preauth.jsp
+      replace the text REPLACE-ME-WITH-THE-PREAUTH-KEY with the real preauth key.  
+
+    *** Note: spnego_preauth.jsp will be overwritten after each upgrade.  So this step has to be performed 
+              after each upgrade. 
+              
+
+(B) Setup kerberos Realm for the domain
+    zmprov md {domain} zimbraAuthKerberos5Realm {kerberos-realm}
+
+    {kerberos-realm} should be the same realm set in global config attribute zimbraSpnegoAuthRealm
+    
+    e.g. 
+    zmprov md zimbra.com zimbraAuthKerberos5Realm VMWARE.COM
+    
+    
+(C) Setup virtual host for the domain
+    zmprov md {domain} +zimbraVirtualHostname {virtual-hostname-1} +zimbraVirtualHostname {virtual-hostname-2} ...
+    
+    virtual-hostname-* are the hostnames you can browse to for the Zimbra WEB UI.
+    e.g.
+    zmprov md zimbra.com +zimbraVirtualHostname dogfood.zimbra.com +zimbraVirtualHostname catfood.zimbra.com
+    
+    
+(D) Setup web client login URL and UAs allowed for the login URL on the domain
+    - Set login URL.  Login URL is the URL to redirect to for logging in and when
+      Zimbra auth token is expired.
+      zmprov md {domain} zimbraWebClientLoginURL '../../spnego/spnego_preauth.jsp'
+    
+    - Honor only supported platforms and browsers.  
+      zimbraWebClientLoginURLAllowedUA is a multi-valued attribute, values are regex.
+      If not set, all UAs are allowed. If multiple values are set, an UA is allowed 
+      as long as it matches any one of the values.  
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedUA {UA-regex-1} +zimbraWebClientLoginURLAllowedUA {UA-regex-2} ...
+      
+      e.g. honor zimbraWebClientLoginURL only for Firefox/IE/Chrome/Safari on Windows, and Safari on Mac)
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*Windows.*Firefox/3.*'
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*MSIE.*Windows.*'
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*Windows.*Chrome.*'
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*Windows.*Safari.*'
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*Macintosh.*Safari.*'
+
+
+(E) Setup web client logout URL and UAs allowed for the logout URL on the domain
+    - Set logout URL.  Logout URL is the URL to redirect to when user clicks on "Logout".
+      zmprov md {domain} zimbraWebClientLogoutURL '../?sso=1'
+    
+    - Honor only supported platforms and browsers.  
+      zimbraWebClientLoginURLAllowedUA is a multi-valued attribute, values are regex.
+      If not set, all UAs are allowed. If multiple values are set, an UA is allowed 
+      as long as it matches any one of the values.  
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA {UA-regex-1} +zimbraWebClientLoginURLAllowedUA {UA-regex-2} ...
+      
+      e.g. honor zimbraWebClientLogoutURL only for Firefox/IE/Chrome/Safari on Windows, and Safari on Mac)
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Firefox/3.*'
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*MSIE.*Windows.*'
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Chrome.*'
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Safari.*'
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*Macintosh.*Safari.*'
+
+
+===========================
+3. Configure Your Browser
+===========================
+Windows
+    Firefox:
+        1. Browse to about:config and agree to the warnings
+        2. Search through to find the "network" settings (in the Filter, type "network.n")
+        3. Enter a comma-delimited list of trusted domains or URLs 
+           for network.negotiate-auth.delegation-uris and network.negotiate-auth.trusted-uris.
+           e.g.
+             * set network.negotiate-auth.delegation-uris to http://,https://
+             * set network.negotiate-auth.trusted-uris to http://,https://
+             or
+             * set network.negotiate-auth.delegation-uris to http://dogfood.zimbra.com,https://dogfood.zimbra.com,http://catfood.zimbra.com,https://catfood.zimbra.com
+             * set network.negotiate-auth.trusted-uris to http://dogfood.zimbra.com,https://dogfood.zimbra.com,http://catfood.zimbra.com,https://catfood.zimbra.com
+    
+    IE/Chrome/Safari:
+        1. Tools -> Options -> Security -> Local Intranet -> Sites
+             * make sure everything is checked here
+        2. Tools -> Options -> Security -> Local Intranet -> Sites -> Advanced
+             * add url to server (http:// and/or https://) making sure to use the hostname
+        3. Tools -> Options -> Security -> Local Intranet -> Sites -> Advanced -> Close
+        4. Tools -> Options -> Security -> Local Intranet -> Sites -> Ok
+        5. Tools -> Options -> Advanced -> Security (in the checkbox list)
+             * locate and check 'Enable Integrated Windows Authentication'
+        6. Tools -> Options -> Advanced -> Security -> Ok
+        7. close IE
+
+Mac
+    Safari:
+        Do not need any configuration.
+
+
+================
+4. Test it out
+================
+- On a Windows or Mac box, login to as a domain user.
+  
+  Your ticket as a domain user will be saved on the computer.
+  Ths token will be picked up by the spnego aware browser and send in 
+  the Authorization header to zimbra server.
+  
+- Browse to the regualr ZWC entry page:
+  e.g. http://dogfood.zimbra.com
+  
+- You should be redirected to your inbox, without being prompted for user/pass.
+
+  
+What happens behind the scene in ZCS server:
+  - A domain gets resolved by the virtual host name setting.
+    (zimbraVirtualHostname on domain)
+  
+  - The request gets redirected to the login URL on the domain.
+    (zimbraWebClientLoginURL on domain)
+  
+  - The login URL points to a spnego protected URL.
+    (/spnego/spnego_preauth.jsp)
+  
+  - spnego auth happens
+  
+  - if spnego auth fails, user will be redirected to an error URL.
+    (zimbraSpnegoAuthErrorURL on global config)
+    
+  - if spnego auth succeeds, zimbra preauth sequence will happen, 
+    user will be redirected to the preauth servlet and then finally landed 
+    on the mailbox inbox.
+    
+
+=====================
+4. Trouble Shooting
+=====================
+(1) Make sure the following are true:
+    - Intranet Zone
+    - Accessing the server using a Hostname rather then IP
+    - Integrated Windows Authentication in IE is enabled, the host is trusted in Firefox
+    - The Server is not local to the browser
+    - The client's Kerberos system is authenticated to a domain controller
+
+
+(2) If the browser display the "401 Unauthorized", it's most likely that the browser either 
+    did not send another request with Authorization in response to the 401, or had sent an 
+    Authorization which is not using the GSS-API/SPNEGO scheme.  
+    
+    Check your browser settings, and make sure it is one of the supported browsers/platforms.  
+
+
+(3) If you are redirected to the error URL specified in zimbraSpnegoAuthErrorURL, that means
+    The SPNEGO authentication sequence does not work.  
+     
+    Take a network trace, make sure the browser send Authorization header(Appendix A: HTTP Flow, 5) 
+    in response to the 401.  Make sure (use a network packet decodeder like Wireshark) the 
+    Negotiate is using GSS-API/SPNEGO, not NTLM.
+     
+    After verifying that the browser is sending the correct Negotiate, if it still does not work, 
+    turn on the following debug and check Zimrba logs:
+     
+    - ADD "-DDEBUG=true -Dsun.security.spnego.debug=all" (note, not replace) to 
+      localconfig key spnego_java_options
+   
+    - add log4j.logger.org.mortbay.log=DEBUG in log4j
+    
+    then restart mailbox server.
+     
+    Browse to the debug snoop page:  http://{server}:{port}/spnego/snoop.jsp     
+    see if you can access the snoop.jsp
+    
+    Check zmmailboxd.out and mailox.log for debug output.
+     
+    * One of the error at this stage could be because of clock skew on the jetty server.  
+      If this is the case, it should be shown in zmmailboxd.out.  Fix the clock skew and try again.
+    
+
+(4) If you can access /spnego/snoop.jsp, but get a Zimbra preauth error, that means preauth 
+    on domain is not configured correctly.
+    
+    Check if III, 2.3, (A) and (B) are done correctly;
+    - Do "zmprov gd {domain} zimbraPreAuthKey" to get the preauth key for the doamin.
+    - Make sure /opt/zimbra/jetty/webapps/spnego/spnego_preauth.jsp is updated with the preauth key.
+
+
+
+=======================
+Appendix A: HTTP Flow
+=======================
+
+------------
+1. Request: accessing the zimbra Entry page
+------------
+GET / HTTP/1.1
+Host: dogfood.zimbra.com
+User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_8; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8
+Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Accept-Language: en-us
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+
+------------
+2. Response: redirect the request to the URL in zimbraWebClientLoginURL on the domain (resolved by zimbraVirtualHostname)
+------------
+HTTP/1.1 302 Found
+Date: Tue, 14 Dec 2010 23:53:06 GMT
+Expires: Tue, 24 Jan 2000 20:46:50 GMT
+Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+Pragma: no-cache
+Content-Type: text/html; charset=utf-8
+Content-Language: en-US
+Location: http://dogfood.zimbra.com/spnego/spnego_preauth.jsp
+Content-Length: 0
+
+------------
+3. Request: client follows the redirect, which is under SPNEGO protection
+------------
+GET /spnego/spnego_preauth.jsp HTTP/1.1
+Host: dogfood.zimbra.com
+Accept-Encoding: gzip, deflate
+Accept-Language: en-us
+User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_8; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8
+Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Connection: keep-alive
+
+------------
+4. Response: server returns 401 with a Negotiate challange 
+------------
+HTTP/1.1 401 Unauthorized
+Date: Tue, 14 Dec 2010 23:53:06 GMT
+Cache-Control: must-revalidate,no-cache,no-store
+Content-Type: text/html; charset=iso-8859-1
+WWW-Authenticate: Negotiate
+Content-Length: 1396
+
+------------
+5. Request: client sends another request, with SPNEGO auth scheme and ticket, in reply to the challange
+------------
+GET /spnego/spnego_preauth.jsp HTTP/1.1
+Host: dogfood.zimbra.com
+Accept-Encoding: gzip, deflate
+Accept-Language: en-us
+User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_8; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8
+Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Connection: keep-alive
+Authorization: Negotiate YIIEwgYGKwYBBQUCo...
+
+------------
+6. Response: SPNEGO auth succeeded, redirect the client to the preauth servlet with user's kerberos principal
+------------
+HTTP/1.1 302 Found
+Date: Tue, 14 Dec 2010 23:53:06 GMT
+WWW-Authenticate: Negotiate oRwwGqADCgEAoQsGCSqGSIb3EgECAqICBACjAgQA
+Content-Type: text/html
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Set-Cookie: JSESSIONID=161u0siyyp1v0;Path=/spnego
+Location: http://dogfood.zimbra.com/service/preauth/?account=user1@VMWARE.COM&by=krb5Principal&timestamp=1292370787002&expires=0&preauth=dfda4c47f94757678292f10bae98a8e0f52eaaa5
+Content-Length: 0
+
+------------
+7. Request: follow the redirect to do Zimbra preauth
+------------
+GET /service/preauth/?account=user1@VMWARE.COM&by=krb5Principal&timestamp=1292370787002&expires=0&preauth=dfda4c47f94757678292f10bae98a8e0f52eaaa5 HTTP/1.1
+Host: dogfood.zimbra.com
+Accept-Encoding: gzip, deflate
+Accept-Language: en-us
+User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_8; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8
+Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Connection: keep-alive
+
+------------
+8. Response: Zimbra preauth succeeded, return the Zimbra auth token in cookie, and redirect the request to the inbox
+------------
+HTTP/1.1 302 Found
+Date: Tue, 14 Dec 2010 23:53:07 GMT
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Set-Cookie: ZM_AUTH_TOKEN=0_902d89a99ac5179bb952d6788d5705daa235ddce_69643d33363a64316539393733612d333264332d343761352d616334652d3738663965323839636162663b6578703d31333a313239323534333538373031313b747970653d363a7a696d6272613b;Path=/
+Location: http://dogfood.zimbra.com/zimbra/mail
+Content-Length: 0
+
+------------
+9. Request: follows the redirect with the Zimbra auth token cookie
+------------
+GET /zimbra/mail HTTP/1.1
+Host: dogfood.zimbra.com
+Accept-Encoding: gzip, deflate
+Accept-Language: en-us
+User-Agent: Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_5_8; en-us) AppleWebKit/533.17.8 (KHTML, like Gecko) Version/5.0.1 Safari/533.17.8
+Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
+Cookie: ZM_AUTH_TOKEN=0_902d89a99ac5179bb952d6788d5705daa235ddce_69643d33363a64316539393733612d333264332d343761352d616334652d3738663965323839636162663b6578703d31333a313239323534333538373031313b747970653d363a7a696d6272613b
+Connection: keep-alive
+
+-------------
+10. Response: finally, returning the inbox page
+-------------
+HTTP/1.1 200 OK
+Date: Tue, 14 Dec 2010 23:53:07 GMT
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Set-Cookie: JSESSIONID=1dvyb51fjsd40;Path=/
+Cache-Control: no-store, no-cache, must-revalidate, max-age=0
+Pragma: no-cache
+Content-Type: text/html; charset=utf-8
+Content-Language: en-US
+Content-Encoding: gzip
+Content-Length: 17810
+
+
+====================================================================================
+Appendix B: Scripts to setup SPNEGO SSO on dogfood.zimbra.com and catfood.zimbra.com
+====================================================================================
+- Obtaining the keytab files
+  https://helpzilla.eng.vmware.com/show_bug.cgi?id=652768
+
+  then place the corresponding keytab file under /opt/zimbra/jetty/etc on dogfood/catfood.
+  
+
+- Configuring Zimbra
+zmprov mcf zimbraSpnegoAuthEnabled TRUE
+zmprov mcf zimbraSpnegoAuthErrorURL '/zimbra/?ignoreLoginURL=1' 
+zmprov mcf zimbraSpnegoAuthRealm VMWARE.COM
+
+zmprov ms dogfood.zimbra.com zimbraSpnegoAuthTargetName HTTP/dogfood.zimbra.com
+zmprov ms catfood.zimbra.com zimbraSpnegoAuthTargetName HTTP/catfood.zimbra.com
+zmprov ms dogfood.zimbra.com zimbraSpnegoAuthPrincipal HTTP/dogfood.zimbra.com@VMWARE.COM
+zmprov ms catfood.zimbra.com zimbraSpnegoAuthPrincipal HTTP/catfood.zimbra.com@VMWARE.COM
+
+Do III 2.3 (A) to setup preauth key on the domain
+zmprov md zimbra.com zimbraPreAuthKey {preauth-key}
+
+zmprov md zimbra.com zimbraAuthKerberos5Realm VMWARE.COM
+zmprov md zimbra.com +zimbraVirtualHostname dogfood.zimbra.com +zimbraVirtualHostname catfood.zimbra.com
+zmprov md zimbra.com zimbraWebClientLoginURL '../../spnego/spnego_preauth.jsp'
+zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*Windows.*Firefox/3.*'
+zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*MSIE.*Windows.*'
+zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*Windows.*Chrome.*'
+zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*Windows.*Safari.*'
+zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*Macintosh.*Safari.*'
+zmprov md zimbra.com zimbraWebClientLogoutURL '../?sso=1'
+zmprov md zimbra.com +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Firefox/3.*'
+zmprov md zimbra.com +zimbraWebClientLogoutURLAllowedUA '.*MSIE.*Windows.*'
+zmprov md zimbra.com +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Chrome.*'
+zmprov md zimbra.com +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Safari.*'
+zmprov md zimbra.com +zimbraWebClientLogoutURLAllowedUA '.*Macintosh.*Safari.*'
+      
+      

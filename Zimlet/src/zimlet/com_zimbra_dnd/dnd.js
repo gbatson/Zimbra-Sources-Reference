@@ -145,7 +145,7 @@ function(viewId, isNewView) {
             
             this._addHandlers(el);
             var dndTooltip = this.dndTooltipEl = document.getElementById(el.id + '_zdnd_tooltip');
-            dndTooltip.style.display = "block";
+            if(dndTooltip && dndTooltip.style) dndTooltip.style.display = "block";
         }
     } else if ("createEvent" in document && document.getElementById("zdnd_files") && !AjxEnv.isIE && !isWindowsSafari) {
         if (viewId == ZmId.VIEW_COMPOSE ||
@@ -218,13 +218,32 @@ Com_Zimbra_DnD.prototype._onDrop = function(ev) {
 
     var dt = ev.dataTransfer;
     var files = dt.files;
-
+    
     if(files) {
         Com_Zimbra_DnD.attachment_ids = [];
         Com_Zimbra_DnD.flength = files.length;
+
+        for (var j = 0; j < files.length; j++) {
+            var file = files[j];
+            var size = file.size || file.fileSize; /*Safari*/;
+            if(size > appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT)) {
+                var msgDlg = appCtxt.getMsgDialog();
+                var errorMsg = AjxMessageFormat.format(ZmMsg.attachmentSizeError, AjxUtil.formatSize(appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT)));
+                msgDlg.setMessage(errorMsg, DwtMessageDialog.WARNING_STYLE);
+                msgDlg.popup();
+                return false;
+            }
+        }
+
+        var controller = appCtxt.getApp(ZmApp.MAIL).getComposeController(appCtxt.getApp(ZmApp.MAIL).getCurrentSessionId(ZmId.VIEW_COMPOSE));
+
         for (var i = 0; i < files.length; i++) {
             var file = files[i];
-            this._uploadFiles(file);
+            var size = file.size || file.fileSize /*Safari*/;
+            if(size > appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT)) {
+                continue;
+            }
+            this._uploadFiles(file, controller);
             this.dndTooltipEl.innerHTML = "<img src='/img/animated/ImgSpinner.gif' width='16' height='16' border='0' style='float:left;'/>&nbsp;<div style='display:inline;'>" + ZmMsg.attachingFiles + "</div>";
         }
     }
@@ -248,28 +267,28 @@ Com_Zimbra_DnD.prototype.convertToEntities = function (astr){
 	return bstr;
 };
 
-
-Com_Zimbra_DnD.prototype._uploadFiles = function(file) {
+Com_Zimbra_DnD.prototype._uploadFiles = function(file, controller) {
 
     try {
 
         var req = new XMLHttpRequest();
-        var fileName = file.name || file.fileName;
+        var fileName = null;
 
         req.open("POST", appCtxt.get(ZmSetting.CSFE_UPLOAD_URI)+"&fmt=extended,raw", true);
         req.setRequestHeader("Cache-Control", "no-cache");
         req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
         req.setRequestHeader("Content-Type",  (file.type || "application/octet-stream") + ";");
-        req.setRequestHeader("Content-Disposition", 'attachment; filename="'+ this.convertToEntities(fileName) + '"');
+        req.setRequestHeader("Content-Disposition", 'attachment; filename="'+ this.convertToEntities(file.fileName) + '"');
 
         var tempThis = req;
-        req.onreadystatechange = AjxCallback.simpleClosure(this._handleResponse, this, tempThis);
+        req.onreadystatechange = AjxCallback.simpleClosure(this._handleResponse, this, tempThis, controller);
 
         req.send(file);
         delete req;
     } catch(exp) {
         var msgDlg = appCtxt.getMsgDialog();
         msgDlg.setMessage(ZmMsg.importErrorUpload, DwtMessageDialog.CRITICAL_STYLE);
+        this.dndTooltipEl.innerHTML = ZmMsg.dndTooltip;
         msgDlg.popup();
         return false;
     }
@@ -292,7 +311,7 @@ Com_Zimbra_DnD.prototype._handleErrorResponse = function(respCode) {
     warngDlg.popup();
 };
 
-Com_Zimbra_DnD.prototype._handleResponse = function(req) {
+Com_Zimbra_DnD.prototype._handleResponse = function(req, controller) {
     if(req) {
         if(req.readyState == 4 && req.status == 200) {
             var resp = eval("["+req.responseText+"]");
@@ -309,12 +328,10 @@ Com_Zimbra_DnD.prototype._handleResponse = function(req) {
 
                 if(Com_Zimbra_DnD.attachment_ids.length > 0 && Com_Zimbra_DnD.attachment_ids.length == Com_Zimbra_DnD.flength) {
 
-                    // locate the compose controller and set up the callback handler
-                    var cc = appCtxt.getApp(ZmApp.MAIL).getComposeController(appCtxt.getApp(ZmApp.MAIL).getCurrentSessionId(ZmId.VIEW_COMPOSE));
-                    var callback = new AjxCallback (cc,cc._handleResponseSaveDraftListener);
+                    var callback = new AjxCallback (controller,controller._handleResponseSaveDraftListener);
 
                     attachment_list = Com_Zimbra_DnD.attachment_ids.join(",");
-                    cc.sendMsg(attachment_list,ZmComposeController.DRAFT_TYPE_MANUAL,callback);
+                    controller.sendMsg(attachment_list,ZmComposeController.DRAFT_TYPE_MANUAL,callback);
                     this.dndTooltipEl.innerHTML = ZmMsg.dndTooltip;
                 }
             }
@@ -322,3 +339,19 @@ Com_Zimbra_DnD.prototype._handleResponse = function(req) {
     }
     
 };
+
+function convertToEntities(astr){
+	var bstr = '', cstr, i = 0;
+	for(i; i < astr.length; ++i){
+		if(astr.charCodeAt(i) > 127){
+			cstr = astr.charCodeAt(i).toString(10);
+			while(cstr.length < 4){
+				cstr = '0' + cstr;
+			}
+			bstr += '&#' + cstr + ';';
+		} else {
+			bstr += astr.charAt(i);
+		}
+	}
+	return bstr;
+}

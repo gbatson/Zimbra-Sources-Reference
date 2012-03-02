@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,35 +29,49 @@ import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.service.mail.ImportContacts;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.HttpUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.mime.MimeConstants;
 
 public class CsvFormatter extends Formatter {
 
-    public String getType() {
-        return "csv";
+    @Override
+    public FormatType getType() {
+        return FormatType.CSV;
     }
 
+    @Override
     public String[] getDefaultMimeTypes() {
         return new String[] { "text/csv", "text/comma-separated-values", MimeConstants.CT_TEXT_PLAIN };
     }
 
+    @Override
     public String getDefaultSearchTypes() {
         return MailboxIndex.SEARCH_FOR_CONTACTS;
     }
 
-    public void formatCallback(Context context) throws IOException, ServiceException {
+    @Override
+    public void formatCallback(UserServletContext context) throws IOException, ServiceException {
         Iterator<? extends MailItem> iterator = null;
         StringBuffer sb = new StringBuffer();
         try {
             iterator = getMailItems(context, -1, -1, Integer.MAX_VALUE);
             String format = context.req.getParameter(UserServlet.QP_CSVFORMAT);
-            ContactCSV.toCSV(format, iterator, sb);
+            String locale = context.req.getParameter(UserServlet.QP_CSVLOCALE);
+            String separator = context.req.getParameter(UserServlet.QP_CSVSEPARATOR);
+            Character sepChar = null;
+            if ((separator != null) && (separator.length() > 0))
+                    sepChar = separator.charAt(0);
+            if (locale == null)
+                locale = context.locale.toString();
+            ContactCSV contactCSV = new ContactCSV();
+            contactCSV.toCSV(format, locale, sepChar, iterator, sb);
         } catch (ContactCSV.ParseException e) {
             throw MailServiceException.UNABLE_TO_IMPORT_CONTACTS("could not generate CSV", e);
         } finally {
@@ -71,34 +85,39 @@ public class CsvFormatter extends Formatter {
             filename = "contacts";
         String cd = Part.ATTACHMENT + "; filename=" + HttpUtil.encodeFilename(context.req, filename + ".csv");
         context.resp.addHeader("Content-Disposition", cd);
-        context.resp.setCharacterEncoding(MimeConstants.P_CHARSET_UTF8);
+        context.resp.setCharacterEncoding(context.getCharset().name());
         context.resp.setContentType("text/csv");
         context.resp.getWriter().print(sb.toString());
     }
 
-    public boolean canBeBlocked() {
-        return false;
-    }
-
+    @Override
     public boolean supportsSave() {
         return true;
     }
 
-    public void saveCallback(Context context, String contentType, Folder folder, String filename)
+    @Override
+    public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename)
     throws UserServletException, ServiceException, IOException {
-        InputStreamReader isr = new InputStreamReader(context.getRequestInputStream(), MimeConstants.P_CHARSET_UTF8);
+        InputStreamReader isr = new InputStreamReader(
+                context.getRequestInputStream(), context.getCharset());
         BufferedReader reader = new BufferedReader(isr);
-        
+
         try {
             String format = context.params.get(UserServlet.QP_CSVFORMAT);
-            List<Map<String, String>> contacts = ContactCSV.getContacts(reader, format);
+            String locale = context.req.getParameter(UserServlet.QP_CSVLOCALE);
+            if (locale == null)
+                locale = context.locale.toString();
+            List<Map<String, String>> contacts = ContactCSV.getContacts(reader, format, locale);
             ItemId iidFolder = new ItemId(folder);
-            
+
             ImportContacts.ImportCsvContacts(context.opContext, context.targetMailbox, iidFolder, contacts);
         } catch (ContactCSV.ParseException e) {
-            throw new UserServletException(HttpServletResponse.SC_BAD_REQUEST, "could not parse csv file");
+            ZimbraLog.misc.debug("ContactCSV - ParseException thrown", e);
+            throw new UserServletException(HttpServletResponse.SC_BAD_REQUEST,
+                    "Could not parse csv file - Reason : " + e.getMessage());
         } finally {
             reader.close();
         }
     }
+
 }

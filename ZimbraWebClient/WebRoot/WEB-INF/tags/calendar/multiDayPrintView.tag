@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -83,13 +83,19 @@
     </tr>
 </table>
 <br>
-<table width="98%" align="center" cellpadding="0" cellspacing="0" border="0">
+<table width="98%" align="center" cellpadding="0" cellspacing="0" border="0" class="zPrintMsgs" >
     <tr>
         <td colspan="4" class='ZhAppContent'>
             ${multiDay}
         </td>
     </tr>
 </table>
+
+<style type="text/css">
+    .zPrintMsgs *{
+        font-size:${mailbox.prefs.defaultPrintFontSize} !important;
+    }
+</style>
 <SCRIPT TYPE="text/javascript">
 <!--
 function zSelectRow(ev,id) {var t = ev.target || ev.srcElement;if (t&&t.nodeName != 'INPUT'){var a = document.getElementById(id); if (a) window.location = a.href;} }

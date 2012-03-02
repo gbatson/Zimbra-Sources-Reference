@@ -12,10 +12,6 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on May 26, 2004
- */
 package com.zimbra.cs.service.admin;
 
 import java.util.List;
@@ -24,76 +20,105 @@ import java.util.Map;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
-import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.cs.account.Provisioning.GalSearchType;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.gal.GalSearchControl;
 import com.zimbra.cs.gal.GalSearchParams;
+import com.zimbra.cs.gal.GalSearchResultCallback;
 import com.zimbra.common.soap.Element;
 import com.zimbra.soap.ZimbraSoapContext;
 
 /**
+ * @since May 26, 2004
  * @author schemers
  */
 public class SearchGal extends AdminDocumentHandler {
 
+    private static final String[] TARGET_ACCOUNT_PATH = new String[] { AccountConstants.A_GAL_ACCOUNT_ID };
+    
+    protected String[] getProxiedAccountPath() { 
+        return TARGET_ACCOUNT_PATH;
+    }
+    
     /**
      * must be careful and only return accounts a domain admin can see
      */
-    public boolean domainAuthSufficient(Map context) {
+    @Override
+    public boolean domainAuthSufficient(Map<String, Object> context) {
         return true;
     }
 
+    @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
-        String n = request.getAttribute(AdminConstants.E_NAME);
-
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
-        Account acct = getRequestedAccount(getZimbraSoapContext(context));
-        
-        while (n.endsWith("*"))
-            n = n.substring(0, n.length() - 1);
 
-        String domain = request.getAttribute(AdminConstants.A_DOMAIN);
-        String typeStr = request.getAttribute(AdminConstants.A_TYPE, "account");
-        String token = request.getAttribute(AdminConstants.A_TOKEN, null);
-        String galAcctId = request.getAttribute(AccountConstants.A_ID, null);
-
-        Provisioning.GAL_SEARCH_TYPE type;
-        if (typeStr.equals("all"))
-            type = Provisioning.GAL_SEARCH_TYPE.ALL;
-        else if (typeStr.equals("account"))
-            type = Provisioning.GAL_SEARCH_TYPE.USER_ACCOUNT;
-        else if (typeStr.equals("resource"))
-            type = Provisioning.GAL_SEARCH_TYPE.CALENDAR_RESOURCE;
-        else
-            throw ServiceException.INVALID_REQUEST("Invalid search type: " + typeStr, null);
-
+        String domainName = request.getAttribute(AdminConstants.A_DOMAIN);
         Provisioning prov = Provisioning.getInstance();
-        Domain d = prov.get(DomainBy.name, domain);
-        if (d == null)
-            throw AccountServiceException.NO_SUCH_DOMAIN(domain);
-        
-        checkDomainRight(zsc, d, Admin.R_accessGAL); 
+        Domain domain = prov.get(DomainBy.name, domainName);
+        if (domain == null)
+            throw AccountServiceException.NO_SUCH_DOMAIN(domainName);
 
-        GalSearchParams params = new GalSearchParams(d, zsc);
+        checkDomainRight(zsc, domain, Admin.R_accessGAL);
+        
+        String name = request.getAttribute(AdminConstants.E_NAME, "");
+        int limit = (int) request.getAttributeLong(AdminConstants.A_LIMIT, 0);
+        String typeStr = request.getAttribute(AdminConstants.A_TYPE, GalSearchType.account.name());
+        Provisioning.GalSearchType type = Provisioning.GalSearchType.fromString(typeStr);
+        
+        String galAcctId = request.getAttribute(AccountConstants.A_GAL_ACCOUNT_ID, null);
+        
+        String token = request.getAttribute(AdminConstants.A_TOKEN, null);
+
+        GalSearchParams params = new GalSearchParams(domain, zsc);
         if (token != null)
             params.setToken(token);
         params.setType(type);
         params.setRequest(request);
-        params.setQuery(n);
+        params.setQuery(name);
+        params.setLimit(limit);
         params.setResponseName(AdminConstants.SEARCH_GAL_RESPONSE);
         if (galAcctId != null)
-        	params.setGalSyncAccount(Provisioning.getInstance().getAccountById(galAcctId));
+            params.setGalSyncAccount(Provisioning.getInstance().getAccountById(galAcctId));
+        
+        params.setResultCallback(new SearchGal.AdminGalCallback(params));
         GalSearchControl gal = new GalSearchControl(params);
         if (token != null)
-        	gal.sync();
+            gal.sync();
         else
-        	gal.search();
+            gal.search();
         return params.getResultCallback().getResponse();
+    }
+
+    static class AdminGalCallback extends GalSearchResultCallback {
+        private Element proxiedResponse;
+        
+        AdminGalCallback(GalSearchParams params) {
+            super(params);
+        }
+        
+        @Override
+        public boolean passThruProxiedGalAcctResponse() {
+            return true;
+        }
+        
+        @Override
+        public void handleProxiedResponse(Element resp) {
+            proxiedResponse = resp;
+            proxiedResponse.detach();
+        }
+        
+        @Override
+        public Element getResponse() {
+            if (proxiedResponse != null)
+                return proxiedResponse;
+            else
+                return super.getResponse();
+        }
     }
     
     @Override

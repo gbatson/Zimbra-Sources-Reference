@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,8 @@
 package com.zimbra.cs.mailbox;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.TreeMap;
@@ -79,6 +81,13 @@ public class ContactRankings {
 		
 		rankings.writeToDatabase();
 	}
+	
+	public static void increment(String accountId, Address[] addrs) throws ServiceException {
+	    HashSet<Address> addrSet = new HashSet<Address>();
+	    Collections.addAll(addrSet, addrs);
+	    increment(accountId, addrSet);
+	}
+	
 	public synchronized void increment(String email, String displayName) {
 		long now = System.currentTimeMillis();
 		email = email.toLowerCase();
@@ -202,7 +211,7 @@ public class ContactRankings {
     }
 	private void dump(String action) {
 		if (ZimbraLog.gal.isDebugEnabled()) {
-			StringBuilder buf = new StringBuilder(action);
+			StringBuilder buf = new StringBuilder(action + " contact rankings");
 			buf.append("\n");
 			for (ContactEntry entry : getSortedSet()) {
 				entry.toString(buf);

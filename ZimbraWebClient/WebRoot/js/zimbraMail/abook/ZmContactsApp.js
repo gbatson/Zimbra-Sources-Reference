@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -43,6 +43,9 @@ ZmContactsApp = function(container, parentController) {
 	this._byEmail	= {};
 	this._byIM		= {};
 	this._byPhone	= {};
+
+	// cache fetched distribution lists
+	this._dlCache	= {};
 };
 
 // Organizer and item-related constants
@@ -70,6 +73,8 @@ ZmApp.QS_ARG[ZmApp.CONTACTS]			= "contacts";
 ZmContactsApp.SEARCHFOR_CONTACTS 	= 1;
 ZmContactsApp.SEARCHFOR_GAL 		= 2;
 ZmContactsApp.SEARCHFOR_PAS			= 3; // PAS = personal and shared
+ZmContactsApp.SEARCHFOR_FOLDERS		= 4;
+
 ZmContactsApp.SEARCHFOR_MAX 		= 50;
 
 ZmContactsApp.prototype = new ZmApp;
@@ -211,7 +216,7 @@ ZmContactsApp.prototype._registerOperations =
 function() {
 	ZmOperation.registerOp(ZmId.OP_CONTACT);	// placeholder
 	ZmOperation.registerOp(ZmId.OP_EDIT_CONTACT, {textKey:"AB_EDIT_CONTACT", image:"Edit", shortcut:ZmKeyMap.EDIT});
-	ZmOperation.registerOp(ZmId.OP_MOUNT_ADDRBOOK, {textKey:"mountAddrBook", image:"ContactsFolder"});
+//	ZmOperation.registerOp(ZmId.OP_MOUNT_ADDRBOOK, {textKey:"mountAddrBook", image:"ContactsFolder"});
 	ZmOperation.registerOp(ZmId.OP_NEW_ADDRBOOK, {textKey:"newAddrBook", tooltipKey:"newAddrBookTooltip", image:"NewContactsFolder"}, ZmSetting.NEW_ADDR_BOOK_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_NEW_CONTACT, {textKey:"newContact", tooltipKey:"newContactTooltip", image:"NewContact", shortcut:ZmKeyMap.NEW_CONTACT}, ZmSetting.CONTACTS_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_NEW_GROUP, {textKey:"newGroup", tooltipKey:"newGroupTooltip", image:"NewGroup"}, ZmSetting.CONTACTS_ENABLED);
@@ -295,7 +300,7 @@ function() {
 	ZmSearchToolBar.addMenuItem(ZmItem.CONTACT,
 								{msgKey:		"searchContacts",
 								 tooltipKey:	"searchPersonalContacts",
-								 icon:			"ContactsFolder",
+								 icon:			"Contact",
 								 shareIcon:		"SharedContactsFolder",
 								 id:			ZmId.getMenuItemId(ZmId.SEARCH, ZmId.ITEM_CONTACT)
 								});
@@ -1057,4 +1062,14 @@ function(parent, name, color) {
 
 	var oc = appCtxt.getOverviewController();
 	oc.getTreeController(ZmOrganizer.ADDRBOOK)._doCreate(parent, name, color);
+};
+
+ZmContactsApp.prototype.getDL =
+function(addr) {
+	return this._dlCache[addr];
+};
+
+ZmContactsApp.prototype.cacheDL =
+function(addr, dl) {
+	this._dlCache[addr] = dl;
 };

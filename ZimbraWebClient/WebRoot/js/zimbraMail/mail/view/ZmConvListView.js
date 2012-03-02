@@ -300,7 +300,11 @@ function(htmlArr, idx, item, field, colIdx, params) {
 		idx = ZmMailMsgListView.prototype._getCellContents.apply(this, arguments);
 	} else {
 		if (field == ZmItem.F_STATUS) {
-			htmlArr[idx++] = "&nbsp;";
+			if (item.type == ZmItem.CONV && item.numMsgs == 1 && item.isScheduled) {
+				idx = this._getImageHtml(htmlArr, idx, "SendLater", this._getFieldId(item, field));
+			} else {
+				htmlArr[idx++] = "&nbsp;";
+			}
 		} else if (field == ZmItem.F_FROM) {
 			htmlArr[idx++] = this._getParticipantHtml(item, this._getFieldId(item, ZmItem.F_PARTICIPANT));
 		} else if (field == ZmItem.F_SUBJECT) {
@@ -368,10 +372,10 @@ function(item, colIdx) {
 	}
 	idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_SUBJECT, colIdx);
 	if (item.hasAttach) {
-		idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_ATTACHMENT, colIdx, "16", "valign=top");
+		idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_ATTACHMENT, colIdx, width, "valign=top");
 	}
 	if (appCtxt.get("FLAGGING_ENABLED")) {
-		idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_FLAG, colIdx, "16");
+		idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_FLAG, colIdx, width);
 	}
 	htmlArr[idx++] = "</tr></table>";
 
@@ -400,7 +404,7 @@ function(item, colIdx) {
 	}
 
 	idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_DATE, colIdx, ZmMsg.COLUMN_WIDTH_DATE, "align=right");
-	idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_TAG, colIdx, "16");
+	idx = this._getAbridgedCell(htmlArr, idx, item, ZmItem.F_TAG, colIdx, width);
 	htmlArr[idx++] = "</tr></table>";
 
 	return htmlArr.join("");
@@ -435,25 +439,20 @@ function(conv, fieldId) {
 
 		var headerCol = this._headerHash[ZmItem.F_FROM];
 		var partColWidth = headerCol ? headerCol._width : ZmMsg.COLUMN_WIDTH_FROM_CLV;
-		var part2 = this._fitParticipants(part1, conv.participantsElided, partColWidth);
+		var part2 = this._fitParticipants(part1, conv, partColWidth);
 		for (var j = 0; j < part2.length; j++) {
-			if (j == 1 && (conv.participantsElided || part2.length < origLen)) {
+			if (j == 0 && (conv.participantsElided || part2.length < origLen)) {
 				html[idx++] = AjxStringUtil.ELLIPSIS;
 			} else if (part2.length > 1 && j > 0) {
-				html[idx++] = ", ";
+				html[idx++] = AjxStringUtil.LIST_SEP;
 			}
 			var p2 = (part2 && part2[j] && (part2[j].index != null)) ? part2[j].index : "";
 			var spanId = [fieldId, p2].join(DwtId.SEP);
 			html[idx++] = "<span style='white-space: nowrap' id='";
 			html[idx++] = spanId;
 			html[idx++] = "'>";
-			html[idx++] = (part2 && part2[j]) ? AjxStringUtil.htmlEncode(part2[j].name) : "";
+			html[idx++] = (part2 && part2[j]) ? part2[j].name : "";
 			html[idx++] = "</span>";
-		}
-
-		// bug fix #724
-		if (part2.length == 1 && origLen > 1) {
-			html[idx++] = AjxStringUtil.ELLIPSIS;
 		}
 	} else {
 		// XXX: possible import bug but we must take into account
@@ -569,6 +568,11 @@ function(item) {
 		}
 	}
 
+	if (isConv) {
+		this._expanded[item.id] = false;
+		this._expandedItems[cid] = [];
+	}
+
 	this._resetColWidth();
 };
 
@@ -612,6 +616,12 @@ function(item) {
 	}
 	this._msgRowIdList[item.id] = [];	// start over
 	this._expanded[item.id] = false;
+	if (item.type == ZmItem.CONV) {
+		this._expandedItems[item.id] = [];
+	}
+	else {
+		AjxUtil.arrayRemove(this._expandedItems[item.cid], item);
+	}
 	return false;
 };
 
@@ -659,7 +669,7 @@ function() {
 	// remove change listeners on conv msg lists
 	for (var id in this._expandedItems) {
 		var item = this._expandedItems[id];
-		if (item.type == ZmItem.CONV && item.msgs) {
+		if (item && item.msgs) {
 			item.msgs.removeChangeListener(this._listChangeListener);
 		}
 	}
@@ -696,7 +706,7 @@ function(expand) {
 };
 
 ZmConvListView.prototype._sortColumn =
-function(columnItem, bSortAsc) {
+function(columnItem, bSortAsc, callback) {
 
 	// call base class to save the new sorting pref
 	ZmMailListView.prototype._sortColumn.call(this, columnItem, bSortAsc);
@@ -718,7 +728,8 @@ function(columnItem, bSortAsc) {
 			queryHint: queryHint,
 			types: [ZmItem.CONV],
 			sortBy: this._sortByString,
-			limit:this.getLimit()
+			limit:this.getLimit(),
+			callback: callback
 		};
 		appCtxt.getSearchController().search(params);
 	}
@@ -733,7 +744,12 @@ ZmConvListView.prototype._changeListener =
 function(ev) {
 
 	var item = this._getItemFromEvent(ev);
-	if (!item || ev.handled || !this._handleEventType[item.type]) { return; }
+	if (!item || ev.handled || !this._handleEventType[item.type]) {
+		if (ev && ev.event == ZmEvent.E_CREATE) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmConvListView: initial check failed");
+		}
+		return;
+	}
 
 	var fields = ev.getDetail("fields");
 	var isConv = (item.type == ZmItem.CONV);
@@ -757,7 +773,6 @@ function(ev) {
 					if (this._expanded[conv.id] && rowIds && rowIds.length <= 1) {
 						this._setImage(conv, ZmItem.F_EXPAND, null);
 						this._collapse(conv);
-						this._expanded[conv.id] = false;
 					}
 					this._controller._app._checkReplenishListView = this;
 					this._setNextSelection();
@@ -795,6 +810,7 @@ function(ev) {
 			}
 			this._removeMsgRows(conv.id);	// conv move: remove msg rows
 			this._expanded[conv.id] = false;
+			this._expandedItems[conv.id] = [];
 			delete this._msgRowIdList[conv.id];
 		}
 	}
@@ -802,6 +818,7 @@ function(ev) {
 	// if we get a new msg that's part of an expanded conv, insert it into the
 	// expanded conv, and don't move that conv
 	if (!isConv && (ev.event == ZmEvent.E_CREATE)) {
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmConvListView: handle msg create " + item.id);
 		var rowIds = this._msgRowIdList[item.cid];
 		var conv = appCtxt.getById(item.cid);
 		if (rowIds && rowIds.length && this._rowsArePresent(conv)) {
@@ -812,6 +829,7 @@ function(ev) {
 			var convIndex = this._getRowIndex(conv);
 			var sortIndex = ev.getDetail("sortIndex");
 			var msgIndex = sortIndex || 0;
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmConvListView: add msg row to conv " + item.id + " within " + conv.id);
 			this._addRow(div, convIndex + msgIndex + 1);
 			rowIds.push(div.id);
 		}
@@ -828,6 +846,7 @@ function(ev) {
 			DBG.println(AjxDebug.DBG1, "conv updated from ID " + item._oldId + " to ID " + item.id);
 		}
 		this._expanded[item.id] = this._expanded[item._oldId];
+		this._expandedItems[item.id] = this._expandedItems[item._oldId];
 		this._msgRowIdList[item.id] = this._msgRowIdList[item._oldId] || [];
 	}
 
@@ -839,12 +858,15 @@ function(ev) {
 
 		// INDEX change: a conv has gotten a new msg and may need to be moved within the list of convs
 		// if an expanded conv gets a new msg, don't move it to top
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmConvListView: handle conv create " + item.id);
 		var sortIndex = this._getSortIndex(item, sortBy);
 		var curIndex = this.getItemIndex(item, true);
 		if ((sortIndex != null) && (curIndex != null) && (sortIndex != curIndex) &&	!this._expanded[item.id]) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmConvListView: change position of conv " + item.id + " to " + sortIndex);
 			this._removeMsgRows(item.id);
 			this.removeItem(item);
 			this.addItem(item, sortIndex);
+			// TODO: mark create notif handled?
 		}
 	}
 
@@ -998,7 +1020,7 @@ function(force) {
 ZmConvListView.prototype._saveState =
 function(params) {
 	ZmMailListView.prototype._saveState.apply(this, arguments);
-	this._state.expanded = params && params.expansion && this._expandedItems;
+	this._state.expanded = params && params.expansion && this._expanded;
 };
 
 ZmConvListView.prototype._restoreState =
@@ -1008,9 +1030,7 @@ function() {
 	if (s.expanded) {
 		for (var id in s.expanded) {
 			if (s.expanded[id]) {
-				for (var i = 0; i < s.expanded[id].length; i++) {
-					this._expandItem(s.expanded[id][i]);
-				}
+				this._expandItem(s.expanded[id]);
 			}
 		}
 	}

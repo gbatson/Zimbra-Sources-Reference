@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -79,9 +79,10 @@ ZmController.prototype.getApp = function() {
  * @param	{ZmCsfeException}	ex		the exception
  * @param	{Boolean}	noExecReset		(not used)
  * @param	{Boolean}	hideReportButton		if <code>true</code>, hide the "Send error report" button
+ * @param	{Boolean}	expanded		if <code>true</code>, contents are expanded by default
  */
 ZmController.prototype.popupErrorDialog = 
-function(msg, ex, noExecReset, hideReportButton) {
+function(msg, ex, noExecReset, hideReportButton, expanded) {
 	// popup alert
 	var errorDialog = appCtxt.getErrorDialog();
 	var detailStr = "";
@@ -96,7 +97,7 @@ function(msg, ex, noExecReset, hideReportButton) {
 		html[i++] = "<table>";
 		for (var j = 0; j < fields.length; j++) {
 			var fld = fields[j];
-			var value = AjxStringUtil.htmlEncode(ex[fld]);
+			var value = ex[fld];
 			if (value) {
 				if (fld == "request") {
 					value = ["<pre>", value, "</pre>"].join("");
@@ -112,15 +113,17 @@ function(msg, ex, noExecReset, hideReportButton) {
 		detailStr = html.join("");
 	}
 	errorDialog.registerCallback(DwtDialog.OK_BUTTON, this._errorDialogCallback, this);
-	errorDialog.setMessage(AjxStringUtil.htmlEncode(msg), detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
+	errorDialog.setMessage(msg, detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
 	errorDialog.popup(null, hideReportButton);
+	if (expanded)
+		errorDialog.showDetail();
 };
 
 ZmController.handleScriptError =
 function(ex) {
 
 	var text = [];
-	var eol = "\n";
+	var eol = "<br/>";
 	if (ex) {
 		var msg = ZmMsg.scriptError + ": " + ex.message;
 		var m = ex.fileName && ex.fileName.match(/(\w+\.js)/);
@@ -132,7 +135,7 @@ function(ex) {
 		if (ex.name)		{ text.push("Error: " + ex.name); }
 		if (ex.stack)		{ text.push("Stack: " + ex.stack.replace("\n", eol, "g")); }
 	}
-	appCtxt.getAppController().popupErrorDialog(msg, text.join(eol));
+	appCtxt.getAppController().popupErrorDialog(msg, text.join(eol), null, false, true);
 };
 
 /**
@@ -494,7 +497,6 @@ function(ex, continuation) {
 			return;
 		} else {
 			// NO_AUTH_TOKEN
-			reloginMode = true;
 			loginDialog.setError(null);
 		}
 		loginDialog.setReloginMode(reloginMode);
@@ -622,14 +624,9 @@ function(continuation, username, password, rememberMe) {
 ZmController.prototype._handleResponseDoAuth =
 function(continuation, rememberMe, result) {
 	try {
-		var result = result.getResponse();
+		result.getResponse();
 		this._authenticating = false;
 		appCtxt.rememberMe = rememberMe;
-		//set up auth token expires time
-		if (result && result.Body && result.Body.AuthResponse) {
-			appCtxt.set(ZmSetting.TOKEN_LIFETIME, result.Body.AuthResponse.lifetime)
-		}
-		ZmZimbraMail.setAuthTokenEndTime();
 		if (continuation) {
 			if (continuation.continueCallback) {
 				// sync request
@@ -696,8 +693,8 @@ function(result) {
 		}
 	} else if (obj.name != appCtxt.getUsername()) {
 		DBG.println(AjxDebug.DBG1, "AUTH TOKEN CHANGED, NEW USER: " + obj.name + " (old user: " + appCtxt.getUsername() + ")");
+		ZmCsfeCommand.clearAuthToken();
 		var loginDialog = appCtxt.getLoginDialog();
-		loginDialog.registerCallback(this._loginCallback, this);
 		loginDialog.setError(ZmMsg.authChanged);
 		var reloginMode = false;
 		loginDialog.setReloginMode(reloginMode);
@@ -769,7 +766,7 @@ function(dialog) {
 ZmController.prototype._menuPopdownActionListener = function() {};
 
 /**
- * Sets the session id and view id (using the type and session id).
+ * Sets the session id, view id, and tab id (using the type and session id).
  * Controller for a view that shows up in a tab within the app chooser bar.
  * Currently only mail views exist: compose, send confirmation, and msg view.
  *
@@ -780,6 +777,7 @@ ZmController.prototype.setSessionId =
 function(type, sessionId) {
 	this.sessionId = sessionId;
 	this.viewId = [type, this.sessionId].join("");
+	this.tabId = ["tab", this.viewId].join("_");
 };
 
 /**
@@ -793,3 +791,26 @@ ZmController.prototype.isTransient =
 function(oldView, newView) {
 	return false;
 };
+
+/**
+ * If the skin asks (via hint) to not display the search toolbar in compose view (also compose appt view), we hide or display it based on the visible param.
+ *
+ * @param	{Boolean}	visible		should it be visible now?
+ */
+ZmController.prototype._setSearchToolbarVisibilityPerSkin =
+function(visible) {
+
+	if (!appCtxt.getSkinHint("hideSearchInCompose")) {
+		return;
+	}
+
+	var tb = document.getElementById(ZmId.SEARCH_TOOLBAR);
+
+	if (!tb) {
+		return;
+	}
+
+	tb.style.display = visible ? "block" : "none";
+
+};
+

@@ -33,14 +33,14 @@ import com.zimbra.cs.mailclient.imap.IDInfo;
 import com.zimbra.cs.mailclient.imap.MailboxInfo;
 import com.zimbra.cs.mailclient.imap.MessageData;
 import com.zimbra.cs.mailclient.imap.Body;
-import com.zimbra.cs.mailclient.imap.BodyStructure;
 import com.zimbra.cs.util.ZimbraApplication;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.mime.shim.JavaMailMimeMessage;
 import com.zimbra.common.util.Log;
 
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimePart;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeUtility;
@@ -49,7 +49,6 @@ import javax.mail.Address;
 import javax.mail.Message;
 import javax.mail.Multipart;
 import javax.mail.MessagingException;
-import javax.security.auth.login.LoginException;
 import java.io.File;
 import java.io.InputStream;
 import java.io.FileInputStream;
@@ -93,7 +92,6 @@ public class TestYMailClient {
 
     private static final File MSG_MULTIPART = new File("/Users/dac/mail.txt");
     // new File(DATA_DIR, "15");
-    private static final File MSG_SIMPLE = new File(DATA_DIR, "11");
     private static final File MSG_FORWARDED = new File(DATA_DIR, "spam.txt");
 
     @BeforeClass
@@ -116,14 +114,12 @@ public class TestYMailClient {
     public static void tearDownOnce() throws Exception {
         imc.logout();
     }
-    
-    private static ImapConnection connect(Auth auth)
-        throws LoginException, IOException {
+
+    private static ImapConnection connect(Auth auth) throws IOException {
         ImapConfig config = new ImapConfig();
         config.setHost(HOST);
         config.setMaxLiteralMemSize(200);
-        config.setDebug(true);
-        config.setTrace(true);
+        config.getLogger().setLevel(Log.Level.trace);
         config.setReadTimeout(600);
         config.setConnectTimeout(600);
         config.setAuthenticationId(USER);
@@ -204,7 +200,7 @@ public class TestYMailClient {
     private void dump(MimeMessage mp) throws Exception {
         dump(mp, 0, 0);
     }
-    
+
     private void dump(MimePart mp, int depth, int count) throws Exception {
         ContentType ct = new ContentType(mp.getContentType());
         if ("multipart".equals(ct.getPrimaryType())) {
@@ -237,33 +233,22 @@ public class TestYMailClient {
             os.write(buf, 0, len);
         }
     }
-    
+
     private String getEncoding(MimePart mp) throws MessagingException {
         String encoding = mp.getEncoding();
         return encoding != null ? encoding : "7bit";
     }
 
-    private String getDisposition(MimePart mp) throws MessagingException {
-        String disposition = mp.getDisposition();
-        return disposition != null ? disposition : "inline";
-    }
-    
-    private int getSize(InputStream is) throws IOException {
-        int count = 0;
-        while (is.read() != -1) count++;
-        return count;
-    }
-    
     private void pf(int depth, String fmt, Object... args) {
         System.out.printf("%s%s\n", spaces(depth), String.format(fmt, args));
     }
-    
+
     private String spaces(int depth) {
         char[] spaces = new char[depth * 4];
         Arrays.fill(spaces, ' ');
         return new String(spaces);
     }
-    
+
     private void compare(MimePart mp1, MimePart mp2) throws Exception {
         ContentType ct1 = new ContentType(mp1.getContentType());
         ContentType ct2 = new ContentType(mp2.getContentType());
@@ -307,13 +292,9 @@ public class TestYMailClient {
 
     private MimeMessage getMessage(long uid) throws IOException, MessagingException {
         Body body = getMessageData(uid, "BODY.PEEK[]").getBodySections()[0];
-        return new MimeMessage(null, body.getImapData().getInputStream());
+        return new JavaMailMimeMessage(null, body.getImapData().getInputStream());
     }
 
-    private BodyStructure getBodyStructure(long uid) throws IOException {
-        return getMessageData(uid, "BODYSTRUCTURE").getBodyStructure();
-    }
-    
     private MessageData getMessageData(long uid, String param)
         throws IOException {
         Map<Long, MessageData> mds = imc.uidFetch(Long.toString(uid), param);
@@ -338,14 +319,14 @@ public class TestYMailClient {
 
     private static final String HEADER =
         "Content-Type: text/plain\r\nX-YMail-UMID: 1234\r\nFoo: bar\r\n";
-    
+
     @Test
     public void testMatcher() {
         Matcher matcher = UMID.matcher(HEADER);
         assertTrue(matcher.find());
         assertEquals("1234", matcher.group(1));
     }
-    
+
     @Test
     public void testForwarded() throws Exception {
         debug("Testing send of forwarded message as attachment %s", MSG_FORWARDED);
@@ -355,20 +336,20 @@ public class TestYMailClient {
 
     private static MimeMessage simpleMessage(String text) throws Exception {
         Session session = Session.getInstance(new Properties());
-        MimeMessage mm = new MimeMessage(session);
-        mm.setFrom(new InternetAddress(FROM));
-        mm.setRecipient(Message.RecipientType.TO, new InternetAddress(TO));
+        MimeMessage mm = new JavaMailMimeMessage(session);
+        mm.setFrom(new JavaMailInternetAddress(FROM));
+        mm.setRecipient(Message.RecipientType.TO, new JavaMailInternetAddress(TO));
         mm.setContent(text, "plain/text");
         return mm;
     }
-    
+
     private static MimeMessage readMessage(File file) throws Exception {
         Session session = Session.getInstance(new Properties());
         InputStream is = new FileInputStream(file);
         try {
-            MimeMessage mm = new MimeMessage(session, is);
-            mm.setFrom(new InternetAddress(FROM));
-            mm.setRecipient(Message.RecipientType.TO, new InternetAddress(TO));
+            MimeMessage mm = new JavaMailMimeMessage(session, is);
+            mm.setFrom(new JavaMailInternetAddress(FROM));
+            mm.setRecipient(Message.RecipientType.TO, new JavaMailInternetAddress(TO));
             mm.setRecipients(Message.RecipientType.CC, (Address[]) null);
             mm.setRecipients(Message.RecipientType.BCC, (Address[]) null);
             return mm;

@@ -40,7 +40,7 @@ public class ZAttrDomain extends NamedEntry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 pshao 20110502-1459 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110117-1427 */
 
     /**
      * RFC2256: descriptive information
@@ -1702,6 +1702,78 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * Realm for the basic auth challenge (WWW-Authenticate) header
+     *
+     * @return zimbraBasicAuthRealm, or "Zimbra" if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1098)
+    public String getBasicAuthRealm() {
+        return getAttr(Provisioning.A_zimbraBasicAuthRealm, "Zimbra");
+    }
+
+    /**
+     * Realm for the basic auth challenge (WWW-Authenticate) header
+     *
+     * @param zimbraBasicAuthRealm new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1098)
+    public void setBasicAuthRealm(String zimbraBasicAuthRealm) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraBasicAuthRealm, zimbraBasicAuthRealm);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Realm for the basic auth challenge (WWW-Authenticate) header
+     *
+     * @param zimbraBasicAuthRealm new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1098)
+    public Map<String,Object> setBasicAuthRealm(String zimbraBasicAuthRealm, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraBasicAuthRealm, zimbraBasicAuthRealm);
+        return attrs;
+    }
+
+    /**
+     * Realm for the basic auth challenge (WWW-Authenticate) header
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1098)
+    public void unsetBasicAuthRealm() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraBasicAuthRealm, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Realm for the basic auth challenge (WWW-Authenticate) header
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1098)
+    public Map<String,Object> unsetBasicAuthRealm(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraBasicAuthRealm, "");
+        return attrs;
+    }
+
+    /**
      * change password URL
      *
      * @return zimbraChangePasswordURL, or null if unset
@@ -1812,7 +1884,7 @@ public class ZAttrDomain extends NamedEntry {
     @ZAttr(id=790)
     public void setCreateTimestamp(Date zimbraCreateTimestamp) throws com.zimbra.common.service.ServiceException {
         HashMap<String,Object> attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraCreateTimestamp, DateUtil.toGeneralizedTime(zimbraCreateTimestamp));
+        attrs.put(Provisioning.A_zimbraCreateTimestamp, zimbraCreateTimestamp==null ? "" : DateUtil.toGeneralizedTime(zimbraCreateTimestamp));
         getProvisioning().modifyAttrs(this, attrs);
     }
 
@@ -1828,7 +1900,7 @@ public class ZAttrDomain extends NamedEntry {
     @ZAttr(id=790)
     public Map<String,Object> setCreateTimestamp(Date zimbraCreateTimestamp, Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraCreateTimestamp, DateUtil.toGeneralizedTime(zimbraCreateTimestamp));
+        attrs.put(Provisioning.A_zimbraCreateTimestamp, zimbraCreateTimestamp==null ? "" : DateUtil.toGeneralizedTime(zimbraCreateTimestamp));
         return attrs;
     }
 
@@ -2043,7 +2115,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @return zimbraDomainCOSMaxAccounts, or empty array if unset
      *
@@ -2056,7 +2129,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param zimbraDomainCOSMaxAccounts new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -2072,7 +2146,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param zimbraDomainCOSMaxAccounts new value
      * @param attrs existing map to populate, or null to create a new map
@@ -2089,7 +2164,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param zimbraDomainCOSMaxAccounts new to add to existing values
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -2105,7 +2181,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param zimbraDomainCOSMaxAccounts new to add to existing values
      * @param attrs existing map to populate, or null to create a new map
@@ -2122,7 +2199,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param zimbraDomainCOSMaxAccounts existing value to remove
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -2138,7 +2216,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param zimbraDomainCOSMaxAccounts existing value to remove
      * @param attrs existing map to populate, or null to create a new map
@@ -2155,7 +2234,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -2170,7 +2250,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * maximum number of accounts allowed to be assigned to specified COSes
-     * in a domain
+     * in a domain. Values are in the format of
+     * {zimraId-of-a-cos}:{max-accounts}
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -4100,6 +4181,292 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @return zimbraForeignName, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public String[] getForeignName() {
+        return getMultiAttr(Provisioning.A_zimbraForeignName);
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param zimbraForeignName new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public void setForeignName(String[] zimbraForeignName) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignName, zimbraForeignName);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param zimbraForeignName new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public Map<String,Object> setForeignName(String[] zimbraForeignName, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignName, zimbraForeignName);
+        return attrs;
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param zimbraForeignName new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public void addForeignName(String zimbraForeignName) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraForeignName, zimbraForeignName);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param zimbraForeignName new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public Map<String,Object> addForeignName(String zimbraForeignName, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraForeignName, zimbraForeignName);
+        return attrs;
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param zimbraForeignName existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public void removeForeignName(String zimbraForeignName) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraForeignName, zimbraForeignName);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param zimbraForeignName existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public Map<String,Object> removeForeignName(String zimbraForeignName, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraForeignName, zimbraForeignName);
+        return attrs;
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public void unsetForeignName() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignName, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * foreign name for mapping an external name to a zimbra domain on domain
+     * level, it is in the format of {application}:{foreign name}
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1135)
+    public Map<String,Object> unsetForeignName(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignName, "");
+        return attrs;
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @return zimbraForeignNameHandler, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public String[] getForeignNameHandler() {
+        return getMultiAttr(Provisioning.A_zimbraForeignNameHandler);
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param zimbraForeignNameHandler new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public void setForeignNameHandler(String[] zimbraForeignNameHandler) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignNameHandler, zimbraForeignNameHandler);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param zimbraForeignNameHandler new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public Map<String,Object> setForeignNameHandler(String[] zimbraForeignNameHandler, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignNameHandler, zimbraForeignNameHandler);
+        return attrs;
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param zimbraForeignNameHandler new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public void addForeignNameHandler(String zimbraForeignNameHandler) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraForeignNameHandler, zimbraForeignNameHandler);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param zimbraForeignNameHandler new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public Map<String,Object> addForeignNameHandler(String zimbraForeignNameHandler, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraForeignNameHandler, zimbraForeignNameHandler);
+        return attrs;
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param zimbraForeignNameHandler existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public void removeForeignNameHandler(String zimbraForeignNameHandler) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraForeignNameHandler, zimbraForeignNameHandler);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param zimbraForeignNameHandler existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public Map<String,Object> removeForeignNameHandler(String zimbraForeignNameHandler, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraForeignNameHandler, zimbraForeignNameHandler);
+        return attrs;
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public void unsetForeignNameHandler() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignNameHandler, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * handler for foreign name mapping, it is in the format of
+     * {application}:{class name}[:{params}]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1136)
+    public Map<String,Object> unsetForeignNameHandler(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraForeignNameHandler, "");
+        return attrs;
+    }
+
+    /**
      * Exchange user password for free/busy lookup and propagation
      *
      * @return zimbraFreebusyExchangeAuthPassword, or null if unset
@@ -4375,7 +4742,11 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server.
+     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
+     * milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * <p>Use getFreebusyExchangeCachedIntervalAsString to access value as a string.
      *
@@ -4391,7 +4762,11 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server.
+     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
+     * milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @return zimbraFreebusyExchangeCachedInterval, or "60d" if unset
      *
@@ -4403,7 +4778,11 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server.
+     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
+     * milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @param zimbraFreebusyExchangeCachedInterval new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -4418,7 +4797,11 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server.
+     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
+     * milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @param zimbraFreebusyExchangeCachedInterval new value
      * @param attrs existing map to populate, or null to create a new map
@@ -4434,7 +4817,11 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server.
+     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
+     * milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -4448,7 +4835,11 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server.
+     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
+     * milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -4464,7 +4855,11 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server.
+     * relative to today) of the f/b interval pushed to Exchange server. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * <p>Use getFreebusyExchangeCachedIntervalStartAsString to access value as a string.
      *
@@ -4481,7 +4876,11 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server.
+     * relative to today) of the f/b interval pushed to Exchange server. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @return zimbraFreebusyExchangeCachedIntervalStart, or "7d" if unset
      *
@@ -4494,7 +4893,11 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server.
+     * relative to today) of the f/b interval pushed to Exchange server. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @param zimbraFreebusyExchangeCachedIntervalStart new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -4510,7 +4913,11 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server.
+     * relative to today) of the f/b interval pushed to Exchange server. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @param zimbraFreebusyExchangeCachedIntervalStart new value
      * @param attrs existing map to populate, or null to create a new map
@@ -4527,7 +4934,11 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server.
+     * relative to today) of the f/b interval pushed to Exchange server. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -4542,7 +4953,11 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server.
+     * relative to today) of the f/b interval pushed to Exchange server. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
+     * s(seconds).
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -4553,145 +4968,6 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetFreebusyExchangeCachedIntervalStart(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraFreebusyExchangeCachedIntervalStart, "");
-        return attrs;
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @return zimbraFreebusyExchangeServerType, or ZAttrProvisioning.FreebusyExchangeServerType.webdav if unset and/or has invalid value
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public ZAttrProvisioning.FreebusyExchangeServerType getFreebusyExchangeServerType() {
-        try { String v = getAttr(Provisioning.A_zimbraFreebusyExchangeServerType); return v == null ? ZAttrProvisioning.FreebusyExchangeServerType.webdav : ZAttrProvisioning.FreebusyExchangeServerType.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.FreebusyExchangeServerType.webdav; }
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @return zimbraFreebusyExchangeServerType, or "webdav" if unset
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public String getFreebusyExchangeServerTypeAsString() {
-        return getAttr(Provisioning.A_zimbraFreebusyExchangeServerType, "webdav");
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @param zimbraFreebusyExchangeServerType new value
-     * @throws com.zimbra.common.service.ServiceException if error during update
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public void setFreebusyExchangeServerType(ZAttrProvisioning.FreebusyExchangeServerType zimbraFreebusyExchangeServerType) throws com.zimbra.common.service.ServiceException {
-        HashMap<String,Object> attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType.toString());
-        getProvisioning().modifyAttrs(this, attrs);
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @param zimbraFreebusyExchangeServerType new value
-     * @param attrs existing map to populate, or null to create a new map
-     * @return populated map to pass into Provisioning.modifyAttrs
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public Map<String,Object> setFreebusyExchangeServerType(ZAttrProvisioning.FreebusyExchangeServerType zimbraFreebusyExchangeServerType, Map<String,Object> attrs) {
-        if (attrs == null) attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType.toString());
-        return attrs;
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @param zimbraFreebusyExchangeServerType new value
-     * @throws com.zimbra.common.service.ServiceException if error during update
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public void setFreebusyExchangeServerTypeAsString(String zimbraFreebusyExchangeServerType) throws com.zimbra.common.service.ServiceException {
-        HashMap<String,Object> attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType);
-        getProvisioning().modifyAttrs(this, attrs);
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @param zimbraFreebusyExchangeServerType new value
-     * @param attrs existing map to populate, or null to create a new map
-     * @return populated map to pass into Provisioning.modifyAttrs
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public Map<String,Object> setFreebusyExchangeServerTypeAsString(String zimbraFreebusyExchangeServerType, Map<String,Object> attrs) {
-        if (attrs == null) attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType);
-        return attrs;
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @throws com.zimbra.common.service.ServiceException if error during update
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public void unsetFreebusyExchangeServerType() throws com.zimbra.common.service.ServiceException {
-        HashMap<String,Object> attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, "");
-        getProvisioning().modifyAttrs(this, attrs);
-    }
-
-    /**
-     * Can be set to either webdav for Exchange 2007 or older, or ews for
-     * 2010 and newer
-     *
-     * <p>Valid values: [ews, webdav]
-     *
-     * @param attrs existing map to populate, or null to create a new map
-     * @return populated map to pass into Provisioning.modifyAttrs
-     *
-     * @since ZCS 6.0.11
-     */
-    @ZAttr(id=1174)
-    public Map<String,Object> unsetFreebusyExchangeServerType(Map<String,Object> attrs) {
-        if (attrs == null) attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, "");
         return attrs;
     }
 
@@ -5113,6 +5389,78 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * whether to indicate if an email address on a message is a GAL group
+     *
+     * @return zimbraGalGroupIndicatorEnabled, or true if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1153)
+    public boolean isGalGroupIndicatorEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraGalGroupIndicatorEnabled, true);
+    }
+
+    /**
+     * whether to indicate if an email address on a message is a GAL group
+     *
+     * @param zimbraGalGroupIndicatorEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1153)
+    public void setGalGroupIndicatorEnabled(boolean zimbraGalGroupIndicatorEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalGroupIndicatorEnabled, zimbraGalGroupIndicatorEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether to indicate if an email address on a message is a GAL group
+     *
+     * @param zimbraGalGroupIndicatorEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1153)
+    public Map<String,Object> setGalGroupIndicatorEnabled(boolean zimbraGalGroupIndicatorEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalGroupIndicatorEnabled, zimbraGalGroupIndicatorEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether to indicate if an email address on a message is a GAL group
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1153)
+    public void unsetGalGroupIndicatorEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalGroupIndicatorEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether to indicate if an email address on a message is a GAL group
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1153)
+    public Map<String,Object> unsetGalGroupIndicatorEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalGroupIndicatorEnabled, "");
+        return attrs;
+    }
+
+    /**
      * LDAP search base for interal GAL queries (special values:
      * &quot;ROOT&quot; for top, &quot;DOMAIN&quot; for domain only,
      * &quot;SUBDOMAINS&quot; for domain and subdomains)
@@ -5191,7 +5539,7 @@ public class ZAttrDomain extends NamedEntry {
      */
     @ZAttr(id=153)
     public String[] getGalLdapAttrMap() {
-        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapAttrMap); return value.length > 0 ? value : new String[] {"co=workCountry","company=company","givenName,gn=firstName","sn=lastName","displayName,cn=fullName,fullName2,fullName3,fullName4,fullName5,fullName6,fullName7,fullName8,fullName9,fullName10","initials=initials","description=notes","l=workCity","physicalDeliveryOfficeName=office","ou=department","street,streetAddress=workStreet","postalCode=workPostalCode","facsimileTelephoneNumber,fax=workFax","homeTelephoneNumber,homePhone=homePhone","mobileTelephoneNumber,mobile=mobilePhone","pagerTelephoneNumber,pager=pager","telephoneNumber=workPhone","st=workState","zimbraMailDeliveryAddress,zimbraMailAlias,mail=email,email2,email3,email4,email5,email6,email7,email8,email9,email10,email11,email12,email13,email14,email15,email16","title=jobTitle","whenChanged,modifyTimeStamp=modifyTimeStamp","whenCreated,createTimeStamp=createTimeStamp","zimbraId=zimbraId","objectClass=objectClass","zimbraMailForwardingAddress=zimbraMailForwardingAddress","zimbraCalResType=zimbraCalResType","zimbraCalResLocationDisplayName=zimbraCalResLocationDisplayName"};
+        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapAttrMap); return value.length > 0 ? value : new String[] {"co=workCountry","company=company","zimbraPhoneticCompany,ms-DS-Phonetic-Company-Name=phoneticCompany","givenName,gn=firstName","zimbraPhoneticFirstName,ms-DS-Phonetic-First-Name=phoneticFirstName","sn=lastName","zimbraPhoneticLastName,ms-DS-Phonetic-Last-Name=phoneticLastName","displayName,cn=fullName,fullName2,fullName3,fullName4,fullName5,fullName6,fullName7,fullName8,fullName9,fullName10","initials=initials","description=notes","l=workCity","physicalDeliveryOfficeName=office","ou=department","street,streetAddress=workStreet","postalCode=workPostalCode","facsimileTelephoneNumber,fax=workFax","homeTelephoneNumber,homePhone=homePhone","mobileTelephoneNumber,mobile=mobilePhone","pagerTelephoneNumber,pager=pager","telephoneNumber=workPhone","st=workState","zimbraMailDeliveryAddress,zimbraMailAlias,mail=email,email2,email3,email4,email5,email6,email7,email8,email9,email10,email11,email12,email13,email14,email15,email16","title=jobTitle","whenChanged,modifyTimeStamp=modifyTimeStamp","whenCreated,createTimeStamp=createTimeStamp","zimbraId=zimbraId","objectClass=objectClass","zimbraMailForwardingAddress=member","zimbraCalResType,msExchResourceSearchProperties=zimbraCalResType","zimbraCalResLocationDisplayName,displayName=zimbraCalResLocationDisplayName","zimbraCalResBuilding=zimbraCalResBuilding","zimbraCalResCapacity,msExchResourceCapacity=zimbraCalResCapacity","zimbraCalResFloor=zimbraCalResFloor","zimbraCalResSite=zimbraCalResSite","zimbraCalResContactEmail=zimbraCalResContactEmail","msExchResourceSearchProperties=zimbraAccountCalendarUserType"};
     }
 
     /**
@@ -5642,6 +5990,83 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * the handler class for mapping groups from GAL source to zimbra GAL
+     * contacts for external GAL
+     *
+     * @return zimbraGalLdapGroupHandlerClass, or null if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1112)
+    public String getGalLdapGroupHandlerClass() {
+        return getAttr(Provisioning.A_zimbraGalLdapGroupHandlerClass, null);
+    }
+
+    /**
+     * the handler class for mapping groups from GAL source to zimbra GAL
+     * contacts for external GAL
+     *
+     * @param zimbraGalLdapGroupHandlerClass new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1112)
+    public void setGalLdapGroupHandlerClass(String zimbraGalLdapGroupHandlerClass) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapGroupHandlerClass, zimbraGalLdapGroupHandlerClass);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * the handler class for mapping groups from GAL source to zimbra GAL
+     * contacts for external GAL
+     *
+     * @param zimbraGalLdapGroupHandlerClass new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1112)
+    public Map<String,Object> setGalLdapGroupHandlerClass(String zimbraGalLdapGroupHandlerClass, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapGroupHandlerClass, zimbraGalLdapGroupHandlerClass);
+        return attrs;
+    }
+
+    /**
+     * the handler class for mapping groups from GAL source to zimbra GAL
+     * contacts for external GAL
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1112)
+    public void unsetGalLdapGroupHandlerClass() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapGroupHandlerClass, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * the handler class for mapping groups from GAL source to zimbra GAL
+     * contacts for external GAL
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1112)
+    public Map<String,Object> unsetGalLdapGroupHandlerClass(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapGroupHandlerClass, "");
+        return attrs;
+    }
+
+    /**
      * kerberos5 keytab file path for external GAL queries
      *
      * @return zimbraGalLdapKerberos5Keytab, or null if unset
@@ -5787,8 +6212,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL. This apples to both Zimbra and external LDAP servers. A value
-     * of 0 means paging is not enabled.
+     * for GAL. This applies to both Zimbra and external LDAP servers. A
+     * value of 0 means paging is not enabled.
      *
      * @return zimbraGalLdapPageSize, or 1000 if unset
      *
@@ -5801,8 +6226,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL. This apples to both Zimbra and external LDAP servers. A value
-     * of 0 means paging is not enabled.
+     * for GAL. This applies to both Zimbra and external LDAP servers. A
+     * value of 0 means paging is not enabled.
      *
      * @param zimbraGalLdapPageSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -5818,8 +6243,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL. This apples to both Zimbra and external LDAP servers. A value
-     * of 0 means paging is not enabled.
+     * for GAL. This applies to both Zimbra and external LDAP servers. A
+     * value of 0 means paging is not enabled.
      *
      * @param zimbraGalLdapPageSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -5836,8 +6261,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL. This apples to both Zimbra and external LDAP servers. A value
-     * of 0 means paging is not enabled.
+     * for GAL. This applies to both Zimbra and external LDAP servers. A
+     * value of 0 means paging is not enabled.
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -5852,8 +6277,8 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL. This apples to both Zimbra and external LDAP servers. A value
-     * of 0 means paging is not enabled.
+     * for GAL. This applies to both Zimbra and external LDAP servers. A
+     * value of 0 means paging is not enabled.
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -6129,6 +6554,149 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetGalLdapURL(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraGalLdapURL, "");
+        return attrs;
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @return zimbraGalLdapValueMap, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public String[] getGalLdapValueMap() {
+        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapValueMap); return value.length > 0 ? value : new String[] {"zimbraCalResType: Room Location","zimbraAccountCalendarUserType: Room|Equipment RESOURCE"};
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param zimbraGalLdapValueMap new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public void setGalLdapValueMap(String[] zimbraGalLdapValueMap) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapValueMap, zimbraGalLdapValueMap);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param zimbraGalLdapValueMap new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public Map<String,Object> setGalLdapValueMap(String[] zimbraGalLdapValueMap, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapValueMap, zimbraGalLdapValueMap);
+        return attrs;
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param zimbraGalLdapValueMap new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public void addGalLdapValueMap(String zimbraGalLdapValueMap) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraGalLdapValueMap, zimbraGalLdapValueMap);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param zimbraGalLdapValueMap new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public Map<String,Object> addGalLdapValueMap(String zimbraGalLdapValueMap, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraGalLdapValueMap, zimbraGalLdapValueMap);
+        return attrs;
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param zimbraGalLdapValueMap existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public void removeGalLdapValueMap(String zimbraGalLdapValueMap) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraGalLdapValueMap, zimbraGalLdapValueMap);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param zimbraGalLdapValueMap existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public Map<String,Object> removeGalLdapValueMap(String zimbraGalLdapValueMap, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraGalLdapValueMap, zimbraGalLdapValueMap);
+        return attrs;
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public void unsetGalLdapValueMap() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapValueMap, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * LDAP Gal attribute to contact value mapping. Each value is in the
+     * format of {gal contact filed}: {regex} {replacement}
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1110)
+    public Map<String,Object> unsetGalLdapValueMap(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalLdapValueMap, "");
         return attrs;
     }
 
@@ -6962,7 +7530,7 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL sync. This apples to both Zimbra and external LDAP servers. A
+     * for GAL sync. This applies to both Zimbra and external LDAP servers. A
      * value of 0 means paging is not enabled. If not set fallback to
      * zimbraGalLdapPageSize
      *
@@ -6977,7 +7545,7 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL sync. This apples to both Zimbra and external LDAP servers. A
+     * for GAL sync. This applies to both Zimbra and external LDAP servers. A
      * value of 0 means paging is not enabled. If not set fallback to
      * zimbraGalLdapPageSize
      *
@@ -6995,7 +7563,7 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL sync. This apples to both Zimbra and external LDAP servers. A
+     * for GAL sync. This applies to both Zimbra and external LDAP servers. A
      * value of 0 means paging is not enabled. If not set fallback to
      * zimbraGalLdapPageSize
      *
@@ -7014,7 +7582,7 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL sync. This apples to both Zimbra and external LDAP servers. A
+     * for GAL sync. This applies to both Zimbra and external LDAP servers. A
      * value of 0 means paging is not enabled. If not set fallback to
      * zimbraGalLdapPageSize
      *
@@ -7031,7 +7599,7 @@ public class ZAttrDomain extends NamedEntry {
 
     /**
      * LDAP page size for paged search control while accessing LDAP server
-     * for GAL sync. This apples to both Zimbra and external LDAP servers. A
+     * for GAL sync. This applies to both Zimbra and external LDAP servers. A
      * value of 0 means paging is not enabled. If not set fallback to
      * zimbraGalLdapPageSize
      *
@@ -8184,6 +8752,78 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * Maximum number of entries for zimbraPrefMailTrustedSenderList.
+     *
+     * @return zimbraMailTrustedSenderListMaxNumEntries, or -1 if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1139)
+    public int getMailTrustedSenderListMaxNumEntries() {
+        return getIntAttr(Provisioning.A_zimbraMailTrustedSenderListMaxNumEntries, -1);
+    }
+
+    /**
+     * Maximum number of entries for zimbraPrefMailTrustedSenderList.
+     *
+     * @param zimbraMailTrustedSenderListMaxNumEntries new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1139)
+    public void setMailTrustedSenderListMaxNumEntries(int zimbraMailTrustedSenderListMaxNumEntries) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailTrustedSenderListMaxNumEntries, Integer.toString(zimbraMailTrustedSenderListMaxNumEntries));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of entries for zimbraPrefMailTrustedSenderList.
+     *
+     * @param zimbraMailTrustedSenderListMaxNumEntries new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1139)
+    public Map<String,Object> setMailTrustedSenderListMaxNumEntries(int zimbraMailTrustedSenderListMaxNumEntries, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailTrustedSenderListMaxNumEntries, Integer.toString(zimbraMailTrustedSenderListMaxNumEntries));
+        return attrs;
+    }
+
+    /**
+     * Maximum number of entries for zimbraPrefMailTrustedSenderList.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1139)
+    public void unsetMailTrustedSenderListMaxNumEntries() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailTrustedSenderListMaxNumEntries, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of entries for zimbraPrefMailTrustedSenderList.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1139)
+    public Map<String,Object> unsetMailTrustedSenderListMaxNumEntries(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailTrustedSenderListMaxNumEntries, "");
+        return attrs;
+    }
+
+    /**
      * Account for storing templates and providing space for public wiki
      *
      * @return zimbraNotebookAccount, or null if unset
@@ -8304,6 +8944,149 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetNotes(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraNotes, "");
+        return attrs;
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @return zimbraOAuthConsumerCredentials, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public String[] getOAuthConsumerCredentials() {
+        return getMultiAttr(Provisioning.A_zimbraOAuthConsumerCredentials);
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param zimbraOAuthConsumerCredentials new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public void setOAuthConsumerCredentials(String[] zimbraOAuthConsumerCredentials) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOAuthConsumerCredentials, zimbraOAuthConsumerCredentials);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param zimbraOAuthConsumerCredentials new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public Map<String,Object> setOAuthConsumerCredentials(String[] zimbraOAuthConsumerCredentials, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOAuthConsumerCredentials, zimbraOAuthConsumerCredentials);
+        return attrs;
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param zimbraOAuthConsumerCredentials new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public void addOAuthConsumerCredentials(String zimbraOAuthConsumerCredentials) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraOAuthConsumerCredentials, zimbraOAuthConsumerCredentials);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param zimbraOAuthConsumerCredentials new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public Map<String,Object> addOAuthConsumerCredentials(String zimbraOAuthConsumerCredentials, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraOAuthConsumerCredentials, zimbraOAuthConsumerCredentials);
+        return attrs;
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param zimbraOAuthConsumerCredentials existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public void removeOAuthConsumerCredentials(String zimbraOAuthConsumerCredentials) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraOAuthConsumerCredentials, zimbraOAuthConsumerCredentials);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param zimbraOAuthConsumerCredentials existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public Map<String,Object> removeOAuthConsumerCredentials(String zimbraOAuthConsumerCredentials, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraOAuthConsumerCredentials, zimbraOAuthConsumerCredentials);
+        return attrs;
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public void unsetOAuthConsumerCredentials() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOAuthConsumerCredentials, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * OAuth consumer ids and secrets. It is in the format of
+     * {consumer-id]:{secrets}
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1131)
+    public Map<String,Object> unsetOAuthConsumerCredentials(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraOAuthConsumerCredentials, "");
         return attrs;
     }
 
@@ -8438,6 +9221,149 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetPreAuthKey(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraPreAuthKey, "");
+        return attrs;
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @return zimbraPrefMailTrustedSenderList, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public String[] getPrefMailTrustedSenderList() {
+        return getMultiAttr(Provisioning.A_zimbraPrefMailTrustedSenderList);
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param zimbraPrefMailTrustedSenderList new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public void setPrefMailTrustedSenderList(String[] zimbraPrefMailTrustedSenderList) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefMailTrustedSenderList, zimbraPrefMailTrustedSenderList);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param zimbraPrefMailTrustedSenderList new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public Map<String,Object> setPrefMailTrustedSenderList(String[] zimbraPrefMailTrustedSenderList, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefMailTrustedSenderList, zimbraPrefMailTrustedSenderList);
+        return attrs;
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param zimbraPrefMailTrustedSenderList new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public void addPrefMailTrustedSenderList(String zimbraPrefMailTrustedSenderList) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraPrefMailTrustedSenderList, zimbraPrefMailTrustedSenderList);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param zimbraPrefMailTrustedSenderList new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public Map<String,Object> addPrefMailTrustedSenderList(String zimbraPrefMailTrustedSenderList, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraPrefMailTrustedSenderList, zimbraPrefMailTrustedSenderList);
+        return attrs;
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param zimbraPrefMailTrustedSenderList existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public void removePrefMailTrustedSenderList(String zimbraPrefMailTrustedSenderList) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraPrefMailTrustedSenderList, zimbraPrefMailTrustedSenderList);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param zimbraPrefMailTrustedSenderList existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public Map<String,Object> removePrefMailTrustedSenderList(String zimbraPrefMailTrustedSenderList, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraPrefMailTrustedSenderList, zimbraPrefMailTrustedSenderList);
+        return attrs;
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public void unsetPrefMailTrustedSenderList() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefMailTrustedSenderList, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Trusted sender email addresses or domains. External images in emails
+     * sent by trusted senders are automatically loaded in the message view.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1138)
+    public Map<String,Object> unsetPrefMailTrustedSenderList(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefMailTrustedSenderList, "");
         return attrs;
     }
 
@@ -9164,6 +10090,324 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetResponseHeader(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraResponseHeader, "");
+        return attrs;
+    }
+
+    /**
+     * There is a deployment scenario for migrations where all of the
+     * customers users are pointed at the zimbra POP IMAP reverse proxy. We
+     * then want their connections proxied back to the legacy system for for
+     * not-yet-non-migrated users. If this attribute is TRUE, reverse proxy
+     * lookup sevlet should check to see if zimbraExternal* is set on the
+     * domain. If so it is used. If not, lookup proceeds as usual.
+     *
+     * @return zimbraReverseProxyUseExternalRoute, or false if unset
+     *
+     * @since ZCS 5.0.12
+     */
+    @ZAttr(id=779)
+    public boolean isReverseProxyUseExternalRoute() {
+        return getBooleanAttr(Provisioning.A_zimbraReverseProxyUseExternalRoute, false);
+    }
+
+    /**
+     * There is a deployment scenario for migrations where all of the
+     * customers users are pointed at the zimbra POP IMAP reverse proxy. We
+     * then want their connections proxied back to the legacy system for for
+     * not-yet-non-migrated users. If this attribute is TRUE, reverse proxy
+     * lookup sevlet should check to see if zimbraExternal* is set on the
+     * domain. If so it is used. If not, lookup proceeds as usual.
+     *
+     * @param zimbraReverseProxyUseExternalRoute new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 5.0.12
+     */
+    @ZAttr(id=779)
+    public void setReverseProxyUseExternalRoute(boolean zimbraReverseProxyUseExternalRoute) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRoute, zimbraReverseProxyUseExternalRoute ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * There is a deployment scenario for migrations where all of the
+     * customers users are pointed at the zimbra POP IMAP reverse proxy. We
+     * then want their connections proxied back to the legacy system for for
+     * not-yet-non-migrated users. If this attribute is TRUE, reverse proxy
+     * lookup sevlet should check to see if zimbraExternal* is set on the
+     * domain. If so it is used. If not, lookup proceeds as usual.
+     *
+     * @param zimbraReverseProxyUseExternalRoute new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 5.0.12
+     */
+    @ZAttr(id=779)
+    public Map<String,Object> setReverseProxyUseExternalRoute(boolean zimbraReverseProxyUseExternalRoute, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRoute, zimbraReverseProxyUseExternalRoute ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * There is a deployment scenario for migrations where all of the
+     * customers users are pointed at the zimbra POP IMAP reverse proxy. We
+     * then want their connections proxied back to the legacy system for for
+     * not-yet-non-migrated users. If this attribute is TRUE, reverse proxy
+     * lookup sevlet should check to see if zimbraExternal* is set on the
+     * domain. If so it is used. If not, lookup proceeds as usual.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 5.0.12
+     */
+    @ZAttr(id=779)
+    public void unsetReverseProxyUseExternalRoute() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRoute, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * There is a deployment scenario for migrations where all of the
+     * customers users are pointed at the zimbra POP IMAP reverse proxy. We
+     * then want their connections proxied back to the legacy system for for
+     * not-yet-non-migrated users. If this attribute is TRUE, reverse proxy
+     * lookup sevlet should check to see if zimbraExternal* is set on the
+     * domain. If so it is used. If not, lookup proceeds as usual.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 5.0.12
+     */
+    @ZAttr(id=779)
+    public Map<String,Object> unsetReverseProxyUseExternalRoute(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRoute, "");
+        return attrs;
+    }
+
+    /**
+     * Use external route configured on doamin if account cannot be found.
+     * Also see zimbraReverseProxyUseExternalRoute.
+     *
+     * @return zimbraReverseProxyUseExternalRouteIfAccountNotExist, or false if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1132)
+    public boolean isReverseProxyUseExternalRouteIfAccountNotExist() {
+        return getBooleanAttr(Provisioning.A_zimbraReverseProxyUseExternalRouteIfAccountNotExist, false);
+    }
+
+    /**
+     * Use external route configured on doamin if account cannot be found.
+     * Also see zimbraReverseProxyUseExternalRoute.
+     *
+     * @param zimbraReverseProxyUseExternalRouteIfAccountNotExist new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1132)
+    public void setReverseProxyUseExternalRouteIfAccountNotExist(boolean zimbraReverseProxyUseExternalRouteIfAccountNotExist) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRouteIfAccountNotExist, zimbraReverseProxyUseExternalRouteIfAccountNotExist ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Use external route configured on doamin if account cannot be found.
+     * Also see zimbraReverseProxyUseExternalRoute.
+     *
+     * @param zimbraReverseProxyUseExternalRouteIfAccountNotExist new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1132)
+    public Map<String,Object> setReverseProxyUseExternalRouteIfAccountNotExist(boolean zimbraReverseProxyUseExternalRouteIfAccountNotExist, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRouteIfAccountNotExist, zimbraReverseProxyUseExternalRouteIfAccountNotExist ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * Use external route configured on doamin if account cannot be found.
+     * Also see zimbraReverseProxyUseExternalRoute.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1132)
+    public void unsetReverseProxyUseExternalRouteIfAccountNotExist() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRouteIfAccountNotExist, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Use external route configured on doamin if account cannot be found.
+     * Also see zimbraReverseProxyUseExternalRoute.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1132)
+    public Map<String,Object> unsetReverseProxyUseExternalRouteIfAccountNotExist(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraReverseProxyUseExternalRouteIfAccountNotExist, "");
+        return attrs;
+    }
+
+    /**
+     * SSL certificate
+     *
+     * @return zimbraSSLCertificate, or null if unset
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=563)
+    public String getSSLCertificate() {
+        return getAttr(Provisioning.A_zimbraSSLCertificate, null);
+    }
+
+    /**
+     * SSL certificate
+     *
+     * @param zimbraSSLCertificate new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=563)
+    public void setSSLCertificate(String zimbraSSLCertificate) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLCertificate, zimbraSSLCertificate);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL certificate
+     *
+     * @param zimbraSSLCertificate new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=563)
+    public Map<String,Object> setSSLCertificate(String zimbraSSLCertificate, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLCertificate, zimbraSSLCertificate);
+        return attrs;
+    }
+
+    /**
+     * SSL certificate
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=563)
+    public void unsetSSLCertificate() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLCertificate, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL certificate
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=563)
+    public Map<String,Object> unsetSSLCertificate(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLCertificate, "");
+        return attrs;
+    }
+
+    /**
+     * SSL private key
+     *
+     * @return zimbraSSLPrivateKey, or null if unset
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=564)
+    public String getSSLPrivateKey() {
+        return getAttr(Provisioning.A_zimbraSSLPrivateKey, null);
+    }
+
+    /**
+     * SSL private key
+     *
+     * @param zimbraSSLPrivateKey new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=564)
+    public void setSSLPrivateKey(String zimbraSSLPrivateKey) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLPrivateKey, zimbraSSLPrivateKey);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL private key
+     *
+     * @param zimbraSSLPrivateKey new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=564)
+    public Map<String,Object> setSSLPrivateKey(String zimbraSSLPrivateKey, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLPrivateKey, zimbraSSLPrivateKey);
+        return attrs;
+    }
+
+    /**
+     * SSL private key
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=564)
+    public void unsetSSLPrivateKey() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLPrivateKey, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * SSL private key
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 5.0.0
+     */
+    @ZAttr(id=564)
+    public Map<String,Object> unsetSSLPrivateKey(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSSLPrivateKey, "");
         return attrs;
     }
 
@@ -10494,6 +11738,185 @@ public class ZAttrDomain extends NamedEntry {
     }
 
     /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @return zimbraWebClientLoginURLAllowedUA, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public String[] getWebClientLoginURLAllowedUA() {
+        return getMultiAttr(Provisioning.A_zimbraWebClientLoginURLAllowedUA);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLoginURLAllowedUA new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public void setWebClientLoginURLAllowedUA(String[] zimbraWebClientLoginURLAllowedUA) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLoginURLAllowedUA, zimbraWebClientLoginURLAllowedUA);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLoginURLAllowedUA new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public Map<String,Object> setWebClientLoginURLAllowedUA(String[] zimbraWebClientLoginURLAllowedUA, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLoginURLAllowedUA, zimbraWebClientLoginURLAllowedUA);
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLoginURLAllowedUA new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public void addWebClientLoginURLAllowedUA(String zimbraWebClientLoginURLAllowedUA) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraWebClientLoginURLAllowedUA, zimbraWebClientLoginURLAllowedUA);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLoginURLAllowedUA new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public Map<String,Object> addWebClientLoginURLAllowedUA(String zimbraWebClientLoginURLAllowedUA, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraWebClientLoginURLAllowedUA, zimbraWebClientLoginURLAllowedUA);
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLoginURLAllowedUA existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public void removeWebClientLoginURLAllowedUA(String zimbraWebClientLoginURLAllowedUA) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraWebClientLoginURLAllowedUA, zimbraWebClientLoginURLAllowedUA);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLoginURLAllowedUA existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public Map<String,Object> removeWebClientLoginURLAllowedUA(String zimbraWebClientLoginURLAllowedUA, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraWebClientLoginURLAllowedUA, zimbraWebClientLoginURLAllowedUA);
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public void unsetWebClientLoginURLAllowedUA() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLoginURLAllowedUA, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1141)
+    public Map<String,Object> unsetWebClientLoginURLAllowedUA(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLoginURLAllowedUA, "");
+        return attrs;
+    }
+
+    /**
      * logout URL for web client to send the user to upon explicit loggin out
      *
      * @return zimbraWebClientLogoutURL, or null if unset
@@ -10552,6 +11975,185 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetWebClientLogoutURL(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraWebClientLogoutURL, "");
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @return zimbraWebClientLogoutURLAllowedUA, or empty array if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public String[] getWebClientLogoutURLAllowedUA() {
+        return getMultiAttr(Provisioning.A_zimbraWebClientLogoutURLAllowedUA);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLogoutURLAllowedUA new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public void setWebClientLogoutURLAllowedUA(String[] zimbraWebClientLogoutURLAllowedUA) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLogoutURLAllowedUA, zimbraWebClientLogoutURLAllowedUA);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLogoutURLAllowedUA new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public Map<String,Object> setWebClientLogoutURLAllowedUA(String[] zimbraWebClientLogoutURLAllowedUA, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLogoutURLAllowedUA, zimbraWebClientLogoutURLAllowedUA);
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLogoutURLAllowedUA new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public void addWebClientLogoutURLAllowedUA(String zimbraWebClientLogoutURLAllowedUA) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraWebClientLogoutURLAllowedUA, zimbraWebClientLogoutURLAllowedUA);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLogoutURLAllowedUA new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public Map<String,Object> addWebClientLogoutURLAllowedUA(String zimbraWebClientLogoutURLAllowedUA, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraWebClientLogoutURLAllowedUA, zimbraWebClientLogoutURLAllowedUA);
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLogoutURLAllowedUA existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public void removeWebClientLogoutURLAllowedUA(String zimbraWebClientLogoutURLAllowedUA) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraWebClientLogoutURLAllowedUA, zimbraWebClientLogoutURLAllowedUA);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param zimbraWebClientLogoutURLAllowedUA existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public Map<String,Object> removeWebClientLogoutURLAllowedUA(String zimbraWebClientLogoutURLAllowedUA, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraWebClientLogoutURLAllowedUA, zimbraWebClientLogoutURLAllowedUA);
+        return attrs;
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public void unsetWebClientLogoutURLAllowedUA() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLogoutURLAllowedUA, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex to be matched for allowed user agents for honoring
+     * zimbraWebClientLogoutURL. If not set, all UAs are allowed. If multiple
+     * values are set, an UA is allowed as long as it matches any one of the
+     * values. e.g. &quot;.*Windows NT.*Firefox/3.*&quot; will match firefox
+     * 3 or later browsers on Windows. &quot;.*MSIE.*Windows NT.*&quot; will
+     * match IE browsers on Windows.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1142)
+    public Map<String,Object> unsetWebClientLogoutURLAllowedUA(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraWebClientLogoutURLAllowedUA, "");
         return attrs;
     }
 

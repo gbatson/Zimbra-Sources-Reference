@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -74,7 +74,7 @@ function(item, params) {
         var restURL = item.getRestUrl();
         //added for bug: 45150
         if(item.isWebDoc()) {
-            restURL = this._controller.getApp().fixCrossDomainReference(restURL);
+            restURL = AjxStringUtil.fixCrossDomainReference(restURL);
         }
 
 		nameText = ['<a href="', restURL  + (item.isWebDoc() ? "&preview=1&localeId=" + AjxEnv.DEFAULT_LOCALE : ""), '" target="_blank">', name, '</a>'].join('');
@@ -85,14 +85,14 @@ function(item, params) {
 	var html = [], idx = 0;
 	var id = this._getFieldId(item, ZmItem.F_NAME);
 	html[idx++] = "<div class='ZmThumbnailItem' id='" + id + "'>";
-	var className = "Img" + item.getIcon(true) + " ZmThumbnailIcon";
+	var className = "Img" + item.getIcon(true, true) + " ZmThumbnailIcon";
 	id = this._getFieldId(item, ZmItem.F_SUBJECT);
-	html[idx++] = "<div class='" + className + "' id='" + id + "'></div>";
+	html[idx++] = "<div class='" + className + "'></div>";
 	html[idx++] = "</div>";
 	html[idx++] = "<table cellpadding=0 cellspacing=0 border=0 width='100%'>";
 	html[idx++] = "<tr>";
 	html[idx++] = "<td align='left'>";
-	html[idx++] = "<div class='ZmThumbnailName'>";
+	html[idx++] = "<div class='ZmThumbnailName' id='" + id + "'>";
 	html[idx++] = "<span>" + nameText + "</span>";
 	html[idx++] = "</div></td>";
 	html[idx++] = "<td align='right'>";
@@ -123,17 +123,8 @@ function(clickedEl, ev) {
         ")\\b", "g"
     );
 
-    ZmListView.prototype._itemClicked.call(this, clickedEl, ev);
-    
-    if (ev.button == DwtMouseEvent.LEFT) {
-        var items = this.getSelection();
-        if (items && items.length) {
-            var item = items[0];
-            if (item.isFolder) {
-                this._controller._app.search({folderId:item.id, noClear:true});
-            }
-        }
-    }
+    ZmBriefcaseBaseView.prototype._itemClicked.call(this, clickedEl, ev);
+
 };
 
 // Protected methods
@@ -168,17 +159,8 @@ function() {
 
 ZmBriefcaseView.prototype.set =
 function(list) {
-
-
-    //Add Folders accordingly
-    var paging = Boolean(this._itemsToAdd), newList;
-    if(!paging){        
-        newList = this.appendFolders(list);
-        //TODO: Add "UP" folder to go to the parent folder
-    }
-
-    newList = newList || list;
-	ZmBriefcaseBaseView.prototype.set.call(this, newList);
+    
+	ZmBriefcaseBaseView.prototype.set.call(this, list);
     this.focus();
 
 };

@@ -33,12 +33,15 @@ public class DebugConfig {
     /** If true, then we do ICalendar Validation every time we generate
      *  ICalendar data. */
     public static boolean validateOutgoingICalendar;
-    
+
     /** If true, turns off conversation feature. */
     public static boolean disableConversation;
 
     /** If true, turns off filtering of incoming messages. */
-    public static boolean disableFilter;
+    public static boolean disableIncomingFilter;
+
+    /** If true, turns off filtering of outgoing messages. */
+    public static boolean disableOutgoingFilter;
 
     /** If true, turns off message structure analysis and text extraction.
      *  Attachment extraction, indexing, and objects only work when message
@@ -50,7 +53,7 @@ public class DebugConfig {
      *  meaningless.  When extraction is disabled,
      *  not even the text of main text body part is extracted and won't be
      *  searchable.  Only the message subject ends up being indexed.
-     * 
+     *
      *  Disabling extraction still performs reading the MIME body part data
      *  from JavaMail API.  It only skips sending the body data to the code
      *  that does type-specific text extraction.  Setting this key to true
@@ -74,12 +77,10 @@ public class DebugConfig {
     /** If true, turns off object detection feature. */
     public static boolean disableObjects;
 
-    /** If true, allow VALARMs whose ACTION is PROCEDURE. (false by default) */
-    public static boolean calendarAllowProcedureAlarms;
-
-    /** If true, convert AUDIO and PROCEDURE VALARMs to DISPLAY when serializing to xml,
-     *  so ZWC can see them as regular alarms. (true by default) */
-    public static boolean calendarConvertNonDisplayAlarm;
+    /** If true, allow VALARMs whose ACTION is not DISPLAY, namely AUDIO,
+     *  EMAIL, and PROCEDURE.  False by default, which means only DISPLAY
+     *  alarms are supported and others are ignored. */
+    public static boolean calendarAllowNonDisplayAlarms;
 
     /** If true, use alarms specified by organizer in an invite email.  If
      *  false (default), discard organizer alarms and set one based on
@@ -127,7 +128,7 @@ public class DebugConfig {
      *  the effects of corruption are issues) and database-per-user (which
      *  most DBMSes can't deal with). */
     public static final int numMailboxGroups;
-    
+
     /** If true, more than one server may be sharing the same store and
      *  database install.  In that case, the server must perform extra checks
      *  to ensure that mailboxes "homed" on other servers are treated
@@ -135,7 +136,7 @@ public class DebugConfig {
     public static final boolean mockMultiserverInstall;
 
     /** If true, the GAL sync visitor mechanism is disabled.  SyncGal will use
-     *  the traditional way of adding matches to a SearchGalResult, then add 
+     *  the traditional way of adding matches to a SearchGalResult, then add
      *  each match in the SOAP response.  The GAL sync visitor mechanism
      *  reduces chance of OOME when there is a huge result. */
     public static boolean disableGalSyncVisitor;
@@ -143,32 +144,44 @@ public class DebugConfig {
     public static boolean disableCalendarTZMatchByID;
     public static boolean disableCalendarTZMatchByRule;
 
-    public static boolean forceMimeConvertersForCalendarBlobs;
+    public static boolean disableMimeConvertersForCalendarBlobs;
+    public static boolean enableTnefToICalendarConversion;
 
     /** If true, disable the memcached-based folders/tags cache of mailboxes.
      */
     public static boolean disableFoldersTagsCache;
-    
+
     public static boolean enableContactLocalizedSort;
-    
-    public static boolean enableRefCountedIndexReaderStats;
-    
+
+    public static boolean enableIndexReaderRefStats;
+
     public static boolean enableMigrateUserZimletPrefs;
-    
+
     public static boolean disableGroupTargetForAdminRight;
-    
+
     public static boolean disableComputeGroupMembershipOptimization;
-	
+
+    public static boolean disableCalendarReminderEmail;
+
+    public static int imapSerializedSessionNotificationOverloadThreshold;
+    public static int imapSessionSerializerFrequency;
+    public static boolean imapCacheConsistencyCheck;
+    public static int imapSessionInactivitySerializationTime;
+    public static int imapTotalNonserializedSessionFootprintLimit;
+    public static int imapNoninteractiveSessionLimit;
+    public static boolean imapTerminateSessionOnClose;
+    public static boolean imapSerializeSessionOnClose;
+    
     static {
-        calendarAllowProcedureAlarms = booleanValue("debug_calendar_allow_procedure_alarms", false);
-        calendarConvertNonDisplayAlarm = booleanValue("debug_calendar_convert_non_display_alarms", true);
+        calendarAllowNonDisplayAlarms = booleanValue("debug_calendar_allow_non_display_alarms", false);
         calendarAllowOrganizerSpecifiedAlarms = booleanValue("debug_calendar_allow_organizer_specified_alarms", false);
         calendarForceUTC = booleanValue("debug_calendar_force_utc", false);
         validateOutgoingICalendar = booleanValue("debug_validate_outgoing_icalendar", false);
         calendarEnableInviteDeniedReplyForUnlistedAttendee = booleanValue("debug_calendar_enable_invite_denied_reply_for_unlisted_attendee", false);
 
         disableConversation = booleanValue("debug_disable_conversation", false);
-        disableFilter = booleanValue("debug_disable_filter", false);
+        disableIncomingFilter = booleanValue("debug_disable_filter", false);
+        disableOutgoingFilter = booleanValue("debug_disable_outgoing_filter", false);
         disableMessageAnalysis = booleanValue("debug_disable_message_analysis", false);
         if (disableMessageAnalysis) {
             disableMimePartExtraction = true;
@@ -202,20 +215,31 @@ public class DebugConfig {
         disableCalendarTZMatchByID = booleanValue("debug_disable_calendar_tz_match_by_id", false);
         disableCalendarTZMatchByRule = booleanValue("debug_disable_calendar_tz_match_by_rule", false);
 
-        forceMimeConvertersForCalendarBlobs = booleanValue("debug_force_mime_converters_for_calendar_blobs", false);
+        disableMimeConvertersForCalendarBlobs = booleanValue("debug_force_mime_converters_for_calendar_blobs", false);
+        enableTnefToICalendarConversion = booleanValue("debug_enable_tnef_to_icalendar_conversion", true);
 
         disableFoldersTagsCache = booleanValue("debug_disable_folders_tags_cache", false);
-        
+
         enableContactLocalizedSort = booleanValue("debug_enable_contact_localized_sort", true);
-        
-        enableRefCountedIndexReaderStats = booleanValue("debug_enable_ref_counted_index_reader_stats", false);
-        
+
+        enableIndexReaderRefStats = booleanValue("debug_enable_index_reader_ref_stats", false);
+
         enableMigrateUserZimletPrefs = booleanValue("migrate_user_zimlet_prefs", false);
-        
+
         disableGroupTargetForAdminRight = booleanValue("disable_group_target_for_admin_right", false);
-        
+
         disableComputeGroupMembershipOptimization = booleanValue("disable_compute_group_membership_optimization", false);
-		
+
+        imapSerializedSessionNotificationOverloadThreshold = intValue("debug_imap_serialized_session_notification_overload_threshold", 100);
+        imapSessionSerializerFrequency = intValue("debug_imap_session_serializer_frequency", 120);
+        imapCacheConsistencyCheck = booleanValue("debug_imap_cache_consistency_check", false);
+        imapSessionInactivitySerializationTime = intValue("debug_imap_session_inactivity_serialization_time", 600);
+        imapTotalNonserializedSessionFootprintLimit = intValue("debug_imap_total_nonserialized_session_footprint_limit", Integer.MAX_VALUE);
+        imapNoninteractiveSessionLimit = intValue("debug_imap_noninteractive_session_limit", Integer.MAX_VALUE);
+        imapTerminateSessionOnClose = booleanValue("imap_terminate_session_on_close", false);
+        imapSerializeSessionOnClose = booleanValue("imap_serialize_session_on_close", true);
+        
+        disableCalendarReminderEmail = booleanValue("debug_disable_calendar_reminder_email", false);        
     }
 
     protected static boolean booleanValue(String key, boolean defaultValue) {
@@ -225,11 +249,15 @@ public class DebugConfig {
         return Boolean.valueOf(val).booleanValue();
     }
 
-    @SuppressWarnings("unused")
     private static int intValue(String key, int defaultValue) {
         String val = LC.get(key);
         if (val.length() < 1)
             return defaultValue;
-        return Integer.valueOf(val).intValue();
+
+        try {
+            return Integer.valueOf(val).intValue();
+        } catch (Exception e) {
+            return defaultValue;
+        }
     }
 }

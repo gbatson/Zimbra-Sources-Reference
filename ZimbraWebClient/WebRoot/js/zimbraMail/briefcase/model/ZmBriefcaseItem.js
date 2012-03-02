@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,9 +19,9 @@
  */
 
 /**
- * Creates a briefcase item.
+ * Abstract class
  * @class
- * This class represents a briefcase item.
+ * This class is a base class for briefcase item classes.
  * 
  * @param {int}			id			the unique id
  * @param {ZmList}		list		a list that contains this item
@@ -29,47 +29,18 @@
 
  * @extends		ZmItem
  * 
- * @see		ZmBriefcase
+ * @see		ZmBriefcaseBaseItem
  */
-ZmBriefcaseItem = function(id, list, noCache) {
+ZmBriefcaseBaseItem = function(id, list, noCache, type) {
 
 	if (arguments.length == 0) { return; }
-
-	ZmItem.call(this, ZmItem.BRIEFCASE_ITEM, id, list, noCache);
+	ZmItem.call(this, type, id, list, noCache);
 };
 
-ZmBriefcaseItem.prototype = new ZmItem;
-ZmBriefcaseItem.prototype.constructor = ZmBriefcaseItem;
+ZmBriefcaseBaseItem.prototype = new ZmItem;
+ZmBriefcaseBaseItem.prototype.constructor = ZmBriefcaseBaseItem;
 
-/**
- * Returns a string representation of the object.
- * 
- * @return		{String}		a string representation of the object
- */
-ZmBriefcaseItem.prototype.toString =
-function() {
-	return "ZmBriefcaseItem";
-};
-
-
-// Static functions
-
-/**
- * Creates a briefcase item from the dom.
- * 
- * @param	{Object}	node		the node
- * @param	{Hash}		args		a hash of arguments
- * 
- * @return	{ZmBriefcaseItem}	the briefcase item
- */
-ZmBriefcaseItem.createFromDom =
-function(node, args) {
-	var item = new ZmBriefcaseItem(node.id, args.list);
-	item._loadFromDom(node);
-	return item;
-};
-
-// Public methods
+//Public methods
 
 /**
  * Gets the path.
@@ -77,7 +48,7 @@ function(node, args) {
  * @param	{Boolean}	dontIncludeThisName		if <code>true</code>, do not include this item name in the path
  * @return	{String}	the path
  */
-ZmBriefcaseItem.prototype.getPath =
+ZmBriefcaseBaseItem.prototype.getPath =
 function(dontIncludeThisName) {
 	var briefcase = appCtxt.getById(this.folderId);
 	var name = !dontIncludeThisName ? this.name : "";
@@ -91,15 +62,13 @@ function(dontIncludeThisName) {
  * @param	{Boolean}	ignoreCustomDocs		if <code>true</code>, ignore custom docs
  * @return	{String}	the REST URL
  */
-ZmBriefcaseItem.prototype.getRestUrl =
+ZmBriefcaseBaseItem.prototype.getRestUrl =
 function(dontIncludeThisName, ignoreCustomDocs) {
 	var url = ZmItem.prototype.getRestUrl.call(this);
 	if (dontIncludeThisName) {
 		url = url.replace(/[^\/]+$/,"");
 	}
-    if(!ignoreCustomDocs && this.contentType && this.isWebDoc()) {
-        url += "?fmt=html";
-    }
+
 	return url;
 };
 
@@ -108,7 +77,7 @@ function(dontIncludeThisName, ignoreCustomDocs) {
  * 
  * @return	{Boolean}	<code>true</code> if this item is a real file (not a web doc or folder)
  */
-ZmBriefcaseItem.prototype.isRealFile =
+ZmBriefcaseBaseItem.prototype.isRealFile =
 function() {
     return (!this.isFolder && !this.isWebDoc());  
 };
@@ -118,7 +87,7 @@ function() {
  * 
  * @return	{Boolean}	<code>true</code> if this item is a web doc
  */
-ZmBriefcaseItem.prototype.isWebDoc =
+ZmBriefcaseBaseItem.prototype.isWebDoc =
 function() {
     return (this.contentType == ZmMimeTable.APP_ZIMBRA_SLIDES || this.contentType == ZmMimeTable.APP_ZIMBRA_SPREADSHEET || this.contentType == ZmMimeTable.APP_ZIMBRA_DOC);
 };
@@ -128,7 +97,7 @@ function() {
  *
  * @return	{Boolean}	<code>true</code> if this item is downloadable
  */
-ZmBriefcaseItem.prototype.isDownloadable =
+ZmBriefcaseBaseItem.prototype.isDownloadable =
 function() {
     return (!this.isWebDoc() && !ZmMimeTable.isRenderable(this.contentType) && !ZmMimeTable.isRenderableImage(this.contentType) && !ZmMimeTable.isTextType(this.contentType));
 };
@@ -138,7 +107,7 @@ function() {
  * 
  * @return	{Boolean}	<code>true</code> if this item is a slide doc
  */
-ZmBriefcaseItem.prototype.isSlideDoc =
+ZmBriefcaseBaseItem.prototype.isSlideDoc =
 function() {
     return (this.contentType == ZmMimeTable.APP_ZIMBRA_SLIDES);
 };
@@ -148,7 +117,7 @@ function() {
  * 
  * @return	{String}	the content type
  */
-ZmBriefcaseItem.prototype.getContentType =
+ZmBriefcaseBaseItem.prototype.getContentType =
 function() {
     return this.contentType;
 };
@@ -159,7 +128,7 @@ function() {
  * @param	{Boolean}	large		if <code>true</code>, return the large icon
  * @return	{String}	the icon
  */
-ZmBriefcaseItem.prototype.getIcon =
+ZmBriefcaseBaseItem.prototype.getIcon =
 function(large) {
 
 	if (this.isFolder) {
@@ -185,7 +154,7 @@ function(large) {
  * 
  * @return	{Boolean}	<code>true</code> if this item is read only
  */
-ZmBriefcaseItem.prototype.isReadOnly =
+ZmBriefcaseBaseItem.prototype.isReadOnly =
 function() {
 	// if one of the ancestor is readonly then no chances of childs being writable
 	var isReadOnly = false;
@@ -207,7 +176,7 @@ function() {
  * 
  * @return	{ZmBriefcase}	the folder
  */
-ZmBriefcaseItem.prototype.getBriefcaseFolder =
+ZmBriefcaseBaseItem.prototype.getBriefcaseFolder =
 function() {
 	if (!this._briefcase) {
 		var folder = appCtxt.getById(this.folderId);
@@ -225,7 +194,7 @@ function() {
  * 
  * @return	{Boolean}	<code>true</code> if this item is shared
  */
-ZmBriefcaseItem.prototype.isShared =
+ZmBriefcaseBaseItem.prototype.isShared =
 function() {
 	var briefcase = this.getBriefcaseFolder();
 	return briefcase && briefcase.link;
@@ -239,91 +208,118 @@ function() {
  * @param	{String}	name		the item name
  * @param	{String}	folderId		the folder id
  */
-ZmBriefcaseItem.prototype.createFromAttachment =
-function(msgId, partId, name, folderId, replaceFile) {
-	var acctId = appCtxt.getActiveAccount().id;
-    
-	var soapDoc = AjxSoapDoc.create("SaveDocumentRequest", "urn:zimbraMail");
-	var doc = soapDoc.set("doc");
-    if (replaceFile && replaceFile.id) {
-        doc.setAttribute("id", replaceFile.id);
-        doc.setAttribute("ver", replaceFile.version);
+ZmBriefcaseBaseItem.prototype.createFromAttachment =
+function(msgId, partId, name, folderId, attribs) {
+
+    attribs = attribs || {};
+
+    var acctId = appCtxt.getActiveAccount().id;
+
+    var json = {
+        SaveDocumentRequest: {
+            _jsns: "urn:zimbraMail",
+			doc: {
+                m: {
+                    id: msgId,
+                    part: partId
+                }
+            }
+        }
+    };
+
+    var doc = json.SaveDocumentRequest.doc;
+    if (attribs.id && attribs.version) {
+        doc.id = attribs.id;
+        doc.ver = attribs.version;
     }else{
-	    doc.setAttribute("l", folderId);
+        doc.l = folderId;
     }
-	var mnode = soapDoc.set("m", null, doc);
-	mnode.setAttribute("id", msgId);
-	mnode.setAttribute("part", partId);
+    if(attribs.rename){
+        doc.name = attribs.rename;
+    }
+    var params = {
+		jsonObj: json,
+		asyncMode: true,
+		callback: (new AjxCallback(this, this._handleResponseCreateItem, [folderId, attribs.callback])),
+		errorCallback: (new AjxCallback(this, this._handleErrorCreateItem, [attribs.errorCallback]))
+	};
+    appCtxt.getAppController().sendRequest(params);
+};
+
+ZmBriefcaseBaseItem.prototype.restoreVersion =
+function(restoreVerion, callback){
+
+    var json = {
+		SaveDocumentRequest: {
+			_jsns: "urn:zimbraMail",
+			doc: {
+				id:	this.id,
+                ver: this.version,
+                doc: {
+                    id: this.id,
+                    ver: restoreVerion
+                }
+			}
+		}
+	};
 
 	var params = {
-		soapDoc: soapDoc,
-		asyncMode: true,
-		callback: (new AjxCallback(this, this._handleResponseCreateItem, [folderId])),
-		errorCallback: (new AjxCallback(this, this._handleErrorCreateItem))
+		jsonObj:		json,
+		asyncMode:		true,
+		callback:		callback
 	};
-	appCtxt.getAppController().sendRequest(params);
+	return appCtxt.getAppController().sendRequest(params);
+    
 };
 
-ZmBriefcaseItem.prototype._handleResponseCreateItem =
-function(folderId,response) {
+ZmBriefcaseBaseItem.prototype.deleteVersion =
+function(version, callback, batchCmd){
+
+    var json = {
+		PurgeRevisionRequest: {
+			_jsns: "urn:zimbraMail",
+			revision: {
+				id:	this.id,
+                ver: version,
+                includeOlderRevisions: false
+			}
+		}
+	};
+
+    if(batchCmd){
+        batchCmd.addRequestParams(json, callback);
+    }else{
+        var params = {
+            jsonObj:		json,
+            asyncMode:		true,
+            callback:		callback
+        };
+        return appCtxt.getAppController().sendRequest(params);
+    }
+
+};
+
+
+ZmBriefcaseBaseItem.prototype._handleResponseCreateItem =
+function(folderId, callback, response) {
 	appCtxt.getAppController().setStatusMsg(ZmMsg.fileCreated);
 	appCtxt.getChooseFolderDialog().popdown();
+    if(callback)
+        callback.run(response);
 };
 
-ZmBriefcaseItem.prototype._handleErrorCreateItem =
-function(ex) {
-	appCtxt.getAppController().setStatusMsg(ZmMsg.errorCreateFile, ZmStatusView.LEVEL_CRITICAL);
+ZmBriefcaseBaseItem.prototype._handleErrorCreateItem =
+function(callback, ex) {
+
+    var handled = false;
+	if(callback){
+        handled = callback.run(ex);
+    }
+    appCtxt.getAppController().setStatusMsg(ZmMsg.errorCreateFile, ZmStatusView.LEVEL_CRITICAL);
+    return handled;
 };
 
-/**
- * Gets the folder.
- * 
- * @return	{ZmFolder}		the folder
- */
-ZmBriefcaseItem.prototype.getFolder =
-function() {
-	return appCtxt.getById(this.folderId);
-};
-
-ZmBriefcaseItem.prototype._loadFromDom =
-function(node) {
-
-	this.id = node.id;
-
-	if (node.rest)	{ this.restUrl = node.rest; }
-	if (node.l)		{ this.folderId = node.l; }
-	if (node.name)	{ this.name = node.name; }
-	if (node.cr)	{ this.creator = node.cr; }
-	if (node.d)		{ this.createDate = new Date(Number(node.d)); }
-	if (node.md)	{ this.modifyDate = new Date(Number(node.md)); }
-	if (node.leb)	{ this.modifier = node.leb; }
-	if (node.s || node.s == 0) //size can be 0
-                    { this.size = Number(node.s); }
-	if (node.ver)	{ this.version = Number(node.ver) || 0; }
-	if (node.ct)	{ this.contentType = node.ct.split(";")[0]; }
-	if (node.t)		{ this._parseTags(node.t); }
-};
-
-// Mendoza line
-
-ZmBriefcaseItem.prototype.set =
-function(data) {
-
-	this.id = data.id;
-	if (data.rest) this.restUrl = data.rest;
-	if (data.l) this.folderId = data.l;
-	if (data.name) this.name = data.name;
-	if (data.cr) this.creator = data.cr;
-	if (data.d) this.createDate = new Date(Number(data.d));
-	if (data.md) this.modifyDate = new Date(Number(data.md));
-	if (data.leb) this.modifier = data.leb;
-	if (data.s) this.size = Number(data.s);
-	if (data.ver) this.version = Number(data.ver);
-	if (data.ct) this.contentType = data.ct.split(";")[0];
-	this._parseTags(data.t);
-};
-
-ZmBriefcaseItem.prototype.notifyModify =
+ZmBriefcaseBaseItem.prototype.notifyModify =
 function(obj, batchMode) {
 
 	var result = ZmItem.prototype.notifyModify.apply(this, arguments);
@@ -340,6 +336,216 @@ function(obj, batchMode) {
 	}
 	
 };
+/**
+ * Gets the folder.
+ * 
+ * @return	{ZmFolder}		the folder
+ */
+ZmBriefcaseBaseItem.prototype.getFolder =
+function() {
+	return appCtxt.getById(this.folderId);
+};
+
+ZmBriefcaseBaseItem.prototype._loadFromDom =
+function(node) {
+
+	this.id = node.id;
+
+	if (node.rest)	{ this.restUrl = node.rest; }
+	if (node.l)		{ this.folderId = node.l; }
+	if (node.name)	{ this.name = node.name; }
+	if (node.cr)	{ this.creator = node.cr; }
+	if (node.d)		{ this.createDate = new Date(Number(node.d)); }
+	if (node.md)	{ this.modifyDate = new Date(Number(node.md)); }
+	if (node.leb)	{ this.modifier = node.leb; }
+	if (node.s || node.s == 0) //size can be 0
+                    { this.size = Number(node.s); }
+	if (node.ver)	{ this.version = Number(node.ver) || 0; }
+	if (node.ct)	{ this.contentType = node.ct.split(";")[0]; }
+	if (node.t)		{ this._parseTags(node.t); }
+
+    this.locked = false;
+    if (node.loid)    {
+        this.locked = true;
+        this.lockId = node.loid;
+        this.lockUser = node.loe;
+        this.lockTime = new Date(Number(node.lt));
+    }
+
+    if (node.desc){  this.notes = AjxStringUtil.htmlEncode(node.desc); }
+    this.subject = this.getNotes();
+
+};
+
+/**
+ * Creates a briefcase item.
+ * @class
+ * This class represents a briefcase item.
+ * 
+ * @param {int}			id			the unique id
+ * @param {ZmList}		list		a list that contains this item
+ * @param {Boolean}		noCache		if <code>true</code>, do not cache this item
+
+ * @extends		ZmBriefcaseBaseItem
+ * 
+ * @see		ZmBriefcase
+ */
+ZmBriefcaseItem = function(id, list, noCache) {
+
+	if (arguments.length == 0) { return; }
+	ZmBriefcaseBaseItem.call(this, id, list, noCache, ZmItem.BRIEFCASE_ITEM);
+};
+
+ZmBriefcaseItem.prototype = new ZmBriefcaseBaseItem;
+ZmBriefcaseItem.prototype.constructor = ZmBriefcaseItem;
+
+/**
+ * Returns a string representation of the object.
+ * 
+ * @return		{String}		a string representation of the object
+ */
+ZmBriefcaseItem.prototype.toString =
+function() {
+	return "ZmBriefcaseItem";
+};
+
+
+// Static functions
+/**
+ * Creates a briefcase item from the dom.
+ * 
+ * @param	{Object}	node		the node
+ * @param	{Hash}		args		a hash of arguments
+ * 
+ * @return	{ZmBriefcaseItem}	the briefcase item
+ */
+ZmBriefcaseItem.createFromDom =
+function(node, args) {
+	var item = new ZmBriefcaseItem(node.id, args.list);
+	item._loadFromDom(node);
+	return item;
+};
+
+ZmBriefcaseItem.getRevision =
+function(itemId, version, callback, errorCallback, accountName) {
+	var json = {
+		ListDocumentRevisionsRequest: {
+			_jsns: "urn:zimbraMail",
+			doc: {
+				id:	itemId,
+                ver: version,   //verion=-1 for all versions of count
+                count: 50       //parametrize count to allow pagination
+			}
+		}
+	};
+
+	var params = {
+		jsonObj:		json,
+		asyncMode:		Boolean(callback),
+		callback:		callback,
+		errorCallback:	errorCallback,
+		accountName:	accountName
+	};
+	return appCtxt.getAppController().sendRequest(params);
+};
+
+ZmBriefcaseItem.lock =
+function(itemId, callback, errorCallback, accountName) {
+	var json = {
+		ItemActionRequest: {
+			_jsns: "urn:zimbraMail",
+			action: {
+				id:	itemId instanceof Array ? itemId.join() : itemId,
+				op:	"lock"
+			}
+		}
+	};
+
+	var params = {
+		jsonObj:		json,
+		asyncMode:		Boolean(callback),
+		callback:		callback,
+		errorCallback:	errorCallback,
+		accountName:	accountName
+	};
+	return appCtxt.getAppController().sendRequest(params);
+};
+
+
+ZmBriefcaseItem.unlock =
+function(itemId, callback, errorCallback, accountName) {
+	var json = {
+		ItemActionRequest: {
+			_jsns: "urn:zimbraMail",
+			action: {
+				id:	itemId instanceof Array ? itemId.join() : itemId,
+				op:	"unlock"
+			}
+		}
+	};
+
+	var params = {
+		jsonObj:		json,
+		asyncMode:		Boolean(callback),
+		callback:		callback,
+		errorCallback:	errorCallback,
+		accountName:	accountName
+	};
+	return appCtxt.getAppController().sendRequest(params);
+};
+	
+
+// Mendoza line
+
+ZmBriefcaseItem.prototype.getRevisions =
+function(callback, errorCallback, accountName){
+	ZmBriefcaseItem.getRevision(this.id, -1 ,callback, errorCallback, accountName);
+};
+
+ZmBriefcaseItem.prototype.lock =
+function(callback, errorCallback, accountName){
+	ZmBriefcaseItem.lock(this.id, callback, errorCallback, accountName);  
+};
+
+
+ZmBriefcaseItem.prototype.unlock =
+function(callback, errorCallback, accountName){
+	ZmBriefcaseItem.unlock(this.id, callback, errorCallback, accountName);
+};
+
+ZmBriefcaseItem.prototype.set =
+function(data) {
+
+	this.id = data.id;
+	if (data.rest) this.restUrl = data.rest;
+	if (data.l) this.folderId = data.l;
+	if (data.name) this.name = data.name;
+	if (data.cr) this.creator = data.cr;
+	if (data.d) this.createDate = new Date(Number(data.d));
+	if (data.md) this.modifyDate = new Date(Number(data.md));
+	if (data.leb) this.modifier = data.leb;
+	if (data.s) this.size = Number(data.s);
+	if (data.ver) this.version = Number(data.ver);
+	if (data.ct) this.contentType = data.ct.split(";")[0];
+    if (data.t) this._parseTags(data.t);
+    if (data.loid)    {
+        this.locked = true;
+        this.lockId = data.loid;
+        this.lockUser = data.loe;
+        this.lockTime = new Date(Number(data.lt));
+    } else if (data.loid===""){
+        //loid is not always set in response; set locked to false when value is blank
+        this.locked = false;
+    }
+
+    if (data.desc)  this.notes = AjxStringUtil.htmlEncode(data.desc);
+    this.subject = this.getNotes();
+};
+
+ZmBriefcaseItem.prototype.getNotes =
+function(){
+    return AjxMessageFormat.format(ZmMsg.revisionNotes, [this.version, (this.notes || ZmMsg.emptyNotes)]);
+};
 
 ZmBriefcaseFolderItem = function(folder) {
 
@@ -349,6 +555,8 @@ ZmBriefcaseFolderItem = function(folder) {
 	this.folderId = folder.parent && folder.parent.id;
 	this.isFolder = true;
 	this.folder = folder;
+    this.size = folder.sizeTotal;
+    this.creator = folder.getOwner();
 
 	this._data = {};
 };
@@ -370,3 +578,74 @@ ZmBriefcaseFolderItem.prototype.setData =
 function(key, value) {
   this._data[key] = value;
 };
+
+ZmBriefcaseFolderItem.prototype.getIcon =
+function(baseIcon, large){
+    if(baseIcon)
+        return ZmBriefcaseBaseItem.prototype.getIcon.call(this, true);
+    else
+        return this.folder.getIconWithColor();  
+};
+
+ZmBriefcaseFolderItem.prototype.getOwner =
+function(){
+    return this.folder.getOwner();
+};
+
+//ZmRevisionItem
+ZmRevisionItem = function(id, parentItem){
+    if(arguments.length == 0) return;
+    this.parent = parentItem;
+    this.isRevision = true;
+    this.id = id;
+    ZmBriefcaseBaseItem.call(this, id, null, false, ZmItem.BRIEFCASE_REVISION_ITEM);
+};
+
+ZmRevisionItem.prototype = new ZmBriefcaseBaseItem;
+ZmRevisionItem.prototype.constructor = ZmRevisionItem;
+
+ZmRevisionItem.prototype.toString = function() {
+	return "ZmRevisionItem"; 
+}
+ZmRevisionItem.prototype.set =
+function(data){
+
+    //Props
+    //this.id =       this.id || data.id;
+    this.version =  data.ver;
+    if (data.name)  this.name = data.name;
+    if (data.l)     this.folderId = data.l;
+    if (data.ct)    this.contentType = data.ct.split(";")[0];
+    if (data.s)     this.size = Number(data.s);
+
+    //Data
+    if (data.cr)    this.creator = data.cr;
+    if (data.cd)    this.createDate = new Date(Number(data.cd));
+    if (data.leb)   this.modifier = data.leb;
+    if (data.md)    this.modifyDate = new Date(Number(data.md));
+	if (data.desc)  this.notes = AjxStringUtil.htmlEncode(data.desc);
+
+    this.subject = this.getNotes();
+    this._parseTags(data.t);
+
+};
+
+ZmRevisionItem.prototype.getNotes =
+function(){
+    return AjxMessageFormat.format(ZmMsg.revisionNotes, [this.version, (this.notes || ZmMsg.emptyNotes)]);  
+};
+
+ZmRevisionItem.prototype.getRestUrl =
+function(){
+    var restUrl = this.parent.getRestUrl();
+    if(this.version){
+        restUrl = restUrl + ( restUrl.match(/\?/) ? '&' : '?' ) + "ver="+this.version;
+    }
+    return restUrl;
+};
+
+ZmRevisionItem.prototype.getIcon =
+function(){
+   return null; 
+};
+

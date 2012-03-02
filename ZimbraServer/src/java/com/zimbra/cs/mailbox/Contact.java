@@ -12,10 +12,6 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on Aug 23, 2004
- */
 package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
@@ -37,6 +33,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.google.common.base.Objects;
+import com.google.common.base.Strings;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
@@ -53,6 +51,9 @@ import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 
+/**
+ * @since Aug 23, 2004
+ */
 public class Contact extends MailItem {
 
     public static class Attachment implements DataSource {
@@ -63,7 +64,7 @@ public class Contact extends MailItem {
 
         /**
          * Creates a new attachment.
-         * 
+         *
          * @param content attachment content
          * @param ctype content type
          * @param field field name
@@ -78,7 +79,7 @@ public class Contact extends MailItem {
             if (content == null) {
                 content = new byte[0];
             }
-            ByteArrayDataSource ds = new ByteArrayDataSource(content, ctype); 
+            ByteArrayDataSource ds = new ByteArrayDataSource(content, ctype);
             if (filename != null) {
                 ds.setName(filename);
             } else {
@@ -92,7 +93,7 @@ public class Contact extends MailItem {
             int size = (int) ByteUtil.getDataLength(dataHandler.getInputStream());
             init(dataHandler, field, size);
         }
-        
+
         public Attachment(DataHandler dataHandler, String field, int size) {
             init(dataHandler, field, size);
         }
@@ -108,26 +109,39 @@ public class Contact extends MailItem {
             mFieldName = field;
             mSize = size;
         }
-        
+
         public void setPartName(String name)  { mPartName = name; }
-        
-        public String getContentType()        { return mDataHandler.getContentType(); }
-        public String getName()               { return mFieldName; }
-        public int getSize()                  { return mSize; }
-        
+
+        @Override
+        public String getContentType() {
+            return mDataHandler.getContentType();
+        }
+
+        @Override
+        public String getName() {
+            return mFieldName;
+        }
+
+        public int getSize() {
+            return mSize;
+        }
+
         /**
          * Returns an <tt>InputStream</tt> to this attachment's content, or <tt>null</tt>
          * if there is no content.
          */
-        public InputStream getInputStream()
-        throws IOException {
+        @Override
+        public InputStream getInputStream() throws IOException {
             if (mDataHandler != null) {
                 return mDataHandler.getInputStream();
             }
             return null;
         }
-        
-        public OutputStream getOutputStream()  { throw new UnsupportedOperationException(); }
+
+        @Override
+        public OutputStream getOutputStream() {
+            throw new UnsupportedOperationException();
+        }
 
         /**
          * Returns this attachment's content, or <tt>null</tt>.
@@ -146,8 +160,11 @@ public class Contact extends MailItem {
             }
             return content;
         }
-        
-        public String getFilename()  { return mDataHandler.getName(); }
+
+        public String getFilename() {
+            return StringUtil.sanitizeFilename(mDataHandler.getName());
+        }
+
         public String getPartName()  { return mPartName; }
         public DataHandler getDataHandler() { return mDataHandler; }
 
@@ -167,26 +184,25 @@ public class Contact extends MailItem {
      *  values (<tt>"John"</tt>). */
     private Map<String, String> mFields;
     private List<Attachment> mAttachments;
-    
-    // The list of all *simple* "email" fields in the contact's map
-    // IMPORTANT NOTE - does not include the Contact Group 'dlist' entry, which is 
-    // * a multi-value entry (comma-separated) 
-    private static final String[] EMAIL_FIELDS = new String[] { 
-        ContactConstants.A_email, 
-        ContactConstants.A_email2, 
-        ContactConstants.A_email3, 
-        ContactConstants.A_workEmail1, 
-        ContactConstants.A_workEmail2, 
-        ContactConstants.A_workEmail3 };
-    
-    private String[] mEmailFields; 
 
+    // The list of all *simple* "email" fields in the contact's map
+    // IMPORTANT NOTE - does not include the Contact Group 'dlist' entry, which is
+    // * a multi-value entry (comma-separated)
+    private static final String[] EMAIL_FIELDS = new String[] {
+        ContactConstants.A_email,
+        ContactConstants.A_email2,
+        ContactConstants.A_email3,
+        ContactConstants.A_workEmail1,
+        ContactConstants.A_workEmail2,
+        ContactConstants.A_workEmail3 };
+
+    private String[] mEmailFields;
 
     /**
      * Returns the email fields in contact for the account.
-     * 
+     *
      * This gets called whenever a Contact object is constructed.
-     * With the high call rate, we cache it on the account to avoid 
+     * With the high call rate, we cache it on the account to avoid
      * repeated computing from the attr value.
      *
      * @param acct
@@ -194,16 +210,16 @@ public class Contact extends MailItem {
      */
     public static String[] getEmailFields(Account acct) {
         String[] emailFields = null;
-        
+
         // see if it is in cache
         emailFields = (String[])acct.getCachedData(EntryCacheDataKey.ACCOUNT_EMAIL_FIELDS);
-                
+
         if (emailFields == null) {
             String[] fields = null;
             String emailFieldsStr = acct.getAttr(Provisioning.A_zimbraContactEmailFields);
             if (emailFieldsStr != null)
                 fields = emailFieldsStr.split(",");
-                    
+
             if (fields != null) {
                 // remove dlist if it is there
                 List<String> temp = new ArrayList<String>(fields.length);
@@ -214,22 +230,22 @@ public class Contact extends MailItem {
                 if (temp.size() > 0)
                     emailFields = temp.toArray(new String[0]);
             }
-                    
+
             if (emailFields == null)
                 emailFields = EMAIL_FIELDS;
-                    
+
             // we now have a non empty emailFields, cache it on the acccount
             acct.setCachedData(EntryCacheDataKey.ACCOUNT_EMAIL_FIELDS, emailFields);
         }
-        
+
         return emailFields;
     }
-    
+
     public Contact(Mailbox mbox, UnderlyingData data) throws ServiceException {
         super(mbox, data);
         if (mData.type != TYPE_CONTACT)
             throw new IllegalArgumentException();
-        
+
         mEmailFields = getEmailFields(getAccount());
     }
 
@@ -251,7 +267,7 @@ public class Contact extends MailItem {
     public Map<String, String> getAllFields() {
         return new HashMap<String, String>(mFields);
     }
-    
+
     /** Returns a new <tt>Map</tt> containing all the visible
      *  field/value pairs in the contact. */
     public Map<String, String> getFields() {
@@ -286,25 +302,45 @@ public class Contact extends MailItem {
         return MessageCache.getMimeMessage(this, runConverters);
     }
 
-    /** Returns the "file as" string used for sort and listing purposes.
-     *  This value is derived by using the "<tt>fileAs</tt>" contact field
-     *  value to select a standard or custom formatting to apply to the
-     *  contact's fields.  Supported <tt>fileAs</tt> values are:<ul>
-     *    <li><tt>1</tt> - Last, First
-     *    <li><tt>2</tt> - First Last
-     *    <li><tt>3</tt> - Company
-     *    <li><tt>4</tt> - Last, First (Company)
-     *    <li><tt>5</tt> - First Last (Company)
-     *    <li><tt>6</tt> - Company (Last, First)
-     *    <li><tt>7</tt> - Company (First Last)
-     *    <li><tt>8:your name here</tt> - The string "your name here"</ul>
-     *  When a <tt>fileAs</tt> value is not specified, <tt>1</tt> is used as
-     *  the default. */
+    /**
+     * Returns the contact name used for sorting.
+     *
+     * @return file-as string honoring phonetic fields
+     */
+    public String getSortName() throws ServiceException {
+        return getFileAsString(mFields, true);
+    }
+
+    /**
+     * Returns the "file as" string used for listing purposes.
+     * <p>
+     * This value is derived by using the {@code fileAs} contact field value to
+     * select a standard or custom formatting to apply to the contact's fields.
+     * Supported {@code fileAs} values are:
+     * <ul>
+     *  <li>{@code 1} - Last, First
+     *  <li>{@code 2} - First Last
+     *  <li>{@code 3} - Company
+     *  <li>{@code 4} - Last, First (Company)
+     *  <li>{@code 5} - First Last (Company)
+     *  <li>{@code 6} - Company (Last, First)
+     *  <li>{@code 7} - Company (First Last)
+     *  <li>{@code 8:your name here} - The string "your name here"
+     * </ul>
+     * When a {@code fileAs} value is not specified, {@code 1} is used as the
+     * default.
+     */
     public String getFileAsString() throws ServiceException {
-        return getFileAsString(mFields);
+        return getFileAsString(mFields, false);
     }
 
     public static String getFileAsString(Map<String, String> fields) throws ServiceException {
+        return getFileAsString(fields, false);
+    }
+
+    private static String getFileAsString(Map<String, String> fields,
+            boolean phonetic) throws ServiceException {
+
         String fileAs = fields.get(ContactConstants.A_fileAs);
         String[] fileParts = (fileAs == null ? null : fileAs.split(":", 2));
         int fileAsInt = ContactConstants.FA_DEFAULT;
@@ -318,16 +354,33 @@ public class Contact extends MailItem {
             }
         }
 
-        String company = fields.get(ContactConstants.A_company);
-        if (company == null)
-            company = "";
-        String first = fields.get(ContactConstants.A_firstName);
-        if (first == null)
-            first = "";
-        String last = fields.get(ContactConstants.A_lastName);
-        if (last == null)
-            last = "";
-        
+        String company = null;
+        if (phonetic) {
+            company = fields.get(ContactConstants.A_phoneticCompany);
+        }
+        if (Strings.isNullOrEmpty(company)) {
+            company = fields.get(ContactConstants.A_company);
+        }
+        company = Strings.nullToEmpty(company);
+
+        String first = null;
+        if (phonetic) {
+            first = fields.get(ContactConstants.A_phoneticFirstName);
+        }
+        if (Strings.isNullOrEmpty(first)) {
+            first = fields.get(ContactConstants.A_firstName);
+        }
+        first = Strings.nullToEmpty(first);
+
+        String last = null;
+        if (phonetic) {
+            last = fields.get(ContactConstants.A_phoneticLastName);
+        }
+        if (Strings.isNullOrEmpty(last)) {
+            last = fields.get(ContactConstants.A_lastName);
+        }
+        last = Strings.nullToEmpty(last);
+
         StringBuilder result = new StringBuilder();
         switch (fileAsInt) {
             case ContactConstants.FA_EXPLICIT:
@@ -389,16 +442,16 @@ public class Contact extends MailItem {
         }
         return result.toString().trim();
     }
-    
+
     /**
      * Convert from a fileAs string to the internal fileAs format.
-     * 
+     *
      * @param attrs
      */
     public static void normalizeFileAs(Map<String, String> attrs) {
-		String fileAs = attrs.get(ContactConstants.A_fullName);
-		if (fileAs == null || fileAs.trim().length() == 0)
-			return;
+        String fileAs = attrs.get(ContactConstants.A_fullName);
+        if (fileAs == null || fileAs.trim().length() == 0)
+            return;
 
         String last = attrs.get(ContactConstants.A_lastName);
         last = last == null ? "" : last;
@@ -406,31 +459,31 @@ public class Contact extends MailItem {
         first = first == null ? "" : first;
         String company = attrs.get(ContactConstants.A_company);
         company = company == null ? "" : company;
-        
+
         //ContactConstants.A_LAST_C_FIRST = 1
         StringBuilder sb = new StringBuilder();
         sb.append(last);
         if (last.length() > 0 && first.length() > 0) sb.append(", ");
         sb.append(first);
         if (sb.toString().equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_LAST_C_FIRST).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_LAST_C_FIRST).toString());
+            return;
         }
-        
+
         //ContactConstants.A_FIRST_LAST = 2
         sb = new StringBuilder();
         sb.append(first);
         if (last.length() > 0 && first.length() > 0) sb.append(' ');
         sb.append(last);
         if (sb.toString().equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_FIRST_LAST).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_FIRST_LAST).toString());
+            return;
         }
-        
+
         //ContactConstants.A_COMPANY = 3
         if (company.equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_COMPANY).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_COMPANY).toString());
+            return;
         }
 
         //ContactConstants.A_LAST_C_FIRST_COMPANY = 4
@@ -440,8 +493,8 @@ public class Contact extends MailItem {
         sb.append(first);
         if (company.length() > 0) sb.append(" (").append(company).append(')');
         if (sb.toString().equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_LAST_C_FIRST_COMPANY).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_LAST_C_FIRST_COMPANY).toString());
+            return;
         }
 
         //ContactConstants.A_FIRST_LAST_COMPANY = 5
@@ -451,10 +504,10 @@ public class Contact extends MailItem {
         sb.append(last);
         if (company.length() > 0) sb.append(" (").append(company).append(')');
         if (sb.toString().equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_FIRST_LAST_COMPANY).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_FIRST_LAST_COMPANY).toString());
+            return;
         }
-        
+
         //ContactConstants.A_COMPANY_LAST_C_FIRST = 6
         sb = new StringBuilder();
         sb.append(company);
@@ -464,10 +517,10 @@ public class Contact extends MailItem {
             sb.append(first).append(')');
         }
         if (sb.toString().equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_COMPANY_LAST_C_FIRST).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_COMPANY_LAST_C_FIRST).toString());
+            return;
         }
-        
+
         //ContactConstants.A_COMPANY_FIRST_LAST = 7
         sb = new StringBuilder();
         sb.append(company);
@@ -477,8 +530,8 @@ public class Contact extends MailItem {
             sb.append(last).append(')');
         }
         if (sb.toString().equals(fileAs)) {
-        	attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_COMPANY_FIRST_LAST).toString());
-        	return;
+            attrs.put(ContactConstants.A_fileAs, new Integer(ContactConstants.FA_COMPANY_FIRST_LAST).toString());
+            return;
         }
 
         //ContactConstants.A_EXPLICIT = 8
@@ -491,7 +544,7 @@ public class Contact extends MailItem {
     public List<String> getEmailAddresses() {
         return getEmailAddresses(mEmailFields, mFields);
     }
-    
+
     public static final boolean isEmailField(String[] emailFields, String fieldName) {
         if (fieldName == null)
             return false;
@@ -504,7 +557,7 @@ public class Contact extends MailItem {
             return true;
         return false;
     }
-    
+
     public static final List<String> getEmailAddresses(String[] emailFields, Map<String, String> fields) {
         ArrayList<String> result = new ArrayList<String>();
         for (String field : emailFields) {
@@ -535,7 +588,7 @@ public class Contact extends MailItem {
     /** Creates a new <tt>Contact</tt> and persists it to the database.
      *  A real nonnegative item ID must be supplied from a previous call to
      *  {@link Mailbox#getNextItemId(int)}.
-     * 
+     *
      * @param id      The id for the new contact.
      * @param folder  The {@link Folder} to create the contact in.
      * @param mblob   The stored blob containing contact attachments.
@@ -567,7 +620,7 @@ public class Contact extends MailItem {
         data.type        = TYPE_CONTACT;
         data.folderId    = folder.getId();
         if (!folder.inSpam() || mbox.getAccount().getBooleanAttr(Provisioning.A_zimbraJunkMessagesIndexingEnabled, false))
-            data.indexId = mbox.generateIndexId(id);
+            data.indexId = id;
         data.imapId      = id;
         data.locator     = mblob == null ? null : mblob.getLocator();
         data.setBlobDigest(pc.getDigest());
@@ -577,7 +630,7 @@ public class Contact extends MailItem {
         data.tags        = Tag.tagsToBitmask(tags);
         data.metadata    = encodeMetadata(DEFAULT_COLOR_RGB, 1, custom, pc.getFields(), pc.getAttachments());
         data.contentChanged(mbox);
-        
+
         if (ZimbraLog.mailop.isInfoEnabled()) {
             String email = "null";
             if (pc.getFields() != null)
@@ -585,7 +638,7 @@ public class Contact extends MailItem {
             ZimbraLog.mailop.info("adding contact %s: id=%d, folderId=%d, folderName=%s.",
                 email, data.id, folder.getId(), folder.getName());
         }
-        
+
         DbMailItem.create(mbox, data, getFileAsString(pc.getFields()));
 
         Contact con = new Contact(mbox, data);
@@ -606,12 +659,12 @@ public class Contact extends MailItem {
             } catch (TemporaryIndexingException tie) {
                 throw tie;
             } catch (Exception e) {
-                return new ArrayList<IndexDocument>(); 
+                return new ArrayList<IndexDocument>();
             }
         }
     }
 
-    @Override void reanalyze(Object data) throws ServiceException {
+    @Override void reanalyze(Object data, long newSize) throws ServiceException {
         if (!(data instanceof ParsedContact))
             throw ServiceException.FAILURE("cannot reanalyze non-ParsedContact object", null);
 
@@ -709,45 +762,55 @@ public class Contact extends MailItem {
     }
 
 
-    @Override public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append("contact: {");
-        appendCommonMembers(sb);
-        for (Map.Entry<String, String> entry : mFields.entrySet())
-            sb.append(", ").append(entry.getKey()).append(": ").append(entry.getValue());
-        sb.append("}");
-        return sb.toString();
+    @Override
+    public String toString() {
+        Objects.ToStringHelper helper = Objects.toStringHelper(this);
+        appendCommonMembers(helper);
+        for (Map.Entry<String, String> entry : mFields.entrySet()) {
+            helper.add(entry.getKey(), entry.getValue());
+        }
+        return helper.toString();
     }
-    
+
     public String getVCardUID() {
         return mFields.get(ContactConstants.A_vCardUID);
     }
-    
+
     public String getXProp(String xprop) {
         return getXProps().get(xprop);
     }
-    
+
     public Map<String,String> getXProps() {
+        return decodeXProps(mFields.get(ContactConstants.A_vCardXProps));
+    }
+
+    public boolean isGroup() {
+        return ContactConstants.TYPE_GROUP.equals(get(ContactConstants.A_type));
+    }
+
+    public static boolean isGroup(Map<String,? extends Object> attrs) {
+        return ContactConstants.TYPE_GROUP.equals(attrs.get(ContactConstants.A_type));
+    }
+
+    public static Map<String,String> decodeXProps(String xpropStr) {
         HashMap<String,String> xprops = new HashMap<String,String>();
-        String xpropStr = mFields.get(ContactConstants.A_vCardXProps);
-        if (xpropStr != null) {
-            try {
-                JSONObject xpropObj = new JSONObject(xpropStr);
-                @SuppressWarnings("unchecked")
-                Iterator iter = xpropObj.keys();
-                while (iter.hasNext()) {
-                    String key = (String)iter.next();
-                    xprops.put(key, xpropObj.get(key).toString());
-                }
-            } catch (JSONException e) {
-                ZimbraLog.mailop.debug("can't get xprop %s", xpropStr, e);
+        if (xpropStr == null || xpropStr.length() == 0)
+            return xprops;
+        try {
+            JSONObject xpropObj = new JSONObject(xpropStr);
+            Iterator<?> iter = xpropObj.keys();
+            while (iter.hasNext()) {
+                String key = (String)iter.next();
+                xprops.put(key, xpropObj.get(key).toString());
             }
+        } catch (JSONException e) {
+            ZimbraLog.mailop.debug("can't get xprop %s", xpropStr, e);
         }
         return xprops;
     }
-    
+
     // xprops are not automatically added to the Contact object
-    // as a distinct attribute. the xprops are encoded into JSONObject, 
+    // as a distinct attribute. the xprops are encoded into JSONObject,
     // then added as ContactConstants.a_vCardXProps attr to the map.
     public static String encodeXProps(Map<String,String> xprops) {
         JSONObject jsonobj = new JSONObject();
@@ -759,27 +822,38 @@ public class Contact extends MailItem {
         }
         return jsonobj.toString();
     }
-    
+
     private static final String ZMVAL = "ZMVAL";
     private static final String ZMVALENCODED = "{\"ZMVAL\":";
 
     public static String encodeMultiValueAttr(String[] attrs) throws JSONException {
-		JSONObject jsonobj = new JSONObject();
-		for (String s : attrs)
-			jsonobj.append(ZMVAL, s);
-		return jsonobj.toString();
+        JSONObject jsonobj = new JSONObject();
+        for (String s : attrs)
+            jsonobj.append(ZMVAL, s);
+        return jsonobj.toString();
     }
     public static boolean isMultiValueAttr(String attr) {
-    	return attr.startsWith(ZMVALENCODED);
+        return attr.startsWith(ZMVALENCODED);
     }
     public static String[] parseMultiValueAttr(String attr) throws JSONException {
         if (!isMultiValueAttr(attr))
             return new String[] { attr };
-    	JSONObject jsonobj = new JSONObject(attr);
-    	JSONArray array = jsonobj.getJSONArray(ZMVAL);
-    	String[] mv = new String[array.length()];
-    	for (int i = 0; i < mv.length; i++)
-    		mv[i] = array.getString(i);
-    	return mv;
+        JSONObject jsonobj = new JSONObject(attr);
+        JSONArray array = jsonobj.getJSONArray(ZMVAL);
+        String[] mv = new String[array.length()];
+        for (int i = 0; i < mv.length; i++)
+            mv[i] = array.getString(i);
+        return mv;
+    }
+    public static JSONArray getMultiValueAttrArray(String attr) throws JSONException {
+        if (!isMultiValueAttr(attr)) {
+            JSONObject jsonobj = new JSONObject();
+            jsonobj.append(ZMVAL, attr);
+            return jsonobj.getJSONArray(ZMVAL);
+        } else {
+            JSONObject jsonobj = new JSONObject(attr);
+            JSONArray array = jsonobj.getJSONArray(ZMVAL);
+            return array;
+        }
     }
 }

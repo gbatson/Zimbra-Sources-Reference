@@ -36,7 +36,7 @@ import java.util.List;
 
 final class RemoteFolder {
     private final ImapConnection connection;
-    private final String path;
+    private String path;
     private int deleted;
 
     private static final Log LOG = ZimbraLog.datasource;
@@ -199,6 +199,9 @@ final class RemoteFolder {
         if (mi.getUidValidity() <= 0) {
             mi.setUidValidity(1);
         }
+        if (!path.equals(mi.getName())) {
+            path = mi.getName();
+        }
         return mi;
     }
 
@@ -219,6 +222,10 @@ final class RemoteFolder {
 
     public void info(String fmt, Object... args) {
         LOG.info(errmsg(String.format(fmt, args)));
+    }
+
+    public void info(String msg, Throwable e) {
+        LOG.info(errmsg(msg), e);
     }
 
     public void warn(String msg, Throwable e) {

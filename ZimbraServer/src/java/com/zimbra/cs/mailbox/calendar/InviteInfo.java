@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,7 +23,7 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
 
-public class InviteInfo implements Comparable<InviteInfo>, Cloneable {
+public class InviteInfo implements Comparable<InviteInfo> {
     private int mMsgId; // ID of the MESSAGE which this invite was originally encoded in 
     private int mComponentId; // component number in that message
     private RecurId mRecurrenceId; // RECURID, in the iCal (rfc2445) sense
@@ -68,11 +68,6 @@ public class InviteInfo implements Comparable<InviteInfo>, Cloneable {
             }
         }
         return toRet;
-    }
-
-    public Object clone() {
-        RecurId rid = mRecurrenceId != null ? (RecurId) mRecurrenceId.clone() : null;
-        return new InviteInfo(mMsgId, mComponentId, rid, mMethod);
     }
 
     private static final String FN_MSGID        ="i";

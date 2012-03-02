@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,12 +30,14 @@ public class UserRights {
     
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 pshao 20100707-0107 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110106-1444 */
 
 
     public static UserRight R_invite;
     public static UserRight R_loginAs;
     public static UserRight R_sendAs;
+    public static UserRight R_sendToDistList;
+    public static UserRight R_viewDistList;
     public static UserRight R_viewFreeBusy;
 
 
@@ -43,6 +45,8 @@ public class UserRights {
         R_invite                               = rm.getUserRight(Right.RT_invite);
         R_loginAs                              = rm.getUserRight(Right.RT_loginAs);
         R_sendAs                               = rm.getUserRight(Right.RT_sendAs);
+        R_sendToDistList                       = rm.getUserRight(Right.RT_sendToDistList);
+        R_viewDistList                         = rm.getUserRight(Right.RT_viewDistList);
         R_viewFreeBusy                         = rm.getUserRight(Right.RT_viewFreeBusy);
     }
 

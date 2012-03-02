@@ -179,7 +179,7 @@ abstract class ImapRequest {
         }
         addPart(new StringPart(line));
     }
-        
+
     private void addPart(Part part) {
         // Do not add any more parts if we have exceeded the maximum request
         // size. The exception is if this is the first part (request line) so
@@ -213,7 +213,7 @@ abstract class ImapRequest {
         }
         return null;
     }
-    
+
     String getCurrentLine() throws ImapParseException {
         return mParts.get(mIndex).getString();
     }
@@ -312,7 +312,7 @@ abstract class ImapRequest {
         char got = str.charAt(mOffset);
         if (got == c) mOffset++;
         else throw new ImapParseException(mTag, "wrong character; expected '" + c + "' but got '" + got + "'");
-    }                                       
+    }
 
     void skipNIL() throws ImapParseException  { skipAtom("NIL"); }
 

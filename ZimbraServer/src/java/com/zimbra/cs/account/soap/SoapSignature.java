@@ -53,10 +53,12 @@ class SoapSignature extends Signature implements SoapEntry {
                 signature.addAttribute(AccountConstants.A_ID, value);
             else if (attr.equals(Provisioning.A_zimbraSignatureName) && !StringUtil.isNullOrEmpty(value))
                 signature.addAttribute(AccountConstants.A_NAME, value);
+            else if (attr.equals(Provisioning.A_zimbraPrefMailSignatureContactId) && !StringUtil.isNullOrEmpty(value))
+                signature.addElement(AccountConstants.E_CONTACT_ID).setText(value);
             else {
                 String mimeType = Signature.attrNameToMimeType(attr);
                 if (mimeType == null)
-                    throw ZClientException.CLIENT_ERROR("invalid attr: "+attr, null);
+                    throw ZClientException.CLIENT_ERROR("unable to determine mime type from attr " + attr, null);
                 
                 signature.addElement(AccountConstants.E_CONTENT).addAttribute(AccountConstants.A_TYPE, mimeType).addText(value);
             }
@@ -68,6 +70,10 @@ class SoapSignature extends Signature implements SoapEntry {
         Map<String,Object> attrs = new HashMap<String, Object>();
         attrs.put(Provisioning.A_zimbraSignatureId, signature.getAttribute(AccountConstants.A_ID));
         attrs.put(Provisioning.A_zimbraSignatureName, signature.getAttribute(AccountConstants.A_NAME));
+        
+        Element eContactId = signature.getOptionalElement(AccountConstants.E_CONTACT_ID);
+        if (eContactId != null)
+            attrs.put(Provisioning.A_zimbraPrefMailSignatureContactId, eContactId.getText());
         
         for (Element eContent : contents) {
             String type = eContent.getAttribute(AccountConstants.A_TYPE);

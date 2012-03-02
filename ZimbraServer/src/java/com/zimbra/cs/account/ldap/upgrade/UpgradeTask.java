@@ -17,6 +17,7 @@ package com.zimbra.cs.account.ldap.upgrade;
 import com.zimbra.common.service.ServiceException;
 
 public enum UpgradeTask {
+    BUG_10287(zimbraPrefCalendarReminderSendEmail.class),
     BUG_14531(ZimbraGalLdapFilterDef_zimbraSync.class),
     BUG_18277(AdminRights.class),
     BUG_22033(ZimbraCreateTimestamp.class),
@@ -28,14 +29,18 @@ public enum UpgradeTask {
     BUG_32719(ZimbraHsmPolicy.class),
     BUG_33814(ZimbraMtaAuthEnabled.class),
     BUG_41000(ZimbraGalLdapFilterDef_zimbraAutoComplete_zimbraSearch.class),
-    BUG_42877(zimbraGalLdapAttrMap.class),
+    BUG_42877(ZimbraGalLdapAttrMap.class),
     BUG_42896(ZimbraMailQuota_constraint.class),
     BUG_43147(GalSyncAccountContactLimit.class),
     BUG_46297(ZimbraContactHiddenAttributes.class),
     BUG_46883(ZimbraContactRankingTableSize.class),
-    BUG_46961(zimbraGalLdapAttrMap_fullName.class),
-    BUG_50458(Bug50458.class),
-    BUG_58084(Bug58084.class);
+    BUG_46961(ZimbraGalLdapAttrMap_fullName.class),
+    BUG_42828(ZimbraGalLdapAttrMap_ZimbraContactHiddenAttributes_externalCRandGroup.class),
+    BUG_43779(ZimbraGalLdapFilterDef_zimbraGroup.class),
+    BUG_47934(Bug47934.class),
+    BUG_50258(ZimbraMtaSaslAuthEnable.class),
+    BUG_50465(DisableBriefcase.class),
+    BUG_50458(Bug50458.class);
     
     
     private Class mUpgradeClass;

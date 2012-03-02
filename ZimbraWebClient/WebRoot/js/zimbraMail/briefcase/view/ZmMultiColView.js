@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -54,7 +54,7 @@ ZmMultiColView = function(parent, controller, dropTgt) {
 	//override the default style set on DwtControl module
 	var el = this.getHtmlElement();
 	el.style.overflow = "";
-}
+};
 
 ZmMultiColView.prototype = new DwtComposite;
 ZmMultiColView.prototype.constructor = ZmMultiColView;
@@ -258,7 +258,7 @@ function(ev){
     if(ev.event == ZmEvent.E_MOVE){
         //If the col list visible, add the briefcase item
         var lv = this._getItemListView(item.folderId);
-        if(lv){
+        if(lv && lv._getRowIndex(item) === null){
             lv.addItem(item, 0, true);   
         }
     }
@@ -267,9 +267,9 @@ function(ev){
 ZmMultiColView.prototype.handleNotifyCreate =
 function(create){
     var fId = create.folderId || create.l;
-    var lv = this._getItemListView(fId) || this._curListView;
+    var lv = this._getItemListView(fId) || this._curListView;    
     var list = lv && lv._zmList;    
-    if(list){
+    if(list && !list.getById(create.id)){
         list.notifyCreate(create);
     }
 };        
@@ -301,17 +301,16 @@ function(item) {
 
     //added for bug: 45150
     if(item.isWebDoc()) {
-        restURL = this._controller.getApp().fixCrossDomainReference(restURL);
-        originalRestURL = this._controller.getApp().fixCrossDomainReference(originalRestURL);
+        restURL = AjxStringUtil.fixCrossDomainReference(restURL);
+        originalRestURL = AjxStringUtil.fixCrossDomainReference(originalRestURL);
     }
 
     //Name: fileLink
     if(item.isWebDoc()){
-        if(window.isTinyMCE)
-            restURL += "&editor=tinymce";
+        //if(window.isTinyMCE) { restURL += "&editor=tinymce"; }
         restURL += "&preview=1&localeId="+AjxEnv.DEFAULT_LOCALE;
     }
-    var fileLink = [ '<a href="', restURL, '"',  (item.isWebDoc() ? ' target="_blank"' : (item.isDownloadable() ? ' onclick="ZmZimbraMail.unloadHackCallback();"' : ' target="_blank"')),'>', AjxStringUtil.htmlEncode(name), '</a>' ].join("");
+    var fileLink = [ '<a href="', restURL, '"',  (item.isWebDoc() ? ' target="_blank"' : (item.isDownloadable() ? ' onclick="ZmZimbraMail.unloadHackCallback();"' : ' target="_blank"')),'>', name, '</a>' ].join("");
     prop.push({name:ZmMsg.name, value:fileLink});
 
     //Action: actionLink
@@ -320,7 +319,7 @@ function(item) {
         if (item.isSlideDoc()) {
             actionLink = [ '<a href="', originalRestURL, "?fmt=html&run=1&localeId="+AjxEnv.DEFAULT_LOCALE, '" target="_blank">', ZmMsg.slides_launchSlideShow, '</a>' ].join("");
         } else if(item.isWebDoc()) {
-            actionLink = [ '<a href="', originalRestURL, "?fmt=html&localeId="+AjxEnv.DEFAULT_LOCALE + (window.isTinyMCE ?  "&editor=tinymce" : "") , '" target="_blank">', ZmMsg.edit, '</a>' ].join("");
+            actionLink = [ '<a href="', originalRestURL, "?fmt=html&localeId="+AjxEnv.DEFAULT_LOCALE, '" target="_blank">', ZmMsg.edit, '</a>' ].join("");
         } else {
             actionLink = [ '<a href="', originalRestURL, "?disp=a", (item.isDownloadable() ? '" onclick="ZmZimbraMail.unloadHackCallback();"' : '" target="_blank"'), '>', ZmMsg.saveFile, '</a>' ].join("");
         }

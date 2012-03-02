@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -82,11 +82,11 @@ function(id) {
 ZmDocsEditController.prototype.loadDocument = function(item) {
     var content = this._docMgr.fetchDocumentContent(item);
     if(content) {
-        if(window.isTinyMCE) {
-            this._docsEdit.setPendingContent(content);            
-        }else {
+    //        if(window.isTinyMCE) {
+    //            this._docsEdit.setPendingContent(content);
+    //        }else {
             this._docsEdit._editor.setContent(content);
-        }
+    //        }
         ZmDocsEditController.savedDoc = content;
     }
 };
@@ -134,18 +134,26 @@ window.onbeforeunload = function() {
 ZmDocsEditController.prototype.checkForChanges = function() {
    var curDoc = null;
    var controller = ZmDocsEditApp._controller;
-   if(window.isTinyMCE) {
-     var ed = tinyMCE.get('tiny_mce_content');
-     curDoc = ed.getContent();
-   } else {
+    //   if(window.isTinyMCE) {
+    //     var ed = tinyMCE.get('tiny_mce_content');
+    //     curDoc = ed.getContent();
+    //   } else {
      curDoc = controller._docsEdit._editor.getContent();  
-   }
+    //   }
    /*if(!ZmDocsEditApp.fileInfo.id) {
      return ZmMsg.exitDocNotSaved;
    }*/
-   if(curDoc == '<html><body><br></body></html>') {
+   if(  ZmDocsEditController.savedDoc == null &&
+       (curDoc == '<html><body></body></html>' ||
+       !curDoc)) {
         return;     
    } else if(curDoc != ZmDocsEditController.savedDoc) {
         return ZmMsg.exitDocUnSavedChanges;
    } 
+};
+
+ZmDocsEditController.prototype.exit = function(){
+    if(ZmDocsEditApp.fileInfo.locked){
+        this._docMgr.unlock(ZmDocsEditApp.fileInfo);
+    }
 };

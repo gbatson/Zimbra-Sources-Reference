@@ -15,12 +15,15 @@
 package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.LruMap;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.offline.OfflineAccount;
@@ -55,6 +58,19 @@ public abstract class SyncMailbox extends DesktopMailbox {
     private boolean isMPAcct;
     private long lastOptimizeTime = 0;
     private static final AtomicLong lastGC = new AtomicLong();
+    private Set<Integer> syncedIds = new HashSet<Integer>();
+
+    public int getSyncCount() {
+        return syncedIds.size();
+    }
+
+    public void recordItemSync(int itemId) {
+        syncedIds.add(itemId); //using set rather than a counter since various call sites may touch the same item more than once
+    }
+    
+    public void resetSyncCounter() {
+        syncedIds.clear();
+    }
 
     public SyncMailbox(MailboxData data) throws ServiceException {
         super(data);
@@ -86,8 +102,8 @@ public abstract class SyncMailbox extends DesktopMailbox {
     }
     
     @Override
-    synchronized boolean finishInitialization() throws ServiceException {
-        if (super.finishInitialization()) {
+    boolean open() throws ServiceException {
+        if (super.open()) {
             initSyncTimer();
             return true;
         }
@@ -172,7 +188,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
             deleteThisMailbox(false);
         }
     }
-	
+
     private synchronized String unhookMailboxForDeletion()
         throws ServiceException {
         String accountId = getAccountId();
@@ -262,8 +278,8 @@ public abstract class SyncMailbox extends DesktopMailbox {
                     syncOnTimer();
                     now = System.currentTimeMillis();
                     if (lastOptimizeTime == 0) {
-                    	lastOptimizeTime = now - OPTIMIZE_INTERVAL +
-                    		30 * Constants.MILLIS_PER_MINUTE;
+                        lastOptimizeTime = now - OPTIMIZE_INTERVAL +
+                            30 * Constants.MILLIS_PER_MINUTE;
                     } else if (now - lastOptimizeTime > OPTIMIZE_INTERVAL) {
                         optimize(null, 0);
                         lastOptimizeTime = now;
@@ -311,10 +327,10 @@ public abstract class SyncMailbox extends DesktopMailbox {
         if (pms.created != null) {
             for (MailItem item : pms.created.values()) {
                 if ((item.getId() >= FIRST_USER_ID || item instanceof Tag) && item.getFolderId() != ID_FOLDER_FAILURE) {
-                	itemCreated(item);
-                	trackChangeNew(item);
+                    itemCreated(item);
+                    trackChangeNew(item);
                     if (item.getFolderId() == ID_FOLDER_OUTBOX)
-                    	outboxed = true;
+                        outboxed = true;
                 }
             }
         }
@@ -325,7 +341,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
                     continue;
                 MailItem item = (MailItem) change.what;
                 if ((item.getId() >= FIRST_USER_ID || item instanceof Tag) && item.getFolderId() != ID_FOLDER_FAILURE) {
-                	trackChangeModified(item, change.why);
+                    trackChangeModified(item, change.why);
                     if (item.getFolderId() == ID_FOLDER_OUTBOX)
                         outboxed = true;
                 }
@@ -342,4 +358,14 @@ public abstract class SyncMailbox extends DesktopMailbox {
     void trackChangeModified(MailItem item, int changeMask) throws ServiceException {}
 
     void itemCreated(MailItem item) throws ServiceException {}
+
+    private LruMap<Integer, Object> transientItems = new LruMap<Integer, Object>(16); 
+
+    synchronized void trackTransientItem(int itemId) {
+        transientItems.put(Integer.valueOf(itemId), new Object());
+    }
+
+    synchronized boolean isTransientItem(int itemId) {
+        return transientItems.containsKey(Integer.valueOf(itemId));
+    }
 }

@@ -15,7 +15,7 @@
 
 package com.zimbra.common.localconfig;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
@@ -23,87 +23,134 @@ import com.zimbra.common.util.L10nUtil;
 
 public class KnownKey {
 
-    private static final Map<String, KnownKey> mKnownKeys = new HashMap<String, KnownKey>();
+    private static final Map<String, KnownKey> ALL = new LinkedHashMap<String, KnownKey>();
 
     static {
-        // Since all the known keys are actually defined
-        // in another class, we need to make sure that
-        // class' static initializer is run.
+        // Since all the known keys are actually defined in another class, we
+        // need to make sure that class' static initializer is run.
         LC.init();
     }
 
+    /**
+     * Factory method with string default value.
+     *
+     * @param defaultValue default value
+     * @return new instance
+     */
+    static KnownKey newKey(String defaultValue) {
+        return new KnownKey().setDefault(defaultValue);
+    }
+
+    /**
+     * Factory method with boolean default value.
+     *
+     * @param defaultValue default value
+     * @return new instance
+     */
+    static KnownKey newKey(boolean defaultValue) {
+        return new KnownKey().setDefault(String.valueOf(defaultValue));
+    }
+
+    /**
+     * Factory method with integer default value.
+     *
+     * @param defaultValue default value
+     * @return new instance
+     */
+    static KnownKey newKey(int defaultValue) {
+        return new KnownKey().setDefault(String.valueOf(defaultValue));
+    }
+
+    /**
+     * Factory method with long default value.
+     *
+     * @param defaultValue default value
+     * @return new instance
+     */
+    static KnownKey newKey(long defaultValue) {
+        return new KnownKey().setDefault(String.valueOf(defaultValue));
+    }
+
+    /**
+     * Factory method with float default value.
+     *
+     * @param defaultValue default value
+     * @return new instance
+     */
+    static KnownKey newKey(float defaultValue) {
+        return new KnownKey().setDefault(String.valueOf(defaultValue));
+    }
+
     static String[] getAll() {
-        return mKnownKeys.keySet().toArray(new String[0]);
+        return ALL.keySet().toArray(new String[0]);
     }
 
     static boolean isKnown(String key) {
-        return mKnownKeys.containsKey(key);
+        return ALL.containsKey(key);
     }
 
-    static String getDoc(String key) {
-        KnownKey kk = mKnownKeys.get(key);
-        if (kk == null) {
-            return null;
-        }
-        return kk.doc();
+    static KnownKey get(String key) {
+        return ALL.get(key);
     }
 
     static String getDefaultValue(String key) {
-        KnownKey kk = mKnownKeys.get(key);
+        KnownKey kk = ALL.get(key);
         if (kk == null) {
             return null;
         }
         return kk.mDefaultValue;
     }
 
-    static void expandAll(LocalConfig lc, boolean minimize) throws ConfigException {
+    static void expandAll(LocalConfig lc) throws ConfigException {
         String[] keys = KnownKey.getAll();
         for (String key : keys) {
-            KnownKey kk = mKnownKeys.get(key);
-            kk.expand(lc, minimize);
+            KnownKey kk = ALL.get(key);
+            kk.expand(lc);
         }
     }
 
     static String getValue(String key) throws ConfigException {
-        KnownKey kk = mKnownKeys.get(key);
+        KnownKey kk = ALL.get(key);
         if (kk == null) {
             return null;
         }
         if (kk.mValue == null) {
-            kk.expand(LocalConfig.getInstance(), false);
+            kk.expand(LocalConfig.getInstance());
         }
         return kk.mValue;
     }
 
-    static boolean needForceToEdit(String key) {
-        KnownKey kk = mKnownKeys.get(key);
+    public static boolean needForceToEdit(String key) {
+        KnownKey kk = ALL.get(key);
         if (kk == null) {
             return false;
         }
         return kk.mForceToEdit;
     }
 
-    /*
-     * Instance stuff.
-     */
-
-    private final String mKey;
-    private String mDoc;
+    private String mKey;
     private String mDefaultValue;
     private String mValue; //cached value after expansion
     private boolean mForceToEdit;
+    private boolean reloadable = false;
+    /* 
+     * whether or not this is a 'supported' key (printing with zmlocalconfig -i)
+     */
+    private boolean supported = false;
 
     /**
      * The only public method here.  If you have a KnownKey object, this
      * is a shortcut to get it's value.
-     * 
+     *
      * @see LC#get
      */
     public String value() {
+        assert mKey != null;
         return LC.get(mKey);
     }
 
     public boolean booleanValue() {
+        assert mKey != null;
         String s = LC.get(mKey);
         if (s == null || s.length() == 0) {
             throw new IllegalStateException("'" + mKey + "' is not defined in LocalConfig");
@@ -112,6 +159,7 @@ public class KnownKey {
     }
 
     public int intValue() {
+        assert mKey != null;
         String s = LC.get(mKey);
         if (s == null || s.length() == 0) {
             throw new IllegalStateException("'" + mKey + "' is not defined in LocalConfig");
@@ -122,13 +170,13 @@ public class KnownKey {
     /**
      * Returns the value of this KnownKey as an int, but forces it to be within
      * the range of minValue <= RETURN <= maxValue
-     * 
+     *
      * @param minValue
      * @param maxValue
      */
     public int intValueWithinRange(int minValue, int maxValue) {
         int toRet = intValue();
-        if (toRet < minValue) 
+        if (toRet < minValue)
             toRet = minValue;
         if (toRet > maxValue)
             toRet = maxValue;
@@ -136,6 +184,7 @@ public class KnownKey {
     }
 
     public long longValue() {
+        assert mKey != null;
         String s = LC.get(mKey);
         if (s == null || s.length() == 0) {
             throw new IllegalStateException("'" + mKey + "' is not defined in LocalConfig");
@@ -146,13 +195,13 @@ public class KnownKey {
     /**
      * Returns the value of this KnownKey as a long, but forces it to be within
      * the range of minValue <= RETURN <= maxValue
-     * 
+     *
      * @param minValue
      * @param maxValue
      */
     public long longValueWithinRange(long minValue, long maxValue) {
         long toRet = longValue();
-        if (toRet < minValue) 
+        if (toRet < minValue)
             toRet = minValue;
         if (toRet > maxValue)
             toRet = maxValue;
@@ -160,7 +209,14 @@ public class KnownKey {
     }
 
     public String key() {
-        return mKey;   
+        return mKey;
+    }
+
+    void setKey(String name) {
+        assert mKey == null : name;
+        assert !ALL.containsKey(name) : name;
+        mKey = name;
+        ALL.put(name, this);
     }
 
     public String doc() {
@@ -168,33 +224,30 @@ public class KnownKey {
     }
 
     public String doc(Locale locale) {
-        String doc = mDoc;
-        if (doc == null) doc = L10nUtil.getMessage(mKey, locale);
-        return doc;
+        return L10nUtil.getMessage(mKey, locale);
+    }
+
+    /**
+     * You must call {@link #setKey(String)} before using this {@link KnownKey}.
+     */
+    KnownKey() {
     }
 
     public KnownKey(String key) {
-        this(key, null, null);
+        this(key, null);
     }
+
+    
 
     public KnownKey(String key, String defaultValue) {
-        this(key, defaultValue, null);
-    }
-
-    public KnownKey(String key, String defaultValue, String doc) {
         mKey = key;
-        if (mKnownKeys.containsKey(key)) {
-            Logging.warn("programming error - known key added more than once: " + key);
+        if (ALL.containsKey(key)) {
+            assert false : "duplicate key: " + key;
         }
         setDefault(defaultValue);
-        mDoc = doc;
-        mKnownKeys.put(key, this);
+        ALL.put(key, this);
     }
 
-    public KnownKey setDoc(String doc) {
-        mDoc = doc;
-        return this;
-    }
 
     public KnownKey setDefault(String defaultValue) {
         mDefaultValue = defaultValue;
@@ -211,14 +264,49 @@ public class KnownKey {
         return this;
     }
 
-    private void expand(LocalConfig lc, boolean minimize) throws ConfigException {
+    KnownKey protect() {
+        mForceToEdit = true;
+        return this;
+    }
+
+    /**
+     * Mark this key as reloadable.
+     * <p>
+     * This is solely for documentation purpose. Developers are responsible for
+     * providing accurate information. If it's reloadable, changes are in effect
+     * after LC reload. Otherwise, changes are in effect after server restart.
+     *
+     */
+    public void setReloadable(boolean reloadable) {
+        this.reloadable = reloadable;
+    }
+
+    public void setSupported(boolean supported){
+        this.supported = supported;
+    }
+
+    /**
+     * Whether or not the value of the key will be reloaded without a server restart
+     * 
+     */
+    boolean isReloadable() {
+        return reloadable;
+    }
+    /**
+     * Whether or not to show the key for the -i option on the command line.
+     */ 
+    boolean isSupported() {
+        return supported;
+    }
+    
+    
+    private void expand(LocalConfig lc) throws ConfigException {
         try {
             mValue = lc.expand(mKey, mDefaultValue);
-            if (minimize)
-                mDoc = null;
         } catch (ConfigException x) {
             Logging.error("Can't expand config key " + mKey + "=" + mDefaultValue, x);
             throw x;
         }
     }
+
 }

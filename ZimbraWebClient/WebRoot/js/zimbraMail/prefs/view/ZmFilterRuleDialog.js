@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -82,9 +82,10 @@ function() {
  * @param {String}	accountName		the name of the account
  */
 ZmFilterRuleDialog.prototype.popup =
-function(rule, editMode, referenceRule, accountName) {
+function(rule, editMode, referenceRule, accountName, outgoing) {
 	// always make sure we have the right rules container in case of multi-mbox
-	this._rules = AjxDispatcher.run("GetFilterRules", accountName);
+	this._rules = AjxDispatcher.run(outgoing ? "GetOutgoingFilterRules" : "GetFilterRules", accountName);
+	this._outgoing = outgoing;
 	this._rules.loadRules(); // make sure rules are loaded (for when we save)
 	this._inputs = {};
 	this._rule = rule || ZmFilterRule.getDummyRule();
@@ -92,14 +93,15 @@ function(rule, editMode, referenceRule, accountName) {
 	this._referenceRule = referenceRule;
 	this.setTitle(rule ? ZmMsg.editFilter : ZmMsg.addFilter);
 
-	var nameField = document.getElementById(this._nameInputId);
+	var nameField = Dwt.byId(this._nameInputId);
 	var name = rule ? rule.name : null;
 	nameField.value = name || "";
 
-	var activeField = document.getElementById(this._activeCheckboxId);
+	var activeField = Dwt.byId(this._activeCheckboxId);
 	activeField.checked = (!rule || rule.active);
+	Dwt.setHandler(activeField, DwtEvent.ONCHANGE, AjxCallback.simpleClosure(this._activeChangeListener, this));
 
-	var stopField = document.getElementById(this._stopCheckboxId);
+	var stopField = Dwt.byId(this._stopCheckboxId);
 	stopField.checked = (!editMode);
 
 	var checkAll = (rule && (rule.getGroupOp() == ZmFilterRule.GROUP_ALL));
@@ -164,7 +166,7 @@ function() {
 	var callback = new AjxCallback(this, this._createConditionControl);
 	message.setFormat(ZmMsg.filterCondition, callback);
 
-	var conditionEl = document.getElementById(this._htmlElId+"_condition");
+	var conditionEl = Dwt.byId(this._htmlElId+"_condition");
 	message.appendElement(conditionEl);
 };
 
@@ -198,22 +200,22 @@ function() {
 	var tabIndexes = {};
 	var ids = [ this._nameInputId, this._activeCheckboxId, this._stopCheckboxId ];
 	for (var i = 0; i < ids.length; i++) {
-		var el = document.getElementById(ids[i]);
+		var el = Dwt.byId(ids[i]);
 		var tabIndex = el.getAttribute("tabindex") || MAX_VALUE - 5 - i;
 		tabIndexes[tabIndex] = el;
 	}
 
 	// add other controls
-	var el = document.getElementById(this._conditionId);
+	var el = Dwt.byId(this._conditionId);
 	var tabIndex = el.getAttribute("tabindex") || MAX_VALUE - 4;
 	tabIndexes[tabIndex] = this._conditionSelect;
 
 	// add tabgroups that will hold the conditions and actions
-	var el = document.getElementById(this._conditionsTableId);
+	var el = Dwt.byId(this._conditionsTableId);
 	var tabIndex = el.getAttribute("tabindex") || MAX_VALUE - 3;
 	tabIndexes[tabIndex] = this._conditionsTabGroup;
 
-	var el = document.getElementById(this._actionsTableId);
+	var el = Dwt.byId(this._actionsTableId);
 	var tabIndex = el.getAttribute("tabindex") || MAX_VALUE - 2;
 	tabIndexes[tabIndex] = this._actionsTabGroup;
 
@@ -242,7 +244,7 @@ function() {
  */
 ZmFilterRuleDialog.prototype._renderTable =
 function(rule, isCondition, tableId, rowData, tabGroup) {
-	var table = document.getElementById(tableId);
+	var table = Dwt.byId(tableId);
 	var row;
 	for (var i in rowData) {
 		var data = rowData[i];
@@ -251,10 +253,7 @@ function(rule, isCondition, tableId, rowData, tabGroup) {
 		// don't show action if it's disabled
 		if (!isCondition) {
 			var actionIndex = ZmFilterRule.A_VALUE_MAP[i];
-			var actionCfg = ZmFilterRule.ACTIONS[actionIndex];
-			if (actionCfg.precondition && !appCtxt.get(actionCfg.precondition)) {
-				continue;
-			}
+			if (!ZmFilterRule.checkPreconditions(ZmFilterRule.ACTIONS[actionIndex])) { continue; }
 		}
 
 		for (j = 0; j < data.length; j++) {
@@ -317,12 +316,13 @@ function(data, test, isCondition, rowId) {
 		html[i++] = this._createRowComponent(conf, "valueMod", conf.vmOptions, data, test, rowId);
 	} else {
 		if (test == ZmFilterRule.A_NAME_STOP) {
-			var stopField = document.getElementById(this._stopCheckboxId);
+			var stopField = Dwt.byId(this._stopCheckboxId);
 			stopField.checked = true;
 			return;
 		}
 		html[i++] = "<td><table><tr>";
-		html[i++] = this._createRowComponent(false, "name", ZmFilterRule.ACTIONS_LIST, data, test, rowId);
+		var options = this._outgoing ? ZmFilterRule.ACTIONS_OUTGOING_LIST : ZmFilterRule.ACTIONS_LIST;
+		html[i++] = this._createRowComponent(false, "name", options, data, test, rowId);
 		html[i++] = this._createRowComponent(conf, "param", conf.pOptions, data, test, rowId);
 		html[i++] = "</tr></table></td>";
 	}
@@ -413,10 +413,10 @@ function(isCondition) {
  */
 ZmFilterRuleDialog.prototype._removeRow =
 function(rowId, isCondition) {
-	var row = document.getElementById(rowId);
+	var row = Dwt.byId(rowId);
 	if (!row) { return; }
 	
-	var table = document.getElementById(isCondition ? this._conditionsTableId : this._actionsTableId);
+	var table = Dwt.byId(isCondition ? this._conditionsTableId : this._actionsTableId);
 	var rows = table.rows;
 	for (var i = 0; i < rows.length; i++) {
 		if (rows[i] == row) {
@@ -450,7 +450,7 @@ function(conf, field, options, rowData, testType, rowId) {
 	var tabGroup = this._getCurrentTabScope();
 
 	var isCondition, type;
-	var isMainSelect = (typeof conf == "boolean");
+	var isMainSelect = AjxUtil.isBoolean(conf);
 	if (isMainSelect) {
 		type = ZmFilterRule.TYPE_SELECT;
 		isCondition = conf;
@@ -487,14 +487,9 @@ function(conf, field, options, rowData, testType, rowId) {
 			var o = options[i];
 			// skip if the action or this option is disabled
 			if (isMainSelect && !isCondition) {
-				var actionCfg = ZmFilterRule.ACTIONS[o];
-				if (actionCfg.precondition && !appCtxt.get(actionCfg.precondition)) {
-					continue;
-				}
+				if (!ZmFilterRule.checkPreconditions(ZmFilterRule.ACTIONS[o])) { continue; }
 			}
-			if (o.precondition && !appCtxt.get(o.precondition)) {
-				continue;
-			}
+			if (!ZmFilterRule.checkPreconditions(o)) { continue; }
 			var value, label;
 			if (isMainSelect) {
 				value = o;
@@ -555,7 +550,7 @@ function(conf, field, options, rowData, testType, rowId) {
 				}
 			}
 		}
-		var	text = organizer ? organizer.getName(false, null, true) : ZmMsg.browse;
+		var	text = organizer ? AjxStringUtil.htmlEncode(organizer.getName(false, null, true)) : ZmMsg.browse;
 		button.setText(text);
 		button.setData(ZmFilterRuleDialog.BROWSE_TYPE, type);
 		button.setData(ZmFilterRuleDialog.DATA, dataValue);
@@ -595,8 +590,11 @@ function(isMainSelect, testType, field, rowData) {
 			if (field == "subjectMod") {
 				dataValue = rowData.header;
 			} else if (field == "ops") {
-				dataValue = ZmFilterRule.OP_VALUE_MAP[rowData.stringComparison];
-				if (dataValue && rowData.negative == "1") { dataValue++; }
+				dataValue = ZmFilterRule.OP_VALUE_MAP[rowData.stringComparison] == ZmFilterRule.OP_IS_READRECEIPT ? ZmFilterRule.OP_CONTAINS : 
+                        ZmFilterRule.OP_VALUE_MAP[rowData.stringComparison];
+				if (dataValue && rowData.negative == "1") {
+                    dataValue = ZmFilterRule.getNegativeComparator(dataValue);
+                }
 			} else if (field == "value") {
 				dataValue = rowData.value;
 			}
@@ -615,7 +613,9 @@ function(isMainSelect, testType, field, rowData) {
 		else if (testType == ZmFilterRule.TEST_SIZE) {
 			if (field == "ops") {
 				dataValue = ZmFilterRule.OP_VALUE_MAP[rowData.numberComparison];
-				if (dataValue && rowData.negative == "1") { dataValue++; }
+				if (dataValue && rowData.negative == "1") {
+                    dataValue = ZmFilterRule.getNegativeComparator(dataValue);
+                }
 			} else if (field == "valueMod") {
 				var m = rowData.s ? rowData.s.match(/(\d+)([A-Z]*)/) : null;
 				dataValue = m ? ((!m[2]) ? "B" : m[2]) : null;
@@ -626,7 +626,9 @@ function(isMainSelect, testType, field, rowData) {
 		else if (testType == ZmFilterRule.TEST_DATE) {
 			if (field == "ops") {
 				dataValue = ZmFilterRule.OP_VALUE_MAP[rowData.dateComparison];
-				if (dataValue && rowData.negative == "1") { dataValue++; }
+				if (dataValue && rowData.negative == "1") {
+                    dataValue = ZmFilterRule.getNegativeComparator(dataValue);
+                }
 			} else if (field == "value") {
 				dataValue = rowData.d * 1000;
 			}
@@ -650,9 +652,15 @@ function(isMainSelect, testType, field, rowData) {
 		else if (testType == ZmFilterRule.TEST_INVITE) {
 			if (field == "ops") {
 				var isRequested = ZmFilterRule.OP_VALUE[ZmFilterRule.OP_IS_REQUESTED];
-				dataValue = (isRequested == rowData.method[0]._content)
+                if (rowData.negative!=1) {
+				    dataValue = (isRequested == rowData.method[0]._content)
 					? ZmFilterRule.OP_IS_REQUESTED
 					: ZmFilterRule.OP_IS_REPLIED;
+                }else {
+                    dataValue = (isRequested == rowData.method[0]._content)
+					? ZmFilterRule.OP_NOT_REQUESTED
+					: ZmFilterRule.OP_NOT_REPLIED;
+                }
 			}
 		}
 		else if (testType == ZmFilterRule.TEST_ADDRBOOK) {
@@ -666,6 +674,13 @@ function(isMainSelect, testType, field, rowData) {
 				dataValue = rowData.value;
 			}
 		}
+        else if (testType == ZmFilterRule.TEST_MIME_HEADER) {
+            if (field == "ops") {
+                dataValue = (rowData.negative == "1")
+                    ? ZmFilterRule.OP_NOT_READRECEIPT
+                    : ZmFilterRule.OP_IS_READRECEIPT;
+            }
+        }
 		// actions
 		else if (testType == ZmFilterRule.A_NAME_FOLDER) {
 			dataValue = rowData.folderPath;
@@ -730,7 +745,7 @@ function(rowId, isCondition) {
 ZmFilterRuleDialog.prototype._resetOperations =
 function(isCondition) {
 	var tableId = isCondition ? this._conditionsTableId : this._actionsTableId;
-	var table = document.getElementById(tableId);
+	var table = Dwt.byId(tableId);
 	var rows = table.rows;
 	if (!(rows && rows.length)) { return; }
 
@@ -768,9 +783,9 @@ function(ev) {
 		dataValue = this._getInputValue(this._inputs[rowId], ZmFilterRule.CONDITIONS[oldValue], "value");
 	}
 	
-	var row = document.getElementById(rowId);
+	var row = Dwt.byId(rowId);
 	var index = this._getIndexForRow(row, isCondition);
-	var table = document.getElementById(isCondition ? this._conditionsTableId : this._actionsTableId);
+	var table = Dwt.byId(isCondition ? this._conditionsTableId : this._actionsTableId);
 	this._removeDwtObjects(rowId);
 	table.deleteRow(index);
 	var newIndex = (index >= table.rows.length) ? null : index; // null means add to end
@@ -902,13 +917,35 @@ function(button, dialog, organizer) {
 		// Bug 24425, don't allow root folder selection
 		if (isFolder && organizer.nId == ZmFolder.ID_ROOT) { return; }
 
-		button.setText(organizer.getName(false, null, true));
+		button.setText(AjxStringUtil.htmlEncode(organizer.getName(false, null, true)));
 		var value = isFolder
 			? organizer.getPath(false, false, null, true, true)
 			: organizer.getName(false, null, true);
 		button.setData(ZmFilterRuleDialog.DATA, value);
 	}
 	dialog.popdown();
+};
+
+/**
+ * If "save to sent" is disabled and we're an outgoing filter and the user chose to active the filter, display a warning with the option to turn the setting on
+ *
+ * @param {DwtEvent}	ev		the event
+ * 
+ * @private
+ */
+ZmFilterRuleDialog.prototype._activeChangeListener =
+function(ev) {
+	if (this._outgoing) {
+		var target = DwtUiEvent.getTarget(ev);
+		var active = target.checked;
+		var cancelCallback = new AjxCallback(this, function(){target.checked = false;});
+		if (active) {
+			var app = appCtxt.getApp(ZmApp.PREFERENCES);
+			var filterController = app.getFilterController();
+			var outgoingFilterController = filterController.getOutgoingFilterRulesController();
+			outgoingFilterController.handleBeforeFilterChange(null, cancelCallback);
+		}
+	}
 };
 
 /**
@@ -928,7 +965,7 @@ function(rowId) {
 			var el = (field.id && field.dwtObj) ? field.dwtObj.getHtmlElement() : null;
 			if (el) {
 				el.parentNode.removeChild(el);
-				document.getElementById(field.id).appendChild(el);
+				Dwt.byId(field.id).appendChild(el);
 				el._rowId = id;
 			}
 		}
@@ -965,7 +1002,7 @@ function(ev) {
 
 	var rule = this._rule;
 	var msg = null;
-	var name = document.getElementById(this._nameInputId).value;
+	var name = Dwt.byId(this._nameInputId).value;
 	name = name.replace (/\s*$/,'');
 	name = name.replace (/^\s*/,'');
 	if (!name) {
@@ -982,7 +1019,7 @@ function(ev) {
 	    msgDialog.popup();
 	    return;
 	}
-	var active = document.getElementById(this._activeCheckboxId).checked;
+	var active = Dwt.byId(this._activeCheckboxId).checked;
 	var anyAll = this._conditionSelect.getValue();
 
 	// adding a rule always starts with dummy
@@ -1005,7 +1042,7 @@ function(ev) {
 	rule.setGroupOp(anyAll);
 
 	// get input from tables so order is preserved
-	var table = document.getElementById(this._conditionsTableId);
+	var table = Dwt.byId(this._conditionsTableId);
 	var rows = table.rows;
 	for (var i = 0; i < rows.length; i++) {
 		var c = this._getConditionFromRow(rows[i].id);
@@ -1016,7 +1053,7 @@ function(ev) {
 		}
 	}
 	if (!msg) {
-		table = document.getElementById(this._actionsTableId);
+		table = Dwt.byId(this._actionsTableId);
 		rows = table.rows;
 		for (var i = 0; i < rows.length; i++) {
 			var action = this._getActionFromRow(rows[i].id);
@@ -1042,7 +1079,7 @@ function(ev) {
 	    return;
 	}
 
-	var stopAction = document.getElementById(this._stopCheckboxId).checked;
+	var stopAction = Dwt.byId(this._stopCheckboxId).checked;
 	if (stopAction) {
 		rule.addAction(ZmFilterRule.A_STOP);
 	}
@@ -1099,7 +1136,6 @@ function(rowId) {
 	else if (testType == ZmFilterRule.TEST_MIME_HEADER) {
 		subjectMod = "Content-Type";
 		value = ZmMimeTable.MSG_READ_RECEIPT;
-		comparator = ZmFilterRule.OP_CONTAINS;
 	}
 
 	return { testType:testType, comparator:comparator, value:value, subjectMod:subjectMod };
@@ -1166,7 +1202,7 @@ function(inputs, conf, field) {
 */
 ZmFilterRuleDialog.prototype._getIndexForRow =
 function(row, isCondition) {
-	var table = document.getElementById(isCondition ? this._conditionsTableId : this._actionsTableId);
+	var table = Dwt.byId(isCondition ? this._conditionsTableId : this._actionsTableId);
 	var rows = table.rows;
 	for (var i = 0; i < rows.length; i++) {
 		if (rows[i] == row) { return i; }
@@ -1184,7 +1220,7 @@ ZmFilterRuleDialog.prototype._clearTables =
 function() {
 	var list = [this._conditionsTableId, this._actionsTableId];
 	for (var i = 0; i < list.length; i++) {
-		var table = document.getElementById(list[i]);
+		var table = Dwt.byId(list[i]);
 		var tbody = table.tBodies[0];
 		while (tbody.firstChild != null) {
 			this._removeDwtObjects(tbody.firstChild.id);

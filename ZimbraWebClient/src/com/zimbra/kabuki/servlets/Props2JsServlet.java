@@ -37,6 +37,8 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPOutputStream;
 
 import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -101,6 +103,8 @@ public class Props2JsServlet extends HttpServlet {
     protected static final String P_DEBUG = "debug";
     protected static final String P_BASENAME_PATTERNS = "basename-patterns";
 
+    protected static final String A_FLUSH_CACHE = "flushCache"; /* i.e. FlushCache.FLUSH_CACHE */
+
     protected static final String A_REQUEST_URI = "request-uri";
     protected static final String A_BASENAME_PATTERNS = P_BASENAME_PATTERNS;
     protected static final String A_BASENAME_PATTERNS_LIST = A_BASENAME_PATTERNS+"-list";
@@ -116,6 +120,14 @@ public class Props2JsServlet extends HttpServlet {
         if (!basedir.endsWith("/"))
             basedir += "/";
         return basedir + dirname;
+    }
+
+    public void service(ServletRequest req, ServletResponse resp)
+    throws IOException, ServletException {
+        if (flushCache(req)) {
+            return;
+        }
+        super.service(req, resp);
     }
 
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws
@@ -166,6 +178,20 @@ public class Props2JsServlet extends HttpServlet {
         }
         out.write(buffer);
         out.flush();
+    }
+
+    protected boolean flushCache(ServletRequest req) {
+        Boolean flushCache = (Boolean)req.getAttribute(A_FLUSH_CACHE);
+        if (flushCache != null && flushCache.booleanValue()) {
+            int oldSize = buffers.size();
+            buffers.clear();
+            int newSize = buffers.size();
+            if (isDebugEnabled()) {
+                debug("flushed uistrings cache: "+oldSize+" entries > "+newSize+" entries");
+            }
+            return true;
+        }
+        return false;
     }
 
     protected boolean isWarnEnabled() {
@@ -223,20 +249,11 @@ public class Props2JsServlet extends HttpServlet {
         return req.getLocale();
     }
 
-	private String getCommentSafeString(String st) {
-		return st.replaceAll("<", "") //make sure you can't start a "script" tag within the comment cuz genius IE supposedly exectutes it
-				.replaceAll("\n", ""); //make sure no newline can be injected to start a malicious script too
-
-	}
-
     protected byte[] getBuffer(HttpServletRequest req,
         Locale locale, String uri) throws IOException {
         BufferStream bos = new BufferStream(24 * 1024);
         DataOutputStream out = new DataOutputStream(bos);
-		String sanitizedLocale = locale.toString()
-				.replaceAll("<", "") //make sure you can't start a "script" tag within the comment cuz genius IE supposedly exectutes it
-				.replaceAll("\n", ""); //make sure no newline can be injected to start a malicious script too
-		out.writeBytes("// Locale: " + getCommentSafeString(locale.toString()) + '\n');
+        out.writeBytes("// Locale: " + locale + '\n');
 
         // tokenize the list of patterns
         List<String> patternsList = this.getBasenamePatternsList(req);
@@ -294,7 +311,7 @@ public class Props2JsServlet extends HttpServlet {
         String basedir, String dirname, String classname) throws IOException {
         String basename = basedir + classname;
 
-		out.writeBytes("// Basename: " + getCommentSafeString(basename) + '\n');
+        out.writeBytes("// Basename: " + basename + '\n');
         for (List<String> basenames : basenamePatterns) {
             try {
                 ClassLoader parentLoader = this.getClass().getClassLoader();

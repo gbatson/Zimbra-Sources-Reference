@@ -15,18 +15,23 @@
 package com.zimbra.qa.unittest;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.zclient.ZSearchParams;
 import junit.framework.TestCase;
 
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.util.ByteUtil;
@@ -48,6 +53,7 @@ public class TestSendAndReceive extends TestCase {
 
     private static final String NAME_PREFIX = TestSendAndReceive.class.getSimpleName();
     private static final String USER_NAME = "user1";
+    private static final String REMOTE_USER_NAME = "user2";
     private static final Pattern PAT_RECEIVED = Pattern.compile("Received: .*from.*LHLO.*");
     private static final Pattern PAT_RETURN_PATH = Pattern.compile("Return-Path: (.*)");
     
@@ -61,6 +67,37 @@ public class TestSendAndReceive extends TestCase {
         mOriginalSmtpSendAddAuthenticatedUser = TestUtil.getConfigAttr(Provisioning.A_zimbraSmtpSendAddAuthenticatedUser);
         mOriginalDomainSmtpPort = TestUtil.getDomainAttr(USER_NAME, Provisioning.A_zimbraSmtpPort);
         mOriginalSmtpHostname = Provisioning.getInstance().getLocalServer().getSmtpHostname();
+    }
+
+    /**
+     * Verifies "send-message-later" functionality.
+     */
+    public void testAutoSendDraft() throws Exception {
+        ZMailbox mbox = TestUtil.getZMailbox(USER_NAME);
+
+        ZMailbox.ZOutgoingMessage outgoingMsg = new ZMailbox.ZOutgoingMessage();
+        List<ZEmailAddress> addrs = new LinkedList<ZEmailAddress>();
+        String senderAddr = TestUtil.getAddress(USER_NAME);
+        addrs.add(new ZEmailAddress(senderAddr, null, null, ZEmailAddress.EMAIL_TYPE_FROM));
+        String rcptAddr = TestUtil.getAddress(REMOTE_USER_NAME);
+        addrs.add(new ZEmailAddress(rcptAddr, null, NAME_PREFIX + " testAutoSendDraft", ZEmailAddress.EMAIL_TYPE_TO, true));
+        outgoingMsg.setAddresses(addrs);
+        String subject = NAME_PREFIX + " autoSendDraft";
+        outgoingMsg.setSubject(subject);
+
+        // auto-send after 0.5 sec
+        mbox.saveDraft(outgoingMsg, null, Integer.toString(Mailbox.ID_FOLDER_DRAFTS), System.currentTimeMillis() + 500);
+
+        // make sure message has arrived in the Sent folder
+        TestUtil.waitForMessage(mbox, "in:Sent " + subject);
+
+        // make sure message is no longer in the Drafts folder
+        assertTrue("message is still in the Drafts folder",
+                   TestUtil.search(mbox, "in:Drafts " + subject).isEmpty());
+
+        // make sure recipient address has been added to Emailed Contacts
+        assertTrue("Recipient address has not been added to Emailed Contacts",
+                   TestUtil.search(mbox, "in:\"Emailed Contacts\" " + rcptAddr, ZSearchParams.TYPE_CONTACT).size() == 1);
     }
     
     /**
@@ -119,10 +156,17 @@ public class TestSendAndReceive extends TestCase {
     public void testZimbraReceivedHeader()
     throws Exception {
         ZMailbox mbox = TestUtil.getZMailbox(USER_NAME);
-        List<ZMessage> messages = TestUtil.search(mbox, "subject:\"Test Phone Number Formats\"");
+
+        // Add message.
+        String msgContent = new String(ByteUtil.getContent(new File(
+            LC.zimbra_home.value() + "/unittest/testZimbraReceivedHeader.msg")));
+        TestUtil.addMessageLmtp(new String[] { USER_NAME }, USER_NAME, msgContent);
+        
+        // Test date.
+        List<ZMessage> messages = TestUtil.search(mbox, "subject:testZimbraReceivedHeader");
         assertEquals("Unexpected message count", 1, messages.size());
         ZMessage msg = messages.get(0);
-        Calendar cal = Calendar.getInstance();
+        Calendar cal = Calendar.getInstance(mbox.getPrefs().getTimeZone());
         cal.setTimeInMillis(msg.getReceivedDate());
         assertEquals(2005, cal.get(Calendar.YEAR));
         assertEquals(1, cal.get(Calendar.MONTH));
@@ -203,7 +247,7 @@ public class TestSendAndReceive extends TestCase {
     throws Exception {
         // Generate original message.
         String subject = NAME_PREFIX + " testMalformedContentType";
-        MessageBuilder builder = new MessageBuilder().withFrom(USER_NAME).withRecipient(USER_NAME)
+        MessageBuilder builder = new MessageBuilder().withFrom(USER_NAME).withToRecipient(USER_NAME)
             .withSubject(subject).withAttachment("This is an attachment", "test.txt", MimeConstants.CT_TEXT_PLAIN);
         
         // Hack Content-Type so that it's invalid.
@@ -294,6 +338,7 @@ public class TestSendAndReceive extends TestCase {
     private void cleanUp()
     throws Exception {
         TestUtil.deleteTestData(USER_NAME, NAME_PREFIX);
+        TestUtil.deleteTestData(REMOTE_USER_NAME, NAME_PREFIX);
     }
 
     public static void main(String[] args)

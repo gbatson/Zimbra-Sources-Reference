@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,7 +38,6 @@ import com.zimbra.cs.account.Provisioning.GalMode;
 import com.zimbra.cs.account.Provisioning.SearchGalResult;
 import com.zimbra.cs.account.gal.GalOp;
 import com.zimbra.cs.account.gal.GalParams;
-import com.zimbra.cs.fb.ExchangeEWSFreeBusyProvider;
 import com.zimbra.cs.fb.ExchangeFreeBusyProvider;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ExceptionToString;
@@ -194,8 +193,7 @@ public class Check {
 
         GalParams.ExternalGalParams galParams = new GalParams.ExternalGalParams(attrs, galOp);
 
-        String[] galAttrs = Provisioning.getInstance().getConfig().getMultiAttr(Provisioning.A_zimbraGalLdapAttrMap);
-        LdapGalMapRules rules = new LdapGalMapRules(galAttrs);
+        LdapGalMapRules rules = new LdapGalMapRules(Provisioning.getInstance().getConfig(), false);
 
         try {
             SearchGalResult result = null;
@@ -232,23 +230,6 @@ public class Check {
         }
     	return new Result(STATUS_OK, "", null);
     }
-    
-  public static Result checkExchangeEWSAuth(ExchangeFreeBusyProvider.ServerInfo sinfo, Account acct) throws ServiceException {
-	try {
-    	int code = ExchangeEWSFreeBusyProvider.checkAuth(sinfo, acct);
-    	switch (code) {
-    	case 400:
-    	case 404:
-            return new Result(STATUS_BAD_URL, "", null);
-    	case 401:
-    	case 403:
-            return new Result(STATUS_AUTH_FAILED, "", null);
-    	}
-	} catch (IOException e) {
-	    return toResult(e, "");
-    }
-	return new Result(STATUS_OK, "", null);
-}    
     
     private static Result toResult(IOException e, String dn) {
         if (e instanceof UnknownHostException) {

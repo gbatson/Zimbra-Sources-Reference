@@ -175,7 +175,7 @@ if (application.getInitParameter("offlineMode") != null)  {
 <table width="100%" style="height:100%;">
     <tr>
         <td align="center" valign="middle">
-            <div id="ZloginPanel">
+            <div id="ZLoginPanel">
                 <table width="100%">
                     <tr>
                         <td>
@@ -194,14 +194,14 @@ if (application.getInitParameter("offlineMode") != null)  {
                         </td>
                     </tr>
                     <tr>
-                        <td id="ZloginBodyContainer">
+                        <td id="ZLoginBodyContainer">
                             <c:if test="${errorCode != null}">
                                 <!-- ${fn:escapeXml(error.stackStrace)} -->
-                                <div id="ZloginErrorPanel">
+                                <div id="ZLoginErrorPanel">
                                     <table width="100%">
                                         <tr>
                                             <td valign="top" width="40">
-                                                <img alt='<fmt:message key="ALT_ERROR"/>' src="<app:imgurl value='dwt/ImgCritical_32.gif'/>"/>
+                                                <img alt='<fmt:message key="ALT_ERROR"/>' src="<app:imgurl value='dwt/ImgCritical_32.png'/>"/>
                                             </td>
                                             <td class="errorText">
                                                 <c:out value="${errorMessage}"/>
@@ -211,7 +211,7 @@ if (application.getInitParameter("offlineMode") != null)  {
                                 </div>
                             </c:if>
 
-                            <div id="ZloginFormPanel">
+                            <div id="ZLoginFormPanel">
                                 <form method="post" name="loginForm" action="${formActionUrl}">
                                     <input type="hidden" name="loginOp" value="login"/>
                                     <table width="100%" cellpadding="4">
@@ -306,12 +306,12 @@ if (application.getInitParameter("offlineMode") != null)  {
 			                                </td>
                                         </tr>
 										<tr>
-                                            <td id="ZloginClientLevelContainer">
+                                            <td id="ZLoginClientLevelContainer">
                                                 <fmt:message key="clientLoginNotice"/>
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td id="ZloginLicenseContainer">
+                                            <td id="ZLoginLicenseContainer">
                                                 <fmt:message key="splashScreenCopyright"/>
                                             </td>
                                         </tr>

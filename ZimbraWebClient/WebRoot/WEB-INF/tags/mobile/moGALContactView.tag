@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -90,7 +90,7 @@
     <div class="View">
         <div class="tbl cont_sum_table">
             <div class="tr">
-                <span class="td Person48">&nbsp;</span>
+                <span class="td Img ImgPerson_48">&nbsp;</span>
                 <span class="td">
                    <div><strong>${fn:escapeXml(contact.fullName)}</strong></div>
                    <c:if test="${not empty contact.jobTitle}">
@@ -107,11 +107,11 @@
                 <div class="tr">
                 <span class="td">
                 <c:if test="${contact.isFlagged}">
-                    <span class="SmlIcnHldr Flag">&nbsp;</span></c:if>
+                    <span class="Img ImgFlagRed">&nbsp;</span></c:if>
                 <c:if test="${contact.hasTags and mailbox.features.tagging}">
                     <c:set var="tags" value="${zm:getTags(pageContext, contact.tagIds)}"/>
                     <c:forEach items="${tags}" var="tag">
-                        <span class="SmlIcnHldr Tag${tag.color}">&nbsp;</span><span>${fn:escapeXml(tag.name)}</span>
+                        <span class="Img ImgTag${zm:capitalize(tag.color)}">&nbsp;</span><span>${fn:escapeXml(tag.name)}</span>
                     </c:forEach>
                 </c:if>
                 </span>

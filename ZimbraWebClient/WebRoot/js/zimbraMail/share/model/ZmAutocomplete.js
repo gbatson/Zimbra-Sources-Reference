@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,7 +28,9 @@
  *
  * @author Conrad Damon
  */
-ZmAutocomplete = function() {
+ZmAutocomplete = function(params) {
+
+	if (arguments.length == 0) { return; }
 
 	this._acRequests = {};		// request mgmt (timeout, cancel)
 
@@ -53,7 +55,6 @@ ZmAutocomplete.AC_TIMEOUT			= 20;	// autocomplete timeout (in seconds)
 // result types
 ZmAutocomplete.AC_TYPE_CONTACT		= "contact";
 ZmAutocomplete.AC_TYPE_GAL			= "gal";
-ZmAutocomplete.AC_TYPE_GROUP		= "group";
 ZmAutocomplete.AC_TYPE_TABLE		= "rankingTable";
 
 ZmAutocomplete.AC_TYPE_UNKNOWN		= "unknown";
@@ -64,7 +65,6 @@ ZmAutocomplete.AC_TYPE_EQUIPMENT	= "Equipment";	// same as ZmResource.ATTR_EQUIP
 ZmAutocomplete.AC_ICON = {};
 ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_CONTACT]	= "Contact";
 ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_GAL]		= "GALContact";
-ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_GROUP]	= "Group";
 
 // cache control
 ZmAutocomplete.GAL_RESULTS_TTL		= 900000;	// time-to-live for cached GAL autocomplete results (msec)
@@ -107,7 +107,7 @@ function(str, callback, aclv, options, account) {
 		return;
 	}
 
-//	aclv.setWaiting(true);
+	aclv.setWaiting(true);
 	var respCallback = new AjxCallback(this, this._handleResponseAutocompleteMatch, [str, callback]);
 	this._doAutocomplete(str, aclv, options, acType, respCallback, account);
 };
@@ -150,6 +150,11 @@ function(str, aclv, options, acType, callback, account) {
 		}
 	}
 
+	this._doSearch(str, aclv, options, acType, callback, account);
+};
+
+ZmAutocomplete.prototype._doSearch =
+function(str, aclv, options, acType, callback, account) {
 	var params = {query:str, isAutocompleteSearch:true};
 	if (acType != ZmAutocomplete.AC_TYPE_CONTACT) {
 		params.isGalAutocompleteSearch = true;
@@ -162,6 +167,7 @@ function(str, aclv, options, acType, callback, account) {
 		DBG.println("ac", "AutoCompleteRequest: " + str);
 	}
 	params.accountName = account && account.name;
+	params.expandDL = appCtxt.get(ZmSetting.GAL_AUTOCOMPLETE);
 
 	var search = new ZmSearch(params);
 	var searchParams = {
@@ -184,7 +190,7 @@ function(str, aclv, options, acType, callback, account, result) {
 	// if we get back results for other than the current string, ignore them
 	if (str != this._curAcStr) { return; }
 
-//	aclv.setWaiting(false);
+	aclv.setWaiting(false);
 
 	delete this._acRequests[str];
 
@@ -210,11 +216,11 @@ function(str, aclv, options, acType, callback, account, result) {
 			list.push(match);
 		}
 	}
+	var complete = !(resp && resp.getAttribute("more"));
 
 	// we assume the results from the server are sorted by ranking
 	callback.run(list);
-
-	this._cacheResults(str, acType, list, hasGal, resp._respEl.canBeCached, null, account);
+	this._cacheResults(str, acType, list, hasGal, complete && resp._respEl.canBeCached, null, account);
 };
 
 /**
@@ -225,7 +231,7 @@ function(str, aclv, options, acType, callback, account, result) {
 ZmAutocomplete.prototype._handleErrorDoAutocomplete =
 function(str, aclv, ex) {
 	DBG.println("ac", "error on request for " + str + ", canceling");
-//	aclv.setWaiting(false);
+	aclv.setWaiting(false);
 	appCtxt.getAppController().cancelRequest(this._acRequests[str], null, true);
 	appCtxt.setStatusMsg({msg:ZmMsg.autocompleteFailed, level:ZmStatusView.LEVEL_WARNING});
 	delete this._acRequests[str];
@@ -259,51 +265,52 @@ function(str) {
 	return AjxEmailAddress.isValid(str);
 };
 
-/**
- * Quick completion of a string when there are no matches. Appends the
- * user's domain to the given string.
- *
- * @param {String}	 str	the text that was typed in
- * @return	{String}	the string
- */
-ZmAutocomplete.prototype.quickComplete =
-function(str) {
-
-	if (str.indexOf("@") != -1) { return null; }
-
-	if (!this._userDomain) {
-		var uname = appCtxt.get(ZmSetting.USERNAME);
-		if (uname) {
-			var a = uname.split("@");
-			if (a && a.length) {
-				this._userDomain = a[a.length - 1];
-			}
-		}
-	}
-	if (this._userDomain) {
-		var text = [str, this._userDomain].join("@");
-		var match = new ZmAutocompleteMatch();
-		match.name = match.email = match.fullAddress = text;
-		return match;
-	} else {
-		return null;
-	}
-};
-
 ZmAutocomplete.prototype.forget =
 function(addr, callback) {
 
 	var jsonObj = {RankingActionRequest:{_jsns:"urn:zimbraMail"}};
 	jsonObj.RankingActionRequest.action = {op:"delete", email:addr};
 	var respCallback = new AjxCallback(this, this._handleResponseForget, [callback]);
-	appCtxt.getRequestMgr().sendRequest({jsonObj:jsonObj, asyncMode:true, callback:respCallback});
+	var aCtxt = appCtxt.isChildWindow ? parentAppCtxt : appCtxt;
+	aCtxt.getRequestMgr().sendRequest({jsonObj:jsonObj, asyncMode:true, callback:respCallback});
 };
 
 ZmAutocomplete.prototype._handleResponseForget =
 function(callback) {
 	appCtxt.clearAutocompleteCache(ZmAutocomplete.AC_TYPE_CONTACT);
+	if (appCtxt.isChildWindow) {
+		parentAppCtxt.clearAutocompleteCache(ZmAutocomplete.AC_TYPE_CONTACT);
+	}
 	if (callback) {
 		callback.run();
+	}
+};
+
+ZmAutocomplete.prototype.expandDL =
+function(contact, offset, callback) {
+
+	var respCallback = new AjxCallback(this, this._handleResponseExpandDL, [callback]);
+	contact.getDLMembers(offset, null, respCallback);
+};
+
+ZmAutocomplete.prototype._handleResponseExpandDL =
+function(callback, result) {
+
+	var list = result.list;
+	var matches = [];
+	if (list && list.length) {
+		for (var i = 0, len = list.length; i < len; i++) {
+			var match = new ZmAutocompleteMatch();
+			var addr = list[i];
+			match.text = match.fullAddress = match.email = addr;
+			match.type = ZmAutocomplete.AC_TYPE_GAL;
+			match.isDL = result.isDL[addr];
+			match.icon = match.isDL ? "Group" : ZmAutocomplete.AC_ICON[match.type];
+			matches.push(match);
+		}
+	}
+	if (callback) {
+		callback.run(matches);
 	}
 };
 
@@ -446,19 +453,22 @@ function(ev) {
  * @param {Boolean}	isContact	if <code>true</code>, provided match is a {@link ZmContact}
  */
 ZmAutocompleteMatch = function(match, options, isContact) {
-
+    AjxDispatcher.require("CalendarCore");
 	if (!match) { return; }
 	this.type = match.type;
 	if (isContact) {
 		this.text = this.name = match.getFullName();
 		this.email = match.getEmail();
 		this.item = match;
-		this.type = ZmContact.getAttr(match, ZmResource.F_type) || ZmAutocomplete.AC_TYPE_GAL;
+		this.type = ZmContact.getAttr(match, ZmResource && ZmResource.F_type || "zimbraCalResType") || ZmAutocomplete.AC_TYPE_GAL;
+        this.fullAddress = match.getAttendeeText();
 	} else {
-		if (this.type == ZmAutocomplete.AC_TYPE_GROUP) {
+		this.isGroup = Boolean(match.isGroup);
+		this.isDL = (this.isGroup && this.type == ZmAutocomplete.AC_TYPE_GAL);
+		if (this.isGroup && !this.isDL) {
+			// Local contact group
 			this.fullAddress = match.email;
 			this.name        = match.display;
-			//Find all the emails
 			var emails = [];
 			var eIds = match.email.split(',');
 			for (var i = 0; i < eIds.length; i++) {
@@ -468,8 +478,10 @@ ZmAutocompleteMatch = function(match, options, isContact) {
 				}
 			}
 			this.email = emails.join(";");
-			this.text = AjxStringUtil.htmlEncode(match.display);
+			this.text = match.display || this.email;
+			this.icon = "Group";
 		} else {
+			// Local contact, GAL contact, or distribution list
 			var email = AjxEmailAddress.parse(match.email);
 			if (email) {
 				this.fullAddress = email.toString();
@@ -483,14 +495,14 @@ ZmAutocompleteMatch = function(match, options, isContact) {
 				this.item = new ZmContact(null);
 				this.item.initFromEmail(email || match.email);
 			}
+			this.icon = this.isDL ? "Group" : ZmAutocomplete.AC_ICON[match.type];
+			this.canExpand = this.isDL && match.exp;
 		}
-		this.icon = ZmAutocomplete.AC_ICON[match.type];
-		this.score = match.ranking;
 	}
+	this.score = (match.ranking && parseInt(match.ranking)) || 0;
 	this.icon = this.icon || ZmAutocomplete.AC_ICON[ZmAutocomplete.AC_TYPE_CONTACT];
 	this.acType = (this.type == ZmAutocomplete.AC_TYPE_LOCATION || this.type == ZmAutocomplete.AC_TYPE_EQUIPMENT)
 		? this.type : ZmAutocomplete.AC_TYPE_CONTACT;
-	this.canForget = (match.type == ZmAutocomplete.AC_TYPE_TABLE);
 };
 
 /**
@@ -566,12 +578,13 @@ ZmSearchAutocomplete = function() {
 
 	params = {
 		listType:	ZmId.ORG_FOLDER,
-		text:		function(o) { return o.getPath(false, false, null, true, true); },
+		text:		function(o) { return o.getPath(false, false, null, true, false); },
 		icon:		function(o) { return o.getIcon(); },
 		matchText:	function(o) { return o.createQuery(); }
 	};
 	this._loadFunc[ZmId.ORG_FOLDER] = this._loadFolders;
 	this._registerHandler("in", params);
+	params.matchText = function(o) { return "under:" + '"' + o.getPath() + '"'; };
 	this._registerHandler("under", params);
 
 	params = { loader:		this._loadFlags };
@@ -725,7 +738,7 @@ function(listType, callback) {
 	var folders = appCtxt.getFolderTree().asList({includeRemote:true});
 	for (var i = 0, len = folders.length; i < len; i++) {
 		var folder = folders[i];
-		if (folder.id != ZmOrganizer.ID_ROOT && folder.type == ZmOrganizer.FOLDER) {
+		if (folder.id != ZmOrganizer.ID_ROOT && folder.type == ZmOrganizer.FOLDER && !ZmFolder.HIDE_ID[folder.id]) {
 			list.push(folder);
 		}
 	}
@@ -821,4 +834,70 @@ function(ev) {
 			this._loadTags(listType);
 		}
 	}
+};
+
+/**
+ * Creates a peopel search auto-complete.
+ * @class
+ * This class supports auto-complete for searching the GAL and the user's
+ * personal contacts.
+ */
+ZmPeopleSearchAutocomplete = function() {
+	// no need to call ctor
+	this._acRequests = {}; 
+};
+
+ZmPeopleSearchAutocomplete.prototype = new ZmAutocomplete;
+ZmPeopleSearchAutocomplete.prototype.constructor = ZmPeopleSearchAutocomplete;
+
+ZmPeopleSearchAutocomplete.prototype.toString =
+function() {
+	return "ZmPeopleSearchAutocomplete";
+};
+
+ZmPeopleSearchAutocomplete.prototype._doSearch =
+function(str, aclv, options, acType, callback, account) {
+	var params = {
+		query: str,
+		types: AjxVector.fromArray([ZmItem.CONTACT]),
+		sortBy: ZmSearch.NAME_ASC,
+		contactSource: ZmId.SEARCH_GAL,
+		accountName: account && account.name
+	};
+
+	var search = new ZmSearch(params);
+
+	var searchParams = {
+		callback: (new AjxCallback(this, this._handleResponseDoAutocomplete, [str, aclv, options, acType, callback, account])),
+		errorCallback: (new AjxCallback(this, this._handleErrorDoAutocomplete, [str, aclv])),
+		timeout: ZmAutocomplete.AC_TIMEOUT,
+		noBusyOverlay: true
+	};
+	this._acRequests[str] = search.execute(searchParams);
+};
+
+/**
+ * @private
+ */
+ZmPeopleSearchAutocomplete.prototype._handleResponseDoAutocomplete =
+function(str, aclv, options, acType, callback, account, result) {
+	// if we get back results for other than the current string, ignore them
+	if (str != this._curAcStr) { return; }
+
+	delete this._acRequests[str];
+
+	var resp = result.getResponse();
+	var cl = resp.getResults(ZmItem.CONTACT);
+	var resultList = (cl && cl.getArray()) || [];
+	var list = [];
+
+	for (var i = 0; i < resultList.length; i++) {
+		var match = new ZmAutocompleteMatch(resultList[i], options, true);
+		list.push(match);
+	}
+	var complete = !(resp && resp.getAttribute("more"));
+
+	// we assume the results from the server are sorted by ranking
+	callback.run(list);
+	this._cacheResults(str, acType, list, true, complete && resp._respEl.canBeCached, null, account);
 };

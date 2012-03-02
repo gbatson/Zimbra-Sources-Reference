@@ -34,7 +34,6 @@ ZmCalendarTreeController = function() {
 	this._listeners[ZmOperation.DETACH_WIN] = new AjxListener(this, this._detachListener);
 	this._listeners[ZmOperation.FREE_BUSY_LINK] = new AjxListener(this, this._freeBusyLinkListener);
 	this._listeners[ZmOperation.SHARE_CALENDAR] = new AjxListener(this, this._shareCalListener);
-	this._listeners[ZmOperation.MOUNT_CALENDAR] = new AjxListener(this, this._mountCalListener);
 
 	this._eventMgrs = {};
 };
@@ -65,13 +64,33 @@ function(ev) {
 // Public methods
 
 /**
+ * Displays the tree of this type.
+ *
+ * @param {Hash}	params		a hash of parameters
+ * @param	{constant}	params.overviewId		the overview ID
+ * @param	{Boolean}	params.showUnread		if <code>true</code>, unread counts will be shown
+ * @param	{Object}	params.omit				a hash of organizer IDs to ignore
+ * @param	{Object}	params.include			a hash of organizer IDs to include
+ * @param	{Boolean}	params.forceCreate		if <code>true</code>, tree view will be created
+ * @param	{String}	params.app				the app that owns the overview
+ * @param	{Boolean}	params.hideEmpty		if <code>true</code>, don't show header if there is no data
+ * @param	{Boolean}	params.noTooltips	if <code>true</code>, don't show tooltips for tree items
+ */
+ZmCalendarTreeController.prototype.show = function(params) {
+	params.include = params.include || {};
+    params.include[ZmFolder.ID_TRASH] = true;
+    return ZmFolderTreeController.prototype.show.call(this, params);
+};
+
+/**
  * Gets the checked calendars.
  * 
  * @param	{String}	overviewId		the overview id
+ * @param   {boolean}   includeTrash    True to include trash, if checked.
  * @return	{Array}		an array of {@link ZmCalendar} objects
  */
 ZmCalendarTreeController.prototype.getCheckedCalendars =
-function(overviewId) {
+function(overviewId, includeTrash) {
 	var calendars = [];
 	var items = this._getItems(overviewId);
 	for (var i = 0; i < items.length; i++) {
@@ -79,6 +98,7 @@ function(overviewId) {
 		if (item._isSeparator) { continue; }
 		if (item.getChecked()) {
 			var calendar = item.getData(Dwt.KEY_OBJECT);
+            if (calendar.id == ZmOrganizer.ID_TRASH && !includeTrash) continue;
 			calendars.push(calendar);
 		}
 	}
@@ -100,7 +120,7 @@ function(overviewId, owner) {
 		var item = items[i];
 		if (!item || item._isSeparator) { continue; }
 		var calendar = item.getData(Dwt.KEY_OBJECT);
-		if (calendar.getOwner() == owner) {
+		if (calendar && calendar.getOwner() == owner) {
 			calendars.push(calendar);
 		}
 	}
@@ -136,7 +156,7 @@ function(actionMenu, type, id) {
 		var nId;
 		if (calendar) {
 			nId = calendar.nId;
-            var isShareVisible = !calendar.link || calendar.isAdmin();
+            var isShareVisible = (!calendar.link || calendar.isAdmin()) && nId != ZmFolder.ID_TRASH;
             if (appCtxt.isOffline) {
                 isShareVisible = !calendar.getAccount().isMain;
             }
@@ -145,7 +165,13 @@ function(actionMenu, type, id) {
 		} else {
 			nId = ZmOrganizer.normalizeId(id);
 		}
-		actionMenu.enable(ZmOperation.DELETE, nId != ZmOrganizer.ID_CALENDAR);
+
+
+		actionMenu.enable(ZmOperation.DELETE, (nId != ZmOrganizer.ID_CALENDAR && nId != ZmOrganizer.ID_TRASH));        
+		this.setVisibleIfExists(actionMenu, ZmOperation.EMPTY_FOLDER, nId == ZmFolder.ID_TRASH);
+        var hasContent = ((calendar.numTotal > 0) || (calendar.children && (calendar.children.size() > 0)));
+        actionMenu.enable(ZmOperation.EMPTY_FOLDER,hasContent);
+
 		var rootId = ZmOrganizer.getSystemId(ZmOrganizer.ID_ROOT);
 		if (id == rootId) {
 			var items = this._getItems(this._actionedOverviewId);
@@ -162,7 +188,6 @@ function(actionMenu, type, id) {
 
 		// we always enable sharing in case we're in multi-mbox mode
 		this._resetButtonPerSetting(actionMenu, ZmOperation.SHARE_CALENDAR, appCtxt.get(ZmSetting.SHARING_ENABLED));
-		this._resetButtonPerSetting(actionMenu, ZmOperation.MOUNT_CALENDAR, appCtxt.get(ZmSetting.SHARING_ENABLED));
 		this._resetButtonPerSetting(actionMenu, ZmOperation.FREE_BUSY_LINK, appCtxt.getActiveAccount().isZimbraAccount);
 	}
 };
@@ -179,8 +204,7 @@ function(ev){
 ZmCalendarTreeController.prototype._detachListener =
 function(ev){
 	var folder = this._getActionedOrganizer(ev);
-    var acct = folder && folder.getAccount();
-	var url = (folder) ? folder.getRestUrl(acct) : null;
+	var url = (folder) ? folder.getRestUrl() : null;
 	if (url) {
 		window.open(url+".html?tz=" + AjxTimezone.DEFAULT, "_blank");
 	}
@@ -210,7 +234,6 @@ function(ev){
 ZmCalendarTreeController.prototype._getHeaderActionMenuOps =
 function() {
 	var ops = [ZmOperation.NEW_CALENDAR];
-	ops.push(ZmOperation.MOUNT_CALENDAR);
 	ops.push(ZmOperation.CHECK_ALL,
 			ZmOperation.CLEAR_ALL,
 			ZmOperation.BROWSE,
@@ -223,22 +246,32 @@ function() {
 // Returns a list of desired action menu operations
 ZmCalendarTreeController.prototype._getActionMenuOps =
 function() {
-	var ops = [];
-	ops.push(ZmOperation.SHARE_CALENDAR);
-	ops.push(ZmOperation.DELETE,
-			ZmOperation.EDIT_PROPS,
-			ZmOperation.SYNC,
-			ZmOperation.DETACH_WIN);
-
-	return ops;
+	return [
+        ZmOperation.SHARE_CALENDAR,
+        ZmOperation.DELETE,
+        ZmOperation.EDIT_PROPS,
+        ZmOperation.SYNC,
+        ZmOperation.DETACH_WIN,
+        ZmOperation.EMPTY_FOLDER
+    ];
 };
 
 ZmCalendarTreeController.prototype._getActionMenu =
 function(ev) {
 	var organizer = ev.item.getData(Dwt.KEY_OBJECT);
-	if (organizer.type != this.type) { return null; }
-
-	return ZmTreeController.prototype._getActionMenu.apply(this, arguments);
+	if (organizer.type != this.type &&
+        organizer.id != ZmOrganizer.ID_TRASH) {
+        return null;
+    }
+	var menu = ZmTreeController.prototype._getActionMenu.apply(this, arguments);
+    var isTrash = organizer.id == ZmOrganizer.ID_TRASH;
+    menu.enableAll(!isTrash);
+    menu.enable(ZmOperation.EMPTY_FOLDER, isTrash);
+    var menuItem = menu.getMenuItem(ZmOperation.EMPTY_FOLDER);
+    if (menuItem) {
+        menuItem.setText(isTrash ? ZmMsg.emptyTrash : ZmMsg.emptyFolder);
+    }
+    return menu;
 };
 
 // Method that is run when a tree item is left-clicked
@@ -351,7 +384,8 @@ function(ev, treeView, overviewId) {
 		ev.event == ZmEvent.E_DELETE ||
 		(ev.event == ZmEvent.E_MODIFY && fields[ZmOrganizer.F_FLAGS]))
 	{
-		var controller = appCtxt.getApp(ZmApp.CALENDAR).getCalController();
+		var aCtxt = appCtxt.isChildWindow ? parentAppCtxt : appCtxt;
+		var controller = aCtxt.getApp(ZmApp.CALENDAR).getCalController();
 		controller._updateCheckedCalendars();
 
 		// if calendar is deleted, notify will initiate the refresh action
@@ -401,23 +435,38 @@ function(ev) {
 	appCtxt.getSharePropsDialog().popup(ZmSharePropsDialog.NEW, this._pendingActionData);
 };
 
-ZmCalendarTreeController.prototype._mountCalListener =
-function(ev) {
-	appCtxt.getMountFolderDialog().popup(ZmOrganizer.CALENDAR);
-};
-
 ZmCalendarTreeController.prototype._deleteListener =
 function(ev) {
 	var organizer = this._getActionedOrganizer(ev);
-	var callback = new AjxCallback(this, this._deleteListener2, [organizer]);
-	var message = AjxMessageFormat.format(ZmMsg.confirmDeleteCalendar, AjxStringUtil.htmlEncode(organizer.name));
+    if (organizer.isInTrash()) {
+        var callback = new AjxCallback(this, this._deleteListener2, [organizer]);
+        var message = AjxMessageFormat.format(ZmMsg.confirmDeleteCalendar, organizer.name);
 
-	appCtxt.getConfirmationDialog().popup(message, callback);
+        appCtxt.getConfirmationDialog().popup(message, callback);
+    }
+    else {
+        this._doMove(organizer, appCtxt.getById(ZmFolder.ID_TRASH));
+    }
 };
 
 ZmCalendarTreeController.prototype._deleteListener2 =
 function(organizer) {
 	this._doDelete(organizer);
+};
+
+/**
+ * Empties a folder.
+ * It removes all the items in the folder except sub-folders.
+ * If the folder is Trash, it empties even the sub-folders.
+ * A warning dialog will be shown before any folder is emptied.
+ *
+ * @param {DwtUiEvent}		ev		the UI event
+ *
+ * @private
+ */
+ZmCalendarTreeController.prototype._emptyListener =
+function(ev) {
+	this._getEmptyShieldWarning(ev);
 };
 
 ZmCalendarTreeController.prototype._notifyListeners =

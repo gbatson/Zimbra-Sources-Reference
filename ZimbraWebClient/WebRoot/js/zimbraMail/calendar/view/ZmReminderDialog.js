@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -39,9 +39,13 @@ ZmReminderDialog = function(parent, reminderController, calController) {
 	this._reminderController = reminderController;
 	this._calController = calController;
 
-	this.setContent(this._contentHtml(selectId));
-	this.setTitle(ZmMsg.apptReminders);
-	this.registerCallback(ZmReminderDialog.SNOOZE_BUTTON, this._handleSnoozeButton, this);
+    this.setContent(this._contentHtml(selectId));
+    if(this._calController instanceof ZmTaskMgr) {
+        this.setTitle(ZmMsg.taskReminders);
+    } else {
+        this.setTitle(ZmMsg.apptReminders);
+    }
+    this.registerCallback(ZmReminderDialog.SNOOZE_BUTTON, this._handleSnoozeButton, this);
 	this.registerCallback(ZmReminderDialog.DISMISS_ALL_BUTTON, this._handleDismissAllButton, this);
 };
 
@@ -70,7 +74,7 @@ function() {
 
     if (appCtxt.get(ZmSetting.CAL_REMINDER_NOTIFY_BROWSER)) {
         AjxPackage.require("Alert");
-        ZmBrowserAlert.getInstance().start(ZmMsg.appointmentReminder);
+        ZmBrowserAlert.getInstance().start(ZmMsg.reminders);
     }
 
     if (appCtxt.get(ZmSetting.CAL_REMINDER_NOTIFY_SOUNDS)) {
@@ -85,10 +89,11 @@ function() {
         // only show, at most, five appointment reminders
         for (var i = 0; i < appts.length && i < 5; i++) {
             var appt = appts[i];
-            var delta = this._formatDeltaString(this._computeDelta(appt));
+            var startDelta = this._computeDelta(appt);
+            var delta = startDelta ? this._formatDeltaString(startDelta) : "";
             var text = [appt.getName(), ", ", this._getDurationText(appt), "\n(", delta, ")"].join("");
             if (AjxEnv.isMac) {
-                ZmDesktopAlert.getInstance().start(ZmMsg.appointmentReminder, text);
+                ZmDesktopAlert.getInstance().start(ZmMsg.reminders, text);
             } else if (AjxEnv.isWindows) {
                 winText.push(text);
             }
@@ -98,7 +103,7 @@ function() {
             if (appts.length > 5) {
                 winText.push(ZmMsg.andMore);
             }
-            ZmDesktopAlert.getInstance().start(ZmMsg.appointmentReminder, winText.join("\n"), 5);
+            ZmDesktopAlert.getInstance().start(ZmMsg.reminders, winText.join("\n"), 5);
         }
     }    
 };
@@ -154,7 +159,7 @@ function(list) {
 
 		// open button
 		var openBtn = this._openButtons[data.openBtnId] = new DwtButton({parent:this, className:"DwtToolbarButton", parentElement:data.openBtnId});
-		openBtn.setImage(appt.otherAttendees ? "ApptMeeting" : "Appointment");
+		openBtn.setImage(appt.otherAttendees ? "ApptMeeting" : (appt.type == ZmItem.TASK) ? "TasksApp" : "Appointment");
 		openBtn.setText(ZmMsg.viewAppointment);
 		openBtn.addSelectionListener(openListener);
 		openBtn.apptUid = uid;
@@ -189,7 +194,7 @@ function(data) {
 		else if (startDelta > ZmReminderDialog.SOON)	td.className = 'ZmReminderSoon';
 		else											td.className = 'ZmReminderFuture';
 
-		td.innerHTML = this._formatDeltaString(startDelta);
+		td.innerHTML = startDelta ? this._formatDeltaString(startDelta) : "";
 	}
 };
 
@@ -201,24 +206,26 @@ function(html, idx, appt, data, needSep) {
 	data.deltaId = Dwt.getNextId();
 	data.rowId = Dwt.getNextId();
 
-	var calName = (appt.folderId != ZmOrganizer.ID_CALENDAR && this._calController)
+	var calName = (appt.folderId != ZmOrganizer.ID_CALENDAR && appt.folderId != ZmOrganizer.ID_TASKS && this._calController)
 		? this._calController.getCalendarName(appt.folderId) : null;
+
 
 	var calendar = appCtxt.getById(appt.folderId);
 
 	var params = {
 		needSep: needSep,
 		rowId: data.rowId,
-		calName: AjxStringUtil.htmlEncode(calName),
+		calName: calName,
 		accountName: (appCtxt.multiAccounts && calendar && calendar.getAccount().getDisplayName()),
-		location: AjxStringUtil.htmlEncode(appt.getReminderLocation()),
+		location: appt.getReminderLocation(),
 		apptIconHtml: (AjxImg.getImageHtml(appt.otherAttendees ? "ApptMeeting" : "Appointment")),
 		organizer: appt.otherAtt ? appt.organizer : null,
 		reminderName: (AjxStringUtil.htmlEncode(appt.getReminderName())),
 		durationText: (AjxStringUtil.trim(this._getDurationText(appt))),
 		deltaId: data.deltaId,
 		openBtnId: data.openBtnId,
-		dismissBtnId: data.dismissBtnId
+		dismissBtnId: data.dismissBtnId,
+        type: appt.type ? appt.type : ZmItem.APPT
 	};
 	html[idx++] = AjxTemplate.expand("calendar.Calendar#ReminderDialogRow", params);
 	return idx;
@@ -233,7 +240,8 @@ function(ev) {
 	var obj = DwtControl.getTargetControl(ev);
 	var data = this._apptData[obj.apptUid];
 	var appt = data ? data.appt : null;
-	if (appt) {
+    var type = appt.type ? appt.type : ZmItem.APPT;
+	if (appt && type == ZmItem.APPT) {
 		AjxDispatcher.require(["CalendarCore", "Calendar"]);
 
 		var cc = AjxDispatcher.run("GetCalController");
@@ -247,7 +255,21 @@ function(ev) {
 		}
 		var callback = new AjxCallback(cc, cc._showAppointmentDetails, newAppt);
 		newAppt.getDetails(null, callback, null, null, true);
-	}
+	} else if(appt && type == ZmItem.TASK) {
+        AjxDispatcher.require(["TasksCore", "Tasks"]);
+
+		var tlc = AjxDispatcher.run("GetTaskListController");
+
+		// the give appt object is a ZmCalBaseItem. We need a ZmAppt
+		var newTask = new ZmTask();
+		for (var i in appt) {
+			if (!AjxUtil.isFunction(appt[i])) {
+				newTask[i] = appt[i];
+			}
+		}
+		var callback = new AjxCallback(tlc, tlc._editTask, newTask);
+		newTask.getDetails(null, callback, null, null, true);
+    }
 };
 
 ZmReminderDialog.prototype._dismissButtonListener =
@@ -320,16 +342,19 @@ function() {
 ZmReminderDialog.prototype._getDurationText =
 function(appt) {
 	var isMultiDay = appt.isMultiDay();
-	var start = appt._alarmInstStart ? new Date(appt._alarmInstStart) : appt.startDate;
+	var start = appt._alarmInstStart ? new Date(appt._alarmInstStart) : appt.startDate ? appt.startDate : null;
 	// bug: 28598 - alarm for recurring appt might still point to old alarm time
 	// cannot take endTime directly
 	var endTime = appt._alarmInstStart ? (start.getTime() + appt.getDuration()) : appt.getEndTime();
 	var end = new Date(endTime);
 
+    //for task
+    if(appt.type == ZmItem.TASK && !start && !endTime) { return null; }
+
 	if (appt.isAllDayEvent()) {
-		end = new Date(endTime - (isMultiDay ? 2 * AjxDateUtil.MSEC_PER_HOUR : 0));
+		end = appt.type != ZmItem.TASK ? new Date(endTime - (isMultiDay ? 2 * AjxDateUtil.MSEC_PER_HOUR : 0)) : end;
 		var pattern = isMultiDay ? ZmMsg.apptTimeAllDayMulti : ZmMsg.apptTimeAllDay;
-		return AjxMessageFormat.format(pattern, [start, end]);
+		return start ? AjxMessageFormat.format(pattern, [start, end]) : AjxMessageFormat.format(pattern, [end]); //for task
 	}
 	var pattern = isMultiDay ? ZmMsg.apptTimeInstanceMulti : ZmMsg.apptTimeInstance;
 	return AjxMessageFormat.format(pattern, [start, end, ""]);
@@ -338,7 +363,7 @@ function(appt) {
 ZmReminderDialog.prototype._computeDelta =
 function(appt) {
 	return (appt.alarmData && appt.alarmData.length > 0)
-		? ((new Date()).getTime() - appt.adjustMS(appt.alarmData[0].alarmInstStart, appt.tzo))
+		? (appt.alarmData[0].alarmInstStart ? (new Date()).getTime() - appt.adjustMS(appt.alarmData[0].alarmInstStart, appt.tzo) : appt.getEndTime()  ? (new Date()).getTime() - appt.getEndTime() : null)
 		: ((new Date()).getTime() - appt.getStartTime());
 };
 	

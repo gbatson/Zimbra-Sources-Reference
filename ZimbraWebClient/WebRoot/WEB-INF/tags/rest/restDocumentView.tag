@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,7 +20,7 @@
 <%@ taglib prefix="app" uri="com.zimbra.htmlclient" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <rest:handleError>
-    <zm:getItemInfoJSON var="fileInfoJSON" box="${mailbox}" id="${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}"/>
+    <zm:getItemInfoJSON var="fileInfoJSON" authtoken="${requestScope.zimbra_authToken}" id="${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}"/>
 <c:if test="${not empty param.dev and param.dev eq '1'}">
     <c:set var="mode" value="mjsf" scope="request"/>
     <c:set var="gzip" value="false" scope="request"/>
@@ -32,12 +32,15 @@
 </c:if>
 
 <c:set var="isDevMode" value="${not empty requestScope.mode and requestScope.mode eq 'mjsf'}" scope="request"/>
-<c:set var="isTinyMce" value="${not empty param.editor and param.editor eq 'tinymce'}" scope="request"/>
+<%-- Support for tinymce suspended --%>
+<%--<c:set var="isTinyMce" value="${not empty param.editor and param.editor eq 'tinymce'}" scope="request"/>--%>
+<c:set var="isTinyMce" value="false" />
+
 <c:set var="isSkinDebugMode" value="${not empty requestScope.mode} and ${requestScope.mode eq 'skindebug'}" scope="request"/>
 
-<c:set var="packages" value="Ajax,Startup1_1,Startup1_2,Startup2,Docs" scope="request"/>
+<c:set var="packages" value="Startup1_1,Startup1_2,Startup2,Docs" scope="request"/>
 <c:if test="${not empty param.packages}">
-    <c:set var="packages" value="Ajax,Startup1_1,Startup1_2,Startup2,Docs,${param.packages}" scope="request"/>
+    <c:set var="packages" value="Startup1_1,Startup1_2,Startup2,Docs,${param.packages}" scope="request"/>
 </c:if>
 <c:set var="pnames" value="${fn:split(packages,',')}" scope="request"/>
 
@@ -133,13 +136,16 @@
     window.isTinyMCE = ${isTinyMce};
     window.contextPath = '${pageContext.request.contextPath}';
     window.appContextPath = '${pageContext.request.contextPath}';
+    window.appRequestLocaleId = "${zm:cook(localeId)}";
     window.appDevMode     = ${isDevMode};
 
-    ZmDocsEditApp._createDBG('${isDevMode}');
+    window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
 
     ZmDocsEditApp.setFile('${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}');
 
     var itemInfo = ${fileInfoJSON};
+    itemInfo = itemInfo.Body && itemInfo.Body.GetItemResponse;
+    
     if(itemInfo && itemInfo.doc && (itemInfo.doc.length==1)) {
         var item = ZmDocletMgr.createItem(itemInfo);
         //REST URL will not be generated on server side

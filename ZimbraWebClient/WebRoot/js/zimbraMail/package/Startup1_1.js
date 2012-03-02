@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -47,6 +47,9 @@ AjxPackage.require("ajax.util.AjxEmailAddress");
 AjxPackage.require("ajax.util.AjxHistoryMgr");
 AjxPackage.require("ajax.xml.AjxSerializer");
 
+AjxPackage.require("ajax.debug.AjxDebug");
+AjxPackage.require("ajax.debug.AjxDebugXmlDocument");
+
 AjxPackage.require("ajax.dwt.core.DwtId");
 AjxPackage.require("ajax.dwt.core.Dwt");
 AjxPackage.require("ajax.dwt.core.DwtException");
@@ -55,7 +58,6 @@ AjxPackage.require("ajax.dwt.core.DwtDraggable");
 AjxPackage.require("ajax.dwt.graphics.DwtCssStyle");
 AjxPackage.require("ajax.dwt.graphics.DwtPoint");
 AjxPackage.require("ajax.dwt.graphics.DwtRectangle");
-AjxPackage.require("ajax.dwt.graphics.DwtUnits");
 
 AjxPackage.require("ajax.dwt.events.DwtEvent");
 AjxPackage.require("ajax.dwt.events.DwtEventManager");
@@ -71,6 +73,7 @@ AjxPackage.require("ajax.dwt.events.DwtSelectionEvent");
 AjxPackage.require("ajax.dwt.events.DwtHtmlEditorStateEvent");
 AjxPackage.require("ajax.dwt.events.DwtTreeEvent");
 AjxPackage.require("ajax.dwt.events.DwtHoverEvent");
+AjxPackage.require("ajax.dwt.events.DwtOutsideMouseEventMgr");
 
 AjxPackage.require("ajax.dwt.keyboard.DwtTabGroupEvent");
 AjxPackage.require("ajax.dwt.keyboard.DwtKeyMap");

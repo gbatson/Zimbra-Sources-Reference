@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -121,9 +121,9 @@ public class ExchangeMessage {
     private static Pattern SPACE = Pattern.compile(" ");
     private static Pattern PLUS  = Pattern.compile("\\+");
     
-    protected String mOu;
-    protected String mCn;
-    protected String mMail;
+    private String mOu;
+    private String mCn;
+    private String mMail;
     
     public ExchangeMessage(String ou, String cn, String mail) {
     	mOu = ou;
@@ -131,7 +131,7 @@ public class ExchangeMessage {
     	mMail = mail;
     }
     
-    protected String getRcpt(KnownKey override) {
+    private String getRcpt(KnownKey override) {
     	String value = override.value();
     	if (value != null && value.length() > 0)
     		return "/cn="+value+"/cn=";
@@ -262,7 +262,7 @@ public class ExchangeMessage {
     private Element addElement(Element parent, QName name, String text) {
     	return addElement(parent, name, text, null, null);
     }
-    protected void encodeFb(long s, long e, LinkedList<Byte> buf) {
+    private void encodeFb(long s, long e, LinkedList<Byte> buf) {
     	int start = millisToMinutes(s);
     	int end = start + (int)((e - s) / 60000);
     	ZimbraLog.fb.debug("Start: %s %d", new Date(s).toGMTString(), start);
@@ -284,7 +284,7 @@ public class ExchangeMessage {
     	int minutes = c.get(Calendar.MINUTE);
     	return 60 * hours + minutes;
     }
-    protected long millisToMonths(long millis) {
+    private long millisToMonths(long millis) {
     	// number of freebusy months = year * 16 + month
     	// why * 16 not * 12, ask msft.
     	Calendar c = new GregorianCalendar();

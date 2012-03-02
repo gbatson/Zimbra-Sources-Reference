@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -37,8 +37,10 @@ class TcpImapHandler extends ImapHandler {
     TcpImapHandler(ImapServer server) {
         super(server);
     }
-                                                      
-    @Override protected boolean setupConnection(Socket connection) throws IOException {
+
+    @Override
+    protected boolean setupConnection(Socket connection) throws IOException {
+        connection.setSoTimeout(mConfig.getMaxIdleSeconds() * 1000);
         mRemoteAddress = connection.getInetAddress().getHostAddress();
         INFO("connected");
 
@@ -63,7 +65,7 @@ class TcpImapHandler extends ImapHandler {
 
     @Override protected void setIdle(boolean idle) {
         super.setIdle(idle);
-        ImapFolder i4selected = mSelectedFolder;
+        ImapSession i4selected = mSelectedFolder;
         if (i4selected != null)
             i4selected.updateAccessTime();
     }
@@ -72,7 +74,7 @@ class TcpImapHandler extends ImapHandler {
         // FIXME: throw an exception instead?
         if (mInputStream == null)
             return STOP_PROCESSING;
-        
+
         setUpLogContext(mRemoteAddress);
 
         if (mRequest == null)
@@ -125,7 +127,7 @@ class TcpImapHandler extends ImapHandler {
             mRequest = null;
         }
     }
-                                             
+
     @Override boolean doSTARTTLS(String tag) throws IOException {
         if (!checkState(tag, State.NOT_AUTHENTICATED)) {
             return CONTINUE_PROCESSING;
@@ -147,7 +149,7 @@ class TcpImapHandler extends ImapHandler {
 
         return CONTINUE_PROCESSING;
     }
-    
+
     @Override protected void dropConnection(boolean sendBanner) {
         clearRequest();
         try {
@@ -174,7 +176,7 @@ class TcpImapHandler extends ImapHandler {
         }.start();
 
         if (mCredentials != null && !mGoodbyeSent)
-        	ZimbraLog.imap.info("dropping connection for user " + mCredentials.getUsername() + " (server-initiated)");
+            ZimbraLog.imap.info("dropping connection for user " + mCredentials.getUsername() + " (server-initiated)");
 
         ZimbraLog.addIpToContext(mRemoteAddress);
         try {
@@ -195,9 +197,9 @@ class TcpImapHandler extends ImapHandler {
             }
         } catch (IOException e) {
             if (ZimbraLog.imap.isDebugEnabled()) {
-                ZimbraLog.imap.info("I/O error while closing connection", e);
+                ZimbraLog.imap.debug("I/O error while closing connection", e);
             } else {
-                ZimbraLog.imap.info("I/O error while closing connection: " + e);
+                ZimbraLog.imap.debug("I/O error while closing connection: " + e);
             }
         } finally {
             ZimbraLog.clearContext();
@@ -221,7 +223,7 @@ class TcpImapHandler extends ImapHandler {
             mOutputStream = mAuthenticator.wrap(mConnection.getOutputStream());
         }
     }
-    
+
     @Override protected void enableInactivityTimer() throws SocketException {
         mConnection.setSoTimeout(mConfig.getAuthenticatedMaxIdleSeconds() * 1000);
     }
@@ -242,7 +244,7 @@ class TcpImapHandler extends ImapHandler {
 
     void INFO(String message, Throwable e) {
         if (ZimbraLog.imap.isInfoEnabled())
-            ZimbraLog.imap.info(withClientInfo(message), e); 
+            ZimbraLog.imap.info(withClientInfo(message), e);
     }
 
     void INFO(String message) {

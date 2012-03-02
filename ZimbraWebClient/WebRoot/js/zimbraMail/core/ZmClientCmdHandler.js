@@ -38,10 +38,13 @@
  * 		$set:tabs							show tab groups (in debug window)
  * 		$set:ymid [id]						set Yahoo IM user to id
  * 		$set:log [type]						dump log contents for type
+ * 		$set:log [type]	[size]				set number of msgs to keep for type
  * 		$set:compose						compose msg based on mailto: in query string
  * 		$set:error							show error dialog
  * 		$set:modify [setting] [value]		set setting to value, then optionally restart
  * 		$set:clearAutocompleteCache			clear contacts autocomplete cache
+ *
+ * TODO: should probably I18N the alert messages
  */
 
 /**
@@ -404,12 +407,19 @@ function(cmdStr, searchController, cmdName, cmdArg1 /* ..., cmdArgN */) {
  * @param	{Object}	[cmdArg1]		command arguments
  */
 ZmClientCmdHandler.prototype.execute_log =
-function(cmdStr, searchController, cmdName, cmdArg1 /* ..., cmdArgN */) {
-	var text = AjxUtil.LOG[cmdArg1].join("<br/>");
-	var msgDialog = appCtxt.getMsgDialog();
-	msgDialog.reset();
-	msgDialog.setMessage(text, DwtMessageDialog.INFO_STYLE);
-	msgDialog.popup();
+function(cmdStr, searchController, cmdName, cmdArg1, cmdArg2 /* ..., cmdArgN */) {
+
+	var type = cmdArg1;
+	if (cmdArg2 != null) {
+		var size = parseInt(cmdArg2);
+		if (!isNaN(size)) {
+			AjxDebug.BUFFER_MAX[type] = size;
+			this._alert("Debug log size for '" + type + "' set to " + size);
+		}
+	}
+	else {
+		appCtxt.getDebugLogDialog().popup(AjxDebug.getDebugLog(type), type);
+	}
 };
 
 /**
@@ -488,4 +498,50 @@ ZmClientCmdHandler.prototype.execute_clearAutocompleteCache =
 function(cmdStr, searchController, cmdName, cmdArg1, cmdArg2 /* ..., cmdArgN */) {
 	appCtxt.clearAutocompleteCache(ZmAutocomplete.AC_TYPE_CONTACT);
 	this._alert("Contacts autocomplete cache cleared");
+};
+
+/**
+ * Executes the getCharWidth command.
+ *
+ * @param	{String}	cmdStr		the command
+ * @param	{ZmSearchController}	searchController	the search controller
+ * @param	{Object}	[cmdArg1]		command arguments
+ * @param	{Object}	[cmdArg2]		command arguments
+ */
+ZmClientCmdHandler.prototype.execute_getCharWidth =
+function(cmdStr, searchController, cmdName, cmdArg1, cmdArg2 /* ..., cmdArgN */) {
+	var cla = appCtxt.getApp(ZmApp.CONTACTS).getContactList().getArray();
+	for (var i = 0; i < cla.length; i++) {
+		ZmClientCmdHandler._testWidth(cla[i]._attrs["firstLast"] || cla[i]._attrs["company"] || "");
+	}
+	var text = [];
+	text.push("Avg char width: " + ZmClientCmdHandler.WIDTH / ZmClientCmdHandler.CHARS);
+	text.push("Avg bold char width: " + ZmClientCmdHandler.BWIDTH / ZmClientCmdHandler.CHARS);
+	var w = ZmClientCmdHandler._testWidth(AjxStringUtil.ELLIPSIS);
+	text.push("Ellipsis width: " + w.w);
+	w = ZmClientCmdHandler._testWidth(", ");
+	text.push("Comma + space width: " + w.w);
+	alert(text.join("\n"));
+};
+
+ZmClientCmdHandler.CHARS = 0;
+ZmClientCmdHandler.WIDTH = 0;
+ZmClientCmdHandler.BWIDTH = 0;
+
+ZmClientCmdHandler._testWidth =
+function(str) {
+	var div = document.createElement("DIV");
+	div.style.position = Dwt.ABSOLUTE_STYLE;
+	var shellEl = appCtxt.getShell().getHtmlElement();
+	shellEl.appendChild(div);
+	Dwt.setLocation(div, Dwt.LOC_NOWHERE, Dwt.LOC_NOWHERE);
+	div.innerHTML = str;
+	var size = Dwt.getSize(div);
+	ZmClientCmdHandler.CHARS += str.length;
+	ZmClientCmdHandler.WIDTH += size.x;
+	div.style.fontWeight = "bold";
+	var bsize = Dwt.getSize(div);
+	ZmClientCmdHandler.BWIDTH += bsize.x;
+	shellEl.removeChild(div);
+	return {w:size.x, bw:bsize.x};
 };

@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,12 +22,15 @@
 
 <c:set var="noDisplayAs"><fmt:message key="noDisplayAs"/></c:set>
 <zm:getMailbox var="mailbox"/>
+<c:set var="folder" value="${zm:getFolder(pageContext, contact.folderId)}"/>
+<fmt:message var="colorGray" key="colorGray"/>
+<c:set var="color" value="${zm:lightenColor(not empty folder ? ((folder.rgb != 'null') ? folder.rgb : folder.rgbColor) : colorGray)}"/>
 <table width="100%" cellspacing="0" cellpadding="0">
 <tr>
     <td class='ZhBottomSep'>
         <table width="100%" cellspacing="0" cellpadding="0">
-            <tr class='${zm:getFolder(pageContext, contact.folderId).styleColor}Bg'>
-        <td width="20"><center><app:img src="${contact.isGroup ? 'contacts/ImgGroup.gif' : 'contacts/ImgContact.gif'}" altkey="${contact.imageAltKey}"/></center></td>
+            <tr style="background-color:${color}">
+        <td width="20"><center><app:img src="${contact.isGroup ? 'contacts/ImgGroup.png' : 'contacts/ImgContact.png'}" altkey="${contact.imageAltKey}"/></center></td>
         <td class='contactHeader'>${fn:escapeXml(empty contact.displayFileAs ? noDisplayAs : (contact.isGalContact ? contact.fullName : contact.displayFileAs))} <c:if test="${contact.isGalContact}"> (${fn:escapeXml(contact.displayFileAs)}) </c:if>
         </td>
         <td align='right' class='Tags'>
@@ -55,11 +58,13 @@
             </c:if>
         </td><td width="20">
         <c:if test="${!contact.isGalContact}">
-        <c:set var="folderImage" value="${zm:getFolder(pageContext, contact.folderId).image}"/>
-        <app:img altkey='ALT_CONTACT_FOLDER' src="${folderImage}"/>
+        <c:set var="folderImage" value="${not empty folder ? folder.image : ''}"/>
+            <c:if test="${not empty folderImage}">
+               <app:img altkey='ALT_CONTACT_FOLDER' src="${folderImage}"/>
+            </c:if>
         </c:if>
     </td><td
-            class="companyFolder">${fn:escapeXml(zm:getFolderName(pageContext, contact.folderId))}</td>
+            class="companyFolder">${not empty folder ? folder.name : ''}</td>
     </tr>
 </tbody></table>
     </td>
@@ -72,7 +77,7 @@
 <c:if test="${contact.isGroup}">
     <c:forEach var="member" items="${contact.groupMembers}">
         <tr>
-            <td width='20px'><app:img altkey='ALT_CONTACT_GROUP_EMAIL' src="startup/ImgMessage.gif"/></td>
+            <td width='20px'><app:img altkey='ALT_CONTACT_GROUP_EMAIL' src="startup/ImgMessage.png"/></td>
             <td><nobr>${fn:escapeXml(member)}</nobr></td>            
         </tr>
     </c:forEach>

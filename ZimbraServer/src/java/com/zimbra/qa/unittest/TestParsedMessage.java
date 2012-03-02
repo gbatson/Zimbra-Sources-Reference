@@ -24,6 +24,7 @@ import javax.mail.internet.MimeMessage;
 
 import junit.framework.TestCase;
 
+import com.zimbra.common.mime.shim.JavaMailMimeMessage;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
@@ -44,12 +45,13 @@ extends TestCase {
     private class ExpectedResults {
         String convertedSubject;
         String rawContent;
-        String rawDigest;
         boolean wasMutated;
+
+        ExpectedResults()  { }
     }
-    
-    public void setUp()
-    throws Exception {
+
+    @Override
+    public void setUp() throws Exception {
         cleanUp();
     }
     
@@ -59,7 +61,6 @@ extends TestCase {
         String subject = NAME_PREFIX + " testParsedMessage";
         expected.convertedSubject = subject;
         expected.rawContent = TestUtil.getTestMessage(subject, RECIPIENT_NAME, SENDER_NAME, null);
-        expected.rawDigest = ByteUtil.getDigest(expected.rawContent.getBytes());
         expected.wasMutated = false;
         
         // Test ParsedMessage created from byte[]
@@ -79,7 +80,7 @@ extends TestCase {
         verifyParsedMessage(pm, expected);
         
         // Test ParsedMessage created from MimeMessage. 
-        MimeMessage mimeMsg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(expected.rawContent.getBytes()));
+        MimeMessage mimeMsg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(expected.rawContent.getBytes()));
         pm = new ParsedMessage(mimeMsg, false);
         verifyParsedMessage(pm, expected);
         pm = new ParsedMessage(mimeMsg, true);
@@ -94,7 +95,6 @@ extends TestCase {
         String subject = NAME_PREFIX + " testMimeConverter oldsubject";
         expected.convertedSubject = NAME_PREFIX + " testMimeConverter newsubject";
         expected.rawContent = TestUtil.getTestMessage(subject, RECIPIENT_NAME, SENDER_NAME, null);
-        expected.rawDigest = ByteUtil.getDigest(expected.rawContent.getBytes());
         expected.wasMutated = false;
         
         // Test ParsedMessage created from byte[]
@@ -116,7 +116,7 @@ extends TestCase {
         
         // Test ParsedMessage created from MimeMessage.  Can't verify entire content
         // because JavaMail mangles the headers.
-        MimeMessage mimeMsg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(expected.rawContent.getBytes()));
+        MimeMessage mimeMsg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(expected.rawContent.getBytes()));
         pm = new ParsedMessage(mimeMsg, false);
         assertTrue((new String(pm.getRawData()).contains("oldsubject")));
         assertTrue(getContent(pm.getMimeMessage()).contains("newsubject"));
@@ -131,10 +131,8 @@ extends TestCase {
     throws Exception {
         // Run tests multiple times to make sure the API's don't alter the state of the ParsedMessage
         for (int i = 1; i < 3; i++) {
-            // Test data, digest and size accessors
+            // Test accessors.
             assertEquals(expected.rawContent, new String(pm.getRawData()));
-            assertEquals(expected.rawDigest, pm.getRawDigest());
-            assertEquals(expected.rawContent.length(), pm.getRawSize());
             assertEquals(expected.convertedSubject, pm.getSubject());
             
             // Test sender and recipient
@@ -188,12 +186,12 @@ extends TestCase {
         verifyMutatedMessage(pm, substring, true);
         
         // Test ParsedMessage created from MimeMessage, attachment indexing off.
-        MimeMessage mimeMsg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
+        MimeMessage mimeMsg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
         pm = new ParsedMessage(mimeMsg, false);
         verifyMutatedMessage(pm, substring, true);
         
         // Test ParsedMessage created from MimeMessage, attachment indexing on.
-        mimeMsg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
+        mimeMsg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
         pm = new ParsedMessage(mimeMsg, true);
         verifyMutatedMessage(pm, substring, true);
     }
@@ -239,7 +237,7 @@ extends TestCase {
         runContentTests(msg, pm);
         
         // Test ParsedMessage from MimeMessage
-        MimeMessage mimeMsg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(msg.getBytes()));
+        MimeMessage mimeMsg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(msg.getBytes()));
         pm = new ParsedMessage(mimeMsg, true);
         runContentTests(msg, pm);
     }
@@ -255,14 +253,6 @@ extends TestCase {
         // Test byte[] accessor
         msg = new String(pm.getRawData());
         assertEquals("expected: " + originalMsg + "\ngot: " + msg, originalMsg, msg);
-        
-        // Test digest
-        String originalDigest = ByteUtil.getSHA1Digest(originalMsg.getBytes(), true);
-        String digest = pm.getRawDigest();
-        assertEquals("expected: " + digest + ", got: " + digest, originalDigest, digest);
-        
-        // Test size
-        assertEquals(size, pm.getRawSize());
     }
 
     /**
@@ -284,7 +274,7 @@ extends TestCase {
         runAddMessageTest(msg, pm);
         
         // Test ParsedMessage from MimeMessage
-        MimeMessage mimeMsg = new MimeMessage(JMSession.getSession(), new ByteArrayInputStream(msg.getBytes()));
+        MimeMessage mimeMsg = new JavaMailMimeMessage(JMSession.getSession(), new ByteArrayInputStream(msg.getBytes()));
         pm = new ParsedMessage(mimeMsg, true);
         runAddMessageTest(msg, pm);
     }

@@ -22,7 +22,8 @@
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 
 <c:set var="label" value="${zm:getFolderName(pageContext, folder.id)}"/>
-<tr class='${folder.styleColor}Bg'>
+<c:set var="color" value="${zm:lightenColor((folder.rgb != 'null') ? folder.rgb : folder.rgbColor)}"/>
+<tr style="background-color:${color}">
     <td nowrap colspan="2" class='Folder<c:if test="${folder.hasUnread}"> Unread</c:if><c:if test="${folder.id eq requestScope.context.selectedId}"> Selected</c:if>'
         style='padding-left: ${folder.depth*8}px'>
         <c:choose>
@@ -33,10 +34,10 @@
         <a href='${fn:escapeXml(url)}'>
             <c:choose>
             <c:when test="${folder.isCheckedInUI}">
-                <app:img altkey="checked" src="tasks/ImgTask.gif"/>
+                <app:img altkey="checked" src="tasks/ImgTask.png"/>
             </c:when>
                 <c:otherwise>
-                    <app:img altkey="unchecked" src="startup/ImgCheckboxUnchecked.gif"/>
+                    <app:img altkey="unchecked" src="startup/ImgCheckboxUnchecked.png"/>
                 </c:otherwise>
             </c:choose>
             <app:img src="${folder.image}" alt='${fn:escapeXml(label)}'/>
@@ -54,7 +55,7 @@
             <c:when test="${not empty folder.remoteURL}">
                 <app:calendarUrl var="syncUrl" sync="${folder.id}"/>
                 <fmt:message key="reloadCalendar" var="reload"/>
-                <a href="${fn:escapeXml(syncUrl)}"><app:img src="startup/ImgRefresh.gif" title="${reload}"/></a>
+                <a href="${fn:escapeXml(syncUrl)}"><app:img src="startup/ImgRefresh.png" title="${reload}"/></a>
             </c:when>
             <c:otherwise>
                 &nbsp;

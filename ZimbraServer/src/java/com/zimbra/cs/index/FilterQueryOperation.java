@@ -14,22 +14,22 @@
  */
 package com.zimbra.cs.index;
 
-import java.io.IOException;
 import java.util.List;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 
 /**
- * <p>A QueryOperation that filters results out of the result set.  The base class is a nop
- * (passes through all hits)
- * 
- * <p>Currently used only as a base class for other QueryOps that have to do passthrough/filtering
+ * A {@link QueryOperation} that filters results out of the result set. The base
+ * class is a nop (passes through all hits).
+ * <p>
+ * Currently used only as a base class for other QueryOps that have to do
+ * passthrough/filtering.
  */
-public abstract class FilterQueryOperation extends QueryOperation {
-    
+abstract class FilterQueryOperation extends QueryOperation {
+
     protected QueryOperation mOp = null;
-    
+
     @Override
     protected QueryOperation combineOps(QueryOperation other, boolean union) {
         return null;
@@ -46,7 +46,7 @@ public abstract class FilterQueryOperation extends QueryOperation {
         mOp.expandLocalRemotePart(mbox);
         return this;
     }
-    
+
     @Override
     QueryOperation ensureSpamTrashSetting(Mailbox mbox, boolean includeTrash, boolean includeSpam)
         throws ServiceException {
@@ -86,10 +86,10 @@ public abstract class FilterQueryOperation extends QueryOperation {
     }
 
     @Override
-    protected void prepare(Mailbox mbx, ZimbraQueryResultsImpl res, MailboxIndex mbidx, SearchParams params,
-        int chunkSize) throws IOException, ServiceException {
-        mParams = params;
-        mOp.prepare(mbx, res, mbidx, params, chunkSize);
+    protected void begin(QueryContext ctx) throws ServiceException {
+        assert(context == null);
+        context = ctx;
+        mOp.begin(ctx);
     }
 
     @Override
@@ -97,14 +97,17 @@ public abstract class FilterQueryOperation extends QueryOperation {
         return mOp.toQueryString();
     }
 
+    @Override
     public void doneWithSearchResults() throws ServiceException {
         mOp.doneWithSearchResults();
     }
 
+    @Override
     public int estimateResultSize() throws ServiceException {
         return mOp.estimateResultSize();
     }
 
+    @Override
     public ZimbraHit getNext() throws ServiceException {
         ZimbraHit toRet = peekNext();
         if (toRet != null)
@@ -112,14 +115,17 @@ public abstract class FilterQueryOperation extends QueryOperation {
         return toRet;
     }
 
+    @Override
     public List<QueryInfo> getResultInfo() {
-        return mOp.getResultInfo(); 
+        return mOp.getResultInfo();
     }
-    
+
+    @Override
     public ZimbraHit peekNext() throws ServiceException {
         return mOp.peekNext();
     }
 
+    @Override
     public void resetIterator() throws ServiceException {
         mOp.resetIterator();
     }

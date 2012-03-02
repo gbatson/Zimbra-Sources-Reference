@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -52,9 +52,9 @@
                             <tr class='Header'>
                                 <th class='CB' nowrap><input id="OPCHALL" onClick="checkAll(document.zform.id,this)" type=checkbox name="allids"/>
                                 <c:if test="${mailbox.features.tagging}">
-                                    <th class='Img' nowrap><app:img src="startup/ImgTagOrange.gif" altkey="ALT_TAG_TAG"/>
+                                    <th class='Img' nowrap><app:img src="startup/ImgTag.png" altkey="ALT_TAG_TAG"/>
                                 </c:if>
-                                <th class='Img' nowrap><app:img src="common/ImgGlobe.gif" altkey="ALT_TAG_TAG"/>
+                                <th class='Img' nowrap><app:img src="common/ImgGlobe.png" altkey="ALT_TAG_TAG"/>
                                 <th nowrap>
                                     <zm:newSortUrl var="nameSortUrl" value="/h/search" context="${context}" sort="${context.ss eq 'nameAsc' ? 'nameDesc' : 'nameAsc'}"/>
                                 <a href="${fn:escapeXml(nameSortUrl)}">
@@ -92,7 +92,7 @@
                                         <app:img src="${mimeImg}"/>
                                     </td>
                                     <td><%-- allow this column to wrap --%>
-                                        <c:set var="briefUrl" value="/service/home/~/?id=${briefHit.id}&auth=co"/>
+                                        <c:set var="briefUrl" value="/home/${mailbox.accountInfo.name}/${zm:getFolderPath(pageContext,briefHit.document.folderId)}/${briefHit.document.name}?auth=co"/>
                                         <a href="${fn:escapeXml(briefUrl)}" id="${aid}" onclick="return false;">
                                             <c:set var='docName' value="${empty briefHit.document.name ? unknownSubject : zm:truncate(briefHit.document.name,100,true)}"/>
                                             <c:out value="${docName}"/>
@@ -120,7 +120,7 @@
                                         <td class='CB' nowrap><input  id="C${status.index}" type=checkbox name="id" value="${subFolder.id}"></td>
                                         <td>&nbsp;</td>
                                         <td class='Img'><app:img src="${folders.image}" alt='${fn:escapeXml(subFolder.name)}'/></td>
-                                        <td><a href="${fn:escapeXml(url)}" id="${aid}">${zm:cook(subFolder.name)}</a></td>
+                                        <td><a href="${fn:escapeXml(url)}" id="${aid}">${subFolder.name}</a></td>
                                         <td>&nbsp;</td>
                                         <td>&nbsp;</td>
                                         <td>&nbsp;</td>

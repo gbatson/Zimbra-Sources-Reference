@@ -65,6 +65,9 @@ public class MailServiceException extends ServiceException {
     public static final String WRONG_MAILBOX   = "mail.WRONG_MAILBOX";
     public static final String MODIFY_CONFLICT = "mail.MODIFY_CONFLICT";
     public static final String TRY_AGAIN       = "mail.TRY_AGAIN";
+    public static final String CANNOT_LOCK     = "mail.CANNOT_LOCK";
+    public static final String CANNOT_UNLOCK   = "mail.CANNOT_UNLOCK";
+    public static final String LOCKED          = "mail.LOCKED";
 
     public static final String SCAN_ERROR      = "mail.SCAN_ERROR";
     public static final String UPLOAD_REJECTED = "mail.UPLOAD_REJECTED";
@@ -137,11 +140,11 @@ public class MailServiceException extends ServiceException {
         super(message, code, isReceiversFault, cause, args);
     }
     
-    public static MailServiceException MAINTENANCE(long id) {
+    public static MailServiceException MAINTENANCE(int id) {
         return new MailServiceException("mailbox in maintenance mode: "+ id, MAINTENANCE, RECEIVERS_FAULT, new Argument(MAILBOX_ID, id, Argument.Type.IID));
     }
 
-    public static MailServiceException NO_SUCH_MBOX(long id) {
+    public static MailServiceException NO_SUCH_MBOX(int id) {
         return new MailServiceException("no such mailbox: "+ id, NO_SUCH_MBOX, SENDERS_FAULT, new Argument(MAILBOX_ID, id, Argument.Type.IID));
     }
 
@@ -261,7 +264,7 @@ public class MailServiceException extends ServiceException {
         return new MailServiceException("WaitSet not found: " + id, NO_SUCH_WAITSET, SENDERS_FAULT, new Argument(ID, id, Argument.Type.STR));
     }
 
-    public static MailServiceException NO_SUCH_BLOB(long mboxId, int itemId, int revision) {
+    public static MailServiceException NO_SUCH_BLOB(int mboxId, int itemId, int revision) {
         return new MailServiceException("No such blob: mailbox=" + mboxId + ", item=" + itemId + ", change=" + revision, NO_SUCH_BLOB, SENDERS_FAULT);
     }
 
@@ -383,8 +386,8 @@ public class MailServiceException extends ServiceException {
         return new MailServiceException("object with that name already exists: " + name, ALREADY_EXISTS, SENDERS_FAULT, args);
     }
 
-    public static MailServiceException ALREADY_EXISTS(String name, Throwable t, Argument... args) {
-        return new MailServiceException("object with that name already exists: " + name, ALREADY_EXISTS, SENDERS_FAULT, t, args);
+    public static MailServiceException ALREADY_EXISTS(String name, Throwable t) {
+        return new MailServiceException("object with that name already exists: " + name, ALREADY_EXISTS, SENDERS_FAULT, t, new Argument(NAME, name, Argument.Type.STR));
     }
 
     public static MailServiceException ALREADY_EXISTS(int id, Throwable t) {
@@ -494,5 +497,25 @@ public class MailServiceException extends ServiceException {
     
     public static MailServiceException TEMPORARY_ANALYSIS_ERROR() {
         return new MailServiceException("Temporary Analysis Error", MailServiceException.TEMPORARY_ANALYSIS_ERROR, RECEIVERS_FAULT);
+    }
+
+    public static MailServiceException CANNOT_LOCK(int id) {
+        return new MailServiceException("cannot lock item: " + id, CANNOT_LOCK, SENDERS_FAULT, new Argument(ITEM_ID, id, Argument.Type.IID));
+    }
+
+    public static MailServiceException CANNOT_LOCK(int id, String accountId) {
+        return new MailServiceException("cannot lock item: " + id, CANNOT_LOCK, SENDERS_FAULT, new Argument(ITEM_ID, id, Argument.Type.IID), new Argument(ACCOUNT_ID, accountId, Argument.Type.ACCTID));
+    }
+
+    public static MailServiceException CANNOT_UNLOCK(int id) {
+        return new MailServiceException("cannot unlock item: " + id, CANNOT_UNLOCK, SENDERS_FAULT, new Argument(ITEM_ID, id, Argument.Type.IID));
+    }
+
+    public static MailServiceException CANNOT_UNLOCK(int id, String accountId) {
+        return new MailServiceException("cannot unlock item: " + id, CANNOT_UNLOCK, SENDERS_FAULT, new Argument(ITEM_ID, id, Argument.Type.IID), new Argument(ACCOUNT_ID, accountId, Argument.Type.ACCTID));
+    }
+    
+    public static MailServiceException LOCKED(int id, String accountId) {
+        return new MailServiceException("item is locked: " + id, LOCKED, SENDERS_FAULT, new Argument(ITEM_ID, id, Argument.Type.IID), new Argument(ACCOUNT_ID, accountId, Argument.Type.ACCTID));
     }
 }

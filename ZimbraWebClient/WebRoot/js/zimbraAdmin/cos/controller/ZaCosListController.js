@@ -35,23 +35,6 @@ ZaController.changeActionsStateMethods["ZaCosListController"] = new Array();
 //ZaCosListController.COS_VIEW = "ZaCosListController.COS_VIEW";
 
 ZaCosListController.prototype.show = function (doPush,openInNewTab) {
-
-    if(!ZaZimbraAdmin.isGlobalAdmin() && this._currentQuery == "") {
-        var cosNameList = ZaApp.getInstance()._cosNameList;
-        if(!cosNameList || !(cosNameList instanceof Array) || cosNameList.length == 0) {
-            this._list = new ZaItemList(ZaCos);
-            this.numPages = 0;
-            this._searchTotal = 0;
-            if(doPush) this._show(this._list);
-            else this._updateUI(this._list);
-            return;
-        }
-        for(var i = 0; i < cosNameList.length; i++)
-            this._currentQuery += "(" + ZaCos.A_name + "=" + cosNameList[i] + ")";
-        if(cosNameList.length > 1)
-            this._currentQuery = "(|" + this._currentQuery + ")";
-    }
-
 	var busyId = Dwt.getNextId () ;
 	openInNewTab = openInNewTab ? openInNewTab : false;
 	var callback = new AjxCallback(this, this.searchCallback, {openInNewTab:openInNewTab,limit:this.RESULTSPERPAGE,CONS:null,show:doPush,busyId:busyId});
@@ -142,7 +125,7 @@ function (openInNewTab, openInSearchTab) {
 	this._toolbarOperations[ZaOperation.PAGE_FORWARD]=new ZaOperation(ZaOperation.PAGE_FORWARD,ZaMsg.Next, ZaMsg.NextPage_tt, "RightArrow", "RightArrowDis", new AjxListener(this, this._nextPageListener));
 	this._toolbarOperations[ZaOperation.HELP]=new ZaOperation(ZaOperation.HELP,ZaMsg.TBB_Help, ZaMsg.TBB_Help_tt, "Help", "Help", new AjxListener(this, this._helpButtonListener));				
 
-	this._toolbar = new ZaToolBar(this._container, this._toolbarOperations,this._toolbarOrder);    
+	this._toolbar = new ZaToolBar(this._container, this._toolbarOperations,this._toolbarOrder, null, null, ZaId.VIEW_COSLIST);    
 		
 	var elements = new Object();
 	elements[ZaAppViewMgr.C_APP_CONTENT] = this._contentView;
@@ -156,7 +139,7 @@ function (openInNewTab, openInSearchTab) {
 	ZaApp.getInstance().createView(this.getContentViewId(), elements, tabParams) ;
 	
 	this._initPopupMenu();
-	this._actionMenu =  new ZaPopupMenu(this._contentView, "ActionMenu", null, this._popupOperations);
+	this._actionMenu =  new ZaPopupMenu(this._contentView, "ActionMenu", null, this._popupOperations, ZaId.VIEW_COSLIST, ZaId.MENU_POP);
 	
 	//set a selection listener on the account list view
 	this._contentView.addSelectionListener(new AjxListener(this, this._listSelectionListener));

@@ -73,6 +73,7 @@ public abstract class FreeBusyProvider {
 
 	// propagation of Zimbra users free/busy to 3rd party system
 	public abstract boolean registerForMailboxChanges();
+	public abstract boolean registerForMailboxChanges(String accountId);
 	public abstract int registerForItemTypes();
 	public abstract boolean handleMailboxChange(String accountId);
 	public abstract long cachedFreeBusyStartTime();
@@ -102,7 +103,7 @@ public abstract class FreeBusyProvider {
 	}
 	public static void mailboxChanged(String accountId, int changedType) {
 		for (FreeBusyProvider prov : sPROVIDERS)
-			if (prov.registerForMailboxChanges() && (changedType & prov.registerForItemTypes()) > 0) {
+			if (prov.registerForMailboxChanges(accountId) && (changedType & prov.registerForItemTypes()) > 0) {
 				FreeBusySyncQueue queue = sPUSHQUEUES.get(prov.getName());
 				if (queue == null)
 					queue = startConsumerThread(prov);
@@ -167,24 +168,13 @@ public abstract class FreeBusyProvider {
 		return mbox.getFreeBusy(null, cachedFreeBusyStartTime(), cachedFreeBusyEndTime(), folderId);
 	}
 	
-	protected String getEmailAddress(String accountId) {
-		try {
-			Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.id, accountId);
-			if (acct == null)
-				return null;
-			return acct.getName();
-		} catch (ServiceException se) {
+	protected String getEmailAddress(String accountId) throws ServiceException {
+		Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.id, accountId);
+		if (acct == null)
 			return null;
-		}
+		return acct.getName();
 	}
 	
-	protected List<FreeBusy> getEmptyList(ArrayList<Request> req) {
-		ArrayList<FreeBusy> ret = new ArrayList<FreeBusy>();
-		for (Request r : req)
-			ret.add(FreeBusy.nodataFreeBusy(r.email, r.start, r.end));
-		return ret;
-	}
-
 	public FreeBusySyncQueue getSyncQueue() {
 		return sPUSHQUEUES.get(getName());
 	}
@@ -207,13 +197,9 @@ public abstract class FreeBusyProvider {
 		sPROVIDERS = new HashSet<FreeBusyProvider>();
 		sPUSHQUEUES = new HashMap<String,FreeBusySyncQueue>();
 		new ExchangeFreeBusyProvider();  // load the class
-        new ExchangeEWSFreeBusyProvider();
 	}
 	
 	public String getQueueFilename() {
-		if (!registerForMailboxChanges()) {
-			return "(none)";
-		}
 		return LC.freebusy_queue_directory.value() + "queue-" + getName();
 	}
 	

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -37,8 +37,8 @@ import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.CalendarItem.AlarmData;
+import com.zimbra.cs.mailbox.Task;
 import com.zimbra.cs.mailbox.calendar.Geo;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteInfo;
 import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
@@ -100,7 +100,16 @@ public class GetCalendarItemSummaries extends CalendarRequest {
         boolean hidePrivate = !calItem.allowPrivateAccess(authAccount, lc.isUsingAdminPrivileges());
 
         try {
-            boolean expandRanges = (rangeStart > 0 && rangeEnd > 0 && rangeStart < rangeEnd);
+            boolean expandRanges;
+            if (calItem instanceof Task) {
+                expandRanges = true;
+                if (rangeStart == -1 && rangeEnd == -1) {
+                    rangeStart = Long.MIN_VALUE;
+                    rangeEnd = Long.MAX_VALUE;
+                }
+            } else {
+                expandRanges = (rangeStart > 0 && rangeEnd > 0 && rangeStart < rangeEnd);
+            }
             
             boolean isAppointment = calItem instanceof Appointment;
             
@@ -116,20 +125,18 @@ public class GetCalendarItemSummaries extends CalendarRequest {
             ParsedDuration defDuration = defaultInvite.getEffectiveDuration();
             // Duration is null if no DTEND or DURATION was present.  Assume 1 day for all-day
             // events and 1 second for non all-day.  (bug 28615)
-            if (defDuration == null) {
+            if (defDuration == null && !defaultInvite.isTodo()) {
                 if (defaultInvite.isAllDayEvent())
                     defDuration = ParsedDuration.ONE_DAY;
                 else
                     defDuration = ParsedDuration.ONE_SECOND;
             }
             long defDurationMsecs = 0;
-            if (defaultInvite.getStartTime() != null) {
+            if (defaultInvite.getStartTime() != null && defDuration != null) {
                 ParsedDateTime s = defaultInvite.getStartTime();
                 long et = s.add(defDuration).getUtcTime();
                 defDurationMsecs = et - s.getUtcTime();
             }
-            
-            boolean defIsOrg = defaultInvite.isOrganizer();
             
             String defaultFba = null;
             if (calItem instanceof Appointment)
@@ -137,12 +144,13 @@ public class GetCalendarItemSummaries extends CalendarRequest {
             
             String defaultPtSt = calItem.getEffectivePartStat(defaultInvite, null);
 
+            AlarmData alarmData = calItem.getAlarmData();
+
             // add all the instances:
             int numInRange = 0;
             
             if (expandRanges) {
                 Collection<CalendarItem.Instance> instances = calItem.expandInstances(rangeStart, rangeEnd, true);
-                AlarmData alarmData = calItem.getAlarmData();
                 long alarmTime = 0;
                 long alarmInst = 0;
                 if (alarmData != null) {
@@ -171,7 +179,7 @@ public class GetCalendarItemSummaries extends CalendarRequest {
                             else
                                 invDuration = ParsedDuration.ONE_SECOND;
                         }
-                        if (inst.isTimeless() ||
+                        if (!inst.hasStart() ||
                             (startOrAlarm < rangeEnd && invDuration.addToTime(instStart) > rangeStart)) {
                             numInRange++;
                         } else {
@@ -182,9 +190,6 @@ public class GetCalendarItemSummaries extends CalendarRequest {
                             calItemElem = lc.createElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK);
 
                             if (showAll) {
-                                if (alarmData != null)
-                                    ToXML.encodeAlarmData(calItemElem, calItem, alarmData);
-
                                 // flags and tags
                                 String flags = calItem.getFlagString();
                                 if (flags != null && !flags.equals(""))
@@ -209,18 +214,18 @@ public class GetCalendarItemSummaries extends CalendarRequest {
                         if (showAll) {
                             if (isAppointment && inv.isEvent()) {
                                 String instFba = ((Appointment) calItem).getEffectiveFreeBusyActual(inv, inst);
-                                if (instFba != null && !instFba.equals(defaultFba))
+                                if (instFba != null && (!instFba.equals(defaultFba) || inst.isException()))
                                     instElt.addAttribute(MailConstants.A_APPT_FREEBUSY_ACTUAL, instFba);
                             }
                             String instPtSt = calItem.getEffectivePartStat(inv, inst);
-                            if (!defaultPtSt.equals(instPtSt))
+                            if (!defaultPtSt.equals(instPtSt) || inst.isException())
                                 instElt.addAttribute(MailConstants.A_CAL_PARTSTAT, instPtSt);
                         }
 
-                        if (!inst.isTimeless()) {
+                        if (inst.hasStart()) {
                             instElt.addAttribute(MailConstants.A_CAL_START_TIME, instStart);
                             if (inv.isAllDayEvent())
-                                instElt.addAttribute(MailConstants.A_CAL_TZ_OFFSET, inst.getTzOffset());
+                                instElt.addAttribute(MailConstants.A_CAL_TZ_OFFSET, inst.getStartTzOffset());
                         }
 
 
@@ -235,82 +240,96 @@ public class GetCalendarItemSummaries extends CalendarRequest {
 
                             instElt.addAttribute(MailConstants.A_CAL_IS_EXCEPTION, true);
 
-                            if ((defaultInvite.getMailItemId() != invId.getMsgId()) || (defaultInvite.getComponentNum() != invId.getComponentId())) {
-                                instElt.addAttribute(MailConstants.A_CAL_INV_ID, ifmt.formatItemId(calItem, inst.getMailItemId()));
-
-                                instElt.addAttribute(MailConstants.A_CAL_COMPONENT_NUM, inst.getComponentNum());
-
-                                if (showAll) {
-                                    // fragment has already been sanitized...
-                                    String frag = inv.getFragment();
-                                    if (!frag.equals(""))
-                                        instElt.addAttribute(MailConstants.E_FRAG, frag, Element.Disposition.CONTENT);
-                                }
-                            }
+                            instElt.addAttribute(MailConstants.A_CAL_INV_ID, ifmt.formatItemId(calItem, inst.getMailItemId()));
+                            instElt.addAttribute(MailConstants.A_CAL_COMPONENT_NUM, inst.getComponentNum());
 
                             if (showAll) {
-                                String prio = inv.getPriority();
-                                if (prio != null && !prio.equals(defaultInvite.getPriority()))
-                                    instElt.addAttribute(MailConstants.A_CAL_PRIORITY, prio);
+                                // fragment has already been sanitized...
+                                String frag = inv.getFragment();
+                                if (frag != null && !frag.equals(""))
+                                    instElt.addAttribute(MailConstants.E_FRAG, frag, Element.Disposition.CONTENT);
+
+                                if (inv.getPriority() != null)
+                                    instElt.addAttribute(MailConstants.A_CAL_PRIORITY, inv.getPriority());
 
                                 if (inv.isEvent()) {
-                                    if (!defaultInvite.getFreeBusy().equals(inv.getFreeBusy()))
+                                    if (inv.getFreeBusy() != null)
                                         instElt.addAttribute(MailConstants.A_APPT_FREEBUSY, inv.getFreeBusy());
-                                    if (!defaultInvite.getTransparency().equals(inv.getTransparency()))
+                                    if (inv.getTransparency() != null)
                                         instElt.addAttribute(MailConstants.A_APPT_TRANSPARENCY, inv.getTransparency());
                                 }
 
                                 if (inv.isTodo()) {
-                                    String pctComplete = inv.getPercentComplete();
-                                    if (pctComplete != null && !pctComplete.equals(defaultInvite.getPercentComplete()))
-                                        instElt.addAttribute(MailConstants.A_TASK_PERCENT_COMPLETE, pctComplete);
+                                    if (inv.getPercentComplete() != null)
+                                        instElt.addAttribute(MailConstants.A_TASK_PERCENT_COMPLETE, inv.getPercentComplete());
                                 }
 
-                                if (!defaultInvite.getName().equals(inv.getName()))
+                                if (inv.getName() != null)
                                     instElt.addAttribute(MailConstants.A_NAME, inv.getName());
 
-                                if (!defaultInvite.getLocation().equals(inv.getLocation()))
+                                if (inv.getLocation() != null)
                                     instElt.addAttribute(MailConstants.A_CAL_LOCATION, inv.getLocation());
 
                                 List<String> categories = inv.getCategories();
-                                if (categories != null && !categories.equals(defaultInvite.getCategories())) {
+                                if (categories != null) {
                                     for (String cat : categories) {
                                         instElt.addElement(MailConstants.E_CAL_CATEGORY).setText(cat);
                                     }
                                 }
                                 Geo geo = inv.getGeo();
-                                if (geo != null && !geo.equals(defaultInvite.getGeo()))
+                                if (geo != null)
                                     geo.toXml(instElt);
 
-                                if (defaultInvite.hasOtherAttendees() != inv.hasOtherAttendees())
-                                    instElt.addAttribute(MailConstants.A_CAL_OTHER_ATTENDEES, inv.hasOtherAttendees());
+                                if (inv.hasOtherAttendees())
+                                    instElt.addAttribute(MailConstants.A_CAL_OTHER_ATTENDEES, true);
 
-                                if (defaultInvite.hasAlarm() != inv.hasAlarm())
-                                    instElt.addAttribute(MailConstants.A_CAL_ALARM, inv.hasAlarm());
+                                if (inv.hasAlarm())
+                                    instElt.addAttribute(MailConstants.A_CAL_ALARM, true);
                             }
 
-                            boolean thisInvIsOrg = inv.isOrganizer();
-                            if (thisInvIsOrg!= defIsOrg)
-                                instElt.addAttribute(MailConstants.A_CAL_ISORG, thisInvIsOrg);
+                            instElt.addAttribute(MailConstants.A_CAL_ISORG, inv.isOrganizer());
 
-                            if (!inst.isTimeless() && defDurationMsecs != inst.getEnd()-inst.getStart())
-                                instElt.addAttribute(newFormat ? MailConstants.A_CAL_NEW_DURATION : MailConstants.A_CAL_DURATION, inst.getEnd()-inst.getStart());
+                            if (inv.isTodo()) {
+                                if (inst.hasEnd()) {
+                                    instElt.addAttribute(MailConstants.A_TASK_DUE_DATE, inst.getEnd());
+                                    if (inv.isAllDayEvent())
+                                        instElt.addAttribute(MailConstants.A_CAL_TZ_OFFSET_DUE, inst.getEndTzOffset());
+                                }
+                            } else {
+                                if (inst.hasStart() && inst.hasEnd()) {
+                                    instElt.addAttribute(
+                                            newFormat ? MailConstants.A_CAL_NEW_DURATION : MailConstants.A_CAL_DURATION,
+                                            inst.getEnd() - inst.getStart());
+                                }
+                            }
 
-                            if (!defaultInvite.getStatus().equals(inv.getStatus()))
+                            if (inv.getStatus() != null)
                                 instElt.addAttribute(MailConstants.A_CAL_STATUS, inv.getStatus());
 
-                            if (!defaultInvite.getClassProp().equals(inv.getClassProp()))
+                            if (inv.getClassProp() != null)
                                 instElt.addAttribute(MailConstants.A_CAL_CLASS, inv.getClassProp());
 
-                            if (defaultInvite.isAllDayEvent() != inv.isAllDayEvent())
-                                instElt.addAttribute(MailConstants.A_CAL_ALLDAY, inv.isAllDayEvent());
-                            if (defaultInvite.isRecurrence() != inv.isRecurrence())
-                                instElt.addAttribute(MailConstants.A_CAL_RECUR, inv.isRecurrence());
+                            if (inv.isAllDayEvent())
+                                instElt.addAttribute(MailConstants.A_CAL_ALLDAY, true);
+                            if (inv.isDraft())
+                                instElt.addAttribute(MailConstants.A_CAL_DRAFT, true);
+                            if (inv.isNeverSent())
+                                instElt.addAttribute(MailConstants.A_CAL_NEVER_SENT, true);
+                            if (inv.isRecurrence())
+                                instElt.addAttribute(MailConstants.A_CAL_RECUR, true);
                         } else {
-                            // A non-exception instance can have duration that is different from
-                            // the default duration due to daylight savings time transitions.
-                            if (!inst.isTimeless() && defDurationMsecs != inst.getEnd()-inst.getStart()) {
-                                instElt.addAttribute(newFormat ? MailConstants.A_CAL_NEW_DURATION : MailConstants.A_CAL_DURATION, inst.getEnd()-inst.getStart());
+                            if (inv.isTodo()) {
+                                if (inst.hasEnd()) {
+                                    instElt.addAttribute(MailConstants.A_TASK_DUE_DATE, inst.getEnd());
+                                    if (inv.isAllDayEvent())
+                                        instElt.addAttribute(MailConstants.A_CAL_TZ_OFFSET_DUE, inst.getEndTzOffset());
+                                }
+                            } else {
+                                // A non-exception instance can have duration that is different from
+                                // the default duration due to daylight savings time transitions.
+                                if (inst.hasStart() && inst.hasEnd() && defDurationMsecs != inst.getEnd()-inst.getStart()) {
+                                    instElt.addAttribute(newFormat ? MailConstants.A_CAL_NEW_DURATION : MailConstants.A_CAL_DURATION, inst.getEnd()-inst.getStart());
+                                }
                             }
                         }
                     } catch (MailServiceException.NoSuchItemException e) {
@@ -347,6 +366,9 @@ public class GetCalendarItemSummaries extends CalendarRequest {
                 }
                 
                 if (showAll) {
+                    if (alarmData != null)
+                        ToXML.encodeAlarmData(calItemElem, calItem, alarmData);
+
                     String defaultPriority = defaultInvite.getPriority();
                     if (defaultPriority != null)
                         calItemElem.addAttribute(MailConstants.A_CAL_PRIORITY, defaultPriority);
@@ -388,19 +410,21 @@ public class GetCalendarItemSummaries extends CalendarRequest {
                     }
                 }
 
-                calItemElem.addAttribute(MailConstants.A_CAL_ISORG, defIsOrg);
+                calItemElem.addAttribute(MailConstants.A_CAL_ISORG, defaultInvite.isOrganizer());
                 calItemElem.addAttribute(MailConstants.A_ID, ifmt.formatItemId(calItem));
                 calItemElem.addAttribute(MailConstants.A_CAL_INV_ID, ifmt.formatItemId(calItem, defaultInvite.getMailItemId()));
                 calItemElem.addAttribute(MailConstants.A_CAL_COMPONENT_NUM, defaultInvite.getComponentNum());
                 calItemElem.addAttribute(MailConstants.A_FOLDER, ifmt.formatItemId(calItem.getFolderId()));
                 calItemElem.addAttribute(MailConstants.A_CAL_STATUS, defaultInvite.getStatus());
                 calItemElem.addAttribute(MailConstants.A_CAL_CLASS, defaultInvite.getClassProp());
-                if (defaultInvite.isTodo())
-                    calItemElem.addAttribute(MailConstants.A_TASK_DUE_DATE, calItem.getEndTime());
-                if (defaultInvite.getStartTime() != null)
+                if (!defaultInvite.isTodo())
                     calItemElem.addAttribute(newFormat ? MailConstants.A_CAL_NEW_DURATION : MailConstants.A_CAL_DURATION, defDurationMsecs);
                 if (defaultInvite.isAllDayEvent())
                     calItemElem.addAttribute(MailConstants.A_CAL_ALLDAY, defaultInvite.isAllDayEvent());
+                if (defaultInvite.isDraft())
+                    calItemElem.addAttribute(MailConstants.A_CAL_DRAFT, defaultInvite.isDraft());
+                if (defaultInvite.isNeverSent())
+                    calItemElem.addAttribute(MailConstants.A_CAL_NEVER_SENT, defaultInvite.isNeverSent());
                 if (defaultInvite.isRecurrence())
                     calItemElem.addAttribute(MailConstants.A_CAL_RECUR, defaultInvite.isRecurrence());
                 
@@ -420,7 +444,6 @@ public class GetCalendarItemSummaries extends CalendarRequest {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Mailbox mbox = getRequestedMailbox(zsc);
         Account acct = getRequestedAccount(zsc);
-        Account authAcct = getAuthenticatedAccount(zsc);
         
         long rangeStart = request.getAttributeLong(MailConstants.A_CAL_START_TIME);
         long rangeEnd = request.getAttributeLong(MailConstants.A_CAL_END_TIME);

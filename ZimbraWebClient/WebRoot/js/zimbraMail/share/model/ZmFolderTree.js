@@ -1,7 +1,7 @@
 	/*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -121,7 +121,7 @@ function(parent, obj, tree, elementType, path, account) {
 		}
 		// let's avoid deferring folders for offline since multi-account folder deferring is hairy
 		var hasGrants = (obj.acl && obj.acl.grant && obj.acl.grant.length > 0);
-		if (appCtxt.inStartup && ZmOrganizer.DEFERRABLE[type] && !appCtxt.isOffline && !hasGrants) {
+		if (appCtxt.inStartup && ZmOrganizer.DEFERRABLE[type] && !appCtxt.isOffline) {
 			var app = appCtxt.getApp(ZmOrganizer.APP[type]);
 			var defParams = {
 				type:			type,
@@ -144,6 +144,15 @@ function(parent, obj, tree, elementType, path, account) {
 	}
 
 	return folder;
+};
+
+ZmFolderTree.createAllDeferredFolders =
+function() {
+	var ac = appCtxt.getAppController();
+	for (var appId in ZmApp.ORGANIZER) {
+		var app = ac.getApp(appId);
+		app.createDeferred();
+	}
 };
 
 /**

@@ -274,6 +274,9 @@ function(date, skipNotify, forceRollOver, dblClick) {
 	//if (this._selectionMode == DwtCalendar.WORK_WEEK && !this._currWorkingDays[date.getDay()])
 	//	return false;
 
+	if(!date) {
+		date = new Date();
+	}
 	var newDate = new Date(date.getTime());
 	var oldDate = this._date;
 
@@ -1061,7 +1064,11 @@ function(ev) {
 			if (this.parent instanceof DwtMenu)
 				DwtMenu.closeActiveMenu();
 
-			if (this.setDate(new Date(target._year, target._month, target._day))) { return; }
+            var sDate = new Date(target._year, target._month, target._day);
+            if(sDate.getDate() != target._day) {
+                sDate.setDate(target._day);                 
+            }
+			if (this.setDate(sDate)) { return; }
 
 			this._setClassName(target, DwtCalendar._HOVERED);
 		} else if (target.id.charAt(0) == 'b') {

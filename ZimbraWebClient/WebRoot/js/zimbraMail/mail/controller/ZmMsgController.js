@@ -67,7 +67,7 @@ function(msg, mode, callback, markRead) {
 	this._currentView = this._getViewType();
 	this._list = msg.list;
 	if (!msg._loaded) {
-		var respCallback = new AjxCallback(this, this._handleResponseShow, callback);
+		var respCallback = new AjxCallback(this, this._handleResponseShow, [callback]);
 		if (msg._loadPending) {
 			// override any local callback if we're being launched by double-pane view,
 			// so that multiple GetMsgRequest's aren't made
@@ -84,7 +84,7 @@ function(msg, mode, callback, markRead) {
 ZmMsgController.prototype._handleResponseShow = 
 function(callback, result) {
 	this._showMsg();
-	if (callback) {
+	if (callback instanceof AjxCallback) {
 		callback.run();
 	}
 };
@@ -140,7 +140,15 @@ function(actionCode) {
 		case ZmKeyMap.CANCEL:
 			this._backListener();
 			break;
-			
+
+		case ZmKeyMap.NEXT_PAGE:
+			this._goToMsg(this._currentView, true);
+			break;
+
+		case ZmKeyMap.PREV_PAGE:
+			this._goToMsg(this._currentView, false);
+			break;
+
 		default:
 			return ZmMailListController.prototype.handleKeyAction.call(this, actionCode);
 			break;
@@ -423,7 +431,7 @@ function(ev) {
         url += "&xim=1";
     }
     if (appCtxt.isOffline) {
-        var acctName = items[0].getAccount().name;
+        var acctName = item.getAccount().name;
         url+="&acct=" + acctName ;
     }
     window.open(appContextPath+url, "_blank");
@@ -446,3 +454,11 @@ function() {
 		return mailApp.getConvListController();
 	}
 };
+
+ZmMsgController.prototype._acceptShareHandler =
+function(ev) {
+    ZmMailListController.prototype._acceptShareHandler.call(this, ev);
+    //Close View
+    appCtxt.getAppViewMgr().popView();
+};
+

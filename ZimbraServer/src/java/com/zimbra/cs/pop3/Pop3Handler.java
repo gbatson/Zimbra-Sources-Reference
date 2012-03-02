@@ -13,9 +13,6 @@
  * ***** END LICENSE BLOCK *****
  */
 
-/*
- * Created on Nov 25, 2004
- */
 package com.zimbra.cs.pop3;
 
 import com.zimbra.common.service.ServiceException;
@@ -44,6 +41,9 @@ import java.io.OutputStream;
 import java.io.PushbackInputStream;
 import java.net.InetAddress;
 
+/**
+ * @since Nov 25, 2004
+ */
 public abstract class Pop3Handler extends ProtocolHandler {
     static final int MIN_EXPIRE_DAYS = 31;
     static final int MAX_RESPONSE = 512;
@@ -51,7 +51,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
 
     private static final byte[] LINE_SEPARATOR = { '\r', '\n'};
     private static final String TERMINATOR = ".";
-    private static final int TERMINATOR_C = '.';    
+    private static final int TERMINATOR_C = '.';
     private static final byte[] TERMINATOR_BYTE = { '.' };
 
     // Connection specific data
@@ -82,14 +82,8 @@ public abstract class Pop3Handler extends ProtocolHandler {
     private int mExpire;
 
     Pop3Handler(Pop3Server server) {
-        super(server);
-        mConfig = (Pop3Config) server.getConfig();
-        mStartedTLS = mConfig.isSslEnabled();
-    }
-
-    Pop3Handler(MinaPop3Server server) {
-        super(null);
-        mConfig = (Pop3Config) server.getConfig();
+        super(server instanceof TcpPop3Server ? (TcpPop3Server) server : null);
+        mConfig = server.getConfig();
         mStartedTLS = mConfig.isSslEnabled();
     }
 
@@ -102,9 +96,8 @@ public abstract class Pop3Handler extends ProtocolHandler {
         return true;
     }
 
-    protected boolean startConnection(InetAddress remoteAddr)
-    throws IOException {
-        // Set the logging context for anything logged before the first command. 
+    protected boolean startConnection(InetAddress remoteAddr) throws IOException {
+        // Set the logging context for anything logged before the first command.
         ZimbraLog.clearContext();
         mClientAddress = remoteAddr.getHostAddress();
         ZimbraLog.addIpToContext(mClientAddress);
@@ -121,7 +114,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     protected boolean processCommand(String line) throws IOException {
-        // XXX bburtin: Do we really need to set/reset the logging context for every command? 
+        // XXX bburtin: Do we really need to set/reset the logging context for every command?
         ZimbraLog.addAccountNameToContext(mAccountName);
         ZimbraLog.addIpToContext(mClientAddress);
         ZimbraLog.addOrigIpToContext(mOrigRemoteAddress);
@@ -162,7 +155,6 @@ public abstract class Pop3Handler extends ProtocolHandler {
 
     protected boolean processCommandInternal() throws Pop3CmdException, IOException, ServiceException {
         mStartTime = System.currentTimeMillis();
-        //ZimbraLog.pop.info("command("+mCurrentCommandLine+")");
         mCommand = mCurrentCommandLine;
         String arg = null;
 
@@ -171,6 +163,14 @@ public abstract class Pop3Handler extends ProtocolHandler {
             ZimbraLog.pop.info("disconnected without quit");
             //dropConnection();
             return false;
+        }
+
+        if (ZimbraLog.pop.isTraceEnabled()) {
+            if ("PASS ".regionMatches(true, 0, mCommand, 0, 5)) {
+                ZimbraLog.pop.trace("C: PASS ****");
+            } else {
+                ZimbraLog.pop.trace("C: %s", mCommand);
+            }
         }
 
         if (!Config.userServicesEnabled()) {
@@ -184,13 +184,8 @@ public abstract class Pop3Handler extends ProtocolHandler {
 
         int space = mCommand.indexOf(" ");
         if (space > 0) {
-            arg = mCommand.substring(space + 1); 
+            arg = mCommand.substring(space + 1);
             mCommand = mCommand.substring(0, space);
-        }
-
-        if (ZimbraLog.pop.isDebugEnabled()) {
-            String darg = "PASS".equals(mCommand) ? "<BLOCKED>" : arg;
-            ZimbraLog.pop.debug("command=%s arg=%s", mCommand, darg);
         }
 
         if (mCommand.length() < 1)
@@ -235,14 +230,14 @@ public abstract class Pop3Handler extends ProtocolHandler {
                     doDELE(arg);
                     return true;
                 }
-                break;            
+                break;
             case 'l':
             case 'L':
                 if ("LIST".equalsIgnoreCase(mCommand)) {
                     doLIST(arg);
                     return true;
                 }
-                break;                                    
+                break;
             case 'n':
             case 'N':
                 if ("NOOP".equalsIgnoreCase(mCommand)) {
@@ -273,7 +268,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
                     doRSET();
                     return true;
                 }
-                break;            
+                break;
             case 's':
             case 'S':
                 if ("STAT".equalsIgnoreCase(mCommand)) {
@@ -283,14 +278,14 @@ public abstract class Pop3Handler extends ProtocolHandler {
                     doSTLS();
                     return true;
                 }
-                break;            
+                break;
             case 't':
             case 'T':
                 if ("TOP".equalsIgnoreCase(mCommand)) {
                     doTOP(arg);
                     return true;
                 }
-                break;                        
+                break;
             case 'u':
             case 'U':
                 if ("UIDL".equalsIgnoreCase(mCommand)) {
@@ -298,7 +293,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
                     return true;
                 } else if ("USER".equalsIgnoreCase(mCommand)) {
                     doUSER(arg);
-                    return true;            
+                    return true;
                 }
                 break;
             case 'x':
@@ -307,14 +302,15 @@ public abstract class Pop3Handler extends ProtocolHandler {
                     doXOIP(arg);
                     return true;
                 }
-                break;           
+                break;
             default:
                 break;
         }
-        throw new Pop3CmdException("unknown command");        
+        throw new Pop3CmdException("unknown command");
     }
 
-    @Override protected void notifyIdleConnection() {
+    @Override
+    protected void notifyIdleConnection() {
         // according to RFC 1939 we aren't supposed to snd a response on idle timeout
         ZimbraLog.pop.debug("idle connection");
 
@@ -325,11 +321,11 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     protected void sendOK(String response) throws IOException {
-        sendResponse("+OK", response, true);        
+        sendResponse("+OK", response, true);
     }
 
     private void sendOK(String response, boolean flush) throws IOException {
-        sendResponse("+OK", response, flush);        
+        sendResponse("+OK", response, flush);
     }
 
     protected void sendContinuation(String s) throws IOException {
@@ -338,9 +334,9 @@ public abstract class Pop3Handler extends ProtocolHandler {
 
     private void sendResponse(String status, String msg, boolean flush) throws IOException {
         String cl = mCurrentCommandLine != null ? mCurrentCommandLine : "<none>";
-        String response = (msg == null || msg.length() == 0) ? status : status+" "+msg;
-        if (ZimbraLog.pop.isDebugEnabled()) {
-            ZimbraLog.pop.debug("%s (%s)", response, cl);
+        String response = (msg == null || msg.length() == 0) ? status : status + " " + msg;
+        if (ZimbraLog.pop.isTraceEnabled()) {
+            ZimbraLog.pop.trace("S: %s (%s)", response, cl);
         } else {
             // only log errors if not debugging...
             if (status.charAt(0) == '-') {
@@ -349,7 +345,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
                 }
                 ZimbraLog.pop.info("%s (%s)", response, cl);
             }
-        }        
+        }
         sendLine(response, flush);
     }
 
@@ -372,10 +368,10 @@ public abstract class Pop3Handler extends ProtocolHandler {
     private void sendMessage(InputStream is, int maxNumBodyLines) throws IOException {
         boolean inBody = false;
         int numBodyLines = 0;
-        
+
         PushbackInputStream stream = new PushbackInputStream(is);
         int c;
-        
+
         boolean startOfLine = true;
         int lineLength = 0;
 
@@ -386,13 +382,13 @@ public abstract class Pop3Handler extends ProtocolHandler {
                     if (peek != '\n' && peek != -1)
                         stream.unread(peek);
                 }
-    
+
                 if (!inBody) {
                     if (lineLength == 0)
                         inBody = true;
                 } else {
                     numBodyLines++;
-                }                         
+                }
                 startOfLine = true;
                 lineLength = 0;
                 mOutputStream.write(LINE_SEPARATOR);
@@ -407,7 +403,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
                 startOfLine = false;
             lineLength++;
             mOutputStream.write(c);
-        }     
+        }
         if (lineLength != 0)
             mOutputStream.write(LINE_SEPARATOR);
         mOutputStream.write(TERMINATOR_BYTE);
@@ -428,24 +424,24 @@ public abstract class Pop3Handler extends ProtocolHandler {
         ZimbraLog.pop.info("quit from client");
         //dropConnection();
     }
-    
+
     private void doNOOP() throws IOException {
         sendOK("yawn");
     }
-    
+
     private void doRSET() throws Pop3CmdException, IOException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
         int numUndeleted = mMbx.undeleteMarked();
         sendOK(numUndeleted+ " message(s) undeleted");
-    }    
-    
+    }
+
     private void doUSER(String user) throws Pop3CmdException, IOException {
         checkIfLoginPermitted();
-        
+
         if (mState != STATE_AUTHORIZATION)
             throw new Pop3CmdException("this command is only valid in authorization state");
-        
+
         if (user == null)
             throw new Pop3CmdException("please specify a user");
 
@@ -467,13 +463,13 @@ public abstract class Pop3Handler extends ProtocolHandler {
 
         sendOK("hello "+mUser+", please enter your password");
     }
-    
+
     private void doPASS(String password) throws Pop3CmdException, IOException {
         checkIfLoginPermitted();
-        
+
         if (mState != STATE_AUTHORIZATION)
             throw new Pop3CmdException("this command is only valid in authorization state");
-        
+
         if (mUser == null)
             throw new Pop3CmdException("please specify username first with the USER command");
 
@@ -550,7 +546,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
                 authenticateId = username;
             }
             // for some authenticators, actually do the authentication here
-            // for others (e.g. GSSAPI), auth is already done -- this is just a lookup and authorization check 
+            // for others (e.g. GSSAPI), auth is already done -- this is just a lookup and authorization check
             Account acct = auth.authenticate(username, authenticateId, password, AuthContext.Protocol.pop3, getOrigRemoteIpAddr(), null);
             // auth failure was represented by Authenticator.authenticate() returning null
             if (acct == null)
@@ -561,7 +557,8 @@ public abstract class Pop3Handler extends ProtocolHandler {
             mAccountName = acct.getName();
 
             ZimbraLog.addAccountNameToContext(mAccountName);
-            ZimbraLog.pop.info("user " + mAccountName + " authenticated, mechanism=" + mechanism + (mStartedTLS ? " [TLS]" : ""));
+            ZimbraLog.pop.info("user %s authenticated, mechanism=%s %s",
+                    mAccountName, mechanism, mStartedTLS ? "[TLS]" : "");
 
             Mailbox mailbox = MailboxManager.getInstance().getMailboxByAccount(acct);
             mMbx = new Pop3Mailbox(mailbox, acct, mQuery);
@@ -584,8 +581,8 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void checkIfLoginPermitted() throws Pop3CmdException {
-        if (!mStartedTLS && !mConfig.isCleartextLoginsEnabled()) 
-            throw new Pop3CmdException("only valid after entering TLS mode");        
+        if (!mStartedTLS && !mConfig.isCleartextLoginsEnabled())
+            throw new Pop3CmdException("only valid after entering TLS mode");
     }
 
     protected boolean isSSLEnabled() {
@@ -593,7 +590,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void doSTAT() throws Pop3CmdException, IOException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
         sendOK(mMbx.getNumMessages()+" "+mMbx.getSize());
     }
@@ -611,7 +608,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void doLIST(String msg) throws Pop3CmdException, IOException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
         if (msg != null) {
             Pop3Message pm = mMbx.getPop3Msg(msg);
@@ -620,7 +617,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
             sendOK(mMbx.getNumMessages()+" messages", false);
             int totNumMsgs = mMbx.getTotalNumMessages();
             for (int n=0; n < totNumMsgs; n++) {
-                Pop3Message pm = mMbx.getMsg(n);                
+                Pop3Message pm = mMbx.getMsg(n);
                 if (!pm.isDeleted())
                     sendLine((n+1)+" "+pm.getSize(), false);
             }
@@ -629,7 +626,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void doUIDL(String msg) throws Pop3CmdException, IOException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
         if (msg != null) {
             Pop3Message pm = mMbx.getPop3Msg(msg);
@@ -638,13 +635,13 @@ public abstract class Pop3Handler extends ProtocolHandler {
             sendOK(mMbx.getNumMessages()+" messages", false);
             int totNumMsgs = mMbx.getTotalNumMessages();
             for (int n=0; n < totNumMsgs; n++) {
-                Pop3Message pm = mMbx.getMsg(n);                
+                Pop3Message pm = mMbx.getMsg(n);
                 if (!pm.isDeleted())
                     sendLine((n+1)+" "+pm.getId()+"."+pm.getDigest(), false);
             }
             sendLine(TERMINATOR);
         }
-    }            
+    }
 
     private int parseInt(String s, String message) throws Pop3CmdException {
         try {
@@ -655,14 +652,14 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void doRETR(String msg) throws Pop3CmdException, IOException, ServiceException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
 
         if (msg == null)
             throw new Pop3CmdException("please specify a message");
 
         Message m = mMbx.getMessage(msg);
-        InputStream is = null;        
+        InputStream is = null;
         try {
             is = m.getContentStream();
             sendOK("message follows", false);
@@ -673,7 +670,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void doTOP(String arg) throws Pop3CmdException, IOException, ServiceException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
 
         int space = arg == null ? -1 : arg.indexOf(" ");
@@ -683,14 +680,14 @@ public abstract class Pop3Handler extends ProtocolHandler {
         String msg = arg.substring(0, space);
         int n = parseInt(arg.substring(space + 1), "unable to parse number of lines");
 
-        if (n < 0) 
+        if (n < 0)
             throw new Pop3CmdException("please specify a non-negative value for number of lines");
 
         if (msg == null || msg.equals(""))
             throw new Pop3CmdException("please specify a message");
 
         Message m = mMbx.getMessage(msg);
-        InputStream is = null;        
+        InputStream is = null;
         try {
             is = m.getContentStream();
             sendOK("message top follows", false);
@@ -701,7 +698,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
     }
 
     private void doDELE(String msg) throws Pop3CmdException, IOException {
-        if (mState != STATE_TRANSACTION) 
+        if (mState != STATE_TRANSACTION)
             throw new Pop3CmdException("this command is only valid after a login");
 
         if (msg == null)
@@ -710,7 +707,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
         Pop3Message pm = mMbx.getPop3Msg(msg);
         mMbx.delete(pm);
         sendOK("message "+msg+" marked for deletion");
-    }    
+    }
 
     private void doCAPA() throws IOException {
         // [SASL]       RFC 5034: POP3 Simple Authentication and Security Layer (SASL) Authentication Mechanism
@@ -726,7 +723,7 @@ public abstract class Pop3Handler extends ProtocolHandler {
             sendLine("EXPIRE " + MIN_EXPIRE_DAYS + " USER", false);
         } else {
             if (mExpire == 0)
-                sendLine("EXPIRE NEVER", false);                
+                sendLine("EXPIRE NEVER", false);
             else
                 sendLine("EXPIRE " + mExpire, false);
         }
@@ -744,12 +741,14 @@ public abstract class Pop3Handler extends ProtocolHandler {
         if (curOrigRemoteIp == null) {
             setOrigRemoteIpAddr(origIp);
             ZimbraLog.addOrigIpToContext(origIp);
-            ZimbraLog.pop.info("POP3 client identified as: " + origIp);
+            ZimbraLog.pop.info("POP3 client identified as: %s", origIp);
         } else {
-            if (curOrigRemoteIp.equals(origIp))
+            if (curOrigRemoteIp.equals(origIp)) {
                 ZimbraLog.pop.warn("POP3 XOIP is allowed only once per session, command ignored");
-            else
-                ZimbraLog.pop.error("POP3 XOIP is allowed only once per session, received different IP: " + origIp + ", command ignored");
+            } else {
+                ZimbraLog.pop.error("POP3 XOIP is allowed only once per session, received different IP: %s, command ignored",
+                        origIp);
+            }
         }
 
         sendOK("");

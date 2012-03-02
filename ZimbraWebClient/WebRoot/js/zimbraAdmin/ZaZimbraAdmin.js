@@ -22,6 +22,7 @@
 * This class is responsible for bootstrapping the ZimbraAdmin application.
 */
 ZaZimbraAdmin = function(appCtxt) {
+	if (arguments.length == 0) return;
 	ZaZimbraAdmin._instance = this;
 	ZaController.call(this, appCtxt, null,"ZaZimbraAdmin");
 
@@ -293,8 +294,20 @@ ZaZimbraAdmin.redir =
 function(locationStr){
 	window.location = locationStr;
 }
-
-
+// This function must be called after ZaZimbraAdmin.initInfo() is called.
+ZaZimbraAdmin.isLanguage =
+function(lang){
+	var defaultLang = null;
+	//if user have set its pref, just use user's seting
+	//else use brower's setting 
+	if(ZaZimbraAdmin.LOCALE == null){
+		defaultLang = AjxEnv.DEFAULT_LOCALE; 
+	}else{
+		defaultLang = ZaZimbraAdmin.LOCALE; 
+	}
+	
+	return defaultLang == lang;		
+}
 // Start up the ZimbraMail application
 ZaZimbraAdmin.prototype.startup =
 function() {
@@ -328,6 +341,16 @@ function() {
             ZaZimbraAdmin.reload_msg ();
             this.initDialogs(true) ;  //make sure all the precreated dialogs are also recreated.
         }
+
+	if(ZaZimbraAdmin.isLanguage("ja")){
+		if(ZaAccountXFormView.CONTACT_TAB_ATTRS)
+        		ZaAccountXFormView.CONTACT_TAB_ATTRS.push(ZaAccount.A_zimbraPhoneticCompany);
+
+		if(ZaAccountXFormView.ACCOUNT_NAME_GROUP_ATTRS)
+        		ZaAccountXFormView.ACCOUNT_NAME_GROUP_ATTRS.push(ZaAccount.A_zimbraPhoneticFirstName, 
+				ZaAccount.A_zimbraPhoneticLastName);
+	}
+	
         if(!ZaSettings.initialized)
 			ZaSettings.init();
 		else
@@ -345,19 +368,26 @@ function() {
 }
 
 ZaZimbraAdmin.reload_msg = function () {
-    //if (AjxEnv.hasFirebug) console.log("Reloading the message ...") ;
+    //if(window.console && window.console.log) console.log("Reloading the message ...") ;
     var includes = [] ;
     includes.push ( [appContextPath , "/res/" , "I18nMsg,AjxMsg,ZMsg,ZaMsg,AjxKeys" , ".js?v=" ,
                         appVers , ZaZimbraAdmin.LOCALE_QS].join("") );
 
     //the dynamic script load is asynchronous, may need a callback to make sure all the messages are actually loaded
-    //if (AjxEnv.hasFirebug) console.log("Reload the message file: " + includes.toString()) ;
+    //if(window.console && window.console.log) console.log("Reload the message file: " + includes.toString()) ;
 
     //reinitialize the AjxFormat after the message files are loaded
-    var callback = new AjxCallback (AjxFormat.initialize); 
+    var callback = new AjxCallback (ZaZimbraAdmin.reinit_func); 
 
     AjxInclude(includes, null, callback);
     ZaZimbraAdmin._LOCALE_MSG_RELOADED = true ;
+}
+
+ZaZimbraAdmin.reinit_func = function() {
+    AjxFormat.initialize();
+    ZaItem.initDescriptionItem(); 
+    ZaSettings.initConst();
+    ZaDomain.initDomainStatus();    
 }
 
 ZaZimbraAdmin.initInfo =
@@ -493,29 +523,34 @@ ZaZimbraAdmin.prototype._setUserName =
 function () {
 	var e = document.getElementById(ZaSettings.SKIN_USER_NAME_ID) ;
 	if(e) {
-		e.innerHTML = (ZaZimbraAdmin.currentUserName!=null && String(ZaZimbraAdmin.currentUserName).length>(skin.maxAdminName+1)) ? String(ZaZimbraAdmin.currentUserName).substr(0,skin.maxAdminName) : ZaZimbraAdmin.currentUserName;
+		if(!ZaZimbraAdmin.currentUserName)
+			return;
+		
+		var containerWidth = Dwt.getSize(e).x;
+		var innerContent = null;
+		if(containerWidth <= 20) {
+			// if there are not enough space, just follow skin's setting
+			innerContent = ( String(ZaZimbraAdmin.currentUserName).length>(skin.maxAdminName+1)) ? String(ZaZimbraAdmin.currentUserName).substr(0,skin.maxAdminName) : ZaZimbraAdmin.currentUserName;
+		}
+		else {
+			// reserve 20px for estimation error. 
+			// here we assume 5.5px for one word, just follow the apptab.
+			var maxNumberOfLetters = Math.floor((containerWidth - 20)/5.5);
+			innerContent = ZaZimbraAdmin.currentUserName;
+			if (maxNumberOfLetters < innerContent.length) {
+				innerContent = innerContent.substring(0, (maxNumberOfLetters - 3)) + "..."
+			}	
+		}
+		e.innerHTML = innerContent;		
 	}
 }
 
 ZaZimbraAdmin.prototype._helpListener =
 function(ev) {
 	//DBG.println(AjxDebug.DBG1, "Help is clicked ...") ;
-    var acctName = ZaZimbraAdmin.currentUserLogin;
-    var domainName = acctName.split('@')[1];
-    var domain = ZaDomain.getDomainByName(domainName);
-    var curAcct = ZaZimbraAdmin.currentAdminAccount;
-    if(curAcct && domain) {
-        var url = null;
-        if(curAcct.attrs[ZaAccount.A_zimbraIsAdminAccount] == "TRUE")
-            url = domain.attrs[ZaDomain.A_zimbraHelpAdminURL];
-        else url = domain.attrs[ZaDomain.A_zimbraHelpDelegatedURL];
-        if(url) {
-                window.open(url);
-                return;
-        }
-    }
     //skin takes the zimbraHelpAdminURL and put it into the skin hints
-    var helpButton = skin && skin.hints && skin.hints.helpButton;	  
+    var helpButton = skin && skin.hints && skin.hints.helpButton;
+	  
     if (helpButton && helpButton.url) {
 		var sep = helpButton.url.match(/\?/) ? "&" : "?";
 		var url = [ helpButton.url, sep, "locid=", AjxEnv.DEFAULT_LOCALE ].join("");
@@ -670,7 +705,7 @@ function(staticFunc, icon, lbl, max_lbl_length) {
 
 ZaZimbraAdmin._killSplash =
 function() {
-    //if (AjxEnv.hasFirebug) console.log("Killing splash window now ...") ;
+    //if(window.console && window.console.log) console.log("Killing splash window now ...") ;
     if(ZaZimbraAdmin._splashScreen)
 		ZaZimbraAdmin._splashScreen.setVisible(false);
 }
@@ -714,7 +749,8 @@ function() {
 		this._createApp();
 
     //recreate the error/msg dialogs
-    if (ZaZimbraAdmin._LOCALE_MSG_RELOADED) this.initDialogs(true) ;
+    ZaApp.getInstance().initDialogs();
+   // if (ZaZimbraAdmin._LOCALE_MSG_RELOADED) this.initDialogs(true) ;
 
     this._appCtxt.setClientCmdHdlr(new ZaClientCmdHandler());
     //draw stuff
@@ -760,6 +796,11 @@ function() {
 	if(ZaSettings.SEARCH_PANEL_ENABLED) {
 		elements[ZaAppViewMgr.C_SEARCH] = ZaApp.getInstance().getSearchListController().getSearchPanel();
 	}
+       
+       if(document.getElementById (ZaSettings.SKIN_SEARCH_BUILDER_APP_SASH_ID) != null){
+            elements[ZaAppViewMgr.C_SEARCH_BUILDER_SASH] = new DwtSash({parent:this._shell, style: DwtSash.VERTICAL_STYLE, className: "AppSash-vert", threshod:20, id:"z_sb_sash"});
+	}
+
 	elements[ZaAppViewMgr.C_LOGIN_MESSAGE]  = this._getLoginMsgPanel();
     //Use reparentHtmlelement to add the tabs. Reenable this line if it doesn't work well.
 	elements[ZaAppViewMgr.C_APP_TABS] = this._createAppTabs() ;
@@ -771,9 +812,6 @@ function() {
     ZaApp.getInstance().launch();
 
  	ZaZimbraAdmin._killSplash();
- 	
-	
- 	
 };
 
 ZaZimbraAdmin.noOpAction = null;
@@ -866,7 +904,7 @@ ZaZimbraAdmin.isGlobalAdmin = function () {
 
 ZaAboutDialog = function(parent, className, title, w, h) {
 	if (arguments.length == 0) return;
- 	var clsName = className || "DwtDialog";
+ 	var clsName = className || "DwtDialog AboutScreen";
  	DwtDialog.call(this, parent, clsName,  ZaMsg.about_title, [DwtDialog.OK_BUTTON]);
 }
 
@@ -881,6 +919,7 @@ ZaAboutDialog.prototype.popup = function () {
 	params.showAbout = true,
 	params.showPanelBorder = false;
     params.companyURL = ZaAppCtxt.getLogoURI () ;
+    params.showLongVersion = true;
     params.longVersion = AjxBuffer.concat(ZaMsg.splashScreenVersion, " ", ZaServerVersionInfo.version , " " , date);
     var html = ZLoginFactory.getLoginDialogHTML(params);
     this.setContent(html);

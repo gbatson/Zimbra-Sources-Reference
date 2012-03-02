@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,8 +15,6 @@
 package com.zimbra.cs.mailclient;
 
 import org.apache.commons.codec.binary.Base64;
-import org.apache.log4j.Logger;
-import org.apache.log4j.Level;
 
 import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
@@ -29,13 +27,11 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.InputStream;
-import java.io.PrintStream;
 import java.net.Socket;
 import java.net.InetSocketAddress;
 import java.net.SocketException;
 
-import com.zimbra.cs.mailclient.util.TraceInputStream;
-import com.zimbra.cs.mailclient.util.TraceOutputStream;
+import com.zimbra.common.util.Log;
 import com.zimbra.cs.mailclient.util.Ascii;
 import com.zimbra.cs.mailclient.auth.AuthenticatorFactory;
 import com.zimbra.cs.mailclient.auth.Authenticator;
@@ -47,8 +43,6 @@ public abstract class MailConnection {
     protected MailConfig config;
     protected Socket socket;
     protected Authenticator authenticator;
-    protected TraceInputStream traceIn;
-    protected TraceOutputStream traceOut;
     protected MailInputStream mailIn;
     protected MailOutputStream mailOut;
     protected State state = State.CLOSED;
@@ -58,7 +52,7 @@ public abstract class MailConnection {
     protected enum State {
         CLOSED, NOT_AUTHENTICATED, AUTHENTICATED, SELECTED, LOGOUT
     }
-    
+
     /**
      * Creates a new <tt>MailConnection<tt> for the specified configuration.
      *
@@ -66,9 +60,6 @@ public abstract class MailConnection {
      */
     protected MailConnection(MailConfig config) {
         this.config = config;
-        if (config.isDebug()) {
-            getLogger().setLevel(Level.DEBUG);
-        }
     }
 
     /**
@@ -110,12 +101,7 @@ public abstract class MailConnection {
         initStreams(sock.getInputStream(), sock.getOutputStream());
     }
 
-    private void initStreams(InputStream is, OutputStream os)
-        throws IOException {
-        if (config.isTrace()) {
-            is = traceIn = new TraceInputStream(is, config.getTraceOut());
-            os = traceOut = new TraceOutputStream(os, config.getTraceOut());
-        }
+    private void initStreams(InputStream is, OutputStream os) {
         mailIn = newMailInputStream(is);
         mailOut = newMailOutputStream(os);
     }
@@ -179,10 +165,13 @@ public abstract class MailConnection {
     protected abstract MailOutputStream newMailOutputStream(OutputStream os);
 
     /**
-     * Returns the <tt>Logger</tt> to use for logging mail client errors.
-     * @return the <tt>Logger</tt> for mail client errors
+     * Returns the {@link Log} to use for logging mail client errors.
+     *
+     * @return the {@link Log} for mail client errors
      */
-    public abstract Logger getLogger();
+    public final Log getLogger() {
+        return config.getLogger();
+    }
 
     /**
      * Logs out current user from server.
@@ -231,8 +220,7 @@ public abstract class MailConnection {
         }
     }
 
-    public synchronized void authenticate(Authenticator auth)
-        throws LoginException, IOException {
+    public synchronized void authenticate(Authenticator auth) throws IOException {
         authenticator = auth;
         checkState(State.NOT_AUTHENTICATED);
         sendAuthenticate(false);
@@ -265,7 +253,7 @@ public abstract class MailConnection {
      * Processes an authentication continuation request from the server.
      * In response, this may write another continuation response to the
      * server.
-     * 
+     *
      * @param s the continuation request to be processed
      * @throws IOException if an I/O error occurs
      */
@@ -273,15 +261,7 @@ public abstract class MailConnection {
         byte[] decoded = Base64.decodeBase64(Ascii.getBytes(s));
         byte[] request = authenticator.evaluateChallenge(decoded);
         String data = Ascii.toString(Base64.encodeBase64(request));
-        if (traceOut != null && traceOut.suspendTrace("<authentication data>\n")) {
-            try {
-                mailOut.writeLine(data);
-            } finally {
-                traceOut.resumeTrace();
-            }
-        } else {
-            mailOut.writeLine(data);
-        }
+        mailOut.writeLine(data);
         mailOut.flush();
     }
 
@@ -298,20 +278,6 @@ public abstract class MailConnection {
     }
 
     /**
-     * Optionally enables protocol tracing for the connection.
-     *
-     * @param enabled tracing enabled if <tt>true</tt>, disabled if <tt>false</tt>
-     */
-    public void setTraceEnabled(boolean enabled) {
-        if (traceIn != null) {
-            traceIn.setEnabled(enabled);
-        }
-        if (traceOut != null) {
-            traceOut.setEnabled(enabled);
-        }
-    }
-
-    /**
      * Returns the input stream for reading mail data.
      *
      * @return the connection input stream
@@ -322,7 +288,7 @@ public abstract class MailConnection {
 
     /**
      * Returns the output stream for writing mail data.
-     * 
+     *
      * @return the connection output stream
      */
     public MailOutputStream getOutputStream() {
@@ -375,6 +341,13 @@ public abstract class MailConnection {
      */
     public synchronized boolean isLogout() {
         return state == State.LOGOUT;
+    }
+    
+    /**
+     * @return <tt>true</tt> if in SELECTED state
+     */
+    public synchronized boolean isSelected() {
+        return state == State.SELECTED;
     }
 
     /**
@@ -457,7 +430,7 @@ public abstract class MailConnection {
         SocketFactory sf = config.getSocketFactory();
         return sf != null ? sf : SocketFactory.getDefault();
     }
-    
+
     private SSLSocketFactory getSSLSocketFactory() {
         SSLSocketFactory ssf = config.getSSLSocketFactory();
         return ssf != null ? ssf : (SSLSocketFactory) SSLSocketFactory.getDefault();

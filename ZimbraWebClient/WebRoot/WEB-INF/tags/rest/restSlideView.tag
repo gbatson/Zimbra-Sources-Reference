@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,7 +21,7 @@
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 
 <rest:handleError>
-    <zm:getItemInfoJSON var="fileInfoJSON" box="${mailbox}" id="${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}"/>
+    <zm:getItemInfoJSON var="fileInfoJSON" authtoken="${requestScope.zimbra_authToken}" id="${requestScope.zimbra_target_account_id}:${requestScope.zimbra_target_item_id}"/>
 <c:if test="${not empty param.dev and param.dev eq '1'}">
     <c:set var="mode" value="mjsf" scope="request"/>
     <c:set var="gzip" value="false" scope="request"/>
@@ -37,9 +37,9 @@
 <c:set var="isDevMode" value="${not empty requestScope.mode and requestScope.mode eq 'mjsf'}" scope="request"/>
 <c:set var="isSkinDebugMode" value="${not empty requestScope.mode} and ${requestScope.mode eq 'skindebug'}" scope="request"/>
 
-<c:set var="packages" value="Ajax,Startup1_1,Startup1_2,Startup2,Slides" scope="request"/>
+<c:set var="packages" value="Startup1_1,Startup1_2,Startup2,Slides" scope="request"/>
 <c:if test="${not empty param.packages}">
-    <c:set var="packages" value="Ajax,Startup1_1,Startup1_2,Startup2,Slides,${param.packages}" scope="request"/>
+    <c:set var="packages" value="Startup1_1,Startup1_2,Startup2,Slides,${param.packages}" scope="request"/>
 </c:if>
 <c:set var="pnames" value="${fn:split(packages,',')}" scope="request"/>
 
@@ -138,39 +138,12 @@
 
     window.contextPath = '${pageContext.request.contextPath}';    
     window.appContextPath = '${pageContext.request.contextPath}';
+    window.appRequestLocaleId = "${zm:cook(localeId)}";
     window.appDevMode     = ${isDevMode};
-
-    createDummyDBG =
-    function() {
-        window.AjxDebug = function() {};
-        window.AjxDebug.prototype.toString		= function() { return "dummy DBG class"};
-        window.AjxDebug.prototype.display		= function() {};
-        window.AjxDebug.prototype.dumpObj		= function() {};
-        window.AjxDebug.prototype.getDebugLevel	= function() {};
-        window.AjxDebug.prototype.isDisabled	= function() {};
-        window.AjxDebug.prototype.println		= function() {};
-        window.AjxDebug.prototype.printRaw		= function() {};
-        window.AjxDebug.prototype.printXML		= function() {};
-        window.AjxDebug.prototype.setDebugLevel	= function() {};
-        window.AjxDebug.prototype.setTitle		= function() {};
-        window.AjxDebug.prototype.showTiming	= function() {};
-        window.AjxDebug.prototype._getTimeStamp	= function() {};
-        window.AjxDebug.prototype.timePt		= function() {};
-        window.DBG = new window.AjxDebug();
-    };
 
     create = function(data) {
 
-
-    <c:choose>
-    <c:when test="${isDevMode}">
-        AjxDispatcher.require("Debug");
-        DBG = new AjxDebug(AjxDebug.NONE, null, false);
-    </c:when>
-    <c:otherwise>
-        createDummyDBG();
-    </c:otherwise>
-    </c:choose>
+        window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
 
         window.restPage = true;
         window.appCtxt = new ZmAppCtxt();
@@ -207,6 +180,7 @@
         window.fileInfo = {name: 'Untitled', folderId: ZmOrganizer.ID_BRIEFCASE, contentType: 'application/x-zimbra-slides'};
 
         var itemInfo = ${fileInfoJSON};
+        itemInfo = itemInfo.Body && itemInfo.Body.GetItemResponse;
 
         if(itemInfo && itemInfo.doc && (itemInfo.doc.length==1)) {
             var item = ZmDocletMgr.createItem(itemInfo);

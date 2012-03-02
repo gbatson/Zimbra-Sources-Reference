@@ -37,8 +37,11 @@ ZmTask = function(list, id, folderId) {
 	this.priority = ZmCalItem.PRIORITY_NORMAL;
 	this.pComplete = 0;
 	this.status = ZmCalendarApp.STATUS_NEED;
-    this.startDate = new Date();
-    this.endDate = this.startDate;
+    this.startDate = "";
+    this.endDate = "";
+    this.remindDate = new Date();
+    this.alarm = false;
+	this._useAbsoluteReminder = true;
 };
 
 ZmTask.prototype = new ZmCalItem;
@@ -66,7 +69,10 @@ function(task) {
 	var newTask = new ZmTaskClone();
 	newTask.startDate = task.startDate ? (new Date(task.startDate.getTime())) : null;
 	newTask.endDate = task.endDate ? (new Date(task.endDate.getTime())) : null;
+    newTask._uniqId = Dwt.getNextId();
 
+    newTask._validAttachments = AjxUtil.createProxy(task._validAttachments);
+    
 	if (!newTask._orig)
 		newTask._orig = task;
 
@@ -168,6 +174,22 @@ ZmTask.prototype.isPastDue =
 function() {
 	return (this.endDate && ((new Date()).getTime() > this.endDate.getTime()));
 };
+
+/**
+ * Gets the end time.
+ *
+ * @return	{Date}	the end time
+ */
+ZmTask.prototype.getEndTime = function() { return this.endDate ? this.endDate.getTime() : null; }; 	// end time in ms
+
+
+/**
+ * Gets the start time.
+ *
+ * @return	{Date}	the start time
+ */
+ZmTask.prototype.getStartTime = function() { return this.startDate ? this.startDate.getTime() : null; }; 	// start time in ms
+
 
 /**
  * Checks if the task is complete.
@@ -283,12 +305,12 @@ function(node, instNode) {
 	if (node.invId) {
 		this.invId = node.invId;
 	} else if (inv) {
-        var invId = String(inv.id);
-		var remoteIndex = invId.indexOf(":");
+		var remoteIndex = inv.id;
+        remoteIndex = remoteIndex.toString().indexOf(":");
 		if (remoteIndex != -1) {
-			this.invId = this.id + "-" + invId.substring(remoteIndex+1);
+			this.invId = this.id + "-" + inv.id.substring(remoteIndex+1);
 		} else {
-			this.invId = [node.id, invId].join("-");
+			this.invId = [node.id, inv.id].join("-");
 		}
 	}
 	this.uid = node.uid; // XXX: what is this?
@@ -296,22 +318,34 @@ function(node, instNode) {
 	if (node.l) this.folderId = node.l;
 	if (node.s) this.size = node.s;
 	if (node.sf) this.sf = node.sf;
-	if (node.dueDate) {
-		this.endDate = new Date(parseInt(node.dueDate,10));
+
+    this.allDayEvent	= (instNode ? instNode.allDay : null || node.allDay)  ? "1" : "0";
+
+    var nodeInst = node.inst && node.inst.length > 0 ? node.inst[0] : null;
+    var tzo = this.tzo = nodeInst && nodeInst.tzo != null ? nodeInst.tzo : 0;
+    var tzoDue = this.tzoDue = nodeInst && nodeInst.tzoDue != null ? nodeInst.tzoDue : 0;
+
+    if (nodeInst && nodeInst.s) {
+		var adjustMs = this.isAllDayEvent() ? (tzo + new Date(nodeInst.s).getTimezoneOffset()*60*1000) : 0;
+		var startTime = parseInt(nodeInst.s,10) + adjustMs;
+		this.startDate = new Date(startTime);
+		this.uniqStartTime = this.startDate.getTime();
 	} else {
-		var part = this._getAttr(node, comp, "e");
-		var ed = (part && part.length) ? part[0].d : null;
-		this.endDate = ed ? AjxDateUtil.parseServerDateTime(ed) : null;
-		if (this.endDate) {
-			this.endDate.setHours(0,0,0);
-		}
-	}
-    //bug: 47394 if no duration then startDate is null
-    if(!node.dur) {
         this.startDate = null;
     }
 
-	if (node.name || comp)				this.name		= this._getAttr(node, comp, "name");
+    if (nodeInst && nodeInst.dueDate) {
+        var adjustMs = this.isAllDayEvent() ? (tzoDue + new Date(nodeInst.dueDate).getTimezoneOffset()*60*1000) : 0;
+		var endTime = parseInt(nodeInst.dueDate,10) + adjustMs;
+		this.endDate = new Date(endTime);
+	} else {
+        this.endDate = null;
+    }
+
+    if(node.alarm) this.alarm = node.alarm;
+    if(node.alarmData) this.alarmData = this._getAttr(node, comp, "alarmData");
+
+    if (node.name || comp)				this.name		= this._getAttr(node, comp, "name");
 	if (node.loc || comp)				this.location	= this._getAttr(node, comp, "loc");
 	if (node.allDay || comp)			this.setAllDayEvent(this._getAttr(node, comp, "allDay"));
 	if (node.priority || comp)			this.priority	= parseInt(this._getAttr(node, comp, "priority"));
@@ -324,6 +358,29 @@ function(node, instNode) {
 
 	if (node.f)	this._parseFlags(node.f);
 	if (node.t)	this._parseTags(node.t);
+
+    this.type = ZmItem.TASK;
+};
+
+/**
+ * Checks if alarm is in range (based on current time).
+ *
+ * @return	{Boolean}	<code>true</code> if the alarm is in range
+ */
+ZmTask.prototype.isAlarmInRange =
+function() {
+	if (!this.alarmData) { return false; }
+
+	var alarmData = this.alarmData[0];
+
+	if (!alarmData) { return false; }
+
+    this._nextAlarmTime = new Date(alarmData.nextAlarm);
+    this._alarmInstStart = this.adjustMS(alarmData.alarmInstStart, this.tzo);
+
+	var currentTime = (new Date()).getTime();
+ 
+    return this._nextAlarmTime <= currentTime;
 };
 
 /**
@@ -337,12 +394,93 @@ function(node, comp, name) {
 };
 
 /**
+ * Checks if alarm is modified.
+ *
+ * @return	{Boolean}	<code>true</code> if the alarm is modified
+ */
+ZmTask.prototype.isAlarmModified =
+function() {
+    if(this._orig.alarm == true && this.alarm == false) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Checks if this item is multi-day.
+ *
+ * @return	{Boolean}	<code>true</code> if start date and end date are on different days
+ *
+ * @see		#getStartTime
+ * @see		#getEndTime
+ */
+ZmTask.prototype.isMultiDay =
+function() {
+	var start = this.startDate;
+	var end = this.endDate;
+
+    if(!start && !end) { return false; }
+
+    if(!start) { return false; }
+
+    //bug:55197 for task both startdate & enddate time is 00:00:00, so skipping the time based logic to check multiday or not
+	/*
+    if (end.getHours() == 0 && end.getMinutes() == 0 && end.getSeconds() == 0) {
+		// if end is the beginning of day, then disregard that it
+		// technically crossed a day boundary for the purpose of
+		// determining if it is a multi-day appt
+        end = new Date(end.getTime() - 2 * AjxDateUtil.MSEC_PER_HOUR);
+	}*/
+
+	return (start.getDate() != end.getDate()) ||
+		   (start.getMonth() != end.getMonth()) ||
+		   (start.getFullYear() != end.getFullYear());
+};
+
+/**
  * @private
  */
 ZmTask.prototype._setExtrasFromMessage =
 function(message) {
+    ZmCalItem.prototype._setExtrasFromMessage.apply(this, arguments);
+
 	this.location = message.invite.getLocation();
 };
+
+/**
+ * @private overriden to set endDate to be null only if endDate is empty
+ * @param message
+ * @param viewMode
+ */
+ZmTask.prototype._setTimeFromMessage =
+function(message, viewMode) {
+    ZmCalItem.prototype._setTimeFromMessage.apply(this, arguments);
+    if(message.invite.components[0].s == null){
+        this.startDate = null;
+    }
+};
+
+/**
+ * @private
+ */
+ZmTask.prototype.parseAlarm =
+function(tmp) {
+	if (!tmp) { return; }
+
+	var d;
+	var trigger = (tmp) ? tmp.trigger : null;
+	var abs = (trigger && (trigger.length > 0)) ? trigger[0].abs : null;
+	d = (abs && (abs.length > 0)) ? abs[0].d : null;
+
+	this._reminderMinutes = 0;
+	if (tmp && (tmp.action == "DISPLAY")) {
+		if (d != null) {
+			this._reminderAbs = d;
+            this.remindDate = d ? AjxDateUtil.parseServerDateTime(d) : null;
+		}
+	}
+};
+
 
 /**
  * @private
@@ -393,3 +531,12 @@ ZmTask.prototype._getInviteFromError =
 function(result) {
 	return (result._data.GetTaskResponse.task[0].inv[0]);
 };
+
+/**
+ * @private
+ */
+ZmTask.prototype.setTaskReminder =
+function(absStr) {
+    this._reminderAbs = absStr;
+};
+

@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,12 +34,8 @@
     <c:if test="${mailbox.prefs.forwardReplyInOriginalFormat && !empty param.rf && (param.rf eq 'html' || param.rf eq 'text')}">
         <c:set var="composeformat" value="${param.rf}"/>
     </c:if>
-    <%-- SWAP the inline images src and dfsrc before send, save etc. --%>
     <c:set var="isHtml" value="${composeformat eq 'html'}"/>
     <c:set var="theBody" value="${isHtml ? (empty uploader.compose.htmlContent ?  uploader.compose.content : uploader.compose.htmlContent) : uploader.compose.content}"/>
-    <c:set var="theBody" value="${fn:replace(theBody,' dfsrc=',' asrc=')}"/>
-    <c:set var="theBody" value="${fn:replace(theBody,' src=',' dfsrc=')}"/>
-    <c:set var="theBody" value="${fn:replace(theBody,' asrc=',' src=')}"/>
     <c:set var="contentToSet" value="${isHtml ? (empty uploader.compose.htmlContent ?  'content' : 'htmlContent') : 'content'}"/>
     <c:set property="${contentToSet}" value="${theBody}" target="${uploader.compose}"/>
 
@@ -154,6 +150,15 @@
                 <c:set var="noComposeView" scope="session" value="${true}"/>
             </app:handleError>
         </c:when>
+        <c:when test="${uploader.isAutoSave}">
+            <zm:checkCrumb crumb="${uploader.paramValues.crumb[0]}"/>
+            <zm:saveDraft var="draftResult" compose="${uploader.compose}" draftid="${uploader.compose.draftId}"/>
+            <c:set scope="request" var="draftid" value="${draftResult.id}"/>
+            <c:remove var="temp_draftid" scope="session"/>
+            <app:status><fmt:message key="draftSavedAuto"/></app:status>
+            <c:set var="needComposeView" value="${false}"/>
+            <c:import url="/h/autoSaveDraft"/>
+        </c:when>
         <c:when test="${uploader.isDraft}">
             <zm:checkCrumb crumb="${uploader.paramValues.crumb[0]}"/>
             <zm:saveDraft var="draftResult" compose="${uploader.compose}" draftid="${uploader.compose.draftId}"/>
@@ -168,6 +173,6 @@
 </app:handleError>
 
 <c:if test="${needComposeView}">
-    <%--<jsp:forward page="/h/compose"/>--%>
     <c:import url="/h/compose"/>
 </c:if>
+

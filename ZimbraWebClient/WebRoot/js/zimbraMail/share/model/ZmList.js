@@ -342,10 +342,6 @@ function(params) {
 
 	params = Dwt.getParams(arguments, ["items", "op", "value", "callback"]);
 
-	if (this.type == ZmItem.MIXED && !this._mixedType) {
-		return this._mixedAction("flagItems", params);
-	}
-
 	params.items = AjxUtil.toArray(params.items);
 
 	if (params.op == "update") {
@@ -393,10 +389,6 @@ function(params) {
 		tagId = ZmOrganizer.normalizeId(tagId);
 	}
 
-	if (this.type == ZmItem.MIXED && !this._mixedType) {
-		return this._mixedAction("tagItems", params);
-	}
-
 	// only tag items that don't have the tag, and untag ones that do
 	// always tag a conv, because we don't know if all items in the conv have the tag yet
 	var items = AjxUtil.toArray(params.items);
@@ -415,9 +407,7 @@ function(params) {
 	params.attrs = {tag:tagId};
 	params.action = doTag ? "tag" : "!tag";
     params.actionText = doTag ? ZmMsg.actionTag : ZmMsg.actionUntag;
-    if (params.tag && params.tag.name) {
-        params.actionArg = AjxStringUtil.htmlEncode(params.tag.name);
-	}
+    params.actionArg = params.tag && params.tag.name;
 
 	this._itemAction(params);
 };
@@ -435,11 +425,6 @@ ZmList.prototype.removeAllTags =
 function(params) {
 
 	params = (params && params.items) ? params : {items:params};
-
-	if (this.type == ZmItem.MIXED && !this._mixedType) {
-		this._mixedAction("removeAllTags", params);
-		return;
-	}
 
 	var items = AjxUtil.toArray(params.items);
 	var items1 = [];
@@ -478,34 +463,26 @@ function(params) {
  * @param	{AjxCallback}	params.callback			the callback to run after each sub-request
  * @param	{AjxCallback}	params.finalCallback	the callback to run after all items have been processed
  * @param	{int}			params.count			the starting count for number of items processed
+ * @param	{boolean}		params.noUndo			true if the action is not undoable (e.g. performed as an undo)
+ * @param	{String}		params.actionText		optional text to display in the confirmation toast instead of the default summary. May be set explicitly to null to disable the confirmation toast entirely
  */
 ZmList.prototype.moveItems =
 function(params) {
-
-	params = Dwt.getParams(arguments, ["items", "folder", "attrs", "callback", "finalCallback"]);
-
-	if (this.type == ZmItem.MIXED && !this._mixedType) {
-		return this._mixedAction("moveItems", params);
-	}
+	params = Dwt.getParams(arguments, ["items", "folder", "attrs", "callback", "errorCallback" ,"finalCallback", "noUndo", "actionText"]);
 
 	var params1 = AjxUtil.hashCopy(params);
 	params1.items = AjxUtil.toArray(params.items);
 	params1.attrs = params.attrs || {};
 	if (params1.folder.id == ZmFolder.ID_TRASH) {
-		if (params1.items.length > 1) {
-			params1.actionText = ZmMsg.actionTrash;
-		}
+		params1.actionText = (params.actionText !== null) ? (params.actionText || ZmMsg.actionTrash) : null;
 		params1.action = "trash";
 	} else {
-		params1.actionText = ZmMsg.actionMove;
+		params1.actionText = (params.actionText !== null) ? (params.actionText || ZmMsg.actionMove) : null;
 		params1.actionArg = params.folder.getName(false, false, true);
 		params1.action = "move";
 		params1.attrs.l = params.folder.id;
 	}
-
-	if (this.type == ZmItem.MIXED) {
-		params1.callback = new AjxCallback(this, this._handleResponseMoveItems, params);
-	}
+	params1.callback = new AjxCallback(this, this._handleResponseMoveItems, [params]);
 
     if (appCtxt.multiAccounts) {
 		// Reset accountName for multi-account to be the respective account if we're
@@ -521,6 +498,9 @@ function(params) {
 			params1.accountName = params.items[0].getAccount().name;
 		}
 	}
+
+    //Error Callback
+    params1.errorCallback = params.errorCallback;
 
 	this._itemAction(params1);
 };
@@ -543,12 +523,10 @@ function(params, result) {
 		// batched change notification
 		var item = movedItems[0];
 		var list = item.list;
-        if (list) {
-            list._evt.batchMode = true;
-            list._evt.item = item;	// placeholder
-            list._evt.items = movedItems;
-            list._notify(ZmEvent.E_MOVE, details);
-        }
+		list._evt.batchMode = true;
+		list._evt.item = item;	// placeholder
+		list._evt.items = movedItems;
+		list._notify(ZmEvent.E_MOVE, details);
 	}
 
 	if (params.callback) {
@@ -615,10 +593,6 @@ ZmList.prototype.deleteItems =
 function(params) {
 
 	params = Dwt.getParams(arguments, ["items", "hardDelete", "attrs", "childWin"]);
-
-	if (this.type == ZmItem.MIXED && !this._mixedType) {
-		return this._mixedAction("deleteItems", params);
-	}
 
 	var items = params.items = AjxUtil.toArray(params.items);
 
@@ -807,16 +781,17 @@ function(items, folderId) {
 /**
  * Performs an action on items via a SOAP request.
  *
- * @param {Hash}	params			a hash of parameters
- * @param	{Array}	params.items				a list of items to act upon
+ * @param {Hash}		params				a hash of parameters
+ * @param	{Array}		params.items			a list of items to act upon
  * @param	{String}	params.action			the SOAP operation
- * @param	{Object}	params.attrs				a hash of additional attrs for SOAP request
+ * @param	{Object}	params.attrs			a hash of additional attrs for SOAP request
  * @param	{AjxCallback}	params.callback			the async callback
  * @param	{AjxCallback}	params.finalCallback		the callback to run after all items have been processed
  * @param	{AjxCallback}	params.errorCallback		the async error callback
  * @param	{String}	params.accountName		the account to send request on behalf of
- * @param	{int}	params.count				the starting count for number of items processed
- * @param {ZmBatchCommand}	batchCmd			if set, request data is added to batch request
+ * @param	{int}		params.count			the starting count for number of items processed
+ * @param	{ZmBatchCommand}batchCmd			if set, request data is added to batch request
+ * @param	{boolean}	params.noUndo			true if the action is performed as an undo (not undoable)
  */
 ZmList.prototype._itemAction =
 function(params, batchCmd) {
@@ -836,9 +811,7 @@ function(params, batchCmd) {
 
 	DBG.println("sa", "ITEM ACTION: " + idList.length + " items");
 	var type;
-	if (this.type == ZmItem.MIXED) {
-		type = this._mixedType;
-	} else if (params.items.length == 1 && params.items[0] && params.items[0].type) {
+	if (params.items.length == 1 && params.items[0] && params.items[0].type) {
 		type = params.items[0].type;
 	} else {
 		type = this.type;
@@ -872,22 +845,25 @@ function(params, batchCmd) {
 		}
 	}
 
-	var respCallback = params.callback && (new AjxCallback(this, this._handleResponseItemAction, [params.callback]));
+	var actionController = appCtxt.getActionController();
+	var actionLogItem = (!params.noUndo && actionController && actionController.actionPerformed({op: params.action, ids: idList, attrs: params.attrs})) || null;
+	var respCallback = new AjxCallback(this, this._handleResponseItemAction, [params.callback, actionLogItem]);
 
 	var params1 = {
 		ids:			idList,
 		idHash:			idHash,
-		accountName:	params.accountName,
+		accountName:		params.accountName,
 		request:		request,
 		action:			action,
 		type:			type,
 		callback:		respCallback,
-		finalCallback:	params.finalCallback,
-		errorCallback:	params.errorCallback,
+		finalCallback:		params.finalCallback,
+		errorCallback:		params.errorCallback,
 		batchCmd:		batchCmd,
 		numItems:		params.count || 0,
-        actionText:		params.actionText,
-        actionArg:      params.actionArg
+		actionText:		params.actionText,
+		actionArg:		params.actionArg,
+		actionLogItem:		actionLogItem
 	};
 
 	var dialog = ZmList.progressDialog;
@@ -905,7 +881,11 @@ function(params, batchCmd) {
  * @private
  */
 ZmList.prototype._handleResponseItemAction =
-function(callback, items, result) {
+function(callback, actionLogItem, items, result) {
+	if (actionLogItem) {
+		actionLogItem.setComplete();
+	}
+	
 	if (callback) {
 		result.set(items);
 		callback.run(result);
@@ -994,7 +974,7 @@ function(params, result) {
 			params.finalCallback.run(params);
 		} else {
 			DBG.println("sa", "no final callback");
-			ZmList.killProgressDialog(params.actionSummary);
+			ZmList.killProgressDialog(params.actionSummary, params.actionLogItem);
 		}
 	}
 };
@@ -1002,10 +982,11 @@ function(params, result) {
 /**
  * Kills the progress dialog (if shown). Show the given summary as status.
  *
- * @param {String}	summary		the text that summarizes the recent action
+ * @param {String}      summary          the text that summarizes the recent action
+ * @param {ZmAction}    actionLogItem    the logged action for possible undoing
  */
 ZmList.killProgressDialog =
-function(summary) {
+function(summary, actionLogItem) {
 
 	DBG.println("sa", "kill progress dialog");
 	var dialog = ZmList.progressDialog;
@@ -1015,15 +996,22 @@ function(summary) {
 		ZmList.progressDialog = null;
 	}
 	if (summary) {
-		summary = AjxStringUtil.htmlEncode(summary); //encode html special chars such as < and > so won't be interpreted as html (both for security and for not losing visibility of characters)
-		appCtxt.setStatusMsg(summary);
+		var actionController = appCtxt.getActionController();
+		var undoLink = actionLogItem && actionController && actionController.getUndoLink(actionLogItem);
+		if (undoLink && actionController) {
+			actionController.onPopup();
+			appCtxt.setStatusMsg({msg: summary+undoLink, transitions: actionController.getStatusTransitions()});
+		} else {
+			appCtxt.setStatusMsg(summary);
+		}
 	}
 };
 
 ZmList.getActionSummary =
 function(text, num, type, arg) {
-    var typeText = AjxMessageFormat.format(ZmMsg[ZmItem.COUNT_KEY[type]], num);
-    return AjxMessageFormat.format(text, [num, typeText, arg]);
+	var typeTextAuto = AjxMessageFormat.format(ZmMsg[ZmItem.COUNT_KEY[type]], num);
+	var typeTextSingular = AjxMessageFormat.format(ZmMsg[ZmItem.COUNT_KEY[type]], 1);
+	return AjxMessageFormat.format(text, [num, typeTextAuto, arg, typeTextSingular]);
 };
 
 /**
@@ -1046,40 +1034,6 @@ function(params) {
 	var dialog = ZmList.progressDialog;
 	if (dialog && dialog.isPoppedUp()) {
 		dialog.popdown();
-	}
-};
-
-/**
- * Hack to support actions on a list of items of more than one type. Since some
- * specialized lists (ZmMailList or ZmContactList, for example) override action
- * methods (such as deleteItems), we need to be able to call the proper method
- * for each item type.
- *
- * XXX: We could optimize this a bit by either using a batch request, or by
- * using ItemActionRequest. But we still want to call the appropriate method for
- * each item type, so that any overridden methods get called. So for now, it's
- * easier to do the requests separately.
- * 
- * @private
- */
-ZmList.prototype._mixedAction =
-function(method, params) {
-
-	var typedItems = this._getTypedItems(params.items);
-	var params1 = AjxUtil.hashCopy(params);
-	for (var type in typedItems) {
-		this._mixedType = type; // marker that we've been here already
-		if (type == ZmItem.CONTACT) {
-			var items = typedItems[type];
-			for (var i = 0; i < items.length; i++) {
-				params1.items = [items[i]];
-				items[i].list[method](params);
-			}
-		} else {
-			params1.items = typedItems[type];
-			ZmMailList.prototype[method].call(this, params);
-		}
-		this._mixedType = null;
 	}
 };
 

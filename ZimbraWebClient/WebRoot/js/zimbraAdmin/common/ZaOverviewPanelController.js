@@ -96,42 +96,37 @@ function (ev) {
 	if(ev) {
 		//add the new ZaDomain to the controlled list
 		var detls = ev.getDetails();		
-		if(detls) {
-			if(detls && (detls instanceof Array)) {
-				for (var key in detls) {
-					if((detls[key] instanceof ZaCos) && this._cosMap[detls[key].id]) {
-						this._cosTi.removeChild(this._cosMap[detls[key].id]);		
-					}
+		this.removeCosTreeItems(detls);
+	}
+}
+
+
+ZaOverviewPanelController.prototype.removeCosTreeItems = 
+function(detls) {
+	if(detls) {
+		if(detls && (detls instanceof Array)) {
+			for (var key in detls) {
+				if((detls[key] instanceof ZaCos) && this._cosMap[detls[key].id]) {
+				        this._cosTi.removeChild(this._cosMap[detls[key].id]);
 				}
-			} else if(detls && (detls instanceof ZaCos)) {
-				if(this._cosMap[detls.id]) {
-					this._cosTi.removeChild(this._cosMap[detls.id]);		
-				}
+			}
+		} else if(detls && (detls instanceof ZaCos)) {
+			if(this._cosMap[detls.id]) {
+				this._cosTi.removeChild(this._cosMap[detls.id]);
 			}
 		}
 	}
 }
 
 
+
 ZaOverviewPanelController.prototype.searchDomains = function() {
 	var busyId = Dwt.getNextId () ;
 	//var callback = new AjxCallback(this, this.domainSearchCallback,{busyId:busyId});
 	var domainListController = ZaApp.getInstance().getDomainListController ();
-    	domainListController._currentQuery = "";
-	if(!ZaZimbraAdmin.isGlobalAdmin()) {
-           var domainNameList = ZaApp.getInstance()._domainNameList;
-            if(!domainNameList || !(domainNameList instanceof Array) || domainNameList.length == 0) {
-                ZaApp.getInstance()._domainList =  new ZaItemList(ZaDomain);
-                return;
-           }
-           if(domainNameList && domainNameList instanceof Array) {
-              for(var i = 0; i < domainNameList.length; i++)
-                 domainListController._currentQuery += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
-              if(domainNameList.length > 1)
-                 domainListController._currentQuery = "(|" + domainListController._currentQuery + ")";
-           }
-        } else 	
-	domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
+	
+//	domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
+    domainListController._currentQuery = "";
 	var searchParams = {
 			query: domainListController._currentQuery, 
 			types:[ZaSearch.DOMAINS],
@@ -139,7 +134,7 @@ ZaOverviewPanelController.prototype.searchDomains = function() {
 			offset:"0",
 			sortAscending:"1",
 			limit:ZaDomain.MAXSEARCHRESULTS,
-			attrs:[ZaDomain.A_domainName,ZaItem.A_zimbraId]			
+			attrs:[ZaDomain.A_description, ZaDomain.A_domainName,ZaDomain.A_zimbraDomainStatus,ZaItem.A_zimbraId, ZaDomain.A_domainType]			
 	}
 	var resp = ZaSearch.searchDirectory(searchParams);
 	this.domainSearchCallback(searchParams, resp);
@@ -211,9 +206,21 @@ function (list) {
 	if(domainList && domainList.length) {
 		var cnt = domainList.length;
 		for(var ix=0; ix< cnt; ix++) {
-			var ti1 = new DwtTreeItem({parent:this._domainsTi,className:"AdminTreeItem"});			
+			var ti1 = new DwtTreeItem({parent:this._domainsTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_CONFIGURATION,ZaId.TREEITEM_DOMAINS,null,ix+1)});
 			ti1.setText(domainList[ix].name);	
-			ti1.setImage("Domain");
+
+			var itemType = ( domainList[ix].attrs [ZaDomain.A_domainType] );
+			
+			if( itemType == ZaDomain.domainTypes.alias ) {
+				
+					ti1.setImage("DomainAlias"); //Domain Alias
+			
+			}else { //itemType == ZaDomain.domainTypes.local
+				
+					ti1.setImage("Domain"); //Real Domain
+				
+			}
+			
 			ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._DOMAIN_VIEW);
 			ti1.setData(ZaOverviewPanelController._OBJ_ID, domainList[ix].id);
 			this._domainsMap[domainList[ix].id] = ti1;
@@ -222,6 +229,7 @@ function (list) {
 	list.loadEffectiveRights();
 	ZaApp.getInstance()._domainList = list;
 }
+
 
 ZaOverviewPanelController.prototype.setCurrentDomain = 
 function (newDomain) {
@@ -275,7 +283,14 @@ function (appCtxt, container) {
 
 ZaOverviewPanelController.prototype._setView =
 function() {
-	this._overviewPanel = new ZaOverviewPanel(this._container, "OverviewPanel", DwtControl.ABSOLUTE_STYLE);
+
+	this._overviewPanel = new ZaOverviewPanel({
+                        parent:         this._container,
+                        className:      "OverviewPanel",
+                        posStyle:       DwtControl.ABSOLUTE_STYLE,
+			id:		ZaId.PANEL_APP //ZaId.getOverviewId(ZaId.PANEL_APP)
+	});
+
 	this._overviewPanel.setScrollStyle(DwtControl.SCROLL);
     ZaSearch.loadPredefinedSearch() ;
     this._buildFolderTree();
@@ -336,34 +351,34 @@ function() {
 	}
 	var ti;
 	if(showAddresses) {
-		this._addressesTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
+		this._addressesTi = new DwtTreeItem({parent:tree,className:"overviewHeader",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_ADDRESS, true)});
 		this._addressesTi.enableSelection(false);
 		this._addressesTi.setText(ZaMsg.OVP_addresses);
 		this._addressesTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._ADDRESSES);
 
 		if (ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.ACCOUNT_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {	
-			this.accountTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem"});
+			this.accountTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_ADDRESS,null, ZaId.TREEITEM_ACCOUNT)});
 			ti.setText(ZaMsg.OVP_accounts);
 			ti.setImage("Account");
 			ti.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._ACCOUNTS_LIST_VIEW);
 		}
 		
 		if (ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.ALIAS_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this.aliasTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem"});
+			this.aliasTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_ADDRESS,null, ZaId.TREEITEM_ALIASES)});
 			ti.setText(ZaMsg.OVP_aliases);
 			ti.setImage("AccountAlias");
 			ti.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._ALIASES_LIST_VIEW);
 		}
 			
 		if (ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.DL_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this.dlTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem"});
+			this.dlTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_ADDRESS,null, ZaId.TREEITEM_DL)});
 			ti.setText(ZaMsg.OVP_distributionLists);
 			ti.setImage("DistributionList");
 			ti.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._DISTRIBUTION_LISTS_LIST_VIEW);
 		}
 		
         if (ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.RESOURCE_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-            this.resourceTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem"});
+            this.resourceTi = ti = new DwtTreeItem({parent:this._addressesTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_ADDRESS,null, ZaId.TREEITEM_RESOURCES)});
             ti.setText(ZaMsg.OVP_resources);
             ti.setImage("Resource");
             ti.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._RESOURCE_VIEW);
@@ -377,24 +392,15 @@ function() {
         }
     }
 
-        if(!ZaZimbraAdmin.isGlobalAdmin()) {
-               var domainNamelist = ZaDomain.getEffectiveDomainList(ZaZimbraAdmin.currentAdminAccount.id);
-               ZaApp.getInstance()._domainNameList = domainNamelist;
-
-               var cosNamelist = ZaCos.getEffectiveCosList(ZaZimbraAdmin.currentAdminAccount.id);
-               ZaApp.getInstance()._cosNameList = cosNamelist;
-
-        }
-
 	//TODO:  ZaSettings.DOMAIN_AUTH_WIZ_ENABLED - LDAPAuthWizard enabled for the domain admin	
 	if(showConfig ) {	
-		this._configTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
+		this._configTi = new DwtTreeItem({parent:tree,className:"overviewHeader",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION, true)});
 		this._configTi.enableSelection(false);
 		this._configTi.setText(ZaMsg.OVP_configuration);
 		this._configTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SYS_CONFIG);	
 		
 		if (ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.COS_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this._cosTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
+			this._cosTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION,null, ZaId.TREEITEM_COS)});
 			this._cosTi.setText(ZaMsg.OVP_cos);
 			this._cosTi.setImage("COS");
 			this._cosTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._COS_LIST_VIEW);
@@ -404,8 +410,9 @@ function() {
 				var cosList = ZaApp.getInstance().getCosList();
 				if(cosList && cosList.size()) {
 					var idHash = cosList.getIdHash();
+					var index = 0;
 					for(var ix in idHash) {
-						var ti1 = new DwtTreeItem({parent:this._cosTi,className:"AdminTreeItem"});			
+						var ti1 = new DwtTreeItem({parent:this._cosTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_CONFIGURATION,ZaId.TREEITEM_COS,null,++index)});
 						ti1.setText(idHash[ix].name);	
 						ti1.setImage("COS");
 						ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._COS_VIEW);
@@ -422,10 +429,10 @@ function() {
 		}
 		//TODO:  ZaSettings.DOMAIN_AUTH_WIZ_ENABLED - LDAPAuthWizard enabled for the domain admin
 		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.DOMAIN_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this._domainsTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
+			this._domainsTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION,null, ZaId.TREEITEM_DOMAINS)});
 			this._domainsTi.setText(ZaMsg.OVP_domains);
 			this._domainsTi.setImage("Domain");
-			this._domainsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._DOMAINS_LIST_VIEW);
+  		this._domainsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._DOMAINS_LIST_VIEW);
 	
 			try {
 			//add domain nodes
@@ -439,36 +446,39 @@ function() {
 		}
 	
         if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.SERVER_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-            this._serversTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
-            this._serversTi.setText(ZaMsg.OVP_servers);
-            this._serversTi.setImage("Server");
-            this._serversTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SERVERS_LIST_VIEW);
-
-            try {
-                //add server nodes
-    //			DBG.println(AjxDebug.DBG1, "add server nodes ");
-                var serverList = ZaApp.getInstance().getServerList().getArray();
-                if(serverList && serverList.length) {
-                    var cnt = serverList.length;
-                    for(var ix=0; ix< cnt; ix++) {
-                        var ti1 = new DwtTreeItem({parent:this._serversTi,className:"AdminTreeItem"});
-                        ti1.setText(serverList[ix].name);
-                        ti1.setImage("Server");
-                        ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SERVER_VIEW);
-                        ti1.setData(ZaOverviewPanelController._OBJ_ID, serverList[ix].id);
-                        this._serversMap[serverList[ix].id] = ti1;
-                    }
-                }
+        	try {
+	        	var serverList = ZaApp.getInstance().getServerList().getArray();
+	        	if(serverList && serverList.length) {
+	        		var cnt = serverList.length;
+	        		this._serversTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION,null, ZaId.TREEITEM_SERVERS)});
+	        		if(cnt>1) {
+	        			this._serversTi.setText(ZaMsg.OVP_servers);
+	        			this._serversTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SERVERS_LIST_VIEW);
+		                for(var ix=0; ix< cnt; ix++) {
+		                    var ti1 = new DwtTreeItem({parent:this._serversTi,className:"AdminTreeItem", id:ZaId.getTreeItemId(ZaId.PANEL_CONFIGURATION,ZaId.TREEITEM_SERVERS,null,ix+1)});
+		                    ti1.setText(serverList[ix].name);
+		                    ti1.setImage("Server");
+		                    ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SERVER_VIEW);
+		                    ti1.setData(ZaOverviewPanelController._OBJ_ID, serverList[ix].id);
+		                    this._serversMap[serverList[ix].id] = ti1;
+		                }
+		                ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._SERVERS_LIST_VIEW] = ZaOverviewPanelController.serverListTreeListener;
+	        		} else  {
+	        			this._serversTi.setText(ZaMsg.OVP_serverSettings);
+	        			this._serversTi.setData(ZaOverviewPanelController._OBJ_ID, serverList[0].id);
+	        			this._serversTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SERVER_VIEW);
+	        		}
+	        		this._serversTi.setImage("Server");
+	                //add server nodes
+		            ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._SERVER_VIEW] = ZaOverviewPanelController.serverTreeListener;
+	        	}
             } catch (ex) {
                 this._handleException(ex, "ZaOverviewPanelController.prototype._buildFolderTree", null, false);
             }
-
-            ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._SERVERS_LIST_VIEW] = ZaOverviewPanelController.serverListTreeListener;
-            ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._SERVER_VIEW] = ZaOverviewPanelController.serverTreeListener;
         }
         
         if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.ZIMLET_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this._zimletsTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
+			this._zimletsTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION,null, ZaId.TREEITEM_ZIMLETS)});
 			this._zimletsTi.setText(ZaMsg.OVP_zimlets);
 			this._zimletsTi.setImage("Zimlet");
 			this._zimletsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._ZIMLET_LIST_VIEW);
@@ -476,14 +486,14 @@ function() {
 		}
 
 		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.ADMIN_ZIMLET_LIST_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this._adminZimletsTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
+			this._adminZimletsTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION,null, ZaId.TREEITEM_ADMINEXT)});
 			this._adminZimletsTi.setText(ZaMsg.OVP_adminZimlets);
 			this._adminZimletsTi.setImage("AdminExtension");
 			this._adminZimletsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._ADMIN_ZIMLET_LIST_VIEW);
 			ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._ADMIN_ZIMLET_LIST_VIEW] = ZaOverviewPanelController.adminExtListTreeListener;					
 		}
 		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.GLOBAL_CONFIG_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {		
-			ti = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
+			ti = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION,null, ZaId.TREEITEM_GSET)});
 			ti.setText(ZaMsg.OVP_global);
 			ti.setImage("GlobalSettings");
 			ti.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._GLOBAL_SETTINGS);	
@@ -492,39 +502,36 @@ function() {
 		}
 	}
 	if(showMonitoring) {
-		this._monitoringTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
+		this._monitoringTi = new DwtTreeItem({parent:tree,className:"overviewHeader",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_MONITORING, true)});
 		this._monitoringTi.enableSelection(false);	
 		this._monitoringTi.setText(ZaMsg.OVP_monitoring);
 		this._monitoringTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._MONITORING);
 		
 		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.GLOBAL_STATUS_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {	
-			this.statusTi = new DwtTreeItem({parent:this._monitoringTi,className:"AdminTreeItem"});
+			this.statusTi = new DwtTreeItem({parent:this._monitoringTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_MONITORING, null,ZaId.TREEITEM_SSTATUS)});
 			this.statusTi.setText(ZaMsg.OVP_status);
 			this.statusTi.setImage("Status");
 			this.statusTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._STATUS);
 		}
 		
-//		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.GLOBAL_STATS_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
         if( ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-			this._statisticsTi = new DwtTreeItem({parent:this._monitoringTi,className:"AdminTreeItem"});
+			this._statisticsTi = new DwtTreeItem({parent:this._monitoringTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_MONITORING, null,ZaId.TREEITEM_SSTATIS)});
 			this._statisticsTi.setText(ZaMsg.OVP_statistics);
 			this._statisticsTi.setImage("Statistics");
 			this._statisticsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._STATISTICS);
 		}
 		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.SERVER_STATS_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-//        if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
 			try {
 				//add server statistics nodes
-	//			DBG.println(AjxDebug.DBG1, "add server statistics nodes ");	
 				var serverList = ZaApp.getInstance().getServerList().getArray();
 				if(serverList && serverList.length) {
 					var cnt = serverList.length;
 					for(var ix=0; ix< cnt; ix++) {
 						var ti1;
 						if(this._statisticsTi) 
-							ti1 = new DwtTreeItem({parent:this._statisticsTi,className:"AdminTreeItem"});
+							ti1 = new DwtTreeItem({parent:this._statisticsTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP, ZaId.TREEITEM_SSTATIS, null,ix+1)});
 						else
-							ti1 = new DwtTreeItem({parent:this._monitoringTi,className:"AdminTreeItem"});
+							ti1 = new DwtTreeItem({parent:this._monitoringTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_MONITORING, ZaId.TREEITEM_SSTATIS, null,ix+1)});
 						ti1.setText(serverList[ix].name);	
 						ti1.setImage("StatisticsByServer");
 						ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._STATISTICS_BY_SERVER);
@@ -548,40 +555,45 @@ function() {
 	}
 	
 	if(showTools) {
-		this._toolsTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
+		this._toolsTi = new DwtTreeItem({parent:tree,className:"overviewHeader",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_TOOLS, true)});
 		this._toolsTi.enableSelection(false);	
 		this._toolsTi.setText(ZaMsg.OVP_tools);
 		this._toolsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._TOOLS);
 		if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.MAILQ_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {		
 			try {
-				this._postqTi = new DwtTreeItem({parent:this._toolsTi,className:"AdminTreeItem"});
-				this._postqTi.setText(ZaMsg.OVP_postq);
-				this._postqTi.setImage("Queue");
-				this._postqTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSTQ_VIEW);
-		
 				if(mtaList && mtaList.length) {
 					var cnt = mtaList.length;
-					for(var ix=0; ix< cnt; ix++) {
-						var ti1 = new DwtTreeItem({parent:this._postqTi,className:"AdminTreeItem"});			
-						ti1.setText(mtaList[ix].name);	
-						ti1.setImage("Queue");
-						ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSTQ_BY_SERVER_VIEW);
-						ti1.setData(ZaOverviewPanelController._OBJ_ID, mtaList[ix].id);
-						this._mailqMap[mtaList[ix].id] = ti1;
+					this._postqTi = new DwtTreeItem({parent:this._toolsTi,className:"AdminTreeItem"});
+					this._postqTi.setText(ZaMsg.OVP_postq);
+					this._postqTi.setImage("Queue");
+					if(cnt>1) {
+						for(var ix=0; ix< cnt; ix++) {
+							var ti1 = new DwtTreeItem({parent:this._postqTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_TOOLS, null,ix+1)});			
+							ti1.setText(mtaList[ix].name);	
+							ti1.setImage("Queue");
+							ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSTQ_BY_SERVER_VIEW);
+							ti1.setData(ZaOverviewPanelController._OBJ_ID, mtaList[ix].id);
+							this._mailqMap[mtaList[ix].id] = ti1;
+						}
+						this._postqTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSTQ_VIEW);
+						ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._POSTQ_VIEW] = ZaOverviewPanelController.postqTreeListener;
+					} else {
+						this._postqTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSTQ_BY_SERVER_VIEW);
+						this._postqTi.setData(ZaOverviewPanelController._OBJ_ID, mtaList[0].id);
 					}
+					ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._POSTQ_BY_SERVER_VIEW] = ZaOverviewPanelController.postqByServerTreeListener;
 				}
 			} catch (ex) {
 				this._handleException(ex, "ZaOverviewPanelController.prototype._buildFolderTree", null, false);
 			}
 			
-			ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._POSTQ_VIEW] = ZaOverviewPanelController.postqTreeListener;				
-			ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._POSTQ_BY_SERVER_VIEW] = ZaOverviewPanelController.postqByServerTreeListener;
+			
 		}						
 	}
 		
 	//SavedSearches Tree	
 	if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.SAVE_SEARCH] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-		this._savedSearchTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
+		this._savedSearchTi = new DwtTreeItem({parent:tree,className:"overviewHeader",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_SEARCHS, true)});
 		this._savedSearchTi.enableSelection(false);
 		this._savedSearchTi.setText(ZaMsg.OVP_savedSearches);
 		this._savedSearchTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SEARCHES);
@@ -591,7 +603,7 @@ function() {
 			if(savedSearchList && savedSearchList.length) {
 				var cnt = savedSearchList.length;
 				for(var ix=0; ix< cnt; ix++) {
-					var ti1 = new DwtTreeItem({parent:this._savedSearchTi,className:"AdminTreeItem"});			
+					var ti1 = new DwtTreeItem({parent:this._savedSearchTi,className:"AdminTreeItem",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_SEARCHS, null,ix+1)});			
 					ti1.setText(savedSearchList[ix].name);	
 					ti1.setImage("SearchFolder");
 					ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._SEARCH_LIST_VIEW);
@@ -666,7 +678,7 @@ function(ev) {
 				
 			}else if (ev.detail == DwtTree.ITEM_ACTIONED) {
 				if (treeItemType == ZaZimbraAdmin._SEARCH_LIST_VIEW) { //saved search item is actioned.
-					//if (AjxEnv.hasFirebug) console.debug("Saved Search tree Item is actioned.") ;
+					//if(window.console && window.console.log) console.debug("Saved Search tree Item is actioned.") ;
 					eventHandler.call(this, ev) ;
 				}	
 			}
@@ -695,13 +707,25 @@ ZaOverviewPanelController.domainTreeListener = function (ev) {
 	var domain = new ZaDomain();
 	domain.id = ev.item.getData(ZaOverviewPanelController._OBJ_ID);	
 	domain.attrs[ZaItem.A_zimbraId] = ev.item.getData(ZaOverviewPanelController._OBJ_ID);
+    domain.load ("id", domain.id) ;
+
+    var isLocal = (domain.attrs [ZaDomain.A_domainType] == ZaDomain.domainTypes.local) ;
+    var isAlias = (domain.attrs [ZaDomain.A_domainType] == ZaDomain.domainTypes.alias) ;
+
 	if(ZaApp.getInstance().getCurrentController()) {
-		ZaApp.getInstance().getCurrentController().switchToNextView(ZaApp.getInstance().getDomainController(),
-		 ZaDomainController.prototype.show, 
-		 domain /*ZaApp.getInstance().getDomainList(true).getItemById(ev.item.getData(ZaOverviewPanelController._OBJ_ID))*/);
-	} else {	
-						
-		ZaApp.getInstance().getDomainController().show(domain);
+        if (isLocal) {
+            ZaApp.getInstance().getCurrentController().switchToNextView(ZaApp.getInstance().getDomainController(),
+             ZaDomainController.prototype.show,
+             domain /*ZaApp.getInstance().getDomainList(true).getItemById(ev.item.getData(ZaOverviewPanelController._OBJ_ID))*/);
+        } else if (isAlias) {
+            ZaApp.getInstance().getDomainAliasWizard(true).editDomainAlias (domain, false) ;
+        }
+	} else {
+        if (isLocal) {
+		    ZaApp.getInstance().getDomainController().show(domain);
+        } else if (isAlias) {
+            ZaApp.getInstance().getDomainAliasWizard(true).editDomainAlias (domain, false) ;
+        }
 	}
 }
 
@@ -771,18 +795,9 @@ ZaOverviewPanelController.domainListTreeListener = function (ev) {
 	var domainListController = ZaApp.getInstance().getDomainListController ();
 	
 	//if we do not have access to domains we will only get our own domain in response anyway, so no need to add a query
-        domainListController._currentQuery = "";
-	if(!ZaZimbraAdmin.isGlobalAdmin()) {
-           var domainNameList = ZaApp.getInstance()._domainNameList;
-           if(domainNameList && domainNameList instanceof Array && domainNameList.length > 0) {
-              for(var i = 0; i < domainNameList.length; i++)
-                 domainListController._currentQuery += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
-              if(domainNameList.length > 1)
-                 domainListController._currentQuery = "(|" + domainListController._currentQuery + ")";
-           } else domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
-        } else
-	domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
-			
+//	domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
+	domainListController._currentQuery = "";
+
 	if(ZaApp.getInstance().getCurrentController()) {
 		ZaApp.getInstance().getCurrentController().switchToNextView(domainListController, ZaDomainListController.prototype.show, true);
 	} else {					
@@ -817,7 +832,7 @@ ZaOverviewPanelController.searchListTreeListener = function (ev) {
 	var name = ev.item.getData("name") ;
 	var query = ev.item.getData("query");
 	if (ev.detail == DwtTree.ITEM_SELECTED) {
-		//if (AjxEnv.hasFirebug) console.debug("Run the saved search ...") ;
+		//if(window.console && window.console.log) console.debug("Run the saved search ...") ;
 		searchField.selectSavedSearch(name, query);
 	}else if (ev.detail == DwtTree.ITEM_ACTIONED){
 		searchField._currentSavedSearch = {name: name, query: query};
@@ -826,18 +841,26 @@ ZaOverviewPanelController.searchListTreeListener = function (ev) {
 }
 
 ZaOverviewPanelController.zimletListTreeListener = function (ev) {
+    ZaZimlet.getAll(ZaZimlet.EXCLUDE_EXTENSIONS, new AjxCallback(ZaOverviewPanelController._zimletListTreeListener));
+};
+
+ZaOverviewPanelController._zimletListTreeListener = function (zimlets) {
 	if(ZaApp.getInstance().getCurrentController()) {
-		ZaApp.getInstance().getCurrentController().switchToNextView(ZaApp.getInstance().getZimletListController(), ZaZimletListController.prototype.show, ZaZimlet.getAll(ZaZimlet.EXCLUDE_EXTENSIONS));
+		ZaApp.getInstance().getCurrentController().switchToNextView(ZaApp.getInstance().getZimletListController(), ZaZimletListController.prototype.show, zimlets);
 	} else {
-		ZaApp.getInstance().getZimletListController().show(ZaZimlet.getAll(ZaZimlet.EXCLUDE_EXTENSIONS));
+		ZaApp.getInstance().getZimletListController().show(zimlets);
 	}	
 }
 
 ZaOverviewPanelController.adminExtListTreeListener = function (ev) {
+    ZaZimlet.getAll(ZaZimlet.EXCLUDE_MAIL, new AjxCallback(ZaOverviewPanelController._adminExtListTreeListener));
+};
+
+ZaOverviewPanelController._adminExtListTreeListener = function (zimlets) {
 	if(ZaApp.getInstance().getCurrentController()) {
-		ZaApp.getInstance().getCurrentController().switchToNextView(ZaApp.getInstance().getAdminExtListController(), ZaAdminExtListController.prototype.show, ZaZimlet.getAll(ZaZimlet.EXCLUDE_MAIL ));
+		ZaApp.getInstance().getCurrentController().switchToNextView(ZaApp.getInstance().getAdminExtListController(), ZaAdminExtListController.prototype.show, zimlets);
 	} else {
-		ZaApp.getInstance().getAdminExtListController().show(ZaZimlet.getAll( ZaZimlet.EXCLUDE_MAIL ));
+		ZaApp.getInstance().getAdminExtListController().show(zimlets);
 	}	
 }
 
@@ -848,6 +871,7 @@ ZaOverviewPanelController.cosListTreeListener = function (ev) {
 	} else {
 		ZaApp.getInstance().getCosListController().show(true);
 	}
+	this._modifySearchMenuButton(ZaItem.COS) ;
 }
 
 ZaOverviewPanelController.postqTreeListener = function (ev) {
@@ -872,6 +896,9 @@ ZaOverviewPanelController.prototype._modifySearchMenuButton =
 function (itemType) {
 	if (itemType) {
 		var searchListController = ZaApp.getInstance().getSearchListController(); 
+		if(!searchListController || !searchListController._searchField) {
+			return;
+		}
 		switch (itemType) {
 			case ZaItem.ACCOUNT:
 				searchListController._searchField.accFilterSelected(); break ;
@@ -883,6 +910,8 @@ function (itemType) {
 				searchListController._searchField.resFilterSelected(); break ;
 			case ZaItem.DOMAIN:
 				searchListController._searchField.domainFilterSelected(); break ;
+                        case ZaItem.COS:
+                                searchListController._searchField.cosFilterSelected(); break ;
 		}
 	}
 } 

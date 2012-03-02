@@ -312,7 +312,7 @@ ZmGroupView.prototype._setTitle =
 function(title) {
 	var div = document.getElementById(this._titleId);
 	var fileAs = title || this._contact.getFileAs();
-	div.innerHTML = AjxStringUtil.htmlEncode(fileAs) || (this._contact.id ? "&nbsp;" : ZmMsg.newGroup);
+	div.innerHTML = fileAs || (this._contact.id ? "&nbsp;" : ZmMsg.newGroup);
 };
 
 ZmGroupView.prototype._getTagCell =
@@ -607,8 +607,8 @@ function() {
 	for (var j = 0; j < ta.length; j++) {
 		var tag = ta[j];
 		if (!tag) continue;
-		var icon = ZmTag.COLOR_ICON[tag.color];
-		html[i++] = AjxImg.getImageSpanHtml(icon, null, null, AjxStringUtil.htmlEncode(tag.name));
+		var icon = tag.getIconWithColor();
+		html[i++] = AjxImg.getImageSpanHtml(icon, null, null, tag.name);
 		html[i++] = "&nbsp;";
 	}
 

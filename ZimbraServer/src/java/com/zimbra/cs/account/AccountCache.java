@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,15 +21,17 @@
  */
 package com.zimbra.cs.account;
 
-import org.apache.commons.collections.map.LRUMap;
+import java.util.Map;
+
+import com.zimbra.common.util.MapUtil;
 
 import com.zimbra.common.stats.Counter;
 
 public class AccountCache {
     
-    private LRUMap mNameCache;
-    private LRUMap mIdCache;
-    private LRUMap mForeignPrincipalCache;
+    private Map<String, CacheEntry> mNameCache;
+    private Map<String, CacheEntry> mIdCache;
+    private Map mForeignPrincipalCache;
     private Counter mHitRate = new Counter();
     
     private long mRefreshTTL;
@@ -52,9 +54,9 @@ public class AccountCache {
  * @param refreshTTL
  */
     public AccountCache(int maxItems, long refreshTTL) {
-        mNameCache = new LRUMap(maxItems);
-        mIdCache = new LRUMap(maxItems);
-        mForeignPrincipalCache = new LRUMap(maxItems);  
+        mNameCache = MapUtil.newLruMap(maxItems);
+        mIdCache = MapUtil.newLruMap(maxItems);
+        mForeignPrincipalCache = MapUtil.newLruMap(maxItems);  
         mRefreshTTL = refreshTTL;
     }
 
@@ -84,13 +86,8 @@ public class AccountCache {
                 mForeignPrincipalCache.put(fp, cacheEntry);            
         }
     }
-    
-    public synchronized void replace(Account entry) {
-        remove(entry);
-        put(entry);
-    }
 
-    private Account get(String key, LRUMap cache) {
+    private Account get(String key, Map cache) {
         CacheEntry ce = (CacheEntry) cache.get(key);
         if (ce != null) {
             if (mRefreshTTL != 0 && ce.isStale()) {

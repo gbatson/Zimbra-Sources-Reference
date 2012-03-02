@@ -148,6 +148,17 @@ public class CalendarUtils {
         return toRet;
     }
 
+    private static String parseInviteChanges(Element inviteElem) {
+        Element compElem = inviteElem.getOptionalElement(MailConstants.E_INVITE_COMPONENT);
+        if (compElem == null)
+            compElem = inviteElem;
+        String changes = compElem.getAttribute(MailConstants.A_CAL_CHANGES, null);
+        if (changes != null && changes.length() > 0)
+            return changes;
+        else
+            return null;
+    }
+
     static ParseMimeMessage.InviteParserResult parseInviteForCreateException(
             Account account, byte itemType, Element inviteElem, TimeZoneMap tzMap, String uid,
             Invite defaultInv)
@@ -177,7 +188,14 @@ public class CalendarUtils {
                             ? new ZOrganizer(defaultInv.getOrganizer()) : null);
         create.setIsOrganizer(account);
 
+        // change tracking
+        String changes = parseInviteChanges(inviteElem);
+        if (changes != null) {
+            // Set the changes as x-prop in the serialized iCalendar object, but not to the parsed Invite object.
+            create.addXProp(new ZProperty(ICalTok.X_ZIMBRA_CHANGES, changes));
+        }
         ZVCalendar iCal = create.newToICalendar(true);
+        create.removeXProp(ICalTok.X_ZIMBRA_CHANGES.toString());  // Don't set the changes x-prop in the parsed Invite.
 
         String summaryStr = create.getName() != null ? create.getName() : "";
 
@@ -238,7 +256,14 @@ public class CalendarUtils {
         attendeesToCancel.addAll(getRemovedAttendees(oldInv, mod, true));
         attendeesAdded.addAll(getRemovedAttendees(mod, oldInv, false));  // reverse of who's being canceled
 
+        // change tracking
+        String changes = parseInviteChanges(inviteElem);
+        if (changes != null) {
+            // Set the changes as x-prop in the serialized iCalendar object, but not to the parsed Invite object.
+            mod.addXProp(new ZProperty(ICalTok.X_ZIMBRA_CHANGES, changes));
+        }
         ZVCalendar iCal = mod.newToICalendar(true);
+        mod.removeXProp(ICalTok.X_ZIMBRA_CHANGES.toString());  // Don't set the changes x-prop in the parsed Invite.
 
         String summaryStr = "";
         if (mod.getName() != null) {
@@ -1086,6 +1111,17 @@ public class CalendarUtils {
         // Once we have organizer and attendee information, we can tell if this account is the
         // organizer in this invite or not.
         newInv.setIsOrganizer(account);
+
+        if (!newInv.isCancel()) {
+            // draft flag
+            // True means invite has changes that haven't been sent to attendees.
+            boolean draft = element.getAttributeBool(MailConstants.A_CAL_DRAFT, false);
+            newInv.setDraft(draft);
+            // neverSent flag
+            // True means attendees have never been notified for this invite.
+            boolean neverSent = element.getAttributeBool(MailConstants.A_CAL_NEVER_SENT, false);
+            newInv.setNeverSent(neverSent);
+        }
 
         // RECUR
         Element recur = element.getOptionalElement(MailConstants.A_CAL_RECUR);

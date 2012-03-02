@@ -98,9 +98,10 @@ public class ZimbraLdapContext {
                 return LDAPS;
             
             boolean ldap_starttls_supported = "1".equals(LC.ldap_starttls_supported.value());
+            boolean ldap_starttls_required = LC.ldap_starttls_required.booleanValue();
             boolean zimbra_require_interprocess_security = "1".equals(LC.zimbra_require_interprocess_security.value());
             
-            if (ldap_starttls_supported && zimbra_require_interprocess_security)
+            if (ldap_starttls_supported && ldap_starttls_required && zimbra_require_interprocess_security)
                 return STARTTLS;
             
             return PLAIN;
@@ -414,7 +415,7 @@ public class ZimbraLdapContext {
             
             ZimbraPerf.STOPWATCH_LDAP_DC.stop(start);
         } catch (Throwable e) {
-            ZimbraLog.ldap.debug("GET DIR CTXT FAILED", e);
+            ZimbraLog.ldap.debug("ZimbraLdapContext FAILED", e);
             closeContext(mDirContext, mTlsResp);
             
             if (e instanceof OutOfMemoryError)
@@ -506,7 +507,7 @@ public class ZimbraLdapContext {
                     mDirContext.addToEnvironment(Context.SECURITY_CREDENTIALS, bindPassword);
             }
         } catch (Throwable e) {
-            ZimbraLog.ldap.debug("GET DIR CTXT(" + note + ") FAILED", e);
+            ZimbraLog.ldap.debug("ZimbraLdapContext(" + note + ") FAILED", e);
             closeContext(mDirContext, mTlsResp);
             
             if (e instanceof OutOfMemoryError)
@@ -591,10 +592,10 @@ public class ZimbraLdapContext {
                 ldapCtxt.reconnect(null);
             }
         } catch (NamingException e) {   
-            ZimbraLog.ldap.debug("GET DIR CTXT(" + note + ") failed", e);
+            ZimbraLog.ldap.debug("ldapAuthenticate(" + note + ") failed", e);
             throw e;
         } catch (IOException e) { 
-            ZimbraLog.ldap.debug("GET DIR CTXT(" + note + ") failed", e);
+            ZimbraLog.ldap.debug("ldapAuthenticate(" + note + ") failed", e);
             throw e;
         } finally {
             closeContext(context, tlsResp);

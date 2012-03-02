@@ -21,6 +21,7 @@ import java.util.Map;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
@@ -33,11 +34,16 @@ import com.zimbra.soap.ZimbraSoapContext;
 
 public class SyncGalAccount extends AdminDocumentHandler {
 	
+    private static final String[] TARGET_ACCOUNT_PATH = new String[] { AdminConstants.E_ACCOUNT, AdminConstants.A_ID };
+    protected String[] getProxiedAccountPath()  { return TARGET_ACCOUNT_PATH; }
+    
 	@Override
 	public Element handle(Element request, Map<String, Object> context) throws ServiceException {
 	    
 	    ZimbraSoapContext zsc = getZimbraSoapContext(context);
 		Provisioning prov = Provisioning.getInstance();
+		
+		ZimbraLog.addToContext(ZimbraLog.C_ANAME, getAuthenticatedAccount(zsc).getName());
 		
 	    Iterator<Element> accounts = request.elementIterator(AdminConstants.E_ACCOUNT);
 	    while (accounts.hasNext()) {
@@ -46,6 +52,9 @@ public class SyncGalAccount extends AdminDocumentHandler {
 		    Account acct = prov.getAccountById(accountId);
 		    if (acct == null)
 	            throw AccountServiceException.NO_SUCH_ACCOUNT(accountId);
+		    
+		    ZimbraLog.addToContext(ZimbraLog.C_NAME, acct.getName());
+		    
 		    Iterator<Element> datasources = account.elementIterator(AdminConstants.E_DATASOURCE);
 		    while (datasources.hasNext()) {
 		    	Element dsElem = datasources.next();

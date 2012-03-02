@@ -63,12 +63,10 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	//public static final String FORM_AUTH_PATH = "/exchweb/bin/auth/owaauth.dll";  // specified in LC.calendar_exchange_form_auth_url
 	public static final int FB_INTERVAL = 30;
 	public static final int MULTI_STATUS = 207;
-	public static final String TYPE_WEBDAV = "webdav";
 	
 	public enum AuthScheme { basic, form };
 	
 	public static class ServerInfo {
-		public boolean enabled;
 		public String url;
 		public String org;
 		public String cn;
@@ -96,7 +94,10 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 			info.scheme = AuthScheme.valueOf(scheme);
 			info.org = getAttr(Provisioning.A_zimbraFreebusyExchangeUserOrg, emailAddr);
 			try {
-				Account acct = Provisioning.getInstance().get(AccountBy.name, emailAddr);
+				Account acct = null;
+	            if (emailAddr != null) {
+	                acct = Provisioning.getInstance().get(AccountBy.name, emailAddr);
+	            }
 				if (acct != null) {
 					String fps[] = acct.getMultiAttr(Provisioning.A_zimbraForeignPrincipal);
 					if (fps != null && fps.length > 0) {
@@ -114,8 +115,6 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 			} catch (ServiceException se) {
 				info.cn = null;
 			}
-			String exchangeType = getAttr(Provisioning.A_zimbraFreebusyExchangeServerType, emailAddr);
-			info.enabled = TYPE_WEBDAV.equals(exchangeType);
 			return info;
 		}
 		// first lookup account/cos, then domain, then globalConfig.
@@ -176,8 +175,6 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		}
 		if (info == null)
 			throw new FreeBusyUserNotFoundException();
-		if (!info.enabled)
-			throw new FreeBusyUserNotFoundException();
 		addRequest(info, req);
 	}
 	
@@ -222,20 +219,21 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	}
 	
 	public boolean registerForMailboxChanges() {
-		if (sRESOLVERS.size() > 1)
-			return true;
-		Config config = null;
-		try {
-			config = Provisioning.getInstance().getConfig();
-		} catch (ServiceException se) {
-			ZimbraLog.fb.warn("cannot fetch config", se);
-			return false;
-		}
-		String url = config.getAttr(Provisioning.A_zimbraFreebusyExchangeURL, null);
-		String user = config.getAttr(Provisioning.A_zimbraFreebusyExchangeAuthUsername, null);
-		String pass = config.getAttr(Provisioning.A_zimbraFreebusyExchangeAuthPassword, null);
-		String scheme = config.getAttr(Provisioning.A_zimbraFreebusyExchangeAuthScheme, null);
-		return (url != null && user != null && pass != null && scheme != null);
+	    return registerForMailboxChanges(null);
+	}
+	
+	public boolean registerForMailboxChanges(String accountId) {
+	    String email = null;
+	    try {
+	        Account account = null;
+	        if (accountId != null)
+	            account = Provisioning.getInstance().getAccountById(accountId);
+	        if (account != null)
+	            email = account.getName();
+        } catch (ServiceException se) {
+            ZimbraLog.fb.warn("cannot fetch account", se);
+	    }
+        return getServerInfo(email) != null;
 	}
 	
 	public long cachedFreeBusyStartTime() {
@@ -272,14 +270,10 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	}
 	
 	public boolean handleMailboxChange(String accountId) {
-		String email = getEmailAddress(accountId);
-		ServerInfo serverInfo = getServerInfo(email);
-		if (email == null || !serverInfo.enabled) {
-			return true;  // no retry
-		}
-		
+		String email;
 		FreeBusy fb;
 		try {
+			email = getEmailAddress(accountId);
 			fb = getFreeBusy(accountId, FreeBusyQuery.CALENDAR_FOLDER_ALL);
 		} catch (ServiceException se) {
 			ZimbraLog.fb.warn("can't get freebusy for account "+accountId, se);
@@ -290,6 +284,7 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 			ZimbraLog.fb.warn("account not found / incorrect / wrong host: "+accountId);
 			return true;  // no retry
 		}
+		ServerInfo serverInfo = getServerInfo(email);
 		if (serverInfo == null || serverInfo.org == null || serverInfo.cn == null) {
 			ZimbraLog.fb.warn("no exchange server info for user "+email);
 			return true;  // no retry
@@ -379,18 +374,20 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		mRequests = new HashMap<String,ArrayList<Request>>();
 	}
 	
-	public List<FreeBusy> getFreeBusyForHost(String host, ArrayList<Request> req) throws IOException {
+	private List<FreeBusy> getEmptyList(ArrayList<Request> req) {
 		ArrayList<FreeBusy> ret = new ArrayList<FreeBusy>();
+		for (Request r : req)
+			ret.add(FreeBusy.nodataFreeBusy(r.email, r.start, r.end));
+		return ret;
+	}
+	
+	public List<FreeBusy> getFreeBusyForHost(String host, ArrayList<Request> req) throws IOException {
 		Request r = req.get(0);
 		ServerInfo serverInfo = (ServerInfo) r.data;
 		if (serverInfo == null) {
 			ZimbraLog.fb.warn("no exchange server info for user "+r.email);
-			return ret;
+			return getEmptyList(req);
 		}
-		
-		if (!serverInfo.enabled)
-			return ret;
-		
 		String url = constructGetUrl(serverInfo, req);
 		ZimbraLog.fb.debug("fetching fb from url="+url);
 		HttpMethod method = new GetMethod(url);
@@ -420,6 +417,7 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		} finally {
 			method.releaseConnection();
 		}
+		ArrayList<FreeBusy> ret = new ArrayList<FreeBusy>();
 		for (Request re : req) {
 			String fb = getFbString(response, re.email);
 			ret.add(new ExchangeUserFreeBusy(fb, re.email, FB_INTERVAL, re.start, re.end));
@@ -532,8 +530,10 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	    		case UNAVAILABLE:
 	    			mList.addInterval(new Interval(start, start + intervalInMillis, IcalXmlStrMap.FBTYPE_BUSY_UNAVAILABLE));
 	    			break;
+                case NODATA:
+                    mList.addInterval(new Interval(start, start + intervalInMillis, IcalXmlStrMap.FBTYPE_NODATA));
+                    break;
 	    		case FREE:
-	    		case NODATA:
 	    		default:
 	    			break;
 	    		}

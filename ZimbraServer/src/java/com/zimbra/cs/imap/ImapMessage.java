@@ -66,7 +66,9 @@ import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.service.formatter.VCard;
 import com.zimbra.cs.util.JMSession;
 
-public class ImapMessage implements Comparable<ImapMessage> {
+public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializable {
+    private static final long serialVersionUID = -1756550148606322493L;
+
     static class ImapMessageSet extends TreeSet<ImapMessage> {
         private static final long serialVersionUID = 4831178352505203361L;
         ImapMessageSet()                              { super(new SequenceComparator()); }
@@ -109,15 +111,21 @@ public class ImapMessage implements Comparable<ImapMessage> {
         this(item.getId(), item.getType(), item.getImapUid(), item.getFlagBitmask(), item.getTagBitmask());
     }
 
-    byte getType() {
-        return (sflags & FLAG_IS_CONTACT) == 0 ? MailItem.TYPE_MESSAGE : MailItem.TYPE_CONTACT;
+    ImapMessage(ImapMessage i4msg) {
+        msgId   = i4msg.msgId;
+        imapUid = i4msg.imapUid;
+        flags   = i4msg.flags;
+        tags    = i4msg.tags;
+        sflags  = (short) (i4msg.sflags & FLAG_IS_CONTACT);
     }
 
-    long getSize(MailItem item) throws ServiceException {
-        if (item instanceof Message)
-            return item.getSize();
-        // FIXME: need to generate the representation of the item to do this correctly...
-        return getContent(item).getFirst();
+    ImapMessage reset() {
+        sflags &= FLAG_IS_CONTACT;
+        return this;
+    }
+
+    byte getType() {
+        return (sflags & FLAG_IS_CONTACT) == 0 ? MailItem.TYPE_MESSAGE : MailItem.TYPE_CONTACT;
     }
 
     boolean isExpunged()  { return (sflags & FLAG_EXPUNGED) != 0; }
@@ -126,14 +134,21 @@ public class ImapMessage implements Comparable<ImapMessage> {
     void setExpunged(boolean expunged)  { sflags = (short) (expunged ? sflags | FLAG_EXPUNGED : sflags & ~FLAG_EXPUNGED); }
     void setAdded(boolean added)        { sflags = (short) (added ? sflags | FLAG_ADDED : sflags & ~FLAG_ADDED); }
 
+    long getSize(MailItem item) throws ServiceException {
+        if (item instanceof Message)
+            return item.getSize();
+        // FIXME: need to generate the representation of the item to do this correctly...
+        return getContent(item).getFirst();
+    }
 
-    public int compareTo(ImapMessage i4msg) {
+
+    @Override public int compareTo(ImapMessage i4msg) {
         if (imapUid == i4msg.imapUid)  return 0;
         return (imapUid < i4msg.imapUid ? -1 : 1);
     }
 
     static class SequenceComparator implements Comparator<ImapMessage> {
-        public int compare(ImapMessage o1, ImapMessage o2) {
+        @Override public int compare(ImapMessage o1, ImapMessage o2) {
             if (o1 == null)       return o2 == null ? 0 : -1;
             else if (o2 == null)  return 1;
             return (o1.sequence < o2.sequence ? -1 : (o1.sequence == o2.sequence ? 0 : 1));
@@ -289,8 +304,9 @@ public class ImapMessage implements Comparable<ImapMessage> {
                 if (nonulls == null)  nonulls = new StringBuilder();
                 nonulls.append(value.substring(lastNull + 1, i));
                 lastNull = i;
-            } else if (c == '"' || c == '\\' || c >= 0x7f || c < 0x20)
+            } else if (c == '"' || c == '\\' || c >= 0x7f || c < 0x20) {
                 literal = true;
+            }
         }
         String content = (nonulls == null ? value : nonulls.append(value.substring(lastNull + 1, i)).toString());
         if (upcase)
@@ -401,7 +417,7 @@ public class ImapMessage implements Comparable<ImapMessage> {
 
     private static void nparams(PrintStream ps, MimeCompoundHeader header) {
         boolean first = true;
-        for (Iterator<Map.Entry<String, String>> it = header.getParameterIterator(); it.hasNext(); first = false) {
+        for (Iterator<Map.Entry<String, String>> it = header.parameterIterator(); it.hasNext(); first = false) {
             Map.Entry<String, String> param = it.next();
             ps.print(first ? '(' : ' ');  aSTRING(ps, param.getKey());  ps.write(' ');  nstring2047(ps, param.getValue());
         }
@@ -413,7 +429,7 @@ public class ImapMessage implements Comparable<ImapMessage> {
             ps.print("NIL");
         } else {
             ContentDisposition cdisp = new ContentDisposition(disposition);
-            ps.write('(');  astring(ps, cdisp.getValue());
+            ps.write('(');  astring(ps, cdisp.getDisposition());
             ps.write(' ');  nparams(ps, cdisp);
             ps.write(')');
         }
@@ -454,12 +470,12 @@ public class ImapMessage implements Comparable<ImapMessage> {
                 queue.removeLast();  pop = true;  continue;
             }
 
-            MPartInfo mpart = level.getFirst();
-            MimePart mp = mpart.getMimePart();
-            boolean hasChildren = mpart.getChildren() != null && !mpart.getChildren().isEmpty();
+            MPartInfo mpi = level.getFirst();
+            MimePart mp = mpi.getMimePart();
+            boolean hasChildren = mpi.getChildren() != null && !mpi.getChildren().isEmpty();
 
             // we used to force unset charsets on text/plain parts to US-ASCII, but that always seemed unwise...
-            ContentType ctype = new ContentType(mp.getHeader("Content-Type", null)).setValue(mpart.getContentType());
+            ContentType ctype = new ContentType(mp.getHeader("Content-Type", null)).setContentType(mpi.getContentType());
             String primary = nATOM(ctype.getPrimaryType()), subtype = nATOM(ctype.getSubType());
 
             if (!pop)
@@ -473,7 +489,7 @@ public class ImapMessage implements Comparable<ImapMessage> {
                     if (!hasChildren) {
                         ps.print("NIL");
                     } else {
-                        queue.addLast(new LinkedList<MPartInfo>(mpart.getChildren()));
+                        queue.addLast(new LinkedList<MPartInfo>(mpi.getChildren()));
                         continue;
                     }
                 }
@@ -513,9 +529,9 @@ public class ImapMessage implements Comparable<ImapMessage> {
                         if (!hasChildren) {
                             ps.print(" NIL NIL");
                         } else {
-                            MimeMessage mm = (MimeMessage) mpart.getChildren().get(0).getMimePart();
+                            MimeMessage mm = (MimeMessage) mpi.getChildren().get(0).getMimePart();
                             ps.write(' ');  serializeEnvelope(ps, mm);  ps.write(' ');
-                            queue.addLast(new LinkedList<MPartInfo>(mpart.getChildren()));
+                            queue.addLast(new LinkedList<MPartInfo>(mpi.getChildren()));
                             continue;
                         }
                     }
@@ -555,9 +571,10 @@ public class ImapMessage implements Comparable<ImapMessage> {
 
             int lines = 0, c;
             boolean complete = false;
-            while ((c = is.read()) != -1)
+            while ((c = is.read()) != -1) {
                 if ((complete = (c == '\n')) == true)
                     lines++;
+            }
             return complete ? lines : lines + 1;
         } catch (MessagingException e) {
             return 0;

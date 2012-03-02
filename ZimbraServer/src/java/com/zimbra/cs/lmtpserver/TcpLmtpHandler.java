@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,7 +15,6 @@
 
 package com.zimbra.cs.lmtpserver;
 
-import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.tcpserver.TcpServerInputStream;
 
@@ -32,6 +31,7 @@ public class TcpLmtpHandler extends LmtpHandler {
     @Override
     protected boolean setupConnection(Socket connection) throws IOException {
         reset();
+        connection.setSoTimeout(mConfig.getMaxIdleSeconds() * 1000);
         mInputStream = new TcpServerInputStream(connection.getInputStream());
         mWriter = new LmtpWriter(connection.getOutputStream());
         return setupConnection(connection.getInetAddress());
@@ -70,6 +70,10 @@ public class TcpLmtpHandler extends LmtpHandler {
     @Override
     protected void continueDATA() throws IOException {
         LmtpMessageInputStream min = new LmtpMessageInputStream(mInputStream, getAdditionalHeaders());
-        processMessageData(min);
+        try {
+            processMessageData(min);
+        } catch (UnrecoverableLmtpException e) {
+            dropConnection();
+        }
     }
 }

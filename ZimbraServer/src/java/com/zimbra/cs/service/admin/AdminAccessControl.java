@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -131,26 +131,17 @@ public abstract class AdminAccessControl {
     
     
     /**
-     * Returns if the specified account is sufficient for delegated auth.
+     * Returns if the specified account is an adequate admin account
      * 
      * Note: this method is static and it checks the specified account.
      *
-     * @param account
-     * @return
+     * @param acct
+     * @return if the specified account is an adequate admin account
      */
-    public static boolean isSufficientAdminForSoapDelegatedAuth(Account acct) {
-        AccessManager accessMgr = AccessManager.getInstance();
-        boolean isAdmin;
-        
-        if (isDomainBasedAccessManager(accessMgr))
-            isAdmin = acct.getBooleanAttr(Provisioning.A_zimbraIsDomainAdminAccount, false) ||
-                      acct.getBooleanAttr(Provisioning.A_zimbraIsAdminAccount, false);
-        else
-            isAdmin = acct.getBooleanAttr(Provisioning.A_zimbraIsDelegatedAdminAccount, false) ||
-                      acct.getBooleanAttr(Provisioning.A_zimbraIsAdminAccount, false);
-        
-        return isAdmin;
+    public static boolean isAdequateAdminAccount(Account acct) {
+        return AccessManager.getInstance().isAdequateAdminAccount(acct);
     }
+    
     
     /**
      *  only called for domain based access manager
@@ -826,6 +817,10 @@ public abstract class AdminAccessControl {
         }
         
         private String printNeededRight(Entry target, Object needed) throws ServiceException {
+            if ((needed instanceof AdminRight) && AdminRight.PR_SYSTEM_ADMIN_ONLY == ((AdminRight)needed)) {
+                return AdminRightCheckPoint.Notes.SYSTEM_ADMINS_ONLY;
+            }
+            
             String targetInfo;
             if (PseudoTarget.isPseudoEntry(target))
                 targetInfo = "";

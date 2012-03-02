@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -132,7 +132,7 @@ function(entry) {
 		this._toolbarOperations[ZaOperation.HELP] = new ZaOperation(ZaOperation.HELP, ZaMsg.TBB_Help, ZaMsg.TBB_Help_tt, "Help", "Help", new AjxListener(this, this._helpButtonListener));		
 		this._toolbarOrder.push(ZaOperation.NONE);
 		this._toolbarOrder.push(ZaOperation.HELP);
-		this._toolbar = new ZaToolBar(this._container, this._toolbarOperations, this._toolbarOrder);
+		this._toolbar = new ZaToolBar(this._container, this._toolbarOperations, this._toolbarOrder, null, null, ZaId.VIEW_ACCT);
 		
 		if(!entry[ZaModel.currentTab])
 			entry[ZaModel.currentTab] = "1";
@@ -140,8 +140,9 @@ function(entry) {
 
 		try {		  		
 			if(!AjxUtil.isEmpty(entry.id)) {
-				//console.log("loading the entry for the form");
+				var isExternal = entry.isExternal;
 				entry.refresh(false,true);
+				entry.isExternal = isExternal;
 			}
 	  		this._contentView = this._view = new this.tabConstructor(this._container,entry);
 			var elements = new Object();
@@ -295,7 +296,18 @@ function () {
 	}
 		
 	var mods = new Object();
-
+    
+	if(!AjxUtil.isEmpty(tmpObj.attrs[ZaAccount.A_COSId]) && !ZaItem.ID_PATTERN.test(tmpObj.attrs[ZaAccount.A_COSId]))  {
+    	var cos = ZaCos.getCosByName(tmpObj.attrs[ZaAccount.A_COSId]);
+    	if(cos) {
+    		tmpObj.attrs[ZaAccount.A_COSId] = cos.id;
+    		tmpObj._defaultValues = cos;
+    	} else {
+    		this.popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_NO_SUCH_COS,[tmpObj.attrs[ZaAccount.A_COSId]]));
+    		return false;
+    	}
+    } 
+	
 	if(!ZaAccount.checkValues(tmpObj))
 		return false;
 	
@@ -305,12 +317,12 @@ function () {
 			try {
 				this._currentObject.changePassword(tmpObj.attrs[ZaAccount.A_password]);
 			} catch (ex) {
-				this.popupErrorDialog(ZaMsg.FAILED_SAVE_ACCOUNT, ex, true);
+				this.popupErrorDialog(ZaMsg.FAILED_SAVE_ACCOUNT, ex);
 				return false;	
 			}
 		}
 	}
-	
+
 	//set the cosId to "" if the autoCos is enabled.
 	if (tmpObj[ZaAccount.A2_autoCos] == "TRUE") {
 		tmpObj.attrs[ZaAccount.A_COSId] = "" ;
@@ -321,7 +333,7 @@ function () {
 		if(a == ZaAccount.A_password || a==ZaAccount.A_zimbraMailAlias || a == ZaItem.A_objectClass
                 || a==ZaAccount.A2_mbxsize || a==ZaAccount.A_mail || a == ZaItem.A_zimbraId
                 || a == ZaAccount.A_zimbraAvailableSkin || a == ZaAccount.A_zimbraZimletAvailableZimlets
-                || a == ZaItem.A_zimbraACE) {
+                || a == ZaItem.A_zimbraACE || a == ZaAccount.A_uid) {
 			continue;
 		}	
 		if(!ZaItem.hasWritePermission(a,tmpObj)) {
@@ -329,9 +341,6 @@ function () {
 		}		
 		//check if the value has been modified
 		if ((this._currentObject.attrs[a] != tmpObj.attrs[a]) && !(this._currentObject.attrs[a] == undefined && tmpObj.attrs[a] === "")) {
-			if(a==ZaAccount.A_uid) {
-				continue; //skip uid, it is changed throw a separate request
-			}
 			if(tmpObj.attrs[a] instanceof Array) {
                 if (!this._currentObject.attrs[a]) this._currentObject.attrs[a] = [] ;
                 if(!this._currentObject.attrs[a] instanceof Array) {
@@ -388,14 +397,20 @@ function () {
 		this._currentObject.modify(mods, tmpObj);
 	} catch (ex) {
 		if(ex.code == ZmCsfeException.ACCT_EXISTS) {
-			this.popupErrorDialog(ZaMsg.FAILED_CREATE_ACCOUNT_1, ex, true);
+			this.popupErrorDialog(ZaMsg.FAILED_CREATE_ACCOUNT_1, ex);
 		} else if(ex.code == ZmCsfeException.NO_SUCH_COS) {
-			this.popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_NO_SUCH_COS,[tmpObj.attrs[ZaAccount.A_COSId]]), ex, true);
+			this.popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_NO_SUCH_COS,[tmpObj.attrs[ZaAccount.A_COSId]]), ex);
         } else {
 			this._handleException(ex, "ZaAccountViewController.prototype._saveChanges", null, false);	
 		}
 		return false;
 	}
+
+	if(tmpObj.attrs[ZaAccount.A_zimbraMailTransport]) {
+		var v = tmpObj.attrs[ZaAccount.A_zimbraMailTransport];
+		if(!this.isLegalofMailTransport(v)) return false;
+	}
+
 	//add-remove aliases
 	var tmpObjCnt = -1;
 	var currentObjCnt = -1;
@@ -504,7 +519,7 @@ function () {
 				this._errorDialog.popup();			
 			}
 		} catch (ex) {
-			this.popupErrorDialog(ZaMsg.FAILED_ADD_ALIASES, ex, true);	
+			this.popupErrorDialog(ZaMsg.FAILED_ADD_ALIASES, ex);	
 			return false;
 		}
 	}
@@ -527,7 +542,7 @@ function () {
 			this._currentObject.rename(newName);
 		} catch (ex) {
 			if(ex.code == ZmCsfeException.ACCT_EXISTS) {
-				this.popupErrorDialog(ZaMsg.FAILED_RENAME_ACCOUNT_1, ex, true);
+				this.popupErrorDialog(ZaMsg.FAILED_RENAME_ACCOUNT_1, ex);
 			} else {
 				this._handleException(ex, "ZaAccountViewController.prototype._saveChanges", null, false);	
 			}
@@ -536,7 +551,6 @@ function () {
 	}
 
     //TODO: may need to check if the account type update is needed. update the domain account limits object
-   
     return true;
 }
 
@@ -603,4 +617,20 @@ function (ex, method, params, restartOnError, obj) {
 	} else {
 		ZaController.prototype._handleException.call(this, ex, method, params, restartOnError, obj);				
 	}	
+}
+
+ZaAccountViewController.prototype.isLegalofMailTransport =
+function(elementValue) {
+	if(!elementValue) return false;
+
+	var regex = new RegExp("(lmtp|smtp)\\:[\\w\\.\\-]+\\:[0-9]+$");
+	var match = regex.exec(elementValue);
+	if(match != null) {
+		return true;
+	}
+	else {
+		this._errorDialog.setMessage(ZaMsg.ERROR_MAILTRANSPORT_INVALID, null, DwtMessageDialog.CRITICAL_STYLE, null);
+		this._errorDialog.popup();
+	}
+	return false;	
 }

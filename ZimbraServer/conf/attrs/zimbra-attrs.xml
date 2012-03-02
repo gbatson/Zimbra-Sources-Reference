@@ -49,10 +49,10 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
       [min="..."]
       [callback="..." ]
       [id="{oid-integer}"
-       cadinality="single|multi"
-       requiredIn="{class-names-comma-seperated}"
-       optionalIn="{class-names-comma-seperated}"
-       [flags="{flag-names-comma-seperated}"]
+       cardinality="single|multi"
+       requiredIn="{class-names-comma-separated}"
+       optionalIn="{class-names-comma-separated}"
+       [flags="{flag-names-comma-separated}"]
        [requiresRestart="{comma-separated-server-types}"]
        [deprecatedSince="{version}"]
        [since="{version}"]]>
@@ -69,7 +69,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
   immutable: 1 means attribute can never be changed directly by
              end-user actions. i.e., it is an attribute that is
-             maintined by the server and shouldn't be changed by
+             maintained by the server and shouldn't be changed by
              SOAP/command-line/APIs. The Entry.modifyAttrs(attrs,
              checkImmutable) call should be used with checkImmutable
              set to true for all data obtained outside the server.
@@ -114,7 +114,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
   requiredIn:
   optionalIn: whether this is a required attribute or not.  A
-              comma-seperated list containing some combination of:
+              comma-separated list containing some combination of:
               mailRecipient, account, alias, distributionList, cos,
               globalConfig, domain, securityGroup, server, mimeEntry,
               objectEntry, zimletEntry, calendarResource;
@@ -156,7 +156,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   deprecatedSince:
   	version since which the attribute had been deprecated.  Deprecated
   	attributes are still generated into the schema.  This flag is only for
-  	documentation purpose so when somone (Zimbra employee or customer)
+  	documentation purpose so when someone (Zimbra employee or customer)
     looks at zimbra-attrs.xml or zimbra.schema they know those attributes
     are no longer used.
     
@@ -168,7 +168,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
   Element deprecateDesc:
     Documentation for how the attribute was deprecated. e.g. attributes and
-    mechenisms that are replacing the deprecated attribute.  Required if
+    mechanisms that are replacing the deprecated attribute.  Required if
     deprecatedSince is present.  Cannot be present if deprecatedSince is not
     present.
     
@@ -191,8 +191,20 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     <desc>RFC2256: common name(s) for which the entity is known by</desc>
 </attr>
 
+<attr name="description" type="string" cardinality="multi" optionalIn="account,distributionList,cos,domain,server,mimeEntry,objectEntry,aclTarget,globalConfig,zimletEntry" flags="domainAdminModifiable">
+    <desc>RFC2256: descriptive information</desc>
+</attr>
+
+<attr name="destinationIndicator" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: destination indicator</desc>
+</attr>
+
 <attr name="displayName" type="string" optionalIn="account,distributionList" requiredIn="calendarResource" flags="accountInfo,domainAdminModifiable" callback="DisplayName">
     <desc>RFC2798: preferred name to be used when displaying entries</desc>
+</attr>
+
+<attr name="facsimileTelephoneNumber" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: Facsimile (Fax) Telephone Number</desc>
 </attr>
 
 <attr name="gn" type="string" optionalIn="account" flags="domainAdminModifiable">
@@ -203,16 +215,16 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     <desc>RFC2256: first name(s) for which the entity is known by</desc>
 </attr>
 
-<attr name="description" type="string" cardinality="multi" optionalIn="account,distributionList,cos,domain,server,mimeEntry,objectEntry,aclTarget,globalConfig,zimletEntry" flags="domainAdminModifiable">
-    <desc>RFC2256: descriptive information</desc>
-</attr>
-
 <attr name="homePhone" type="string" optionalIn="account" flags="domainAdminModifiable">
     <desc>RFC1274: home telephone number</desc>
 </attr>
 
 <attr name="initials" type="string" optionalIn="account" flags="domainAdminModifiable">
     <desc>RFC2256: initials of some or all of names, but not the surname(s).</desc>
+</attr>
+
+<attr name="internationaliSDNNumber" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: international ISDN number</desc>
 </attr>
 
 <attr name="l" type="string" optionalIn="account" flags="domainAdminModifiable">
@@ -247,12 +259,24 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     <desc>'RFC2256: Physical Delivery Office Name</desc>
 </attr>
 
+<attr name="postOfficeBox" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: Post Office Box</desc>
+</attr>
+
 <attr name="postalAddress" type="string" optionalIn="account" flags="domainAdminModifiable">
     <desc>RFC2256: postal address</desc>
 </attr>
 
 <attr name="postalCode" type="string" optionalIn="account" flags="domainAdminModifiable">
     <desc>RFC2256: postal code</desc>
+</attr>
+
+<attr name="preferredDeliveryMethod" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: preferred delivery method</desc>
+</attr>
+
+<attr name="registeredAddress" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: registered postal address</desc>
 </attr>
 
 <attr name="sn" type="string" optionalIn="account" flags="domainAdminModifiable">
@@ -275,6 +299,14 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     <desc>RFC2256: Telephone Number</desc>
 </attr>
 
+<attr name="teletexTerminalIdentifier" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: Teletex Terminal Identifier</desc>
+</attr>
+
+<attr name="telexNumber" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: Telex Number</desc>
+</attr>
+
 <attr name="title" type="string" optionalIn="account" flags="domainAdminModifiable">
     <desc>RFC2256: title associated with the entity</desc>
 </attr>
@@ -287,8 +319,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     <desc>RFC2256/2307: password of user. Stored encoded as SSHA (salted-SHA1)</desc>
 </attr>
 
+<attr name="x121Address" type="string" optionalIn="account" flags="domainAdminModifiable">
+    <desc>RFC2256: X.121 Address</desc>
+</attr>
 
-<attr id="1" name="zimbraId" type="id" immutable="1" cardinality="single" requiredIn="account,alias,distributionList,cos,domain,server,calendarResource,xmppComponent" flags="accountInfo">
+
+<attr id="1" name="zimbraId" type="id" immutable="1" cardinality="single" requiredIn="account,alias,distributionList,cos,domain,server,calendarResource,xmppComponent,group" flags="accountInfo">
   <desc>Zimbra Systems Unique ID</desc>
 </attr>
 
@@ -301,7 +337,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="4" name="zimbraMailHost" type="astring" max="256" callback="MailHost" cardinality="single" optionalIn="mailRecipient">
-  <desc>the server hosting the accounts mailbox</desc>
+  <desc>the server hosting the account's mailbox</desc>
 </attr>
 
 <!--
@@ -310,7 +346,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
  -->
 <attr id="8" name="zimbraHsmAge" type="duration" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" deprecatedSince="6.0.0_BETA2">
   <globalConfigValue>30d</globalConfigValue>
-  <desc>Minimum age of mail items whose filesystem data will be moved to secondary storage (nnnnn[hmsd]).</desc>
+  <desc>Minimum age of mail items whose filesystem data will be moved to secondary storage.</desc>
   <deprecateDesc>deprecated in favor for zimbraHsmPolicy</deprecateDesc>
 </attr>
 
@@ -335,7 +371,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>COS zimbraID</desc>
 </attr>
 
-<attr id="15" name="zimbraMailStatus" type="enum" value="enabled,disabled" cardinality="single" optionalIn="mailRecipient" flags="domainAdminModifiable">
+<attr id="15" name="zimbraMailStatus" type="enum" value="enabled,disabled" cardinality="single" optionalIn="mailRecipient,group" flags="domainAdminModifiable">
   <desc>mail delivery status (enabled/disabled)</desc>
 </attr>
 
@@ -356,7 +392,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>name of the domain</desc>
 </attr>
 
-<attr id="20" name="zimbraMailAlias" type="email" max="256" immutable="1" cardinality="multi" optionalIn="mailRecipient" flags="accountInfo">
+<attr id="20" name="zimbraMailAlias" type="email" max="256" immutable="1" cardinality="multi" optionalIn="mailRecipient,group" flags="accountInfo">
   <desc>RFC822 email address of this recipient for accepting mail</desc>
 </attr>
 
@@ -478,19 +514,22 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>LDAP bind password for external GAL queries</desc>
 </attr>
 
-<attr id="51" name="zimbraGalLdapFilter" type="string" max="4096" cardinality="single" optionalIn="domain">
+<attr id="51" name="zimbraGalLdapFilter" type="string" max="4096" cardinality="single" optionalIn="domain" callback="GalLdapFilter">
   <desc>LDAP search filter for external GAL search queries</desc>
 </attr>
 
 <attr id="52" name="zimbraGalLdapFilterDef" type="string" max="4096" cardinality="multi" optionalIn="globalConfig">
-  <globalConfigValue>zimbraAccounts:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))</globalConfigValue>
-  <globalConfigValue>zimbraAccountAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))</globalConfigValue>
-  <globalConfigValue>zimbraAccountSync:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))</globalConfigValue>
+  <globalConfigValue>zimbraAccounts:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))</globalConfigValue>
+  <globalConfigValue>zimbraAccountAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))</globalConfigValue>
+  <globalConfigValue>zimbraAccountSync:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))</globalConfigValue>
   <globalConfigValue>zimbraResources:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraCalendarResource))</globalConfigValue>
   <globalConfigValue>zimbraResourceAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(objectclass=zimbraCalendarResource))</globalConfigValue>
   <globalConfigValue>zimbraResourceSync:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraCalendarResource))</globalConfigValue>
-  <globalConfigValue>zimbraAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))</globalConfigValue>
-  <globalConfigValue>zimbraSearch:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))</globalConfigValue>
+  <globalConfigValue>zimbraGroups:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraDistributionList))</globalConfigValue>
+  <globalConfigValue>zimbraGroupAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(objectclass=zimbraDistributionList))</globalConfigValue>
+  <globalConfigValue>zimbraGroupSync:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraDistributionList))</globalConfigValue>
+  <globalConfigValue>zimbraAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))</globalConfigValue>
+  <globalConfigValue>zimbraSearch:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))</globalConfigValue>
   <globalConfigValue>zimbraSync:(&amp;(|(displayName=*)(cn=*)(sn=*)(gn=*)(mail=*)(zimbraMailDeliveryAddress=*)(zimbraMailAlias=*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE)))</globalConfigValue>
   <globalConfigValue>ad:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(givenName=*%s*)(mail=*%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
   <globalConfigValue>adAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(givenName=%s*)(mail=%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
@@ -612,7 +651,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>timeout value in seconds</desc>
 </attr>
 
-<attr id="100" name="zimbraAuthTokenKey" type="ostring" max="128" immutable="1" cardinality="multi" optionalIn="globalConfig">
+<attr id="100" name="zimbraAuthTokenKey" type="ostring" max="128" immutable="1" cardinality="multi" optionalIn="globalConfig" requiresRestart="mailbox">
   <desc>auth token secret key</desc>
 </attr>
 
@@ -648,7 +687,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="106" name="zimbraMailMessageLifetime" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable,accountInfo">
   <defaultCOSValue>0</defaultCOSValue>
-  <desc>lifetime (nnnnn[hmsd]) of a mail message regardless of location</desc>
+  <desc>lifetime of a mail message regardless of location</desc>
 </attr>
 
 <attr id="107" name="zimbraContactMaxNumEntries" type="integer" min="0" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited">
@@ -658,22 +697,22 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="108" name="zimbraAuthTokenLifetime" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable">
   <defaultCOSValue>2d</defaultCOSValue>
-  <desc>lifetime (nnnnn[hmsd]) of newly created auth tokens</desc>
+  <desc>lifetime of newly created auth tokens</desc>
 </attr>
 
 <attr id="109" name="zimbraAdminAuthTokenLifetime" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable">
   <defaultCOSValue>12h</defaultCOSValue>
-  <desc>lifetime (nnnnn[hmsd]) of newly created admin auth tokens</desc>
+  <desc>lifetime of newly created admin auth tokens</desc>
 </attr>
 
 <attr id="110" name="zimbraMailMinPollingInterval" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable">
   <defaultCOSValue>2m</defaultCOSValue>
-  <desc>minimum allowed value for zimbraPrefMailPollingInterval (nnnnn[hmsd])</desc>
+  <desc>minimum allowed value for zimbraPrefMailPollingInterval</desc>
 </attr>
 
 <attr id="111" name="zimbraPrefMailPollingInterval" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable">
   <defaultCOSValue>5m</defaultCOSValue>
-  <desc>interval at which the web client polls the server for new messages (nnnnn[hmsd])</desc>
+  <desc>interval at which the web client polls the server for new messages</desc>
 </attr>
 
 <attr id="112" name="zimbraAccountClientAttr" type="string" max="1024" cardinality="multi" optionalIn="globalConfig" deprecatedSince="5.0">
@@ -687,7 +726,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="114" name="zimbraLastLogonTimestampFrequency" type="duration" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>7d</globalConfigValue>
-  <desc>how often (nnnnn[hmsd]) the zimbraLastLogonTimestamp is updated.  
+  <desc>how often the zimbraLastLogonTimestamp is updated.  
         if set to 0, updating zimbraLastLogonTimestamp is completely disabled
   </desc>
 </attr>
@@ -807,7 +846,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="147" name="zimbraMailIdleSessionTimeout" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable">
   <defaultCOSValue>0</defaultCOSValue>
-  <desc>idle timeout (nnnnn[hmsd])</desc>
+  <desc>idle timeout</desc>
 </attr>
 
 <attr id="148" name="zimbraPrefContactsPerPage" type="integer" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable"> <!-- TODO: get min/max? -->
@@ -838,8 +877,11 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 <attr id="153" name="zimbraGalLdapAttrMap" type="string" max="4096" cardinality="multi" optionalIn="globalConfig,domain,galDataSource" flags="domainInherited">
   <globalConfigValue>co=workCountry</globalConfigValue>
   <globalConfigValue>company=company</globalConfigValue>
+  <globalConfigValue>zimbraPhoneticCompany,ms-DS-Phonetic-Company-Name=phoneticCompany</globalConfigValue>
   <globalConfigValue>givenName,gn=firstName</globalConfigValue>
+  <globalConfigValue>zimbraPhoneticFirstName,ms-DS-Phonetic-First-Name=phoneticFirstName</globalConfigValue>
   <globalConfigValue>sn=lastName</globalConfigValue>
+  <globalConfigValue>zimbraPhoneticLastName,ms-DS-Phonetic-Last-Name=phoneticLastName</globalConfigValue>
   <globalConfigValue>displayName,cn=fullName,fullName2,fullName3,fullName4,fullName5,fullName6,fullName7,fullName8,fullName9,fullName10</globalConfigValue>
   <globalConfigValue>initials=initials</globalConfigValue>
   <globalConfigValue>description=notes</globalConfigValue>
@@ -860,9 +902,15 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>whenCreated,createTimeStamp=createTimeStamp</globalConfigValue>
   <globalConfigValue>zimbraId=zimbraId</globalConfigValue>
   <globalConfigValue>objectClass=objectClass</globalConfigValue>
-  <globalConfigValue>zimbraMailForwardingAddress=zimbraMailForwardingAddress</globalConfigValue>
-  <globalConfigValue>zimbraCalResType=zimbraCalResType</globalConfigValue>
-  <globalConfigValue>zimbraCalResLocationDisplayName=zimbraCalResLocationDisplayName</globalConfigValue>
+  <globalConfigValue>zimbraMailForwardingAddress=member</globalConfigValue>
+  <globalConfigValue>zimbraCalResType,msExchResourceSearchProperties=zimbraCalResType</globalConfigValue>
+  <globalConfigValue>zimbraCalResLocationDisplayName,displayName=zimbraCalResLocationDisplayName</globalConfigValue>
+  <globalConfigValue>zimbraCalResBuilding=zimbraCalResBuilding</globalConfigValue>
+  <globalConfigValue>zimbraCalResCapacity,msExchResourceCapacity=zimbraCalResCapacity</globalConfigValue>
+  <globalConfigValue>zimbraCalResFloor=zimbraCalResFloor</globalConfigValue>
+  <globalConfigValue>zimbraCalResSite=zimbraCalResSite</globalConfigValue>
+  <globalConfigValue>zimbraCalResContactEmail=zimbraCalResContactEmail</globalConfigValue>
+  <globalConfigValue>msExchResourceSearchProperties=zimbraAccountCalendarUserType</globalConfigValue>
   <desc>LDAP Gal attribute to contact attr mapping</desc>
 </attr>
 
@@ -973,12 +1021,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="176" name="zimbraImapServerEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox">
   <globalConfigValue>TRUE</globalConfigValue>
-  <desc>whether IMAP server is enabled for a given server</desc>
+  <desc>whether IMAP is enabled for a server</desc>
 </attr>
 
 <attr id="177" name="zimbraPop3ServerEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox">
   <globalConfigValue>TRUE</globalConfigValue>
-  <desc>whether IMAP is enabled for a server</desc>
+  <desc>whether POP3 is enabled for a server</desc>
 </attr>
 
 <attr id="178" name="zimbraImapAdvertisedName" type="string" max="128" cardinality="single" optionalIn="server" requiresRestart="mailbox">
@@ -1039,7 +1087,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="191" name="zimbraVirusDefinitionsUpdateFrequency" type="duration" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta">
   <globalConfigValue>2h</globalConfigValue>
-  <desc>how often (nnnnn[hmsd]) the virus definitions are updated</desc>
+  <desc>how often the virus definitions are updated</desc>
 </attr>
 
 <attr id="192" name="zimbraPrefShowFragments" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable">
@@ -1098,8 +1146,8 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Value for postconf message_size_limit</desc>
 </attr>
 
-<attr id="199" name="zimbraMtaRelayHost" type="astring" max="256" cardinality="multi" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta">
-  <desc>Value for postconf relayhost</desc>
+<attr id="199" name="zimbraMtaRelayHost" type="astring" max="256" cardinality="multi" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" callback="MtaRelayHost">
+  <desc>Value for postconf relayhost.  Note: there can be only one value on this attribute, see bug 50697.</desc>
 </attr>
 
 <attr id="200" name="zimbraMtaTlsAuthOnly" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta">
@@ -1294,11 +1342,11 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>compatibility mode for calendar server</desc>
 </attr>
 
-<attr id="244" name="zimbraSpamIsSpamAccount" type="email" max="256" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="244" name="zimbraSpamIsSpamAccount" type="email" max="256" cardinality="single" optionalIn="globalConfig">
   <desc>When user classifies a message as spam forward message via SMTP to this account</desc>
 </attr>
 
-<attr id="245" name="zimbraSpamIsNotSpamAccount" type="email" max="256" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="245" name="zimbraSpamIsNotSpamAccount" type="email" max="256" cardinality="single" optionalIn="globalConfig">
   <desc>When user classifies a message as not spam forward message via SMTP to this account</desc>
 </attr>
 
@@ -1370,12 +1418,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="263" name="zimbraLogRawLifetime" type="duration" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>31d</globalConfigValue>
-  <desc>lifetime (nnnnn[hmsd]) of raw log rows in consolidated logger tables</desc>
+  <desc>lifetime of raw log rows in consolidated logger tables</desc>
 </attr>
 
 <attr id="264" name="zimbraLogSummaryLifetime" type="duration" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>730d</globalConfigValue>
-  <desc>lifetime (nnnnn[hmsd]) of summarized log rows in consolidated logger tables</desc>
+  <desc>lifetime of summarized log rows in consolidated logger tables</desc>
 </attr>
 
 <attr id="267" name="zimbraSpellCheckURL" type="astring" max="256" cardinality="multi" optionalIn="globalConfig,server" flags="serverInherited">
@@ -1677,13 +1725,9 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>phone number of contact in charge of resource</desc>
 </attr>
 
-<attr id="334" name="zimbraMessageIdDedupeCacheSize" type="integer" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="334" name="zimbraMessageIdDedupeCacheSize" type="integer" cardinality="single" optionalIn="globalConfig" min="0">
   <globalConfigValue>3000</globalConfigValue>
-  <desc>
-    Number of Message-Id header values to keep in the LMTP dedupe cache.
-    Subsequent attempts to deliver a message with a matching Message-Id
-    to the same mailbox will be ignored.  A value of 0 disables deduping.
-  </desc>
+  <desc>Size of cache for delivery time dedupe based on Message-Id header.  Set to 0 to disable this type of deduping.</desc>
 </attr>
 
 <attr id="335" name="zimbraFeatureSharingEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited">
@@ -1781,13 +1825,14 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="355" name="zimbraPrefSkin" type="string" max="80" cardinality="single" optionalIn="account,cos,domain" flags="domainInfo,accountCosDomainInherited,domainAdminModifiable">
-  <defaultCOSValue>beach</defaultCOSValue>
+  <defaultCOSValue>carbon</defaultCOSValue>
   <desc>Skin to use for this account</desc>
 </attr>
 
-<attr id="356" name="zimbraFeatureNotebookEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited">
-  <defaultCOSValue>TRUE</defaultCOSValue>
+<attr id="356" name="zimbraFeatureNotebookEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" deprecatedSince="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>Whether notebook feature should be allowed for this account or in this cos</desc>
+  <deprecateDesc>Deprecated per bug 50465</deprecateDesc>
 </attr>
 
 <attr id="357" name="zimbraShareInfo" type="string" max="1024" cardinality="multi" optionalIn="account,distributionList">
@@ -2304,22 +2349,22 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Notify for status change</desc>
 </attr>
 
-<attr id="465" name="zimbraSpamReportSenderHeader" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="465" name="zimbraSpamReportSenderHeader" type="string" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>X-Zimbra-Spam-Report-Sender</globalConfigValue>
   <desc>mail header name for sender in spam report</desc>
 </attr>
 
-<attr id="466" name="zimbraSpamReportTypeHeader" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="466" name="zimbraSpamReportTypeHeader" type="string" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>X-Zimbra-Spam-Report-Type</globalConfigValue>
   <desc>mail header name for report type in spam report</desc>
 </attr>
 
-<attr id="467" name="zimbraSpamReportTypeSpam" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="467" name="zimbraSpamReportTypeSpam" type="string" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>spam</globalConfigValue>
   <desc>spam report type value for spam</desc>
 </attr>
 
-<attr id="468" name="zimbraSpamReportTypeHam" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox">
+<attr id="468" name="zimbraSpamReportTypeHam" type="string" cardinality="single" optionalIn="globalConfig">
   <globalConfigValue>ham</globalConfigValue>
   <desc>spam report type value for ham</desc>
 </attr>
@@ -2801,7 +2846,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="555" name="zimbraImapSaslGssapiEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="5.0.0">
   <globalConfigValue>FALSE</globalConfigValue>
-  <desc>whether POP3 SASL GSSAPI is enabled for a given server</desc>
+  <desc>whether IMAP SASL GSSAPI is enabled for a given server</desc>
 </attr>
 
 <attr id="556" name="zimbraPrefIMLogChats" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="5.0.0">
@@ -2831,18 +2876,18 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="561" name="zimbraPrefAutoSaveDraftInterval" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.0">
   <defaultCOSValue>30s</defaultCOSValue>
-  <desc>time to wait before auto saving a draft(nnnnn[hmsd])</desc>
+  <desc>time to wait before auto saving a draft</desc>
 </attr>
 
 <attr id="562" name="zimbraVirtualIPAddress" type="string" max="256" cardinality="multi" optionalIn="domain" since="5.0.0">
   <desc>An virtual IP address for this domain, used to determine domain based on an IP address</desc>
 </attr>
 
-<attr id="563" name="zimbraSSLCertificate" type="astring" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="5.0.0">
+<attr id="563" name="zimbraSSLCertificate" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited,domainInherited" since="5.0.0">
   <desc>SSL certificate</desc>
 </attr>
 
-<attr id="564" name="zimbraSSLPrivateKey" type="astring" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="5.0.0">
+<attr id="564" name="zimbraSSLPrivateKey" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited,domainInherited" since="5.0.0">
   <desc>SSL private key</desc>
 </attr>
 
@@ -2894,15 +2939,14 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <deprecateDesc>was added for Yahoo calendar, no longer used</deprecateDesc>
 </attr>
 
-<attr id="575" name="zimbraPrefCalendarReminderEmail" type="string" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.0" deprecatedSince="6.0.0_BETA1">
-  <desc>The email the reminder goes to.</desc>
-  <deprecateDesc>was added for Yahoo calendar, no longer used</deprecateDesc>
+<attr id="575" name="zimbraPrefCalendarReminderEmail" type="email" max="256" cardinality="single" optionalIn="account" flags="domainAdminModifiable" since="7.0.0">
+  <desc>RFC822 email address for receiving reminders for appointments and tasks</desc>
 </attr>
 
 <attr id="576" name="zimbraPrefCalendarReminderSendEmail" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.0" deprecatedSince="6.0.0_BETA1">
-  <defaultCOSValue>FALSE</defaultCOSValue>
-  <desc>To send email or to not send email is the question.</desc>
-  <deprecateDesc>was added for Yahoo calendar, no longer used</deprecateDesc>
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>whether or not email reminders for appointments and tasks are enabled</desc>
+   <deprecateDesc>was added for Yahoo calendar, no longer used</deprecateDesc>
 </attr>
 
 <attr id="577" name="zimbraPrefCalendarReminderMobile" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.0" deprecatedSince="6.0.0_BETA1">
@@ -2939,7 +2983,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 <attr id="583" name="zimbraGalLdapPageSize" type="integer" max="1000" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited" since="5.0.1">
   <globalConfigValue>1000</globalConfigValue>
   <desc>LDAP page size for paged search control while accessing LDAP server for GAL.  
-        This apples to both Zimbra and external LDAP servers.
+        This applies to both Zimbra and external LDAP servers.
         A value of 0 means paging is not enabled. 
   </desc>
 </attr>
@@ -3009,7 +3053,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 <attr id="597" name="zimbraGalSyncLdapPageSize" type="integer" max="1000" cardinality="single" optionalIn="globalConfig,domain,galDataSource" flags="domainInherited" since="5.0.2">
   <globalConfigValue>1000</globalConfigValue>
   <desc>LDAP page size for paged search control while accessing LDAP server for GAL sync.  
-        This apples to both Zimbra and external LDAP servers.
+        This applies to both Zimbra and external LDAP servers.
         A value of 0 means paging is not enabled. 
         If not set fallback to zimbraGalLdapPageSize
   </desc>
@@ -3260,7 +3304,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>SSL_RSA_EXPORT_WITH_DES40_CBC_SHA</globalConfigValue> 
   <globalConfigValue>SSL_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA</globalConfigValue> 
   <globalConfigValue>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</globalConfigValue>
-  <desc>excluded cipher suites</desc>
+  <desc>space separated list of excluded cipher suites</desc>
 </attr>
 
 <attr id="640" name="zimbraReverseProxySSLCiphers" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="nginxproxy" since="5.0.5">
@@ -3614,7 +3658,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="714" name="zimbraDomainCOSMaxAccounts" type="string" max="256" cardinality="multi" optionalIn="domain" callback="DomainCOSMaxAccounts" since="5.0.10">
-  <desc>maximum number of accounts allowed to be assigned to specified COSes in a domain </desc>
+  <desc>maximum number of accounts allowed to be assigned to specified COSes in a domain.  Values are in the format of {zimraId-of-a-cos}:{max-accounts}</desc>
 </attr>
 
 <attr id="715" name="zimbraDomainFeatureMaxAccounts" type="string" max="256" cardinality="multi" optionalIn="domain" since="5.0.10">
@@ -3780,7 +3824,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>If true, an X-Authenticated-User header will be added to messages sent via SendMsgRequest.</desc>
 </attr>
 
-<attr id="748" name="zimbraMailPurgeUseChangeDateForTrash" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="5.0.17">
+<attr id="748" name="zimbraMailPurgeUseChangeDateForTrash" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited" since="5.0.17">
   <defaultCOSValue>TRUE</defaultCOSValue>
   <desc>
     If TRUE, a message is purged from trash based on the date that it was moved
@@ -3959,7 +4003,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Time interval (ms) given to mail route lookup handler to cache a failed response to route a previous lookup request (after this time elapses, Proxy retries this host)</desc>
 </attr>
 
-<attr id="779" name="zimbraReverseProxyUseExternalRoute" type="boolean" cardinality="single" optionalIn="account" flags="domainAdminModifiable" since="5.0.12">
+<attr id="779" name="zimbraReverseProxyUseExternalRoute" type="boolean" cardinality="single" optionalIn="account,domain" flags="domainAdminModifiable" since="5.0.12">
   <desc>
       There is a deployment scenario for migrations where all of the customers users are pointed at the zimbra POP IMAP reverse proxy.  
       We then want their connections proxied back to the legacy system for for not-yet-non-migrated users.
@@ -4066,8 +4110,8 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Value for postconf smtpd_tls_security_level</desc>
 </attr>
 
-<attr id="796" name="zimbraMtaSaslAuthEnable" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" since="6.0.0_BETA1">
-  <globalConfigValue>TRUE</globalConfigValue>
+<attr id="796" name="zimbraMtaSaslAuthEnable" type="enum" value="yes,no" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" since="6.0.0_BETA1">
+  <globalConfigValue>yes</globalConfigValue>
   <desc>Value for postconf smtpd_sasl_auth_enable</desc>
 </attr>
 
@@ -4106,7 +4150,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Zimlet Util will set this attribute based on the value in zimlet definition XML file</desc>
 </attr>
 
-<attr id="804" name="zimbraPrefReadingPaneLocation" type="enum" value="bottom,right,off" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="6.0.0_BETA1">
+<attr id="804" name="zimbraPrefReadingPaneLocation" type="enum" value="bottom,right,off" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="6.0.0_BETA1">
   <defaultCOSValue>bottom</defaultCOSValue>
   <desc>where the message reading pane is displayed in list views</desc>
 </attr>
@@ -4679,6 +4723,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1049" name="zimbraSpamReportEnvelopeFrom" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox" since="6.0.2">
+  <globalConfigValue>&lt;&gt;</globalConfigValue>
   <desc>value for envelope from (MAIL FROM) in spam report</desc>
 </attr>
 
@@ -4698,12 +4743,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1053" name="zimbraFeatureBriefcaseSpreadsheetEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="6.0.2">
-  <defaultCOSValue>TRUE</defaultCOSValue>
+  <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>Spreadsheet features enabled in briefcase</desc>
 </attr>
 
 <attr id="1054" name="zimbraFeatureBriefcaseSlidesEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="6.0.2">
-  <defaultCOSValue>TRUE</defaultCOSValue>
+  <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>Slides features enabled in briefcase</desc>
 </attr>
 
@@ -4863,7 +4908,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1086" name="zimbraContactHiddenAttributes" type="string" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.6">
-  <globalConfigValue>dn,zimbraAccountCalendarUserType,zimbraCalResType,zimbraCalResLocationDisplayName,zimbraCalResCapacity,zimbraCalResContactEmail,vcardUID,vcardURL,vcardXProps</globalConfigValue>
+  <globalConfigValue>dn,vcardUID,vcardURL,vcardXProps,member</globalConfigValue>
   <desc>Comma separated list of Contact attributes that should be hidden from clients and export of contacts.</desc>
 </attr>
 
@@ -4906,7 +4951,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>whether to show Find Locations and Find Resources tabs for editing appointments</desc>
 </attr>
 
-<attr id="1093" name="zimbraGalAlwaysIncludeLocalCalendarResources" type="boolean" cardinality="single" optionalIn="domain,globalConfig" flags="domainInfo,domainInherited,domainAdminModifiable"  since="6.0.7">
+<attr id="1093" name="zimbraGalAlwaysIncludeLocalCalendarResources" type="boolean" cardinality="single" optionalIn="domain,globalConfig" flags="domainInherited,domainAdminModifiable"  since="6.0.7">
   <globalConfigValue>FALSE</globalConfigValue>
   <desc>
     When set to TRUE, GAL search will always include local
@@ -4933,12 +4978,22 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1097" name="zimbraMailEmptyFolderBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.8">
-  <globalConfigValue>1000</globalConfigValue>
-  <desc>
-    Maximum number of messages to delete during a single transaction when emptying a large folder. 
-    When a folder is emptied and it contains more than zimbraMailEmptyFolderBatchThreshold messages, 
-    the operation is performed in multiple transactions.
-  </desc>
+  <globalConfigValue>100000</globalConfigValue>
+  <desc>Maximum number of messages to delete during a single transaction when emptying a folder.  If the limit is exceeded, the folder is emptied in multiple transactions.  Each transaction deletes this number of messages.</desc>
+</attr>
+
+<attr id="1098" name="zimbraBasicAuthRealm"  type="string" max="256" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited" since="7.0.0">
+  <globalConfigValue>Zimbra</globalConfigValue>
+  <desc>Realm for the basic auth challenge (WWW-Authenticate) header</desc>
+</attr>
+
+<attr id="1099" name="zimbraMailAllowReceiveButNotSendWhenOverQuota" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited" since="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>If TRUE, a mailbox that exceeds its quota is still allowed to receive mail, but is not allowed to send.</desc>
+</attr>
+
+<attr id="1100" name="zimbraAmavisQuarantineAccount" type="email" max="256" cardinality="single" optionalIn="globalConfig" since="7.0.0">
+  <desc>When a virus is detected quarantine message to this account</desc>
 </attr>
 
 <attr id="1101" name="zimbraAdminAccessControlMech" type="enum" cardinality="single" value="acl,global" optionalIn="globalConfig" since="6.0.9" requiresRestart="mailbox">
@@ -4950,18 +5005,263 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   </desc>
 </attr>
 
+<attr id="1102" name="zimbraPrefContactsExpandAppleContactGroups" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable"  since="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>Expand the contact groups in Apple Address Book format to Zimbra format over CardDAV.</desc>
+</attr>
+
+<attr id="1103" name="zimbraPrefCalendarWorkingHours" type="string" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" callback="WorkingHours" since="7.0.0">
+  <defaultCOSValue>1:N:0800:1700,2:Y:0800:1700,3:Y:0800:1700,4:Y:0800:1700,5:Y:0800:1700,6:Y:0800:1700,7:N:0800:1700</defaultCOSValue>
+  <desc>working hours for each day of the week</desc>
+</attr>
+
+<attr id="1106" name="zimbraDataSourceImportOnly" type="boolean" cardinality="single" optionalIn="dataSource" since="7.0.0">
+  <desc>indicates that this datasource is used for one way (incoming) import vs. two-way sync</desc>
+</attr>
+
+<attr id="1107" name="zimbraDataSourceAuthMechanism" type="enum" value="PLAIN,GSSAPI,CRAM-MD5" cardinality="single" optionalIn="imapDataSource" since="7.0.0">
+  <desc>Which SASL authentication mechanism  to use for authenticating to IMAP server.</desc>
+</attr>
+
+<attr id="1108" name="zimbraDataSourceAuthorizationId" type="string" cardinality="single" optionalIn="imapDataSource" since="7.0.0">
+  <desc>authorizationId for SASL authentication</desc>
+</attr>
+
+<attr id="1109" name="zimbraFeaturePeopleSearchEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="7.0.0">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>whether people search feature is enabled</desc>
+</attr>
+
+<attr id="1110" name="zimbraGalLdapValueMap" type="string" max="4096" cardinality="multi" optionalIn="globalConfig,domain,galDataSource" flags="domainInherited" since="7.0.0">
+  <globalConfigValue>zimbraCalResType: Room Location</globalConfigValue>
+  <globalConfigValue>zimbraAccountCalendarUserType: Room|Equipment RESOURCE</globalConfigValue>
+  <desc>LDAP Gal attribute to contact value mapping. Each value is in the format of {gal contact filed}: {regex} {replacement}</desc>
+</attr>
+
+<attr id="1111" name="zimbraBackupMinFreeSpace" type="string" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="7.0.0">
+  <globalConfigValue>0</globalConfigValue>
+  <desc>Minimum percentage or TB/GB/MB/KB/bytes of free space on backup target to allow a full or auto-grouped backup to start; 0 = no minimum is enforced.  Examples: 25%, 10GB</desc>
+</attr>
+
+<attr id="1112" name="zimbraGalLdapGroupHandlerClass" type="string" max="1024" cardinality="single" optionalIn="globalConfig,domain,galDataSource" flags="domainInherited" since="7.0.0">
+  <desc>the handler class for mapping groups from GAL source to zimbra GAL contacts for external GAL</desc>
+</attr>
+
+<attr id="1113" name="zimbraAdminImapImportNumThreads" type="integer" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mailbox" since="7.0.0">
+  <globalConfigValue>20</globalConfigValue>
+  <desc>number of admin initiated imap import handler threads</desc>
+</attr>
+
+<attr id="1114" name="zimbraMilterBindPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="mta" since="7.0.0">
+  <globalConfigValue>7026</globalConfigValue>
+  <desc>port number on which milter server should listen</desc>
+</attr>
+
+<attr id="1115" name="zimbraMilterBindAddress" type="string" max="128" cardinality="multi" optionalIn="server" requiresRestart="mta" since="7.0.0">
+  <desc>interface address(es) on which milter server should listen; if not specified, binds to 127.0.0.1</desc>
+</attr>
+  
+<attr id="1116" name="zimbraMilterServerEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" since="7.0.0">
+  <globalConfigValue>FALSE</globalConfigValue>
+  <desc>whether milter server is enabled for a given server</desc>
+</attr>
+
+<attr id="1117" name="zimbraMailPurgeUseChangeDateForSpam" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited" since="7.0.0">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>
+    If TRUE, a message is purged from Spam based on the date that it was moved
+    to the Spam folder.  If FALSE, a message is purged from Spam based on the
+    date that it was added to the mailbox.
+  </desc>
+</attr>
+
+<attr id="1118" name="zimbraSpnegoAuthEnabled" type="boolean" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox" since="7.0.0">
+  <globalConfigValue>FALSE</globalConfigValue>
+  <desc>whether spnego SSO is enabled</desc>
+</attr>
+
+<attr id="1119" name="zimbraSpnegoAuthRealm" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox" since="7.0.0">
+  <desc>spnego auth realm</desc>
+</attr>
+
+<!--
+No longer need KDC/admin server, jetty does not consult them during spnego auth
+TODO: delete them permerntly from here
+
+<attr id="1120" name="zimbraSpnegoAuthKDC" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox" since="7.0.0">
+  <desc>ip or hostname for spnego auth KDC</desc>
+</attr>
+
+<attr id="1121" name="zimbraSpnegoAuthAdminServer" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox" since="7.0.0">
+  <desc>ip or hostname for spnego auth admin server</desc>
+</attr>
+-->
+
+<attr id="1122" name="zimbraSpnegoAuthPrincipal" type="string" cardinality="single" optionalIn="server" requiresRestart="mailbox" since="7.0.0">
+  <desc>spnego auth principal</desc>
+</attr>
+
+<attr id="1123" name="zimbraSpnegoAuthTargetName" type="string" cardinality="single" optionalIn="server" requiresRestart="mailbox" since="7.0.0">
+  <desc>spnego auth target name</desc>
+</attr>
+
+<attr id="1124" name="zimbraSpnegoAuthErrorURL" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="mailbox" since="7.0.0">
+  <desc>spnego auth error URL</desc>
+</attr>
+
+<attr id="1125" name="zimbraPrefForwardReplySignatureId" type="id" cardinality="single" optionalIn="account,identity,dataSource" flags="domainAdminModifiable" since="7.0.0">
+  <desc>forword/reply signature id for account/identity/dataSource</desc>
+</attr>
+
+<attr id="1126" name="zimbraDataSourceIsInternal" type="boolean" cardinality="single" optionalIn="dataSource" since="7.0.0">
+  <desc>If TRUE, the data source is hidden from the UI.</desc>
+</attr>
+
+<attr id="1127" name="zimbraFeatureMAPIConnectorEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>enable/disable MAPI (Microsoft Outlook) Connector</desc>
+</attr>
+
+<attr id="1128" name="zimbraDumpsterEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>enable/disable dumpster</desc>
+</attr>
+
+<attr id="1129" name="zimbraPrefMailSignatureContactId" type="string" cardinality="single" optionalIn="account,signature" flags="domainAdminModifiable" since="7.0.0">
+  <desc>contact id associated with the signature</desc>
+</attr>
+
+<attr id="1130" name="zimbraMailOutgoingSieveScript" type="string" cardinality="single" optionalIn="account" callback="MailSieveScript" since="7.0.0">
+  <desc>sieve script generated from user outgoing filter rules</desc>
+</attr>
+
+<attr id="1131" name="zimbraOAuthConsumerCredentials" type="string" max="1024" cardinality="multi" optionalIn="globalConfig,domain" flags="domainInherited" since="7.0.0">
+  <desc>OAuth consumer ids and secrets.  It is in the format of {consumer-id]:{secrets}</desc>
+</attr>
+
+<attr id="1132" name="zimbraReverseProxyUseExternalRouteIfAccountNotExist" type="boolean" cardinality="single" optionalIn="domain" flags="domainAdminModifiable" since="7.0.0">
+  <desc>
+      Use external route configured on doamin if account cannot be found.
+      Also see zimbraReverseProxyUseExternalRoute.
+  </desc>
+</attr>
+
+<attr id="1133" name="zimbraMailDumpsterLifetime" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable,accountInfo" since="7.0.0">
+  <defaultCOSValue>30d</defaultCOSValue>
+  <desc>
+    Retention period of messages in the dumpster.  0 means that all messages will be retained.
+  </desc>
+</attr>
+
+<attr id="1134" name="zimbraFeatureDistributionListExpandMembersEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="7.0.0">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>whether expanding distribution list members feature is enabled</desc>
+</attr>
+
+<attr id="1135" name="zimbraForeignName" type="string" cardinality="multi" optionalIn="domain" since="7.0.0">
+  <desc>foreign name for mapping an external name to a zimbra domain on domain level, it is in the format of {application}:{foreign name}</desc>
+</attr>
+
+<attr id="1136" name="zimbraForeignNameHandler" type="string" cardinality="multi" optionalIn="domain" since="7.0.0">
+  <desc>handler for foreign name mapping, it is in the format of {application}:{class name}[:{params}]</desc>
+</attr>
+
+<attr id="1137" name="zimbraFeatureMailSendLaterEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>whether the send later feature is enabled</desc>
+</attr>
+
+<attr id="1138" name="zimbraPrefMailTrustedSenderList" type="astring" max="256" callback="TrustedSenderList" cardinality="multi" optionalIn="account,cos,domain" flags="accountCosDomainInherited,domainAdminModifiable" since="7.0.0">
+  <desc>Trusted sender email addresses or domains. External images in emails sent by trusted senders are automatically loaded in the message view.</desc>
+</attr>
+
+<attr id="1139" name="zimbraMailTrustedSenderListMaxNumEntries" type="integer" min="0" cardinality="single" optionalIn="account,cos,domain" flags="accountInfo,accountCosDomainInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>500</defaultCOSValue>
+  <desc>Maximum number of entries for zimbraPrefMailTrustedSenderList.</desc>
+</attr>
+
+<attr id="1140" name="zimbraCalendarReminderDeviceEmail" type="email" max="256" cardinality="single" optionalIn="account" flags="accountInfo,domainAdminModifiable" since="7.0.0">
+  <desc>email address identifying the default device for receiving reminders for appointments and tasks</desc>
+</attr>
+
+<attr id="1141" name="zimbraWebClientLoginURLAllowedUA" type="string" cardinality="multi" optionalIn="globalConfig,domain" flags="domainInherited,domainInfo,domainAdminModifiable" since="7.0.0">
+  <desc>
+    regex to be matched for allowed user agents for honoring zimbraWebClientLoginURL.
+    If not set, all UAs are allowed.
+    If multiple values are set, an UA is allowed as long as it matches any one of the values.
+    e.g. ".*Windows NT.*Firefox/3.*" will match firefox 3 or later browsers on Windows.
+         ".*MSIE.*Windows NT.*" will match IE browsers on Windows.
+   </desc>
+</attr>
+
+<attr id="1142" name="zimbraWebClientLogoutURLAllowedUA" type="string" cardinality="multi" optionalIn="globalConfig,domain" flags="domainInherited,domainInfo,domainAdminModifiable" since="7.0.0">
+  <desc>
+    regex to be matched for allowed user agents for honoring zimbraWebClientLogoutURL.
+    If not set, all UAs are allowed.
+    If multiple values are set, an UA is allowed as long as it matches any one of the values.
+    e.g. ".*Windows NT.*Firefox/3.*" will match firefox 3 or later browsers on Windows.
+         ".*MSIE.*Windows NT.*" will match IE browsers on Windows.  </desc>
+</attr>
+
+<attr id="1143" name="zimbraFeatureFreeBusyViewEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>whether free busy view is enabled in the web UI</desc>
+</attr>
+
+<attr id="1144" name="zimbraMilterNumThreads" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" since="7.0.0">
+  <globalConfigValue>100</globalConfigValue>
+  <desc>number of milter handler threads</desc>
+</attr>
+
 <attr id="1145" name="zimbraGalSyncIgnoredAttributes"  type="string" max="256" cardinality="multi" optionalIn="galDataSource" since="6.0.10">
   <desc>
-    List of attributes that will be ignored when determining whether
-    a GAL contact has been modified.  Any change in other attribute
+    List of attributes that will be ignored when determining whether 
+    a GAL contact has been modified.  Any change in other attribute 
     values will make the contact "dirty" and the contact will show as
-    modified in the next GAL sync response.  By default modifyTimeStamp
-    is always included in ignored attributes.  Then if the only change
-    in GAL contact is modifyTimeStamp, the contact will not be shown as
+    modified in the next GAL sync response.  By default modifyTimeStamp 
+    is always included in ignored attributes.  Then if the only change 
+    in GAL contact is modifyTimeStamp, the contact will not be shown as 
     modified in the next GAL sync response from the client, thus
     minimizing the need to download the GAL contact again when none of the
     meaningful attributes have changed.
   </desc>
+</attr>
+
+<attr id="1146" name="zimbraPrefAutocompleteAddressBubblesEnabled" type="boolean" min="0" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>TRUE</defaultCOSValue>
+  <desc>whether actionable address objects result from autocomplete is enabled</desc>
+</attr>
+
+<attr id="1147" name="zimbraPhoneticFirstName" type="string" max="256" cardinality="single" optionalIn="account" flags="domainAdminModifiable" since="7.0.0">
+  <desc>phonetic first name</desc>
+</attr>
+
+<attr id="1148" name="zimbraPhoneticLastName" type="string" max="256" cardinality="single" optionalIn="account" flags="domainAdminModifiable" since="7.0.0">
+  <desc>phonetic last name</desc>
+</attr>
+
+<attr id="1149" name="zimbraPhoneticCompany" type="string" max="256" cardinality="single" optionalIn="account" flags="domainAdminModifiable" since="7.0.0">
+  <desc>phonetic company name</desc>
+</attr>
+
+<attr id="1150" name="zimbraFeatureCalendarReminderDeviceEmailEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="7.0.0">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>whether receiving reminders on the designated device for appointments and tasks is enabled</desc>
+</attr>
+
+<attr id="1151" name="zimbraPrefTasksReadingPaneLocation" type="enum" value="bottom,right,off" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>bottom</defaultCOSValue>
+  <desc>where the reading pane is displayed for tasks</desc>
+</attr>
+
+<attr id="1152" name="zimbraPrefBriefcaseReadingPaneLocation" type="enum" value="bottom,right,off" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>bottom</defaultCOSValue>
+  <desc>where the reading pane is displayed for briefcase</desc>
+</attr>
+
+<attr id="1153" name="zimbraGalGroupIndicatorEnabled" type="boolean" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited" since="7.0.0">
+  <globalConfigValue>TRUE</globalConfigValue>
+  <desc>whether to indicate if an email address on a message is a GAL group</desc>
 </attr>
 
 <attr id="1154" name="zimbraGalSyncMaxConcurrentClients" type="integer" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited,domainAdminModifiable" since="7.0.0">
@@ -4969,17 +5269,19 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Maximum number of concurrent GAL sync requests allowed on the system / domain.</desc>
 </attr>
 
-<attr id="1174" name="zimbraFreebusyExchangeServerType" type="enum" value="webdav,ews" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited,domainAdminModifiable" since="6.0.11">
-  <globalConfigValue>webdav</globalConfigValue>
-  <desc>Can be set to either webdav for Exchange 2007 or older, or ews for 2010 and newer</desc>
+<attr id="1158" name="zimbraFilterBatchSize" type="integer" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable,accountInfo" since="7.0.0">
+  <defaultCOSValue>10000</defaultCOSValue>
+  <desc>Maximum number of messages that can be processed in a single ApplyFilterRules operation.</desc>
 </attr>
 
-<attr id="1208" name="zimbraMailEmptyFolderBatchThreshold" type="integer" cardinality="single" min="0" optionalIn="globalConfig,server" flags="serverInherited,domainAdminModifiable" since="6.0.13">
-  <globalConfigValue>100000</globalConfigValue>
+<attr id="1159" name="zimbraFilterSleepInterval" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="7.0.0">
+  <defaultCOSValue>100ms</defaultCOSValue>
   <desc>
-    Folders that contain more than this many messages will be emptied in batches of size zimbraMailEmptyFolderBatchSize.
+    The amount of time to sleep between every two messages during ApplyFilterRules.
+    Increasing this value will even out server load at the expense of slowing down
+    the operation.
   </desc>
 </attr>
 
-
 </attrs>
+

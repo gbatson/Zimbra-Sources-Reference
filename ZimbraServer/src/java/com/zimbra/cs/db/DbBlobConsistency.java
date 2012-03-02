@@ -35,7 +35,7 @@ public class DbBlobConsistency {
     /**
      * Returns blob info for items in the specified id range.
      */
-    public static Collection<BlobInfo> getBlobInfo(Connection conn, Mailbox mbox, long minId, long maxId, short volumeId)
+    public static Collection<BlobInfo> getBlobInfo(Connection conn, Mailbox mbox, int minId, int maxId, short volumeId)
     throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -44,32 +44,48 @@ public class DbBlobConsistency {
         try {
             stmt = conn.prepareStatement(
                 "SELECT id, mod_content, 0, size " +
-                "FROM " + DbMailItem.getMailItemTableName(mbox) +
+                "FROM " + DbMailItem.getMailItemTableName(mbox, false) +
+                " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND +
+                " id BETWEEN " + minId + " AND " + maxId +
+                " AND blob_digest IS NOT NULL " +
+                "AND volume_id = " + volumeId +
+                " UNION " +
+                "SELECT id, mod_content, 0, size " +
+                "FROM " + DbMailItem.getMailItemTableName(mbox, true) +
                 " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND +
                 " id BETWEEN " + minId + " AND " + maxId +
                 " AND blob_digest IS NOT NULL " +
                 "AND volume_id = " + volumeId +
                 " UNION " +
                 "SELECT item_id, mod_content, version, size " +
-                "FROM " + DbMailItem.getRevisionTableName(mbox) +
+                "FROM " + DbMailItem.getRevisionTableName(mbox, false) +
+                " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND +
+                " item_id BETWEEN " + minId + " AND " + maxId +
+                " AND blob_digest IS NOT NULL " +
+                "AND volume_id = " + volumeId +
+                " UNION " +
+                "SELECT item_id, mod_content, version, size " +
+                "FROM " + DbMailItem.getRevisionTableName(mbox, true) +
                 " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND +
                 " item_id BETWEEN " + minId + " AND " + maxId +
                 " AND blob_digest IS NOT NULL " +
                 "AND volume_id = " + volumeId);
             if (!DebugConfig.disableMailboxGroups) {
-                stmt.setLong(1, mbox.getId());
-                stmt.setLong(2, mbox.getId());
+                stmt.setInt(1, mbox.getId());
+                stmt.setInt(2, mbox.getId());
+                stmt.setInt(3, mbox.getId());
+                stmt.setInt(4, mbox.getId());
             }
             Db.getInstance().enableStreaming(stmt);
             rs = stmt.executeQuery();
             while (rs.next()) {
                 BlobInfo info = new BlobInfo();
-                info.itemId = rs.getLong(1);
+                info.itemId = rs.getInt(1);
                 info.modContent = rs.getInt(2);
                 info.version = rs.getInt(3);
                 info.dbSize = rs.getLong(4);
                 info.volumeId = volumeId;
-                info.path = FileBlobStore.getBlobPath(mbox, (int) info.itemId, info.modContent, volumeId);
+                info.path = FileBlobStore.getBlobPath(mbox, info.itemId, info.modContent, volumeId);
                 blobs.add(info);
             }
         } catch (SQLException e) {
@@ -82,27 +98,32 @@ public class DbBlobConsistency {
         return blobs;
     }
     
-    public static long getMaxId(Connection conn, Mailbox mbox)
+    public static int getMaxId(Connection conn, Mailbox mbox)
     throws ServiceException {
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        
-        try {
-            String sql = "SELECT MAX(id) " +
-                "FROM " + DbMailItem.getMailItemTableName(mbox);
-            if (!DebugConfig.disableMailboxGroups) {
-                sql += " WHERE mailbox_id = " + mbox.getId();
+        int maxId = 0;
+        boolean[] dumpster = new boolean[] { false, true };
+        for (boolean fromDumpster : dumpster) {
+            PreparedStatement stmt = null;
+            ResultSet rs = null;
+            try {
+                String sql = "SELECT MAX(id) " +
+                    "FROM " + DbMailItem.getMailItemTableName(mbox, fromDumpster);
+                if (!DebugConfig.disableMailboxGroups) {
+                    sql += " WHERE mailbox_id = " + mbox.getId();
+                }
+                stmt = conn.prepareStatement(sql);
+                rs = stmt.executeQuery();
+                rs.next();
+                int id = rs.getInt(1);
+                maxId = Math.max(id, maxId);
+            } catch (SQLException e) {
+                throw ServiceException.FAILURE("getting max id for mailbox " + mbox.getId(), e);
+            } finally {
+                DbPool.closeResults(rs);
+                DbPool.quietCloseStatement(stmt);
             }
-            stmt = conn.prepareStatement(sql);
-            rs = stmt.executeQuery();
-            rs.next();
-            return rs.getLong(1);
-        } catch (SQLException e) {
-            throw ServiceException.FAILURE("getting max id for mailbox " + mbox.getId(), e);
-        } finally {
-            DbPool.closeResults(rs);
-            DbPool.quietCloseStatement(stmt);
         }
+        return maxId;
     }
     
     public static int getNumRows(Connection conn, Mailbox mbox, String tableName,
@@ -116,12 +137,10 @@ public class DbBlobConsistency {
                 "FROM " + DbMailbox.qualifyTableName(mbox, tableName) +
                 " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND +
                 DbUtil.whereIn(idColName, itemIds.size()));
-            int i = 1;
-            if (!DebugConfig.disableMailboxGroups) {
-                stmt.setLong(i++, mbox.getId());
-            }
+            int pos = 1;
+            pos = DbMailItem.setMailboxId(stmt, mbox, pos);
             for (int id : itemIds) {
-                stmt.setInt(i++, id);
+                stmt.setInt(pos++, id);
             }
             rs = stmt.executeQuery();
             rs.next();
@@ -151,14 +170,12 @@ public class DbBlobConsistency {
                 " WHERE " + DbMailItem.IN_THIS_MAILBOX_AND +
                 DbUtil.whereIn(idColName, itemIds.size()) +
                 " INTO OUTFILE ?");
-            int i = 1;
-            if (!DebugConfig.disableMailboxGroups) {
-                stmt.setLong(i++, mbox.getId());
-            }
+            int pos = 1;
+            pos = DbMailItem.setMailboxId(stmt, mbox, pos);
             for (int id : itemIds) {
-                stmt.setInt(i++, id);
+                stmt.setInt(pos++, id);
             }
-            stmt.setString(i++, path);
+            stmt.setString(pos++, path);
             rs = stmt.executeQuery();
         } catch (SQLException e) {
             throw ServiceException.FAILURE("exporting table " + tableName + " to " + path, e);

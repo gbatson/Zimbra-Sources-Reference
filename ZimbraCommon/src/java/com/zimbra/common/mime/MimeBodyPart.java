@@ -2,108 +2,130 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.common.mime;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
-import java.util.List;
+
+import javax.activation.DataSource;
 
 import com.zimbra.common.util.ByteUtil;
 
 public class MimeBodyPart extends MimePart {
 
-    private ContentTransferEncoding mEncoding, mTargetEncoding;
+    private ContentTransferEncoding encoding, targetEncoding;
 
     public MimeBodyPart(ContentType ctype) {
-        super(ctype != null ? ctype : new ContentType("text/plain"));
-        mEncoding = mTargetEncoding = ContentTransferEncoding.BINARY;
+        super(ctype != null ? ctype : new ContentType(ContentType.TEXT_PLAIN));
+        encoding = targetEncoding = ContentTransferEncoding.BINARY;
     }
 
     MimeBodyPart(ContentType ctype, MimePart parent, long start, long body, MimeHeaderBlock headers) {
         super(ctype, parent, start, body, headers);
-        mEncoding = mTargetEncoding = ContentTransferEncoding.forString(getMimeHeader("Content-Transfer-Encoding"));
+        encoding = targetEncoding = ContentTransferEncoding.forString(getMimeHeader("Content-Transfer-Encoding"));
     }
 
+    MimeBodyPart(MimeBodyPart mbp) {
+        super(mbp);
+        encoding = mbp.encoding;
+        targetEncoding = mbp.targetEncoding;
+    }
+
+
+    @Override protected MimeBodyPart clone() {
+        return new MimeBodyPart(this);
+    }
 
     @Override void removeChild(MimePart mp)  {}
 
 
-    @Override void checkContentType(ContentType ctype) {
-        if (ctype != null && (ctype.getPrimaryType().equals("multipart") || ctype.getValue().equals(ContentType.MESSAGE_RFC822)))
-            throw new UnsupportedOperationException("cannot change a message to text");
-    }
-
-    @Override public void setContentType(ContentType ctype) {
-        if (ctype == null)
-            ctype = new ContentType(ContentType.TEXT_PLAIN);
-        checkContentType(ctype);
-        super.setContentType(ctype);
+    @Override ContentType updateContentType(ContentType ctype) {
+        if (ctype != null && (ctype.getPrimaryType().equals("multipart") || ctype.getContentType().equals(ContentType.MESSAGE_RFC822))) {
+            throw new UnsupportedOperationException("cannot change a part into a multipart or message: " + ctype);
+        }
+        return super.updateContentType(ctype == null ? new ContentType(ContentType.TEXT_PLAIN) : ctype);
     }
 
     public ContentTransferEncoding getTransferEncoding() {
-        return mTargetEncoding;
+        return targetEncoding;
     }
 
-    public void setTransferEncoding(ContentTransferEncoding cte) {
+    public MimeBodyPart setTransferEncoding(ContentTransferEncoding cte) {
+        // our markDirty() will take care of updating the target encoding
         setMimeHeader("Content-Transfer-Encoding", cte == null ? null : cte.toString());
-        mTargetEncoding = cte == null ? ContentTransferEncoding.BINARY : cte;
+        return this;
     }
 
+
+    @Override public long getSize() throws IOException {
+        long size = super.getSize();
+        if (size == -1) {
+            size = recordSize(ByteUtil.countBytes(getRawContentStream()));
+        }
+        return size;
+    }
 
     @Override public InputStream getRawContentStream() throws IOException {
         InputStream stream = super.getRawContentStream();
-        if (mEncoding.normalize() != mTargetEncoding.normalize()) {
+        if (encoding.normalize() != targetEncoding.normalize()) {
             // decode the raw version if necessary
-            if (mEncoding == ContentTransferEncoding.BASE64)
+            if (encoding == ContentTransferEncoding.BASE64) {
                 stream = new ContentTransferEncoding.Base64DecoderStream(stream);
-            else if (mEncoding == ContentTransferEncoding.QUOTED_PRINTABLE)
+            } else if (encoding == ContentTransferEncoding.QUOTED_PRINTABLE) {
                 stream = new ContentTransferEncoding.QuotedPrintableDecoderStream(stream);
+            }
             // encode to the target encoding if necessary
-            if (mTargetEncoding == ContentTransferEncoding.BASE64)
+            if (targetEncoding == ContentTransferEncoding.BASE64) {
                 stream = new ContentTransferEncoding.Base64EncoderStream(stream);
-            else if (mTargetEncoding == ContentTransferEncoding.QUOTED_PRINTABLE)
+            } else if (targetEncoding == ContentTransferEncoding.QUOTED_PRINTABLE) {
                 stream = new ContentTransferEncoding.QuotedPrintableEncoderStream(stream, getContentType());
+            }
         }
         return stream;
     }
 
     @Override public byte[] getRawContent() throws IOException {
-        if (mEncoding.normalize() == mTargetEncoding.normalize())
+        if (encoding.normalize() == targetEncoding.normalize()) {
             return super.getRawContent();
-        else
+        } else {
             return ByteUtil.getContent(getRawContentStream(), -1);
+        }
     }
 
     @Override public InputStream getContentStream() throws IOException {
-        InputStream raw = super.getContentStream();
-        if (mEncoding == ContentTransferEncoding.BASE64)
+        InputStream raw = super.getRawContentStream();
+        if (encoding == ContentTransferEncoding.BASE64) {
             return new ContentTransferEncoding.Base64DecoderStream(raw);
-        else if (mEncoding == ContentTransferEncoding.QUOTED_PRINTABLE)
+        } else if (encoding == ContentTransferEncoding.QUOTED_PRINTABLE) {
             return new ContentTransferEncoding.QuotedPrintableDecoderStream(raw);
-        else
+        } else {
             return raw;
+        }
     }
 
     @Override public byte[] getContent() throws IOException {
         // certain encodings mean that the decoded content is the same as the raw content
-        if (mEncoding.normalize() == ContentTransferEncoding.BINARY)
+        if (encoding.normalize() == ContentTransferEncoding.BINARY) {
             return super.getRawContent();
-        else
-            return ByteUtil.getContent(getContentStream(), (int) (getSize() * (mEncoding == ContentTransferEncoding.BASE64 ? 0.75 : 1.0)));
+        } else {
+            return ByteUtil.getContent(getContentStream(), (int) (getSize() * (encoding == ContentTransferEncoding.BASE64 ? 0.75 : 1.0)));
+        }
     }
 
     public Reader getTextReader() throws IOException {
@@ -118,7 +140,7 @@ public class MimeBodyPart extends MimePart {
 
         // if we're here, either there was no explicit charset or it was invalid, so try the default charset
         String defaultCharset = getDefaultCharset();
-        if (defaultCharset != null && !defaultCharset.trim().equals("")) {
+        if (defaultCharset != null && !defaultCharset.trim().isEmpty()) {
             try {
                 return new InputStreamReader(is, HeaderUtils.normalizeCharset(defaultCharset));
             } catch (UnsupportedEncodingException e) { }
@@ -134,8 +156,9 @@ public class MimeBodyPart extends MimePart {
         try {
             char[] cbuff = new char[8192];
             int num;
-            while ((num = reader.read(cbuff, 0, cbuff.length)) != -1)
+            while ((num = reader.read(cbuff, 0, cbuff.length)) != -1) {
                 buffer.append(cbuff, 0, num);
+            }
         } finally {
             reader.close();
         }
@@ -144,152 +167,117 @@ public class MimeBodyPart extends MimePart {
 
     /** Changes the <tt>Content-Type</tt> of the part to <tt>text/plain</tt>
      *  and sets the part's content to the given text using the default
-     *  charset.
-     * @throws UnsupportedEncodingException */
-    public MimeBodyPart setText(String text) throws UnsupportedEncodingException {
+     *  charset. */
+    public MimeBodyPart setText(String text) throws IOException {
         return setText(text, null, null, null);
     }
 
-    public MimeBodyPart setText(String text, String charset, String subtype, ContentTransferEncoding cte) throws UnsupportedEncodingException {
+    public MimeBodyPart setText(String text, String charset, String subtype, ContentTransferEncoding cte) throws IOException {
         // default the subtype and charset appropriately
         ContentType ctype = getContentType();
-        if (subtype == null || subtype.trim().equals(""))
-            subtype = ctype.getSubType();
-        if (charset == null || charset.trim().equals(""))
-            charset = ctype.getParameter("charset");
-        if (charset == null || charset.trim().equals(""))
-            charset = getDefaultCharset();
-        if (charset == null || charset.trim().equals(""))
-            charset = "utf-8";
+        ctype.setContentType("text/" + (subtype == null || subtype.trim().isEmpty() ? ctype.getSubType() : subtype));
 
-        if (getParent() != null)
-            getParent().markDirty(true);
-        setContentType(ctype.setValue("text/" + subtype).setParameter("charset", charset));
-
-        byte[] content = (text == null ? "" : text).getBytes(charset);
-        if (cte == null) {
-            // determine an appropriate Content-Transfer-Encoding if none was mandated
-            int encodeable = 0, toolong = 0, column = 0;
-            for (int i = 0, length = content.length; i < length; i++) {
-                byte octet = content[i];
-                if (octet >= 0x7F || (octet < 0x20 && octet != '\t' && octet != '\r' && octet != '\n'))
-                    encodeable++;
-                if (octet == '\n') {
-                    if (column > 998)  toolong++;
-                    column = 0;
-                } else {
-                    column++;
-                }
-            }
-            if (encodeable == 0 && toolong == 0)
-                cte = ContentTransferEncoding.SEVEN_BIT;
-            else if (encodeable < content.length / 4)
-                cte = ContentTransferEncoding.QUOTED_PRINTABLE;
-            else
-                cte = ContentTransferEncoding.BASE64;
+        String cset = charset;
+        if (cset == null || cset.trim().isEmpty()) {
+            cset = ctype.getParameter("charset");
         }
+        if (cset == null || cset.trim().isEmpty()) {
+            cset = getDefaultCharset();
+        }
+        if (cset == null || cset.trim().isEmpty()) {
+            cset = "utf-8";
+        }
+        ctype.setParameter("charset", cset);
 
-        setContent(content);
-        mEncoding = (cte == ContentTransferEncoding.BINARY ? ContentTransferEncoding.BINARY : ContentTransferEncoding.EIGHT_BIT);
-        mTargetEncoding = cte;
+        setContent((text == null ? "" : text).getBytes(cset), cte);
+        setContentType(ctype);
         return this;
     }
 
+    public MimeBodyPart setContent(byte[] content) throws IOException {
+        return setContent(content, null);
+    }
 
-    @Override MimePart readContent(ParseState pstate) throws IOException {
-        PeekAheadInputStream pais = pstate.getInputStream();
-        List<String> boundaries = getActiveBoundaries();
-        pstate.clearBoundary();
+    public MimeBodyPart setContent(byte[] content, ContentTransferEncoding cte) throws IOException {
+        return setContent(content == null ? null : new PartSource(content), cte);
+    }
 
-        // if there's no pending multipart, we can just consume the remainder of the input
-        if (boundaries == null) {
-            byte[] buffer = new byte[8192];
-            while (pais.read(buffer) > -1)
-                ;
-            recordEndpoint(pais.getPosition());
-            return this;
-        }
+    public MimeBodyPart setContent(File file) throws IOException {
+        return setContent(file, null);
+    }
 
-        int boundarymax = 0;
-        for (String boundary : boundaries)
-            boundarymax = Math.max(boundarymax, boundary.length());
+    public MimeBodyPart setContent(File file, ContentTransferEncoding cte) throws IOException {
+        return setContent(file == null || !file.exists() ? null : new PartSource(file), cte);
+    }
 
-        long linestart = pais.getPosition();
-        int c;
-        do {
-            // XXX: Boyer-Moore would be more efficient, but its backwards model doesn't mesh easily with the forwards-only InputStream model
+    public MimeBodyPart setContent(DataSource ds) throws IOException {
+        return setContent(ds, null);
+    }
 
-            // we're at the start of a line
-            if ((c = pais.read()) == '-' && (c = pais.read()) == '-') {
-                // found a leading "--", so check to see if the rest of the line matches an active MIME boundary
-                if (checkBoundary(pais, pstate, boundaries, linestart)) {
-                    recordEndpoint(linestart);
-                    return this;
-                }
-            }
+    public MimeBodyPart setContent(DataSource ds, ContentTransferEncoding cte) throws IOException {
+        return setContent(ds == null ? null : new PartSource(ds), cte);
+    }
 
-            // skip to the end of the line
-            do {
-                if (c == '\n' || c == '\r' || c == -1) {
-                    linestart = pais.getPosition() - 1;
-                    if (c == '\r' && pais.peek() == '\n')
-                        pais.read();
-                    break;
-                }
-            } while ((c = pais.read()) != -1);
-        } while (c != -1);
+    public MimeBodyPart setContent(InputStreamSource iss) throws IOException {
+        return setContent(iss, null);
+    }
 
-        recordEndpoint(pais.getPosition());
+    public MimeBodyPart setContent(InputStreamSource iss, ContentTransferEncoding cte) throws IOException {
+        return setContent(iss == null ? null : new PartSource(iss), cte);
+    }
+
+    private MimeBodyPart setContent(PartSource psource, ContentTransferEncoding cte) throws IOException {
+        super.setContent(psource);
+        encoding = ContentTransferEncoding.BINARY;
+        // cascade: set header, which marks dirty, which sets the target encoding
+        setTransferEncoding(cte == null ? pickEncoding() : cte);
         return this;
     }
 
-    static boolean checkBoundary(byte[] content, int offset, ParseState pstate, List<String> boundaries, long linestart) throws IOException {
-        return checkBoundary(new ByteArrayInputStream(content, offset, content.length - offset), pstate, boundaries, linestart);
-    }
+    ContentTransferEncoding pickEncoding() throws IOException {
+        int encodeable = 0, toolong = 0, length = 0;
 
-    static boolean checkBoundary(InputStream is, ParseState pstate, List<String> boundaries, long linestart) throws IOException {
-        // found a leading "--", so check to see if the rest of the line matches an active MIME boundary
-        is.mark(1024);
-
-        for (int i = 0; i < boundaries.size(); i++) {
-            String boundary = boundaries.get(i);
-            // FIXME: should be doing boundary autodetect if boundary is unset
-            if (boundary == MimeMultipart.UNSET_BOUNDARY)
-                continue;
-
-            int pos = 0, bndlen = boundary.length(), c;
-            // RFC 2046 5.1.1: "Boundary delimiters must not appear within the encapsulated material, and
-            //                  must be no longer than 70 characters, not counting the two leading hyphens."
-            if (bndlen > 512)
-                continue;
-
-            while (pos < bndlen && boundary.charAt(pos) == (c = is.read()))
-                pos++;
-            // if the line matched the boundary, the part's content may be done!
-            if (pos == bndlen) {
-                boolean isEndBoundary = (c = is.read()) == '-' && (c = is.read()) == '-';
-                if (isEndBoundary)
-                    c = is.read();
-                // anything trailing must be whitespace
-                do {
-                    if (c == '\n' || c == '\r' || c == -1) {
-                        if (c == '\r') {
-                            is.mark(1);
-                            if (is.read() != '\n')
-                                is.reset();
-                        }
-                        pstate.recordBoundary(boundary, isEndBoundary, linestart);
-                        return true;
-                    } else if (!Character.isWhitespace(c)) {
-                        break;
+        InputStream is = getRawContentStream();
+        if (is != null) {
+            try {
+                is = is instanceof ByteArrayInputStream || is instanceof BufferedInputStream ? is : new BufferedInputStream(is);
+                for (int octet = is.read(), column = 0; octet != -1; octet = is.read()) {
+                    // FIXME: bytes under 0x20 (except NUL) are actually OK to transmit via "7bit"
+                    if (octet >= 0x7F || (octet < 0x20 && octet != '\t' && octet != '\r' && octet != '\n')) {
+                        encodeable++;
                     }
-                } while ((c = is.read()) != -1);
+                    if (octet == '\n') {
+                        if (column > 998) {
+                            toolong++;
+                        }
+                        column = 0;
+                    } else {
+                        column++;
+                    }
+                    length++;
+                }
+            } finally {
+                ByteUtil.closeStream(is);
             }
-
-            if (i != boundaries.size() - 1)
-                is.reset();
         }
 
-        return false;
+        if (encodeable == 0 && toolong == 0) {
+            return ContentTransferEncoding.SEVEN_BIT;
+        } else if (encodeable < length / 4) {
+            return ContentTransferEncoding.QUOTED_PRINTABLE;
+        } else {
+            return ContentTransferEncoding.BASE64;
+        }
+    }
+
+    @Override void markDirty(Dirty dirty) {
+        ContentTransferEncoding cte = ContentTransferEncoding.forString(getMimeHeader("Content-Transfer-Encoding"));
+        ContentTransferEncoding cteCurrent = targetEncoding == null ? ContentTransferEncoding.BINARY : targetEncoding;
+        if (cte.normalize() != cteCurrent.normalize()) {
+            super.markDirty(dirty.combine(Dirty.CTE));
+        } else {
+            super.markDirty(dirty);
+        }
+        targetEncoding = cte;
     }
 }

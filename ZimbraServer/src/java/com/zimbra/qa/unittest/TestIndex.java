@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,12 +16,14 @@ package com.zimbra.qa.unittest;
 
 import java.util.List;
 
+import junit.framework.TestCase;
+
+import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.common.mime.MimeConstants;
-
-import junit.framework.TestCase;
+import com.zimbra.cs.zclient.ZSearchParams;
 
 
 public class TestIndex extends TestCase {
@@ -80,6 +82,19 @@ public class TestIndex extends TestCase {
         msgId = sendMessage(subject, attachedMsg.getBytes(), "attachment.msg", MimeConstants.CT_MESSAGE_RFC822).getId();
         checkQuery("in:inbox subject:\"" + subject + "\" pigs", msgId);
         checkQuery("in:inbox subject:\"" + subject + "\" gun", null);
+    }
+    
+    /**
+     * Verifies the fix to bug 54613.
+     */
+    public void testFilenameSearch()
+    throws Exception {
+        ZMailbox mbox = TestUtil.getZMailbox(USER_NAME);
+        String filename = NAME_PREFIX + " testFilenameSearch.txt";
+        TestUtil.createDocument(mbox, Integer.toString(Mailbox.ID_FOLDER_BRIEFCASE),
+            filename, "text/plain", "This is the data for testFilenameSearch.".getBytes());
+        assertEquals(0, TestUtil.search(mbox, "filename:Blob*", ZSearchParams.TYPE_DOCUMENT).size());
+        assertEquals(1, TestUtil.search(mbox, "filename:\"" + filename + "\"", ZSearchParams.TYPE_DOCUMENT).size());
     }
     
     /**

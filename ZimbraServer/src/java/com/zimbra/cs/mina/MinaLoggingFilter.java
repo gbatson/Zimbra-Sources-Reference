@@ -29,50 +29,54 @@ import java.net.SocketException;
  * Optionally logs all MINA protocol events to the server log.
  */
 class MinaLoggingFilter extends IoFilterAdapter {
-    private final Log mLog;
+    private final Log log;
     private final boolean mHexDump;
 
     MinaLoggingFilter(MinaServer server, boolean hexDump) {
-        mLog = server.getLog();
+        log = server.getLog();
         mHexDump = hexDump;
     }
-    
+
+    @Override
     public void sessionCreated(NextFilter nextFilter, IoSession session) {
         debug(session, "Session created");
         nextFilter.sessionCreated(session);
     }
 
+    @Override
     public void sessionOpened(NextFilter nextFilter, IoSession session) {
         debug(session, "Connection opened");
         nextFilter.sessionOpened(session);
     }
 
+    @Override
     public void sessionClosed(NextFilter nextFilter, IoSession session) {
         debug(session, "Connection closed");
         nextFilter.sessionClosed(session);
     }
 
+    @Override
     public void sessionIdle(NextFilter nextFilter, IoSession session,
                             IdleStatus status) {
-        if (mLog.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             debug(session, "Connection idle: " + status);
         }
         nextFilter.sessionIdle(session, status);
     }
 
-    public void exceptionCaught(NextFilter nextFilter, IoSession session,
-                                Throwable cause) {
+    @Override
+    public void exceptionCaught(NextFilter nextFilter, IoSession session, Throwable cause) {
         ZimbraLog.addIpToContext(session.getRemoteAddress().toString());
         String msg = "Exception caught: " + cause;
         if (isSocketError(cause)) {
             // If connection error, then only log full stack trace if debug enabled
-            if (mLog.isDebugEnabled()) {
-                mLog.info(msg, cause);
+            if (log.isDebugEnabled()) {
+                log.info(msg, cause);
             } else {
-                mLog.info(msg);
+                log.info(msg);
             }
         } else {
-            mLog.error(msg, cause);
+            log.error(msg, cause);
         }
         nextFilter.exceptionCaught(session, cause);
     }
@@ -81,30 +85,28 @@ class MinaLoggingFilter extends IoFilterAdapter {
         return e instanceof SocketException || e instanceof SSLException;
     }
 
-    public void messageReceived(NextFilter nextFilter, IoSession session,
-                                Object message) {
-        if (mLog.isDebugEnabled()) {
-            debug(session, "Message received: " + pp(message));
+    @Override
+    public void messageReceived(NextFilter nextFilter, IoSession session, Object message) {
+        if (log.isTraceEnabled()) {
+            trace(session, "C: %s", pp(message));
         }
         nextFilter.messageReceived(session, message);
     }
 
-    public void messageSent(NextFilter nextFilter, IoSession session,
-                            Object message) {
-        if (mLog.isDebugEnabled()) {
-            debug(session, "Message sent: " + pp(message));
+    @Override
+    public void messageSent(NextFilter nextFilter, IoSession session, Object message) {
+        if (log.isTraceEnabled()) {
+            trace(session, "S: %s", pp(message));
         }
         nextFilter.messageSent(session, message);
     }
 
-    public void filterWrite(NextFilter nextFilter, IoSession session,
-                            WriteRequest writeRequest) {
-        if (mLog.isDebugEnabled()) {
-            debug(session, "Message written: " + pp(writeRequest));
-        }
+    @Override
+    public void filterWrite(NextFilter nextFilter, IoSession session,  WriteRequest writeRequest) {
         nextFilter.filterWrite(session, writeRequest);
     }
 
+    @Override
     public void filterClose(NextFilter nextFilter, IoSession session) throws Exception {
         debug(session, "Connection closed by client");
         nextFilter.filterClose(session);
@@ -129,7 +131,7 @@ class MinaLoggingFilter extends IoFilterAdapter {
         }
         return isPrintable(bb) ? pp(bb) : msg;
     }
-    
+
     private boolean isPrintable(ByteBuffer bb) {
         int limit = bb.limit();
         for (int i = bb.position(); i < limit; i++) {
@@ -160,9 +162,15 @@ class MinaLoggingFilter extends IoFilterAdapter {
     }
 
     private void debug(IoSession session, String msg) {
-        if (mLog.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             ZimbraLog.addIpToContext(session.getRemoteAddress().toString());
-            mLog.debug(msg);
+            log.debug(msg);
         }
     }
+
+    private void trace(IoSession session, String format, Object arg) {
+        ZimbraLog.addIpToContext(session.getRemoteAddress().toString());
+        log.trace(format, arg);
+    }
+
 }

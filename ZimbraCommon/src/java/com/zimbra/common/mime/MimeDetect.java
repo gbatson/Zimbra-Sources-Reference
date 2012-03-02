@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -371,8 +371,10 @@ public class MimeDetect {
     public String detect(String file, InputStream is, int limit) throws IOException {
         String ct = detect(file);
         
-        if (ct != null)
-            return ct;        
+        if (ct != null) {
+            ByteUtil.closeStream(is);
+            return ct;
+        }
         return detect(ByteUtil.getPartialContent(is, limit, limit), limit);
     }
 

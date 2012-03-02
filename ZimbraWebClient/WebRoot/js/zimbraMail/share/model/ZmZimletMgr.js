@@ -50,6 +50,12 @@ function() {
 
 ZmZimletMgr._RE_REMOTE = /^((https?|ftps?):\x2f\x2f|\x2f)/;
 
+/**
+* List of Core Zimlets.
+* com_zimbra_apptsummary|com_zimbra_date|com_zimbra_dnd|com_zimbra_email|com_zimbra_linkedin|com_zimbra_phone|com_zimbra_webex|com_zimbra_social|com_zimbra_srchhighlighter|com_zimbra_url
+*/
+ZmZimletMgr.CORE_ZIMLETS = /com_zimbra_apptsummary|com_zimbra_date|com_zimbra_dnd|com_zimbra_email|com_zimbra_linkedin|com_zimbra_phone|com_zimbra_webex|com_zimbra_social|com_zimbra_srchhighlighter|com_zimbra_url/;
+
 //
 // Public methods
 //
@@ -77,6 +83,11 @@ function() {
  */
 ZmZimletMgr.prototype.loadZimlets =
 function(zimletArray, userProps, target, callback, sync) {
+	if(window.location.href.toLowerCase().indexOf("zimlets=none") > 0) {
+		return;
+	} else if(window.location.href.toLowerCase().indexOf("zimlets=core") > 0) {
+		zimletArray = this._getCoreZimlets(zimletArray);
+	}
 	if (!zimletArray || !zimletArray.length) {
 		this.loaded = true;
 		this._resetOverviewTree();
@@ -87,6 +98,29 @@ function(zimletArray, userProps, target, callback, sync) {
 	if (!callback) {
 		this._loadZimlets(zimletArray, userProps, target, callback, sync);
 	}
+};
+
+/**
+ * Returng an array with only core-Zimlets. This is used when we want to debug with only core-zimlets (?zimlets=core)
+ * @param	{Array}	zimletArray		an array of {@link ZmZimlet} objects
+ *
+ * @private
+ */
+ZmZimletMgr.prototype._getCoreZimlets =
+function(zimletArray) {
+	if (!zimletArray || !zimletArray.length) {
+		return;
+	}
+	var coreZimlets = [];
+	var len = zimletArray.length;
+	for(var i = 0; i < len; i++) {			
+		var zimletObj = zimletArray[i].zimlet;
+		var zimletName = zimletObj && zimletObj[0] ? zimletObj[0].name : "";
+		if(ZmZimletMgr.CORE_ZIMLETS.test(zimletName)) {
+			coreZimlets.push(zimletArray[i]);
+		}		
+	}
+	return coreZimlets;
 };
 
 /**
@@ -473,37 +507,40 @@ function(zimletArray, zimletNames) {
  */
 ZmZimletMgr.prototype.__getIncludes =
 function(zimletArray, zimletNames, isJS) {
+    // get language info
+    var languageId = null;
+    var countryId = null;
+    if (appCtxt.get(ZmSetting.LOCALE_NAME)) {
+        var locale = appCtxt.get(ZmSetting.LOCALE_NAME) || "";
+        var parts = locale.split("_");
+        languageId = parts[0];
+        countryId = parts[1];
+    }
+    var locid = "";
+    if (languageId) locid += "&language="+languageId;
+    if (countryId) locid += "&country="+countryId;
+
+    // add cache killer to each url
+    var query = [
+        "?v=",
+        window.appDevMode ? new Date().getTime() : window.cacheKillerVersion
+    ].join("");
+
+    // add messages for all zimlets
+    var includes = [];
+    if (window.appDevMode && isJS) {
+        var zimlets = appCtxt.get(ZmSetting.ZIMLETS) || [];
+        for (var i = 0; i < zimlets.length; i++) {
+            var zimlet = zimlets[i].zimlet[0];
+            includes.push([appContextPath, "/res/", zimlet.name, ".js", query, locid].join(""));
+        }
+    }
+
 	// add remote urls
-	var includes = [];
 	for (var i = 0; i < zimletArray.length; i++) {
 		var zimlet = zimletArray[i].zimlet[0];
 		var baseUrl = zimletArray[i].zimletContext[0].baseUrl;
 		var isDevZimlet = baseUrl.match("/_dev/");
-
-        var languageId = null;
-        var countryId = null;
-        if(appCtxt.get(ZmSetting.LOCALE_NAME)) {
-            var locale = appCtxt.get(ZmSetting.LOCALE_NAME);
-            var index = locale.indexOf("_");
-            if (index == -1) {
-                languageId = locale;
-                } else {
-                languageId = locale.substr(0, index);
-                countryId = locale.substr(index+1);
-            }
-        }        
-		// add cache killer to each url
-		var query = isDevZimlet
-			? ("?debug=1&v="+new Date().getTime()+"&")
-			: ("?v="+cacheKillerVersion+"&");
-        	query += ((languageId ? "language=" + languageId : "")+"&");
-        	query += ((countryId ? "country=" + countryId : ""));
-
-
-		// include messages
-		if (window.appDevMode && isJS) {
-			includes.push([appContextPath, "/res/", zimlet.name, ".js", query].join(""));
-		}
 
 		// include links
 		var links = (isJS ? zimlet.include : zimlet.includeCSS) || [];
@@ -515,24 +552,20 @@ function(zimletArray, zimletNames, isJS) {
 				continue;
 			}
 			if (window.appDevMode || isDevZimlet) {
-				includes.push([baseUrl, url, query].join(""));
+                var debug = isDevZimlet ? "&debug=1" : "";
+				includes.push([baseUrl, url, query, locid, debug].join(""));
 			}
 		}
 	}
 
 	// add link to aggregated files
 	if (!window.appDevMode) {
-		var cosId = null;
-		if (appCtxt.getSettings() && appCtxt.getSettings().getInfoResponse && appCtxt.getSettings().getInfoResponse.cos) {
-			cosId = appCtxt.getSettings().getInfoResponse.cos.id;
-		}
 		var extension = (!AjxEnv.isIE || (!AjxEnv.isIE6 && AjxEnv.isIE6up)) ? appExtension : "";
 		includes.unshift([
 			"/service/zimlet/res/Zimlets-nodev_all",
 			(isJS ? (".js" + extension) : ".css"),
 			(languageId ? "?language=" + languageId : ""),
-			(countryId ? "&country=" + countryId : ""),
-			(cosId ? "&cosId=" + cosId : "")  // For an explanation of why we add cosId here, please see bug #58979
+			(countryId ? "&country=" + countryId : "")
 		].join(""));
 	}
 

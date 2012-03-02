@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -47,10 +47,17 @@
                 <div>
                     <div>
                         <span>
-                            <c:if test="${mailbox.features.briefcases}"><input type="checkbox" name="attachIds" value="${fn:escapeXml(partId)}"/></c:if> <mo:img src="${part.image}" alt="${fn:escapeXml(part.displayName)}"/>
+                            <c:if test="${mailbox.features.briefcases && ua.isiPad eq false}"><input type="checkbox" name="attachIds" value="${fn:escapeXml(partId)}"/></c:if> <mo:img src="${part.image}" alt="${fn:escapeXml(part.displayName)}"/>
                         </span>
                         <span>
-                            <a href="${fn:escapeXml(url)}&amp;disp=a"><b>${fn:escapeXml(pname)}</b></a> (${zm:displaySize(pageContext,part.size)})
+                        <c:choose>
+                            <c:when test="${zm:isProvOrAttr(pageContext, 'zimbraAttachmentsBlocked')}">
+                                <b>${fn:escapeXml(pname)}</b>(${zm:displaySize(pageContext,part.size)})
+                            </c:when>
+                            <c:otherwise>
+                                <a href="${fn:escapeXml(url)}&amp;disp=a"><b>${fn:escapeXml(pname)}</b></a> (${zm:displaySize(pageContext,part.size)})
+                            </c:otherwise>
+                            </c:choose>
                         </span>
                         <c:if test="${mailbox.features.viewInHtml and part.isViewAsHtmlTarget}">
                             <span>
@@ -63,7 +70,7 @@
         </div>
     </c:if>
 </c:forEach>
-<c:if test="${count gt 0 && mailbox.features.briefcases}">
+<c:if test="${count gt 0 && mailbox.features.briefcases && ua.isiPad eq false}">
     <hr size="1"/>
     <input type="hidden" name="mid" value="${message.id}">
     <div class="tbl" width="100%"><div class="tr">

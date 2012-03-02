@@ -366,13 +366,7 @@ function(funcName, params, type, fault1 /* , ... , faultN */) {
 	}
 
 	// cleanup
-	try {
-		delete window[funcName]; // IE fails on this one (bug #57952)
-	} catch (e) {
-		if (window[funcName]) {
-			window[funcName] = undefined;
-		}
-	}
+	delete window[funcName];
 	var iframe = params.iframe;
 	iframe.parentNode.removeChild(iframe);
 };

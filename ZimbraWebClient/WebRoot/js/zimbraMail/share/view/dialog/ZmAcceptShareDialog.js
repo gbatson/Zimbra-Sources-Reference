@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -39,7 +39,6 @@ ZmAcceptShareDialog = function(parent, className) {
 	// create formatters
 	this._headerFormatter = new AjxMessageFormat(ZmMsg.acceptShareHeader);
 	this._detailsFormatter = new AjxMessageFormat(ZmMsg.acceptShareDetails);
-	this._defaultNameFormatter = new AjxMessageFormat(ZmMsg.shareNameDefault);
 };
 
 ZmAcceptShareDialog.prototype = new DwtDialog;
@@ -66,7 +65,7 @@ function(share, fromAddr) {
 
 	this._share = share;
 	this._fromAddr = fromAddr;
-	this._headerEl.innerHTML = this._headerFormatter.format([share.grantor.name || share.grantor.email, AjxStringUtil.htmlEncode(share.link.name)]);
+	this._headerEl.innerHTML = this._headerFormatter.format([share.grantor.name || share.grantor.email, share.link.name]);
 
 	var role = ZmShare._getRoleFromPerm(share.link.perm);
 	var params = [
@@ -77,20 +76,27 @@ function(share, fromAddr) {
 	this._questionEl.innerHTML = "<b>" + ZmMsg.acceptShareQuestion + "</b>";
 
 	var namePart = share.grantor.name || (share.grantor.email && share.grantor.email.substr(0, share.grantor.email.indexOf('@')));
-	this._nameEl.value = this._defaultNameFormatter.format([namePart, share.link.name]);
+	this._nameEl.value = ZmShare.getDefaultMountpointName(namePart, share.link.name);
 
 	this._reply.setReplyType(ZmShareReply.NONE);
 	this._reply.setReplyNote("");
 
 	var orgType = ZmOrganizer.TYPE[share.link.view];
-	if (orgType == ZmOrganizer.FOLDER) {
-		this._color.getMenu().getItem(0).setEnabled(true);
-		this._color.setSelectedValue(0);
-	} else {
-		this._color.getMenu().getItem(0).setEnabled(false);
-		this._color.setSelectedValue(1);
+	var icon = null;
+	var orgClass = ZmOrganizer.ORG_CLASS[orgType];
+	if (orgClass) {
+		var orgPackage = ZmOrganizer.ORG_PACKAGE[orgType];
+		if (orgPackage) {
+			AjxDispatcher.require(orgPackage);
+			//to fix bug 55320 - got rid of the calling getIcon on the prototype hack - that caused isRemote to set _isRemote on the prototype thus causing every object to have it by default set.
+			var sample = new window[orgClass]({}); //get a sample object just for the icon
+			sample._isRemote = true; //hack - so it would get the remote version of the icon
+			icon = sample.getIcon();
+		}
 	}
-
+	this._color.setImage(icon);
+	this._color.setValue(ZmOrganizer.DEFAULT_COLOR[orgType]);
+	
 	DwtDialog.prototype.popup.call(this);
 };
 
@@ -149,11 +155,7 @@ function() {
 	this._nameEl.style.width = "20em";
 	var nameElement = this._nameEl;
 
-	this._color = new DwtSelect({parent:view});
-	for (var i = 0; i < ZmOrganizer.COLOR_CHOICES.length; i++) {
-		var color = ZmOrganizer.COLOR_CHOICES[i];
-		this._color.addOption(color.label, false, color.value);
-	}
+	this._color = new ZmColorButton({parent:this});
 
 	var props = this._propSheet = new DwtPropertySheet(view);
 	var propsEl = props.getHtmlElement();

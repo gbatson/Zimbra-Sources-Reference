@@ -246,6 +246,10 @@ function() {
  */
 ZmZimletContext.prototype._finished_loadIncludes =
 function() {
+    // localize messages
+    this.label = this.label && this.processMessage(this.label);
+    this.description = this.description && this.processMessage(this.description);
+
 	var CTOR = this.handlerObject ? window[this.handlerObject] : ZmZimletBase;
 	if (!CTOR) {
 		DBG.println("zimlet handler not defined ("+this.handlerObject+")");
@@ -470,6 +474,26 @@ function() {
 };
 
 /**
+ * Sets the panel action menu.
+ * 
+ * @param	{ZmActionMenu}	menu		the menu
+ */
+ZmZimletContext.prototype.setPanelActionMenu =
+function(menu) {
+	if (menu == null || (menu instanceof ZmActionMenu) == false)
+		return;
+	
+	var items = menu.getMenuItems();
+	for (menuId in items) {
+		var item = items[menuId];
+		if (item.id != null || item.id != "")
+			item.addSelectionListener(this._handleMenuItemSelected);
+	}
+	
+	this._panelActionMenu = menu;
+};
+
+/**
  * @private
  */
 ZmZimletContext.prototype._makeMenu =
@@ -528,22 +552,20 @@ function(str, obj) {
 /**
  * @private
  */
-ZmZimletContext.prototype.processMessage =
-function(str) {
+ZmZimletContext.processMessage = function(name, str) {
 	// i18n files load async so if not defined skip translation
-	if (!window[this.name]) {
+	if (!window[name]) {
 		DBG.println(AjxDebug.DBG2, "processMessage no messages: " + str);
 		return str;
 	}
-	var props = window[this.name];
-	return this.replaceObj(ZmZimletContext.RE_SCAN_MSG, str, props);
+	var props = window[name];
+	return ZmZimletContext.replaceObj(ZmZimletContext.RE_SCAN_MSG, str, props);
 };
 
 /**
  * @private
  */
-ZmZimletContext.prototype.replaceObj =
-function(re, str, obj) {
+ZmZimletContext.replaceObj = function(re, str, obj) {
 	return String(str).replace(re,
 		function(str, p1, prop) {
 			var txt = p1;
@@ -571,6 +593,20 @@ function(re, str, obj) {
 			return txt;
 		});
 };
+
+/**
+ * Kept for backwards compatibility.
+ * @private
+ */
+ZmZimletContext.prototype.processMessage = function(str) {
+    return ZmZimletContext.processMessage(this.name, str);
+};
+
+/**
+ * Kept for backwards compatibility.
+ * @private
+ */
+ZmZimletContext.prototype.replaceObj = ZmZimletContext.replaceObj;
 
 /**
  * @private
@@ -874,7 +910,7 @@ function(xslt, canvas, result) {
  */
 ZmZimletContext._getMsgBody =
 function(o) {
-	var body = o.getTextPart();
+	var body = o.getOrFetchTextPart();
 	if (!body && o.getBodyPart(ZmMimeTable.TEXT_HTML)) {
 		var div = document.createElement("div");
 		div.innerHTML = o.getBodyPart(ZmMimeTable.TEXT_HTML).content;

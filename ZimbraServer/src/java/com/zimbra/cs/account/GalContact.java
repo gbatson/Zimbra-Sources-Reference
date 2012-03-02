@@ -20,6 +20,8 @@ import java.util.Map;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 
+import com.zimbra.cs.gal.GalSearchConfig.GalType;
+
 /**
  * @author schemers
  */
@@ -28,7 +30,8 @@ public class GalContact implements Comparable {
     public interface Visitor  {
         public void visit(GalContact gc) throws ServiceException;
     }
-    
+   
+    private GalType mGalType;
     private Map<String, Object> mAttrs;
     private String mId;
     private String mSortField;
@@ -37,7 +40,17 @@ public class GalContact implements Comparable {
         mId = dn;
         mAttrs = attrs;
     }
+    
+    public GalContact(GalType galType, String dn, Map<String,Object> attrs) {
+        mGalType = galType;
+        mId = dn;
+        mAttrs = attrs;
+    }
 
+    public boolean isZimbraGal() {
+        return GalType.zimbra == mGalType;
+    }
+    
     /* (non-Javadoc)
      * @see com.zimbra.cs.account.GalContact#getId()
      */
@@ -65,6 +78,10 @@ public class GalContact implements Comparable {
         if (val instanceof String) return (String) val;
         else if (val instanceof String[]) return ((String[])val)[0];
         else return null;
+    }
+    
+    public boolean isGroup() {
+        return ContactConstants.TYPE_GROUP.equals(getSingleAttr(ContactConstants.A_type));
     }
     
     private String getSortField() {

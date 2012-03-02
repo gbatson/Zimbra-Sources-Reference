@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.mail.Address;
 import javax.mail.internet.AddressException;
@@ -34,6 +35,7 @@ import org.dom4j.Element;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
@@ -47,7 +49,9 @@ import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
+import com.zimbra.cs.mailbox.calendar.FriendlyCalendaringDescription;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
+import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 import com.zimbra.cs.mailbox.calendar.ParsedDuration;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
@@ -210,10 +214,10 @@ public class ScheduleOutbox extends Collection {
             from = AccountUtil.getFriendlyEmailAddress(target);
             if (originator.toLowerCase().startsWith("mailto:"))
                 originator = originator.substring(7);
-            sender = new InternetAddress(originator);
+            sender = new JavaMailInternetAddress(originator);
             if (rcpt.toLowerCase().startsWith("mailto:"))
                 rcpt = rcpt.substring(7);
-            to = new InternetAddress(rcpt);
+            to = new JavaMailInternetAddress(rcpt);
             recipients.add(to);
         } catch (AddressException e) {
             resp.addElement(DavElements.E_RECIPIENT).setText(rcpt);
@@ -256,8 +260,6 @@ public class ScheduleOutbox extends Collection {
         if (status.equals("CANCELLED"))
             subject = "Meeting Cancelled: ";
         subject += req.getPropVal(ICalTok.SUMMARY, "");
-        desc = req.getPropVal(ICalTok.DESCRIPTION, "");
-        descHtml = req.getDescriptionHtml();
         uid = req.getPropVal(ICalTok.UID, null);
         if (uid == null) {
             resp.addElement(DavElements.E_RECIPIENT).setText(rcpt);
@@ -265,9 +267,16 @@ public class ScheduleOutbox extends Collection {
             return;
         }
         try {
-            MimeMessage mm = CalendarMailSender.createCalendarMessage(from, sender, recipients, subject, desc, descHtml, uid, cal);
+            List<Invite> components = Invite.createFromCalendar(ctxt.getAuthAccount(), null, cal, false);
+            FriendlyCalendaringDescription friendlyDesc = new FriendlyCalendaringDescription(components, ctxt.getAuthAccount());
+            desc = friendlyDesc.getAsPlainText();
+            descHtml = req.getDescriptionHtml();
+            if ((descHtml == null) || (descHtml.length() == 0))
+                descHtml = friendlyDesc.getAsHtml();
             Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(ctxt.getAuthAccount());
-            mbox.getMailSender().sendMimeMessage(ctxt.getOperationContext(), mbox, true, mm, null, null, null, null, null, true, false);
+            MimeMessage mm = CalendarMailSender.createCalendarMessage(from, sender, recipients, subject, desc, descHtml, uid, cal);
+            mbox.getMailSender().setSendPartial(true).sendMimeMessage(
+                ctxt.getOperationContext(), mbox, true, mm, null, null, null, null, null, false);
         } catch (ServiceException e) {
             resp.addElement(DavElements.E_RECIPIENT).setText(rcpt);
             resp.addElement(DavElements.E_REQUEST_STATUS).setText("5.1");

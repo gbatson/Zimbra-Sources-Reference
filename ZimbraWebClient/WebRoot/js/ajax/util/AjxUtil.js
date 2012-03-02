@@ -58,8 +58,8 @@ AjxUtil.HOST_NAME_RE = /^[A-Za-z0-9\-]{2,}(\.[A-Za-z0-9\-]{1,})*(\.[A-Za-z0-9\-]
 AjxUtil.HOST_NAME_WITH_PORT_RE = /^[A-Za-z0-9\-]{2,}(\.[A-Za-z0-9\-]{2,})*:([0-9])+$/;
 AjxUtil.EMAIL_SHORT_RE = /^[^@\s]+$/;
 AjxUtil.EMAIL_FULL_RE = /^[^@\s]+@[A-Za-z0-9\-]{2,}(\.[A-Za-z0-9\-]{2,})+$/;
-AjxUtil.SHORT_URL_RE = /^[A-Za-z0-9]{2,}:\/\/[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*(:([0-9])+)*$/;
-AjxUtil.IP_SHORT_URL_RE = /^[A-Za-z0-9]{2,}:\/\/\d{1,3}(\.\d{1,3}){3}(\.\d{1,3}\.\d{1,3})?(:([0-9])+)*$/;
+AjxUtil.SHORT_URL_RE = /^[A-Za-z0-9]{2,}:\/\/[A-Za-z0-9\-]+(\.[A-Za-z0-9\-]+)*(:([0-9])+)?$/;
+AjxUtil.IP_SHORT_URL_RE = /^[A-Za-z0-9]{2,}:\/\/\d{1,3}(\.\d{1,3}){3}(\.\d{1,3}\.\d{1,3})?(:([0-9])+)?$/;
 
 AjxUtil.isIpAddress 		= function(s) { return AjxUtil.IP_ADDR_RE.test(s); };
 AjxUtil.isDomain 			= function(s) {	return AjxUtil.DOMAIN_RE.test(s); };
@@ -212,9 +212,10 @@ function(aMessage) {
 	var myStack = new Array();
 	if (AjxEnv.isIE5_5up) {
 		// On IE, the caller chain is on the arguments stack
-		var myTrace = arguments.caller;
-		while (myTrace) {
-		    myStack[myStack.length] = myTrace.callee;
+		var myTrace = arguments.callee.caller;
+		var i = 0; // stop at 20 since there might be somehow an infinite loop here. Maybe in case of a recursion. 
+		while (myTrace && i++ < 20) {
+		    myStack[myStack.length] = myTrace;
 	    	myTrace = myTrace.caller;
 		}
 	} else {
@@ -419,10 +420,17 @@ AjxUtil.values = function(object, acceptFunc) {
     return values;
 };
 
+AjxUtil.foreach = function(array, func) {
+    if (!func) return;
+    for (var i = 0; i < array.length; i++) {
+        func(array[i], i);
+    }
+};
+
 AjxUtil.map = function(array, func) {
 	var narray = new Array(array.length);
 	for (var i = 0; i < array.length; i++) {
-		narray[i] = func ? func(array[i]) : array[i];
+		narray[i] = func ? func(array[i], i) : array[i];
 	}
 	return narray;
 };
@@ -531,16 +539,16 @@ AjxUtil.byNumber = function(a, b) {
 };
 
 /**
- * Logs a message with a particular key into memory, for on-demand output later.
- * A key is a way to group related messages together.
- * 
- * @param type		[string]		key for this msg
- * @param msg		[string]		text to log
+ * <strong>Note:</strong>
+ * This function <em>must</em> be wrapped in a closure that passes
+ * the property name as the first argument.
+ *
+ * @param {string}  prop    Property name.
+ * @param {object}  a       Object A.
+ * @param {object}  b       Object B.
  */
-AjxUtil.log =
-function(type, msg) {
-	if (!AjxUtil.LOG[type]) { return; }
-	AjxUtil.LOG[type].push(msg);
+AjxUtil.byStringProp = function(prop, a, b) {
+    return a[prop].localeCompare(b[prop]);
 };
 
 /**
@@ -751,11 +759,39 @@ function(hash1, hash2, overwrite, ignore) {
 	return hash1;
 };
 
+// array check that doesn't rely on instanceof, since type info
+// can get lost in new window
+AjxUtil.isArray1 =
+function(arg) {
+	return Boolean(arg && (arg.length != null) && arg.splice && arg.slice);
+};
+
 // converts the arg to an array if it isn't one
 AjxUtil.toArray =
 function(arg) {
-	// array check that doesn't rely on instanceof, since type info
-	// can get lost in new window
-	var isArray = Boolean(arg && (arg.length != null) && arg.splice && arg.slice);
-	return isArray ? arg : (arg === undefined) ? [] : [arg];
+	return AjxUtil.isArray1(arg) ? arg : (arg === undefined) ? [] : [arg];
+};
+
+/**
+ * Returns a sub-property of an object. This is useful to avoid code like
+ * the following:
+ * <pre>
+ * resp = resp && resp.BatchResponse;
+ * resp = resp && resp.GetShareInfoResponse;
+ * resp = resp && resp[0];
+ * </pre>
+ * <p>
+ * The first argument to this function is the source object while the
+ * remaining arguments are the property names of the path to follow.
+ * This is done instead of as a path string (e.g. "foo/bar[0]") to
+ * avoid unnecessary parsing.
+ *
+ * @param {object}          object  The source object.
+ * @param {string|number}   ...     The property of the current context object.
+ */
+AjxUtil.get = function(object /* , propName1, ... */) {
+    for (var i = 1; object && i < arguments.length; i++) {
+        object = object[arguments[i]];
+    }
+    return object;
 };

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -100,11 +100,11 @@ function(msgStr, style, title) {
 	title = title || DwtMessageDialog.TITLE[style];
 	this.setTitle(title);
 	if (msgStr) {
-		var html = [];
+        var html = [];
 		var i = 0;
-		html[i++] = "<table cellspacing=0 cellpadding=0 border=0><tr><td valign='top'>";
-		html[i++] = AjxImg.getImageHtml(DwtMessageDialog.ICON[style]);
-		html[i++] = "</td><td class='DwtMsgArea'>";
+		html[i++] = "<table cellspacing=0 cellpadding=0 border=0 width=100% height=100%><tr><td valign='top'>";
+		html[i++] =  AjxImg.getImageHtml(DwtMessageDialog.ICON[style], null, "id='" + this._msgCellId + "_Image'");
+		html[i++] = "</td><td class='DwtMsgArea' id='" + this._msgCellId +"_Msg'>";
 		html[i++] = msgStr;
 		html[i++] = "</td></tr></table>";
 		this._msgCell.innerHTML = html.join("");

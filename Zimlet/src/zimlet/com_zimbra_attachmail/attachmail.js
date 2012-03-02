@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -147,8 +147,10 @@ function() {
  */
 AttachMailTabView.prototype._resetQuery =
 function(newQuery) {
-	if (this._currentQuery == undefined)
+	if (this._currentQuery == undefined) {
+		this._currentQuery = newQuery;
 		return newQuery;
+	}
 
 	if (this._currentQuery != newQuery) {
 		this._offset = 0;
@@ -235,10 +237,12 @@ function() {
 	this._navTB.addSelectionListener(ZmOperation.PAGE_FORWARD, navBarListener);
 
 	document.getElementById(AttachMailTabView.ELEMENT_ID_NAV_BUTTON_CELL).appendChild(this._navTB.getHtmlElement());
-	this.showAttachMailTreeView();
 
 	var params = {parent: appCtxt.getShell(), className: "AttachMailTabBox AttachMailList", posStyle: DwtControl.ABSOLUTE_STYLE, view: ZmId.VIEW_BRIEFCASE_ICON, type: ZmItem.ATT};
 	var bcView = this._tabAttachMailView = new ZmAttachMailListView(params);
+
+	this.showAttachMailTreeView(); //this must be called AFTER setting this._tabAttachMailView since callback called from it uses it. so far only on IE7 for some reason this callback was called before the previous line, when this line was above it, but it was the bug
+
 	bcView.reparentHtmlElement(this._folderListId);
 	bcView.addSelectionListener(new AjxListener(this, this._listSelectionListener));
 	Dwt.setPosition(bcView.getHtmlElement(), Dwt.RELATIVE_STYLE);
@@ -491,7 +495,7 @@ function() {
 	this.setSize(Dwt.DEFAULT, "255");
 	this._currentQuery = this._getQueryFromFolder("2");
 	this.treeView.setSelected("2");
-	this._treeListener();
+	this._treeListener(null, true);
 };
 
 
@@ -523,11 +527,15 @@ function(params) {
 };
 
 AttachMailTabView.prototype._treeListener =
-function(ev) {
-	var item = this.treeView.getSelected();
-	document.getElementById(AttachMailTabView.ELEMENT_ID_SEARCH_FIELD).value = ["in:\"", item.getSearchPath(),"\""].join("");
-	var query = this._getQueryFromFolder(item.id);
-	this.executeQuery(query);
+function(ev, ignoreEvent) {
+	ev = ev || window.event; //this is called from onClick via simpleClosure and the event is not passed in IE as a param.
+	if (ignoreEvent || ev.detail == DwtTree.ITEM_SELECTED) {
+		var item = this.treeView.getSelected();
+		document.getElementById(AttachMailTabView.ELEMENT_ID_SEARCH_FIELD).value = ["in:\"", item.getSearchPath(),"\""].join("");
+		var query = this._getQueryFromFolder(item.id);
+		this.executeQuery(query);
+        this._tabAttachMailView.focus();
+	}
 };
 
 AttachMailTabView.prototype._hideRoot =
@@ -580,7 +588,7 @@ function(query, forward) {
 
 	//var bController = this._AttachMailController;
 	var callback = new AjxCallback(this, this.showResultContents);
-	this.searchFolder({query:this._currentQuery, offset:this._offset, limit:this._limit , callback:callback});
+	this.searchFolder({query:query, offset:this._offset, limit:this._limit , callback:callback});
 };
 
 /**
@@ -623,16 +631,23 @@ function(base, item, params) {
 
 ZmAttachMailListView.prototype._getCellContents =
 function(htmlArr, idx, item, field, colIdx, params) {
-	//if (field == "fr")
-	var fragment = item.fragment;
+	var fragment = " - " + item.fragment;
+	var untrunced = fragment;
 	if (fragment) {
 		if (fragment.length > 100) {
-			fragment = fragment.substring(0, 96) + "...";
+			fragment = fragment.substring(0, 96);
 		}
+		var width = this.getHtmlElement().clientWidth - 25;
+		if (!isNaN(width))
+			fragment = AjxStringUtil.clip(fragment, width);
+		if (fragment != untrunced && !fragment.match(new RegExp(".+"+AjxStringUtil.ELLIPSIS+"$"))) {
+			fragment += AjxStringUtil.ELLIPSIS;
+		}
+
+		fragment = AjxStringUtil.htmlEncode(fragment, true);
 	} else {
 		fragment = "";
 	}
-	fragment = AjxStringUtil.htmlEncode(fragment, true);
 
 	var from = "";
 	if (item.getAddress("FROM").name != "") {
@@ -642,27 +657,36 @@ function(htmlArr, idx, item, field, colIdx, params) {
 	}
 	var attachCell = "";
 	if (item.hasAttach){
-		attachCell = "<td width='16px'><div class='ImgAttachment' /></td>";
+		attachCell = "<td width='16px'><div class='ImgAttachment'/></td>";
 	}
-	htmlArr[idx++] = "<DIV style=\"height:70px;border-style:solid;border-width:1px 0;cursor:pointer;border-color:#E0E0E0;\">";
-	htmlArr[idx++] = "<TABLE width=100%><tr> "; 
-	htmlArr[idx++] = attachCell;
-	htmlArr[idx++] = "<td  align=left><span style=\"font-weight:bold;font-size:14px;\"> ";
-	htmlArr[idx++] = from;
-	htmlArr[idx++] = "</SPAN></td><td align=right>";
-	htmlArr[idx++] = AjxDateUtil.computeDateStr(params.now || new Date(), item.date);
-	htmlArr[idx++] = "</td></tr></TABLE>";
+
+	var cols = attachCell ? 3 : 2;
+	htmlArr[idx++] = "<div style=\"height:70px;border-style:solid;border-width:1px 0;cursor:pointer;border-color:#E0E0E0;\">";
+	htmlArr[idx++] = "<table width=100%>"; 
+	
 	var subject = item.subject;
 	if (subject == undefined)
 		subject = "<no subject>";
 	else  if (subject.length > 35) {
 		subject = subject.substring(0, 32) + "...";
 	}
+	htmlArr[idx++] = "<tr>";
+	htmlArr[idx++] = attachCell;
+	htmlArr[idx++] = "<td align=left><span style=\"font-weight:bold;\"> " + AjxStringUtil.htmlEncode(subject) + "</span></td>";
 
-	htmlArr[idx++] = "<span style=\"font-weight:bold;\"> " + subject + "</SPAN>";
+	htmlArr[idx++] = "<td align=right>";
+	htmlArr[idx++] = AjxDateUtil.computeDateStr(params.now || new Date(), item.date);
+	htmlArr[idx++] = "</td></tr>";
+
+	htmlArr[idx++] = "<tr><td align=left colspan="+cols+"><span style=\"font-weight:bold;font-size:14px;\"> ";
+	htmlArr[idx++] = from;
+	htmlArr[idx++] = "</span></td></tr>";
+	
 	if (fragment != "") {
-		htmlArr[idx++] = "<span style=\"color:gray\"> - " + fragment + "</SPAN></DIV>";
+		htmlArr[idx++] = "<tr><td align=left colspan="+cols+"><span style=\"color:gray;overflow:hidden\">" + fragment + "</span></td></tr>";
 	}
+	htmlArr[idx++] = "</table></div>";
+	
 	return idx;
 };
 

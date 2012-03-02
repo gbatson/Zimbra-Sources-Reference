@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,8 +28,9 @@ import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 
 public class ContactFolderFormatter extends Formatter {
@@ -39,14 +40,10 @@ public class ContactFolderFormatter extends Formatter {
 	private static final String CONTENT_TYPE = "text/x-zimbra-delimitted-fields";
 
 	private enum Delimiter { Field, Contact };
-	
-	@Override
-	public boolean canBeBlocked() {
-		return false;
-	}
+
 
 	@Override
-	public void formatCallback(Context context) throws UserServletException,
+	public void formatCallback(UserServletContext context) throws UserServletException,
 			ServiceException, IOException, ServletException {
 		if (!(context.target instanceof Folder))
             throw UserServletException.notImplemented("can only handle Folders");
@@ -137,8 +134,8 @@ public class ContactFolderFormatter extends Formatter {
     }
 	
 	@Override
-	public String getType() {
-		return "cf";
+	public FormatType getType() {
+		return FormatType.CONTACT_FOLDER;
 	}
 
 }

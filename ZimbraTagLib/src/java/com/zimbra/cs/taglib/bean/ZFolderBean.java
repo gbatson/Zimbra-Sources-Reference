@@ -125,6 +125,9 @@ public class  ZFolderBean {
         return color.name();
     }
 
+    public String getRgb() {
+        return mFolder.getRgb();
+    }
     /**
      * remote URL (RSS, iCal, etc) this folder syncs to
      * 
@@ -182,7 +185,8 @@ public class  ZFolderBean {
         return view == null || view == ZFolder.View.message || view == ZFolder.View.conversation;
     }
     
-    public boolean getIsNullView() { return mFolder.getDefaultView() == null; }    
+    public boolean getIsNullView() { return mFolder.getDefaultView() == null; }
+    public boolean getIsUnknownView() { return mFolder.getDefaultView() == ZFolder.View.unknown; }
     public boolean getIsMessageView() { return mFolder.getDefaultView() == ZFolder.View.message; }
     public boolean getIsContactView() { return mFolder.getDefaultView() == ZFolder.View.contact; }    
     public boolean getIsConversationView() { return mFolder.getDefaultView() == ZFolder.View.conversation; }        
@@ -361,62 +365,77 @@ public class  ZFolderBean {
         }
     }
 
+    public String getRgbColor() {
+        return getRgbColor(mFolder.getColor(), mFolder.getDefaultView());
+    }
+
+    public static String getRgbColor(Color color, View view) {
+        int colorIndex = color.getValue();
+        if (color == Color.defaultColor) {
+            if (view == View.contact || view == View.task)
+                colorIndex = Color.gray.getValue();
+            else
+                colorIndex = Color.orange.getValue();
+        }
+        return ZFolder.RGB_COLORS[colorIndex];
+    }
+    
     public String getImage() {
         if (getIsSearchFolder()) {
-            return "startup/ImgSearchFolder.gif";
+            return "startup/ImgSearchFolder.png";
         } else if (getIsAppointmentView()) {
             if (getIsMountPoint()) {
-                return "calendar/ImgSharedCalendarFolder.gif";
+                return "calendar/ImgSharedCalendarFolder.png";
             } else {
-                return "calendar/ImgCalendarFolder.gif";
+                return "calendar/ImgCalendarFolder.png";
             }
         } else if (getIsContactView()) {
             if (getIsMountPoint()) {
-                return "contacts/ImgSharedContactsFolder.gif";
+                return "contacts/ImgSharedContactsFolder.png";
             } else if (getIsAutoContacts()) {
-                return "contacts/ImgEmailedContacts.gif";
+                return "contacts/ImgEmailedContacts.png";
             } else {
-                return "contacts/ImgContactsFolder.gif";
+                return "contacts/ImgContactsFolder.png";
             }
         } else if (getIsTaskView()) {
             if (getIsMountPoint()) {
-                return "tasks/ImgSharedTaskList.gif";
+                return "tasks/ImgSharedTaskList.png";
             } else {
-                return "startup/ImgTaskList.gif";
+                return "startup/ImgTaskList.png";
             }
         } else if (getIsSystemFolder()) {
             if (getIsInbox())
-                return "startup/ImgInbox.gif";
+                return "startup/ImgInbox.png";
             else if (getIsTrash())
-                return "startup/ImgTrash.gif";
+                return "startup/ImgTrash.png";
             else if (getIsSpam())
-                return "startup/ImgSpamFolder.gif";
+                return "startup/ImgSpamFolder.png";
             else if (getIsSent())
-                return "startup/ImgSentFolder.gif";
+                return "startup/ImgSentFolder.png";
             else if (getIsDrafts())
-                return "startup/ImgDraftFolder.gif";
+                return "startup/ImgDraftFolder.png";
             else
-                return "startup/ImgFolder.gif";
+                return "startup/ImgFolder.png";
         } else if (getIsMailView() && getIsFeed()) {
-            return "startup/ImgRSS.gif";
+            return "startup/ImgRSS.png";
         } else if (getIsMountPoint()) {
-            return "startup/ImgSharedMailFolder.gif";
+            return "startup/ImgSharedMailFolder.png";
         } else if (getIsVoiceView()) {
             String name = getName();
             if (VoiceConstants.FNAME_PLACEDCALLS.equals(name)) {
-                return "voicemail/ImgPlacedCalls.gif";
+                return "voicemail/ImgPlacedCalls.png";
             } else if (VoiceConstants.FNAME_ANSWEREDCALLS.equals(name)) {
-                return "voicemail/ImgAnsweredCalls.gif";
+                return "voicemail/ImgAnsweredCalls.png";
             } else if (VoiceConstants.FNAME_MISSEDCALLS.equals(name)) {
-                return "voicemail/ImgMissedCalls.gif";
+                return "voicemail/ImgMissedCalls.png";
             } else if (VoiceConstants.FNAME_VOICEMAILINBOX.equals(name)) {
-                return "voicemail/ImgVoicemail.gif";
+                return "voicemail/ImgVoicemail.png";
             } else if (VoiceConstants.FNAME_TRASH.equals(name)) {
-                return "startup/ImgTrash.gif";
+                return "startup/ImgTrash.png";
             }
             return null;
         } else {
-            return "startup/ImgFolder.gif";
+            return "startup/ImgFolder.png";
         }
     }
     

@@ -111,33 +111,31 @@ ZmPrefView.prototype._prefSectionAdded =
 function(section) {
 	// add section to tabs
 	var index = this._getIndexForSection(section.id);
-	var added = this._addSection(section, index);
+	this._addSection(section, index);
 
-	if (added) {
-		// create new page pref organizer
-		var organizer = ZmPrefPage.createFromSection(section);
-		var treeController = appCtxt.getOverviewController().getTreeController(ZmOrganizer.PREF_PAGE);
-		var tree = treeController.getDataTree();
+	// create new page pref organizer
+	var organizer = ZmPrefPage.createFromSection(section);
+	var treeController = appCtxt.getOverviewController().getTreeController(ZmOrganizer.PREF_PAGE);
+	var tree = treeController.getDataTree();
 
-		if (tree) {
-			var parent = tree.getById(ZmId.getPrefPageId(section.parentId)) || tree.root;
-			organizer.pageId = this.getNumTabs();
-			organizer.parent = parent;
+	if (tree) {
+		var parent = tree.getById(ZmId.getPrefPageId(section.parentId)) || tree.root;
+		organizer.pageId = this.getNumTabs();
+		organizer.parent = parent;
 
-			// find index within parent's children
-			var index = null;
-			var children = parent.children.getArray();
-			for (var i = 0; i < children.length; i++) {
-				if (section.priority < this.getSectionForTab(children[i].pageId).priority) {
-					index = i;
-					break;
-				}
+		// find index within parent's children
+		var index = null;
+		var children = parent.children.getArray();
+		for (var i = 0; i < children.length; i++) {
+			if (section.priority < this.getSectionForTab(children[i].pageId).priority) {
+				index = i;
+				break;
 			}
-			parent.children.add(organizer, index);
-
-			// notify so that views can be updated
-			organizer._notify(ZmEvent.E_CREATE);
 		}
+		parent.children.add(organizer, index);
+
+		// notify so that views can be updated
+		organizer._notify(ZmEvent.E_CREATE);
 	}
 };
 
@@ -163,8 +161,8 @@ function(sectionId) {
 ZmPrefView.prototype._addSection =
 function(section, index) {
 	// does the section meet the precondition?
-	if ((!appCtxt.multiAccounts || (appCtxt.multiAccounts && appCtxt.getActiveAccount().isMain)) && !this._controller.checkPreCondition(section)) { return false; }
-	if (this.prefView[section.id]) return false; // Section already exists
+	if ((!appCtxt.multiAccounts || (appCtxt.multiAccounts && appCtxt.getActiveAccount().isMain)) && !this._controller.checkPreCondition(section)) { return; }
+	if (this.prefView[section.id]) return; // Section already exists
 
 	// create pref page's view
 	var view = (section.createView)
@@ -177,7 +175,6 @@ function(section, index) {
 	var tabId = this.addTab(section.title, view, tabButtonId, index);
     this._tabId[section.id] = tabId;
 	this._sectionId[tabId] = section.id;
-	return true;
 };
 
 ZmPrefView.prototype._getIndexForSection =
@@ -406,7 +403,7 @@ function(section, viewPage, dirtyCheck, noValidation, list, errors, view) {
                     }
                 }
 			} else {
-				errors.push(AjxMessageFormat.format(setup.errorMessage, AjxStringUtil.htmlEncode(value)));
+				errors.push(AjxMessageFormat.format(setup.errorMessage, value));
 			}
 			this._controller.setDirty(view, true);
 			if (dirtyCheck) {

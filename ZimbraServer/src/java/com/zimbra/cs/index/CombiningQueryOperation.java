@@ -19,12 +19,15 @@ import java.util.List;
 
 /**
  * Base class for query operations that combine sets of sub-operations
- * (e.g. Intersections or Unions) 
+ * (e.g. Intersections or Unions)
  */
-public abstract class CombiningQueryOperation extends QueryOperation {
+abstract class CombiningQueryOperation extends QueryOperation {
 
-    protected List<QueryOperation>mQueryOperations = new ArrayList<QueryOperation>();
-    
-    int getNumSubOps() { return mQueryOperations.size(); }
-    
+    protected List<QueryOperation> mQueryOperations =
+        new ArrayList<QueryOperation>();
+
+    int getNumSubOps() {
+        return mQueryOperations.size();
+    }
+
 }

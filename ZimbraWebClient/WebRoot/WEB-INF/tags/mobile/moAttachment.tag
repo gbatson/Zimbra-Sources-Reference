@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -37,10 +37,17 @@
             </fmt:message>
         </c:if>
         <span class="td">
-            <%--<mo:img altkey="ALT_ATTACHMENT" src="startup/ImgAttachment.gif"/>--%>
-            <span class="SmlIcnHldr Attachment">&nbsp;</span>
+            <%--<mo:img altkey="ALT_ATTACHMENT" src="startup/ImgAttachment.png"/>--%>
+            <span class="Img ImgAttachment">&nbsp;</span>
             <input <c:if test="${checked}">checked </c:if>type=checkbox name="${name}" value="${value}">
-            <a target="_blank" href="${fn:escapeXml(url)}&amp;disp=i">${fn:escapeXml(displayName)}</a>&nbsp;<c:if test="${displaySize}">(${displaySize})</c:if>
+            <c:choose>
+            <c:when test="${zm:isProvOrAttr(pageContext, 'zimbraAttachmentsBlocked')}">
+	            ${fn:escapeXml(displayName)}&nbsp;<c:if test="${displaySize}">(${displaySize})</c:if>
+			</c:when>
+			<c:otherwise>
+                <a target="_blank" href="${fn:escapeXml(url)}&amp;disp=i">${fn:escapeXml(displayName)}</a>&nbsp;<c:if test="${displaySize}">(${displaySize})</c:if>
+            </c:otherwise>
+            </c:choose>
         </span>
         </div>
 </div>

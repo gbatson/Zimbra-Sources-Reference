@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -106,7 +106,10 @@ function(view) {
  */
 ZmZimletApp.prototype.launch =
 function(params, callback) {
-	this.getController().show();
+	var isNewViewShown = this.getController().show();
+	if(!isNewViewShown) {
+		return;
+	}
 	ZmApp.prototype.launch.call(this, params);
 	if (this._zimlet.appLaunch) {
 		this._zimlet.appLaunch(this.getName(), params);

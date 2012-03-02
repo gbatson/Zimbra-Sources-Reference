@@ -29,9 +29,10 @@ import com.zimbra.cs.account.Account;
 
 public class Flag extends Tag {
 
-    public static final byte FLAG_GENERIC      = 0x00;
-    public static final byte FLAG_MESSAGE_ONLY = 0x01;
-    public static final byte FLAG_FOLDER_ONLY  = 0x02;
+    public static final byte FLAG_GENERIC      = 0x01;
+    public static final byte FLAG_MESSAGE_ONLY = 0x02;
+    public static final byte FLAG_FOLDER_ONLY  = 0x04;
+    public static final byte FLAG_CALITEM_ONLY = 0x08;
 
     public static final int ID_FLAG_FROM_ME       = -1;
     public static final int ID_FLAG_ATTACHED      = -2;
@@ -62,6 +63,7 @@ public class Flag extends Tag {
     @Deprecated //support for ZD 1.x local data migration
     public static final int ID_FLAG_ARCHIVED      = -28;
     public static final int ID_FLAG_GLOBAL        = -29;
+    public static final int ID_FLAG_IN_DUMPSTER   = -30;
     public static final int ID_FLAG_UNCACHED      = -31;
 
     private static final class FlagInfo {
@@ -78,12 +80,12 @@ public class Flag extends Tag {
             new FlagInfo("\\Forwarded",   'w',    FLAG_MESSAGE_ONLY, false, ID_FLAG_FORWARDED);
             new FlagInfo("\\Copied",      HIDDEN, FLAG_GENERIC,      true,  ID_FLAG_COPIED);
             new FlagInfo("\\Flagged",     'f',    FLAG_GENERIC,      false, ID_FLAG_FLAGGED);
-            new FlagInfo("\\Draft",       'd',    FLAG_MESSAGE_ONLY, true,  ID_FLAG_DRAFT);
+            new FlagInfo("\\Draft",       'd',    (byte) (FLAG_MESSAGE_ONLY | FLAG_CALITEM_ONLY), true, ID_FLAG_DRAFT);
             new FlagInfo("\\Deleted",     'x',    FLAG_GENERIC,      false, ID_FLAG_DELETED);
             new FlagInfo("\\Notified",    'n',    FLAG_MESSAGE_ONLY, false, ID_FLAG_NOTIFIED);
             new FlagInfo("\\Unread",      'u',    FLAG_MESSAGE_ONLY, false, ID_FLAG_UNREAD);
-            new FlagInfo("\\Urgent",      '!',    FLAG_MESSAGE_ONLY, true,  ID_FLAG_HIGH_PRIORITY);
-            new FlagInfo("\\Bulk",        '?',    FLAG_MESSAGE_ONLY, true,  ID_FLAG_LOW_PRIORITY);
+            new FlagInfo("\\Urgent",      '!',    (byte) (FLAG_MESSAGE_ONLY | FLAG_CALITEM_ONLY), true, ID_FLAG_HIGH_PRIORITY);
+            new FlagInfo("\\Bulk",        '?',    (byte) (FLAG_MESSAGE_ONLY | FLAG_CALITEM_ONLY), true, ID_FLAG_LOW_PRIORITY);
             new FlagInfo("\\Versioned",   '/',    FLAG_GENERIC,      true,  ID_FLAG_VERSIONED);
             new FlagInfo("\\IdxDeferred", HIDDEN, FLAG_GENERIC,      true,  ID_FLAG_INDEXING_DEFERRED);
             new FlagInfo("\\Subscribed",  '*',    FLAG_FOLDER_ONLY,  false, ID_FLAG_SUBSCRIBED);
@@ -97,6 +99,7 @@ public class Flag extends Tag {
             //deprecated flag; needed to support ZD 1.x local data migration
             new FlagInfo("\\Archived",    '@',    FLAG_GENERIC,      true,  ID_FLAG_ARCHIVED);
             new FlagInfo("\\Global",      'g',    FLAG_FOLDER_ONLY,  true,  ID_FLAG_GLOBAL);
+            new FlagInfo("\\InDumpster",  HIDDEN, FLAG_GENERIC,      true,  ID_FLAG_IN_DUMPSTER);
             new FlagInfo("\\Uncached",    HIDDEN, FLAG_GENERIC,      true,  ID_FLAG_UNCACHED);
         }
 
@@ -215,13 +218,10 @@ public class Flag extends Tag {
             return flags;
         }
 
-
-        private static final byte ATTRIBUTE_CONSTRAINT_MASK = FLAG_MESSAGE_ONLY | FLAG_FOLDER_ONLY | FLAG_GENERIC;
-
         static int aggregateBitmasks(byte subsetMask) {
             int mask = 0;
             for (FlagInfo finfo : sFlagInfo) {
-                if (finfo != null && (finfo.mAttributes & ATTRIBUTE_CONSTRAINT_MASK) == subsetMask)
+                if (finfo != null && (finfo.mAttributes & subsetMask) == subsetMask)
                     mask |= finfo.mBitmask;
             }
             return mask;
@@ -262,6 +262,7 @@ public class Flag extends Tag {
     @Deprecated //support for ZD 1.x local data migration
     public static final int BITMASK_ARCHIVED      = FlagInfo.getBitmask(ID_FLAG_ARCHIVED);      // 134217728
     public static final int BITMASK_GLOBAL        = FlagInfo.getBitmask(ID_FLAG_GLOBAL);        // 268435456
+    public static final int BITMASK_IN_DUMPSTER   = FlagInfo.getBitmask(ID_FLAG_IN_DUMPSTER);   // 536870912
     public static final int BITMASK_UNCACHED      = FlagInfo.getBitmask(ID_FLAG_UNCACHED);
 
 
@@ -271,10 +272,11 @@ public class Flag extends Tag {
 
     public static final int FLAGS_FOLDER  = FlagInfo.aggregateBitmasks(FLAG_FOLDER_ONLY);
     public static final int FLAGS_MESSAGE = FlagInfo.aggregateBitmasks(FLAG_MESSAGE_ONLY);
+    public static final int FLAGS_CALITEM = FlagInfo.aggregateBitmasks(FLAG_CALITEM_ONLY);
     public static final int FLAGS_GENERIC = FlagInfo.aggregateBitmasks(FLAG_GENERIC);
 
     /** Bitmask of all valid flags <b>except</b> {@link #BITMASK_UNREAD}. */
-    public static final int FLAGS_ALL = (FLAGS_FOLDER | FLAGS_MESSAGE | FLAGS_GENERIC) & ~BITMASK_UNREAD;
+    public static final int FLAGS_ALL = (FLAGS_FOLDER | FLAGS_MESSAGE | FLAGS_CALITEM | FLAGS_GENERIC) & ~BITMASK_UNREAD;
 
 
     byte mAttributes;
@@ -311,6 +313,8 @@ public class Flag extends Tag {
         if (!item.isTaggable())
             return false;
         if ((mAttributes & FLAG_MESSAGE_ONLY) != 0 && !(item instanceof Message))
+            return false;
+        if ((mAttributes & FLAG_CALITEM_ONLY) != 0 && !(item instanceof CalendarItem))
             return false;
         return true;
     }

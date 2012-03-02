@@ -83,6 +83,11 @@ public class LmtpConfig extends ServerConfig {
         return ZimbraLog.lmtp;
     }
 
+    @Override
+    public String getConnectionRejected() {
+        return "421 " + getDescription() + " closing connection; service busy";
+    }
+
     public String getMtaRecipientDelimiter() {
         try {
             return getGlobalConfig().getAttr(A_zimbraMtaRecipientDelimiter);

@@ -34,7 +34,7 @@
  * @extends	ZmController
  */
 ZmZimbraMail = function(params) {
-	this._startTime = new Date().getTime(); //time we started up
+
 	ZmController.call(this, null);
 
 	this._userShell = params.userShell;
@@ -154,10 +154,6 @@ function() {
  */
 ZmZimbraMail.run =
 function(params) {
-
-	if (!window.DBG) {
-		ZmZimbraMail._createDummyDBG();
-	}
 
 	if (params.noSplashScreen) {
 		ZmZimbraMail.killSplash();
@@ -299,10 +295,7 @@ ZmZimbraMail.killSplash =
 function() {
 	// 	Splash screen is now a part of the skin, loaded in statically via the JSP
 	//	as a well-known ID.  To hide the splash screen, just hide that div.
-	var splashDiv = Dwt.byId("skin_container_splash_screen");
-	if (splashDiv) {
-		Dwt.hide(splashDiv);
-	}
+	Dwt.hide("skin_container_splash_screen");
 };
 
 /**
@@ -383,14 +376,14 @@ function(params) {
 			if (girJSON.Header && girJSON.Header.context && girJSON.Header.context.session) {
 				ZmCsfeCommand.setSessionId(girJSON.Header.context.session);
 			}
-			DBG.println(["<b>RESPONSE (from JSP tag)</b>"].join(""), "GetInfoResponse");
+			DBG.println(AjxDebug.DBG1, ["<b>RESPONSE (from JSP tag)</b>"].join(""), "GetInfoResponse");
 			DBG.dumpObj(AjxDebug.DBG1, girJSON, -1);
 		}
 		if (br.SearchResponse) {
 			var srJSON = params.searchResponse = {};
 			srJSON.Body = {};
 			srJSON.Body.SearchResponse = br.SearchResponse[0];
-			DBG.println(["<b>RESPONSE (from JSP tag)</b>"].join(""), "SearchResponse");
+			DBG.println(AjxDebug.DBG1, ["<b>RESPONSE (from JSP tag)</b>"].join(""), "SearchResponse");
 			DBG.dumpObj(AjxDebug.DBG1, srJSON, -1);
 		}
 	}
@@ -408,7 +401,11 @@ function(params) {
 				if (appCtxt.get(ZmSetting.CALENDAR_ENABLED, null, account)) {
 					this.handleCalendarComponents();
 				}
-				appCtxt.getSearchController().getSearchToolbar().initAutocomplete();
+				var sc = appCtxt.getSearchController();
+				sc.getSearchToolbar().initAutocomplete();
+				if (!appCtxt.isChildWindow) {
+					sc.peopleSearchToolBar.initAutocomplete();
+				}
 			});
 		this.addPostRenderCallback(callback, 0, 0, true);
 	}
@@ -448,6 +445,16 @@ function() {
 	var calMgr = appCtxt.getCalManager();
 	var reminderController = calMgr.getReminderController();
 	reminderController.refresh();
+};
+
+/**
+ * Shows reminders.
+ */
+ZmZimbraMail.prototype.showTaskReminder =
+function() {
+	var taskMgr = appCtxt.getTaskManager();
+	var taskReminderController = taskMgr.getReminderController();
+	taskReminderController.refresh();
 };
 
 /**
@@ -503,8 +510,8 @@ function(params, result) {
 	} else {
 		if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && window.platform && 
 			window.platform.isRegisteredProtocolHandler("mailto")) {  
-		    // bug fix #34342 - always register the protocol handler for mac on start up
-		    this.registerMailtoHandler(AjxEnv.isMac);
+		    // bug fix #34342 - always register the protocol handler for mac and linux on start up
+		    this.registerMailtoHandler(!AjxEnv.isWindows);
 		}    
 	}
 
@@ -564,6 +571,10 @@ function(params, result) {
 
 			var contactListPkg = appCtxt.multiAccounts ? "GetContactsForAllAccounts" : "GetContacts";
 			AjxDispatcher.run(contactListPkg);
+	
+			if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && appCtxt.isOffline) {
+				this.handleOfflineMailTo(location.search);
+			}
 		});
 	this.addPostRenderCallback(callback, 5, 100);
 
@@ -576,10 +587,6 @@ function(params, result) {
 	{
 		this.handleCalendarComponents();
 	}
-	
-    if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && appCtxt.isOffline) {
-        this.handleOfflineMailTo(location.search);
-    }
 };
 
 /**
@@ -601,6 +608,14 @@ function() {
 		var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
 		AjxTimedAction.scheduleAction(reminderAction, delay);
 	}
+	
+	// reminder controlled by calendar preferences setting
+	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
+		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
+		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
+		AjxTimedAction.scheduleAction(reminderAction, delay);
+	}
+	
 };
 
 /**
@@ -624,13 +639,23 @@ function(params) {
 	this.setUserInfo();
 
 	if (appCtxt.get(ZmSetting.SEARCH_ENABLED)) {
-		this._components[ZmAppViewMgr.C_SEARCH] = appCtxt.getSearchController().getSearchPanel();
+		this._components[ZmAppViewMgr.C_SEARCH] = appCtxt.getSearchController().searchPanel;
+	}
+
+	if (appCtxt.get(ZmSetting.PEOPLE_SEARCH_ENABLED) &&
+		(appCtxt.get(ZmSetting.CONTACTS_ENABLED) ||
+		appCtxt.get(ZmSetting.GAL_ENABLED) ||
+		appCtxt.isOffline))
+	{
+		this._components[ZmAppViewMgr.C_PEOPLE_SEARCH] = appCtxt.getSearchController().peopleSearchToolBar;
+	}
+	else {
+		Dwt.hide(ZmId.SKIN_PEOPLE_SEARCH);
 	}
 
 	this.getKeyMapMgr();	// make sure keyboard handling is initialized
 
 	this.setSessionTimer(true);
-	ZmZimbraMail.setAuthTokenEndTime(this._startTime);
 	ZmZimbraMail.killSplash();
 
 	// Give apps a chance to add their own ui components.
@@ -647,9 +672,22 @@ function(params) {
 
 	if (appCtxt.get(ZmSetting.LICENSE_STATUS) != ZmSetting.LICENSE_GOOD) {
 		AjxDispatcher.require("Startup2");
+        var licenseStatus = appCtxt.get(ZmSetting.LICENSE_STATUS);
+        var licenseMsg;
+        switch (licenseStatus) {
+            case ZmSetting.LICENSE_NOT_INSTALLED:
+                licenseMsg = ZmMsg.licenseNotInstalled;
+                break;
+            case ZmSetting.LICENSE_NOT_ACTIVATED:
+                licenseMsg = ZmMsg.licenseNotActivated;
+                break;
+            default:
+                licenseMsg = ZmMsg.licenseExpired;
+        }
+              
 		var dlg = appCtxt.getMsgDialog();
 		dlg.reset();
-		dlg.setMessage(ZmMsg.licenseExpired, DwtMessageDialog.WARNING_STYLE);
+        dlg.setMessage(licenseMsg, DwtMessageDialog.WARNING_STYLE);
 		dlg.popup();
 	}
 
@@ -1399,11 +1437,16 @@ function() {
 	// reason that breaks polling in IE.
 	var soapDoc = AjxSoapDoc.create("NoOpRequest", "urn:zimbraMail");
 	try {
-		if (this._pollInstantNotifications) {
-			var method = soapDoc.getMethod();
-			method.setAttribute("wait", 1);
-			method.setAttribute("limitToOneBlocked", 1);
-		}
+        if (this._pollInstantNotifications) {
+            var method = soapDoc.getMethod();
+            method.setAttribute("wait", 1);
+            method.setAttribute("limitToOneBlocked", 1);
+            if (window.isNotifyDebugOn) {
+                var str = appCtxt.getNotifyDebug();
+                soapDoc.set("DEBUG", str);
+                appCtxt.clearNotifyDebug();
+            }
+        }
 		var params = {
 			soapDoc: soapDoc,
 			asyncMode: true,
@@ -1580,6 +1623,15 @@ function() {
 							 openSetting:		ZmSetting.SEARCH_TREE_OPEN,
 							 displayOrder:		300
 							});
+
+    ZmOrganizer.registerOrg(ZmOrganizer.SHARE, {
+        orgClass:       "ZmShareProxy",
+        treeController: "ZmShareTreeController",
+        labelKey:       "sharedFoldersHeader",
+        compareFunc:	"ZmFolder.sortCompare",
+        displayOrder:	101, // NOTE: Always show shares below primary folder tree
+        hideEmpty:		false
+    });
 
 	ZmOrganizer.registerOrg(ZmOrganizer.TAG,
 							{app:				ZmApp.MAIN,
@@ -1960,8 +2012,7 @@ function() {
 	this._usedQuotaField.getHtmlElement().innerHTML = AjxTemplate.expand('share.Quota#'+quotaTemplateId, data);
 
 	// tooltip for username/quota fields
-	var html = (username != login || data.quota > 0)
-		? AjxTemplate.expand('share.Quota#Tooltip', data) : null;
+	var html = AjxTemplate.expand('share.Quota#Tooltip', data);
 	this._components[ZmAppViewMgr.C_USER_INFO].setToolTipContent(html);
 	this._components[ZmAppViewMgr.C_QUOTA_INFO].setToolTipContent(html);
 };
@@ -2093,24 +2144,6 @@ function(bStartTimer) {
 };
 
 /**
- * Sets the ZmSetting.TOKEN_ENDTIME
- * @param {int} startTime   auth token creation time in milliseconds; uses current time if not specified
- */
-ZmZimbraMail.setAuthTokenEndTime =
-function(startTime) {
-	if(!startTime) {
-		startTime = new Date().getTime();
-	}
-	var authTokenLifetime = appCtxt.get(ZmSetting.TOKEN_LIFETIME);
-	if (authTokenLifetime) {
-		var authTokenEndTime = startTime + authTokenLifetime;
-		appCtxt.set(ZmSetting.TOKEN_ENDTIME, authTokenEndTime);
-		DBG.println(AjxDebug.DBG1, "Setting authTokenEndTime to " + new Date(authTokenEndTime).toLocaleString());
-
-	}
-};
-
-/**
  * Adds a child window.
  * 
  * @private
@@ -2205,7 +2238,7 @@ function() {
 	if (ZmCsfeCommand.getAuthToken()) {
 		appCtxt.accountList.saveImplicitPrefs();
 
-		if (!ZmZimbraMail._isOkToExit()) {
+		if (appCtxt.get(ZmSetting.WARN_ON_EXIT) && !ZmZimbraMail._isOkToExit()) {
 			ZmZimbraMail._isLogOff = false;
 			return ZmMsg.appExitWarning;
 		}
@@ -2406,12 +2439,24 @@ function(id) {
  * @param {constant}	[params.level] ZmStatusView.LEVEL_INFO, ZmStatusView.LEVEL_WARNING, or ZmStatusView.LEVEL_CRITICAL
  * @param {constant}	[params.detail] 	the details
  * @param {constant}	[params.transitions]		the transitions
- * @param {constant}	[params.toast]		the toast control
+ * @param {constant}	[params.toast]		the toast control 
+ * @param {boolean}     [force]        force any displayed toasts out of the way (dismiss them and run their dismissCallback). Enqueued messages that are not yet displayed will not be displayed
+ * @param {AjxCallback}    [dismissCallback]    callback to run when the toast is dismissed (by another message using [force], or explicitly calling ZmStatusView.prototype.dismiss())
+ * @param {AjxCallback}    [finishCallback]     callback to run when the toast finishes its transitions by itself (not when dismissed)
  */
 ZmZimbraMail.prototype.setStatusMsg =
 function(params) {
 	params = Dwt.getParams(arguments, ZmStatusView.MSG_PARAMS);
 	this.statusView.setStatusMsg(params);
+};
+
+/**
+ * Dismisses the displayed status message, if any
+ */
+
+ZmZimbraMail.prototype.dismissStatusMsg =
+function(all) {
+	this.statusView.dismissStatusMsg(all);
 };
 
 /**
@@ -2527,6 +2572,15 @@ function(actionCode, ev) {
 
 		case ZmKeyMap.FOCUS_TOOLBAR: {
 			this.focusToolbar();
+			break;
+		}
+
+		case ZmKeyMap.UNDO: {
+			if (!appCtxt.isChildWindow) {
+				var actionController = appCtxt.getActionController();
+				if (actionController)
+					actionController.undoCurrent();
+			}
 			break;
 		}
 
@@ -2666,28 +2720,6 @@ function(appName) {
 	var title = [ZmMsg.zimbraTitle, appName].join(": ");
 	Dwt.setTitle(title);
 	appCtxt.getApp(this._getDefaultStartAppName()).setOverviewPanelContent(false);
-};
-
-/**
- * @private
- */
-ZmZimbraMail._createDummyDBG =
-function() {
-	window.AjxDebug = function() {};
-	window.AjxDebug.prototype.toString		= function() { return "dummy DBG class";};
-	window.AjxDebug.prototype.display		= function() {};
-	window.AjxDebug.prototype.dumpObj		= function() {};
-	window.AjxDebug.prototype.getDebugLevel	= function() {};
-	window.AjxDebug.prototype.isDisabled	= function() {};
-	window.AjxDebug.prototype.println		= function() {};
-	window.AjxDebug.prototype.printRaw		= function() {};
-	window.AjxDebug.prototype.printXML		= function() {};
-	window.AjxDebug.prototype.setDebugLevel	= function() {};
-	window.AjxDebug.prototype.setTitle		= function() {};
-	window.AjxDebug.prototype.showTiming	= function() {};
-	window.AjxDebug.prototype._getTimeStamp	= function() {};
-	window.AjxDebug.prototype.timePt		= function() {};
-	window.DBG = new window.AjxDebug();
 };
 
 /**

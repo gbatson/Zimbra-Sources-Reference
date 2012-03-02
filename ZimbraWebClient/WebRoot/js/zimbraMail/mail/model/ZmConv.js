@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -80,15 +80,16 @@ function(msg, args) {
  * should be used when in a search context, for example when expanding a conv that is the result
  * of a search.
  *
- * @param {Hash}	params			a hash of parameters
- * @param {String}      params.query				the query used to retrieve this conv
- * @param {constant}      params.sortBy			the sort constraint
- * @param {int}      params.offset			the position of first msg to return
- * @param {int}      params.limit				the number of msgs to return
- * @param {Boolean}      params.getHtml			if <code>true</code>, return HTML part for inlined msg
- * @param {Boolean}      params.getFirstMsg		if <code>true</code>, retrieve the content of the first matching msg in the conv as a side effect of the search
- * @param  {Boolean}     params.markRead			if <code>true</code>, mark that msg read
- * @param {AjxCallback} callback			the callback to run with results
+ * @param {Hash}		params				a hash of parameters:
+ * @param {String}		params.query		the query used to retrieve this conv
+ * @param {constant}	params.sortBy		the sort constraint
+ * @param {int}			params.offset		the position of first msg to return
+ * @param {int}			params.limit		the number of msgs to return
+ * @param {Boolean}		params.getHtml		if <code>true</code>, return HTML part for inlined msg
+ * @param {Boolean}		params.getFirstMsg	if <code>true</code>, retrieve the content of the first matching msg in the conv as a side effect of the search
+ * @param {Boolean}		params.markRead		if <code>true</code>, mark that msg read
+ * @param {boolean}		params.needExp		if not <code>false</code>, have server check if addresses are DLs
+ * @param {AjxCallback}	callback			the callback to run with results
  */
 ZmConv.prototype.load =
 function(params, callback) {
@@ -141,12 +142,14 @@ function(params, callback) {
 		};
 		var search = this.search = new ZmSearch(searchParams);
 
+		var fetchId = ((params.getFirstMsg && this.msgIds && this.msgIds.length) ? this.msgIds[0] : null);
 		var convParams = {
 			cid: this.id,
-			callback: (new AjxCallback(this, this._handleResponseLoad, [params, callback])), 
-			fetchId: ((params.getFirstMsg && this.msgIds && this.msgIds.length) ? this.msgIds[0] : null),
-			markRead: params.markRead,
-			noTruncate: params.noTruncate
+			callback:	(new AjxCallback(this, this._handleResponseLoad, [params, callback])),
+			fetchId:	fetchId,
+			markRead:	params.markRead,
+			noTruncate:	params.noTruncate,
+			needExp:	Boolean(fetchId)
 		};
 		search.getConv(convParams);
 	}
@@ -307,7 +310,7 @@ function(search, defaultValue) {
 		var msgs = this.msgs.getArray();
 		for (var i = 0; i < msgs.length; i++) {
 			var msg = msgs[i];
-			if (search.matches(msg) && !msg.ignoreJunkTrash()) {
+			if (search.matches(msg) && !msg.ignoreJunkTrash() && this.folders[msg.folderId]) {
 				return true;
 			}
 		}
@@ -326,18 +329,30 @@ function() {
 
 ZmConv.prototype.getAccount =
 function() {
-	// always pull out the account from the fully-qualified ID
+    // pull out the account from the fully-qualified ID
 	if (!this.account) {
-		this.account = ZmOrganizer.parseId(this.id).account;
-	}
+        var folderId = this.getFolderId();
+        var folder = folderId && appCtxt.getById(folderId);
+        // make sure current folder is not remote folder
+        // in that case getting account from parseID will fail if
+        // the shared account is also configured in ZD
+        if (!(folder && folder._isRemote)) {
+            this.account = ZmOrganizer.parseId(this.id).account;
+        }
+    }
 
-	// fallback on the active account if account not found from parsed ID (most
-	// likely means this is a conv inside a shared folder of the active acct)
-	if (!this.account) {
-		this.account = appCtxt.getActiveAccount();
-	}
+    // pull out the account from the fully-qualified ID
+    if (!this.account) {
+        this.account = ZmOrganizer.parseId(this.id).account;
+    }
 
-	return this.account;
+    // fallback on the active account if account not found from parsed ID (most
+    // likely means this is a conv inside a shared folder of the active acct)
+    if (!this.account) {
+        this.account = appCtxt.getActiveAccount();
+    }
+    return this.account;
+
 };
 
 /**
@@ -610,6 +625,13 @@ function(convNode) {
 			if (msgNode.s) {
 				this.size = msgNode.s;
 			}
+
+			if (msgNode.autoSendTime) {
+				var timestamp = parseInt(msgNode.autoSendTime);
+				if (timestamp) {
+					this.setAutoSendTime(new Date(timestamp));
+				}
+			}
 		}
 	}
 
@@ -662,6 +684,7 @@ function(ev) {
 	} else if (ev.event == ZmEvent.E_DELETE || ev.event == ZmEvent.E_MOVE) {
 		// a msg was moved or deleted, see if this conv's row should remain
 		if (this.list && this.list.search && !this.hasMatchingMsg(this.list.search, true)) {
+            this.moveLocal(ev.item && ev.item.folderId);
 			this._notify(ZmEvent.E_MOVE);
 		}
 	}
@@ -714,4 +737,16 @@ function(type) {
 		}
 	}
 	return AjxVector.fromArray(list);
+};
+
+/**
+ * Gets the status tool tip.
+ * 
+ * @return	{String}	the tool tip
+ */
+ZmConv.prototype.getStatusTooltip =
+function() {
+	var status = [];
+	if (this.isScheduled)	{ status.push(ZmMsg.scheduled); }
+	return status.join(", ");
 };

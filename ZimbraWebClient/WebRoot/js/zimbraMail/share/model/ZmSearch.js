@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -49,7 +49,9 @@
  * @param	{Array}		params.folders					the list of folders for autocomplete
  * @param	{Array}		params.allowableTaskStatus		the list of task status types to return (assuming one of the values for "types" is "task")
  * @param	{String}	params.accountName				the account name to run this search against
- * @params	{Boolean}	params.idsOnly					if <code>true</code>, response returns item IDs only
+ * @param	{Boolean}	params.idsOnly					if <code>true</code>, response returns item IDs only
+ * @param   {Boolean}   params.inDumpster               if <code>true</code>, search in the dumpster
+ * @param	{boolean}	params.expandDL					if <code>true</code>, set flag to have server indicate expandability for DLs
  */
 ZmSearch = function(params) {
 
@@ -170,12 +172,18 @@ function(params) {
 			if (this.galType) {
 				method.setAttribute("type", this.galType);
 			}
+			if (this.expandDL) {
+				method.setAttribute("needExp", 1);
+			}
 			soapDoc.set("name", this.query);
 		} else if (this.isAutocompleteSearch) {
 			soapDoc = AjxSoapDoc.create("AutoCompleteRequest", "urn:zimbraMail");
 			var method = soapDoc.getMethod();
 			if (this.limit) {
 				method.setAttribute("limit", this.limit);
+			}
+			if (this.expandDL) {
+				method.setAttribute("needExp", 1);
 			}
 			soapDoc.set("name", this.query);
 		} else if (this.isGalAutocompleteSearch) {
@@ -185,11 +193,18 @@ function(params) {
 			if (this.galType) {
 				method.setAttribute("type", this.galType);
 			}
+			if (this.expandDL) {
+				method.setAttribute("needExp", 1);
+			}
 			soapDoc.set("name", this.query);
 		} else if (this.isCalResSearch) {
 			soapDoc = AjxSoapDoc.create("SearchCalendarResourcesRequest", "urn:zimbraAccount");
 			var method = soapDoc.getMethod();
-			if (this.attrs) { method.setAttribute("attrs", this.attrs.join(",")); }
+			if (this.attrs) {
+				var attrs = [].concat(this.attrs);
+				AjxUtil.arrayRemove(attrs, "fullName");
+				method.setAttribute("attrs", attrs.join(","));
+			}
 			var searchFilterEl = soapDoc.set("searchFilter");
 			if (this.conds && this.conds.length) {
 				var condsEl = soapDoc.set("conds", null, searchFilterEl);
@@ -198,10 +213,14 @@ function(params) {
 				}
 				for (var i = 0; i < this.conds.length; i++) {
 					var cond = this.conds[i];
-					var condEl = soapDoc.set("cond", null, condsEl);
-					condEl.setAttribute("attr", cond.attr);
-					condEl.setAttribute("op", cond.op);
-					condEl.setAttribute("value", cond.value);
+					if (cond.attr=="fullName" && cond.op=="has") {
+						var nameEl = soapDoc.set("name", cond.value);
+					} else {
+						var condEl = soapDoc.set("cond", null, condsEl);
+						condEl.setAttribute("attr", cond.attr);
+						condEl.setAttribute("op", cond.op);
+						condEl.setAttribute("value", cond.value);
+					}
 				}
 			}
 		} else {
@@ -250,6 +269,9 @@ function(params) {
 					}
 				}
 			}
+			if (this.inDumpster) {
+				method.setAttribute("inDumpster", "1");
+			}
 		}
 	}
 
@@ -289,7 +311,12 @@ function(params) {
 		if (this.isGalSearch) {
 			jsonObj = {SearchGalRequest:{_jsns:"urn:zimbraAccount"}};
 			request = jsonObj.SearchGalRequest;
-			if (this.galType) { request.type = this.galType; }
+			if (this.galType) {
+				request.type = this.galType;
+			}
+			if (this.expandDL) {
+				request.needExp = 1;
+			}
 			request.name = this.query;
 
 			// bug #36188 - add offset/limit for paging support
@@ -308,19 +335,31 @@ function(params) {
 			if (this.limit) {
 				request.limit = this.limit;
 			}
+			if (this.expandDL) {
+				request.needExp = 1;
+			}
 			request.name = {_content:this.query};
 		} else if (this.isGalAutocompleteSearch) {
 			jsonObj = {AutoCompleteGalRequest:{_jsns:"urn:zimbraAccount"}};
 			request = jsonObj.AutoCompleteGalRequest;
 			request.limit = this._getLimit();
 			request.name = this.query;
-			if (this.galType) { request.type = this.galType; }
+			if (this.galType) {
+				request.type = this.galType;
+			}
+			if (this.expandDL) {
+				request.needExp = 1;
+			}
 		} else if (this.isCalResSearch) {
 			jsonObj = {SearchCalendarResourcesRequest:{_jsns:"urn:zimbraAccount"}};
 			request = jsonObj.SearchCalendarResourcesRequest;
 			if (this.attrs) {
-				request.attrs = this.attrs.join(",");
+				var attrs = [].concat(this.attrs);
+				AjxUtil.arrayRemove(attrs, "fullName");
+				request.attrs = attrs.join(",");
 			}
+            request.offset = this.offset = (this.offset || 0);
+            request.limit = this._getLimit();
 			if (this.conds && this.conds.length) {
 				request.searchFilter = {conds:{}};
 				var conds = request.searchFilter.conds;
@@ -330,7 +369,11 @@ function(params) {
 				}
 				for (var i = 0; i < this.conds.length; i++) {
 					var c = this.conds[i];
-					cond.push({attr:c.attr, op:c.op, value:c.value});
+					if (c.attr=="fullName" && c.op=="has") { // Optimization for bug #50841
+						request.name = {_content: c.value};
+					} else {
+						cond.push({attr:c.attr, op:c.op, value:c.value});
+					}
 				}
 			}
 		} else {
@@ -393,6 +436,9 @@ function(params) {
 					}
                 }
             }
+			if (this.inDumpster) {
+				request.inDumpster = 1;
+			}
         }
     }
 
@@ -444,12 +490,13 @@ function(callback, result) {
 /**
  * Fetches a conversation from the server.
  *
- * @param {Hash}	params		a hash of parameters
- * @param {String}	params.cid			the conv ID
+ * @param {Hash}		params				a hash of parameters:
+ * @param {String}		params.cid			the conv ID
  * @param {AjxCallback}	params.callback		the callback to run with result
- * @param {String}	params.fetchId		the ID of msg to load
- * @param {Boolean}	params.markRead		if <code>true</code>, mark msg read
- * @param {Boolean}	params.noTruncate	if <code>true</code>, do not limit size of msg
+ * @param {String}		params.fetchId		the ID of msg to load
+ * @param {Boolean}		params.markRead		if <code>true</code>, mark msg read
+ * @param {Boolean}		params.noTruncate	if <code>true</code>, do not limit size of msg
+ * @param {boolean}		params.needExp		if not <code>false</code>, have server check if addresses are DLs
  */
 ZmSearch.prototype.getConv =
 function(params) {
@@ -466,6 +513,9 @@ function(params) {
 		}
 		if (this.getHtml) {
 			request.html = 1;			// get it as HTML
+		}
+		if (params.needExp !== false) {
+			request.needExp = 1;
 		}
 		// added headers to the request
 		if (ZmMailMsg.requestHeaders) {

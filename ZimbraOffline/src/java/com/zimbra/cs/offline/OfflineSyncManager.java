@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,7 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.*;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.mail.AuthenticationFailedException;
 import javax.security.auth.login.LoginException;
@@ -63,11 +65,16 @@ import com.zimbra.cs.offline.ab.gab.GDataServiceException;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.offline.common.OfflineConstants.SyncStatus;
 import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.UserServletContext;
+import com.zimbra.cs.service.formatter.ArchiveFormatter;
+import com.zimbra.cs.service.formatter.FormatListener;
+import com.zimbra.cs.service.formatter.Formatter;
+import com.zimbra.cs.service.formatter.ArchiveFormatter.Resolve;
 import com.zimbra.cs.util.Zimbra;
 import com.zimbra.cs.util.ZimbraApplication;
 import com.zimbra.cs.util.yauth.AuthenticationException;
 
-public class OfflineSyncManager {
+public class OfflineSyncManager implements FormatListener {
 
     private static final QName ZDSYNC_ZDSYNC = QName.get("zdsync", OfflineConstants.NAMESPACE);
     private static final QName ZDSYNC_ACCOUNT = QName.get("account", OfflineConstants.NAMESPACE);
@@ -117,6 +124,19 @@ public class OfflineSyncManager {
         long lastAuthFail;
         ZAuthToken authToken; //null for data sources
         long authExpires; //0 for data sources
+        private Thread currentSyncThread = null;
+
+        private void setCurrentSyncThread() {
+            if (currentSyncThread == null) {
+                currentSyncThread = Thread.currentThread();
+            }
+        }
+        
+        private void clearCurrentSyncThread(boolean force) {
+            if (currentSyncThread != null && (force || currentSyncThread == Thread.currentThread())) {
+                currentSyncThread = null;
+            }
+        }
 
         boolean syncStart() {
             if (mStatus == SyncStatus.running)
@@ -124,6 +144,7 @@ public class OfflineSyncManager {
             mStatus = SyncStatus.running;
             mCode = null;
             mError = null;
+            setCurrentSyncThread();
             return true;
         }
 
@@ -134,6 +155,7 @@ public class OfflineSyncManager {
             mLastFailTime = 0;
             mStatus = SyncStatus.online;
             mRetryCount = 0;
+            clearCurrentSyncThread(false);
             return true;
         }
         
@@ -144,6 +166,7 @@ public class OfflineSyncManager {
             mLastFailTime = mLastSyncTime = 0;
             mRetryCount = 0;
             mStatus = SyncStatus.unknown;
+            clearCurrentSyncThread(true);
         }
 
         void resetLastSyncTime() {
@@ -156,6 +179,7 @@ public class OfflineSyncManager {
             }
             mCode = code;
             mStatus = SyncStatus.offline;
+            clearCurrentSyncThread(false);
         }
 
         void syncFailed(String code, String message, Throwable t) {
@@ -164,6 +188,7 @@ public class OfflineSyncManager {
             mError = new SyncError(message, t);
             mStatus = SyncStatus.error;
             ++mRetryCount;
+            clearCurrentSyncThread(false);
         }
 
         boolean retryOK() {
@@ -207,6 +232,7 @@ public class OfflineSyncManager {
             authExpires = 0;
             mStatus = SyncStatus.authfail;
             mCode = code;
+            clearCurrentSyncThread(false);
         }
 
         void encode(Element e) {
@@ -297,12 +323,31 @@ public class OfflineSyncManager {
             getStatus(entry).mStage = stage;
         }
     }
+    
+    public void ensureRunning(NamedEntry entry) {
+        synchronized (syncStatusTable) {
+            OfflineSyncStatus status = getStatus(entry);
+            if (status.getSyncStatus() != SyncStatus.running && status.currentSyncThread != null) {
+                OfflineLog.offline.warn("Thread [%s] still syncing but status is [%s] setting status back to %s", status.currentSyncThread.getName(), status.getSyncStatus(), SyncStatus.running);
+                syncStart(entry);
+            }
+        }
+    }
 
     public void syncStart(NamedEntry entry) {
         boolean b;
+        lock.lock();
+        while (suspendCount > 0) {
+           try {
+               OfflineLog.offline.info("sync suspended by background job");
+               waiting.await(30, TimeUnit.SECONDS);
+           } catch (InterruptedException e) {
+           }
+        }
         synchronized (syncStatusTable) {
             b = getStatus(entry).syncStart();
         }
+        lock.unlock();
         if (b)
             notifyStateChange();
     }
@@ -314,6 +359,9 @@ public class OfflineSyncManager {
         }
         if (b)
             notifyStateChange();
+        lock.lock();
+        waiting.signalAll();
+        lock.unlock();
     }
 
     public void resetLastSyncTime(NamedEntry entry) {
@@ -382,7 +430,7 @@ public class OfflineSyncManager {
     public boolean retryOK(NamedEntry entry) {
         synchronized (syncStatusTable) {
             return getStatus(entry).retryOK();
-        }	    
+        }        
     }
 
     public void authSuccess(Account account, ZAuthToken token, long expires) {
@@ -568,6 +616,7 @@ public class OfflineSyncManager {
     private boolean isConnectionDown = false, isServiceUp = false, isUiLoading = false;
     private Lock lock = new ReentrantLock();
     private Condition waiting  = lock.newCondition(); 
+    private int suspendCount = 0;  
 
     public synchronized boolean isConnectionDown() {
         return isConnectionDown;
@@ -576,6 +625,14 @@ public class OfflineSyncManager {
     public synchronized boolean isServiceActive() {
         return isServiceUp && !isConnectionDown &&
             !ZimbraApplication.getInstance().isShutdown() && !isUiLoading;
+    }
+    
+    /**
+     * Returns true once ZD jetty is listening on configured host/port (e.g. localhost:7733)
+     * Does not care if remote connection is down; only local
+     */
+    public synchronized boolean isServiceUp () {
+        return isServiceUp;
     }
 
     public synchronized void setConnectionDown(boolean b) {
@@ -607,6 +664,7 @@ public class OfflineSyncManager {
 
     public synchronized void shutdown() {
         lock.lock();
+        suspendCount = 0;
         waiting.signalAll();
         lock.unlock();
         try {
@@ -615,9 +673,10 @@ public class OfflineSyncManager {
         }
     }
 
-    public void init() throws ServiceException {
+    public void init() {
+        Formatter.registerListener(ArchiveFormatter.class, this);
         new Thread(new Runnable() {
-            public void run() {
+            @Override public void run() {
                 backgroundInit();
             }
         }, "sync-manager-init").start();
@@ -696,17 +755,29 @@ public class OfflineSyncManager {
             OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
             List<Account> dsAccounts = prov.getAllDataSourceAccounts();
             for (Account dsAccount : dsAccounts) {
-                MailboxManager.getInstance().getMailboxByAccount(dsAccount);
+                try {
+                    MailboxManager.getInstance().getMailboxByAccount(dsAccount);
+                }
+                catch (Exception e) {
+                    OfflineLog.offline.error("Failed to initialize account ["+dsAccount+"] due to exception",e);
+                    markAccountSyncDisabled(dsAccount, e);
+                }
             }
             List<Account> syncAccounts = prov.getAllZcsAccounts();
             for (Account syncAccount : syncAccounts) {
-                MailboxManager.getInstance().getMailboxByAccount(syncAccount);
+                try {
+                    MailboxManager.getInstance().getMailboxByAccount(syncAccount);
+                }
+                catch (Exception e) {
+                    OfflineLog.offline.error("Failed to initialize account ["+syncAccount+"] due to exception",e);
+                    markAccountSyncDisabled(syncAccount, e);
+                }
             }
             DirectorySync.getInstance();
 
-            //deal with left over mailboxes from interrupted delete/reset
-            long[] mids = MailboxManager.getInstance().getMailboxIds();
-            for (long mid : mids) {
+            // deal with left over mailboxes from interrupted delete/reset
+            int[] mids = MailboxManager.getInstance().getMailboxIds();
+            for (int mid : mids) {
                 try {
                     MailboxManager.getInstance().getMailboxById(mid, true);
                 } catch (ServiceException x) {
@@ -719,21 +790,28 @@ public class OfflineSyncManager {
     }
 
     /*
-		<zdsync xmlns="urn:zimbraOffline">
-		  <account name="foo@domain1.com" id="1234-5678" status="online" [code="{CODE}"] lastsync="1234567" unread="32">
-			  [<error [message="{MESSAGE}"]>
-			    [<exception>{EXCEPTION}</exception>]
-			  </error>]
-		  </account>
-		  [(<account>...</account>)*]
-		</zdsync>
+        <zdsync xmlns="urn:zimbraOffline">
+          <account name="foo@domain1.com" id="1234-5678" status="online" [code="{CODE}"] lastsync="1234567" unread="32">
+              [<error [message="{MESSAGE}"]>
+                [<exception>{EXCEPTION}</exception>]
+              </error>]
+          </account>
+          [(<account>...</account>)*]
+        </zdsync>
      */
     public void encode(Element context, String requestedAccountId) throws ServiceException {
         OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
-
         Element zdsync = context.addUniqueElement(ZDSYNC_ZDSYNC);
         List<Account> accounts = prov.getAllAccounts();
         for (Account account : accounts) {
+            Mailbox mb = null;
+            try {
+                mb = MailboxManager.getInstance().getMailboxByAccount(account);
+            } catch (Exception e) {
+                OfflineLog.offline.error("exception fetching mailbox for account ["+account+"]",e);
+                markAccountSyncDisabled(account, e);
+                continue;
+            }
             if (!(account instanceof OfflineAccount) || prov.isLocalAccount(account))
                 continue;
 
@@ -747,8 +825,18 @@ public class OfflineSyncManager {
                 OfflineLog.offline.warn("Invalid account: " + account.getName());
                 continue;
             }
-            e.addAttribute(A_ZDSYNC_UNREAD, MailboxManager.getInstance().getMailboxByAccount(account).getFolderById(null, Mailbox.ID_FOLDER_INBOX).getUnreadCount());
+            e.addAttribute(A_ZDSYNC_UNREAD, mb.getFolderById(null, Mailbox.ID_FOLDER_INBOX).getUnreadCount());
         }
+    }
+
+    private void markAccountSyncDisabled(Account account, Exception e) {
+        if (account instanceof OfflineAccount) {
+            ((OfflineAccount) account).setDisabledDueToError(true);    
+            processSyncException(account, ((OfflineAccount)account).getRemotePassword(), e, ((OfflineAccount)account).isDebugTraceEnabled(), true);
+        } else {
+            OfflineLog.offline.warn("cannot mark non-offline account as disabled sync.");
+        }
+        
     }
 
     private long lastClientPing;
@@ -766,5 +854,75 @@ public class OfflineSyncManager {
         else if (quietTime > 5 * Constants.MILLIS_PER_MINUTE)
             freqLimit = 15 * Constants.MILLIS_PER_MINUTE;
         return freqLimit;
+    }
+
+    @Override
+    public void formatCallbackEnded(UserServletContext context) {
+        //don't currently need to suspend sync during export
+    }
+
+    @Override
+    public void formatCallbackStarted(UserServletContext context) {
+        //don't currently need to suspend sync during export
+    }
+
+    @Override
+    public void saveCallbackEnded(UserServletContext context) {
+        resumeSync();
+    }
+
+    @Override
+    public void saveCallbackStarted(UserServletContext context) throws ServiceException {
+        String resolve = context.params.get(ArchiveFormatter.PARAM_RESOLVE);
+        Resolve r = resolve == null ? Resolve.Skip : Resolve.valueOf(
+                resolve.substring(0,1).toUpperCase() +
+                resolve.substring(1).toLowerCase());
+        if (r == Resolve.Replace || r == Resolve.Reset) {
+            suspendSync(context.targetAccount);
+        }
+    }
+    
+    private boolean isSyncing(Account acct) throws ServiceException {
+        //have to check the account and any data sources; none can be syncing
+        OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
+        if (getSyncStatus(acct) == SyncStatus.running) {
+            return true;
+        }
+        if (OfflineProvisioning.isDataSourceAccount(acct)) {
+            List<DataSource> sources = prov.getAllDataSources(acct);
+            for (DataSource ds : sources) {
+                if (getSyncStatus(ds) == SyncStatus.running) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    private void suspendSync(Account acct) throws ServiceException {
+        lock.lock();
+        try {
+            suspendCount++; //flag not sufficient
+            //if account is currently syncing need to wait for it to finish; if not prevent new one from starting
+            while (isSyncing(acct)) {
+                try {
+                    OfflineLog.offline.info("Sync in progress, import waiting until it completes");
+                    waiting.await(30, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+        finally {
+            lock.unlock();
+        }
+    }
+    
+    private void resumeSync() {
+        if (suspendCount > 0) {
+            lock.lock();
+            suspendCount--;
+            waiting.signalAll();
+            lock.unlock();
+        }
     }
 }

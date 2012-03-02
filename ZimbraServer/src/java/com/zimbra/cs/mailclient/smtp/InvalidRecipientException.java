@@ -18,15 +18,17 @@ package com.zimbra.cs.mailclient.smtp;
 import com.zimbra.cs.mailclient.CommandFailedException;
 
 @SuppressWarnings("serial")
-public class InvalidRecipientException
-extends CommandFailedException {
-    
-    String recipient;
-    
+final class InvalidRecipientException extends CommandFailedException {
+
+    private String recipient;
+
     InvalidRecipientException(String recipient, String serverError) {
         super(SmtpConnection.RCPT, "Invalid recipient " + recipient + ": " + serverError);
         this.recipient = recipient;
     }
 
-    public String getRecipient() { return recipient; }
+    String getRecipient() {
+        return recipient;
+    }
+
 }

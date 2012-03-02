@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -181,11 +181,17 @@ ZmCsfeException.TOO_MANY_IDENTITIES					= "account.TOO_MANY_IDENTITIES";
 ZmCsfeException.TOO_MANY_SEARCH_RESULTS				= "account.TOO_MANY_SEARCH_RESULTS";
 ZmCsfeException.NO_SUCH_COS 						= "account.NO_SUCH_COS";
 
+ZmCsfeException.NO_SUCH_VOLUME						= "volume.NO_SUCH_VOLUME";
+ZmCsfeException.ALREADY_EXISTS						= "volume.ALREADY_EXISTS";
+ZmCsfeException.VOLUME_NO_SUCH_PATH					= "volume.NO_SUCH_PATH";
+
 ZmCsfeException.MAIL_ALREADY_EXISTS					= "mail.ALREADY_EXISTS";
 ZmCsfeException.MAIL_IMMUTABLE						= "mail.IMMUTABLE_OBJECT";
 ZmCsfeException.MAIL_INVALID_NAME					= "mail.INVALID_NAME";
+ZmCsfeException.MAIL_INVITE_OUT_OF_DATE				= "mail.INVITE_OUT_OF_DATE";
 ZmCsfeException.MAIL_MAINTENANCE_MODE				= "mail.MAINTENANCE";
 ZmCsfeException.MAIL_MESSAGE_TOO_BIG				= "mail.MESSAGE_TOO_BIG";
+ZmCsfeException.MAIL_NO_SUCH_CALITEM				= "mail.NO_SUCH_CALITEM";
 ZmCsfeException.MAIL_NO_SUCH_CONV					= "mail.NO_SUCH_CONV";
 ZmCsfeException.MAIL_NO_SUCH_FOLDER					= "mail.NO_SUCH_FOLDER";
 ZmCsfeException.MAIL_NO_SUCH_ITEM					= "mail.NO_SUCH_ITEM";
@@ -203,7 +209,10 @@ ZmCsfeException.MAIL_UNABLE_TO_IMPORT_APPOINTMENTS	= "mail.MAIL_UNABLE_TO_IMPORT
 ZmCsfeException.MAIL_UNABLE_TO_IMPORT_CONTACTS		= "mail.UNABLE_TO_IMPORT_CONTACTS";
 ZmCsfeException.MODIFY_CONFLICT						= "mail.MODIFY_CONFLICT";
 ZmCsfeException.TOO_MANY_TAGS						= "mail.TOO_MANY_TAGS";
+ZmCsfeException.CANNOT_RENAME                       = "mail.CANNOT_RENAME";
+ZmCsfeException.CANNOT_UNLOCK                       = "mail.CANNOT_UNLOCK";
+ZmCsfeException.CANNOT_LOCK                         = "mail.CANNOT_LOCK";
+ZmCsfeException.LOCKED                              = "mail.LOCKED";
+
 
 ZmCsfeException.OFFLINE_ONLINE_ONLY_OP				= "offline.ONLINE_ONLY_OP";
-
-ZmCsfeException.VOLUME_NO_SUCH_PATH = "volume.NO_SUCH_PATH";

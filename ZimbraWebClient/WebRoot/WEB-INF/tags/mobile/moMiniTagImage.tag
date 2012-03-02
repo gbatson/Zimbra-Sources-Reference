@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,6 @@
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <c:set var="tags" value="${zm:getTags(pageContext, ids)}"/>
 <c:set var="tagNames" value="${fn:escapeXml(zm:getTagNames(pageContext, ids))}"/>
-<c:if test="${fn:length(tags) eq 1}"><c:set var="class" value="${tags[0].color}"/><%-- <mo:img src="${tags[0].miniImage}" alt="${fn:escapeXml(tags[0].name)}"/>--%></c:if>
-<c:if test="${fn:length(tags) gt 1}"><c:set var="class" value="Stack"/><%--<mo:img src="startup/ImgTagStack.gif" alt="tags"/>--%></c:if>
-<span class="SmlIcnHldr Tag${class}">&nbsp;</span>
+<c:if test="${fn:length(tags) eq 1}"><c:set var="class" value="${zm:capitalize(tags[0].color)}"/><%-- <mo:img src="${tags[0].miniImage}" alt="${fn:escapeXml(tags[0].name)}"/>--%></c:if>
+<c:if test="${fn:length(tags) gt 1}"><c:set var="class" value="Stack"/><%--<mo:img src="startup/ImgTagStack.png" alt="tags"/>--%></c:if>
+<span class="Img ImgTag${class}">&nbsp;</span>

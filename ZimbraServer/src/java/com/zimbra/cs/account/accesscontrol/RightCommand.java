@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,7 +24,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
@@ -34,6 +33,7 @@ import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.Entry;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.CosBy;
@@ -862,26 +862,45 @@ public class RightCommand {
      * @return
      * @throws ServiceException
      */
-    public static List<Right> getAllRights(String targetType) throws ServiceException {
+    public static List<Right> getAllRights(String targetType, String rightClass) throws ServiceException {
         verifyAccessManager();
         
-        Map<String, AdminRight> allRights = RightManager.getInstance().getAllAdminRights();
-        
-        List<Right> rights = new ArrayList<Right>();
+        Map<String, Right> allRights;
+        List<Right> result = new ArrayList<Right>();
         
         TargetType tt = (targetType==null)? null : TargetType.fromCode(targetType);
-        for (Map.Entry<String, AdminRight> right : allRights.entrySet()) {
+        RightClass rc = (rightClass==null)? RightClass.ADMIN : RightClass.fromString(rightClass);
+        
+        switch (rc) {
+        case USER:
+            getAllRights(tt, RightManager.getInstance().getAllUserRights(), result);
+            break;
+        case ALL:
+            getAllRights(tt, RightManager.getInstance().getAllAdminRights(), result);
+            getAllRights(tt, RightManager.getInstance().getAllUserRights(), result);
+            break;
+        case ADMIN:    
+        default:
+            // returning only admin rights 
+            getAllRights(tt, RightManager.getInstance().getAllAdminRights(), result);
+        }
+        
+        return result;
+    }
+    
+    private static void getAllRights(TargetType targetType, Map<String, ? extends Right> rights, List<Right> result) throws ServiceException {
+       
+        for (Map.Entry<String, ? extends Right> right : rights.entrySet()) {
             Right r = right.getValue();
-            if (tt == null || r.grantableOnTargetType(tt)) {
-                rights.add(r);
+            if (targetType == null || r.grantableOnTargetType(targetType)) {
+                result.add(r);
             }
         }
-        return rights;
     }
     
     public static boolean checkRight(Provisioning prov,
                                      String targetType, TargetBy targetBy, String target,
-                                     GranteeBy granteeBy, String grantee,
+                                     GranteeBy granteeBy, String grantee, GuestAccount guest,
                                      String right, Map<String, Object> attrs,
                                      AccessManager.ViaGrant via) throws ServiceException {
         verifyAccessManager();
@@ -892,7 +911,11 @@ public class RightCommand {
         
         // grantee
         GranteeType gt = GranteeType.GT_USER;  // grantee for check right must be an Account
-        NamedEntry granteeEntry = GranteeType.lookupGrantee(prov, gt, granteeBy, grantee);  
+        NamedEntry granteeEntry;
+        if (guest != null)
+            granteeEntry = guest;
+        else
+            granteeEntry = GranteeType.lookupGrantee(prov, gt, granteeBy, grantee);  
         
         // right
         Right r = RightManager.getInstance().getRight(right);
@@ -908,7 +931,10 @@ public class RightCommand {
         }
         
         AccessManager am = AccessManager.getInstance();
-        return am.canPerform((Account)granteeEntry, targetEntry, r, false, attrs, true, via);
+        
+        // as admin if the grantee under testing is an admin account
+        boolean asAdmin = am.isAdequateAdminAccount((Account)granteeEntry);
+        return am.canPerform((Account)granteeEntry, targetEntry, r, false, attrs, asAdmin, via);
     }
     
     public static AllEffectiveRights getAllEffectiveRights(Provisioning prov,
@@ -1244,7 +1270,7 @@ public class RightCommand {
         
         List<ZimbraACE> revoked = ACLUtil.revokeRight(prov, targetEntry, aces);
         if (revoked.isEmpty())
-            throw AccountServiceException.NO_SUCH_GRANT(ace.dump());
+            throw AccountServiceException.NO_SUCH_GRANT(ace.dump(true));
     }
     
     /**
@@ -1291,6 +1317,7 @@ public class RightCommand {
         eRight.addAttribute(AdminConstants.E_NAME, right.getName());
         eRight.addAttribute(AdminConstants.A_TYPE, right.getRightType().name());
         eRight.addAttribute(AdminConstants.A_TARGET_TYPE, right.getTargetTypeStr());
+        eRight.addAttribute(AdminConstants.A_RIGHT_CLASS, right.getRightClass().name());
             
         eRight.addElement(AdminConstants.E_DESC).setText(right.getDesc());
             

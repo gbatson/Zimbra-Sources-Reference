@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -40,6 +40,8 @@ ZmNewWindow = function() {
 	appCtxt.setAppController(this);
 
 	this._settings = appCtxt.getSettings();
+	this._settings.setReportScriptErrorsSettings(AjxException, ZmController.handleScriptError); //must set this for child window since AjxException is fresh for this window. Also must pass AjxException and the handler since we want it to update the one from this child window, and not the parent window
+
 	this._shell = appCtxt.getShell();
 
 	// Register keymap and global key action handler w/ shell's keyboard manager
@@ -82,8 +84,6 @@ function() {
 	AjxDispatcher.setLoaded("Mail", true);
 
 	var winOpener = window.opener || window;
-	// inherit parent window's debug level but only enable debug window if not already open
-	DBG.setDebugLevel(winOpener.DBG._level, true);
 
 	if (!window.parentController) {
 		window.parentController = winOpener._zimbraMail;
@@ -120,14 +120,18 @@ ZmNewWindow.unload =
 function(ev) {
 	if (!window.opener || !window.parentController) { return; }
 
-	if (window.command == "compose" || window.command == "composeDetach") {
+	var command = window.newWindowCommand; //bug 54409 - was using wrong attribute for command in unload
+	if (command == "compose" || command == "composeDetach"
+			|| (command == "msgViewDetach" && appCtxt.composeCtlrSessionId)) { //msgViewDetach might turn into a compose session if user hits "reply"/etc
 		// compose controller adds listeners to parent window's list so we
 		// need to remove them before closing this window!
 		var cc = AjxDispatcher.run("GetComposeController", appCtxt.composeCtlrSessionId);
 		if (cc) {
 			cc.dispose();
 		}
-	} else if (window.command == "msgViewDetach") {
+	}
+
+	if (command == "msgViewDetach") {
 		// msg controller (as a ZmListController) adds listener to tag list
 		var mc = AjxDispatcher.run("GetMsgController", appCtxt.msgCtlrSessionId);
 		if (mc) {
@@ -171,6 +175,8 @@ function() {
 		this._createView();
 		return;
 	}
+
+	DBG.println(AjxDebug.DBG1, " ************ Hello from new window!");
 
 	if (!this._appViewMgr) {
 		this._appViewMgr = new ZmAppViewMgr(this._shell, this, true, false);
@@ -233,6 +239,10 @@ function() {
 	var rootTg = appCtxt.getRootTabGroup();
 	var startupFocusItem;
 
+	//I null composeCtlrSessionId so it's not kept from irrelevant sessions from parent window.
+	// (since I set it in every compose session, in ZmMailApp.prototype.compose).
+	// This is important in case of cmd == "msgViewDetach"
+	appCtxt.composeCtlrSessionId = null;  
 	// depending on the command, do the right thing
 	if (cmd == "compose" || cmd == "composeDetach") {
 		var cc = AjxDispatcher.run("GetComposeController");	// get a new compose ctlr
@@ -243,6 +253,7 @@ function() {
 		if (cmd == "compose") {
 			cc._setView(params);
 		} else {
+			AjxDispatcher.require(["CalendarCore"]);
 			var op = params.action || ZmOperation.NEW_MESSAGE;
 			if (params.msg && params.msg._mode) {
 				switch (params.msg._mode) {
@@ -272,6 +283,10 @@ function() {
 
 		target = "compose-window";
 	} else if (cmd == "msgViewDetach") {
+		//bug 52366 - not sure why only REPLY_ALL causes the problem (and not REPLY for example), but in this case the window is opened first for view. But
+		//the user might of course click "reply to all" later in the window so I deep copy here in any case.
+		params.msg = this._deepCopyMsg(params.msg);
+		
 		var msgController = AjxDispatcher.run("GetMsgController");
 		appCtxt.msgCtlrSessionId = msgController.sessionId;
 		msgController.show(params.msg, params.mode);

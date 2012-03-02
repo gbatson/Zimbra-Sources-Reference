@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -35,6 +35,7 @@ AjxEmailAddress = function(address, type, name, dispName, isGroup) {
 	this.dispName = dispName;
 	this.type = type || AjxEmailAddress.TO;
 	this.isGroup = isGroup;
+	this.canExpand = false;
     this.isAjxEmailAddress = true;
 };
 
@@ -228,7 +229,7 @@ function(str) {
 	// Also check for . since we require FQDN
 	var atIndex = str.indexOf('@');
 	var dotIndex = str.lastIndexOf('.');
-	return ((atIndex != -1) && (dotIndex != -1) && (dotIndex > atIndex));
+	return ((atIndex != -1) && (dotIndex != -1) && (dotIndex > atIndex) && (dotIndex != str.length - 1));
 };
 
 /**
@@ -345,12 +346,17 @@ function(str) {
  */
 AjxEmailAddress.prototype.toString =
 function() {
-	if (this.name && !this.isGroup) {
+
+	if (this.isGroup) {
+		return this.address || this.name;
+	}
+	else if (this.name) {
 		var name = this.name.replace(/\\+"/g, '"');	// unescape double quotes (avoid double-escaping)
 		name = name.replace(/"/g, '\\"');			// escape double quotes
 		var buffer = ['"', name, '"'];
-		if (this.address)
+		if (this.address) {
 			buffer.push(" <", this.address, ">");
+		}
 		return buffer.join("");	// quote friendly part
 	} else {
 		return this.address;
@@ -436,6 +442,8 @@ AjxEmailAddress.prototype.clone =
 function() {
 	var addr = new AjxEmailAddress(this.address, this.type, this.name, this.dispName);
 	addr.icon = this.icon;
+	addr.isGroup = this.isGroup;
+	addr.canExpand = this.canExpand;
 	return addr;
 };
 
@@ -449,6 +457,8 @@ AjxEmailAddress.copy =
 function(obj){    
     var addr = new AjxEmailAddress(obj.address, obj.type, obj.name, obj.dispName);
     addr.icon = obj.icon;
+	addr.isGroup = obj.isGroup;
+	addr.canExpand = obj.canExpand;
     return addr;
 };
 

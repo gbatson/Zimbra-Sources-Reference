@@ -35,7 +35,7 @@
 	<zm:currentResultUrl var="currentUrl" value="/h/search" context="${context}"/>
 	<c:set var="useTo" value="${context.folder.isSent or context.folder.isDrafts}"/>
 	<c:set var="context" value="${context}" />
-	<c:if test="${false and mailbox.prefs.readingPaneEnabled}">
+	<c:if test="${false and mailbox.prefs.readingPaneLocation eq 'off'}">
 		<zm:getMessage var="msg" id="${not empty param.id ? param.id : context.currentItem.id}" markread="${(context.folder.isMountPoint and context.folder.effectivePerm eq 'r') ? 'false' : 'true'}" neuterimages="${empty param.xim}"/>
 		<zm:computeNextPrevItem var="cursor" searchResult="${context.searchResult}" index="${context.currentItemIndex}"/>
 		<c:set var="ads" value='${msg.subject} ${msg.fragment}'/>
@@ -62,17 +62,17 @@
 			</th>
 				<c:if test="${mailbox.features.flagging}">
 			<th class='Img' nowrap='nowrap'>
-				<app:img src="startup/ImgFlagRed.gif" altkey="ALT_FLAGGED"/>
+				<app:img src="startup/ImgFlagRed.png" altkey="ALT_FLAGGED"/>
 			</th>
 				</c:if>
 			<c:if test="${mailbox.features.mailPriority}">
 			<th class='ImgNarrow' nowrap='nowrap' width='12'>
-				<app:img src="startup/ImgPriorityHigh_list.gif" altkey="ALT_PRIORITY"/>
+				<app:img src="startup/ImgPriorityHigh_list.png" altkey="ALT_PRIORITY"/>
 			</th>
 			</c:if>
 			<c:if test="${mailbox.features.tagging}">
 			<th class='Img' nowrap='nowrap'>
-				<app:img src="startup/ImgTagOrange.gif" altkey="ALT_TAG_TAG"/>
+				<app:img src="startup/ImgTag.png" altkey="ALT_TAG_TAG"/>
 			</th>
 			</c:if>
 			<th class='MsgStatusImg' nowrap='nowrap'>&nbsp;</th>
@@ -83,7 +83,7 @@
 				</a>
 			</th>
 			<th class='Img' nowrap='nowrap' width='20'>
-				<app:img src="startup/ImgAttachment.gif" altkey="ALT_ATTACHMENT"/>
+				<app:img src="startup/ImgAttachment.png" altkey="ALT_ATTACHMENT"/>
 			</th>
 			<th nowrap>
 					<zm:newSortUrl var="subjectSortUrl" value="/h/search" context="${context}" sort="${context.ss eq 'subjAsc' ? 'subjDesc' : 'subjAsc'}"/>
@@ -114,7 +114,7 @@
 						<zm:currentResultUrl index="${status.index}" var="currentItemUrl" value="/h/search" context="${context}" action="compose" id="${hit.messageHit.id}"/>
 					</c:when>
 					<c:otherwise>
-						<zm:currentResultUrl index="${status.index}" var="currentItemUrl" value="/h/search" action="${mailbox.prefs.readingPaneEnabled ? 'paneView' : 'view'}" context="${context}" id="${hit.messageHit.id}" xim="${mailbox.prefs.displayExternalImages ? '1' : param.xim}"/>
+						<zm:currentResultUrl index="${status.index}" var="currentItemUrl" value="/h/search" action="${(mailbox.prefs.readingPaneLocation eq 'off' and param.action != 'offView') ? 'offView' : 'view'}" context="${context}" id="${hit.messageHit.id}" xim="${mailbox.prefs.displayExternalImages ? '1' : param.xim}"/>
 					</c:otherwise>
 				</c:choose>
 				<c:if test="${empty selectedRow and hit.messageHit.id == context.currentItem.id}"><c:set var="selectedRow" value="${status.index}"/></c:if>
@@ -229,6 +229,10 @@
 	function setviewOp(val) {
 		document.getElementById("viewOp").value = val;
 		zclick('SOPSET');
+	}
+	function setreadingPaneOp(val) {
+    	document.getElementById("readingPaneOp").value = val;
+		zclick("SOPVIEW");
 	}
 	function zSelectRow(ev,id, cid) {
 		var t = ev.target || ev.srcElement;
@@ -353,11 +357,12 @@
 
 				}
 			}
-			var msgIdstr = msgIds.join(",");
-			mesgId = (msgIdstr != "") ? msgIdstr : document.getElementById("C"+rowNo).value;
+			var msgIdstr = (msgIds != "") ? msgIds.join(",") : "";
+			mesgId = (msgIdstr != "") ? msgIdstr : ((rowNo != "") ? document.getElementById("C"+rowNo).value : "");
 
 			this.deltaY = 15;
-			this.deltaX = (YAHOO.util.Event.getPageX(ev) - $D.getXY(document.getElementById(rowId))[0]);
+            if (rowId != "")
+			    this.deltaX = (YAHOO.util.Event.getPageX(ev) - $D.getXY(document.getElementById(rowId))[0]);
 
 		};
 

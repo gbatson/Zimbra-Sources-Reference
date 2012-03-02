@@ -13,32 +13,24 @@
  * ***** END LICENSE BLOCK *****
  */
 
-/*
- * Created on Apr 30, 2004
- */
 package com.zimbra.cs.mime;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 import javax.activation.DataSource;
 import javax.mail.internet.MimeUtility;
 
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.BlobMetaData;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.cs.convert.AttachmentInfo;
 import com.zimbra.cs.convert.ConversionException;
-import com.zimbra.cs.index.LuceneFields;
+import com.zimbra.cs.index.IndexDocument;
 import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.object.MatchedObject;
@@ -46,15 +38,16 @@ import com.zimbra.cs.object.ObjectHandler;
 import com.zimbra.cs.object.ObjectHandlerException;
 
 /**
+ * @since Apr 30, 2004
  * @author schemers
  */
 public abstract class MimeHandler {
     /**
-     * The name of the HTTP request parameter used to identify 
-     * an individual file within an archive. Its value is unspecified; 
+     * The name of the HTTP request parameter used to identify
+     * an individual file within an archive. Its value is unspecified;
      * it may be the full path within the archive, or a sequence number.
      * It should be understood between the archive handler and the servlet.
-     * 
+     *
      */
     public static final String ARCHIVE_SEQUENCE = "archseq";
     public static final String CATCH_ALL_TYPE = "all";
@@ -77,7 +70,7 @@ public abstract class MimeHandler {
     protected String getContentType() {
         return mContentType != null ? mContentType : "";
     }
-    
+
     protected void setContentType(String contentType) {
         mContentType = contentType;
     }
@@ -92,7 +85,7 @@ public abstract class MimeHandler {
 
     /**
      * Initializes the data source for text extraction.
-     * 
+     *
      * @see #getContentImpl()
      * @see #addFields(Document)
      */
@@ -119,11 +112,11 @@ public abstract class MimeHandler {
     public DataSource getDataSource() {
         return mDataSource;
     }
-    
+
     public int getSize() {
         return mSize;
     }
-    
+
     public void setSize(int size) {
         mSize = size;
     }
@@ -131,7 +124,7 @@ public abstract class MimeHandler {
     /**
      * Adds the indexed fields to the Lucene document for search. Each handler determines
      * a set of fields that it deems important for the type of documents it handles.
-     * 
+     *
      * @param doc
      * @throws MimeHandlerException
      */
@@ -139,7 +132,7 @@ public abstract class MimeHandler {
 
     /**
      * Gets the text content of the document.
-     * 
+     *
      * @return
      * @throws MimeHandlerException
      */
@@ -182,13 +175,19 @@ public abstract class MimeHandler {
      */
     protected abstract String getContentImpl() throws MimeHandlerException;
 
+    /**
+     * Subclass should override.
+     *
+     * @return null
+     * @throws MimeHandlerException if a MIME parser error occurred.
+     */
     public ZVCalendar getICalendar() throws MimeHandlerException {
         return null;
     }
 
     /**
      * Converts the document into HTML/images for viewing.
-     * 
+     *
      * @param doc
      * @param urlPart URL base or path
      * @return path to the main converted HTML file.
@@ -199,7 +198,7 @@ public abstract class MimeHandler {
 
     /**
      * Determines if this handler can process archive files (zip, tar, etc.).
-     * 
+     *
      * @return true if the handler can handle archive, false otherwise.
      */
     public boolean handlesArchive() {
@@ -213,81 +212,76 @@ public abstract class MimeHandler {
      */
     public abstract boolean doConversion();
 
-    @SuppressWarnings("deprecation")
-    public Document getDocument() throws MimeHandlerException, ObjectHandlerException, ServiceException {
+    /**
+     * Returns a Lucene document to index this content.
+     *
+     * @return Lucene document
+     * @throws MimeHandlerException if a MIME parser error occurred
+     * @throws ObjectHandlerException if a Zimlet error occurred
+     * @throws ServiceException if other error occurred
+     */
+    public final Document getDocument()
+        throws MimeHandlerException, ObjectHandlerException, ServiceException {
 
-        /*
-         * Initialize the F_L_TYPE field with the content type from the
-         * specified DataSouce. Additionally, if DataSource is an instance
-         * of BlobDataSource (which it always should when creating a document), 
-         * then also initialize F_L_BLOB_ID and F_L_SIZE fields.
-         */
+        IndexDocument doc = new IndexDocument(new Document());
+        doc.addMimeType(getContentType());
 
-        Document doc = new Document();
-        doc.add(new Field(LuceneFields.L_MIMETYPE, getContentType(), Field.Store.YES, Field.Index.TOKENIZED));
-
-        addFields(doc);
+        addFields(doc.toDocument());
         String content = getContent();
-        doc.add(new Field(LuceneFields.L_CONTENT, content, Field.Store.NO, Field.Index.TOKENIZED));
+        doc.addContent(content);
         getObjects(content, doc);
-        
-        doc.add(new Field(LuceneFields.L_PARTNAME, mPartName, Field.Store.YES, Field.Index.UN_TOKENIZED)); 
+
+        doc.addPartName(mPartName);
 
         String name = mDataSource.getName();
         if (name != null) {
             try {
                 name = MimeUtility.decodeText(name);
-            } catch (UnsupportedEncodingException e) { }
-            doc.add(new Field(LuceneFields.L_FILENAME, name, Field.Store.YES, Field.Index.TOKENIZED));
+            } catch (UnsupportedEncodingException ignore) {
+            }
+            doc.addFilename(name);
         }
-        return doc;
+        return doc.toDocument();
     }
 
-    @SuppressWarnings({ "deprecation", "unchecked" })
-    public static void getObjects(String text, Document doc) throws ObjectHandlerException, ServiceException {
-        if (DebugConfig.disableObjects)
-            return;
+    public static void getObjects(String text, IndexDocument doc)
+        throws ObjectHandlerException, ServiceException {
 
-        List objects = ObjectHandler.getObjectHandlers();
+        if (DebugConfig.disableObjects) {
+            return;
+        }
+
+        List<?> objects = ObjectHandler.getObjectHandlers();
         StringBuffer l_objects = new StringBuffer();
-        for (Iterator oit=objects.iterator(); oit.hasNext();) {
-            ObjectHandler h = (ObjectHandler) oit.next();
-            if (!h.isIndexingEnabled())
+        for (Object obj : objects) {
+            ObjectHandler h = (ObjectHandler) obj;
+            if (!h.isIndexingEnabled()) {
                 continue;
-            ArrayList matchedObjects = new ArrayList();
+            }
+            List<MatchedObject> matchedObjects = new ArrayList<MatchedObject>();
             h.parse(text, matchedObjects, true);
             if (!matchedObjects.isEmpty()) {
-                if (l_objects.length() > 0)
+                if (l_objects.length() > 0) {
                     l_objects.append(',');
-                l_objects.append(h.getType());
-
-                /* if (h.storeMatched())
-                if (false) {
-                    Set<String> set = new HashSet<String>();
-                    for (Iterator mit = matchedObjects.iterator(); mit.hasNext(); ) {
-                        MatchedObject mo = (MatchedObject) mit.next();
-                        set.add(mo.getMatchedText());
-                    }
-
-                    StringBuffer md = new StringBuffer();
-                    int i = 0;
-                    for (String match : set) {
-                        //TODO: check md.length() and set an upper bound on
-                        // how big we'll let the field be? Per-object or 
-                        // system-wide policy?
-                        BlobMetaData.encodeMetaData(Integer.toString(i++), match, md);
-                    }
-                    String fname = "l.object."+h.getType();
-                    doc.add(new Field(fname, md.toString(), Field.Store.YES, Field.Index.NO));
                 }
-                */
+                l_objects.append(h.getType());
             }
         }
-        if (l_objects.length() > 0)
-            doc.add(new Field(LuceneFields.L_OBJECTS, l_objects.toString(), Field.Store.NO, Field.Index.TOKENIZED));
+        if (l_objects.length() > 0) {
+            doc.addObjects(l_objects.toString());
+        }
     }
 
-    public AttachmentInfo getDocInfoFromArchive(AttachmentInfo archiveDocInfo, String seq) throws IOException {
+    /**
+     * Subclass should override.
+     *
+     * @param archiveDocInfo attachment info
+     * @param seq sequence number
+     * @return null
+     * @throws IOException if an IO error occurred.
+     */
+    public AttachmentInfo getDocInfoFromArchive(AttachmentInfo archiveDocInfo,
+            String seq) throws IOException {
         return null;
     }
 }

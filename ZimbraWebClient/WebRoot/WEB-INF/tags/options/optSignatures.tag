@@ -19,7 +19,6 @@
 <%@ taglib prefix="fmt" uri="com.zimbra.i18n" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <%@ taglib prefix="app" uri="com.zimbra.htmlclient" %>
-<fmt:setBundle basename='/messages/AjxMsg' var='AjxMsg' scope='request' />
 
 <body class="yui-skin-sam">
 <table width="100%" cellpadding="10" cellspacing="10">
@@ -227,32 +226,8 @@
 </table>
 
 <script type="text/javascript">
-
-    <%-- Get font definitions from AjxMsg --%>
-    var fonts = [];
-    var defaultFont;
-    <c:forEach var="KEY" items="fontFamilyIntl,fontFamilyBase">
-    <c:forEach var="i" begin="1" end="30">
-        <fmt:message var="style" bundle='${AjxMsg}' key="${KEY}${i}.css"/>
-        <c:choose>
-            <c:when test="${fn:startsWith(style, '#') or fn:startsWith(style, '?')}">
-                <%-- Do nothing --%>
-            </c:when>
-            <c:otherwise>
-                <c:set var="style" value="${fn:replace(style,', ',',')}"/>
-                <fmt:message var="name" bundle='${AjxMsg}' key="${KEY}${i}.display"/>
-                <c:set var="selected" value="${fn:replace(mailbox.prefs.htmlEditorDefaultFontFamily,', ',',') eq style}"/>
-                fonts.push({text:"${name}",value:"${style}"<c:if test="${selected}">,checked:true</c:if>});
-                <c:if test="${selected}">
-                defaultFont="${name}";
-                </c:if>
-            </c:otherwise>
-        </c:choose>
-    </c:forEach>
-    </c:forEach>
-
-
     var sigcount = ${numSigs};
+
     var myEdit = new Array();
     for(var i = 0 ;i < sigcount ; i++) {
         var sigTextAreaId = "signatureValue"+i;
@@ -263,12 +238,10 @@
                 width: '100%',
                 dompath: false, //Turns on the bar at the bottom
                 animate: true, //Animates the opening, closing and moving of Editor windows
-                plainText: true,
+                plainText: false,
                 focusAtStart: true,
                 collapse: true,
-                draggable: false,
-                fonts: fonts,
-                defaultFont: defaultFont
+                draggable: false
             });
             /*enable buttons that are disabled by default */
             myEdit[i].on('afterNodeChange', function() {
@@ -304,12 +277,10 @@
         width: '100%',
         dompath: false, //Turns on the bar at the bottom
         animate: true, //Animates the opening, closing and moving of Editor windows
-        plainText: true,
+        plainText: false,
         focusAtStart: true,
         collapse: true,
-        draggable: false,
-        fonts: fonts,
-        defaultFont: defaultFont
+        draggable: false
     });
 
 	/*enable buttons that are disabled by default */

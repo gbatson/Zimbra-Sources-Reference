@@ -172,6 +172,7 @@ public class InitialSync {
         OfflineLog.offline.debug("starting initial sync");
         mMailboxSync.saveSyncTree(syncResponse, token);
         initialFolderSync(syncResponse.getElement(MailConstants.E_FOLDER));
+        SyncExceptionHandler.checkIOExceptionRate(ombx);
         mMailboxSync.recordInitialSyncComplete(token);
         OfflineLog.offline.debug("ending initial sync");
 
@@ -196,6 +197,7 @@ public class InitialSync {
         
         OfflineLog.offline.debug("resuming initial sync");
         initialFolderSync(syncResponse.getElement(MailConstants.E_FOLDER));
+        SyncExceptionHandler.checkIOExceptionRate(ombx);
         mMailboxSync.recordInitialSyncComplete(token);
         OfflineLog.offline.debug("ending initial sync");
 
@@ -225,9 +227,9 @@ public class InitialSync {
     
     private void initialFolderSync(Element elt) throws ServiceException {
         int folderId = (int) elt.getAttributeLong(MailConstants.A_ID);
-        if (mMailboxSync.isFolderDone(folderId))
+        if (mMailboxSync.isFolderDone(folderId)) {
             return;
-
+        }
         // first, sync the container itself
         syncContainer(elt, folderId);
 
@@ -329,7 +331,7 @@ public class InitialSync {
                 continue;
             }
             try {
-                syncCalendarItem(id, folderId, true);
+                syncCalendarItem(id, folderId, mailItemType == MailItem.TYPE_APPOINTMENT);
                 if (++counter % 100 == 0) {
                     checkpoint(id);
                 }
@@ -388,6 +390,7 @@ public class InitialSync {
 
             int batchSize = OfflineLC.zdesktop_sync_batch_size.intValue();
             if (ombx.getRemoteServerVersion().getMajor() < 5 || batchSize == 1) {
+                ombx.recordItemSync(id);
                 syncMessage(id, folderId, type);
                 if (++counter % 100 == 0 && !isDeltaSync)
                     checkpoint(id);
@@ -588,6 +591,7 @@ public class InitialSync {
     
     void syncCalendarItem(int id, int folderId, boolean isAppointment) throws ServiceException {
         OfflineSyncManager.getInstance().continueOK();
+        ombx.recordItemSync(id);
         
         try {
             Element request = new Element.XMLElement(isAppointment ? MailConstants.GET_APPOINTMENT_REQUEST : MailConstants.GET_TASK_REQUEST);
@@ -631,8 +635,9 @@ public class InitialSync {
     }
     
     private void handleCalendarSyncException(Exception x, int id) throws ServiceException {
-        SyncExceptionHandler.checkRecoverableException("InitialSync.syncCalendarItem", x);
-        SyncExceptionHandler.syncCalendarFailed(ombx, id, x);
+        if (!SyncExceptionHandler.isRecoverableException(ombx, id, "InitialSync.syncCalendarItem", x)) {
+            SyncExceptionHandler.syncCalendarFailed(ombx, id, x);
+        }
     }
 
     //Massage the GetAppointmentResponse/GetTaskResponse into a SetAppointmentReqeust/SetTaskRequest
@@ -833,8 +838,8 @@ public class InitialSync {
 
     void syncContact(Element elt, int folderId) throws ServiceException {
         OfflineSyncManager.getInstance().continueOK();
-        
         int id = (int) elt.getAttributeLong(MailConstants.A_ID);
+        ombx.recordItemSync(id);
         byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
         int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null));
         String tags = elt.getAttribute(MailConstants.A_TAGS, null);
@@ -857,8 +862,9 @@ public class InitialSync {
             } catch (MailServiceException.NoSuchItemException nsie) {
                 OfflineLog.offline.warn("initial: no blob available for contact " + id);
             } catch (Exception x) {
-                SyncExceptionHandler.checkRecoverableException("InitialSync.syncContact", x);
-                SyncExceptionHandler.syncContactFailed(ombx, id, x);
+                if (!SyncExceptionHandler.isRecoverableException(ombx, id, "InitialSync.syncContact", x)) {
+                    SyncExceptionHandler.syncContactFailed(ombx, id, x);
+                }
                 return;
             }
         }
@@ -998,13 +1004,15 @@ public class InitialSync {
                         te = tin.getNextEntry(); //message always has a blob
                         if (te != null) {
                             try {
+                                ombx.recordItemSync(ud.id);
                                 saveMessage(tin, te.getSize(), ud.id, ud.folderId,
                                     type, ud.date, Flag.flagsToBitmask(itemData.flags),
                                     ud.tags, ud.parentId);
                                 idSet.remove(ud.id);
                             } catch (Exception x) {
-                                SyncExceptionHandler.checkRecoverableException("InitialSync.syncMessagesAsTgz", x);
-                                SyncExceptionHandler.syncMessageFailed(ombx, ud.id, x);
+                                if (!SyncExceptionHandler.isRecoverableException(ombx, ud.id, "InitialSync.syncMessagesAsTgz", x)) {
+                                    SyncExceptionHandler.syncMessageFailed(ombx, ud.id, x);
+                                }
                             }
                         } else {
                             throw new RuntimeException("missing blob entry reading tgz stream");
@@ -1079,10 +1087,12 @@ public class InitialSync {
                         }
                     };
                     try {
+                        ombx.recordItemSync(id);
                         saveMessage(fin, entry.getSize(), headers, id, folderId, type);
                     } catch (Exception x) {
-                        SyncExceptionHandler.checkRecoverableException("InitialSync.syncMessagesAsZip", x);
-                        SyncExceptionHandler.syncMessageFailed(ombx, id, x);
+                        if (!SyncExceptionHandler.isRecoverableException(ombx, id, "InitialSync.syncMessagesAsZip", x)) {
+                            SyncExceptionHandler.syncMessageFailed(ombx, id, x);
+                        }
                     }
                 }
             } catch (IOException x) {
@@ -1115,8 +1125,9 @@ public class InitialSync {
             OfflineLog.offline.error("initial: can't retrieve message from " + url, e);
             throw ServiceException.FAILURE("can't retrieve message from " + url, e);
         } catch (Exception x) {
-            SyncExceptionHandler.checkRecoverableException("InitialSync.syncMessage", x);
-            SyncExceptionHandler.syncMessageFailed(ombx, id, x);
+            if (!SyncExceptionHandler.isRecoverableException(ombx, id, "InitialSync.syncMessage", x)) {
+                SyncExceptionHandler.syncMessageFailed(ombx, id, x);
+            }
         }
     }
     
@@ -1146,16 +1157,16 @@ public class InitialSync {
         if (convId < 0)
             convId = Mailbox.ID_AUTO_INCREMENT;
         try {
-            blob = StoreManager.getInstance().storeIncoming(cs, sizeHint, null);
+            blob = StoreManager.getInstance().storeIncoming(cs, null);
             data = bs.isPartial() ? null : bs.getBuffer();
             OfflineLog.offline.debug("message id=%d streamed to %s", id,
                 data == null ? blob.getPath() : "memory" );
+            size = (int) blob.getRawSize();
         } catch (Exception e) {
             throw ServiceException.FAILURE("Unable to read/write message id=" + id, e);
         }
         try {
             digest = blob.getDigest();
-            size = (int)blob.getRawSize();
             pm = new ParsedMessage(new ParsedMessageOptions(blob, data,
                 received * 1000L, false));
             
@@ -1186,18 +1197,19 @@ public class InitialSync {
             return;
         } catch (IOException e) {
             StoreManager.getInstance().quietDelete(blob);
-            if (e.getMessage() != null && e.getMessage().startsWith("Unable to rename")) {
-                SyncExceptionHandler.syncMessageFailed(ombx, id, pm, e);
-                return;
+            StringBuilder sb = new StringBuilder("IOException while saving message blob");  
+            if (e.getMessage() != null && (e.getMessage().startsWith("Unable to rename") || e.getMessage().contains(".msg does not exist"))) {
+                sb.append("\r\n").append("Possibly due to Anti-Virus; Check A/V settings and logs for <zd data>/store");
             }
-            throw ServiceException.FAILURE("storing " + MailItem.getNameForType(type) + " " + id, e);
+            SyncExceptionHandler.handleIOException(ombx, id, sb.toString(), e);
+            return;
         } catch (Exception e) {
             if (e instanceof ServiceException && ((ServiceException)e).getCode().equals(MailServiceException.NO_SUCH_FOLDER)) {
                 OfflineLog.offline.debug("initial: moved " + MailItem.getNameForType(type) + " (" + id + ")");
                 StoreManager.getInstance().quietDelete(blob);
                 return; //message moved on server; we'll get that when we do delta
             } else if (!(e instanceof ServiceException) || !((ServiceException)e).getCode().equals(MailServiceException.ALREADY_EXISTS)) {
-                SyncExceptionHandler.syncMessageFailed(ombx, id, pm, e);
+                SyncExceptionHandler.syncMessageFailed(ombx, id, pm, size, e);
                 StoreManager.getInstance().quietDelete(blob);
                 return;
             }
@@ -1276,8 +1288,11 @@ public class InitialSync {
         long modifiedDate = doc.getAttributeLong(MailConstants.A_MODIFIED_DATE);
         String lastEditedBy = doc.getAttribute(MailConstants.A_LAST_EDITED_BY);
         String itemIdStr = doc.getAttribute(MailConstants.A_ID);
+        int idFromXml = Integer.parseInt(itemIdStr);
+        ombx.recordItemSync(idFromXml);
         String name = doc.getAttribute(MailConstants.A_NAME);
         String contentType = doc.getAttribute(MailConstants.A_CONTENT_TYPE, "text/html");
+        String description = doc.getAttribute(MailConstants.A_DESC, null);
         int flags = Flag.flagsToBitmask(doc.getAttribute(MailConstants.A_FLAGS, null));
         //String tags = doc.getAttribute(MailConstants.A_TAGS, null);
         int version = (int) doc.getAttributeLong(MailConstants.A_VERSION);
@@ -1293,8 +1308,9 @@ public class InitialSync {
         } catch (IOException e) {
             OfflineLog.offline.warn("initial: can't download Document:  " + itemIdStr);
         } catch (Exception x) {
-            SyncExceptionHandler.checkRecoverableException("InitialSync.syncDocument", x);
-            SyncExceptionHandler.syncDocumentFailed(ombx, Integer.parseInt(itemIdStr), x);
+            if (!SyncExceptionHandler.isRecoverableException(ombx, idFromXml, "InitialSync.syncDocument", x)) {
+                SyncExceptionHandler.syncDocumentFailed(ombx, idFromXml, x);
+            }
             return;
         }
 
@@ -1308,7 +1324,7 @@ public class InitialSync {
                 return;
             }
             SaveDocument player = new SaveDocument();
-            ParsedDocument pd = new ParsedDocument(rs, name, contentType, modifiedDate, lastEditedBy);
+            ParsedDocument pd = new ParsedDocument(rs, name, contentType, modifiedDate, lastEditedBy, description);
             player.setDocument(pd);
             player.setItemType(type);
             player.setMessageId(id);
@@ -1370,6 +1386,7 @@ public class InitialSync {
                     continue;
 
                 id = item.getId();
+                ombx.recordItemSync(id);
                 te = tis.getNextEntry();
                 if (te == null) {
                     OfflineLog.offline.warn("unexpected EOF while reading TarInputStream.  current itemId="+id);
@@ -1393,7 +1410,7 @@ public class InitialSync {
 
                 Document doc = (Document)item;
                 SaveDocument player = new SaveDocument();
-                ParsedDocument pd = new ParsedDocument(eofIn, doc.getName(), doc.getContentType(), doc.getDate(), doc.getCreator());
+                ParsedDocument pd = new ParsedDocument(eofIn, doc.getName(), doc.getContentType(), doc.getDate(), doc.getCreator(), doc.getDescription());
                 player.setDocument(pd);
                 player.setItemType(doc.getType());
                 player.setMessageId(doc.getId());
@@ -1434,8 +1451,9 @@ public class InitialSync {
                 OfflineLog.offline.debug("initial: created document (" + id + "): " + doc.getName());
             }
         } catch (Exception x) {
-            SyncExceptionHandler.checkRecoverableException("InitialSync.syncDocument", x);
-            SyncExceptionHandler.syncDocumentFailed(ombx, id, x);
+            if (!SyncExceptionHandler.isRecoverableException(ombx, id, "InitialSync.syncDocument", x)) {
+                SyncExceptionHandler.syncDocumentFailed(ombx, id, x);
+            }
         } finally {
             if (rs != null)
                 rs.close();

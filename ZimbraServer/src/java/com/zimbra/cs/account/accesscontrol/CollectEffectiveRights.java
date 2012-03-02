@@ -29,8 +29,8 @@ import java.util.TreeMap;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
-import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.SetUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
@@ -41,7 +41,7 @@ import com.zimbra.cs.service.account.ToXML;
 
 public class CollectEffectiveRights {
     
-    private static final Log sLog = LogFactory.getLog(CollectEffectiveRights.class);
+    private static final Log sLog = ZimbraLog.acl;
     
     private RightBearer mRightBearer;
     private Entry mTarget;

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -74,7 +74,6 @@ function(search, item, callback, markRead) {
 
 	if (this._doublePaneView) {
 		var mlv = this._doublePaneView._mailListView;
-		mlv._saveState({selection:true});
 		mlv.reset();
 	}
 	this._item = item;
@@ -126,11 +125,13 @@ function() {
 	return false;
 };
 
+
 ZmDoublePaneController.prototype.switchView =
 function(view, force) {
 	if (view == ZmSetting.RP_OFF ||	view == ZmSetting.RP_BOTTOM || view == ZmSetting.RP_RIGHT) {
 		this._mailListView._colHeaderActionMenu = null;
-		if (view != this._getReadingPanePref()) {
+		var oldView = this._getReadingPanePref();
+		if (view != oldView) {
 			this._setReadingPanePref(view);
 			this._doublePaneView.setReadingPane();
 		}
@@ -720,7 +721,9 @@ function(msg) {
 	rule.addAction(ZmFilterRule.A_KEEP);
 
 	var accountName = appCtxt.multiAccounts && msg.getAccount().name;
-	appCtxt.getFilterRuleDialog().popup(rule, null, null, accountName);
+	var outgoing = AjxUtil.indexOf(ZmFolder.OUTBOUND, msg.getFolderId()) != -1;
+
+	appCtxt.getFilterRuleDialog().popup(rule, null, null, accountName, outgoing);
 };
 
 ZmDoublePaneController.prototype._dragListener =

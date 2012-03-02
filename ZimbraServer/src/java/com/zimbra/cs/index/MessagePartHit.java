@@ -13,9 +13,6 @@
  * ***** END LICENSE BLOCK *****
  */
 
-/*
- * Created on Oct 15, 2004
- */
 package com.zimbra.cs.index;
 
 import org.apache.lucene.document.Document;
@@ -23,57 +20,61 @@ import org.apache.lucene.document.Document;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailItem;
-
+import com.zimbra.cs.mailbox.Message;
 
 /**
- * @author tim
- * 
- * Inderect result object wrapped around Lucene Document.
- * 
+ * Inderect result object wrapped around Lucene {@link Document}.
+ * <p>
  * You wouldn't think we'd need this -- but in fact there are situations
  * where it is useful (e.g. a query that ONLY uses MySQL and therefore has
- * the real Conversation and Message objects) because the Lucene Doc isn't
- * there.
- * 
- * Access to the real Lucene doc is perhaps not necessary here -- the ?few
- * writable APIs on the Lucene document are probably not useful to us.
- *  
+ * the real Conversation and Message objects) because the Lucene
+ * {@link Document} isn't there.
+ *
+ * Access to the real Lucene {@link Document} is perhaps not necessary here --
+ * the few writable APIs on the Lucene {@link Document} are probably not useful
+ * to us.
+ *
+ * @since Oct 15, 2004
+ * @author tim
  */
 public final class MessagePartHit extends ZimbraHit {
-    
+
     private Document mDoc = null;
-
     private MessageHit mMessage = null;
+    private int mMailItemId = 0;
 
-    int mMailItemId = 0;
-    
-    protected MessagePartHit(ZimbraQueryResultsImpl res, Mailbox mbx, int mailItemId, Document d, float score, MailItem.UnderlyingData ud) throws ServiceException {
+    protected MessagePartHit(ZimbraQueryResultsImpl res, Mailbox mbx,
+            int mailItemId, Document doc, float score, Message message) {
         super(res, mbx, score);
         mMailItemId = mailItemId;
-        mDoc = d;
-        if (ud != null) {
-            getMessageResult(ud);
+        mDoc = doc;
+        if (message != null) {
+            getMessageResult(message);
         }
     }
 
+    @Override
     public long getDate() throws ServiceException {
         if (mCachedDate == -1) {
             mCachedDate = getMessageResult().getDate();
         }
         return mCachedDate;
     }
-    
+
+    @Override
     public int getConversationId() throws ServiceException {
         return getMessageResult().getConversationId();
     }
 
+    @Override
     public String getSubject() throws ServiceException {
-    	if (mCachedSubj == null) {
-    	    mCachedSubj = getMessageResult().getSubject();
-    	}
-        return mCachedSubj; 
+        if (mCachedSubj == null) {
+            mCachedSubj = getMessageResult().getSubject();
+        }
+        return mCachedSubj;
     }
-    
+
+    @Override
     public String getName() throws ServiceException {
         if (mCachedName == null) {
             mCachedName = getMessageResult().getSender();
@@ -81,25 +82,26 @@ public final class MessagePartHit extends ZimbraHit {
         return mCachedName;
     }
 
+    @Override
     public int getItemId() {
-    	return mMailItemId;
+        return mMailItemId;
     }
-    
+
+    @Override
     void setItem(MailItem item) throws ServiceException {
-        MessageHit mh = getMessageResult();
-        mh.setItem(item);
+        getMessageResult().setItem(item);
     }
-    
+
+    @Override
     boolean itemIsLoaded() throws ServiceException {
         return getMessageResult().itemIsLoaded();
     }
-    
-    
+
     public byte getItemType() {
         return MailItem.TYPE_MESSAGE;
     }
-    
 
+    @Override
     public String toString() {
         int convId = 0;
         try {
@@ -107,9 +109,13 @@ public final class MessagePartHit extends ZimbraHit {
         } catch (ServiceException e) {
             e.printStackTrace();
         }
-        
+
         long size = getSize();
-        return "MP: " + super.toString() + " C" +convId + " M" + this.getItemId() + " P" + Integer.toString(getItemId()) + "-" + getPartName()+" S="+size;
+        return "MP: " + super.toString() +
+            " C" + convId +
+            " M" + getItemId() +
+            " P" + Integer.toString(getItemId()) + "-" + getPartName() +
+            " S=" + size;
     }
 
     public String getFilename() {
@@ -133,36 +139,32 @@ public final class MessagePartHit extends ZimbraHit {
             String retVal = mDoc.get(LuceneFields.L_PARTNAME);
             if (!retVal.equals(LuceneFields.L_PARTNAME_TOP)) {
                 return retVal;
-            } 
+            }
         }
         return "";
     }
 
+    @Override
     public long getSize() {
         if (mDoc != null) {
-            String sizeStr = mDoc.get(LuceneFields.L_SORT_SIZE);
-            long sizeLong = ZimbraAnalyzer.SizeTokenFilter.decodeSize(sizeStr);
-            return (int) sizeLong;
+            return Long.parseLong(mDoc.get(LuceneFields.L_SORT_SIZE));
         } else {
             assert(false);// should never have a parthit without a document
             return 0;
         }
     }
 
-    ////////////////////////////////////////////////////
-    //
-    // Hierarchy access:
-    //
-    public MessageHit getMessageResult() throws ServiceException {
+    public MessageHit getMessageResult() {
         return getMessageResult(null);
     }
 
     /**
      * @return Message that contains this document
      */
-    public MessageHit getMessageResult(MailItem.UnderlyingData ud) throws ServiceException {
+    public MessageHit getMessageResult(Message message) {
         if (mMessage == null) {
-            mMessage = getResults().getMessageHit(getMailbox(), new Integer(getItemId()), mDoc, getScore(), ud);
+            mMessage = getResults().getMessageHit(getMailbox(),
+                    getItemId(), mDoc, getScore(), message);
             mMessage.addPart(this);
             mMessage.cacheImapMessage(mCachedImapMessage);
             mMessage.cacheModifiedSequence(mCachedModseq);
@@ -170,8 +172,10 @@ public final class MessagePartHit extends ZimbraHit {
         }
         return mMessage;
     }
-    
-    public MailItem getMailItem() throws ServiceException { return getMessageResult().getMailItem(); }
-    
+
+    @Override
+    public MailItem getMailItem() throws ServiceException {
+        return getMessageResult().getMailItem();
+    }
 
 }

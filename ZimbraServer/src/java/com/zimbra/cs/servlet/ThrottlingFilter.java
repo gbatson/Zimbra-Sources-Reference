@@ -49,12 +49,15 @@ public final class ThrottlingFilter implements Filter {
     private final ConcurrentMap<String, Semaphore> sid2tracker =
         new ConcurrentHashMap<String, Semaphore>();
 
+    @Override
     public void init(FilterConfig config) {
     }
 
+    @Override
     public void destroy() {
     }
 
+    @Override
     public void doFilter(ServletRequest req, ServletResponse resp,
             FilterChain chain) throws IOException, ServletException {
 
@@ -102,9 +105,11 @@ public final class ThrottlingFilter implements Filter {
      */
     private class SessionBindingListener implements HttpSessionBindingListener {
 
+        @Override
         public void valueBound(HttpSessionBindingEvent event) {
         }
 
+        @Override
         public void valueUnbound(HttpSessionBindingEvent event) {
             sid2tracker.remove(event.getSession().getId());
         }

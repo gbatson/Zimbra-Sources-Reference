@@ -29,10 +29,12 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.soap.ZimbraSoapContext;
 
 /**
@@ -71,6 +73,11 @@ public class CreateCalendarItem extends CalendarRequest {
         String folderIdStr = msgElem.getAttribute(MailConstants.A_FOLDER, defaultFolderStr);
         ItemId iidFolder = new ItemId(folderIdStr, zsc);
 
+        // Don't allow creating in Trash folder/subfolder.  We don't want to invite attendees to an appointment in trash.
+        Folder folder = mbox.getFolderById(octxt, iidFolder.getId());
+        if (folder.inTrash())
+            throw ServiceException.INVALID_REQUEST("cannot create a calendar item under trash", null);
+
         // trace logging
         if (!dat.mInvite.hasRecurId())
             ZimbraLog.calendar.info("<CreateCalendarItem> folderId=%d, subject=\"%s\", UID=%s",
@@ -83,18 +90,40 @@ public class CreateCalendarItem extends CalendarRequest {
 
         Element response = getResponseElement(zsc);
 
-        // If we are sending this update to other people, then we MUST be the organizer!
+        boolean hasRecipients;
+        try {
+            Address[] rcpts = dat.mMm.getAllRecipients();
+            hasRecipients = rcpts != null && rcpts.length > 0;
+        } catch (MessagingException e) {
+            throw ServiceException.FAILURE("Checking recipients of outgoing msg ", e);
+        }
+        // If we are sending this to other people, then we MUST be the organizer!
+        if (!dat.mInvite.isOrganizer() && hasRecipients)
+            throw MailServiceException.MUST_BE_ORGANIZER("CreateCalendarItem");
+
         if (!dat.mInvite.isOrganizer()) {
-            try {
-                Address[] rcpts = dat.mMm.getAllRecipients();
-                if (rcpts != null && rcpts.length > 0) {
-                    throw MailServiceException.MUST_BE_ORGANIZER("CreateCalendarItem");
-                }
-            } catch (MessagingException e) {
-                throw ServiceException.FAILURE("Checking recipients of outgoing msg ", e);
-            }
+            // neverSent is always false for attendee users.
+            dat.mInvite.setNeverSent(false);
+        } else if (!dat.mInvite.hasOtherAttendees()) {
+            // neverSent is always false for appointments without attendees.
+            dat.mInvite.setNeverSent(false);
+        } else if (hasRecipients) {
+            // neverSent is set to false when attendees are notified.
+            dat.mInvite.setNeverSent(false);
+        } else {
+            // This is the case of organizer saving an invite with attendees, but without sending the notification.
+            dat.mInvite.setNeverSent(true);
         }
 
-        return sendCalendarMessage(zsc, octxt, iidFolder.getId(), acct, mbox, dat, response);
+        sendCalendarMessage(zsc, octxt, iidFolder.getId(), acct, mbox, dat, response);
+        boolean echo = request.getAttributeBool(MailConstants.A_CAL_ECHO, false);
+        if (echo && dat.mAddInvData != null) {
+            ItemIdFormatter ifmt = new ItemIdFormatter(zsc);
+            int maxSize = (int) request.getAttributeLong(MailConstants.A_MAX_INLINED_LENGTH, 0);
+            boolean wantHTML = request.getAttributeBool(MailConstants.A_WANT_HTML, false);
+            boolean neuter = request.getAttributeBool(MailConstants.A_NEUTER, true);
+            echoAddedInvite(response, ifmt, octxt, mbox, dat.mAddInvData, maxSize, wantHTML, neuter);
+        }
+        return response;
     }
 }

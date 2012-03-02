@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -50,20 +50,25 @@ ZmSkin.hints = {
 	treeBottomAd:	{ containers: "skin_tr_tree_bottom_ad" },
 	
 
+	
+
 	// specific components
 	helpButton:		{ style: "link", container: "quota", url: "@HelpAdvancedURL@" },		/*** TODO: this 'container' should be removed ??? ***/
 	logoutButton: 	{ style: "link", container: "quota" },		/*** TODO: this 'container' should be removed ??? ***/
 	appChooser:		{ position:"static", direction: "LR" },
 	toast:		 	{ location: "N", 
 					  transitions: [
-							{ type: "slide-in", step: 1, duration: 10 },
-							{ type: "pause", duration: 2500 },
-							{ type: "slide-out", step: -1, duration: 25 }
+							{ type: "fade-in", step: 5, duration: 50 },
+              				{ type: "pause", duration: 5000 },
+              				{ type: "fade-out", step: -10, duration: 500 }
 						] 
 					},
 	fullScreen:     { containers : ["!skin_td_tree", "!skin_td_tree_app_sash"] },
 	
-	allAds :		{ containers: ["skin_tr_top_ad", "skin_td_sidebar_ad", "skin_tr_bottom_ad", "skin_tr_tree_top_ad", "skin_tr_tree_bottom_ad"] }
+	allAds :		{ containers: ["skin_tr_top_ad", "skin_td_sidebar_ad", "skin_tr_bottom_ad", "skin_tr_tree_top_ad", "skin_tr_tree_bottom_ad"] },
+
+	hideSearchInCompose : true
+
 };
 
 

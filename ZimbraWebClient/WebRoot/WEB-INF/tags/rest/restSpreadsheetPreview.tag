@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -87,10 +87,7 @@
         </jsp:include>
 
         <!-- Packages -->
-        <c:set var="packages" value="Boot,SpreadsheetPreview" scope="request"/>
-        <c:if test="${isDevMode}">
-            <c:set var="packages" value="${packages},Debug" scope="page"/>
-        </c:if>
+        <c:set var="packages" value="Boot,SpreadsheetPreview,Debug" scope="request"/>
         <c:set var="pnames" value="${fn:split(packages,',')}" scope="request"/>
         <c:set var="pprefix" value="js" scope="request"/>
         <c:choose>
@@ -116,6 +113,11 @@
                 </c:otherwise>
             </c:choose>
         </c:forEach>
+
+        <c:set var="version" value="${spreadsheet.version}"/>
+        <c:if test="${not empty param.ver}">
+            <c:set var="version" value="${param.ver}"/>
+        </c:if>
               
     </head>
     <body>
@@ -135,7 +137,7 @@
                     </tr>
                     <tr>
                         <td><fmt:message key="labelBy"/>&nbsp;${spreadsheet.creator}</td>
-                        <td align="right"><fmt:message key="labelVersion"/>: ${spreadsheet.version}  |  <fmt:message key="labelModifiedOn"/>: <fmt:formatDate value="${spreadsheet.modifiedDate}" pattern="M/d/yyyy hh:mm" timeZone="${timeZone}"/></td>
+                        <td align="right"><fmt:message key="labelVersion"/>: <span id="version_cont">${spreadsheet.version}</span>  |  <fmt:message key="labelModifiedOn"/>: <fmt:formatDate value="${spreadsheet.modifiedDate}" pattern="M/d/yyyy hh:mm" timeZone="${timeZone}"/></td>
                     </tr>
                     </table>
                 </td>
@@ -159,8 +161,12 @@
         </tbody>
     </table>
     <script type="text/javascript">
-        ZmSpreadSheetPreview._createDBG('${isDevMode}');
-        ZmSpreadSheetPreview.launch('spreadsheet');
+        window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
+
+        ZmSpreadSheetPreview.launch('spreadsheet',{
+            version: '${zm:cook(version)}',
+            versionCont: "version_cont" 
+        });
     </script>
     </body>
 </html>

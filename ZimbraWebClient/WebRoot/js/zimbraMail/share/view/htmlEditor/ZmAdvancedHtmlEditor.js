@@ -177,6 +177,7 @@ function(html, insertFontStyle, onlyInnerContent) {
 	}
 
 	var p_style = "<style type='text/css'>p { margin: 0; }</style>"; // bug 3264
+
 	if (insertFontStyle) {
 		html = this._getFontStyle(html);
 	}
@@ -336,7 +337,6 @@ function() {
 	var editor = this.getEditor();
 	if (editor) {
 		editor.setContent("", {format: "raw"});
-        this.initDefaultFontSize(editor);
 	}
     var field = this.getContentField();
     if(field) field.value = "";
@@ -418,12 +418,12 @@ function(content) {
 	this._pendingContent = content;
 };
 
-ZmAdvancedHtmlEditor.prototype.addOnContentIntializedListener =
+ZmAdvancedHtmlEditor.prototype.addOnContentInitializedListener =
 function(callback) {
 	this._onContentInitializeCallback = callback;
 };
 
-ZmAdvancedHtmlEditor.prototype.removeOnContentIntializedListener =
+ZmAdvancedHtmlEditor.prototype.removeOnContentInitializedListener =
 function() {
 	this._onContentInitializeCallback = null;
 };
@@ -515,18 +515,6 @@ function(id, mode, content) {
 	var locale = appCtxt.get(ZmSetting.LOCALE_NAME);
 	var editorCSS = appContextPath + "/css/editor_ui.css?v=" + window.cacheKillerVersion + "&skin=" + appCurrentSkin + "&locale=" + locale;
 
-    var fonts = [];
-	var KEYS = [ "fontFamilyIntl", "fontFamilyBase" ];
-	var i, j, key, value, name;
-	for (j = 0; j < KEYS.length; j++) {
-		for (i = 1; value = AjxMsg[KEYS[j]+i+".css"]; i++) {
-			if (value.match(/^#+$/)) break;
-			value = value.replace(/,\s/g,",");
-			name = AjxMsg[KEYS[j]+i+".display"];
-			fonts.push(name+"="+value);
-		}
-	}
-
 	tinyMCE.init({
 		// General options
 		mode :  (mode == DwtHtmlEditor.HTML)? "exact" : "none",
@@ -540,7 +528,6 @@ function(id, mode, content) {
 		theme_advanced_toolbar_location : "top",
 		theme_advanced_toolbar_align : "left",
 		theme_advanced_resizing : true,
-        theme_advanced_fonts : fonts.join(";"),
 		convert_urls : false,
 		verify_html : false,
 		gecko_spellcheck : true,
@@ -563,7 +550,7 @@ function(id, mode, content) {
 };
 
 ZmAdvancedHtmlEditor.prototype.setMode =
-function(mode, convert) {
+function(mode, convert, convertor) {
 
     this.discardMisspelledWords();
 
@@ -573,9 +560,9 @@ function(mode, convert) {
 	var editor = this.getEditor();
 	if (mode == DwtHtmlEditor.HTML) {
 		var textArea = this.getContentField();
+		var content = convert ? AjxStringUtil.convertToHtml(textArea.value, true) : textArea.value;
 		if (editor && editor.getDoc()) {
 			var doc = editor.getDoc();
-			var content = convert ? AjxStringUtil.convertToHtml(textArea.value)	: textArea.value;
 			doc.body.innerHTML = content;
 			this._pendingContent = content;
 			//important: tinymce expects html markup in textarea so it might treat email
@@ -583,14 +570,13 @@ function(mode, convert) {
 			textArea.value = "";
 			this._editorContainer.setFocusMember(editor.getWin());
 		} else {
-			var content = convert ? AjxStringUtil.convertToHtml(textArea.value)	: textArea.value;
 			this._pendingContent = content;
 		}
 		tinyMCE.execCommand('mceToggleEditor', false, this._bodyTextAreaId);
 	} else {
 		var textArea = this.getContentField();
 		var doc = editor.getDoc();
-		var textContent = convert ? this._convertHtml2Text() : doc.innerHTML;
+		var textContent = convert ? this._convertHtml2Text(convertor) : doc.innerHTML;
 
 		tinyMCE.execCommand('mceToggleEditor', false, this._bodyTextAreaId);
 		textArea.value = textContent;

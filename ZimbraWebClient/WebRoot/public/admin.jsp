@@ -95,7 +95,7 @@
     
     String skin = (String)request.getAttribute("skin");
 	if (skin == null) {
-		skin = application.getInitParameter("zimbraDefaultSkin");
+		skin = application.getInitParameter("zimbraDefaultAdminSkin");
 	}
 	Cookie skinCookie = new Cookie("ZA_SKIN",skin);
 	response.addCookie(skinCookie);
@@ -219,7 +219,7 @@ AjxEnv.DEFAULT_LOCALE = "${zm:javaLocaleId(pageContext.request.locale)}";
             try {
                 ZaZimbraAdmin.run(document.domain);
             }catch (ex) {
-                if (AjxEnv && AjxEnv.hasFirebug) console.error ("Exception in launch(): " + ex.msg ) ;
+                if (window.console && window.console.error) console.error ("Exception in launch(): " + ex.msg ) ;
             }
         }
 

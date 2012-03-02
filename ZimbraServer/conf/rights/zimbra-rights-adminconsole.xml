@@ -1484,6 +1484,7 @@
     <desc> Admin Console view attr rights for Domain Info Tab </desc>
     <attrs>
       <a n="zimbraDomainName"/>
+      <a n="zimbraDomainType"/>  
       <a n="description"/>
       <a n="zimbraDomainStatus"/>
       <a n="zimbraPrefTimeZoneId"/>
@@ -1523,7 +1524,6 @@
       <r n="setAdminConsoleDomainGALTab"/>
       <r n="viewAdminConsoleDomainGALTab"/>
       <r n="configureExternalGAL"/>
-      <r n="checkExternalGALConfig"/>
     </rights>
   </right>
 
@@ -1545,7 +1545,6 @@
     <rights>
       <r n="setAdminConsoleDomainAuthenticationTab"/>
       <r n="viewAdminConsoleDomainAuthenticationTab"/>
-      <r n="checkExternalAuthConfig"/>
       <r n="configureExternalAuth"/>
     </rights>
   </right>
@@ -2602,8 +2601,17 @@
   </attrs>
 </right>
 
+<right type="combo" name="adminConsoleMigrationRights">
+  <desc>Rights for running migration tasks on a server through Admin Console</desc>
+  <rights>
+   <r n="listServer" />
+   <r n="getServer" />
+   <r n="createMigrationTask"/>   
+  </rights>
+</right>
+
 <right type="combo" name="adminConsoleSoftwareUpdatesRights">
-  <desc>Rights for configuring SSL certificate on a server through Admin Console</desc>
+  <desc>Rights for configuring software updates component a server through Admin Console</desc>
   <rights>
    <r n="listServer" />
    <r n="listAccount" />
@@ -2635,6 +2643,7 @@
     <r n="adminConsoleCrossMailboxSearchRights"/>
     <r n="adminConsoleSavedSearchRights"/>
     <r n="adminConsoleSoftwareUpdatesRights"/>
+    <r n="adminConsoleMigrationRights"/>
   </rights>
 </right>
 

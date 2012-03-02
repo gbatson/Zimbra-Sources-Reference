@@ -35,6 +35,8 @@ public abstract class ServerConfig {
     private static final int NIO_WRITE_CHUNK_SIZE = 8192;
     private static final int NIO_WRITE_TIMEOUT = 60;
     private static final int NIO_MAX_SCHEDULED_WRITE_BYTES = 1024 * 1024;
+    private static final int NIO_MIN_THREADS = 20;
+    private static final int NIO_THREAD_KEEP_ALIVE_TIME = 60;
     
     public ServerConfig(String protocol, boolean ssl) {
         this.protocol = protocol;
@@ -80,15 +82,21 @@ public abstract class ServerConfig {
         return getDescription() + " closing connection";
     }
 
+    /** The message sent back to a client whose new connection is being
+     *  rejected because the thread pool is currently exhausted. */
+    public String getConnectionRejected() {
+        return null;
+    }
+
     public String getDescription() {
         StringBuilder sb = new StringBuilder();
         String name = getServerName();
-        if (name != null && name.length() > 0) {
+        if (name != null && !name.isEmpty()) {
             sb.append(name).append(' ');
         }
         sb.append("Zimbra ");
         String version = getServerVersion();
-        if (version != null && version.length() > 0) {
+        if (version != null && !version.isEmpty()) {
             sb.append(version).append(' ');
         }
         return sb.append(getProtocol()).append(" server").toString();
@@ -122,6 +130,14 @@ public abstract class ServerConfig {
 
     public int getNioMaxScheduledWriteBytes() {
         return NIO_MAX_SCHEDULED_WRITE_BYTES;
+    }
+
+    public int getNioMinThreads() {
+        return NIO_MIN_THREADS;
+    }
+
+    public int getNioThreadKeepAliveTime() {
+        return NIO_THREAD_KEEP_ALIVE_TIME;
     }
     
     public ServerSocket getServerSocket() throws ServiceException {

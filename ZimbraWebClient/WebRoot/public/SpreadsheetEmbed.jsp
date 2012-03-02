@@ -53,15 +53,15 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
 <html>
   <head>
     <title>Zimbra ALE - Prototype</title>
-      <link rel="stylesheet" href="<%= contextPath %>/css/common,dwt,msgview,login,zm,spellcheck,wiki,spreadsheet,images,skin.css?v=<%= vers %><%= inSkinDebugMode || inDevMode ? "&debug=1" : "" %>&skin=${zm:cook(skin)}" />
       <style type="text/css">
         <!--
+        @import url(<%= contextPath %>/css/common,dwt,msgview,login,zm,spellcheck,wiki,spreadsheet,images,skin.css?v=<%= vers %><%= inSkinDebugMode || inDevMode ? "&debug=1" : "" %>&skin=${zm:cook(skin)});
         @import url( style.css );
         -->
       </style>
 	  <jsp:include page="Resources.jsp">
 		  <jsp:param name="res" value="I18nMsg,AjxMsg,ZMsg,ZmMsg,AjxKeys" />
-		  <jsp:param name="skin" value="${zm:cook(skin)}" />
+		  <jsp:param name="skin" value="${skin}" />
 	  </jsp:include>
       <jsp:include page="Boot.jsp"/>
       <%
@@ -73,15 +73,15 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
         String pprefix = inDevMode ? "public/jsp" : "js";
         String psuffix = inDevMode ? ".jsp" : "_all.js";
 
-          Pattern p = Pattern.compile("\\.|\\/|\\\\");
-          String[] pnames = packages.split(",");
-          for (String pname : pnames) {
-              //bug: 52944
-              // Security: Avoid including external pages inline
-              Matcher matcher = p.matcher(pname);
-              if(matcher.find()){
-                  continue;
-              }
+        Pattern p = Pattern.compile("\\.|\\/|\\\\");
+        String[] pnames = packages.split(",");
+        for (String pname : pnames) {
+           //bug: 52944
+          // Security: Avoid including external pages inline
+           Matcher matcher = p.matcher(pname);
+           if(matcher.find()){
+               continue;
+           }
             String pageurl = "/"+pprefix+"/"+pname+psuffix;
             if (inDevMode) { %>
                 <jsp:include>

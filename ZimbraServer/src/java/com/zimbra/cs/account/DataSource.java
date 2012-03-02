@@ -29,6 +29,7 @@ import java.util.UUID;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
 
+import com.zimbra.common.util.EmailUtil;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.Mailbox;
 import org.apache.commons.codec.binary.Base64;
@@ -69,7 +70,7 @@ public class DataSource extends AccountProperty {
             try {
                 return ConnectionType.valueOf(s);
             } catch (IllegalArgumentException e) {
-                throw ServiceException.INVALID_REQUEST("invalid type: " + s + ", valid values: " + Arrays.asList(Type.values()), e); 
+                throw ServiceException.INVALID_REQUEST("invalid type: " + s + ", valid values: " + Arrays.asList(ConnectionType.values()), e); 
             }
         }
     }
@@ -87,14 +88,30 @@ public class DataSource extends AccountProperty {
 
     public static final String CT_CLEARTEXT = "cleartext";
     public static final String CT_SSL = "ssl";
-    
+
     private Type mType;
+    protected DataSourceConfig.Service knownService;
 
     public DataSource(Account acct, Type type, String name, String id, Map<String, Object> attrs, Provisioning prov) {
         super(acct, name, id, attrs, null, prov);
         mType = type;
+
+        initKnownService();
     }
-    
+
+    private void initKnownService() {
+        final String serviceName;
+        final String host = getHost();
+
+        // Google Apps domain could be anything, but host is always imap.gmail.com or imap.googlemail.com
+        if (host != null && (host.endsWith(".gmail.com") || host.endsWith(".googlemail.com")))
+            serviceName = "gmail.com";
+        else
+            serviceName = getDomain();
+
+        knownService = serviceName == null ? null : DataSourceManager.getConfig().getService(serviceName);
+    }
+
     public Type getType() {
         return mType;
     }
@@ -143,8 +160,18 @@ public class DataSource extends AccountProperty {
     
     public String getUsername() { return getAttr(Provisioning.A_zimbraDataSourceUsername); }
     
-    public String getDomain() { return getAttr(Provisioning.A_zimbraDataSourceDomain, null); }
+    public String getAuthId() { return getAttr(Provisioning.A_zimbraDataSourceAuthorizationId); }
     
+    public String getAuthMechanism() { return getAttr(Provisioning.A_zimbraDataSourceAuthMechanism); }
+    
+    public String getDomain() {
+        String domain = getAttr(Provisioning.A_zimbraDataSourceDomain, null);
+        if (domain == null) {
+            domain = EmailUtil.getValidDomainPart(getEmailAddress());
+        }
+        return domain;
+    }
+
     public Integer getPort() {
         if (getAttr(Provisioning.A_zimbraDataSourcePort) == null) {
             return null;
@@ -178,7 +205,7 @@ public class DataSource extends AccountProperty {
         long interval;
         String val = getAttr(Provisioning.A_zimbraDataSourcePollingInterval);
         Provisioning prov = Provisioning.getInstance();
-        Account account = getOwnerAccount();
+        Account account = getAccount();
 
         // Get interval from data source or account.
         if (val != null) {
@@ -312,39 +339,61 @@ public class DataSource extends AccountProperty {
         isRequestScopeDebugTraceOn = b;
     }
     
+    public boolean isImportOnly() {
+        return getBooleanAttr(Provisioning.A_zimbraDataSourceImportOnly, false);
+    }
+
+    public boolean isInternal() {
+        return getBooleanAttr(Provisioning.A_zimbraDataSourceIsInternal, false);
+    }
+    
     public boolean isDebugTraceEnabled() {
     	return isRequestScopeDebugTraceOn || getBooleanAttr(Provisioning.A_zimbraDataSourceEnableTrace, false);
     }
     
     //IMAP datasources can override these
-    
+        
+    protected DataSourceConfig.Folder getKnownFolderByRemotePath(String remotePath) {
+        return knownService != null ? knownService.getFolderByRemotePath(remotePath) : null;
+    }
+
+    protected DataSourceConfig.Folder getKnownFolderByLocalPath(String localPath) {
+        return knownService != null ? knownService.getFolderByLocalPath(localPath) : null;
+    }
+
     /**
      * Map well known remote path to a local path if mapping exists.
-     * 
-     * @param remotePath remote path 
+     *
+     * @param remotePath remote path
      * @return local path if mapping exists; null if not
      */
     public String mapRemoteToLocalPath(String remotePath) {
-    	return null;
+        DataSourceConfig.Folder kf = getKnownFolderByRemotePath(remotePath);
+        return kf != null ? kf.getLocalPath() : null;
     }
-    
+
     /**
      * Map local path to a well known remote path if mapping exists.
-     * 
+     *
      * @param localPath local path
      * @return remote path if mapping exists ; null if not
      */
     public String mapLocalToRemotePath(String localPath) {
-    	return null;
+        DataSourceConfig.Folder kf = getKnownFolderByLocalPath(localPath);
+        return kf != null ? kf.getRemotePath() : null;
     }
 
     /**
      * Returns true if remote path should be ignored.
      */
     public boolean ignoreRemotePath(String remotePath) {
-        return false;
+        DataSourceConfig.Folder kf = getKnownFolderByRemotePath(remotePath);
+        if (kf != null) return kf.isIgnore();
+        // Also ignore remote path that would conflict with known local path
+        String localPath = "/" + remotePath;
+        return getKnownFolderByLocalPath(localPath) != null;
     }
-    
+
     public boolean isSyncInboxOnly() {
     	return false;
     }

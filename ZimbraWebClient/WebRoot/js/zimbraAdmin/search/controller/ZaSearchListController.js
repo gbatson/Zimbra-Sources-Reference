@@ -33,7 +33,7 @@ ZaSearchListController = function(appCtxt, container) {
 	this._currentDomain = null;
 	this._currentSortField = ZaAccount.A_uid;
 	this._currentSortOrder = "1";
-	this.searchTypes = [ZaSearch.ALIASES,ZaSearch.DLS,ZaSearch.ACCOUNTS, ZaSearch.RESOURCES, ZaSearch.DOMAINS];
+	this.searchTypes = [ZaSearch.ALIASES,ZaSearch.DLS,ZaSearch.ACCOUNTS, ZaSearch.RESOURCES, ZaSearch.DOMAINS, ZaSearch.COSES];
 	this.pages = new Object();
 	this._searchPanel = null;
 	this._searchField = null;
@@ -58,7 +58,6 @@ ZaSearchListController.prototype.show = function (doPush) {
 	if (this._currentQuery == null) {
 		this._currentQuery =  (ZaSearch._currentQuery ? ZaSearch._currentQuery : "");
 	}*/
-	
 	var searchParams = {
 			query: this._currentQuery, 
 			types:this.searchTypes,
@@ -72,13 +71,13 @@ ZaSearchListController.prototype.show = function (doPush) {
 			showBusy:true,
 			busyId:busyId,
 			busyMsg:ZaMsg.BUSY_SEARCHING,
-			skipCallbackIfCancelled:false			
+			skipCallbackIfCancelled:false
 	}
 	var searchQueryList = new Array();
 	var isAliasSpec = false;
 	for(var i = 0; this.searchTypes && i < this.searchTypes.length; i++) {
 		if(this.searchTypes[i] == ZaSearch.ALIASES)
-		isAliasSpec = true;
+			isAliasSpec = true;
 	}
 	if(isAliasSpec && !this._currentDomain) {
 		searchQueryList.push(searchParams);
@@ -88,6 +87,7 @@ ZaSearchListController.prototype.show = function (doPush) {
 		if(this._currentDomain) searchParams.domain = this._currentDomain;
 		ZaSearch.searchDirectory(searchParams);
 	}
+
 }
 
 ZaSearchListController.prototype._show = 
@@ -103,10 +103,10 @@ function (list, openInNewTab, openInSearchTab) {
 ZaSearchListController.prototype.getSearchPanel = 
 function () {
 	if(!this._searchPanel) {
-	    this._searchPanel = new DwtComposite(ZaApp.getInstance().getAppCtxt().getShell(), "SearchPanel", DwtControl.ABSOLUTE_STYLE);
+	    this._searchPanel = new DwtComposite(ZaApp.getInstance().getAppCtxt().getShell(), "SearchPanel", DwtControl.ABSOLUTE_STYLE, null, ZaId.getOverviewId(ZaId.PANEL_APPSEARCH));
 	    
 		// Create search toolbar and setup browse tool bar button handlers
-		this._searchToolBar = new ZaSearchToolBar(this._searchPanel, null);
+		this._searchToolBar = new ZaSearchToolBar(this._searchPanel, null, ZaId.PANEL_APPSEARCH);
 	    
 		// Setup search field handler
 		this._searchField = this._searchToolBar.getSearchField();
@@ -207,7 +207,7 @@ function (domainArr, searchQueryList) {
         	                busyId:busyId,
 	                        busyMsg:ZaMsg.BUSY_SEARCHING,
         	                skipCallbackIfCancelled:false,
-	                        //sortBy:params.sortBy,
+	                        sortBy:controller._currentSortField,
         	                attrs:ZaSearch.standardAttributes,
                 	        callback:callback,
 	                        controller: controller,
@@ -218,6 +218,7 @@ function (domainArr, searchQueryList) {
 	controller.multipleSearchCallback(inParams, paramsArr);
 
 }
+
 
 ZaSearchListController.searchAliasDomainCallback = 
 function(params,resp) {
@@ -286,8 +287,6 @@ function(query) {
 	
 }
 
-
-
 /*********** Search Field Callback */
 ZaSearchListController.prototype._searchFieldCallback =
 function(params) {
@@ -295,25 +294,27 @@ function(params) {
 	var searchQueryList = new Array();
 	if(controller.setSearchTypes)
 		controller.setSearchTypes(params.types);
-	
+
 	controller._currentQuery = params.query ;
+	controller._currentSortField = params.sortBy;
 	var busyId = Dwt.getNextId();	
 	var callback = new AjxCallback(controller, controller.searchCallback, {limit:controller.RESULTSPERPAGE,show:true, openInSearchTab: true,busyId:busyId});
-	var searchParams = {
-			query:params.query, 
-			types:params.types,
-			showBusy:true,
-			busyId:busyId,
-			busyMsg:ZaMsg.BUSY_SEARCHING,
-			skipCallbackIfCancelled:false,
-			sortBy:params.sortBy,
-			offset:this.RESULTSPERPAGE*(this._currentPageNum-1),
-			sortAscending:this._currentSortOrder,
-			limit:this.RESULTSPERPAGE,
-			attrs:ZaSearch.standardAttributes,
-			callback:callback,
-			controller: controller
-	}
+        var searchParams = {
+                        query:params.query,
+                        types:params.types,
+                        showBusy:true,
+                        busyId:busyId,
+                        busyMsg:ZaMsg.BUSY_SEARCHING,
+                        skipCallbackIfCancelled:false,
+                        sortBy:params.sortBy,
+                        offset:this.RESULTSPERPAGE*(this._currentPageNum-1),
+                        sortAscending:this._currentSortOrder,
+                        limit:this.RESULTSPERPAGE,
+                        attrs:ZaSearch.standardAttributes,
+                        callback:callback,
+                        controller: controller
+        }
+
 	var isAliasSpec = false;
 	for(var i = 0; params.types && i < params.types.length; i++) {
 		if(params.types[i] == ZaSearch.ALIASES)
@@ -403,7 +404,7 @@ function () {
 	this._toolbarOperations[ZaOperation.PAGE_FORWARD]=new ZaOperation(ZaOperation.PAGE_FORWARD,ZaMsg.Next, ZaMsg.NextPage_tt, "RightArrow", "RightArrowDis", new AjxListener(this, this._nextPageListener));
 	this._toolbarOperations[ZaOperation.HELP]=new ZaOperation(ZaOperation.HELP,ZaMsg.TBB_Help, ZaMsg.TBB_Help_tt, "Help", "Help", new AjxListener(this, this._helpButtonListener));				
 
-	this._toolbar = new ZaToolBar(this._container, this._toolbarOperations,this._toolbarOrder);    
+	this._toolbar = new ZaToolBar(this._container, this._toolbarOperations,this._toolbarOrder, null, null, ZaId.VIEW_SCHLIST);    
 		
 	var elements = new Object();
 	elements[ZaAppViewMgr.C_APP_CONTENT] = this._contentView;
@@ -418,7 +419,7 @@ function () {
 	ZaApp.getInstance().createView(this.getContentViewId(), elements, tabParams) ;
 	
 	this._initPopupMenu();
-	this._actionMenu =  new ZaPopupMenu(this._contentView, "ActionMenu", null, this._popupOperations);
+	this._actionMenu =  new ZaPopupMenu(this._contentView, "ActionMenu", null, this._popupOperations, ZaId.VIEW_SCHLIST, ZaId.MENU_POP);
 	
 	//set a selection listener on the account list view
 	this._contentView.addSelectionListener(new AjxListener(this, this._listSelectionListener));
@@ -552,7 +553,9 @@ ZaSearchListController.prototype._editItem = function (item) {
 		ZaApp.getInstance().getResourceController().show(item);
 	} else if (type==ZaItem.DOMAIN) {
 		ZaApp.getInstance().getDomainController().show(item);
-	}
+	}else if (type==ZaItem.COS) {
+                ZaApp.getInstance().getCosController().show(item);
+        }
 };
 
 
@@ -565,7 +568,11 @@ function () {
 			if(item.type != ZaItem.ALIAS) {
 				if(this._toolbarOperations[ZaOperation.MOVE_ALIAS]) {
 					this._toolbarOperations[ZaOperation.MOVE_ALIAS].enabled = false;
-				}					
+				}
+				
+				if(this._popupOperations[ZaOperation.MOVE_ALIAS]) {
+                                        this._popupOperations[ZaOperation.MOVE_ALIAS].enabled = false;
+                                }					
 			}
             if (item.type == ZaItem.ALIAS || item.type == ZaItem.DL) {
                 if(this._toolbarOperations[ZaOperation.CHNG_PWD]) {
@@ -586,6 +593,15 @@ function () {
                 if(this._popupOperations[ZaOperation.VIEW_MAIL]) {
                     this._popupOperations[ZaOperation.VIEW_MAIL].enabled = false;
                 }
+
+		if(this._toolbarOperations[ZaOperation.EXPIRE_SESSION]) {
+                    this._toolbarOperations[ZaOperation.EXPIRE_SESSION].enabled = false;
+                }
+                                                
+		if(this._popupOperations[ZaOperation.EXPIRE_SESSION]) {
+                    this._popupOperations[ZaOperation.EXPIRE_SESSION].enabled = false;
+                }
+
             } else if (item.type == ZaItem.DL) {
                 if(this._popupOperations[ZaOperation.MOVE_ALIAS])	{
                     this._popupOperations[ZaOperation.MOVE_ALIAS].enabled = false;
@@ -748,7 +764,29 @@ function () {
 						 	this._toolbarOperations[ZaOperation.CHNG_PWD].enabled = false;   
 					}		
 				}				
-			}
+			}	else if ( item.type == ZaItem.DOMAIN || item.type == ZaItem.COS ){
+				
+					if(this._toolbarOperations[ZaOperation.EXPIRE_SESSION]) {	
+						this._toolbarOperations[ZaOperation.EXPIRE_SESSION].enabled = false;
+					}		
+					if(this._toolbarOperations[ZaOperation.CHNG_PWD]) {
+						this._toolbarOperations[ZaOperation.CHNG_PWD].enabled = false;
+					}		
+					if(this._toolbarOperations[ZaOperation.VIEW_MAIL]) {
+						this._toolbarOperations[ZaOperation.VIEW_MAIL].enabled = false;
+					}	
+					
+					if(this._popupOperations[ZaOperation.EXPIRE_SESSION]) {	
+						this._popupOperations[ZaOperation.EXPIRE_SESSION].enabled = false;
+					}		
+					if(this._popupOperations[ZaOperation.CHNG_PWD]) {
+						this._popupOperations[ZaOperation.CHNG_PWD].enabled = false;
+					}		
+					if(this._popupOperations[ZaOperation.VIEW_MAIL]) {
+						this._popupOperations[ZaOperation.VIEW_MAIL].enabled = false;
+					}	
+					
+      }
         } else {
 			if(this._toolbarOperations[ZaOperation.EXPIRE_SESSION]) {	
 				this._toolbarOperations[ZaOperation.EXPIRE_SESSION].enabled = false;

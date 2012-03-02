@@ -24,39 +24,13 @@ import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.operation.BlockingOperation;
-import com.zimbra.cs.operation.Requester;
-import com.zimbra.cs.operation.Scheduler.Priority;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
-import com.zimbra.cs.session.Session;
 import com.zimbra.soap.DocumentHandler;
 import com.zimbra.common.soap.Element;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public abstract class MailDocumentHandler extends DocumentHandler {
-    
-    @Override
-    public Object preHandle(Element request, Map<String, Object> context) throws ServiceException { 
-        ZimbraSoapContext zsc = getZimbraSoapContext(context);
-        boolean isLocal = Provisioning.onLocalServer(getRequestedAccount(zsc));
-
-        Session session = isLocal ? getSession(zsc, context) : null;
-        Mailbox mbox = isLocal ? getRequestedMailbox(zsc) : null;
-        OperationContext octxt = getOperationContext(zsc, session);
-
-        return BlockingOperation.schedule(request.getName(), session, octxt, mbox, Requester.SOAP, getSchedulerPriority(), 1);   
-    }
-    
-    @Override
-    public void postHandle(Object userObj) { 
-        ((BlockingOperation) userObj).finish();
-    }
-    
-    protected Priority getSchedulerPriority() {
-        return Priority.INTERACTIVE_HIGH;
-    }
-    
 
     protected String[] getProxiedIdPath(Element request)     { return null; }
     protected boolean checkMountpointProxy(Element request)  { return false; }
@@ -72,7 +46,7 @@ public abstract class MailDocumentHandler extends DocumentHandler {
             ZimbraSoapContext zsc = getZimbraSoapContext(context);
             OperationContext octxt = getOperationContext(zsc, context);
             ItemId iid = new ItemId(id, zsc);
-    
+
             // if the "target item" is remote, proxy.
             ItemId iidTarget = getProxyTarget(zsc, octxt, iid, checkMountpointProxy(request));
             if (iidTarget != null)
@@ -126,7 +100,7 @@ public abstract class MailDocumentHandler extends DocumentHandler {
         // translate remote folder IDs back into local mountpoint IDs
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         String[] xpathResponse = getResponseItemPath();
-        if (mountpoint && xpathResponse != null) 
+        if (mountpoint && xpathResponse != null)
             insertMountpointReferences(response, xpathResponse, iidRequested, iidResolved, zsc);
         return response;
     }

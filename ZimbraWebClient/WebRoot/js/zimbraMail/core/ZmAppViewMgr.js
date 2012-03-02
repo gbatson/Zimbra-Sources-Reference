@@ -150,6 +150,7 @@ ZmAppViewMgr.C_BANNER					= "banner";
 ZmAppViewMgr.C_USER_INFO				= "userInfo";
 ZmAppViewMgr.C_QUOTA_INFO				= "quota";
 ZmAppViewMgr.C_SEARCH					= "search";
+ZmAppViewMgr.C_PEOPLE_SEARCH			= "peopleSearch";
 ZmAppViewMgr.C_SEARCH_BUILDER			= "searchBuilder";
 ZmAppViewMgr.C_SEARCH_BUILDER_TOOLBAR	= "searchBuilderToolbar";
 ZmAppViewMgr.C_APP_CHOOSER				= "appChooser";
@@ -167,7 +168,7 @@ ZmAppViewMgr.C_AD						= "adsrvc";
 
 ZmAppViewMgr.ALL_COMPONENTS = [
 	ZmAppViewMgr.C_BANNER, ZmAppViewMgr.C_USER_INFO, ZmAppViewMgr.C_QUOTA_INFO,
-	ZmAppViewMgr.C_SEARCH, ZmAppViewMgr.C_SEARCH_BUILDER,
+	ZmAppViewMgr.C_SEARCH, ZmAppViewMgr.C_PEOPLE_SEARCH, ZmAppViewMgr.C_SEARCH_BUILDER,
 	ZmAppViewMgr.C_SEARCH_BUILDER_TOOLBAR,
 	ZmAppViewMgr.C_APP_CHOOSER, ZmAppViewMgr.C_TREE, ZmAppViewMgr.C_TREE_FOOTER,
 	ZmAppViewMgr.C_TOOLBAR_TOP, ZmAppViewMgr.C_TOOLBAR_BOTTOM,
@@ -210,6 +211,7 @@ function() {
 	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_USER_INFO]				= ZmId.SKIN_USER_INFO;
 	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_QUOTA_INFO]				= ZmId.SKIN_QUOTA_INFO;
 	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_SEARCH]					= ZmId.SKIN_SEARCH;
+	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_PEOPLE_SEARCH]			= ZmId.SKIN_PEOPLE_SEARCH;
 	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_SEARCH_BUILDER]			= ZmId.SKIN_SEARCH_BUILDER;
 	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_SEARCH_BUILDER_TOOLBAR]	= ZmId.SKIN_SEARCH_BUILDER_TOOLBAR;
 	ZmAppViewMgr.CONT_ID_KEY[ZmAppViewMgr.C_APP_CHOOSER]			= ZmId.SKIN_APP_CHOOSER;
@@ -609,24 +611,24 @@ function(force, viewId, skipHistory) {
 	// check if trying to pop non-current view
 	if (viewId && !isPendingView && (this.getCurrentViewId() != viewId)) { return false; }
 
-	// handle cases where there are no views in the hidden stack (entry via deep link)
-	var noHide = false, noShow = false;
-	var goToApp = null;
-	if (!this._hidden.length && !this._isNewWindow) {
-		noHide = !this._isTabView[this._currentView];
-		noShow = true;
-		var qsParams = AjxStringUtil.parseQueryString();
-		if (qsParams && ((qsParams.view && qsParams.view == "compose") || qsParams.id)) {
-			// if ZCS opened into compose or msg tab, take user to Mail
-			goToApp = ZmApp.MAIL;
-		}
-	}
-
 	DBG.println(AjxDebug.DBG1, "popView: " + this._currentView);
 	DBG.println(AjxDebug.DBG2, "hidden (before): " + this._hidden);
-	if (!this._hideView(this._currentView, force, noHide)) {
+	if (!this._hideView(this._currentView, force)) {
 		this._pendingAction = this._popCallback;
 		this._pendingView = null;
+		return false;
+	}
+
+	if (!this._hidden.length && !this._isNewWindow) {
+		DBG.println(AjxDebug.DBG1, "ERROR: no view to replace popped view");
+		// bug fix #11264 - if logged in w/ view=compose, popView should reload mail app
+		if (location && (location.search.match(/\bview=compose\b/))) {
+			// bug fix #45068 - also remove the compose tab after asking to save
+			this._deactivateView(this._views[this._currentView]);
+			if (this._isTabView[this._currentView] && this._tabParams[this._currentView] && this._tabParams[this._currentView].id)
+				appCtxt.getAppChooser().removeButton(this._tabParams[this._currentView].id);
+			this._controller.activateApp(ZmApp.MAIL);
+		}
 		return false;
 	}
 
@@ -634,13 +636,6 @@ function(force, viewId, skipHistory) {
 
 	if (this._isTabView[this._currentView]) {
 		appCtxt.getAppChooser().removeButton(this._tabParams[this._currentView].id);
-	}
-	
-	if (noShow) {
-		if (goToApp) {
-			this._controller.activateApp(ZmApp.MAIL);
-		}
-		return !noHide;
 	}
 
 	this._lastView = this._currentView;
@@ -836,7 +831,7 @@ function(viewId, text) {
 	var tp = this._tabParams[viewId];
 	var button = !appCtxt.isChildWindow && tp && appCtxt.getAppChooser().getButton(tp.id);
 	if (button) {
-		button.setText(AjxStringUtil.htmlEncode(text));
+		button.setText(text);
 	}
 };
 
@@ -992,7 +987,7 @@ function(view) {
  * @private
  */
 ZmAppViewMgr.prototype._hideView =
-function(view, force, noHide) {
+function(view, force) {
 	if (!view) { return true; }
 	var okToContinue = true;
 	var callback = this._callbacks[view] ? this._callbacks[view][ZmAppViewMgr.CB_PRE_HIDE] : null;
@@ -1001,9 +996,7 @@ function(view, force, noHide) {
 		okToContinue = callback.run(view, force);
 	}
 	if (okToContinue) {
-		if (!noHide) {
-			this._setViewVisible(view, false);
-		}
+		this._setViewVisible(view, false);
         if (appCtxt.get(ZmSetting.USE_KEYBOARD_SHORTCUTS)) {
 		    appCtxt.getKeyboardMgr().clearKeySeq();
         }
@@ -1038,11 +1031,14 @@ function(view, force, isNewView) {
 			callback.run(view, isNewView);
 		}
 	}
-    
-    //bug:47048 removed param {noChildWindow:true}
-	appCtxt.notifyZimlets("onShowView", [view, isNewView]);
-
+	this._onShowView(view, force, isNewView);
 	return okToContinue;
+};
+
+ZmAppViewMgr.prototype._onShowView =
+function(view, force, isNewView) {
+	//bug:47048 removed param {noChildWindow:true}
+	appCtxt.notifyZimlets("onShowView", [view, isNewView]);
 };
 
 /**
@@ -1195,7 +1191,7 @@ function(ev) {
 				this._fitToContainer(list, true);
 			} else if (deltaWidth) {
 				var list = [
-					ZmAppViewMgr.C_BANNER, ZmAppViewMgr.C_SEARCH, ZmAppViewMgr.C_USER_INFO, ZmAppViewMgr.C_QUOTA_INFO,
+					ZmAppViewMgr.C_BANNER, ZmAppViewMgr.C_SEARCH, ZmAppViewMgr.C_PEOPLE_SEARCH, ZmAppViewMgr.C_USER_INFO, ZmAppViewMgr.C_QUOTA_INFO,
 					ZmAppViewMgr.C_SEARCH_BUILDER, ZmAppViewMgr.C_SEARCH_BUILDER_TOOLBAR,
 					ZmAppViewMgr.C_TOOLBAR_TOP, ZmAppViewMgr.C_APP_CONTENT, ZmAppViewMgr.C_APP_CONTENT_FULL,
 					ZmAppViewMgr.C_TOOLBAR_BOTTOM, ZmAppViewMgr.C_TASKBAR, ZmAppViewMgr.C_AD, ZmAppViewMgr.C_FOOTER

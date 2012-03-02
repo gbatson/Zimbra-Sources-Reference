@@ -13,7 +13,6 @@
  * ***** END LICENSE BLOCK *****
  */
 
-
 package com.zimbra.kabuki.tools.img;
 
 import org.apache.tools.ant.BuildException;
@@ -85,6 +84,10 @@ public class ImageMergerTask
 	public void setCopy(boolean copy) {
 		copyFiles = copy;
 	}
+
+    public void setVerbose(boolean verbose) {
+        verboseOutput = verbose;
+    }
 
     /** @deprecated */
 	public void setLayout(String layout) {}

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -121,7 +121,7 @@ function() {
 	ZmOperation.registerOp(ZmId.OP_GO_TO_URL, {image:"URL"});
 //	ZmOperation.registerOp(ZmId.OP_IMPORT_FOLDER, {textKey:"importFolder", image:"MailImport"});
 	ZmOperation.registerOp(ZmId.OP_MARK_ALL_READ, {textKey:"markAllRead", image:"ReadMessage"});
-	ZmOperation.registerOp(ZmId.OP_MOUNT_FOLDER, {textKey:"mountFolder", image:"Folder"});
+//	ZmOperation.registerOp(ZmId.OP_MOUNT_FOLDER, {textKey:"mountFolder", image:"Folder"});
 	ZmOperation.registerOp(ZmId.OP_MOVE, {textKey:"move", tooltipKey:"moveTooltip", image:"MoveToFolder", textPrecedence:40});
 	ZmOperation.registerOp(ZmId.OP_NEW_FOLDER, {textKey:"newFolder", tooltipKey:"newFolderTooltip", image:"NewFolder", shortcut:ZmKeyMap.NEW_FOLDER}, ZmSetting.USER_FOLDERS_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_NEW_MENU, {textKey:"_new", shortcut:ZmKeyMap.NEW, textPrecedence:100}, null,
@@ -133,12 +133,13 @@ function() {
 	ZmOperation.registerOp(ZmId.OP_PAGE_BACK, {image:"LeftArrow", shortcut:ZmKeyMap.PREV_PAGE});
 	ZmOperation.registerOp(ZmId.OP_PAGE_FORWARD, {image:"RightArrow", shortcut:ZmKeyMap.NEXT_PAGE});
 	ZmOperation.registerOp(ZmId.OP_PRINT, {textKey:"print", tooltipKey:"printTooltip", image:"Print", shortcut:ZmKeyMap.PRINT, textPrecedence:30}, ZmSetting.PRINT_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_RECOVER_DELETED_ITEMS, {textKey:"recoverDeletedItems", image:"Trash", tooltipKey:"recoverDeletedItems"}, ZmSetting.DUMPSTER_ENABLED);
     ZmOperation.registerOp(ZmId.OP_REFRESH, {textKey:"refresh", tooltipKey:"refreshTooltip"});
 	ZmOperation.registerOp(ZmId.OP_RENAME_FOLDER, {textKey:"renameFolder", image:"Rename"});
 	ZmOperation.registerOp(ZmId.OP_RENAME_SEARCH, {textKey:"renameSearch", image:"Rename"});
 	ZmOperation.registerOp(ZmId.OP_RENAME_TAG, {textKey:"renameTag", image:"Rename"}, ZmSetting.TAGGING_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_SAVE, {textKey:"save", image:"Save", shortcut:ZmKeyMap.SAVE});
-	ZmOperation.registerOp(ZmId.OP_SEARCH, {textKey:"search", image:"Search"}, ZmSetting.SEARCH_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_SEARCH, {textKey:"findEmailBySender", image:"Search"}, ZmSetting.SEARCH_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_SEND, {textKey:"send", tooltipKey:"sendTooltip", image:"Send", shortcut:ZmKeyMap.SEND});
     ZmOperation.registerOp(ZmId.OP_FREE_BUSY_LINK, {textKey:"freeBusyLink", tooltipKey:"freeBusyLinkTooltip", image:"Send"});
     ZmOperation.registerOp(ZmId.OP_SHARE, {textKey:"share", tooltipKey:"shareTooltip"}, ZmSetting.SHARING_ENABLED);
@@ -157,7 +158,7 @@ function() {
 		}));
 	ZmOperation.registerOp(ZmId.OP_TAG_MENU, {tooltipKey:"tagTooltip", image:"Tag"}, ZmSetting.TAGGING_ENABLED,
 		AjxCallback.simpleClosure(function(parent) {
-			ZmOperation.addDeferredMenu(ZmOperation.addTagMenu, parent);
+			ZmOperation.addDeferredMenu(ZmOperation.addTagMenu, parent, true);
 		}));
 	// placeholder for toolbar text
 	ZmOperation.registerOp(ZmId.OP_TEXT);
@@ -334,8 +335,12 @@ function(parent, id, opHash, index) {
  * @param {DwtComposite}	parent		the containing widget (toolbar or menu)
  */
 ZmOperation.addDeferredMenu =
-function(addMenuFunc, parent) {
-	var callback = new AjxCallback(null, addMenuFunc, parent);
+function(addMenuFunc, parent /* ... */) {
+    var args = [parent];
+    for (var i = 2; i < arguments.length; i++) {
+        args.push(arguments[i]);
+    }
+	var callback = new AjxCallback(null, addMenuFunc, args);
 	parent.setMenu(callback);
 };
 
@@ -467,19 +472,14 @@ function(parent) {
  * Adds a color submenu for choosing tag color.
  *
  * @param {DwtComposite}	parent		parent widget (a toolbar or action menu)
+ * @param {boolean} hideNoFill True to hide the no-fill/use-default option.
  * @return	{ZmPopupMenu}	the menu
  */
 ZmOperation.addColorMenu =
-function(parent) {
-	var menu = new ZmPopupMenu(parent);
-	parent.setMenu(menu);
-	var list = ZmTagTree.COLOR_LIST;
-	for (var i = 0; i < list.length; i++) {
-		var color = list[i];
-		var mi = menu.createMenuItem(color, {image:ZmTag.COLOR_ICON[color], text:ZmOrganizer.COLOR_TEXT[color]});
-		mi.setData(ZmOperation.MENUITEM_ID, color);
-	}
-	return menu;
+function(parent, hideNoFill) {
+    var menu = new ZmColorMenu({parent:parent,image:"Tag",hideNone:true,hideNoFill:hideNoFill});
+    parent.setMenu(menu);
+    return menu;
 };
 
 /**

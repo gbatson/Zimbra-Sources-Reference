@@ -28,29 +28,36 @@ class Pop3AuthenticatorUser implements AuthenticatorUser {
     Pop3AuthenticatorUser(Pop3Handler handler) {
         mHandler = handler;
     }
-    
+
+    @Override
     public String getProtocol()  { return "pop"; }
 
+    @Override
     public void sendBadRequest(String s) throws IOException {
         mHandler.sendERR(s);
     }
 
+    @Override
     public void sendFailed() throws IOException {
         mHandler.sendERR("authentication failed");
     }
 
+    @Override
     public void sendFailed(String msg) throws IOException {
         mHandler.sendERR("authentication failed: " + msg);
     }
 
+    @Override
     public void sendSuccessful() throws IOException {
         mHandler.sendOK("authentication successful");
     }
 
+    @Override
     public void sendContinuation(String s) throws IOException {
         mHandler.sendContinuation(s);
     }
 
+    @Override
     public boolean authenticate(String authorizationId, String authenticationId, String password, Authenticator auth)
     throws IOException {
         try {
@@ -62,18 +69,22 @@ class Pop3AuthenticatorUser implements AuthenticatorUser {
         return true;
     }
 
+    @Override
     public Log getLog() {
         return ZimbraLog.pop;
     }
 
+    @Override
     public boolean isSSLEnabled() {
         return mHandler.isSSLEnabled();
     }
 
+    @Override
     public boolean allowCleartextLogin() {
         return mHandler.mConfig.isCleartextLoginsEnabled();
     }
 
+    @Override
     public boolean isGssapiAvailable() {
         return mHandler.mConfig.isSaslGssapiEnabled();
     }

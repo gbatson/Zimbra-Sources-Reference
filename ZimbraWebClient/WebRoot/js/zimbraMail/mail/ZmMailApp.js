@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,10 +34,6 @@
  */
 ZmMailApp = function(container, parentController) {
 	ZmApp.call(this, ZmApp.MAIL, container, parentController);
-
-	this._sessionController		= {};
-	this._sessionId				= {};
-	this._curSessionId			= {};
 
 	this._dataSourceCollection	= {};
 	this._identityCollection	= {};
@@ -145,7 +141,6 @@ ZmMailApp.prototype._registerSettings =
 function(settings) {
 	var settings = settings || appCtxt.getSettings();
 	settings.registerSetting("ALLOW_ANY_FROM_ADDRESS",			{name:"zimbraAllowAnyFromAddress", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
-	settings.registerSetting("ALLOW_FROM_ADDRESSES",			{name:"zimbraAllowFromAddress", type:ZmSetting.T_COS, dataType:ZmSetting.D_LIST});
 	settings.registerSetting("AUTO_SAVE_DRAFT_INTERVAL",		{name:"zimbraPrefAutoSaveDraftInterval", type:ZmSetting.T_PREF, dataType:ZmSetting.D_LDAP_TIME, defaultValue:ZmMailApp.DEFAULT_AUTO_SAVE_DRAFT_INTERVAL, isGlobal:true});
 	settings.registerSetting("COMPOSE_SAME_FORMAT",				{name:"zimbraPrefForwardReplyInOriginalFormat", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	settings.registerSetting("CONVERSATIONS_ENABLED",			{name:"zimbraFeatureConversationsEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
@@ -170,9 +165,10 @@ function(settings) {
 	settings.registerSetting("IDENTITIES_ENABLED",				{name:"zimbraFeatureIdentitiesEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	settings.registerSetting("INITIAL_SEARCH",					{name:"zimbraPrefMailInitialSearch", type:ZmSetting.T_PREF, defaultValue:"in:inbox"});
 	settings.registerSetting("INITIAL_SEARCH_ENABLED",			{name:"zimbraFeatureInitialSearchPreferenceEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
-	settings.registerSetting("MAIL_ALIASES",					{name:"zimbraMailAlias", type:ZmSetting.T_COS, dataType:ZmSetting.D_LIST});
 	settings.registerSetting("MAIL_ATTACH_VIEW_ENABLED",		{type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	settings.registerSetting("MAIL_BLACKLIST",					{type: ZmSetting.T_PREF, dataType: ZmSetting.D_LIST});
+    settings.registerSetting("TRUSTED_ADDR_LIST",			    {name:"zimbraPrefMailTrustedSenderList", type: ZmSetting.T_COS, dataType: ZmSetting.D_LIST});
+	settings.registerSetting("TRUSTED_ADDR_LIST_MAX_NUM_ENTRIES",	{name:"zimbraMailTrustedSenderListMaxNumEntries", type: ZmSetting.T_COS, dataType: ZmSetting.D_INT, defaultValue:100});
 	settings.registerSetting("MAIL_BLACKLIST_MAX_NUM_ENTRIES",	{name:"zimbraMailBlacklistMaxNumEntries", type: ZmSetting.T_COS, dataType: ZmSetting.D_INT, defaultValue:100});
 	settings.registerSetting("MAIL_FOLDER_COLORS_ENABLED",		{name:"zimbraPrefFolderColorEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	settings.registerSetting("MAIL_FORWARDING_ADDRESS",			{name:"zimbraPrefMailForwardingAddress", type:ZmSetting.T_PREF});
@@ -296,7 +292,7 @@ function() {
 		},
 		ACCOUNTS: {
 			parentId: "MAIL",
-			icon: "IMAPAccount",
+			icon: "Accounts",
 			title: (appCtxt.isOffline ? ZmMsg.personas : ZmMsg.accounts),
 			templateId: "prefs.Pages#Accounts",
 			priority: 40,
@@ -338,8 +334,23 @@ function() {
 			],
 			manageChanges: true,
 			createView: function(parent, section, controller) {
-				return controller.getFilterRulesController().getFilterRulesView();
+				return controller.getFilterController(section).getFilterView();
 			}
+		},
+        TRUSTED_ADDR: {
+            parentId: "MAIL",
+			title: ZmMsg.trustedAddrs,
+			icon: "TrustedAddresses",
+			templateId: "prefs.Pages#Trusted",
+			priority: 60,
+			precondition: appCtxt.get(ZmSetting.MAIL_ENABLED),
+			createView: function(parent, section, controller) {
+				return new ZmTrustedPage(parent, section, controller);
+			},
+            manageDirty: true,
+            prefs: [
+				    ZmSetting.TRUSTED_ADDR_LIST
+                ]
 		}
 	};
 
@@ -391,6 +402,10 @@ function() {
 	});
 
 	ZmPref.registerPref("MAIL_BLACKLIST", {
+		displayContainer:	ZmPref.TYPE_CUSTOM
+	});
+
+    ZmPref.registerPref("TRUSTED_ADDR_LIST", {
 		displayContainer:	ZmPref.TYPE_CUSTOM
 	});
 
@@ -751,6 +766,8 @@ function() {
 	ZmOperation.registerOp(ZmId.OP_NEW_MESSAGE, {textKey:"newEmail", tooltipKey:"newMessageTooltip", image:"NewMessage", shortcut:ZmKeyMap.NEW_MESSAGE});
 	ZmOperation.registerOp(ZmId.OP_NEW_MESSAGE_WIN, {textKey:"newEmail", tooltipKey:"newMessageTooltip", image:"NewMessage", shortcut:ZmKeyMap.NEW_MESSAGE_WIN});
 	ZmOperation.registerOp(ZmId.OP_REMOVE_FILTER_RULE, {textKey:"filterRemove", image:"Delete"}, ZmSetting.FILTERS_ENABLED);
+    ZmOperation.registerOp(ZmId.OP_CAL_REPLY, {textKey:"reply", tooltipKey:"replyTooltip", image:"Reply", shortcut:ZmKeyMap.REPLY});
+    ZmOperation.registerOp(ZmId.OP_CAL_REPLY_ALL, {textKey:"replyAll", tooltipKey:"replyAllTooltip", image:"ReplyAll", shortcut:ZmKeyMap.REPLY_ALL});
 	ZmOperation.registerOp(ZmId.OP_REPLY, {textKey:"reply", tooltipKey:"replyTooltip", image:"Reply", shortcut:ZmKeyMap.REPLY, textPrecedence:50});
 	ZmOperation.registerOp(ZmId.OP_REPLY_ACCEPT, {textKey:"replyAccept", image:"Check"});
 	ZmOperation.registerOp(ZmId.OP_REPLY_ALL, {textKey:"replyAll", tooltipKey:"replyAllTooltip", image:"ReplyAll", shortcut:ZmKeyMap.REPLY_ALL, textPrecedence:48});
@@ -763,10 +780,12 @@ function() {
 	ZmOperation.registerOp(ZmId.OP_RESET, {textKey:"reset", image:"Refresh", tooltipKey: "refreshFilters"});
 	ZmOperation.registerOp(ZmId.OP_RUN_FILTER_RULE, {textKey:"filterRun", image:"SwitchFormat"}, ZmSetting.FILTERS_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_SAVE_DRAFT, {textKey:"saveDraft", tooltipKey:"saveDraftTooltip", image:"DraftFolder", shortcut:ZmKeyMap.SAVE}, ZmSetting.SAVE_DRAFT_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_SEND_MENU, {textKey:"send", tooltipKey:"sendTooltip", image:"Send"}, ZmSetting.SAVE_DRAFT_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_SEND_LATER, {textKey:"sendLater", tooltipKey:"sendLaterTooltip", image:"SendLater"}, ZmSetting.SAVE_DRAFT_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_SHOW_BCC, {textKey:"showBcc"});
 	ZmOperation.registerOp(ZmId.OP_SHOW_ONLY_MAIL, {textKey:"showOnlyMail", image:"Conversation"}, ZmSetting.MIXED_VIEW_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_SHOW_ORIG, {textKey:"showOrig", image:"Message"});
-	ZmOperation.registerOp(ZmId.OP_SPAM, {textKey:"junk", tooltipKey:"junkTooltip", image:"JunkMail", shortcut:ZmKeyMap.SPAM, textPrecedence:70}, ZmSetting.SPAM_ENABLED);
+	ZmOperation.registerOp(ZmId.OP_SPAM, {textKey:"junkLabel", tooltipKey:"junkTooltip", image:"JunkMail", shortcut:ZmKeyMap.SPAM, textPrecedence:70}, ZmSetting.SPAM_ENABLED);
 	ZmOperation.registerOp(ZmId.OP_USE_PREFIX, {textKey:"usePrefix"});
 };
 
@@ -902,6 +921,9 @@ function(notify) {
 
 	if (!(notify.deleted && notify.created && notify.modified))	{ return notify; }
 
+	DBG.println(AjxDebug.NOTIFY, " ---------------- ZmMailApp::preNotify - entry");
+	DBG.dumpObj(AjxDebug.NOTIFY, notify);
+
 	// first, see if we are deleting any virtual convs (which have negative IDs)
 	var virtConvDeleted = false;
 	var deletedIds = notify.deleted.id && notify.deleted.id.split(",");
@@ -917,7 +939,10 @@ function(notify) {
 			newDeletedIds.push(id);
 		}
 	}
-	if (!virtConvDeleted) { return notify; }
+	if (!virtConvDeleted) {
+		DBG.println(AjxDebug.NOTIFY, "no virtual convs deleted, return");
+		return notify;
+	}
 
 	// look for creates of convs that mean a virtual conv got promoted
 	var gotNewConv = false;
@@ -929,6 +954,8 @@ function(notify) {
 			for (var i = 0; i < list.length; i++) {
 				var create = list[i];
 				var id = create.id;
+				var extra = (name == "m") ? "|cid=" + create.cid + "|l=" + create.l : "|n=" + create.n;
+				AjxDebug.println(AjxDebug.NOTIFY, name + ": id=" + id + "|su='" + create.su + "'|f=" + create.f + "|d=" + create.d + extra);
 				if (name == "m") {
 					createdMsgs[id] = create;
 				} else if (name == "c" && (create.n > 1)) {
@@ -939,7 +966,10 @@ function(notify) {
 			}
 		}
 	}
-	if (!gotNewConv) { return notify; }
+	if (!gotNewConv) {
+		DBG.println(AjxDebug.NOTIFY, "no virtual convs promoted, return");
+		return notify;
+	}
 
 	// last thing to confirm virt conv promotion is msg changing cid
 	var msgMoved = false;
@@ -967,7 +997,10 @@ function(notify) {
 			}
 		}
 	}
-	if (!msgMoved) { return notify; }
+	if (!msgMoved) {
+		DBG.println(AjxDebug.NOTIFY, "no msgs changed cid, return");
+		return notify;
+	}
 
 	// We're promoting a virtual conv. Normalize the notifications object, and
 	// process a preliminary notif that will update the virtual conv's ID to its
@@ -1026,6 +1059,9 @@ function(notify) {
 		mods["c"] = newMods;
 		appCtxt.getRequestMgr()._handleModifies(mods);
 	}
+	DBG.println(AjxDebug.NOTIFY, " ---------------- ZmMailApp::preNotify - exit");
+	DBG.dumpObj(AjxDebug.NOTIFY, notify);
+    appCtxt.setNotifyDebug("Handling NOTIFY: in ZmMailApp - End of Prenotify");
 };
 
 /**
@@ -1042,8 +1078,12 @@ function(notify) {
  */
 ZmMailApp.prototype.createNotify =
 function(creates, force) {
+    appCtxt.setNotifyDebug("Handling NOTIFY: In ZmMailAppcreateNotify");
 	if (!creates["m"] && !creates["c"] && !creates["link"]) { return; }
-	if (!force && !this._noDefer && this._deferNotifications("create", creates)) { return; }
+	if (!force && !this._noDefer && this._deferNotifications("create", creates)) {
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: skipping/deferring notifications"); 
+		return;
+	}
 
 	if (creates["link"]) {
 		var list = creates["link"];
@@ -1064,16 +1104,17 @@ function(creates, force) {
 	}
 
 	var lastIndex = 0;
-	for (var i=0; i<controllers.length; i++) { // Some controllers may not be created yet. We need to determine the last existing controller in the list
-		if (controllers[i])
+	for (var i = 0; i < controllers.length; i++) { // Some controllers may not be created yet. We need to determine the last existing controller in the list
+		if (controllers[i]) {
 			lastIndex = i;
+		}
 	}
 
 	// give each controller a chance to handle the creates
-	for (var i=0; i<controllers.length; i++) {
+	for (var i = 0; i < controllers.length; i++) {
 		var controller = controllers[i];
 		if (controller) {
-			this._checkList(creates, controller.getList(), controller, i==lastIndex);
+			this._checkList(creates, controller.getList(), controller, i == lastIndex);
 		}
 	}
 
@@ -1154,7 +1195,8 @@ function(creates) {
 					: (msg.fragment || "");
 
 				var from = msg.getAddress(AjxEmailAddress.FROM);
-				var email = from.getName() || from.getAddress();
+				var email = (from && from instanceof AjxEmailAddress) ? from.getName() || from.getAddress() :
+							(from && typeof from == "string") ? from : ZmMsg.unknown;
 				var title = (appCtxt.accountList.size() > 1)
 					? AjxMessageFormat.format(ZmMsg.newMailWithAccount, [email, acct.getDisplayName()])
 					: AjxMessageFormat.format(ZmMsg.newMail, email);
@@ -1180,13 +1222,22 @@ function(creates) {
 ZmMailApp.prototype._checkList =
 function(creates, list, controller, last) {
 
-	if (!(list && list instanceof ZmMailList)) { return; }
+	AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: handling mail creates for view " + controller._currentView);
+
+	if (!(list && list instanceof ZmMailList)) {
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: list is not a ZmMailList: " + list);
+		return;
+	}
 
 	var convs = {};
 	var msgs = {};
 
 	// make sure current search is matchable (conv can just match on cid)
-	if (!(list.search && list.search.matches) && (controller == this._tradController)) { return; }
+	if (!(list.search && list.search.matches) && (controller == this._tradController)) {
+		var query = list.search ? list.search.query : "";
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: search not matchable: " + query);
+		return;
+	}
 
 	var sortBy = list.search.sortBy;
 
@@ -1236,7 +1287,8 @@ function() {
  */
 ZmMailApp.prototype._checkType =
 function(creates, type, items, currList, sortBy, convs, last) {
-	var result = { gotMail:false, hasMore:false};
+
+	var result = { gotMail:false, hasMore:false };
 	var nodeName = ZmList.NODE[type];
 	var list = creates[nodeName];
 	if (!(list && list.length)) { return result; }
@@ -1253,37 +1305,51 @@ function(creates, type, items, currList, sortBy, convs, last) {
 			this._maxEntries = mlv && mlv.calculateMaxEntries();
 		}
 		if (this.numEntries > this._maxEntries) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: too many creates: num=" + this.numEntries + ", max=" + this._maxEntries);
 			return result;
 		}
 	}
 
 	for (var i = 0; i < list.length; i++) {
 		var create = list[i];
-		if (create._handled) { continue; }
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: process create notification:");
+		var extra = (type == ZmItem.MSG) ? "|cid=" + create.cid + "|l=" + create.l : "|n=" + create.n;
+		AjxDebug.println(AjxDebug.NOTIFY, type + ": id=" + create.id + "|su='" + create.su + "'|f=" + create.f + "|d=" + create.d + extra);
+		if (create._handled) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: create already handled " + create.id);
+			continue;
+		}
 		if (last) {
 			create._handled = true;
 		}
 
 		// new conv does not affect a list of msgs
-		if (currList.type == ZmItem.MSG && type == ZmItem.CONV) { continue; }
+		if (currList.type == ZmItem.MSG && type == ZmItem.CONV) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: msg list ignoring conv create");
+			continue;
+		}
 
 		// perform stricter checking if we're in offline mode
 		if (appCtxt.isOffline) {
 			if ((ZmList.ITEM_TYPE[nodeName] != currList.type) && (currList.type != ZmItem.CONV)) {
+				AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: type mismatch: " + ZmList.ITEM_TYPE[nodeName] + " / " + currList.type);
 				continue;
 			}
 		}
 
 		// throttle influx of CREATE notifications during offline initial sync
 		if (throttle && this.numEntries > this._maxEntries) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: throttling");
 			result.hasMore = true;
 			break;
 		}
 
 		DBG.println(AjxDebug.DBG1, "ZmMailApp: handling CREATE for node: " + nodeName);
+		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: item passed _checkType " + create.id);
 
 		var item = appCtxt.getById(create.id);
 		if (!item) {
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: create " + type + " object " + create.id);
 			var itemClass = eval(ZmList.ITEM_CLASS[type]);
 			item = itemClass.createFromDom(create, {}, true);
 		}
@@ -1500,8 +1566,6 @@ function(msg, callback) {
 			callback.run();
 		}
 		this._notifyRendered();
-
-		appCtxt.notifyZimlets('onMsgView', [msg, null, appCtxt.getCurrentView()], {waitUntilLoaded:true});
 	}
 };
 
@@ -1612,11 +1676,11 @@ function(urlQueryStr){
 	var body = match ? (AjxStringUtil.urlComponentDecode(match[1]).replace(/\+/g, " ")) : null;
 
 	return {
-		to: AjxStringUtil.htmlEncode(to),
-		subject: AjxStringUtil.htmlEncode(subject),
-		cc: AjxStringUtil.htmlEncode(cc),
-		bcc: AjxStringUtil.htmlEncode(bcc),
-		body: AjxStringUtil.htmlEncode(body)
+		to: to,
+		subject: subject,
+		cc: cc,
+		bcc: bcc,
+		body: body
 	};
 };
 
@@ -1739,40 +1803,6 @@ function(type) {
 	return this._curSessionId[type];
 };
 
-ZmMailApp.prototype.getSessionController =
-function(type, controllerClass, sessionId) {
-
-	if (!this._sessionController[type]) {
-		this._sessionController[type] = {};
-		this._sessionId[type] = 1;
-	}
-
-	if (sessionId && this._sessionController[type][sessionId]) {
-		return this._sessionController[type][sessionId];
-	}
-
-	var controllers = this._sessionController[type];
-	var controller;
-	for (var id in controllers) {
-		if (controllers[id].inactive) {
-			controller = controllers[id];
-			break;
-		}
-	}
-
-	sessionId = controller ? controller.sessionId : this._sessionId[type]++;
-
-	if (!controller) {
-		var ctlrClass = eval(controllerClass);
-		controller = this._sessionController[type][sessionId] = new ctlrClass(this._container, this);
-	}
-	controller.setSessionId(type, sessionId);
-	this._curSessionId[type] = sessionId;
-	controller.inactive = false;
-
-	return controller;
-};
-
 ZmMailApp.prototype.getConfirmController =
 function(sessionId) {
 	return this.getSessionController(ZmId.VIEW_MAIL_CONFIRM, "ZmMailConfirmController", sessionId);
@@ -1818,7 +1848,9 @@ function() {
  */
 ZmMailApp.prototype.compose =
 function(params) {
-	AjxDispatcher.run("GetComposeController").doAction(params);
+	var controller = AjxDispatcher.run("GetComposeController");
+	appCtxt.composeCtlrSessionId = controller.sessionId; //this is used in ZmNewWindow.js. For disposing of the controller and its listeners, overview, and tree listeners.
+	controller.doAction(params);
 };
 
 /**
@@ -1990,6 +2022,7 @@ function() {
 
 	var settings = appCtxt.getSettings();
 	settings.getSetting(ZmSetting.VIEW_AS_HTML).addChangeListener(this._settingListener);
+	settings.getSetting(ZmSetting.TRUSTED_ADDR_LIST).addChangeListener(this._settingListener);
 	settings.addChangeListener(this._settingsListener);
 };
 
@@ -2005,7 +2038,8 @@ function(ev) {
 	var setting = ev.source;
 	var mlc = this.getMailListController();
 
-	if (mlc && setting.id == ZmSetting.VIEW_AS_HTML) {
+	if (mlc && (setting.id == ZmSetting.VIEW_AS_HTML || setting.id == ZmSetting.TRUSTED_ADDR_LIST)) {
+        this.resetTrustedSendersList();
 		var dpv = mlc._doublePaneView;
 		var msg = dpv ? dpv.getMsg() : null;
 		if (msg) {
@@ -2048,4 +2082,23 @@ function(ev) {
 	if (newView) {
 		mlc.switchView(newView, true);
 	}
+};
+
+ZmMailApp.prototype.getTrustedSendersList =
+function() {
+    if(!this._trustedList) {
+        var trustedList = appCtxt.get(ZmSetting.TRUSTED_ADDR_LIST);
+        if(trustedList && trustedList[0]) {
+            this._trustedList = AjxVector.fromArray(trustedList[0].split(","));
+        }
+        else {
+            this._trustedList = new AjxVector();
+        }
+    }
+    return this._trustedList;
+};
+
+ZmMailApp.prototype.resetTrustedSendersList =
+function() {
+    this._trustedList = null;
 };

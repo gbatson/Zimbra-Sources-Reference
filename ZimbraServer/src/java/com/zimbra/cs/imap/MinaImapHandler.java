@@ -12,7 +12,6 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
 package com.zimbra.cs.imap;
 
 import com.zimbra.common.util.ZimbraLog;
@@ -33,7 +32,7 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
 
     private static final long WRITE_TIMEOUT = LC.nio_imap_write_timeout.longValue() * 1000;
     private static final int MAX_SESSIONS = LC.nio_imap_max_sessions.intValue();
-    
+
     MinaImapHandler(MinaImapServer server, MinaSession session) {
         super(server);
         this.mServer = server;
@@ -55,7 +54,7 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
         return true;
     }
 
-    public void connectionOpened() throws IOException {
+    @Override public void connectionOpened() throws IOException {
         if (!Config.userServicesEnabled()) {
             ZimbraLog.imap.debug("Dropping connection (user services are disabled)");
             dropConnection();
@@ -72,10 +71,10 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
         throw new UnsupportedOperationException();
     }
 
-    public void messageReceived(Object msg) throws IOException {
+    @Override public void messageReceived(Object msg) throws IOException {
         if (mRequest == null)
             mRequest = new MinaImapRequest(this);
-        
+
         if (mRequest.parse(msg)) {
             // Request is complete
             setUpLogContext(mSession.getRemoteAddress().toString());
@@ -100,7 +99,7 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
         if (req.isMaxRequestSizeExceeded())
             throw new ImapParseException(req.getTag(), "maximum request size exceeded");
 
-        ImapFolder i4selected = mSelectedFolder;
+        ImapSession i4selected = mSelectedFolder;
         if (i4selected != null)
             i4selected.updateAccessTime();
 
@@ -133,8 +132,7 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
      * execution since requests are processed in sequence for any given
      * connection.
      */
-    @Override
-    protected void dropConnection(boolean sendBanner) {
+    @Override protected void dropConnection(boolean sendBanner) {
         dropConnection(sendBanner, WRITE_TIMEOUT);
     }
 
@@ -144,7 +142,7 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
         } catch (Exception e) { }
 
         if (mCredentials != null && !mGoodbyeSent)
-        	ZimbraLog.imap.info("dropping connection for user " + mCredentials.getUsername() + " (server-initiated)");
+            ZimbraLog.imap.info("dropping connection for user " + mCredentials.getUsername() + " (server-initiated)");
 
         if (mSession.isClosed())
             return; // No longer connected
@@ -158,11 +156,11 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
         mSession.close();
     }
 
-    public void dropConnection(long timeout) {
+    @Override public void dropConnection(long timeout) {
         dropConnection(true, timeout);
     }
-    
-    public void connectionClosed() {
+
+    @Override public void connectionClosed() {
         cleanup();
         mSession.close();
     }
@@ -176,15 +174,15 @@ class MinaImapHandler extends ImapHandler implements MinaHandler {
             unsetSelectedFolder(false);
         } catch (Exception e) {}
     }
-    
-    public void connectionIdle() {
+
+    @Override public void connectionIdle() {
         notifyIdleConnection();
     }
-    
+
     @Override protected boolean setupConnection(Socket connection) {
         throw new UnsupportedOperationException();
     }
-    
+
     @Override protected boolean authenticate() {
         throw new UnsupportedOperationException();
     }

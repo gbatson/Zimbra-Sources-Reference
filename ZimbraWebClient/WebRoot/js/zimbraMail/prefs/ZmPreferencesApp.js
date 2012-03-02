@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -33,11 +33,14 @@ ZmPreferencesApp = function(container, parentController) {
 
 	// must be hash for case of multi-accounts
 	this._filterRules = {};
+	this._outgoingFilterRules = {};
 };
 
 // Organizer and item-related constants
 ZmEvent.S_FILTER					= "FILTER";
 ZmEvent.S_PREF_ZIMLET				= "PREF_ZIMLET";
+ZmEvent.S_PREF_ACCOUNT				= "PREF_ACCOUNT";
+ZmEvent.S_PREF_BACKUP				= "PREF_BACKUP";
 
 // App-related constants
 /**
@@ -109,7 +112,7 @@ function() {
 ZmPreferencesApp.prototype.getFilterController =
 function() {
 	if (!this._filterController) {
-		this._filterController = new ZmFilterController(this._container, this);
+		this._filterController = this.getPrefController().getFilterController();
 	}
 	return this._filterController;
 };
@@ -129,6 +132,23 @@ function(accountName) {
 		this._filterRules[acct] = new ZmFilterRules(acct);
 	}
 	return this._filterRules[acct];
+};
+
+/**
+ * Gets the outgoing filter rules.
+ * 
+ * @param	{String}	[accountName]		the account name or <code>null</code> to use the active account
+ * @return	{ZmFilterRules}		the filter rules
+ */
+ZmPreferencesApp.prototype.getOutgoingFilterRules =
+function(accountName) {
+	var ac = window.parentAppCtxt || window.appCtxt;
+	var acct = accountName || ac.getActiveAccount().name;
+
+	if (!this._outgoingFilterRules[acct]) {
+		this._outgoingFilterRules[acct] = new ZmFilterRules(acct, true);
+	}
+	return this._outgoingFilterRules[acct];
 };
 
 ZmPreferencesApp.prototype.modifyNotify =
@@ -161,6 +181,7 @@ function(refresh) {
 ZmPreferencesApp.prototype._defineAPI =
 function() {
 	AjxDispatcher.registerMethod("GetFilterRules", ["PreferencesCore", "Preferences"], new AjxCallback(this, this.getFilterRules));
+	AjxDispatcher.registerMethod("GetOutgoingFilterRules", ["PreferencesCore", "Preferences"], new AjxCallback(this, this.getOutgoingFilterRules));
 	AjxDispatcher.registerMethod("GetPrefController", ["PreferencesCore", "Preferences"], new AjxCallback(this, this.getPrefController));
 	AjxDispatcher.registerMethod("GetFilterController", ["PreferencesCore", "Preferences"], new AjxCallback(this, this.getFilterController));
 };
@@ -234,8 +255,10 @@ function() {
 				ZmSetting.SKIN_NAME,
 				ZmSetting.CLIENT_TYPE,
 				ZmSetting.DEFAULT_TIMEZONE,
+                ZmSetting.DEFAULT_PRINTFONTSIZE,
 				ZmSetting.OFFLINE_IS_MAILTO_HANDLER,
-				ZmSetting.OFFLINE_NOTEBOOK_SYNC_ENABLED // offline
+				ZmSetting.OFFLINE_NOTEBOOK_SYNC_ENABLED, // offline
+				ZmSetting.USE_ADDR_BUBBLES
 			]
 		},
 		COMPOSING: {
@@ -275,6 +298,20 @@ function() {
 				AjxDispatcher.require("Share");
 				return new ZmSharingPage(parent, section, controller);
 			}
+		},
+		NOTIFICATIONS: {
+			title: ZmMsg.notifications,
+			icon: "ApptReminder",
+			templateId: "prefs.Pages#Notifications",
+			priority: 88,
+			precondition: [ZmSetting.CALENDAR_ENABLED, ZmSetting.TASKS_ENABLED],
+			prefs: [
+                ZmSetting.CAL_EMAIL_REMINDERS_ADDRESS,
+                ZmSetting.CAL_DEVICE_EMAIL_REMINDERS_ADDRESS
+			],
+            createView: function(parent, section, controller) {
+                return new ZmNotificationsPage(parent, section, controller);
+            }
 		},
 		MOBILE: {
 			title: ZmMsg.mobileDevices,
@@ -330,6 +367,26 @@ function() {
 			}
 		}
 	};
+    if (appCtxt.isOffline) {
+        sections["BACKUP"] = {
+			title: ZmMsg.offlineBackups,
+			icon: "backup",
+			templateId: "prefs.Pages#BackUp",
+			priority: 130,
+            prefs: [
+                ZmSetting.OFFLINE_BACKUP_NOW_BUTTON,
+                ZmSetting.OFFLINE_BACKUP_INTERVAL,
+                ZmSetting.OFFLINE_BACKUP_PATH,
+                ZmSetting.OFFLINE_BACKUP_KEEP,
+                ZmSetting.OFFLINE_BACKUP_ACCOUNT_ID,
+                ZmSetting.OFFLINE_BACKUP_RESTORE
+            ],
+			createView: function(parent, section, controller) {
+				return new ZmBackupPage(parent, section, controller);
+			}
+		}
+    }
+
 	for (var id in sections) {
 		ZmPref.registerPrefSection(id, sections[id]);
 	}
@@ -357,26 +414,12 @@ function() {
 		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
 	});
 
-	var styles=[],names=[];
-	for (var key in DwtHtmlEditor.FONT_FAMILY) {
-		var obj = DwtHtmlEditor.FONT_FAMILY[key];
-		styles.push(obj.value);
-		names.push(obj.name);
-	}
-
 	ZmPref.registerPref("COMPOSE_INIT_FONT_FAMILY", {
 		displayName:		ZmMsg.defaultFontSettings,
 		displayContainer:	ZmPref.TYPE_SELECT,
-		displayOptions: 	names,
-		options: 			styles,
-		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED],
-		approximateFunction: function(id) {
-			// Choose the style that comes closest, or the first if none is found
-			if (AjxUtil.indexOf(styles, id) != -1) {
-				return id;
-			}
-			return DwtHtmlEditor._normalizeFontId(id);
-		}
+		displayOptions: 	["Arial", "Arial Black","Comic Sans MS","Courier New", "Lucida Console", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"],
+		options: 			["Arial", "Arial Black","Comic Sans MS","Courier New", "Lucida Console", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana"],
+		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
 	});
 
 	// Yuck: Should add functionality in Pref. to add prefix/postfix to all options. Meanwhile...
@@ -406,10 +449,17 @@ function() {
     ZmPref.registerPref("DEFAULT_TIMEZONE", {
         displayName:		ZmMsg.selectTimezone,
         displayContainer:	ZmPref.TYPE_SELECT,
-        displayParams:		{ cascade: false },
+        displayParams:		{ layout: DwtMenu.LAYOUT_SCROLL, maxRows:ZmPref.MAX_ROWS },
         displayOptions:		AjxTimezone.getZonePreferences(),
         options:			AjxTimezone.getZonePreferencesOptions()
     });
+
+    ZmPref.registerPref("DEFAULT_PRINTFONTSIZE", {
+		displayName:		ZmMsg.printFontSizePref,
+		displayContainer:	ZmPref.TYPE_SELECT,
+		displayOptions: 	fontSizeOptions,
+        options:            fontSizeValueOptions
+	});
 
     ZmPref.registerPref("EXPORT_FOLDER", {
         displayContainer:	ZmPref.TYPE_CUSTOM
@@ -494,6 +544,11 @@ function() {
 		displayContainer:	ZmPref.TYPE_CUSTOM
 	});
 
+	ZmPref.registerPref("USE_ADDR_BUBBLES", {
+		displayName:		ZmMsg.useAddressBubbles,
+		displayContainer:	ZmPref.TYPE_CHECKBOX
+	});
+
 	if (appCtxt.isOffline) {
 		ZmPref.registerPref("OFFLINE_IS_MAILTO_HANDLER", {
 			displayName:		ZmMsg.offlineAllowMailTo,
@@ -507,6 +562,39 @@ function() {
 				displayContainer:	ZmPref.TYPE_CHECKBOX
 			});
 		}
+
+        ZmPref.registerPref("OFFLINE_BACKUP_ACCOUNT_ID", {
+            displayName:		ZmMsg.offlineBackUpAccounts,
+            displayContainer:	ZmPref.TYPE_CUSTOM
+        });
+
+        ZmPref.registerPref("OFFLINE_BACKUP_RESTORE", {
+            displayContainer:	ZmPref.TYPE_CUSTOM
+        });
+
+        ZmPref.registerPref("OFFLINE_BACKUP_NOW_BUTTON", {
+            displayName:		ZmMsg.offlineBackUpButton,
+            displayContainer:	ZmPref.TYPE_CUSTOM
+        });
+
+        ZmPref.registerPref("OFFLINE_BACKUP_INTERVAL", {
+            displayName:		ZmMsg.offlineBackUpInterval,
+            displayContainer:	ZmPref.TYPE_SELECT,
+            displayOptions:		[ZmMsg.pollNever, ZmMsg.everyDay, ZmMsg.everyWeek, ZmMsg.everyMonth],
+            options:			[-1, ZmSetting.CAL_DAY, ZmSetting.CAL_WEEK, ZmSetting.CAL_MONTH]
+        });
+
+        ZmPref.registerPref("OFFLINE_BACKUP_PATH", {
+            displayName:		ZmMsg.offlineBackUpPath,
+            displayContainer:	ZmPref.TYPE_INPUT
+        });
+
+        ZmPref.registerPref("OFFLINE_BACKUP_KEEP", {
+            displayName:		ZmMsg.offlineBackUpKeep,
+            displayContainer:	ZmPref.TYPE_SELECT,
+            displayOptions:		["1", "2", "3"]
+        });
+
 	}
 
 	// Polling Interval Options - Dynamically constructed according to MIN_POLLING_INTERVAL,POLLING_INTERVAL
@@ -598,7 +686,8 @@ function() {
 	ZmPref.registerPref("SAVE_TO_SENT", {
 		displayName:		ZmMsg.saveToSent,
 		displayContainer:	ZmPref.TYPE_CHECKBOX,
-		precondition:		ZmSetting.MAIL_ENABLED
+		precondition:		ZmSetting.MAIL_ENABLED,
+		changeFunction:		AjxCallback.simpleClosure(ZmPref.onChangeConfirm, null, ZmMsg.saveToSentWarning, ZmPref.getSendToFiltersActive, true, new AjxCallback(null, ZmPref.setFormValue, ["SAVE_TO_SENT", true]))
 	});
 
 	ZmPref.registerPref("SEARCH_INCLUDES_SPAM", {
@@ -671,13 +760,18 @@ function(callback) {
 
 ZmPreferencesApp.prototype._getSharingView =
 function() {
+	var sharingSection = this.getPreferencesPage("SHARING");
+	return (sharingSection && sharingSection.view);
+};
+
+ZmPreferencesApp.prototype.getPreferencesPage =
+function(id) {
 	if (!this._prefController) {
 		return null;
 	}
 	var prefCtlr = this.getPrefController();
 	var prefsView = prefCtlr && prefCtlr.getPrefsView();
-	var sharingSection = prefsView && prefsView.getView("SHARING");
-	return (sharingSection && sharingSection.view);
+	return prefsView && prefsView.getView(id);
 };
 
 // needed to hide zimlet tree view for multi-account

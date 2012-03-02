@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,7 +24,7 @@ package com.zimbra.cs.account.accesscontrol.generated;
 public class RightConsts {
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 pshao 20100707-0107 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110106-1444 */
 
 
     /*
@@ -36,19 +36,33 @@ public class RightConsts {
 
     /**
      * automatically add meeting invites from grantee to the target&#039;s
-     * calendar
+     * calendar. e.g. (1) When user Y is invited to a meeting, an appointment
+     * is added to his calendar automatically(tentatively) only if invite is
+     * from A, B, C or anyone in group G. (2) Conf room Y can only be booked
+     * by users A, B, C and group G.
      */
     public static final String RT_invite = "invite";
 
     /**
-     * login as
+     * login as another user. Currently this is only honored for imap/pop3
+     * login
      */
     public static final String RT_loginAs = "loginAs";
 
     /**
-     * send as
+     * reply to messages in a shared folder as the owner of the folder
      */
     public static final String RT_sendAs = "sendAs";
+
+    /**
+     * send mails to distribution list
+     */
+    public static final String RT_sendToDistList = "sendToDistList";
+
+    /**
+     * view distribution list members
+     */
+    public static final String RT_viewDistList = "viewDistList";
 
     /**
      * view free/busy
@@ -390,6 +404,11 @@ public class RightConsts {
     public static final String RT_adminConsoleMailQueueRights = "adminConsoleMailQueueRights";
 
     /**
+     * Rights for running migration tasks on a server through Admin Console
+     */
+    public static final String RT_adminConsoleMigrationRights = "adminConsoleMigrationRights";
+
+    /**
      * Admin Console Resource Rights
      */
     public static final String RT_adminConsoleResourceRights = "adminConsoleResourceRights";
@@ -470,8 +489,8 @@ public class RightConsts {
     public static final String RT_adminConsoleServerVolumesTabRights = "adminConsoleServerVolumesTabRights";
 
     /**
-     * Rights for configuring SSL certificate on a server through Admin
-     * Console
+     * Rights for configuring software updates component a server through
+     * Admin Console
      */
     public static final String RT_adminConsoleSoftwareUpdatesRights = "adminConsoleSoftwareUpdatesRights";
 
@@ -528,16 +547,6 @@ public class RightConsts {
      * check exchange auth config
      */
     public static final String RT_checkExchangeAuthConfig = "checkExchangeAuthConfig";
-
-    /**
-     * check auth config for external auth
-     */
-    public static final String RT_checkExternalAuthConfig = "checkExternalAuthConfig";
-
-    /**
-     * check external GAL config
-     */
-    public static final String RT_checkExternalGALConfig = "checkExternalGALConfig";
 
     /**
      * check server health
@@ -628,6 +637,11 @@ public class RightConsts {
      * create distribution list in the domain
      */
     public static final String RT_createDistributionList = "createDistributionList";
+
+    /**
+     * create bulk migration task on a server
+     */
+    public static final String RT_createMigrationTask = "createMigrationTask";
 
     /**
      * create server
@@ -971,6 +985,11 @@ public class RightConsts {
     public static final String RT_getGlobalConfig = "getGlobalConfig";
 
     /**
+     * get HSM process status for a server
+     */
+    public static final String RT_getHSMStatus = "getHSMStatus";
+
+    /**
      * get mailbox id and size(quota) of an account
      */
     public static final String RT_getMailboxInfo = "getMailboxInfo";
@@ -1092,11 +1111,6 @@ public class RightConsts {
     public static final String RT_manageVolume = "manageVolume";
 
     /**
-     * create, destroy, wait, query wait sets
-     */
-    public static final String RT_manageWaitSet = "manageWaitSet";
-
-    /**
      * activate/deactivate zimlets on a cos
      */
     public static final String RT_manageZimlet = "manageZimlet";
@@ -1150,6 +1164,11 @@ public class RightConsts {
      * move account mailbox
      */
     public static final String RT_moveAccountMailbox = "moveAccountMailbox";
+
+    /**
+     * move blobs, start and abort HSM thread on a server
+     */
+    public static final String RT_moveBlobs = "moveBlobs";
 
     /**
      * move calendar resource mailbox

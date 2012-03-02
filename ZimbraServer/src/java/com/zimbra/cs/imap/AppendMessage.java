@@ -27,6 +27,8 @@ import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.cs.zclient.ZFolder;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.mime.shim.JavaMailInternetHeaders;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -62,7 +64,7 @@ class AppendMessage {
     private short sflags;
 
     public static AppendMessage parse(ImapHandler handler, String tag, ImapRequest req)
-        throws ImapParseException, IOException {
+    throws ImapParseException, IOException {
         AppendMessage append = new AppendMessage(handler, tag);
         append.parse(req);
         return append;
@@ -106,17 +108,20 @@ class AppendMessage {
         }
     }
 
-    public void checkFlags(ImapFlagCache flagSet, ImapFlagCache tagSet, List<Tag> newTags)
-        throws ServiceException {
-        if (flagNames == null) return;
+    public void checkFlags(Mailbox mbox, ImapFlagCache flagSet, ImapFlagCache tagSet, List<Tag> newTags)
+    throws ServiceException {
+        if (flagNames == null)
+            return;
+
         for (String name : flagNames) {
             ImapFlagCache.ImapFlag i4flag = flagSet.getByName(name);
             if (i4flag != null && !i4flag.mListed)
                 i4flag = null;
             else if (i4flag == null && !name.startsWith("\\"))
                 i4flag = tagSet.getByName(name);
+
             if (i4flag == null)
-                i4flag = tagSet.createTag(handler.getContext(), name, newTags);
+                i4flag = tagSet.createTag(mbox, handler.getContext(), name, newTags);
 
             if (i4flag != null) {
                 if (!i4flag.mPermanent)               sflags |= i4flag.mBitmask;
@@ -146,7 +151,7 @@ class AppendMessage {
         ParsedMessage pm = new ParsedMessage(content, receivedDate, idxAttach);
         try {
             if (!pm.getSender().equals("")) {
-                InternetAddress ia = new InternetAddress(pm.getSender());
+                InternetAddress ia = new JavaMailInternetAddress(pm.getSender());
                 if (AccountUtil.addressMatchesAccount(mbox.getAccount(), ia.getAddress()))
                     flags |= Flag.BITMASK_FROM_ME;
             }
@@ -156,7 +161,7 @@ class AppendMessage {
         if (msg != null && sflags != 0 && handler.getState() == ImapHandler.State.SELECTED) {
             ImapFolder selectedFolder = handler.getSelectedFolder();
             // remember, selected folder may be on another host (i.e. mProxy != null)
-            //   (note that this leaves session flags unset on remote appended messages) 
+            //   (note that this leaves session flags unset on remote appended messages)
             if (selectedFolder != null) {
                 ImapMessage i4msg = selectedFolder.getById(msg.getId());
                 if (i4msg != null)
@@ -215,10 +220,10 @@ class AppendMessage {
         }
     }
 
-    private void checkDate(Blob content) throws IOException, ServiceException {
+    private void checkDate(Blob blob) throws IOException, ServiceException {
         // if we're using Thunderbird, try to set INTERNALDATE to the message's Date: header
         if (date == null && getCredentials().isHackEnabled(ImapCredentials.EnabledHack.THUNDERBIRD))
-            date = getSentDate(content);
+            date = getSentDate(blob);
 
         // server uses UNIX time, so range-check specified date (is there a better place for this?)
         // FIXME: Why is this different from INTERNALDATE range check?
@@ -232,7 +237,7 @@ class AppendMessage {
         InputStream is = new BufferedInputStream(content.getInputStream());
         try {
             // inefficient, but must be done before creating the ParsedMessage
-            return getSentDate(new InternetHeaders(is));
+            return getSentDate(new JavaMailInternetHeaders(is));
         } catch (MessagingException e) {
             return null;
         } finally {

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,10 +22,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
-import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
-import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.session.IWaitSet;
 import com.zimbra.cs.session.WaitSetMgr;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -41,9 +38,7 @@ public class QueryWaitSet extends AdminDocumentHandler {
     throws ServiceException {
         
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
-        
-        Server server = Provisioning.getInstance().getLocalServer();
-        checkRight(zsc, context, server, Admin.R_manageWaitSet);
+        WaitSetMgr.checkRightForAllAccounts(zsc); // must be a global admin
         
         Element response = zsc.createElement(AdminConstants.QUERY_WAIT_SET_RESPONSE);
         
@@ -71,6 +66,6 @@ public class QueryWaitSet extends AdminDocumentHandler {
     
     @Override
     public void docRights(List<AdminRight> relatedRights, List<String> notes) {
-        relatedRights.add(Admin.R_manageWaitSet);
+        notes.add(AdminRightCheckPoint.Notes.SYSTEM_ADMINS_ONLY);
     }
 }

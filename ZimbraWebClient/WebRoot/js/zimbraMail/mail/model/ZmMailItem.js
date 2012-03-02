@@ -126,7 +126,10 @@ function(node) {
 	if (type == AjxEmailAddress.READ_RECEIPT) {
 		this.readReceiptRequested = true;
 	} else {
-		this.participants.add(new AjxEmailAddress(node.a, type, node.p, node.d));
+		var addr = new AjxEmailAddress(node.a, type, node.p, node.d);
+		addr.isGroup = node.isGroup;
+		addr.canExpand = node.exp;
+		this.participants.add(addr);
 	}
 };
 
@@ -150,4 +153,19 @@ ZmMailItem.prototype.ignoreJunkTrash =
 function() {
 	return Boolean((this.folderId == ZmFolder.ID_SPAM && !appCtxt.get(ZmSetting.SEARCH_INCLUDES_SPAM)) ||
 				   (this.folderId == ZmFolder.ID_TRASH && !appCtxt.get(ZmSetting.SEARCH_INCLUDES_TRASH)));
+};
+
+ZmMailItem.prototype.setAutoSendTime =
+function(autoSendTime) {
+	var wasScheduled = this.isScheduled;
+	var isDate = AjxUtil.isDate(autoSendTime);
+	this.flagLocal(ZmItem.FLAG_ISSCHEDULED, isDate);
+	var autoSendTime = isDate ? autoSendTime : null;
+	if (autoSendTime != this.autoSendTime) {
+		this.autoSendTime = autoSendTime;
+		this._notify(ZmEvent.E_MODIFY);
+	}
+	if (wasScheduled != this.isScheduled) {
+		this._notify(ZmEvent.E_FLAGS, {flags: ZmItem.FLAG_ISSCHEDULED});
+	}
 };

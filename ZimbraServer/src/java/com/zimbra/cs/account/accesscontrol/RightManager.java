@@ -68,6 +68,7 @@ public class RightManager {
     private static final String E_RIGHTS       = "rights";
     private static final String E_RIGHT        = "right";
     
+    private static final String A_CACHE        = "cache";
     private static final String A_FALLBACK     = "fallback";
     private static final String A_FILE         = "file";
     private static final String A_LIMIT        = "l";
@@ -281,11 +282,14 @@ public class RightManager {
         String targetTypeStr = eRight.attributeValue(A_TARGET_TYPE, null);
         
         if (userRight) {
+            TargetType targetType;
             if (targetTypeStr != null)
-                throw ServiceException.PARSE_ERROR(A_TARGET_TYPE + " is not allowed for user right", null);
-
+                targetType = TargetType.fromCode(targetTypeStr);
+            else
+                targetType = TargetType.account;  // default target type for user right is account
+            
             right = new UserRight(name);
-            right.setTargetType(TargetType.account);
+            right.setTargetType(targetType);
             
             String fallback = eRight.attributeValue(A_FALLBACK, null);
             if (fallback != null) {
@@ -308,6 +312,10 @@ public class RightManager {
                 }
             }
         }
+        
+        boolean cache = getBooleanAttr(eRight, A_CACHE, false);
+        if (cache)
+            right.setCacheable();
 
         for (Iterator elemIter = eRight.elementIterator(); elemIter.hasNext();) {
             Element elem = (Element)elemIter.next();

@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -31,37 +31,37 @@
                 <tr>
                     <td nowrap>
                         <zm:currentResultUrl var="refreshUrl" value="/h/search" context="${context}" refresh="true" />
-                        <a href="${fn:escapeXml(refreshUrl)}" <c:if test="${keys}"></c:if>><app:img src="startup/ImgRefresh.gif" altkey="refresh"/><span style='padding-left:5px;padding-right:5px'><fmt:message key="refresh"/></span></a>
+                        <a href="${fn:escapeXml(refreshUrl)}" <c:if test="${keys}"></c:if>><app:img src="startup/ImgRefresh.png" altkey="refresh"/><span style='padding-left:5px;padding-right:5px'><fmt:message key="refresh"/></span></a>
                     </td>
                     <td><div class='vertSep'></div></td>
-                    <app:button name="actionNew" id="${keys ? 'NEW_CONTACT' : ''}" src="contacts/ImgNewContact.gif" tooltip="newContact" text="contact"/>
+                    <app:button name="actionNew" id="${keys ? 'NEW_CONTACT' : ''}" src="contacts/ImgNewContact.png" tooltip="newContact" text="contact"/>
                     <td><div class='vertSep'></div></td>
-                    <app:button name="actionNewGroup" id="${keys ? 'NEW_GROUP' : ''}" src="mail/ImgNewGroup.gif" tooltip="newGroup" text="group"/>
+                    <app:button name="actionNewGroup" id="${keys ? 'NEW_GROUP' : ''}" src="mail/ImgNewGroup.png" tooltip="newGroup" text="group"/>
                     <td><div class='vertSep'></div></td>
                     <td height="100%" nowrap valign="middle" style="padding: 0 2px 0 2px">
                     <td height="100%" nowrap valign="middle" style="padding: 0 2px 0 2px">
-                        <input onclick="zprint();return false;" id="${keys ? 'IOPPRINT' : ''}" name="actionPrint" type="image" src="${iconPath}/startup/ImgPrint.gif" alt='<fmt:message key="actionPrint" />' title='<fmt:message key="actionPrint" />' />
+                        <input onclick="zprint();return false;" id="${keys ? 'IOPPRINT' : ''}" name="actionPrint" type="image" src="<app:imgurl value='startup/ImgPrint.png'/>" alt='<fmt:message key="actionPrint" />' title='<fmt:message key="actionPrint" />' />
                     </td>
                     <td height="100%" nowrap valign="middle" style="padding: 0 2px 0 2px">
                         <input onclick="zprint();return false;" id="${keys ? 'SOPPRINT' : ''}" name="actionPrint" type="submit" value='<fmt:message key="actionPrint" />' title='<fmt:message key="actionPrint" />' />
                     </td>
                     <c:if test="${not empty contact and !contact.isGalContact}">
                         <td><div class='vertSep'></div><input type='hidden' name="actionEditId" value="${contact.id}"></td>
-                        <app:button id="${keys ? 'OPEDIT' : ''}" name="actionEdit" src="startup/ImgEdit.gif" tooltip="edit" text="edit"/>
+                        <app:button id="${keys ? 'OPEDIT' : ''}" name="actionEdit" src="startup/ImgEdit.png" tooltip="edit" text="edit"/>
                     </c:if>
                     <td><div class='vertSep'></div></td>
                     <c:if test="${!contact.isGalContact}">
                     <c:choose>
                         <c:when test="${context.isFolderSearch and context.folder.isTrash}">
-                            <app:button id="${keys ? 'OPDELETE' : ''}" name="actionHardDelete" src="startup/ImgDelete.gif" text="actionDelete" tooltip="actionTrashTT" />
+                            <app:button id="${keys ? 'OPDELETE' : ''}" name="actionHardDelete" src="startup/ImgDelete.png" text="actionDelete" tooltip="actionTrashTT" />
                         </c:when>
                         <c:otherwise>
-                            <app:button id="${keys ? 'OPDELETE' : ''}" src="startup/ImgDelete.gif" name="actionDelete" text="actionDelete" tooltip="actionTrashTT"/>
+                            <app:button id="${keys ? 'OPDELETE' : ''}" src="startup/ImgDelete.png" name="actionDelete" text="actionDelete" tooltip="actionTrashTT"/>
                         </c:otherwise>
                     </c:choose>
                     </c:if>    
                     <td><div class='vertSep'></div></td>
-                    <app:button id="${keys ? 'OPCOMPOSE' : ''}" src="startup/ImgNewMessage.gif" name="actionCompose" text="compose" tooltip="compose"/>
+                    <app:button id="${keys ? 'OPCOMPOSE' : ''}" src="startup/ImgNewMessage.png" name="actionCompose" text="compose" tooltip="compose"/>
                     <c:if test="${context.isContactSearch}">
                     <td><div class='vertSep'></div></td>
                     <td nowrap>

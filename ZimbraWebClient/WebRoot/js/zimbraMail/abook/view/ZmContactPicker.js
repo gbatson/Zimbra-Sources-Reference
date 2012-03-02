@@ -78,6 +78,7 @@ function() {
 */
 ZmContactPicker.prototype.popup =
 function(buttonId, addrs, str, account) {
+
 	if (!this._initialized) {
 		this._initialize(account);
 		this._initialized = true;
@@ -182,22 +183,28 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
 		}
 	}
 
+    if (this._contactSource == ZmItem.CONTACT) {
+        query = query.replace(/\"/g, '\\"');
+        query = "\"" + query + "\"";
+    }
+
 	this._searchIcon.className = "DwtWait16Icon";
 
 	// XXX: line below doesn't have intended effect (turn off column sorting for GAL search)
 	this._chooser.sourceListView.sortingEnabled = (this._contactSource == ZmItem.CONTACT);
 
 	var params = {
-		obj: this,
-		ascending: ascending,
-		query: query,
-		queryHint: queryHint,
-		offset: this._list.size(),
-		lastId: lastId,
-		lastSortVal: lastSortVal,
-		respCallback: (new AjxCallback(this, this._handleResponseSearch, [firstTime])),
-		errorCallback: this._searchErrorCallback,
-		accountName: (this._account && this._account.name)
+		obj:			this,
+		ascending:		ascending,
+		query:			query,
+		queryHint:		queryHint,
+		offset:			this._list.size(),
+		lastId:			lastId,
+		lastSortVal:	lastSortVal,
+		respCallback:	(new AjxCallback(this, this._handleResponseSearch, [firstTime])),
+		errorCallback:	this._searchErrorCallback,
+		accountName:	(this._account && this._account.name),
+		expandDL:		true
 	};
 	ZmContactsHelper.search(params);
 };
@@ -385,16 +392,17 @@ function(firstTime, result) {
 				lastSortVal = email.sf;
 			}
 		}
-		if (!lastSortVal && isPagingSupported) {
+        if (!lastSortVal && isPagingSupported) {
 			// BAIL. Server didn't send us enough info to make the next request
 			this._searchIcon.className = "ImgSearch";
 			return;
-		}  else if (!lastSortVal && !isPagingSupported) {	
+		}
+        else if (!lastSortVal && !isPagingSupported) {
             //paging not supported, show what we have
-            this._showResults(isPagingSupported, more, this.getSubList());	
+            this._showResults(isPagingSupported, more, this.getSubList());
         }
-		else {
-          this.search(null, null, null, lastId, lastSortVal);
+        else {
+            this.search(null, null, null, lastId, lastSortVal);
         }
 	}
 	else {

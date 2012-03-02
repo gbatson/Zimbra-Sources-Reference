@@ -165,6 +165,7 @@ function() {
 	} else {
 		try {
 			if (!this._htmlModeInited) {
+				// TODO: potential for a loop here
 				setTimeout(AjxCallback.simpleClosure(this.focus, this), DwtHtmlEditor._INITDELAY);
 				return;
 			}
@@ -343,9 +344,10 @@ function(text, select) {
 
 DwtHtmlEditor.prototype.insertImage =
 function(src, dontExecCommand, width, height) {
-    if(dontExecCommand){
+    if (dontExecCommand) {
         var doc = this._getIframeDoc();
 	    var img = doc.createElement("img");
+
         //avoid mixed content security warning with IE
         if (src && src.indexOf("cid:") == 0) {
             img.setAttribute("dfsrc", src);
@@ -353,14 +355,25 @@ function(src, dontExecCommand, width, height) {
         else {
             img.setAttribute("src", src);
         }
-        if(width) img.width = width;
-        else img.removeAttribute('width');
-        if(height) img.height = height;
-        else img.removeAttribute('height');
-        var df = doc.createDocumentFragment();
+        
+        if (width) {
+			img.width = width;
+		}
+		else {
+			img.removeAttribute('width');
+		}
+		if (height) {
+			img.height = height;
+		}
+		else {
+			img.removeAttribute('height');
+		}
+		img.style.border = "0"; // set border explicitly to 0, since otherwise a border is added implicitly in case it's wrapped with a link 
+		var df = doc.createDocumentFragment();
 	    df.appendChild(img);
 	    this._insertNodeAtSelection(df);
-    }else{
+    }
+    else {
         this._execCommand(DwtHtmlEditor.IMAGE, src);
     }
 };
@@ -633,8 +646,27 @@ function(html) {
 	}
 };
 
+
+DwtHtmlEditor.prototype._getSelectionHtml =
+function(selection) {
+	var range = selection.createRange();
+	var range = selection.createRange();
+	var type = selection.type.toLowerCase();
+	if (type == "text") {
+		return range.htmlText;
+	}
+	else if (type == "control") {
+		var html = "";
+		for (i = 0; i < range.length; i++) {
+			html += range(i).innerHTML;
+		}
+		return html;
+	}
+	return null;
+}
+
 DwtHtmlEditor.prototype._insertNodeAtSelection =
-function(node, select) {
+function(node, select, returnSelectionHtml) {
 	this.focus();
 	if (!AjxEnv.isIE) {
 		var range = this._getRange();
@@ -654,6 +686,9 @@ function(node, select) {
 		}
 	} else {
 		var sel = this._getRange();
+		if (returnSelectionHtml) {
+			var selectionHtml = this._getSelectionHtml(sel)
+		}
 		var range = sel.createRange();
 		var id = "FOO-" + Dwt.getNextId();
 		try {
@@ -668,6 +703,7 @@ function(node, select) {
  		var el = this._getIframeDoc().getElementById(id);
  		el.parentNode.insertBefore(node, el);
  		el.parentNode.removeChild(el);
+		return selectionHtml;
 	}
 };
 
@@ -684,20 +720,20 @@ function(){
  *		mode -> Text and convert, then text is stripped out of content
  */
 DwtHtmlEditor.prototype.setMode =
-function(mode, convert) {
+function(mode, convert, convertor) {
 
 	if (mode == this._mode || (mode != DwtHtmlEditor.HTML && mode != DwtHtmlEditor.TEXT)) {	return;	}
 
 	var idoc = this._getIframeDoc();
 	this._mode = mode;
 	if (mode == DwtHtmlEditor.HTML) {
-		var textArea = document.getElementById(this._textAreaId);
+		var textArea = Dwt.byId(this._textAreaId);
 		var iFrame;
+		var content = convert ? AjxStringUtil.convertToHtml(textArea.value, true) : textArea.value;
 		if (this._iFrameId) {
-			idoc.body.innerHTML = convert ? AjxStringUtil.convertToHtml(textArea.value)	: textArea.value;
+			idoc.body.innerHTML = content;
 			iFrame = document.getElementById(this._iFrameId);
 		} else {
-			var content = convert ? AjxStringUtil.convertToHtml(textArea.value)	: textArea.value;
 			iFrame = this._initHtmlMode(content);
 		}
 
@@ -709,8 +745,8 @@ function(mode, convert) {
 			this._enableDesignMode(idoc);
 		}
 	} else {
-		var textArea = this._textAreaId ? document.getElementById(this._textAreaId)	: this._initTextMode(true);
-		textArea.value = convert ? this._convertHtml2Text() : idoc.innerHTML;
+		var textArea = this._textAreaId ? Dwt.byId(this._textAreaId) : this._initTextMode(true);
+		textArea.value = convert ? this._convertHtml2Text(convertor) : idoc.innerHTML;
 
 		Dwt.setVisible(document.getElementById(this._iFrameId), false);
 		Dwt.setVisible(textArea, true);
@@ -823,23 +859,10 @@ function(content) {
 	var cont = AjxCallback.simpleClosure(this._finishHtmlModeInit, this);
 	setTimeout(cont, DwtHtmlEditor._INITDELAY);
 
-    if( this._isPasteEnabled ){
-        var pastecont = AjxCallback.simpleClosure(this._registerPasteEvent, this);
-        iFrame.onload = pastecont;
-    }
-
 	iFrame.src = this._blankIframeSrc || "";
 	htmlEl.appendChild(iFrame);
 
 	return iFrame;
-};
-
-DwtHtmlEditor.prototype._registerPasteEvent = function(){
-    var editor = this,
-        doc = editor._getIframeDoc();
-    //Always unregister event handler as safari and chrome fires multiple times if registered multiple
-    editor._unregisterEditorEventHandler(doc,"paste");
-    editor._registerEditorEventHandler(doc,"paste");
 };
 
 DwtHtmlEditor.prototype._finishHtmlModeInit =
@@ -873,7 +896,8 @@ function() {
 	};
 
     // most browsers need time out here
-	setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY * 4);
+	setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY);
+
 };
 
 DwtHtmlEditor.prototype._focus =
@@ -979,7 +1003,7 @@ function() {
 	var row = null;
 	if (!AjxEnv.isIE) {
 		try {
-			for (i = 0; (range = sel.getRangeAt(i)) && i < limit; i++) {
+			for (i = 0; range = sel.getRangeAt(i) && i < limit; i++) {
 				var td = range.startContainer.childNodes[range.startOffset];
 				if (td) {
 					if (td.parentNode != row) {
@@ -1280,12 +1304,12 @@ function(iFrameDoc, name) {
 
 DwtHtmlEditor.prototype._handleEditorEvent =
 function(ev) {
+
 	var retVal = true;
 
-	// If we have a mousedown event, then let DwtMenu know. This is a nasty hack that we have to do since
-	// the iFrame is in a different document etc
-    if (ev.type == "mousedown") {
-		DwtMenu._outsideMouseDownListener(ev);
+	// Notify since the manager doesn't know about events in the editor's document
+	if (ev.type == "mousedown" || ev.type == "mousewheel") {
+	 	DwtOutsideMouseEventMgr.forwardEvent(ev);
 	}
 
 	if (ev.type == "mouseup") {
@@ -1607,8 +1631,9 @@ function(iFrameDoc) {
 		Dwt.enableDesignMode(iFrameDoc, true);
 		// Probably a regression of FF 1.5.0.1/Linux requires us to
 		// reset event handlers here (Zimbra bug: 6545).
- 		if (AjxEnv.isGeckoBased && (AjxEnv.isLinux || AjxEnv.isMac))
+ 		if (AjxEnv.isGeckoBased && (AjxEnv.isLinux || AjxEnv.isMac)) {
  			this._registerEditorEventHandlers(document.getElementById(this._iFrameId), iFrameDoc);
+		}
 	} catch (ex) {
 		// Gecko may take some time to enable design mode..        
 		if (AjxEnv.isGeckoBased || AjxEnv.isSafari) {
@@ -1677,7 +1702,7 @@ DwtHtmlEditor.prototype.insertLink = function(params) {
     var doc  = this._getIframeDoc();
     var content =  (AjxEnv.isIE && doc && doc.body) ? (doc.body.innerHTML) : "";
 
-    if(AjxEnv.isIE && content == ""){
+    if (AjxEnv.isIE && content == ""){
 
         var a = doc.createElement("a");
         a.href = params.url;
@@ -1689,20 +1714,25 @@ DwtHtmlEditor.prototype.insertLink = function(params) {
         doc.body.appendChild(a);
         return a;
 
-    }else{
+    } else {
         var url = "javascript:" + Dwt.getNextId();
 
         if (AjxEnv.isIE) { // IE *ought to* be able to handle the general case, but regularly screws it up anyway.
             var node = this._getIframeDoc().createElement("a");
             node.href = url;
-            if (params.text)
-                node.innerText = params.text;
-			
-            this._insertNodeAtSelection(node, false);
+			var keepInnerHtml = !params.text || params.text == params.url;
+			var selectionHtml = this._insertNodeAtSelection(node, false, keepInnerHtml);
+			if (selectionHtml) {
+				node.innerHTML = selectionHtml;
+			}
+			else {
+				node.innerHTML = params.text;
+			}
             this.selectNodeContents(node);
         } else {
-            if (params.text)
+            if (params.text) {
                 this.insertText(params.text, true);
+			}
             this._execCommand("createlink", url);
         }
 
@@ -1717,8 +1747,9 @@ DwtHtmlEditor.prototype.insertLink = function(params) {
 
         if (link) {
             link.href = params.url;
-            if (params.title)
+            if (params.title) {
                 link.title = params.title;
+			}
         }
         return link;
     }
@@ -1727,11 +1758,15 @@ DwtHtmlEditor.prototype.insertLink = function(params) {
 // if the caret/selection is currently a link, select it and return its properties
 // otherwise, at least return the selected text, if any.
 DwtHtmlEditor.prototype.getLinkProps = function() {
+		this.focus();
+
         var a = this.getNearestElement("a");
-        if (a)
+        if (a) {
                 this.selectNodeContents(a);
+		}
         var range = this._getRange();
-        var props = { text: AjxEnv.isIE ? range.text : range.toString() };
+
+        var props = { text: AjxEnv.isIE ? range.createRange().text : range.toString() };
         if (a) {
                 props.url = a.href;
                 props.title = a.title;
@@ -2140,46 +2175,3 @@ function(parentNode, regex, replaceString, mode, hits) {
 
 	return hits;
 };
-
-DwtHtmlEditor._normalizeFontId = function(id, dontFallback) {
-    var oldid = id;
-	id = id.replace(/,\s/g,",").replace(/'/g,"").toLowerCase(); // Make sure all ids that are supposed to be found in DwtHtmlEditor.FONT_FAMILY are actually found
-    if (!dontFallback) {
-        var map = DwtHtmlEditor.FONT_FAMILY;
-        if (map && !map[id]) {
-            var keys = AjxUtil.keys(map);
-            if (keys.length) {
-                var splitId = id.split(","); // e.g. ["times new roman","helvetica"]
-                for (var i=0; i<splitId.length; i++) { // Loop over input font names
-                    for (var j=0; j<keys.length; j++) { // Loop over candidate styles, e.g. ["arial,sans-serif","times new roman,serif"]
-                        if (keys[j].indexOf(splitId[i]) != -1) {
-                            return keys[j];
-                        }
-                    }
-                }
-                return keys[0];
-            }
-        }
-    }
-    return id;
-};
-DwtHtmlEditor._normalizeFontName = function(fontId) {
-    return DwtHtmlEditor.FONT_FAMILY[DwtHtmlEditor._normalizeFontId(fontId)].name;
-};
-DwtHtmlEditor._normalizeFontValue = function(fontId) {
-    return DwtHtmlEditor.FONT_FAMILY[DwtHtmlEditor._normalizeFontId(fontId)].value;
-};
-
-DwtHtmlEditor.FONT_FAMILY = {};
-(function() {
-	var KEYS = [ "fontFamilyIntl", "fontFamilyBase" ];
-	var i, j, key, value, name;
-	for (j = 0; j < KEYS.length; j++) {
-		for (i = 1; value = AjxMsg[KEYS[j]+i+".css"]; i++) {
-			if (value.match(/^#+$/)) break;
-			value = DwtHtmlEditor._normalizeFontId(value,true);
-			name = AjxMsg[KEYS[j]+i+".display"];
-			DwtHtmlEditor.FONT_FAMILY[value] = {name:name, value:value};
-		}
-	}
-})();

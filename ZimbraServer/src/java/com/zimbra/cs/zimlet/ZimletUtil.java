@@ -497,7 +497,7 @@ public class ZimletUtil {
 
 	public static interface DeployListener {
 		public void markFinished(Server s);
-		public void markFailed(Server s);
+		public void markFailed(Server s, Exception e);
 	}
 	
 	/**
@@ -526,7 +526,7 @@ public class ZimletUtil {
 		} catch (Exception e) {
 			ZimbraLog.zimlet.info("deploy", e);
 			if (listener != null)
-				listener.markFailed(localServer);
+				listener.markFailed(localServer, e);
 		}
 
 		if (auth == null)
@@ -1483,7 +1483,7 @@ public class ZimletUtil {
 			} catch (Exception e) {
 				ZimbraLog.zimlet.info("deploy failed on "+server.getName(), e);
 				if (listener != null)
-					listener.markFailed(server);
+					listener.markFailed(server, e);
 				else if (e instanceof ServiceException)
 					throw (ServiceException)e;
 				else 

@@ -104,7 +104,11 @@ public class ZCalendar {
 
         // set to TRUE in series update to tell attendee to discard all exceptions while applying new series
         // This is a ZCO special.
-        X_ZIMBRA_DISCARD_EXCEPTIONS;
+        X_ZIMBRA_DISCARD_EXCEPTIONS,
+
+        // tracks important data that changed in a modify operation
+        // comma-separated list of "time", "location", etc.  (See InviteChanges class for more info.)
+        X_ZIMBRA_CHANGES;
 
         public static ICalTok lookup(String str) 
         {
@@ -779,7 +783,7 @@ public class ZCalendar {
         public int getNumCals();
     }
 
-    private static class DefaultContentHandler implements ZICalendarParseHandler {
+    public static class DefaultContentHandler implements ZICalendarParseHandler {
         List<ZVCalendar> mCals = new ArrayList<ZVCalendar>(1);
         ZVCalendar mCurCal = null;
         List<ZComponent> mComponents = new ArrayList<ZComponent>();
@@ -830,7 +834,7 @@ public class ZCalendar {
 
         public void propertyValue(String value) throws ParserException {
             ICalTok token = mCurProperty.getToken();
-            if (ICalTok.CATEGORIES.equals(token) || ICalTok.RESOURCES.equals(token) || ICalTok.FREEBUSY.equals(token))
+            if (ICalTok.CATEGORIES.equals(token) || ICalTok.RESOURCES.equals(token))
                 mCurProperty.setValueList(parseCommaSepText(value));
             else
                 mCurProperty.setValue(unescape(value));

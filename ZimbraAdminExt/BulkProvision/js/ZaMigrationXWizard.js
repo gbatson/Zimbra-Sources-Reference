@@ -137,7 +137,11 @@ ZaMigrationXWizard.prototype.previewCallback = function(params,resp) {
 ZaMigrationXWizard.prototype.popup =
 function (loc) {
 	ZaXWizardDialog.prototype.popup.call(this, loc);
-    this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(false);
+    if(this.prevCallback) {
+    	this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(true);
+    } else {
+    	this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(false);	
+    }
     this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(false);
 }
 
@@ -185,7 +189,7 @@ function() {
 			return;
 		}		
 		/**
-		 * exch mig wizard requires <domaion> in <ZimbraServer>
+		 * exch mig wizard requires <domain> in <ZimbraServer>
 		 */
 		if(!this._containedObject[ZaBulkProvision.A2_TargetDomainName]) {
 			ZaApp.getInstance().getCurrentController().popupErrorDialog(com_zimbra_bulkprovision.MUST_SELECT_TARGET_DOMAIN);
@@ -228,15 +232,7 @@ function() {
 			return;
 		}		
 		
-		
-		/**
-		 * Check that passwords match
-		 */
-		if(this._containedObject[ZaBulkProvision.A2_GalLdapBindPassword] != this._containedObject[ZaBulkProvision.A2_GalLdapConfirmBindPassword]) {
-			ZaApp.getInstance().getCurrentController().popupErrorDialog(com_zimbra_bulkprovision.ERROR_PASSWORDS_DONT_MATCH);
-			return;
-		}		
-		
+				
 		/**
 		 * Check that LDAP filter is not empty
 		 */
@@ -282,7 +278,9 @@ function() {
 	
 	if (cStep == ZaMigrationXWizard.STEP_PROV_OPTIONS) {
 		this._button[DwtWizardDialog.NEXT_BUTTON].setEnabled(true);
-		this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(false);			
+		if(!this.prevCallback) {
+			this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(false);
+		}
 		prevStep = ZaMigrationXWizard.STEP_INTRODUCTION ;
     } else if (cStep == ZaMigrationXWizard.STEP_LDAP_INFO) {
 		prevStep = ZaMigrationXWizard.STEP_EXCHANGE_INFO;
@@ -296,6 +294,9 @@ function() {
     } else if(cStep == ZaMigrationXWizard.STEP_REVIEW) {
 		prevStep = ZaMigrationXWizard.STEP_LDAP_INFO;
     	this._button[DwtWizardDialog.NEXT_BUTTON].setEnabled(true);
+    } else if(this.prevCallback && cStep == ZaMigrationXWizard.STEP_INTRODUCTION) {
+    	this.prevCallback.run(this._containedObject);
+    	return;
     }
 	this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(false);
 	this._button[DwtDialog.CANCEL_BUTTON].setEnabled(true);
@@ -476,9 +477,6 @@ ZaMigrationXWizard.myXFormModifier = function(xFormObject,entry) {
 				{ref:ZaBulkProvision.A2_GalLdapBindPassword, type:_SECRET_, label:ZaMsg.Domain_GalLdapBindPassword, labelLocation:_LEFT_, 
 					enableDisableChecks:[],visibilityChecks:[]				
 				},
-				{ref:ZaBulkProvision.A2_GalLdapConfirmBindPassword, type:_SECRET_, label:ZaMsg.Domain_GalLdapBindPasswordConfirm, labelLocation:_LEFT_, 
-					enableDisableChecks:[],visibilityChecks:[]				
-				},				
 				{ref:ZaBulkProvision.A2_GalLdapFilter, type:_TEXTAREA_, width:380, height:40, 
 					label:ZaMsg.Domain_GalLdapFilter, labelLocation:_LEFT_, 
 					enableDisableChecks:[],visibilityChecks:[]
@@ -575,7 +573,7 @@ ZaMigrationXWizard.myXFormModifier = function(xFormObject,entry) {
 	
 
 	
-    var contentW = 630 ;
+    var contentW = 630;
     xFormObject.items = [
 			{type:_OUTPUT_, colSpan:2, align:_CENTER_, valign:_TOP_, ref:ZaModel.currentStep,
                 choices:this.stepChoices, valueChangeEventSources:[ZaModel.currentStep]},

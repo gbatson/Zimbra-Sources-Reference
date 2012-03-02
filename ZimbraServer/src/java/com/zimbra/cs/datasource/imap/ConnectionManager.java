@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,12 +21,14 @@ import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.DataSource.ConnectionType;
-import com.zimbra.cs.datasource.LogOutputStream;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.datasource.MessageContent;
+import com.zimbra.cs.datasource.SyncUtil;
 import com.zimbra.cs.mailclient.CommandFailedException;
 import com.zimbra.cs.mailclient.MailConfig;
 import com.zimbra.cs.mailclient.MailConfig.Security;
 import com.zimbra.cs.mailclient.auth.Authenticator;
+import com.zimbra.cs.mailclient.auth.AuthenticatorFactory;
 import com.zimbra.cs.mailclient.imap.CAtom;
 import com.zimbra.cs.mailclient.imap.DataHandler;
 import com.zimbra.cs.mailclient.imap.IDInfo;
@@ -40,7 +42,6 @@ import com.zimbra.cs.util.Zimbra;
 
 import javax.security.auth.login.LoginException;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -57,11 +58,11 @@ final class ConnectionManager {
     private static final int IDLE_READ_TIMEOUT = 30 * 60; // 30 minutes
 
     private static final Log LOG = ZimbraLog.datasource;
-    
+
     public static ConnectionManager getInstance() {
         return INSTANCE;
     }
-    
+
     private ConnectionManager() {}
 
     /**
@@ -83,7 +84,6 @@ final class ConnectionManager {
             ic = newConnection(ds, auth);
         }
         ic.getImapConfig().setMaxLiteralMemSize(ds.getMaxTraceSize());
-        ic.setTraceEnabled(ds.isDebugTraceEnabled());
         return ic;
     }
 
@@ -103,6 +103,9 @@ final class ConnectionManager {
         LOG.debug("Releasing connection: " + ic);
         if (isReuseConnections(ds) && suspendConnection(ds, ic)) {
             if (connections.put(ds.getId(), ic) != null) {
+                //TODO: dubious assertion; if two threads open connections then this gets thrown when final one releases
+                //(e.g. when DataSourceManager.test() and a sync occur at the same time)
+                //maybe need a 'real' pool...
                 throw new AssertionError();
             }
         } else {
@@ -133,18 +136,22 @@ final class ConnectionManager {
     private boolean isReuseConnections(DataSource ds) {
         return ds.isOffline() && REUSE_CONNECTIONS;
     }
-    
+
     private static ImapConnection newConnection(DataSource ds, Authenticator auth)
         throws ServiceException {
-        ImapConnection ic = new ImapConnection(newImapConfig(ds));
+        ImapConfig config = newImapConfig(ds);
+        ImapConnection ic = new ImapConnection(config);
         ic.setDataHandler(new FetchDataHandler());
         try {
             ic.connect();
             try {
-                if (auth != null) {
-                    ic.authenticate(auth);
-                } else {
+                if(config.getMechanism() != null) {
+                    auth = AuthenticatorFactory.getDefault().newAuthenticator(config, ds.getDecryptedPassword());
+                }
+                if (auth == null) {
                     ic.login(ds.getDecryptedPassword());
+                } else {
+                    ic.authenticate(auth);
                 }
             } catch (CommandFailedException e) {
                 throw new LoginException(e.getError());
@@ -172,7 +179,9 @@ final class ConnectionManager {
                 IDInfo id = ic.id();
                 if ("Zimbra".equalsIgnoreCase(id.getName())) {
                     String user = id.get("user");
-                    return user != null && user.equals(ds.getAccount().getName());
+                    String server = id.get("server");
+                    return user != null && user.equals(ds.getAccount().getName()) &&
+                            server != null && server.equals(Provisioning.getInstance().getLocalServer().getId());
                 }
             } catch (CommandFailedException e) {
                 // Skip check if ID command fails
@@ -184,6 +193,7 @@ final class ConnectionManager {
     // Handler for fetched message data which uses ParsedMessage to stream
     // the message data to disk if necessary.
     private static class FetchDataHandler implements DataHandler {
+        @Override
         public Object handleData(ImapData data) throws Exception {
             try {
                 return MessageContent.read(data.getInputStream(), data.getSize());
@@ -193,22 +203,24 @@ final class ConnectionManager {
             }
         }
     }
-    
-    private static ImapConfig newImapConfig(DataSource ds) {
+
+    public static ImapConfig newImapConfig(DataSource ds) {
         ImapConfig config = new ImapConfig();
         config.setHost(ds.getHost());
         config.setPort(ds.getPort());
         config.setAuthenticationId(ds.getUsername());
         config.setSecurity(getSecurity(ds));
+        config.setMechanism(ds.getAuthMechanism());
+        config.setAuthorizationId(ds.getAuthId());
         // bug 37982: Disable use of LITERAL+ due to problems with Yahoo IMAP.
         // Avoiding LITERAL+ also gives servers a chance to reject uploaded
         // messages that are too big, since the server must send a continuation
         // response before the literal data can be sent.
         config.setUseLiteralPlus(false);
         // Enable support for trace output
-        config.setTrace(true);
-        config.setTraceStream(ds.isOffline() ?
-            new PrintStream(new LogOutputStream(ZimbraLog.imap), true) : System.out);
+        if (ds.isDebugTraceEnabled()) {
+            config.setLogger(SyncUtil.getTraceLogger(ZimbraLog.imap_client, ds.getId()));
+        }
         config.setSocketFactory(SocketFactories.defaultSocketFactory());
         config.setSSLSocketFactory(SocketFactories.defaultSSLSocketFactory());
         config.setConnectTimeout(ds.getConnectTimeout(LC.javamail_imap_timeout.intValue()));
@@ -250,26 +262,29 @@ final class ConnectionManager {
             return false;
         }
         try {
-            ic.setReadTimeout(IDLE_READ_TIMEOUT);
             if (ic.hasIdle()) {
+                ic.setReadTimeout(IDLE_READ_TIMEOUT);
                 if (!ic.isSelected("INBOX")) {
                     ic.select("INBOX");
                 }
                 ic.idle(idleHandler(ds));
-            } else if (ic.hasUnselect()) {
-                ic.unselect();
-            } else {
-                ic.close_mailbox();
+            } else if (ic.isSelected()) {
+                if (ic.hasUnselect()) {
+                    ic.unselect();
+                } else {
+                    ic.close_mailbox();
+                }
             }
             LOG.debug("Suspended connection: " + ic);
         } catch (IOException e) {
             LOG.warn("Error suspending connection", e);
         }
-        return true;     
+        return true;
     }
 
     private static ResponseHandler idleHandler(final DataSource ds) {
         return new ResponseHandler() {
+            @Override
             public void handleResponse(ImapResponse res) throws Exception {
                 if (res.getCCode() == CAtom.EXISTS) {
                     SyncState ss = SyncStateManager.getInstance().getOrCreateSyncState(ds);
@@ -299,5 +314,5 @@ final class ConnectionManager {
         }
         return true;
     }
-    
+
 }

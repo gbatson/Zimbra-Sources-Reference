@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -26,6 +26,7 @@ import static com.zimbra.cs.account.Provisioning.*;
 
 public class Pop3Config extends ServerConfig {
     private static final String PROTOCOL = "POP3";
+    private static final int MAX_IDLE_SECONDS = 600;
 
     public Pop3Config(boolean ssl) {
         super(PROTOCOL, ssl);
@@ -62,7 +63,7 @@ public class Pop3Config extends ServerConfig {
 
     @Override
     public int getMaxIdleSeconds() {
-        return LC.pop3_max_idle_time.intValue();
+        return MAX_IDLE_SECONDS;
     }
 
     @Override
@@ -75,6 +76,11 @@ public class Pop3Config extends ServerConfig {
         return ZimbraLog.pop;
     }
 
+    @Override
+    public String getConnectionRejected() {
+        return "-ERR " + getDescription() + " closing connection; service busy";
+    }
+
     public boolean isCleartextLoginsEnabled() {
         return getBooleanAttr(A_zimbraPop3CleartextLoginEnabled, false);
     }
@@ -82,6 +88,4 @@ public class Pop3Config extends ServerConfig {
     public boolean isSaslGssapiEnabled() {
         return getBooleanAttr(A_zimbraPop3SaslGssapiEnabled, false);
     }
-    
-    
 }

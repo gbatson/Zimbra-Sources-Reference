@@ -1,5 +1,6 @@
 <%@ page buffer="8kb" session="false" autoFlush="true" pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
-<%@ page import="java.util.*,javax.naming.*,com.zimbra.cs.zclient.ZAuthResult,com.zimbra.cs.taglib.bean.BeanUtils" %>
+<%@ page import="java.util.*,javax.naming.*,com.zimbra.cs.zclient.ZAuthResult" %>
+<%@ page import="com.zimbra.cs.taglib.bean.BeanUtils" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <%@ taglib prefix="app" uri="com.zimbra.htmlclient" %>
 <%@ taglib prefix="fmt" uri="com.zimbra.i18n" %>
@@ -51,6 +52,8 @@
 	// Set standard HTTP/1.0 no-cache header.
 	response.setHeader("Pragma", "no-cache");
 %>
+
+<zm:getUserAgent var="ua" session="false"/>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html>
 <head>
@@ -58,7 +61,7 @@
  launchZCS.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -85,7 +88,9 @@
 		request.setAttribute("packages", "dev");
 	}
     boolean isScriptErrorOn = getParameter(request, "scripterrors", "0").equals("1");
+    boolean isNotifyDebugOn = getParameter(request, "notifydebug", "0").equals("1");
 	String debug = getParameter(request, "debug", getAttribute(request, "debug", null));
+	String debugLogTarget = getParameter(request, "log", getAttribute(request, "log", null));
 	String extraPackages = getParameter(request, "packages", getAttribute(request, "packages", null));
 	String startApp = getParameter(request, "app", "");
 	String noSplashScreen = getParameter(request, "nss", null);
@@ -108,6 +113,7 @@
 	Locale locale = request.getLocale();
     String localeId = getAttribute(request, "localeId", null);
     if (localeId != null) {
+        localeId = BeanUtils.cook(localeId);
         int index = localeId.indexOf("_");
         if (index == -1) {
 			locale = new Locale(localeId);
@@ -126,7 +132,8 @@
 	pageContext.setAttribute("app", startApp);
 	pageContext.setAttribute("locale", locale);
 	pageContext.setAttribute("isDevMode", isDev);
-    pageContext.setAttribute("isScriptErrorOn", isScriptErrorOn);
+	pageContext.setAttribute("isScriptErrorOn", isScriptErrorOn);
+    pageContext.setAttribute("isNotifyDebugOn", isNotifyDebugOn);
 	pageContext.setAttribute("isOfflineMode", offlineMode != null && offlineMode.equals("true"));
 	pageContext.setAttribute("isProdMode", !prodMode.equals(""));
 	pageContext.setAttribute("isDebug", isSkinDebugMode || isDevMode);
@@ -155,31 +162,53 @@
 	appContextPath = "${zm:jsEncode(contextPath)}";
 	appCurrentSkin = "${zm:jsEncode(skin)}";
 	appExtension   = "${zm:jsEncode(ext)}";
+	appRequestLocaleId = "${locale}";
 	window.appDevMode     = ${isDevMode};
     window.isScriptErrorOn   = ${isScriptErrorOn};
+    window.isNotifyDebugOn   = ${isNotifyDebugOn};
 </script>
 <noscript>
 <meta http-equiv="Refresh" content="0;url=public/noscript.jsp" >
 </noscript>
 </head>
 <body>
+<c:if test="${ua.isChrome or ua.isSafari}">
+    <%
+        /*preloading splash screen images to avoid latency*/
+        String splashLocation = "_base";
+        //skins that are not related with base login banner
+        String[] spSkin={"carbon","lake","lemongrass","pebble","tree","twilight","waves"};
+
+        for(int i=0;i<spSkin.length;i++){
+            if(skin.equals(spSkin[i])){
+                splashLocation=skin;
+            }
+        }
+        /*preloading splash screen images to avoid latency ends*/
+    %>
+    <%--preloading the splash screen images to avoid latency --%>
+    <div style="display:none;">
+      <img src="<%=contextPath%>/skins/<%=splashLocation%>/logos/LoginBanner.png" alt=""/>
+      <%if(splashLocation.equals("carbon")){%>
+        <img src="<%=contextPath%>/skins/<%=splashLocation%>/img/vmwarePeel.png" alt=""/>
+        <img src="<%=contextPath%>/skins/<%=splashLocation%>/logos/AltBanner.png" alt=""/>
+      <%}%>
+      <%if(splashLocation.equals("lemongrass")){%>
+        <img src="<%=contextPath%>/skins/<%=splashLocation%>/img/bg_lemongrass.png" alt=""/>
+      <%}%>
+      <%if(splashLocation.equals("twilight")||splashLocation.equals("waves")){%><img src="<%=contextPath%>/skins/<%=splashLocation%>/img/skins/login_bg.png" alt=""/><%}%>
+      <%if(splashLocation.equals("steel")){%><img src="<%=contextPath%>/skins/<%=splashLocation%>/img/SkinOuter.repeat.gif" alt=""/><%}%>
+      <%if(splashLocation.equals("waves")){%>
+        <img src="<%=contextPath%>/skins/<%=splashLocation%>/img/login_bg.png" alt=""/>
+        <img src="<%=contextPath%>/skins/<%=splashLocation%>/img/login_page_bg.png" alt=""/>
+      <%}%>
+    </div>
+    <%--preloading the splash screen images to avoid latency ends --%>
+</c:if>
 <jsp:include page="Resources.jsp">
 	<jsp:param name="res" value="I18nMsg,AjxMsg,ZMsg,ZmMsg,AjxKeys,ZmKeys,ZdMsg,AjxTemplateMsg" />
 	<jsp:param name="skin" value="${skin}" />
 </jsp:include>
-
-<!-- image overlays and masks -->
-<script>
-<jsp:include page="/img/images.css.js" />
-<jsp:include page="/skins/${skin}/img/images.css.js" />
-document.write("<DIV style='display:none'>");
-for (var id in AjxImgData) {
-	var data = AjxImgData[id];
-	if (data.f) data.f = data.f.replace(/@AppContextPath@/,appContextPath);
-	document.write("<IMG id='",id,"' src='",data.d||data.f,"'>");
-}
-document.write("</DIV>");
-</script>
 
 <!--
   --
@@ -228,6 +257,19 @@ document.write("</DIV>");
 	</c:if>
 </script>
 <script>
+<jsp:include page="/img/images.css.js" />
+<jsp:include page="/skins/${skin}/img/images.css.js" />
+document.write("<DIV style='display:none'>");
+for (var id in AjxImgData) {
+	var data = AjxImgData[id];
+	if (data.f) data.f = data.f.replace(/@AppContextPath@/,appContextPath);
+	if (data.ief) data.ief = data.ief.replace(/@AppContextPath@/,appContextPath);
+	var f = AjxEnv.isIE ? data.ief : data.f;
+	document.write("<IMG id='",id,"' src='",data.d||f,"?v=${vers}'>");
+}
+document.write("</DIV>");
+</script>
+<script>
 <jsp:include page="/js/ajax/util/AjxTimezoneData.js" />
 </script>
 <%
@@ -236,7 +278,7 @@ document.write("</DIV>");
     	if (extraPackages.equals("dev")) {
     		extraPackages = "Leaks,Startup2,CalendarCore,Calendar,CalendarAppt,ContactsCore,Contacts,IMCore,IM,MailCore,Mail,Mixed,NotebookCore,Notebook,BriefcaseCore,Briefcase,PreferencesCore,Preferences,TasksCore,Tasks,Voicemail,Assistant,Browse,Extras,Share,Zimlet,ZimletApp,Portal,Alert,ImportExport,BrowserPlus";
     	}
-    	allPackages += "," + BeanUtils.cook(extraPackages);
+    	allPackages += "," + extraPackages;
     }
 
     String pprefix = isDevMode ? "public/jsp" : "js";
@@ -307,15 +349,13 @@ for (var pkg in window.AjxTemplateMsg) {
 
 		var prodMode = ${isProdMode};
 		var debugLevel = "<%= (debug != null) ? debug : "" %>";
-		if (!prodMode || debugLevel) {
-			AjxDispatcher.require("Debug");
-			DBG = new AjxDebug(AjxDebug.NONE, null, false);
-			// figure out the debug level
-			if (debugLevel == 't') {
-				DBG.showTiming(true);
-			} else {
-				DBG.setDebugLevel(debugLevel);
-			}
+		var debugLogTarget = "<%= (debugLogTarget != null) ? debugLogTarget : "" %>";
+		window.DBG = new AjxDebug({level:AjxDebug.NONE, target:debugLogTarget});
+		// figure out the debug level
+		if (debugLevel == 't') {
+			DBG.showTiming(true);
+		} else if (debugLevel) {
+			DBG.setDebugLevel(debugLevel);
 		}
 
 		AjxHistoryMgr.BLANK_FILE = "${contextPath}/public/blankHistory.html";
@@ -331,8 +371,9 @@ for (var pkg in window.AjxTemplateMsg) {
         <zm:calSearchJSON var="calSearchJSON" authtoken="${requestScope.authResult.authToken}" timezone="${requestScope.tz}" itemsperpage="500" types="appointment"/>
         window.inlineCalSearchResponse = ${calSearchJSON};
         </c:if>
+        <%-- Support for tinymce suspended --%>
         <c:if test="${editor eq 'tinymce'}">
-            window.isTinyMCE = true;
+            //window.isTinyMCE = true;
         </c:if>
 		<c:if test="${isLeakDetectorOn}">
 		AjxLeakDetector.begin();

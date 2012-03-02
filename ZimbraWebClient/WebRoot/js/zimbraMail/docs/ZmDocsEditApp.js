@@ -48,8 +48,6 @@ ZmDocsEditApp.launch = function(){
 
     appCtxt.rememberMe = false;
 
-    window.skin = null;
-
     // Create and initialize settings
     var settings = new ZmSettings();
     appCtxt.setSettings(settings);
@@ -93,34 +91,19 @@ ZmDocsEditApp.setFile = function(fileId, fileName, folderId){
    };
 };
 
-ZmDocsEditApp._createDBG = function(devMode){
-
-    var isDevMode = /^(1|true|on|yes)$/i.test(devMode);
-
-    if(isDevMode){
-        AjxDispatcher.require("Debug");
-        window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
-    }else {
-        window.AjxDebug = function() {};
-        window.AjxDebug.prototype.toString		= function() { return "dummy DBG class"};
-        window.AjxDebug.prototype.display		= function() {};
-        window.AjxDebug.prototype.dumpObj		= function() {};
-        window.AjxDebug.prototype.getDebugLevel	= function() {};
-        window.AjxDebug.prototype.isDisabled	= function() {};
-        window.AjxDebug.prototype.println		= function() {};
-        window.AjxDebug.prototype.printRaw		= function() {};
-        window.AjxDebug.prototype.printXML		= function() {};
-        window.AjxDebug.prototype.setDebugLevel	= function() {};
-        window.AjxDebug.prototype.setTitle		= function() {};
-        window.AjxDebug.prototype.showTiming	= function() {};
-        window.AjxDebug.prototype._getTimeStamp	= function() {};
-        window.AjxDebug.prototype.timePt		= function() {};
-        window.DBG = new window.AjxDebug();
+ZmDocsEditApp._beforeUnload =
+function(){
+    var appCtrl = appCtxt.getAppController();
+    var msg = appCtrl.checkForChanges();
+    if(msg) {
+        return msg;
     }
+    return appCtrl.exit();
 };
 
 window.onload = function() {
     setTimeout(function() {
             ZmDocsEditApp.launch();
+            window.onbeforeunload = ZmDocsEditApp._beforeUnload;
     }, 200);
 };

@@ -16,6 +16,7 @@ package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
 
+import javax.mail.Address;
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
@@ -70,9 +71,11 @@ public class OfflineMailSender extends MailSender {
                 getIdentity().getAttr(Provisioning.A_zimbraPrefIdentityId);
             int draftId = mbox.saveDraft(octxt, pm, Mailbox.ID_AUTO_INCREMENT,
                 (getOriginalMessageId() != null ? getOriginalMessageId().toString(acct) : null), getReplyType(),
-                identityId, acct.getId()).getId();
+                identityId, acct.getId(), 0).getId();
             mbox.move(octxt, draftId, MailItem.TYPE_MESSAGE, DesktopMailbox.ID_FOLDER_OUTBOX);
-
+            if (mbox instanceof SyncMailbox && getSavedDraftId() != null) { 
+                ((SyncMailbox) mbox).trackTransientItem(getSavedDraftId().getId());
+            }
             // we can now purge the uploaded attachments
             if (getUploads() != null)
                 FileUploadServlet.deleteUploads(getUploads());
@@ -96,6 +99,13 @@ public class OfflineMailSender extends MailSender {
                     }
                 }
             }
+            
+            // update contact rankings
+            Address[] rcpts = getRecipients(mm);
+            if (rcpts != null && rcpts.length > 0) {
+                ContactRankings.increment(acct.getId(), rcpts);
+            }
+            
             return new ItemId(mbox, draftId);
         } catch (MessagingException me) {
             OfflineLog.offline.warn("exception occurred during SendMsg", me);

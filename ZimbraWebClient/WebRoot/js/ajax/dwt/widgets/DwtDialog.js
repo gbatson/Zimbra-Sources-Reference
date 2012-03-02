@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -106,7 +106,9 @@ DwtDialog = function(params) {
 	// get button IDs
 	this._buttonElementId = {};
 	for (var i = 0; i < this._buttonList.length; i++) {
-		this._buttonElementId[this._buttonList[i]] = Dwt.getNextId();
+		//var buttonId = this._buttonList[i];
+		//this._buttonElementId[buttonId] = ZaId.getDialogButtonId(this._buttonDesc[buttonId].label,Dwt.getNextId());
+		this._buttonElementId[this._buttonList[i]] = Dwt.getNextId(); 
 	}
 
 	DwtBaseDialog.call(this, params);
@@ -115,7 +117,7 @@ DwtDialog = function(params) {
 	this._button = {};
 	for (var i = 0; i < this._buttonList.length; i++) {
 		var buttonId = this._buttonList[i];
-		var b = this._button[buttonId] = new DwtButton({parent:this});
+		var b = this._button[buttonId] = new DwtButton({parent:this,id:this._htmlElId+"_button"+buttonId});
 		b.setText(this._buttonDesc[buttonId].label);
 		b.buttonId = buttonId;
 		b.addSelectionListener(new AjxListener(this, this._buttonListener));
@@ -132,7 +134,7 @@ DwtDialog = function(params) {
 	}
 };
 
-DwtDialog.PARAMS = ["parent", "className", "title", "standardButtons", "extraButtons", "zIndex", "mode", "loc"];
+DwtDialog.PARAMS = ["parent", "className", "title", "standardButtons", "extraButtons", "zIndex", "mode", "loc", "id"];
 
 DwtDialog.prototype = new DwtBaseDialog;
 DwtDialog.prototype.constructor = DwtDialog;

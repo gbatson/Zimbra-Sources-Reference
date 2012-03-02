@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,10 +21,10 @@
  * Creates an upload dialog.
  * @class
  * This class represents an upload dialog.
- *
+ * 
  * @param	{DwtComposite}	shell		the parent
  * @param	{String}	className		the class name
- *
+ *  
  * @extends		DwtDialog
  */
 ZmUploadDialog = function(shell, className) {
@@ -51,9 +51,6 @@ ZmUploadDialog.UPLOAD_TITLE_FIELD_NAME = "uploadFileTitle";
 
 // Data
 
-ZmUploadDialog.prototype._formId;
-ZmUploadDialog.prototype._tableId;
-
 ZmUploadDialog.prototype._selector;
 
 ZmUploadDialog.prototype._uploadFolder;
@@ -61,22 +58,20 @@ ZmUploadDialog.prototype._uploadCallback;
 
 ZmUploadDialog.prototype._extensions;
 
-ZmUploadDialog.supportsHTML5 = ( window.FileReader/*Firefox*/ || AjxEnv.isChrome || AjxEnv.isSafari4up );
-
 // Public methods
 /**
  * Enables the link title option.
- *
+ * 
  * @param	{Boolean}	enabled		if <code>true</code>, to enbled the link title option
  */
 ZmUploadDialog.prototype.enableLinkTitleOption =
 function(enabled) {
-    this._showLinkTitleText = enabled;
+    this._showLinkTitleText = enabled;    
 };
 
 /**
  * Sets allowed extensions.
- *
+ * 
  * @param	{Array}		array		an array of extensions
  */
 ZmUploadDialog.prototype.setAllowedExtensions =
@@ -89,17 +84,29 @@ function(array) {
 	}
 };
 
+ZmUploadDialog.prototype.getNotes =
+function(){
+    return (this._notes ? this._notes.value : "");
+};
+
+ZmUploadDialog.prototype.setNotes =
+function(notes){
+    if(this._notes){
+        this._notes.value = (notes || "");
+    }
+};
+
 ZmUploadDialog.prototype.popup =
-function(folder, callback, title, loc, oneFileOnly, noResolveAction) {
+function(folder, callback, title, loc, oneFileOnly, noResolveAction, showNotes) {
 	this._uploadFolder = folder;
 	this._uploadCallback = callback;
 
-    this._supportsHTML5 = ZmUploadDialog.supportsHTML5 && !this._showLinkTitleText && (appCtxt.get(ZmSetting.DOCUMENT_SIZE_LIMIT) != null);
+    this._supportsHTML5 = AjxEnv.supportsHTML5File && !this._showLinkTitleText && (appCtxt.get(ZmSetting.DOCUMENT_SIZE_LIMIT) != null);
 
 	this.setTitle(title || ZmMsg.uploadDocs);
 
 	// reset input fields
-	var table = document.getElementById(this._tableId);
+	var table = this._tableEl;
 	var rows = table.rows;
 	while (rows.length) {
 		table.deleteRow(rows.length - 1);
@@ -121,7 +128,10 @@ function(folder, callback, title, loc, oneFileOnly, noResolveAction) {
 		Dwt.setVisible(actionRowEl, !noResolveAction);
 	}
 
-    this._msgInfo.innerHTML = "";
+    var notesEl = document.getElementById(id+"_notesTD");
+	if (notesEl) {
+		Dwt.setVisible(notesEl, showNotes);
+	}
 
 	// show
 	DwtDialog.prototype.popup.call(this, loc);
@@ -136,7 +146,16 @@ function() {
 	this._uploadFolder = null;
 	this._uploadCallback = null;
 	/***/
-	this._extensions = null;
+
+    this._extensions = null;
+
+    //Cleanup
+    this._enableStatus = false;
+
+    this._notes.removeAttribute("disabled");
+    this.setNotes("");
+    this._msgInfo.innerHTML = "";
+    
 	DwtDialog.prototype.popdown.call(this);
 };
 
@@ -166,7 +185,7 @@ function(files,uploadForm,folder) {
 
 // Protected methods
 ZmUploadDialog.prototype._upload = function(){
-	var form = document.getElementById(this._formId);
+	var form = this._uploadForm;
 	var files = [];
     this._linkText = {};
 	var elements = form.elements;
@@ -181,11 +200,12 @@ ZmUploadDialog.prototype._upload = function(){
 			return;
 		}
         this._msgInfo.innerHTML = "";
+        var notes = this.getNotes();
         if(this._supportsHTML5){
             if(this._validateSize()){
-                var f = element.files;
+                var f = element.files; 
                 for(var j=0; j<f.length; j++){
-                    files.push({name:f[j].name, fullname: f[j].name});
+                    files.push({name:f[j].name, fullname: f[j].name, notes: notes});
                 }
             }else{
                 this._msgInfo.innerHTML = AjxMessageFormat.format(ZmMsg.attachmentSizeError, AjxUtil.formatSize(appCtxt.get(ZmSetting.DOCUMENT_SIZE_LIMIT)));;
@@ -194,7 +214,8 @@ ZmUploadDialog.prototype._upload = function(){
         }else{
             var file = {
                 fullname: element.value,
-                name: element.value.replace(/^.*[\\\/:]/, "")
+                name: element.value.replace(/^.*[\\\/:]/, ""),
+                notes: notes
             };
             files.push(file);
         }
@@ -211,17 +232,15 @@ ZmUploadDialog.prototype._upload = function(){
 	if (files.length == 0) {
 		return;
 	}
-
+    
 	this.setButtonEnabled(DwtDialog.OK_BUTTON, false);
 	this.setButtonEnabled(DwtDialog.CANCEL_BUTTON, false);
 
-	var callback = new AjxCallback(this, this._uploadSaveDocs, [files]);
-	var uploadForm = document.getElementById(this._formId);
-
+	var callback = new AjxCallback(this, this._uploadSaveDocs, [files]);	
 	var uploadMgr = appCtxt.getUploadManager();
 	window._uploadManager = uploadMgr;
 	try {
-		uploadMgr.execute(callback, uploadForm);
+		uploadMgr.execute(callback, this._uploadForm);
 	} catch (ex) {
 		if (ex.msg) {
 			this._popupErrorDialog(ex.msg);
@@ -258,7 +277,7 @@ function(){
             }
         }
     }
-	return true;
+	return true;        
 };
 
 ZmUploadDialog.prototype._popupErrorDialog = function(message) {
@@ -295,34 +314,46 @@ ZmUploadDialog.prototype._uploadSaveDocs = function(files, status, guids) {
 ZmUploadDialog.prototype._uploadSaveDocs2 =
 function(files, status, guids) {
 	// create document wrappers
-	var soapDoc = AjxSoapDoc.create("BatchRequest", "urn:zimbra", null);
-	soapDoc.setMethodAttribute("onerror", "continue");
-	var foundOne = false;
+    var request = [];
+    var foundOne = false;
 	for (var i = 0; i < files.length; i++) {
-		var file = files[i];
+         var file = files[i];
 		if (file.done) { continue; }
 		foundOne = true;
 
-		var saveDocNode = soapDoc.set("SaveDocumentRequest", null, null, "urn:zimbraMail");
-		saveDocNode.setAttribute("requestId", i);
+        var  SaveDocumentRequest = {
+            _jsns: "urn:zimbraMail",
+            requestId: i,
+            doc: {}
+        }
 
-		var docNode = soapDoc.set("doc", null, saveDocNode);
-		if (file.id) {
-			docNode.setAttribute("id", file.id);
-			docNode.setAttribute("ver", file.version);
-		}
-		else {
-			docNode.setAttribute("l", this._uploadFolder.id);
-		}
+        var doc = SaveDocumentRequest.doc;
+        if(file.id){
+            doc.id = file.id;
+            doc.ver = file.version;
+        }else{
+            doc.l = this._uploadFolder.id;
+        }
+        if(file.notes){
+            doc.desc = file.notes;
+        }
+        doc.upload = {
+            id: file.guid
+        }
+        request.push(SaveDocumentRequest);
+    }
 
-		var uploadNode = soapDoc.set("upload", null, docNode);
-		uploadNode.setAttribute("id", file.guid);
-	}
-
-	if (foundOne) {
+    if (foundOne) {
+        var json = {
+            BatchRequest: {
+                _jsns: "urn:zimbra",
+                onerror: "continue",
+                SaveDocumentRequest: ( (request.length == 1) ? request[0] : request )
+            }
+        };
 		var callback = new AjxCallback(this, this._uploadSaveDocsResponse, [ files, status, guids ]);
 		var params = {
-			soapDoc:soapDoc,
+			jsonObj: json,
 			asyncMode:true,
 			callback:callback
 		};
@@ -343,6 +374,7 @@ function(files, status, guids, response) {
 			files[saveDocResp.requestId].name = saveDocResp.doc[0].name;
             files[saveDocResp.requestId].id   = saveDocResp.doc[0].id;
             files[saveDocResp.requestId].ver   = saveDocResp.doc[0].ver;
+            files[saveDocResp.requestId].version   = saveDocResp.doc[0].ver;
 		}
 	}
 
@@ -389,22 +421,47 @@ function(files, status, guids, response) {
 
 	// resolve conflicts
 	var conflictCount = conflicts.length;
-	var action = this._selector.getValue();
+	var action = this._conflictAction || this._selector.getValue();
 	if (conflictCount > 0 && action == ZmUploadDialog.ACTION_ASK) {
-		var dialog = appCtxt.getUploadConflictDialog();
+        var dialog = appCtxt.getUploadConflictDialog();
 		dialog.popup(this._uploadFolder, conflicts,
                              new AjxCallback(this, this._uploadSaveDocs2, [ files, status, guids ]));
-	}
+    }
 
 	// keep mine
 	else if (conflictCount > 0 && action == ZmUploadDialog.ACTION_KEEP_MINE) {
-		this._uploadSaveDocs2(files, status, guids);
+        if(this._conflictAction){
+            this._shieldSaveDocs(files, status, guids);
+        }else{
+		    this._uploadSaveDocs2(files, status, guids);
+        }
 	}
-
 	// perform callback
 	else if (this._uploadCallback) {
 		this._finishUpload(files, status, guids);
-	}
+	}else{
+        this._conflictAction = null;
+    }
+};
+
+ZmUploadDialog.prototype._shieldSaveDocs =
+function(files, status, guids){
+    var dlg = appCtxt.getYesNoMsgDialog();
+    dlg.reset();
+    dlg.setButtonListener(DwtDialog.YES_BUTTON, new AjxListener(this, this._shieldSaveDocsYesCallback, [dlg, files, status, guids]));
+    dlg.setMessage(ZmMsg.uploadConflictShield, DwtMessageDialog.WARNING_STYLE, ZmMsg.uploadConflict);
+    dlg.popup();
+};
+
+ZmUploadDialog.prototype._shieldSaveDocsYesCallback =
+function(dlg, files, status, guids){
+    this._uploadSaveDocs2(files, status, guids);
+    dlg.popdown();
+};
+
+ZmUploadDialog.prototype.setConflictAction =
+function(conflictAction){
+     this._conflictAction = conflictAction;
 };
 
 ZmUploadDialog.prototype._finishUpload = function(files, status, guids) {
@@ -412,11 +469,12 @@ ZmUploadDialog.prototype._finishUpload = function(files, status, guids) {
 	for (var i in files) {
         var name = files[i].name;
         if(this._linkText[name]) {
-            files[i].linkText = this._linkText[name];
+            files[i].linkText = this._linkText[name]; 
         }
 		filenames.push(name);
 	}
 	this._uploadCallback.run(this._uploadFolder, filenames, files);
+    this._conflictAction = null;
 };
 
 ZmUploadDialog.prototype._addFileInputRow = function(oneInputOnly) {
@@ -426,7 +484,7 @@ ZmUploadDialog.prototype._addFileInputRow = function(oneInputOnly) {
 	var addId = id + "_add";
     var sizeId = id + "_size";
 
-	var table = document.getElementById(this._tableId);
+	var table = this._tableEl;
 	var row = table.insertRow(-1);
 
     var cellLabel = row.insertCell(-1);
@@ -450,7 +508,7 @@ ZmUploadDialog.prototype._addFileInputRow = function(oneInputOnly) {
 
     if(oneInputOnly){
         cell.colSpan = 3;
-    }else{
+    }else{    
         var cell = row.insertCell(-1);
         cell.innerHTML = [
             "<span ",
@@ -489,7 +547,7 @@ ZmUploadDialog.prototype._addFileInputRow = function(oneInputOnly) {
 
         txtCell = txtRow.insertCell(-1);
 	    txtCell.innerHTML = [
-    		"<input id='",txtInputId,"' type='text' name='",ZmUploadDialog.UPLOAD_TITLE_FIELD_NAME,"' size=40>",
+    		"<input id='",txtInputId,"' type='text' name='",ZmUploadDialog.UPLOAD_TITLE_FIELD_NAME,"' size=40>"
     	].join("");
         txtCell.colSpan = 3;
     }
@@ -517,6 +575,7 @@ function(inputEl, sizeEl){
         else
             Dwt.delClass(sizeEl, "RedC");
     }
+    
 };
 
 ZmUploadDialog._removeHandler = function(event) {
@@ -536,7 +595,7 @@ ZmUploadDialog._removeHandler = function(event) {
            endRow = txtRow;
        }
     }
-
+    
 	if (row.previousSibling == null && endRow.nextSibling == null) {
 		var comp = DwtControl.findControl(span);
 		comp._addFileInputRow();
@@ -556,62 +615,34 @@ ZmUploadDialog._addHandler = function(event) {
 };
 
 ZmUploadDialog.prototype._createUploadHtml = function() {
-	var id = this._htmlElId;
-	this._formId = id+"_form";
-	this._tableId = id+"_table";
+	var id = this._htmlElId;    
+    var uri = appCtxt.get(ZmSetting.CSFE_UPLOAD_URI);
 
-	this._selector = new DwtSelect({parent:this});
+    var subs = {
+        id: id,
+        uri: uri 
+    };
+    this.setContent(AjxTemplate.expand("share.Dialogs#UploadDialog", subs));
+
+    //variables
+    this._uploadForm = document.getElementById((id+"_form"));
+    this._tableEl = document.getElementById((id + "_table"));
+    this._msgInfo = document.getElementById((id+"_msg"));
+    this._notes = document.getElementById((id+"_notes"));
+
+
+    //Conflict Selector
+    this._selector = new DwtSelect({parent:this});
 	this._selector.addOption(ZmMsg.uploadActionKeepMine, false, ZmUploadDialog.ACTION_KEEP_MINE);
 	this._selector.addOption(ZmMsg.uploadActionKeepTheirs, false, ZmUploadDialog.ACTION_KEEP_THEIRS);
 	this._selector.addOption(ZmMsg.uploadActionAsk, true, ZmUploadDialog.ACTION_ASK);
-
-	var label = document.createElement("DIV");
-	label.id = id+"_label";
-	label.style.marginBottom = "0.5em";
-	label.innerHTML = ZmMsg.uploadChoose;
-
-	var container = document.createElement("DIV");
-	/***
-	container.style.position = "relative";
-	container.style.height = "7em";
-	container.style.overflow = "auto";
-	/***/
-	container.style.marginLeft = "1em";
-	container.style.marginBottom = "0.5em";
-
-	var uri = appCtxt.get(ZmSetting.CSFE_UPLOAD_URI);
-	container.innerHTML = [
-		"<form id='",this._formId,"' method='POST' action='",uri,"' enctype='multipart/form-data'>",
-			"<table id='",this._tableId,"' cellspacing=4 cellpadding=3 border=0>",
-			"</table>",
-		"</form>"
-	].join("");
-
-	var table = document.createElement("TABLE");
-	table.border = 0;
-	table.cellPadding = 0;
-	table.cellSpacing = 4;
-
-	var row = table.insertRow(-1);
-	row.id = id+"_actionRow";
-	var cell = row.insertCell(-1);
-	cell.innerHTML = ZmMsg.uploadAction;
-
-	var cell = row.insertCell(-1);
-	cell.appendChild(this._selector.getHtmlElement());
-
-    var docSizeInfo = document.createElement("DIV");
-    var attSize = AjxUtil.formatSize(appCtxt.get(ZmSetting.DOCUMENT_SIZE_LIMIT) || 0, true)
-	docSizeInfo.innerHTML = AjxMessageFormat.format(ZmMsg.attachmentLimitMsg, attSize);
-
-    var msgInfo = this._msgInfo = document.createElement("DIV");
-    msgInfo.style.textAlign = "center";
-	msgInfo.innerHTML = "";
-
-	var element = this._getContentDiv();
-	element.appendChild(label);
-	element.appendChild(container);
-	element.appendChild(table);
-    element.appendChild(docSizeInfo);
-    element.appendChild(msgInfo);
+    this._selector.reparentHtmlElement((id+"_conflict"));
+    
+    //Info Section
+    var docSizeInfo = document.getElementById((id+"_info"));
+    if(docSizeInfo){
+        var attSize = AjxUtil.formatSize(appCtxt.get(ZmSetting.DOCUMENT_SIZE_LIMIT) || 0, true)
+        docSizeInfo.innerHTML = AjxMessageFormat.format(ZmMsg.attachmentLimitMsg, attSize);
+    }
+    	
 };

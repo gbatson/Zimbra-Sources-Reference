@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,12 +38,12 @@ ZmFilterRule = function(name, active, filterActions, filterTests) {
 	 * The filter rule actions.
 	 * @type	Object
 	 */
-	this.actions = filterActions || (new Object());
+	this.actions = filterActions || {};
 	/**
 	 * The filter rules conditions.
 	 * @type	Object
 	 */
-	this.conditions = filterTests || (new Object());
+	this.conditions = filterTests || {};
 	this.active = (active !== false);
 	if (!filterTests) {
 		this.setGroupOp();
@@ -64,47 +64,48 @@ ZmFilterRule.GROUP_ANY = "anyof";
 ZmFilterRule.GROUP_ALL = "allof";
 
 // Display widgets for various rule properties
-var i = 1;
+
 /**
  * Defines the "input" type.
  */
-ZmFilterRule.TYPE_INPUT			= i++;
+ZmFilterRule.TYPE_INPUT			= "INPUT";
 /**
  * Defines the "select" type.
  */
-ZmFilterRule.TYPE_SELECT		= i++;
+ZmFilterRule.TYPE_SELECT		= "SELECT";
 /**
  * Defines the "calendar" type.
  */
-ZmFilterRule.TYPE_CALENDAR		= i++;
+ZmFilterRule.TYPE_CALENDAR		= "CALENDAR";
 /**
  * Defines the "folder picker" type.
  */
-ZmFilterRule.TYPE_FOLDER_PICKER	= i++;
+ZmFilterRule.TYPE_FOLDER_PICKER	= "FOLDER_PICKER";
 /**
  * Defines the "tag picker" type.
  */
-ZmFilterRule.TYPE_TAG_PICKER	= i++;
+ZmFilterRule.TYPE_TAG_PICKER	= "TAG_PICKER";
 
 // Conditions (subjects)
-var i = 1;
-ZmFilterRule.C_FROM			= i++;
-ZmFilterRule.C_TO			= i++;
-ZmFilterRule.C_CC			= i++;
-ZmFilterRule.C_SUBJECT		= i++;
-ZmFilterRule.C_HEADER		= i++;
-ZmFilterRule.C_SIZE			= i++;
-ZmFilterRule.C_DATE			= i++;
-ZmFilterRule.C_BODY			= i++;
-ZmFilterRule.C_ATT			= i++;
-ZmFilterRule.C_MIME_HEADER	= i++;
-ZmFilterRule.C_ADDRBOOK		= i++;
-ZmFilterRule.C_INVITE		= i++;
+ZmFilterRule.C_FROM			= "FROM";
+ZmFilterRule.C_TO			= "TO";
+ZmFilterRule.C_CC			= "CC";
+ZmFilterRule.C_TO_CC		= "TO_CC";
+ZmFilterRule.C_SUBJECT		= "SUBJECT";
+ZmFilterRule.C_HEADER		= "HEADER";
+ZmFilterRule.C_SIZE			= "SIZE";
+ZmFilterRule.C_DATE			= "DATE";
+ZmFilterRule.C_BODY			= "BODY";
+ZmFilterRule.C_ATT			= "ATT";
+ZmFilterRule.C_MIME_HEADER	= "MIME_HEADER";
+ZmFilterRule.C_ADDRBOOK		= "ADDRBOOK";
+ZmFilterRule.C_INVITE		= "INVITE";
 
 ZmFilterRule.C_HEADER_VALUE = {};
 ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_FROM]	= "from";
 ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_TO]		= "to";
 ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_CC]		= "cc";
+ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_TO_CC]	= "to,cc";
 ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_SUBJECT]	= "subject";
 ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_HEADER]	= "header";
 
@@ -117,6 +118,7 @@ ZmFilterRule.C_LABEL = {};
 ZmFilterRule.C_LABEL[ZmFilterRule.C_FROM]		= ZmMsg.from;
 ZmFilterRule.C_LABEL[ZmFilterRule.C_TO]			= ZmMsg.to;
 ZmFilterRule.C_LABEL[ZmFilterRule.C_CC]			= ZmMsg.cc;
+ZmFilterRule.C_LABEL[ZmFilterRule.C_TO_CC]		= ZmMsg.toCc;
 ZmFilterRule.C_LABEL[ZmFilterRule.C_SUBJECT]	= ZmMsg.subject;
 ZmFilterRule.C_LABEL[ZmFilterRule.C_HEADER]		= ZmMsg.headerNamed;
 ZmFilterRule.C_LABEL[ZmFilterRule.C_SIZE]		= ZmMsg.size;
@@ -145,6 +147,7 @@ ZmFilterRule.C_TEST_MAP = {};
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_FROM]		= ZmFilterRule.TEST_HEADER;
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_TO]			= ZmFilterRule.TEST_HEADER;
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_CC]			= ZmFilterRule.TEST_HEADER;
+ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_TO_CC]		= ZmFilterRule.TEST_HEADER;
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_SUBJECT]		= ZmFilterRule.TEST_HEADER;
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_HEADER]		= ZmFilterRule.TEST_HEADER;
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_SIZE]		= ZmFilterRule.TEST_SIZE;
@@ -156,27 +159,31 @@ ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_ADDRBOOK]	= ZmFilterRule.TEST_ADDRBOOK;
 ZmFilterRule.C_TEST_MAP[ZmFilterRule.C_INVITE]		= ZmFilterRule.TEST_INVITE;
 
 // Operations (verbs)
-var i = 1;
-ZmFilterRule.OP_IS				= i++;
-ZmFilterRule.OP_NOT_IS			= i++;
-ZmFilterRule.OP_CONTAINS		= i++;
-ZmFilterRule.OP_NOT_CONTAINS	= i++;
-ZmFilterRule.OP_MATCHES			= i++;
-ZmFilterRule.OP_NOT_MATCHES		= i++;
-ZmFilterRule.OP_EXISTS			= i++;
-ZmFilterRule.OP_NOT_EXISTS		= i++;
-ZmFilterRule.OP_UNDER			= i++;
-ZmFilterRule.OP_NOT_UNDER		= i++;
-ZmFilterRule.OP_OVER			= i++;
-ZmFilterRule.OP_NOT_OVER		= i++;
-ZmFilterRule.OP_BEFORE			= i++;
-ZmFilterRule.OP_NOT_BEFORE		= i++;
-ZmFilterRule.OP_AFTER			= i++;
-ZmFilterRule.OP_NOT_AFTER		= i++;
-ZmFilterRule.OP_IN				= i++;
-ZmFilterRule.OP_NOT_IN			= i++;
-ZmFilterRule.OP_IS_REQUESTED	= i++; // invites
-ZmFilterRule.OP_IS_REPLIED		= i++; // invites
+ZmFilterRule.OP_IS				= "IS";
+ZmFilterRule.OP_NOT_IS			= "NOT_IS";
+ZmFilterRule.OP_CONTAINS		= "CONTAINS";
+ZmFilterRule.OP_NOT_CONTAINS	= "NOT_CONTAINS";
+ZmFilterRule.OP_MATCHES			= "MATCHES";
+ZmFilterRule.OP_NOT_MATCHES		= "NOT_MATCHES";
+ZmFilterRule.OP_EXISTS			= "EXISTS";
+ZmFilterRule.OP_NOT_EXISTS		= "NOT_EXISTS";
+ZmFilterRule.OP_UNDER			= "UNDER";
+ZmFilterRule.OP_NOT_UNDER		= "NOT_UNDER";
+ZmFilterRule.OP_OVER			= "OVER";
+ZmFilterRule.OP_NOT_OVER		= "NOT_OVER";
+ZmFilterRule.OP_BEFORE			= "BEFORE";
+ZmFilterRule.OP_NOT_BEFORE		= "NOT_BEFORE";
+ZmFilterRule.OP_AFTER			= "AFTER";
+ZmFilterRule.OP_NOT_AFTER		= "NOT_AFTER";
+ZmFilterRule.OP_IN				= "IN";
+ZmFilterRule.OP_NOT_IN			= "NOT_IN";
+ZmFilterRule.OP_IS_REQUESTED	= "IS_REQUESTED"; // invites
+ZmFilterRule.OP_NOT_REQUESTED   = "NOT_REQUESTED"; //invites
+ZmFilterRule.OP_NOT_REPLIED     = "NOT_REPLIED"; //invites
+ZmFilterRule.OP_IS_REPLIED		= "IS_REPLIED"; // invites
+ZmFilterRule.OP_IS_READRECEIPT  = "IS_READRECEIPT";
+ZmFilterRule.OP_NOT_READRECEIPT = "NOT_READRECEIPT";
+
 
 // comparator types
 ZmFilterRule.COMP_STRING							= "stringComparison";
@@ -203,10 +210,10 @@ ZmFilterRule.OP_VALUE[ZmFilterRule.OP_AFTER]		= "after";
 ZmFilterRule.OP_VALUE[ZmFilterRule.OP_IN]			= "in";
 ZmFilterRule.OP_VALUE[ZmFilterRule.OP_IS_REQUESTED]	= "anyrequest";
 ZmFilterRule.OP_VALUE[ZmFilterRule.OP_IS_REPLIED]	= "anyreply";
+ZmFilterRule.OP_VALUE[ZmFilterRule.OP_IS_READRECEIPT] = "contains";
 
 ZmFilterRule.OP_VALUE_MAP = {};
 for (var i in ZmFilterRule.OP_VALUE) {
-	if (i%2 == 0) { continue; } // skip all the "not's"
 	ZmFilterRule.OP_VALUE_MAP[ZmFilterRule.OP_VALUE[i]] = i;
 };
 
@@ -231,7 +238,12 @@ ZmFilterRule.OP_LABEL[ZmFilterRule.OP_NOT_AFTER]	= ZmMsg.notAfter;
 ZmFilterRule.OP_LABEL[ZmFilterRule.OP_IN]			= ZmMsg.isIn;
 ZmFilterRule.OP_LABEL[ZmFilterRule.OP_NOT_IN]		= ZmMsg.notIn;
 ZmFilterRule.OP_LABEL[ZmFilterRule.OP_IS_REQUESTED]	= ZmMsg.isRequested;
+ZmFilterRule.OP_LABEL[ZmFilterRule.OP_NOT_REQUESTED] = ZmMsg.notRequested;
 ZmFilterRule.OP_LABEL[ZmFilterRule.OP_IS_REPLIED]	= ZmMsg.isReplied;
+ZmFilterRule.OP_LABEL[ZmFilterRule.OP_NOT_REPLIED]  = ZmMsg.notReplied;
+ZmFilterRule.OP_LABEL[ZmFilterRule.OP_IS_READRECEIPT] = ZmMsg.exists;
+ZmFilterRule.OP_LABEL[ZmFilterRule.OP_NOT_READRECEIPT] = ZmMsg.notExist;
+
 
 // commonly used lists
 ZmFilterRule.MATCHING_OPS = [
@@ -276,6 +288,11 @@ ZmFilterRule.CONDITIONS[ZmFilterRule.C_CC] = {
 		opsOptions:	ZmFilterRule.MATCHING_OPS,
 		value:		ZmFilterRule.TYPE_INPUT
 };
+ZmFilterRule.CONDITIONS[ZmFilterRule.C_TO_CC] = {
+		ops:		ZmFilterRule.TYPE_SELECT,
+		opsOptions:	ZmFilterRule.MATCHING_OPS,
+		value:		ZmFilterRule.TYPE_INPUT
+};
 ZmFilterRule.CONDITIONS[ZmFilterRule.C_SUBJECT] = {
 		ops:		ZmFilterRule.TYPE_SELECT,
 		opsOptions:	ZmFilterRule.MATCHING_OPS,
@@ -309,6 +326,9 @@ ZmFilterRule.CONDITIONS[ZmFilterRule.C_ATT] = {
 		opsOptions:	[ZmFilterRule.OP_EXISTS, ZmFilterRule.OP_NOT_EXISTS]
 };
 ZmFilterRule.CONDITIONS[ZmFilterRule.C_MIME_HEADER] = {
+        ops:        ZmFilterRule.TYPE_SELECT,
+        opsOptions: [ZmFilterRule.OP_IS_READRECEIPT, ZmFilterRule.OP_NOT_READRECEIPT]
+
 };
 ZmFilterRule.CONDITIONS[ZmFilterRule.C_ADDRBOOK] = {
 		subjectMod:	ZmFilterRule.TYPE_SELECT,
@@ -321,7 +341,7 @@ ZmFilterRule.CONDITIONS[ZmFilterRule.C_ADDRBOOK] = {
 };
 ZmFilterRule.CONDITIONS[ZmFilterRule.C_INVITE] = {
 		ops:		ZmFilterRule.TYPE_SELECT,
-		opsOptions:	[ZmFilterRule.OP_IS_REQUESTED, ZmFilterRule.OP_IS_REPLIED]
+		opsOptions:	[ZmFilterRule.OP_IS_REQUESTED, ZmFilterRule.OP_NOT_REQUESTED, ZmFilterRule.OP_IS_REPLIED, ZmFilterRule.OP_NOT_REPLIED]
 };
 
 // listed in order we want to display them in the SELECT
@@ -329,6 +349,7 @@ ZmFilterRule.CONDITIONS_LIST = [
 	ZmFilterRule.C_FROM,
 	ZmFilterRule.C_TO,
 	ZmFilterRule.C_CC,
+	ZmFilterRule.C_TO_CC,
 	ZmFilterRule.C_SUBJECT,
 	ZmFilterRule.C_HEADER,
 	ZmFilterRule.C_SIZE,
@@ -345,44 +366,53 @@ ZmFilterRule.IS_HEADER = {};
 ZmFilterRule.IS_HEADER[ZmFilterRule.C_FROM]		= true;
 ZmFilterRule.IS_HEADER[ZmFilterRule.C_TO]		= true;
 ZmFilterRule.IS_HEADER[ZmFilterRule.C_CC]		= true;
+ZmFilterRule.IS_HEADER[ZmFilterRule.C_TO_CC]	= true;
 ZmFilterRule.IS_HEADER[ZmFilterRule.C_SUBJECT]	= true;
 ZmFilterRule.IS_HEADER[ZmFilterRule.C_HEADER]	= true;
 
 // Actions
-var i = 1;
+
 /**
  * Defines the "keep" action type.
  */
-ZmFilterRule.A_KEEP		= i++;
+ZmFilterRule.A_KEEP			= "KEEP";
+/**
+ * Defines the "keep" action type.
+ */
+ZmFilterRule.A_KEEP_SENT	= "KEEP_SENT";
 /**
  * Defines the "folder" action type.
  */
-ZmFilterRule.A_FOLDER	= i++;
+ZmFilterRule.A_FOLDER		= "FOLDER";
 /**
  * Defines the "discard" action type.
  */
-ZmFilterRule.A_DISCARD	= i++;
+ZmFilterRule.A_DISCARD		= "DISCARD";
 /**
  * Defines the "stop" action type.
  */
-ZmFilterRule.A_STOP		= i++;
+ZmFilterRule.A_STOP			= "STOP";
 /**
  * Defines the "flag" action type.
  */
-ZmFilterRule.A_FLAG		= i++;
+ZmFilterRule.A_FLAG			= "FLAG";
 /**
  * Defines the "tag" action type.
  */
-ZmFilterRule.A_TAG		= i++;
+ZmFilterRule.A_TAG			= "TAG";
 /**
  * Defines the "forward" action type.
  */
-ZmFilterRule.A_FORWARD	= i++;
+ZmFilterRule.A_FORWARD		= "FORWARD";
 
 /**
  * Defines the "keep" action name.
  */
 ZmFilterRule.A_NAME_KEEP						= "actionKeep";
+/**
+ * Defines the "keep" action name.
+ */
+ZmFilterRule.A_NAME_KEEP_SENT					= "actionKeep";
 /**
  * Defines the "file into a folder" action name.
  */
@@ -410,6 +440,7 @@ ZmFilterRule.A_NAME_FORWARD						= "actionRedirect";
 
 ZmFilterRule.A_VALUE = {};
 ZmFilterRule.A_VALUE[ZmFilterRule.A_KEEP]		= ZmFilterRule.A_NAME_KEEP;
+ZmFilterRule.A_VALUE[ZmFilterRule.A_KEEP_SENT]	= ZmFilterRule.A_NAME_KEEP_SENT;
 ZmFilterRule.A_VALUE[ZmFilterRule.A_FOLDER]		= ZmFilterRule.A_NAME_FOLDER;
 ZmFilterRule.A_VALUE[ZmFilterRule.A_DISCARD]	= ZmFilterRule.A_NAME_DISCARD;
 ZmFilterRule.A_VALUE[ZmFilterRule.A_STOP]		= ZmFilterRule.A_NAME_STOP;
@@ -425,6 +456,7 @@ delete i;
 
 ZmFilterRule.A_LABEL = {};
 ZmFilterRule.A_LABEL[ZmFilterRule.A_KEEP]		= ZmMsg.keepInInbox;
+ZmFilterRule.A_LABEL[ZmFilterRule.A_KEEP_SENT]	= ZmMsg.keepInSent;
 ZmFilterRule.A_LABEL[ZmFilterRule.A_FOLDER]		= ZmMsg.fileIntoFolder;
 ZmFilterRule.A_LABEL[ZmFilterRule.A_DISCARD]	= ZmMsg.discard;
 ZmFilterRule.A_LABEL[ZmFilterRule.A_STOP]		= ZmMsg.stopEvaluation;
@@ -447,20 +479,24 @@ ZmFilterRule.A_LABEL[ZmFilterRule.A_FORWARD]	= ZmMsg.forwardToAddress;
  * </ul>
  */
 ZmFilterRule.ACTIONS = {};
-ZmFilterRule.ACTIONS[ZmFilterRule.A_KEEP] = {};
+ZmFilterRule.ACTIONS[ZmFilterRule.A_KEEP]		= {};
+ZmFilterRule.ACTIONS[ZmFilterRule.A_KEEP_SENT]	= {};
 ZmFilterRule.ACTIONS[ZmFilterRule.A_DISCARD] = {};
-ZmFilterRule.ACTIONS[ZmFilterRule.A_STOP] = {};
-ZmFilterRule.ACTIONS[ZmFilterRule.A_FOLDER] = {
+ZmFilterRule.ACTIONS[ZmFilterRule.A_STOP]		= {};
+ZmFilterRule.ACTIONS[ZmFilterRule.A_FOLDER]	= {
 	param:				ZmFilterRule.TYPE_FOLDER_PICKER
 };
+
 ZmFilterRule.ACTIONS[ZmFilterRule.A_FLAG] = {
 	param:				ZmFilterRule.TYPE_SELECT,
 	// NOTE: If you change the order of these options, also change _setPreconditions!!!
 	pOptions:			[{label: ZmMsg.asRead, value: "read"}, {label: ZmMsg.asFlagged, value: "flagged"}]
 };
+
 ZmFilterRule.ACTIONS[ZmFilterRule.A_TAG] = {
 	param:				ZmFilterRule.TYPE_TAG_PICKER
 };
+
 ZmFilterRule.ACTIONS[ZmFilterRule.A_FORWARD] = {
 	param:				ZmFilterRule.TYPE_INPUT,
 	validationFunction:	ZmPref.validateEmail,
@@ -476,11 +512,21 @@ ZmFilterRule.ACTIONS_LIST = [
 	ZmFilterRule.A_FORWARD
 ];
 
+ZmFilterRule.ACTIONS_OUTGOING_LIST = [
+	ZmFilterRule.A_KEEP_SENT,
+	ZmFilterRule.A_DISCARD,
+	ZmFilterRule.A_FOLDER,
+	ZmFilterRule.A_TAG,
+	ZmFilterRule.A_FLAG,
+	ZmFilterRule.A_FORWARD
+];
+
 ZmFilterRule._setPreconditions =
 function() {
 	ZmFilterRule.ACTIONS[ZmFilterRule.A_FLAG].pOptions[1].precondition = ZmSetting.FLAGGING_ENABLED;
 	ZmFilterRule.ACTIONS[ZmFilterRule.A_TAG].precondition = ZmSetting.TAGGING_ENABLED;
-	ZmFilterRule.ACTIONS[ZmFilterRule.A_FORWARD].precondition = ZmSetting.FILTERS_MAIL_FORWARDING_ENABLED;
+	ZmFilterRule.ACTIONS[ZmFilterRule.A_FORWARD].precondition = [ZmSetting.FILTERS_MAIL_FORWARDING_ENABLED,
+																 ZmSetting.MAIL_FORWARDING_ENABLED];
 	ZmFilterRule.ACTIONS[ZmFilterRule.A_DISCARD].precondition = ZmSetting.DISCARD_IN_FILTER_ENABLED;
 };
 
@@ -563,12 +609,9 @@ function() {
 ZmFilterRule.prototype.hasValidAction =
 function() {
 	for (var i in this.actions) {
-		var action = this.actions[i];
 		var actionIndex = ZmFilterRule.A_VALUE_MAP[i];
 		var actionCfg = ZmFilterRule.ACTIONS[actionIndex];
-		if ((actionIndex != ZmFilterRule.A_STOP) &&
-			(!actionCfg.precondition || appCtxt.get(actionCfg.precondition)))
-		{
+		if ((actionIndex != ZmFilterRule.A_STOP) && (ZmFilterRule.checkPreconditions(actionCfg))) {
 			return true;
 		}
 	}
@@ -604,6 +647,9 @@ function(testType, comparator, value, subjectMod) {
 		case ZmFilterRule.OP_NOT_BEFORE:	negativeOp = ZmFilterRule.OP_BEFORE; break;
 		case ZmFilterRule.OP_NOT_AFTER:		negativeOp = ZmFilterRule.OP_AFTER; break;
 		case ZmFilterRule.OP_NOT_IN:		negativeOp = ZmFilterRule.OP_IN; break;
+        case ZmFilterRule.OP_NOT_REPLIED:   negativeOp = ZmFilterRule.OP_IS_REPLIED; break;
+        case ZmFilterRule.OP_NOT_REQUESTED: negativeOp = ZmFilterRule.OP_IS_REQUESTED; break;
+        case ZmFilterRule.OP_NOT_READRECEIPT: negativeOp = ZmFilterRule.OP_CONTAINS; break;
 	}
 	if (negativeOp) {
 		conditionData.negative = "1";
@@ -625,7 +671,7 @@ function(testType, comparator, value, subjectMod) {
 	}
 
 	if (testType == ZmFilterRule.TEST_INVITE) {
-		conditionData.method = [{_content:ZmFilterRule.OP_VALUE[comparator]}];
+	    conditionData.method = [{_content:ZmFilterRule.OP_VALUE[negativeOp || comparator]}];
 	}
 
 	return conditionData;
@@ -652,4 +698,51 @@ function() {
 	rule.addCondition(ZmFilterRule.TEST_HEADER, ZmFilterRule.OP_CONTAINS, "", subjMod);
 	rule.addAction(ZmFilterRule.A_KEEP);
 	return rule;
+};
+
+ZmFilterRule.checkPreconditions =
+function(obj) {
+    if (!ZmFilterRule.__preConditionsInitialized) {
+        ZmFilterRule.__preConditionsInitialized = true;
+        ZmFilterRule._setPreconditions();
+    }
+
+	var pre = obj && obj.precondition;
+	if (!pre) { return true; }
+
+	var conds = AjxUtil.toArray(pre);
+	for (var i = 0; i < conds.length; i++) {
+		if (!appCtxt.get(conds[i])) {
+			return false;
+		}
+	}
+	return true;
+};
+
+/**
+ * helper method to get the negative comparator
+ *
+ * @return	{constant}	the operator (see <code>ZmFilterRule.OP_</code> constants)
+ */
+
+ZmFilterRule.getNegativeComparator =
+function(comparator) {
+    var negativeOp;
+    
+    switch (comparator) {
+		case ZmFilterRule.OP_IS:		negativeOp = ZmFilterRule.OP_NOT_IS; break;
+		case ZmFilterRule.OP_CONTAINS:	negativeOp = ZmFilterRule.OP_NOT_CONTAINS; break;
+		case ZmFilterRule.OP_MATCHES:	negativeOp = ZmFilterRule.OP_NOT_MATCHES; break;
+		case ZmFilterRule.OP_EXISTS:	negativeOp = ZmFilterRule.OP_NOT_EXISTS; break;
+		case ZmFilterRule.OP_UNDER:		negativeOp = ZmFilterRule.OP_NOT_UNDER; break;
+		case ZmFilterRule.OP_OVER:		negativeOp = ZmFilterRule.OP_NOT_OVER; break;
+		case ZmFilterRule.OP_BEFORE:	negativeOp = ZmFilterRule.OP_NOT_BEFORE; break;
+		case ZmFilterRule.OP_AFTER:		negativeOp = ZmFilterRule.OP_NOT_AFTER; break;
+		case ZmFilterRule.OP_IN:		negativeOp = ZmFilterRule.OP_NOT_IN; break;
+        case ZmFilterRule.OP_IS_REPLIED:   negativeOp = ZmFilterRule.OP_NOT_REPLIED; break;
+        case ZmFilterRule.OP_IS_REQUESTED: negativeOp = ZmFilterRule.OP_NOT_REQUESTED; break;
+        case ZmFilterRule.OP_IS_READRECEIPT: negativeOp = ZmFilterRule.OP_NOT_CONTAINS; break;
+	}
+    return negativeOp;
+
 };

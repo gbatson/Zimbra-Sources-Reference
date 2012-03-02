@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -57,13 +57,13 @@
         <td align=center>
             <c:if test="${not print}">
             <app:calendarUrl var="prevYear" timezone="${timezone}" rawdate="${zm:addYear(date,-1)}"/>
-            <a href="${fn:escapeXml(prevYear)}"><app:img altkey="ALT_CAL_MINI_PREV_YEAR" src="startup/ImgFastRevArrowSmall.gif" border="0"/></a>
+            <a href="${fn:escapeXml(prevYear)}"><app:img altkey="ALT_CAL_MINI_PREV_YEAR" src="startup/ImgFastRevArrowSmall.png" border="0"/></a>
             </c:if>
         </td>
         <td align=center>
             <c:if test="${not print}">
             <app:calendarUrl var="prevMonth" timezone="${timezone}" rawdate="${zm:addMonth(date,-1)}"/>
-            <a href="${fn:escapeXml(prevMonth)}"><app:img altkey="ALT_CAL_MINI_PREV_MONTH" src="startup/ImgRevArrowSmall.gif" border="0"/></a>
+            <a href="${fn:escapeXml(prevMonth)}"><app:img altkey="ALT_CAL_MINI_PREV_MONTH" src="startup/ImgRevArrowSmall.png" border="0"/></a>
              </c:if>
         </td>
         <app:calendarUrl var="todayUrl" nodate="true"/>
@@ -73,13 +73,13 @@
         <td align=center>
             <c:if test="${not print}">
             <app:calendarUrl var="nextMonth" timezone="${timezone}" rawdate="${zm:addMonth(date,1)}"/>
-             <a href="${fn:escapeXml(nextMonth)}"><app:img altkey="ALT_CAL_MINI_NEXT_MONTH" src="startup/ImgFwdArrowSmall.gif" border="0"/></a>
+             <a href="${fn:escapeXml(nextMonth)}"><app:img altkey="ALT_CAL_MINI_NEXT_MONTH" src="startup/ImgFwdArrowSmall.png" border="0"/></a>
             </c:if>
         </td>
         <td align=center>
             <c:if test="${not print}">
             <app:calendarUrl var="nextYear" timezone="${timezone}" rawdate="${zm:addYear(date,1)}"/>
-             <a href="${fn:escapeXml(nextYear)}"><app:img altkey="ALT_CAL_MINI_NEXT_YEAR" src="startup/ImgFastFwdArrowSmall.gif" border="0"/></a>
+             <a href="${fn:escapeXml(nextYear)}"><app:img altkey="ALT_CAL_MINI_NEXT_YEAR" src="startup/ImgFastFwdArrowSmall.png" border="0"/></a>
             </c:if>
         </td>
     </tr>

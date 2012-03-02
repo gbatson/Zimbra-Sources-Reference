@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,26 +16,69 @@ package com.zimbra.common.mime;
 
 public class ContentDisposition extends MimeCompoundHeader {
     private static final String ATTACHMENT = "attachment";
-    private static final String INLINE = "inline";
+    private static final String INLINE     = "inline";
 
-    public ContentDisposition(String header)                   { super(header);  normalizeValue(); }
-    public ContentDisposition(String header, boolean use2231)  { super(header, use2231);  normalizeValue(); }
-    public ContentDisposition(ContentDisposition cdisp)        { super(cdisp);  normalizeValue(); }
+    private String disposition;
 
-    public ContentDisposition setValue(String value)                   { super.setValue(value);  normalizeValue();  return this; }
-    public ContentDisposition setParameter(String name, String value)  { super.setParameter(name, value);  return this; }
+    public ContentDisposition(String value) {
+        super("Content-Disposition", value);
+        normalizeDisposition();
+    }
 
-    private void normalizeValue() {
-        String value = getValue();
-        if (value == null || value.trim().equals("")) {
-            setValue(ATTACHMENT);
-        } else {
-            if (!value.equals(value.trim().toLowerCase()))
-                setValue(value.trim().toLowerCase());
-            else if (!value.equals(ATTACHMENT) && !value.equals(INLINE))
-                setValue(ATTACHMENT);
+    public ContentDisposition(String value, boolean use2231) {
+        super("Content-Disposition", value, use2231);
+        normalizeDisposition();
+    }
+
+    ContentDisposition(String name, byte[] content, int start, String defaultType) {
+        super(name, content, start);
+        normalizeDisposition();
+    }
+
+    public ContentDisposition(MimeHeader header) {
+        super(header);
+        normalizeDisposition();
+    }
+
+    @Override protected ContentDisposition clone() {
+        return new ContentDisposition(this);
+    }
+
+
+    public ContentDisposition setDisposition(String disposition) {
+        return setPrimaryValue(disposition);
+    }
+
+    @Override public ContentDisposition setPrimaryValue(String value) {
+        super.setPrimaryValue(value);
+        normalizeDisposition();
+        return this;
+    }
+
+    @Override public ContentDisposition setParameter(String name, String value) {
+        super.setParameter(name, value);
+        return this;
+    }
+
+    public String getDisposition() {
+        return disposition;
+    }
+
+    private void normalizeDisposition() {
+        String value = getPrimaryValue() == null ? "" : getPrimaryValue().trim().toLowerCase();
+        this.disposition = value.equals(ATTACHMENT) || value.equals(INLINE) ? value : ATTACHMENT;
+    }
+
+    @Override protected void reserialize() {
+        if (content == null) {
+            super.setPrimaryValue(getDisposition());
+            super.reserialize();
         }
     }
 
-    public String toString()  { return toString(21); }
+    @Override public ContentDisposition cleanup() {
+        super.setPrimaryValue(getDisposition());
+        super.cleanup();
+        return this;
+    }
 }

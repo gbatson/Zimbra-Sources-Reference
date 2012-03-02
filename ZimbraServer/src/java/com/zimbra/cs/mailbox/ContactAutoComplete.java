@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -32,7 +33,8 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.GalContact;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.GAL_SEARCH_TYPE;
+import com.zimbra.cs.account.Provisioning.GalSearchType;
+import com.zimbra.cs.gal.GalGroup;
 import com.zimbra.cs.gal.GalSearchControl;
 import com.zimbra.cs.gal.GalSearchParams;
 import com.zimbra.cs.gal.GalSearchResultCallback;
@@ -41,8 +43,8 @@ import com.zimbra.cs.index.ProxiedHit;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
-import com.zimbra.cs.index.queryparser.ParseException;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.soap.ZimbraSoapContext;
 
 public class ContactAutoComplete {
     public static class AutoCompleteResult {
@@ -68,13 +70,13 @@ public class ContactAutoComplete {
                 canBeCached = false;
                 return;
             }
-            int ranking = rankings.query(key);
-            // if the match comes from gal or folder search
-            // check the ranking table for matching email
-            // address
-            if (ranking > 0 && entry.mRanking == 0) {
-                entry.mRanking = ranking;
-                entry.mFolderId = ContactAutoComplete.FOLDER_ID_UNKNOWN;
+            if (entry.mRanking == 0) {
+                // if the match comes from gal or folder search
+                // check the ranking table for matching email
+                // address
+                int ranking = rankings.query(key);
+                if (ranking > 0)
+                    entry.mRanking = ranking;
             }
             entries.add(entry);
             keys.add(key);
@@ -93,6 +95,8 @@ public class ContactAutoComplete {
         String mDisplayName;
         String mLastName;
         String mDlist;
+        boolean mIsGroup;
+        boolean mCanExpandGroupMembers;
         ItemId mId;
         int mFolderId;
         int mRanking;
@@ -132,8 +136,32 @@ public class ContactAutoComplete {
             return mDlist != null;
         }
 
+        public boolean isGroup() {
+            return mIsGroup;
+        }
+
+        public boolean canExpandGroupMembers() {
+            return mCanExpandGroupMembers;
+        }
+
         public String getDisplayName() {
             return mDisplayName;
+        }
+
+        void setIsGalGroup(String email, Map<String,? extends Object> attrs, Account authedAcct, boolean needCanExpand) {
+            setIsGalGroup(email, (String)attrs.get(ContactConstants.A_zimbraId), authedAcct, needCanExpand);
+        }
+
+        void setIsGalGroup(String email, String zimbraId, Account authedAcct, boolean needCanExpand) {
+            boolean canExpand = false;
+            if (needCanExpand)
+                canExpand = GalSearchControl.canExpandGalGroup(email, zimbraId, authedAcct);
+            setIsGalGroup(canExpand);
+        }
+        
+        void setIsGalGroup(boolean canExpand) {
+            mIsGroup = true;
+            mCanExpandGroupMembers = canExpand;
         }
 
         void setName(String name) {
@@ -149,6 +177,7 @@ public class ContactAutoComplete {
         }
 
         // ascending order
+        @Override
         public int compareTo(ContactEntry that) {
             int nameCompare = this.getKey().compareToIgnoreCase(that.getKey());
             if (nameCompare == 0) {
@@ -202,39 +231,59 @@ public class ContactAutoComplete {
     public static final int FOLDER_ID_GAL = 0;
     public static final int FOLDER_ID_UNKNOWN = -1;
 
-    private String mAccountId;
     private boolean mIncludeGal;
+    private boolean mNeedCanExpand; // whether the canExpand info is needed for GAL groups
 
     private static final byte[] CONTACT_TYPES = new byte[] { MailItem.TYPE_CONTACT };
 
     private boolean mIncludeSharedFolders;
     private Collection<String> mEmailKeys;
 
-    private GAL_SEARCH_TYPE mSearchType;
+    private GalSearchType mSearchType;
+    private ZimbraSoapContext mZsc;
+    private Account mAuthedAcct;
+    private Account mRequestedAcct;
+    
 
     private static final String[] DEFAULT_EMAIL_KEYS = {
         ContactConstants.A_email, ContactConstants.A_email2, ContactConstants.A_email3
     };
 
 
-    public ContactAutoComplete(String accountId) {
-        Provisioning prov = Provisioning.getInstance();
+    public ContactAutoComplete(Account acct) {
+        this (acct, null);
+    }
+
+    public ContactAutoComplete(Account acct, ZimbraSoapContext zsc) {
+        mZsc = zsc;
         try {
-            Account acct = prov.get(Provisioning.AccountBy.id, accountId);
-            mIncludeSharedFolders = acct.getBooleanAttr(Provisioning.A_zimbraPrefSharedAddrBookAutoCompleteEnabled, false);
-            String emailKeys = acct.getAttr(Provisioning.A_zimbraContactEmailFields);
+            mRequestedAcct = acct;
+            mIncludeSharedFolders = mRequestedAcct.getBooleanAttr(Provisioning.A_zimbraPrefSharedAddrBookAutoCompleteEnabled, false);
+            String emailKeys = mRequestedAcct.getAttr(Provisioning.A_zimbraContactEmailFields);
             if (emailKeys != null) {
                 mEmailKeys = Arrays.asList(emailKeys.split(","));
             }
-            mIncludeGal = acct.getBooleanAttr(Provisioning.A_zimbraPrefGalAutoCompleteEnabled , false);
+            mIncludeGal = mRequestedAcct.getBooleanAttr(Provisioning.A_zimbraPrefGalAutoCompleteEnabled , false);
+
+            if (mZsc != null) {
+                String authedAcctId = mZsc.getAuthtokenAccountId();
+                if (authedAcctId != null)
+                    mAuthedAcct = Provisioning.getInstance().get(Provisioning.AccountBy.id, authedAcctId);
+            }
+            if (mAuthedAcct == null)
+                mAuthedAcct = mRequestedAcct;
+
         } catch (ServiceException se) {
             ZimbraLog.gal.warn("error initializing ContactAutoComplete", se);
         }
-        mAccountId = accountId;
         if (mEmailKeys == null) {
             mEmailKeys = Arrays.asList(DEFAULT_EMAIL_KEYS);
         }
-        mSearchType = GAL_SEARCH_TYPE.USER_ACCOUNT;
+        mSearchType = GalSearchType.account;
+    }
+    
+    private String getRequestedAcctId() {
+        return mRequestedAcct.getId();
     }
 
     public Collection<String> getEmailKeys() {
@@ -249,15 +298,19 @@ public class ContactAutoComplete {
         mIncludeGal = includeGal;
     }
 
-    public void setSearchType(GAL_SEARCH_TYPE type) {
+    public void setNeedCanExpand(boolean needCanExpand) {
+        mNeedCanExpand = needCanExpand;
+    }
+
+    public void setSearchType(GalSearchType type) {
         mSearchType = type;
     }
 
     public AutoCompleteResult query(String str, Collection<Integer> folders, int limit) throws ServiceException {
-        ZimbraLog.gal.debug("querying " + str);
+        ZimbraLog.gal.debug("AutoComplete querying: " + str);
         long t0 = System.currentTimeMillis();
         AutoCompleteResult result = new AutoCompleteResult(limit);
-        result.rankings = new ContactRankings(mAccountId);
+        result.rankings = new ContactRankings(getRequestedAcctId());
         if (limit <= 0) {
             return result;
         }
@@ -267,9 +320,16 @@ public class ContactAutoComplete {
         }
 
         // query ranking table
-        for (ContactEntry entry : result.rankings.search(str)) {
-            result.addEntry(entry);
+        Collection<ContactEntry> rankingTableMatches = result.rankings.search(str);
+
+        if (!rankingTableMatches.isEmpty()) {
+            for (ContactEntry entry : rankingTableMatches) {
+                String emailAddr = entry.getKey();
+                resolveGroupInfo(entry, emailAddr);
+                result.addEntry(entry);
+            }
         }
+
         long t1 = System.currentTimeMillis();
 
         // search other folders
@@ -279,22 +339,47 @@ public class ContactAutoComplete {
         long t2 = System.currentTimeMillis();
 
         if (mIncludeGal && result.entries.size() < limit) {
-            queryGal(str, limit, result);
+            queryGal(str, result);
         }
+
+
+
         long t3 = System.currentTimeMillis();
 
         ZimbraLog.gal.info("autocomplete: overall="+(t3-t0)+"ms, ranking="+(t1-t0)+"ms, folder="+(t2-t1)+"ms, gal="+(t3-t2)+"ms");
         return result;
     }
+    
+    /**
+     * ranking table and local contact matches don't have group indicator persisted on them, 
+     * cross-ref GAL to check if the address is a group.
+     * 
+     * If the address is a group, set group info in the ContactEntry object.  Also, change the 
+     * folder ID to GAL.  Client relies on this to display the expand icon, otherwise it would 
+     * consider the entry a local contact group and will not offer to expand it.
+     * 
+     * @param entry
+     * @param email
+     * @return true if the address is a group, false otherwise
+     */
+    private void resolveGroupInfo(ContactEntry entry, String email) {
+        GalGroup.GroupInfo groupInfo = GalGroup.getGroupInfo(email, mNeedCanExpand, mRequestedAcct, mAuthedAcct);
+        if (groupInfo != null) {
+            boolean canExpand = (GalGroup.GroupInfo.CAN_EXPAND == groupInfo);
+            entry.setIsGalGroup(canExpand);
+            
+            // set folder ID to GAL, client relies on this to display the expand icon
+            entry.mFolderId = FOLDER_ID_GAL;
+        }
+    }
 
-    private void queryGal(String str, int limit, AutoCompleteResult result) throws ServiceException {
-        Provisioning prov = Provisioning.getInstance();
-        Account account = prov.get(Provisioning.AccountBy.id, mAccountId);
+    private void queryGal(String str, AutoCompleteResult result) throws ServiceException {
         ZimbraLog.gal.debug("querying gal");
-        GalSearchParams params = new GalSearchParams(account);
+        GalSearchParams params = new GalSearchParams(mRequestedAcct, mZsc);
         params.setQuery(str);
         params.setType(mSearchType);
         params.setLimit(200);
+        params.setNeedCanExpand(mNeedCanExpand);
         params.setResultCallback(new AutoCompleteCallback(str, result, params));
         try {
             try {
@@ -323,7 +408,7 @@ public class ContactAutoComplete {
             this.str = str;
         }
 
-        public void handleContactAttrs(Map<String,? extends Object> attrs) throws ServiceException {
+        public void handleContactAttrs(Map<String,? extends Object> attrs) {
             addMatchedContacts(str, attrs, FOLDER_ID_GAL, null, result);
         }
 
@@ -358,24 +443,16 @@ public class ContactAutoComplete {
         public void setHasMoreResult(boolean more) {
         }
     }
+
     private boolean matches(String query, String text) {
         if (query == null || text == null) {
             return false;
         }
-        return text.toLowerCase().startsWith(query);
-    }
-    
-    private String getFieldAsString(Map<String,? extends Object> attrs, String fieldName) {
-        Object value = attrs.get(fieldName);
-        if (value instanceof String) {
-            return (String) value;
-        } else if (value instanceof String[]) {
-            String[] values = (String[]) value;
-            if (values.length > 0) {
-                return values[0];
-            }
-        }
-        return null;
+        int space = query.indexOf(' ');
+        if (space > 0)
+            return matches(query.substring(0, space).trim(), text) || matches(query.substring(space + 1).trim(), text);
+        else
+            return text.toLowerCase().startsWith(query.toLowerCase());
     }
 
     public void addMatchedContacts(String query, Map<String,? extends Object> attrs, int folderId, ItemId id, AutoCompleteResult result) {
@@ -383,19 +460,13 @@ public class ContactAutoComplete {
             return;
         }
 
-        Provisioning prov = Provisioning.getInstance();
-        Account acct = null;
-        try {
-            acct = prov.getAccountById(mAccountId);
-        } catch (ServiceException e) {
-            ZimbraLog.gal.warn("can't get owner's account for id %s", mAccountId, e);
-        }
-
-        String firstName = getFieldAsString(attrs, ContactConstants.A_firstName);
-        String lastName = getFieldAsString(attrs, ContactConstants.A_lastName);
-        String middleName = getFieldAsString(attrs, ContactConstants.A_middleName);
-        String fullName = getFieldAsString(attrs, ContactConstants.A_fullName);
-        String nickname = getFieldAsString(attrs, ContactConstants.A_nickname);
+        String firstName = (String) attrs.get(ContactConstants.A_firstName);
+        String phoneticFirstName = (String) attrs.get(ContactConstants.A_phoneticFirstName);
+        String lastName = (String) attrs.get(ContactConstants.A_lastName);
+        String phoneticLastName = (String) attrs.get(ContactConstants.A_phoneticLastName);
+        String middleName = (String) attrs.get(ContactConstants.A_middleName);
+        String fullName = (String) attrs.get(ContactConstants.A_fullName);
+        String nickname = (String) attrs.get(ContactConstants.A_nickname);
         String firstLastName = ((firstName == null) ? "" : firstName + " ") + lastName;
         if (fullName == null) {
             fullName = ((firstName == null) ? "" : firstName + " ") +
@@ -405,7 +476,9 @@ public class ContactAutoComplete {
         if (attrs.get(ContactConstants.A_dlist) == null) {
             boolean nameMatches =
                 matches(query, firstName) ||
+                matches(query, phoneticFirstName) ||
                 matches(query, lastName) ||
+                matches(query, phoneticLastName) ||
                 matches(query, fullName) ||
                 matches(query, firstLastName) ||
                 matches(query, nickname);
@@ -421,13 +494,20 @@ public class ContactAutoComplete {
             // just one email address.
 
             for (String emailKey : mEmailKeys) {
-                String email = getFieldAsString(attrs, emailKey);
+                String email = (String) attrs.get(emailKey);
                 if (email != null && (nameMatches || matches(query, email))) {
                     ContactEntry entry = new ContactEntry();
                     entry.mEmail = email;
                     entry.setName(fullName);
                     entry.mId = id;
                     entry.mFolderId = folderId;
+                    if (Contact.isGroup(attrs)) {
+                        entry.setIsGalGroup(email, attrs, mAuthedAcct, mNeedCanExpand);
+                    } else if (entry.mFolderId != FOLDER_ID_GAL) {
+                        // is a local contact
+                        // bug 55673, check if the addr is a group
+                        resolveGroupInfo(entry, email);
+                    }
                     result.addEntry(entry);
                     ZimbraLog.gal.debug("adding " + entry.getEmail());
                     if (folderId == FOLDER_ID_GAL) {
@@ -438,8 +518,11 @@ public class ContactAutoComplete {
                 }
             }
         } else {
-            if (acct != null &&
-                    acct.isPrefContactsDisableAutocompleteOnContactGroupMembers() &&
+            //
+            // is a local contact group
+            //
+
+            if (mRequestedAcct.isPrefContactsDisableAutocompleteOnContactGroupMembers() &&
                     !matches(query, nickname)) {
                 return;
             }
@@ -449,83 +532,91 @@ public class ContactAutoComplete {
             entry.mDlist = (String) attrs.get(ContactConstants.A_dlist);
             entry.mId = id;
             entry.mFolderId = folderId;
+            entry.mIsGroup = Contact.isGroup(attrs);
             result.addEntry(entry);
             ZimbraLog.gal.debug("adding " + entry.getEmail());
         }
     }
 
-    private void queryFolders(String str, Collection<Integer> folders, int limit, AutoCompleteResult result) throws ServiceException {
+    private void queryFolders(String str, Collection<Integer> folderIDs, int limit, AutoCompleteResult result) throws ServiceException {
         str = str.toLowerCase();
         ZimbraQueryResults qres = null;
         try {
-            Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(mAccountId);
-            OperationContext octxt = new OperationContext(mbox);
-            HashMap<ItemId,Integer> mountpoints = new HashMap<ItemId,Integer>();
-            if (folders == null) {
-                ArrayList<Integer> allFolders = new ArrayList<Integer>();
-                for (Folder f : mbox.getFolderList(octxt, SortBy.NONE)) {
-                    boolean isMountpoint = false;
-                    if (f.getDefaultView() != MailItem.TYPE_CONTACT) {
+            Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(getRequestedAcctId());
+            OperationContext octxt = (mZsc == null) ?
+                    new OperationContext(mbox) :
+                    new OperationContext(mZsc.getAuthtokenAccountId());
+            List<Folder> folders = new ArrayList<Folder>();
+            Map<ItemId, Mountpoint> mountpoints = new HashMap<ItemId, Mountpoint>();
+            if (folderIDs == null) {
+                for (Folder folder : mbox.getFolderList(octxt, SortBy.NONE)) {
+                    if (folder.getDefaultView() != MailItem.TYPE_CONTACT ||
+                            folder.inTrash()) {
                         continue;
-                    }
-                    if (f instanceof Mountpoint) {
-                        mountpoints.put(((Mountpoint) f).getTarget(), f.getId());
-                        isMountpoint = true;
-                    }
-                    if (!isMountpoint || mIncludeSharedFolders) {
-                        allFolders.add(f.getId());
+                    } else if (folder instanceof Mountpoint) {
+                        Mountpoint mp = (Mountpoint) folder;
+                        mountpoints.put(mp.getTarget(), mp);
+                        if (mIncludeSharedFolders) {
+                            folders.add(folder);
+                        }
+                    } else {
+                        folders.add(folder);
                     }
                 }
-                folders = allFolders;
             } else {
-                for (int fid : folders) {
-                    Folder f = mbox.getFolderById(octxt, fid);
-                    if (f instanceof Mountpoint) {
-                        mountpoints.put(((Mountpoint) f).getTarget(), fid);
+                for (int fid : folderIDs) {
+                    Folder folder = mbox.getFolderById(octxt, fid);
+                    folders.add(folder);
+                    if (folder instanceof Mountpoint) {
+                        Mountpoint mp = (Mountpoint) folder;
+                        mountpoints.put(mp.getTarget(), mp);
                     }
                 }
             }
             String query = generateQuery(str, folders);
-            ZimbraLog.gal.debug("querying folders: " + query);
+            ZimbraLog.gal.debug("querying contact folders: " + query);
             qres = mbox.search(octxt, query, CONTACT_TYPES, SortBy.NONE, limit + 1);
             while (qres.hasNext()) {
                 ZimbraHit hit = qres.getNext();
                 Map<String,String> fields = null;
                 ItemId id = null;
-                int folderId = 0;
+                int fid = 0;
                 if (hit instanceof ContactHit) {
                     Contact c = ((ContactHit) hit).getContact();
                     ZimbraLog.gal.debug("hit: " + c.getId());
                     fields = c.getFields();
                     id = new ItemId(c);
-                    folderId = c.getFolderId();
+                    fid = c.getFolderId();
                 } else if (hit instanceof ProxiedHit) {
                     fields = new HashMap<String, String>();
-                    Element top = ((ProxiedHit)hit).getElement();
+                    Element top = ((ProxiedHit) hit).getElement();
                     id = new ItemId(top.getAttribute(MailConstants.A_ID), (String) null);
-                    ZimbraLog.gal.debug("hit: "+id);
+                    ZimbraLog.gal.debug("hit: " + id);
                     ItemId fiid = new ItemId(top.getAttribute(MailConstants.A_FOLDER), (String) null);
-                    folderId = mountpoints.get(fiid);
+                    Mountpoint mp = mountpoints.get(fiid);
+                    if (mp != null) {
+                        // if the hit came from a descendant folder of
+                        // the mountpoint, we don't have a peer folder ID.
+                        fid = mp.getId();
+                    }
                     for (Element elt : top.listElements(MailConstants.E_ATTRIBUTE)) {
                         try {
                             String name = elt.getAttribute(MailConstants.A_ATTRIBUTE_NAME);
                             fields.put(name, elt.getText());
                         } catch (ServiceException se) {
-                            ZimbraLog.gal.warn("error handling proxied query result "+hit);
+                            ZimbraLog.gal.warn("error handling proxied query result " + hit);
                         }
                     }
                 } else {
                     continue;
                 }
 
-                addMatchedContacts(str, fields, folderId, id, result);
+                addMatchedContacts(str, fields, fid, id, result);
                 if (!result.canBeCached) {
                     return;
                 }
             }
         } catch (IOException e) {
-            throw ServiceException.FAILURE(e.getMessage(), e);
-        } catch (ParseException e) {
             throw ServiceException.FAILURE(e.getMessage(), e);
         } finally {
             if (qres != null) {
@@ -534,21 +625,27 @@ public class ContactAutoComplete {
         }
     }
 
-    private String generateQuery(String query, Collection<Integer> folders) {
-        StringBuilder buf = new StringBuilder();
+    private String generateQuery(String query, Collection<Folder> folders) {
+        StringBuilder buf = new StringBuilder("(");
         boolean first = true;
-        buf.append("(");
-        for (int fid : folders) {
+        for (Folder folder : folders) {
+            int fid = folder.getId();
             if (fid < 1) {
                 continue;
             }
-            if (!first) {
+            if (first) {
+                first = false;
+            } else {
                 buf.append(" OR ");
             }
-            first = false;
-            buf.append("inid:").append(fid);
+            // include descendant folders if mountpoint
+            buf.append(folder instanceof Mountpoint ? "underid:" : "inid:");
+            buf.append(fid);
         }
-        buf.append(") AND contact:(").append(query).append(")");
+
+        buf.append(") AND contact:\"");
+        buf.append(query.replace("\"", "\\\"")); // escape quotes
+        buf.append("\"");
         return buf.toString();
     }
 }

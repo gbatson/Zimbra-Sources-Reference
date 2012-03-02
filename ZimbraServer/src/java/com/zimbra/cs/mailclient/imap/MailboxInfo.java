@@ -14,7 +14,8 @@
  */
 package com.zimbra.cs.mailclient.imap;
 
-import com.zimbra.cs.mailclient.ParseException;
+import com.google.common.base.Objects;
+import com.zimbra.common.util.ZimbraLog;
 
 import java.io.IOException;
 
@@ -47,9 +48,9 @@ public final class MailboxInfo implements ResponseHandler {
         unseen = mb.unseen;
         access = mb.access;
     }
-    
+
     private MailboxInfo() {}
-    
+
     // IMAP mailbox STATUS response:
     //
     // status-response = "STATUS" SP mailbox SP "(" [status-att-list] ")"
@@ -77,32 +78,31 @@ public final class MailboxInfo implements ResponseHandler {
         is.skipChar('(');
         while (!is.match(')')) {
             Atom attr = is.readAtom();
-            is.skipChar(' ');
-            long n = is.readNumber();
+            is.skipSpaces();
             switch (attr.getCAtom()) {
             case MESSAGES:
-                exists = n;
+                exists = is.readNumber();
                 break;
             case RECENT:
-                recent = n;
+                recent = is.readNumber();
                 break;
             case UIDNEXT:
-                uidNext = n;
+                uidNext = is.readNumber();
                 break;
             case UIDVALIDITY:
-                uidValidity = n;
+                uidValidity = is.readNumber();
                 break;
             case UNSEEN:
-                unseen = n;
+                unseen = is.readNumber();
                 break;
             default:
-                throw new ParseException(
-                    "Invalid STATUS response attribute: " + attr);
+                ZimbraLog.imap_client.debug("Ignoring invalid STATUS response attribute: %s", attr);
             }
             is.skipSpaces();
         }
     }
 
+    @Override
     public void handleResponse(ImapResponse res) {
         switch (res.getCCode()) {
         case EXISTS:
@@ -158,18 +158,23 @@ public final class MailboxInfo implements ResponseHandler {
     public boolean isReadWrite() { return access == CAtom.READ_WRITE; }
 
     public void setName(String name) { this.name = name; }
-    
+
     public void setUidValidity(long uidValidity) {
         this.uidValidity = uidValidity;
     }
 
+    @Override
     public String toString() {
-        String encoded = name != null ? new MailboxName(name).encode() : null;
-        return String.format(
-            "{name=%s, exists=%d, recent=%d, unseen=%d, flags=%s, " +
-            "permanent_flags=%s, uid_next=%d, uid_validity=%d, access=%s}",
-            encoded, exists, recent, unseen, flags, permanentFlags, uidNext,
-            uidValidity, access
-        );
+        return Objects.toStringHelper(this)
+            .add("name", name != null ? new MailboxName(name).encode() : null)
+            .add("exists", exists)
+            .add("recent", recent)
+            .add("unseen", unseen)
+            .add("flags", flags)
+            .add("permanent_flags", permanentFlags)
+            .add("uid_next", uidNext)
+            .add("uid_validity", uidValidity)
+            .add("access", access)
+            .toString();
     }
 }

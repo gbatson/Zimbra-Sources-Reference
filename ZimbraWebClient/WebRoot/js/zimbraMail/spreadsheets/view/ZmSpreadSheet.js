@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -238,7 +238,7 @@ ZmSpreadSheet.prototype._init = function() {
     this._autoFillID = Dwt.getNextId();
 
     //AutoFill Div
-    html.push("<div class='AutoFill' id='"+this._autoFillID+"'><img src='/zmbra/img/starup/ImgBlank_9.gif' width='5' height='5'/></div>");
+    html.push("<div class='AutoFill' id='",this._autoFillID,"'><img src='",appContextPath,"/img/zimbra/ImgBlank_9.gif' width='5' height='5'/></div>");
 
     html.push("<table class='SpreadSheet' id='", this._tableID, "' cellspacing='1' cellpadding='0' border='0'>");
 	var row = [ "<tr><td class='LeftBar'></td>" ];

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -44,23 +44,25 @@ public class BlobDataSource implements DataSource {
         mContentType = ct;
     }
 
+    @Override
     public String getContentType() {
         if (mContentType != null)
             return mContentType;
         return "message/rfc822";
     }
 
+    @Override
     public InputStream getInputStream() throws IOException {
         return StoreManager.getInstance().getContent(mBlob);
     }
 
+    @Override
     public String getName() {
-        // TODO should we just return null?
-        return mBlob.toString();
+        return null;
     }
 
+    @Override
     public OutputStream getOutputStream() {
         throw new UnsupportedOperationException();
     }
-
 }

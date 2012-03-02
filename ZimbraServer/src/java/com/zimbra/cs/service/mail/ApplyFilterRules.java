@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,13 +15,6 @@
 
 package com.zimbra.cs.service.mail;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import org.apache.jsieve.parser.generated.Node;
-import org.apache.jsieve.parser.generated.ParseException;
-
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -33,11 +26,18 @@ import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.soap.ZimbraSoapContext;
+import org.apache.jsieve.parser.generated.Node;
+import org.apache.jsieve.parser.generated.ParseException;
+import org.dom4j.QName;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 
 public class ApplyFilterRules extends MailDocumentHandler {
@@ -51,7 +51,7 @@ public class ApplyFilterRules extends MailDocumentHandler {
             throw ServiceException.PERM_DENIED("cannot access account");
 
         // Get rules.
-        String fullScript = RuleManager.getRules(account);
+        String fullScript = getRules(account);
         if (StringUtil.isNullOrEmpty(fullScript)) {
             throw ServiceException.INVALID_REQUEST("Account has no filter rules defined.", null);
         }
@@ -95,6 +95,7 @@ public class ApplyFilterRules extends MailDocumentHandler {
         Mailbox mbox = getRequestedMailbox(zsc);
         List<Integer> messageIds = new ArrayList<Integer>();
         List<Integer> affectedIds = new ArrayList<Integer>();
+        OperationContext octxt = getOperationContext(zsc, context);
         
         if (msgEl != null) {
             String[] ids = msgEl.getAttribute(MailConstants.A_IDS).split(",");
@@ -106,7 +107,7 @@ public class ApplyFilterRules extends MailDocumentHandler {
             ZimbraQueryResults results = null;
             
             try {
-                results = mbox.search(new OperationContext(mbox), query, types,
+                results = mbox.search(octxt, query, types,
                     SortBy.NONE, Integer.MAX_VALUE);
                 while (results.hasNext()) {
                     ZimbraHit hit = results.getNext();
@@ -126,38 +127,55 @@ public class ApplyFilterRules extends MailDocumentHandler {
             throw ServiceException.INVALID_REQUEST(msg, null);
         }
         
+        int max = account.getFilterBatchSize();
+        if (messageIds.size() > max) {
+            throw ServiceException.INVALID_REQUEST("Attempted to apply filter rules to " + messageIds.size() +
+                " messages, which exceeded the limit of " + max, null);
+        }
+        
         ZimbraLog.filter.info("Applying filter rules to %s existing messages.", messageIds.size());
+        long sleepInterval = account.getFilterSleepInterval();
         
         // Apply filter rules.
-        for (int id : messageIds) {
-            // Synchronize on the mailbox to make sure two threads don't operate
-            // on the same message simultaneously.
-            synchronized (mbox) {
-                Message msg = null;
+        for (int i = 0; i < messageIds.size(); i++) {
+            if (i > 0 && sleepInterval > 0) {
                 try {
-                    msg = mbox.getMessageById(null, id);
-                } catch (NoSuchItemException e) {
-                    // Message was deleted since the search was done (bug 41609).
-                    ZimbraLog.filter.info("Skipping message %d: %s.", id, e.toString());
+                    Thread.sleep(sleepInterval);
+                } catch (InterruptedException e) {
                 }
-                
-                if (msg != null) {
-                    if (RuleManager.applyRulesToExistingMessage(mbox, id, node)) {
-                        affectedIds.add(id);
-                    }
+            }
+            
+            int id = messageIds.get(i);
+            try {
+                mbox.getMessageById(octxt, id);
+                if (RuleManager.applyRulesToExistingMessage(octxt, mbox, id, node)) {
+                    affectedIds.add(id);
                 }
+            } catch (NoSuchItemException e) {
+                // Message was deleted since the search was done (bug 41609).
+                ZimbraLog.filter.info("Skipping message %d: %s.", id, e.toString());
+            } catch (ServiceException e) {
+                ZimbraLog.filter.warn("Unable to filter message %d.", id, e);
             }
         }
         
         // Send response.
-        Element response = zsc.createElement(MailConstants.APPLY_FILTER_RULES_RESPONSE);
+        Element response = zsc.createElement(getResponseElementName());
         if (affectedIds.size() > 0) {
             response.addElement(MailConstants.E_MSG)
                 .addAttribute(MailConstants.A_IDS, StringUtil.join(",", affectedIds));
         }
         return response;
     }
-    
+
+    protected String getRules(Account account) {
+        return RuleManager.getIncomingRules(account);
+    }
+
+    protected QName getResponseElementName() {
+        return MailConstants.APPLY_FILTER_RULES_RESPONSE;
+    }
+
     private String getElementText(Element parent, String childName) {
         Element child = parent.getOptionalElement(childName);
         if (child == null) {

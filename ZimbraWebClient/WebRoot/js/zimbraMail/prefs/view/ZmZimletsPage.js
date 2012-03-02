@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,7 +32,6 @@
  */
 ZmZimletsPage = function(parent, section, controller) {
 	ZmPreferencesPage.call(this, parent, section, controller);
-	this._zimlets = ZmZimletsPage._getZimlets();
 };
 
 ZmZimletsPage.prototype = new ZmPreferencesPage;
@@ -329,10 +328,11 @@ function(zimletName, result) {
 	}
 
 	// remove the uninstalled zimlet from the listview
-	var zimlet = this._zimlets.getPrefZimletByName(zimletName);
+    var zimlets = this.getZimlets();
+	var zimlet = zimlets.getPrefZimletByName(zimletName);
 	if (zimlet) {
-		this._zimlets.removePrefZimlet(zimlet);
-		this._listView.set(this._zimlets._vector.clone());
+		zimlets.removePrefZimlet(zimlet);
+		this._listView.set(zimlets._vector.clone());
 	}
 
 	// prompt user to resart client
@@ -429,13 +429,18 @@ ZmZimletsPage._getZimlets =
 function() {
 	var allz = appCtxt.get(ZmSetting.ZIMLETS) || [];
 	var zimlets = new ZmPrefZimlets();
+    var zimletsLoaded = appCtxt.getZimletMgr().isLoaded();
 	for (var i = 0; i <  allz.length; i++) {
 		var name = allz[i].zimlet[0].name;
 		if (allz[i].zimletContext[0].presence == "mandatory") {
 			continue; // skip mandatory zimlets to be shown in prefs
 		}
 		var desc = allz[i].zimlet[0].description;
-		var label = allz[i].zimlet[0].label;
+		var label = allz[i].zimlet[0].label || name.replace(/^.*_/,"");
+        if (zimletsLoaded) {
+            desc = ZmZimletContext.processMessage(name, desc);
+            label = ZmZimletContext.processMessage(name, label);
+        }
 		var isEnabled = allz[i].zimletContext[0].presence == "enabled";
 		zimlets.addPrefZimlet(new ZmPrefZimlet(name, isEnabled, desc, label));
 	}
@@ -477,14 +482,45 @@ function() {
 	return "ZmPrefZimletListView";
 };
 
-/**
+/**                                                                        
  * Only show zimlets that have at least one valid action (eg, if the only action
  * is "tag" and tagging is disabled, don't show the rule).
  */
 ZmPrefZimletListView.prototype.set =
 function(list) {
 	this._checkboxIds = [];
+    this._zimletsLoaded = appCtxt.getZimletMgr().isLoaded();
 	DwtListView.prototype.set.call(this, list);
+    if (!this._zimletsLoaded) {
+        appCtxt.addZimletsLoadedListener(new AjxListener(this, this._handleZimletsLoaded));
+    }
+};
+
+ZmPrefZimletListView.prototype._handleZimletsLoaded = function(evt) {
+    this._zimletsLoaded = true;
+    var array = this.parent.getZimlets()._vector.getArray();
+    for (var i = 0; i < array.length; i++) {
+        var item = array[i];
+        var label = item.label || item.name.replace(/^.*_/,"");
+        item.label = ZmZimletContext.processMessage(item.name, label);
+        item.desc = ZmZimletContext.processMessage(item.name, item.desc);
+        this.setCellContents(item, ZmPrefZimletListView.COL_NAME, AjxStringUtil.htmlEncode(item.label));
+        this.setCellContents(item, ZmPrefZimletListView.COL_DESC, AjxStringUtil.htmlEncode(item.desc));
+    }
+};
+
+ZmPrefZimletListView.prototype.setCellContents = function(item, field, html) {
+	var el = this.getCellElement(item, field);
+	if (!el) { return; }
+	el.innerHTML = html;
+};
+
+ZmPrefZimletListView.prototype.getCellElement = function(item, field) {
+	return document.getElementById(this._getCellId(item, field));
+};
+
+ZmPrefZimletListView.prototype._getCellId = function(item, field, params) {
+	return DwtId.getListViewItemId(DwtId.WIDGET_ITEM_CELL, "zimlets", item.name, field);
 };
 
 ZmPrefZimletListView.prototype._getHeaderList =
@@ -516,10 +552,21 @@ function(html, idx, item, field, colIdx, params) {
 		html[idx++] = "' onchange='ZmPrefZimletListView._activeStateChange'>";
 	}
 	else if (field == ZmPrefZimletListView.COL_DESC) {
-		html[idx++] = AjxStringUtil.stripTags(item.desc, true);
+        var desc = this._zimletsLoaded ? item.desc : ZmMsg.loading;
+        html[idx++] = "<div id='";
+        html[idx++] = this._getCellId(item, ZmPrefZimletListView.COL_DESC);
+        html[idx++] = "'>";
+		html[idx++] = AjxStringUtil.stripTags(desc, true);
+        html[idx++] = "</div>";
 	}
 	else if (field == ZmPrefZimletListView.COL_NAME) {
-		html[idx++] = AjxStringUtil.stripTags(item.getNameWithoutPrefix(), true);
+        html[idx++] = "<div id='";
+        html[idx++] = this._getCellId(item, ZmPrefZimletListView.COL_NAME);
+        html[idx++] = "' title='";
+        html[idx++] = item.name;
+        html[idx++] = "'>";
+		html[idx++] = AjxStringUtil.stripTags(item.getNameWithoutPrefix(!this._zimletsLoaded), true);
+        html[idx++] = "</div>";
 	}
 	else if (field == ZmPrefZimletListView.COL_ACTION) {
 		html[idx++] = "<a href='javascript:;' onclick='ZmPrefZimletListView.undeployZimlet(";
@@ -616,9 +663,10 @@ function(name) {
 ZmPrefZimlets.prototype.sortByName =
 function(desc) {
 	var r = 0;
+    var zimletsLoaded = appCtxt.getZimletMgr().isLoaded();
 	this._vector.sort(function(a,b) {
-		var aname = a.getNameWithoutPrefix().toLowerCase();
-		var bname = b.getNameWithoutPrefix().toLowerCase();
+		var aname = a.getNameWithoutPrefix(!zimletsLoaded).toLowerCase();
+		var bname = b.getNameWithoutPrefix(!zimletsLoaded).toLowerCase();
 
 		if (aname == bname) {
 			r = 0;
@@ -649,8 +697,8 @@ ZmPrefZimlet = function(name, active, desc, label) {
 };
 
 ZmPrefZimlet.prototype.getNameWithoutPrefix	=
-function() {
-	if (this.label != null && this.label.length > 0) {
+function(noLabel) {
+	if (!noLabel && this.label != null && this.label.length > 0) {
 		return	this.label;
 	}
 

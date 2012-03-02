@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -68,7 +68,7 @@ public class SearchResults {
         AuthToken authToken = token;
         
         try {
-            CSVWriter writer = new CSVWriter(new OutputStreamWriter (out, "UTF-8") ) ;
+            CSVWriter writer = new CSVWriter(new OutputStreamWriter (out) ) ;
             List entryList = getSearchResults(authToken, query, domain, types ); 
             int noCols = 6 ;
             for (int i = 0 ; i < entryList.size(); i ++) {

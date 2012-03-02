@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,9 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.Constants;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Document;
 import com.zimbra.cs.mailbox.MailItem;
@@ -27,16 +30,14 @@ import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.CalendarItem.Instance;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteInfo;
-import com.zimbra.cs.service.UserServlet.Context;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.Constants;
-import com.zimbra.common.soap.Element;
+import com.zimbra.cs.service.UserServletContext;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 
 public class RssFormatter extends Formatter {
     
     private SimpleDateFormat mDateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z");
         
-    public void formatCallback(Context context) throws IOException, ServiceException {
+    public void formatCallback(UserServletContext context) throws IOException, ServiceException {
         //ZimbraLog.mailbox.info("start = "+new Date(context.getStartTime()));
         //ZimbraLog.mailbox.info("end = "+new Date(context.getEndTime()));
         Iterator<? extends MailItem> iterator = null;
@@ -100,7 +101,7 @@ public class RssFormatter extends Formatter {
         return System.currentTimeMillis() + (7*Constants.MILLIS_PER_DAY);
     }
     
-    private void addCalendarItem(CalendarItem calItem, Element channel, Context context) throws ServiceException {
+    private void addCalendarItem(CalendarItem calItem, Element channel, UserServletContext context) throws ServiceException {
         Collection<Instance> instances = calItem.expandInstances(context.getStartTime(), context.getEndTime(), false);
         for (Iterator<Instance> instIt = instances.iterator(); instIt.hasNext(); ) {
             CalendarItem.Instance inst = instIt.next();
@@ -124,7 +125,7 @@ public class RssFormatter extends Formatter {
         
     }
      
-    private void addMessage(Message m, Element channel, Context context) {
+    private void addMessage(Message m, Element channel, UserServletContext context) {
         Element item = channel.addElement("item");
         item.addElement("title").setText(m.getSubject());
         item.addElement("description").setText(m.getFragment());
@@ -136,7 +137,7 @@ public class RssFormatter extends Formatter {
         // guid.addAttribute("isPermaLink", "false");
     }
 
-    private void addDocument(Document doc, Element channel, Context context) {
+    private void addDocument(Document doc, Element channel, UserServletContext context) {
         Element item = channel.addElement("item");
         item.addElement("title").setText(doc.getName() + " ver " + doc.getVersion());
         item.addElement("description").setText(doc.getFragment());
@@ -144,12 +145,9 @@ public class RssFormatter extends Formatter {
         item.addElement("pubDate").setText(mDateFormat.format(new Date(doc.getDate())));
         item.addElement("link").setText(context.req.getRequestURL().append("?id=" + doc.getId()).toString());
     }
-    
-    public String getType() {
-        return "rss";
-    }
 
-    public boolean canBeBlocked() {
-        return false;
+    @Override   
+    public FormatType getType() {
+        return FormatType.RSS;
     }
 }

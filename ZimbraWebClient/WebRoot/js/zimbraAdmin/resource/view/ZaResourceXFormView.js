@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,7 +22,11 @@
 * @author Greg Solovyev
 **/
 ZaResourceXFormView = function(parent, entry) {
-	ZaTabView.call(this, parent,"ZaResourceXFormView");	
+	ZaTabView.call(this, {
+		parent:parent,
+		iKeyName:"ZaResourceXFormView",
+		contextId:ZaId.TAB_RES_EDIT
+	});	
 	this.TAB_INDEX = 0;		
 	if(!ZaResource.accountStatusChoices) {
 		ZaResource.accountStatusChoices = [
@@ -46,7 +50,11 @@ ZaResourceXFormView.helpURL = location.pathname + ZaUtil.HELP_URL + "managing_ac
 
 ZaResourceXFormView.prototype.getTabIcon =
 function () {
-	return "Resource" ;
+	if (this._containedObject && this._containedObject.attrs && this._containedObject.attrs[ZaResource.A_zimbraCalResType] == ZaResource.RESOURCE_TYPE_LOCATION){
+		return "Location" ;	
+	}else {
+		return "Resource" ;
+	}
 }
 
 /**
@@ -515,9 +523,8 @@ ZaResourceXFormView.myXFormModifier = function(xFormObject, entry) {
                     {type:_GROUP_, numCols:3, nowrap:true, msgName:ZaMsg.NAD_LocationDisplayName, width:200, label:ZaMsg.NAD_LocationDisplayName, labelLocation:_LEFT_,
                         items: [
                             {ref:ZaResource.A_locationDisplayName, type:_TEXTFIELD_, label:null, cssClass:"admin_xform_name_input", width:defaultWidth,
-				 enableDisableChecks:[ZaResourceXFormView.isAutoDisplayname],
-                                 enableDisableChangeEventSources:[ZaResource.A2_autoLocationName],bmolsnr:true
-	
+				enableDisableChecks:[ZaResourceXFormView.isAutoDisplayname],
+                                enableDisableChangeEventSources:[ZaResource.A2_autoLocationName],bmolsnr:true
                             },
                             {ref:ZaResource.A2_autoLocationName, type:_CHECKBOX_, msgName:ZaMsg.NAD_Auto,
                                 label:ZaMsg.NAD_Auto,labelLocation:_RIGHT_,
@@ -550,13 +557,8 @@ ZaResourceXFormView.myXFormModifier = function(xFormObject, entry) {
                         visibilityChangeEventSources:[ZaResource.A_zimbraCalResType]
                     }
                 ]},
-                {type:_ZAGROUP_, items:[
-                    {ref:ZaResource.A_street, type:_TEXTFIELD_, msgName:ZaMsg.NAD_Street,label:ZaMsg.NAD_Street, labelLocation:_LEFT_, width:defaultWidth},
-                    {ref:ZaResource.A_city, type:_TEXTFIELD_, msgName:ZaMsg.NAD_city ,label:ZaMsg.NAD_city, labelLocation:_LEFT_, width:defaultWidth},
-                    {ref:ZaResource.A_state, type:_TEXTFIELD_, msgName:ZaMsg.NAD_state ,label:ZaMsg.NAD_state, labelLocation:_LEFT_, width:defaultWidth},
-                    {ref:ZaResource.A_country, type:_TEXTFIELD_, msgName:ZaMsg.country ,label:ZaMsg.NAD_country, labelLocation:_LEFT_, width:defaultWidth},
-                    {ref:ZaResource.A_zip, type:_TEXTFIELD_, msgName:ZaMsg.zip ,label:ZaMsg.NAD_zip, labelLocation:_LEFT_, width:defaultWidth}
-                ]}
+                {type:_ZAGROUP_, items:ZaAccountXFormView.getAddressFormItem()
+                 }
             ]
         };
         cases.push(case2);

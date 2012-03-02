@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -40,11 +40,12 @@
 
     <!--Application Toolbar  -->
     <mo:contactToolbar contact="${contact}" urlTarget="${context_url}" context="${context}" keys="false" isTop="true" mailbox="${mailbox}"/>
-
+    <div class="wrap-dcontent" id="wrap-dcontent-view">
+                    <div id="dcontent-view" style="padding-bottom:5px;">
         <div class="Stripes header">
             <div class="tbl">
                 <div class="tr">
-                    <span class="td aleft Person48">&nbsp;</span>
+                    <span class="td aleft ImgPerson_48">&nbsp;</span>
                     <span class="td aleft">
                        <div>
                            <strong>${fn:escapeXml(contact.displayFileAs)}</strong>
@@ -63,11 +64,11 @@
                     <div class="tr nr">
                 <span class="td aleft">
                 <c:if test="${contact.isFlagged}">
-                    <span class="SmlIcnHldr Flag">&nbsp;</span></c:if>
+                    <span class="Img ImgFlagRed">&nbsp;</span></c:if>
                 <c:if test="${contact.hasTags and mailbox.features.tagging}">
                     <c:set var="tags" value="${zm:getTags(pageContext, contact.tagIds)}"/>
                     <c:forEach items="${tags}" var="tag">
-                        <span class="SmlIcnHldr Tag${tag.color}">&nbsp;</span><span>${fn:escapeXml(tag.name)}</span>
+                        <span class="Img ImgTag${zm:capitalize(tag.color)}">&nbsp;</span><span>${fn:escapeXml(tag.name)}</span>
                     </c:forEach>
                 </c:if>
                 </span>
@@ -75,10 +76,16 @@
                 </div>
             </c:if>
         </div>
+
         <div class="msgBody">
-        <mo:displayContact contact="${contact}"/>
-    </div>
+
+                    <mo:displayContact contact="${contact}"/>
+                </div>    
+            </div>
+        </div>    
     <c:if test="${ua.isiPad == false}">
         <mo:contactToolbar contact="${contact}" urlTarget="${context_url}" context="${context}" keys="false" isTop="false" mailbox="${mailbox}"/>
     </c:if>
+    </div>
+    </div>
 </form>

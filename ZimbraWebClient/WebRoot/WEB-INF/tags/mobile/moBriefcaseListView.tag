@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -118,7 +118,7 @@
 </c:choose>
             <span class="td f">
                 <input class="chk" type="checkbox" ${requestScope.select ne 'none' && (fn:contains(requestScope._selectedIds,stringToCheck) || requestScope.select eq 'all') ? 'checked="checked"' : ''} name="id" value="${bchit.id}"/>
-                <span class="SmlDocIcnHldr ${mimeImg}">&nbsp;</span>
+                <span class="Img ${mimeImg}">&nbsp;</span>
             </span>
             <span class="td m" onclick='return zClickLink("a${bchit.id}")'>
                 <c:set var="briefUrl" value="/service/home/~/?id=${bchit.id}&auth=co"/>

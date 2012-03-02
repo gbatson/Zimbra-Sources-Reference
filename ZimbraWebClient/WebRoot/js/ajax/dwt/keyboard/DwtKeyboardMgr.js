@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -69,6 +69,7 @@ DwtKeyboardMgr = function(shell) {
 	this.__keyTimeout = 750;
 	this.__currTabGroup = null;
 	this.__currDefaultHandler = null;
+	this._evtMgr = new AjxEventMgr();
 };
 
 /**@private*/
@@ -120,7 +121,7 @@ function() {
  */
 DwtKeyboardMgr.prototype.pushTabGroup =
 function(tabGroup) {
-	DBG.println("kbnav", "PUSH tab group " + tabGroup.__name);
+//	DBG.println("kbnav", "PUSH tab group " + tabGroup.__name);
 	if (!this.__keyboardHandlingInited || !tabGroup) { return; }
 		
 	this.__tabGrpStack.push(tabGroup);
@@ -130,7 +131,7 @@ function(tabGroup) {
 		focusMember = tabGroup.resetFocusMember(true);
 	}
 	if (!focusMember) {
-		DBG.println("kbnav", "DwtKeyboardMgr.pushTabGroup: tab group " + tabGroup.__name + " has no members!");
+//		DBG.println("kbnav", "DwtKeyboardMgr.pushTabGroup: tab group " + tabGroup.__name + " has no members!");
 		return;
 	}
 	tabGroup.addFocusChangeListener(this.__tabGroupChangeListenerObj);
@@ -151,7 +152,7 @@ DwtKeyboardMgr.prototype.popTabGroup =
 function(tabGroup) {
 	if (!this.__keyboardHandlingInited) { return; }
 	if (!tabGroup) return;
-	DBG.println("kbnav", "POP tab group " + tabGroup.__name);
+//	DBG.println("kbnav", "POP tab group " + tabGroup.__name);
 	
 	// we never want an empty stack
 	if (this.__tabGrpStack.length <= 1) {
@@ -217,10 +218,20 @@ function(tabGroup) {
 	return otg;
 };
 
+/**
+ * Gets current tab group
+ *
+ * @return {DwtTabGroup}	current tab group
+ */
+DwtKeyboardMgr.prototype.getCurrentTabGroup =
+function() {
+    return this.__currTabGroup;
+};
+
 DwtKeyboardMgr.prototype.pushDefaultHandler =
 function(handler) {
 	if (!this.__enabled || !this.__keyboardHandlingInited || !handler) { return; }
-	DBG.println("kbnav", "PUSH default handler: " + handler);
+//	DBG.println("kbnav", "PUSH default handler: " + handler);
 		
 	this.__defaultHandlerStack.push(handler);
 	this.__currDefaultHandler = handler;
@@ -228,14 +239,14 @@ function(handler) {
 
 DwtKeyboardMgr.prototype.popDefaultHandler =
 function() {
-	DBG.println("kbnav", "POP default handler");
+//	DBG.println("kbnav", "POP default handler");
 	// we never want an empty stack
 	if (!this.__keyboardHandlingInited || (this.__defaultHandlerStack.length <= 1)) { return; }
 
-	DBG.println("kbnav", "Default handler stack length: " + this.__defaultHandlerStack.length);
+//	DBG.println("kbnav", "Default handler stack length: " + this.__defaultHandlerStack.length);
 	var handler = this.__defaultHandlerStack.pop();
 	this.__currDefaultHandler = this.__defaultHandlerStack[this.__defaultHandlerStack.length - 1];
-	DBG.println("kbnav", "Default handler is now: " + this.__currDefaultHandler);
+//	DBG.println("kbnav", "Default handler is now: " + this.__currDefaultHandler);
 
 	return handler;
 };
@@ -243,13 +254,16 @@ function() {
 /**
  * Sets the focus to the given object.
  * 
- * @param {HTMLInputElement|DwtControl} focusObj		the object to which to set focus
+ * @param {HTMLInputElement|DwtControl|string} focusObj		the object to which to set focus, or its ID
  */ 
 DwtKeyboardMgr.prototype.grabFocus =
 function(focusObj) {
 	if (!this.__enabled) { return; }
 	if (!this.__keyboardHandlingInited) {
 		return;
+	}
+	if (typeof focusObj == "string") {
+		focusObj = document.getElementById(focusObj);
 	}
 	if (!focusObj) return;
 
@@ -384,6 +398,28 @@ function() {
 };
 
 /**
+ * Adds a global key event listener.
+ *
+ * @param {constant}	ev			key event type
+ * @param {AjxListener}	listener	listener to notify
+ */
+DwtKeyboardMgr.prototype.addListener =
+function(ev, listener) {
+	this._evtMgr.addListener(ev, listener);
+};
+
+/**
+ * Removes a global key event listener.
+ *
+ * @param {constant}	ev			key event type
+ * @param {AjxListener}	listener	listener to remove
+ */
+DwtKeyboardMgr.prototype.removeListener =
+function(ev, listener) {
+	this._evtMgr.removeListener(ev, listener);
+};
+
+/**
  * @private
  */
 DwtKeyboardMgr.prototype.__initKeyboardHandling =
@@ -437,9 +473,10 @@ function(focusObj) {
 						Dwt.instanceOf(focusObj, "DwtCheckbox") ||
 						Dwt.instanceOf(focusObj, "DwtRadioButton") ||
 						Dwt.instanceOf(focusObj, "ZmAdvancedHtmlEditor"));
-	DBG.println("kbnav", "DwtKeyboardMgr._doGrabFocus: " + focusObj);
+//	DBG.println("kbnav", "DwtKeyboardMgr._doGrabFocus: " + focusObj);
+	DBG.println("focus", "DwtKeyboardMgr._doGrabFocus: " + focusObj);
 	if (dwtInputCtrl || !(focusObj instanceof DwtControl)) {
-		DBG.println("kbnav", "DwtKeyboardMgr._doGrabFocus: input or non-control");
+		DBG.println("focus", "DwtKeyboardMgr._doGrabFocus: input or non-control");
 		// dealing with an input field
 		if (this.__focusObj instanceof DwtControl && !this.__dwtInputCtrl) {
 			// ctrl -> input
@@ -457,7 +494,7 @@ function(focusObj) {
 			} catch(ex) {}
 		}
 	} else {
-		DBG.println("kbnav", "DwtKeyboardMgr._doGrabFocus: control");
+		DBG.println("focus", "DwtKeyboardMgr._doGrabFocus: control");
 		/* If the current focus of obj and the one grabbing focus are both DwtControls
 		 * then we need to simulate a blur on the control losing focus */
 		if (this.__dwtCtrlHasFocus && (this.__focusObj instanceof DwtControl)) {
@@ -490,11 +527,12 @@ function(focusObj) {
  */
 DwtKeyboardMgr.__onFocusHdlr =
 function(ev) {
+	DBG.println("focus", "DwtKeyboardMgr.__onFocusHdlr");
 
 	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
 	kbMgr.__dwtCtrlHasFocus = true;
 	var focusObj = kbMgr.__focusObj;
-	DBG.println("kbnav", "DwtKeyboardMgr: ONFOCUS - " + focusObj);
+//	DBG.println("kbnav", "DwtKeyboardMgr: ONFOCUS - " + focusObj);
 	if (focusObj && focusObj.__doFocus) {
 		focusObj.__doFocus();
 	}
@@ -507,13 +545,14 @@ function(ev) {
  */
 DwtKeyboardMgr.__onBlurHdlr =
 function(ev) {
+	DBG.println("focus", "DwtKeyboardMgr.__onBlurHdlr");
 
 	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
 
 	// Got to play the trick with HTML elements which get focus before blur is
 	// called on the old focus object. (see _grabFocus)
 	var focusObj = kbMgr.__oldFocusObj || kbMgr.__focusObj;
-	DBG.println("kbnav", "DwtKeyboardMgr: ONBLUR - " + focusObj);
+//	DBG.println("kbnav", "DwtKeyboardMgr: ONBLUR - " + focusObj);
 	if (focusObj && focusObj.__doBlur) {
 		focusObj.__doBlur();
 	}
@@ -536,7 +575,12 @@ function(ev) {
 DwtKeyboardMgr.__keyUpHdlr =
 function(ev) {
 	ev = DwtUiEvent.getEvent(ev);
-	DBG.println("kbnav", "keyup: " + ev.keyCode);
+//	DBG.println("kbnav", "keyup: " + ev.keyCode);
+
+	var kbMgr = appCtxt.getKeyboardMgr();
+	if (kbMgr._evtMgr.notifyListeners(DwtEvent.ONKEYUP, ev) === false) {
+		return false;
+	}
 
 	// clear saved Gecko key
 	DwtKeyboardMgr.__geckoKeyCode = null;
@@ -553,9 +597,15 @@ function(ev) {
 DwtKeyboardMgr.__keyPressHdlr =
 function(ev) {
 	ev = DwtUiEvent.getEvent(ev);
-	DBG.println("kbnav", "keypress: " + (ev.keyCode || ev.charCode));
+//	DBG.println("kbnav", "keypress: " + (ev.keyCode || ev.charCode));
+
+	var kbMgr = appCtxt.getKeyboardMgr();
+	if (kbMgr._evtMgr.notifyListeners(DwtEvent.ONKEYPRESS, ev) === false) {
+		return false;
+	}
+
 	if (DwtKeyboardMgr.__geckoKeyCode && AjxEnv.isGeckoBased) {
-		DBG.println("kbnav", "Gecko: calling keydown on keypress event");
+//		DBG.println("kbnav", "Gecko: calling keydown on keypress event");
 		return DwtKeyboardMgr.__keyDownHdlr(ev);
 	} else {
 		DwtKeyboardMgr.__geckoKeyCode = DwtKeyEvent.getCharCode(ev);
@@ -576,7 +626,7 @@ function(ev) {
 	}
 
 	ev = DwtUiEvent.getEvent(ev, this);
-	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
+//	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
 	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
 	var kev = DwtShell.keyEvent;
 	kev.setFromDhtmlEvent(ev);
@@ -631,23 +681,23 @@ function(ev) {
  */
 DwtKeyboardMgr.__syncFocus =
 function(kbMgr, obj) {
-	DBG.println("kbnav", "sync focus ----- obj: " + obj + ", __focusObj: " + kbMgr.__focusObj + ", __dwtCtrlHasFocus: " + kbMgr.__dwtCtrlHasFocus);
+//	DBG.println("kbnav", "sync focus ----- obj: " + obj + ", __focusObj: " + kbMgr.__focusObj + ", __dwtCtrlHasFocus: "
 //			+ kbMgr.__dwtCtrlHasFocus + ", __dwtInputCtrl: " + kbMgr.__dwtInputCtrl + ", __oldFocusObj: " + kbMgr.__oldFocusObj);
 	/* (BUG 8588) If obj is not the hidden input field (it's some other input field), and if
 	 * a control has focus, then we have a focus mismatch and we need to blur the
 	 * control that thinks it has focus. That can happen due to the way focus
 	 * can be set in input fields. */ 
 	if ((obj != kbMgr._kbFocusField) && kbMgr.__dwtCtrlHasFocus) {
-		DBG.println("kbnav", "FOCUS MISMATCH! focus obj: " + kbMgr.__focusObj + ", obj: " + obj);
+//		DBG.println("kbnav", "FOCUS MISMATCH! focus obj: " + kbMgr.__focusObj + ", obj: " + obj);
 //		DwtKeyboardMgr.__onBlurHdlr();
 		kbMgr._kbFocusField.focus();
 	}
 	
-	DBG.println("kbnav", "DwtKeyboardMgr.__syncFocus: focus obj: " + kbMgr.__focusObj + " - obj: " + obj);
+//	DBG.println("kbnav", "DwtKeyboardMgr.__syncFocus: focus obj: " + kbMgr.__focusObj + " - obj: " + obj);
 	if (!kbMgr.__dwtCtrlHasFocus) {
 		// DwtInputField DwtHtmlEditor
 		if ((obj != kbMgr.__focusObj) && !kbMgr.__dwtInputCtrl) {
-			DBG.println("kbnav", "Focus out of sync, resetting");
+//			DBG.println("kbnav", "Focus out of sync, resetting");
 			if (kbMgr.__currTabGroup && kbMgr.__currTabGroup.setFocusMember(obj)) {
 				kbMgr.__focusObj = obj;
 				kbMgr.__oldFocusObj = null;
@@ -667,17 +717,21 @@ function(ev) {
 
 	try {
 
+	var kbMgr = appCtxt.getKeyboardMgr();
+	if (kbMgr._evtMgr.notifyListeners(DwtEvent.ONKEYDOWN, ev) === false) {
+		return false;
+	};
+
 	if (DwtKeyboardMgr.__shell._blockInput) { return false; }
 	ev = DwtUiEvent.getEvent(ev, this);
-	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
-	var kbMgr = DwtKeyboardMgr.__shell.getKeyboardMgr();
+//	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
 	if (kbMgr && !kbMgr.isEnabled()) { return true; }  // Allow key events to propagate when keyboard manager is disabled (to avoid taking over browser shortcuts). Bugzilla #45469.
 	if (!kbMgr || !kbMgr.__checkStatus()) { return false; }
 	var kev = DwtShell.keyEvent;
 	kev.setFromDhtmlEvent(ev);
 	DwtKeyboardMgr.__geckoKeyCode = null;
 	var keyCode = DwtKeyEvent.getCharCode(ev);
-	DBG.println("kbnav", "keydown: " + keyCode + " -------- " + ev.target);
+//	DBG.println("kbnav", "keydown: " + keyCode + " -------- " + ev.target);
 
 	// Popdown any tooltip
 	DwtKeyboardMgr.__shell.getToolTip().popdown();
@@ -686,7 +740,7 @@ function(ev) {
 	var focusInTGMember = DwtKeyboardMgr.__syncFocus(kbMgr, kev.target);
 	
 	if (!focusInTGMember) {
-		DBG.println("kbnav", "Object is not in tab hierarchy");
+//		DBG.println("kbnav", "Object is not in tab hierarchy");
 	}
 			
 	/* The first thing we care about is the tab key since we want to manage
@@ -707,18 +761,18 @@ function(ev) {
 	 	if (kbMgr.__currTabGroup && !DwtKeyMapMgr.hasModifier(kev)) {
 		 	// If a menu is popped up then don't act on the Tab
 		 	if (!DwtMenu.menuShowing()) {
-			 	DBG.println("kbnav", "Tab");
+//			 	DBG.println("kbnav", "Tab");
 			 	// If the tab hit is in an element or if the current tab group has
 			 	// a focus member
 				if (focusInTGMember || kbMgr.__currTabGroup.getFocusMember()) {
 				 	if (!kev.shiftKey) {
-				 		kbMgr.__currTabGroup.dump("kbnav");
+//				 		kbMgr.__currTabGroup.dump("kbnav");
 				 		kbMgr.__currTabGroup.getNextFocusMember(true);
 				 	} else {
 				 		kbMgr.__currTabGroup.getPrevFocusMember(true);
 				 	}
 			 	} else {
-			 		DBG.println("kbnav", "DwtKeyboardMgr.__keyDownHdlr: no current focus member, resetting to first in tab group");
+//			 		DBG.println("kbnav", "DwtKeyboardMgr.__keyDownHdlr: no current focus member, resetting to first in tab group");
 			 		// If there is no current focus member, then reset
 			 		kbMgr.__currTabGroup.resetFocusMember(true);
 			 	}
@@ -765,14 +819,14 @@ function(ev) {
 	parts.push(keyCode);
 	kbMgr.__keySequence[kbMgr.__keySequence.length] = parts.join(DwtKeyMap.JOIN);
 
-	DBG.println("kbnav", "KEYCODE: " + keyCode + " - KEY SEQ: " + kbMgr.__keySequence.join(""));
+//	DBG.println("kbnav", "KEYCODE: " + keyCode + " - KEY SEQ: " + kbMgr.__keySequence.join(""));
 	
 	var handled = DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED;
 
 	// First see if the control that currently has focus can handle the key event
 	var obj = kbMgr.__focusObj;
 	if (obj && (obj.handleKeyAction) && (kbMgr.__dwtCtrlHasFocus || kbMgr.__dwtInputCtrl || (obj.hasFocus && obj.hasFocus()))) {
-		DBG.println("kbnav", obj + " has focus: " + obj.hasFocus());
+//		DBG.println("kbnav", obj + " has focus: " + obj.hasFocus());
 		handled = kbMgr.__dispatchKeyEvent(obj, kev);
 		while ((handled == DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED) && obj.parent && obj.parent.getKeyMapName) {
 			obj = obj.parent;
@@ -817,10 +871,10 @@ function(hdlr, ev, forceActionCode) {
 	if (!mapName) {
 		return DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED;
 	}
-	DBG.println("kbnav", "DwtKeyboardMgr.__dispatchKeyEvent: handler " + hdlr.toString() + " handling " + this.__keySequence + " for map: " + mapName);
+//	DBG.println("kbnav", "DwtKeyboardMgr.__dispatchKeyEvent: handler " + hdlr.toString() + " handling " + this.__keySequence + " for map: " + mapName);
 	var actionCode = this.__keyMapMgr.getActionCode(this.__keySequence, mapName, forceActionCode);
 	if (actionCode == DwtKeyMapMgr.NOT_A_TERMINAL) {
-		DBG.println("kbnav", "scheduling action to kill key sequence");
+//		DBG.println("kbnav", "scheduling action to kill key sequence");
 		/* setup a timed action to redispatch/kill the key sequence in the event
 		 * the user does not press another key in the allotted time */
 		this.__hdlr = hdlr;
@@ -831,14 +885,14 @@ function(hdlr, ev, forceActionCode) {
 	} else if (actionCode != null) {
 		/* It is possible that the component may not handle a valid action
 		 * particulary actions defined in the default map */
-		DBG.println("kbnav", "DwtKeyboardMgr.__dispatchKeyEvent: handling action: " + actionCode);
+//		DBG.println("kbnav", "DwtKeyboardMgr.__dispatchKeyEvent: handling action: " + actionCode);
 		if (!hdlr.handleKeyAction) {
 			return DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED;
 		}
 		var result = hdlr.handleKeyAction(actionCode, ev);
 		return result ? DwtKeyboardMgr.__KEYSEQ_HANDLED : DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED;
 	} else {	
-		DBG.println("kbnav", "DwtKeyboardMgr.__dispatchKeyEvent: no action code for " + this.__keySequence);
+//		DBG.println("kbnav", "DwtKeyboardMgr.__dispatchKeyEvent: no action code for " + this.__keySequence);
 		return DwtKeyboardMgr.__KEYSEQ_NOT_HANDLED;
 	}
 };
@@ -851,7 +905,7 @@ function(hdlr, ev, forceActionCode) {
  */
 DwtKeyboardMgr.prototype.__killKeySequenceAction =
 function() {
-	DBG.println("kbnav", "DwtKeyboardMgr.__killKeySequenceAction: " + this.__mapName);
+//	DBG.println("kbnav", "DwtKeyboardMgr.__killKeySequenceAction: " + this.__mapName);
 	this.__dispatchKeyEvent(this.__hdlr, this.__ev, true);
 	this.clearKeySeq();
 };
@@ -875,6 +929,6 @@ function(ev, kev, propagate, status) {
 	kev._stopPropagation = !propagate;
 	kev._returnValue = propagate;
 	kev.setToDhtmlEvent(ev);
-	DBG.println("kbnav", "key event returning: " + propagate);
+//	DBG.println("kbnav", "key event returning: " + propagate);
 	return propagate;
 };

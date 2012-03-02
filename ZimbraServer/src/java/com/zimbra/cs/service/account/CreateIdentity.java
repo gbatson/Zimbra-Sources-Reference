@@ -26,19 +26,22 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class CreateIdentity extends DocumentHandler {
-	
+
+    @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Account account = getRequestedAccount(zsc);
 
-        if (!canModifyOptions(zsc, account))
+        if (!canModifyOptions(zsc, account)) {
             throw ServiceException.PERM_DENIED("can not modify options");
-        
+        }
+
         Element identityEl = request.getElement(AccountConstants.E_IDENTITY);
         String name = identityEl.getAttribute(AccountConstants.A_NAME);
-        Map<String,Object> attrs = AccountService.getAttrs(identityEl, AccountConstants.A_NAME);
+        Map<String, Object> attrs = AccountService.getAttrs(
+                identityEl, true, AccountConstants.A_NAME);
         Identity identity = Provisioning.getInstance().createIdentity(account, name, attrs);
-        
+
         Element response = zsc.createElement(AccountConstants.CREATE_IDENTITY_RESPONSE);
         ToXML.encodeIdentity(response, identity);
         return response;

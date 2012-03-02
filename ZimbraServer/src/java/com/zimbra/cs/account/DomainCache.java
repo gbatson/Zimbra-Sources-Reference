@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,7 +21,9 @@
  */
 package com.zimbra.cs.account;
 
-import org.apache.commons.collections.map.LRUMap;
+import java.util.Map;
+
+import com.zimbra.common.util.MapUtil;
 
 import com.zimbra.common.stats.Counter;
 import com.zimbra.cs.account.Provisioning.DomainBy;
@@ -31,10 +33,11 @@ import com.zimbra.cs.account.Provisioning.DomainBy;
  **/
 public class DomainCache {
     
-    private LRUMap mNameCache;
-    private LRUMap mIdCache;
-    private LRUMap mVirtualHostnameCache;
-    private LRUMap mKrb5RealmCache;
+    private Map mNameCache;
+    private Map mIdCache;
+    private Map mVirtualHostnameCache;
+    private Map mForeignNameCache;
+    private Map mKrb5RealmCache;
     
     private long mRefreshTTL;
     private Counter mHitRate = new Counter();
@@ -74,10 +77,11 @@ public class DomainCache {
     
 
     class NegativeCache {
-        private LRUMap mNegativeNameCache;
-        private LRUMap mNegativeIdCache;
-        private LRUMap mNegativeVirtualHostnameCache;
-        private LRUMap mNegativeKrb5RealmCache;
+        private Map mNegativeNameCache;
+        private Map mNegativeIdCache;
+        private Map mNegativeVirtualHostnameCache;
+        private Map mNegativeForeignNameCache;
+        private Map mNegativeKrb5RealmCache;
 
         private long mNERefreshTTL;
         
@@ -88,10 +92,11 @@ public class DomainCache {
         private boolean mEnabled = true;
         
         private NegativeCache(int maxItems, long refreshTTL) {
-            mNegativeNameCache = new LRUMap(maxItems);
-            mNegativeIdCache = new LRUMap(maxItems);
-            mNegativeVirtualHostnameCache = new LRUMap(maxItems);  
-            mNegativeKrb5RealmCache = new LRUMap(maxItems);   
+            mNegativeNameCache = MapUtil.newLruMap(maxItems);
+            mNegativeIdCache = MapUtil.newLruMap(maxItems);
+            mNegativeVirtualHostnameCache = MapUtil.newLruMap(maxItems);  
+            mNegativeForeignNameCache = MapUtil.newLruMap(maxItems);  
+            mNegativeKrb5RealmCache = MapUtil.newLruMap(maxItems);   
             mNERefreshTTL = refreshTTL;
         }
         
@@ -111,6 +116,9 @@ public class DomainCache {
             case virtualHostname:
                 mNegativeVirtualHostnameCache.put(key, nonExistingDomain);
                 break;
+            case foreignName:
+                mNegativeForeignNameCache.put(key, nonExistingDomain);
+                break;
             case krb5Realm:
                 mNegativeKrb5RealmCache.put(key, nonExistingDomain);
                 break;
@@ -128,6 +136,8 @@ public class DomainCache {
                 return (NonExistingDomain)mNegativeIdCache.get(key);
             case virtualHostname:
                 return (NonExistingDomain)mNegativeVirtualHostnameCache.get(key);
+            case foreignName:
+                return (NonExistingDomain)mNegativeForeignNameCache.get(key);
             case krb5Realm:
                 return (NonExistingDomain)mNegativeKrb5RealmCache.get(key);
             }
@@ -148,6 +158,9 @@ public class DomainCache {
             case virtualHostname:
                 mNegativeVirtualHostnameCache.remove(key);
                 break;
+            case foreignName:
+                mNegativeForeignNameCache.remove(key);
+                break;
             case krb5Realm:
                 mNegativeKrb5RealmCache.remove(key);
                 break;
@@ -157,9 +170,15 @@ public class DomainCache {
         private void clean(DomainBy domainBy, String key, Domain entry) {
             mNegativeNameCache.remove(entry.getName());
             mNegativeIdCache.remove(entry.getId());
+            
             String vhost[] = entry.getMultiAttr(Provisioning.A_zimbraVirtualHostname);            
             for (String vh : vhost)
                 mNegativeVirtualHostnameCache.remove(vh.toLowerCase());
+            
+            String foreignName[] = entry.getMultiAttr(Provisioning.A_zimbraForeignName);            
+            for (String fn : foreignName)
+                mNegativeForeignNameCache.remove(fn.toLowerCase());
+            
             String krb5Realm = entry.getAttr(Provisioning.A_zimbraAuthKerberos5Realm);
             if (krb5Realm != null)
                 mNegativeKrb5RealmCache.remove(krb5Realm);
@@ -169,6 +188,7 @@ public class DomainCache {
             mNegativeNameCache.clear();
             mNegativeIdCache.clear();
             mNegativeVirtualHostnameCache.clear();
+            mNegativeForeignNameCache.clear();
             mNegativeKrb5RealmCache.clear();
         }
     }
@@ -179,10 +199,11 @@ public class DomainCache {
  * @param refreshTTL
  */
     public DomainCache(int maxItems, long refreshTTL, int maxItemsNegative, long refreshTTLNegative) {
-        mNameCache = new LRUMap(maxItems);
-        mIdCache = new LRUMap(maxItems);
-        mVirtualHostnameCache = new LRUMap(maxItems);  
-        mKrb5RealmCache = new LRUMap(maxItems);   
+        mNameCache = MapUtil.newLruMap(maxItems);
+        mIdCache = MapUtil.newLruMap(maxItems);
+        mVirtualHostnameCache = MapUtil.newLruMap(maxItems);  
+        mForeignNameCache = MapUtil.newLruMap(maxItems); 
+        mKrb5RealmCache = MapUtil.newLruMap(maxItems);   
         mRefreshTTL = refreshTTL;
         
         mNegativeCache = new NegativeCache(maxItemsNegative, refreshTTLNegative);
@@ -192,6 +213,7 @@ public class DomainCache {
         mNameCache.clear();
         mIdCache.clear();
         mVirtualHostnameCache.clear();
+        mForeignNameCache.clear();
         mKrb5RealmCache.clear();
         
         mNegativeCache.clear();
@@ -201,18 +223,19 @@ public class DomainCache {
         if (entry != null) {
             mNameCache.remove(entry.getName());
             mIdCache.remove(entry.getId());
+            
             String vhost[] = entry.getMultiAttr(Provisioning.A_zimbraVirtualHostname);            
             for (String vh : vhost)
                 mVirtualHostnameCache.remove(vh.toLowerCase());
+            
+            String foreignName[] = entry.getMultiAttr(Provisioning.A_zimbraForeignName);            
+            for (String fn : foreignName)
+                mForeignNameCache.remove(fn.toLowerCase());
+            
             String krb5Realm = entry.getAttr(Provisioning.A_zimbraAuthKerberos5Realm);
             if (krb5Realm != null)
                 mKrb5RealmCache.remove(krb5Realm);
         }
-    }
-    
-    public synchronized void replace(Domain entry) {
-        remove(entry);
-        put(DomainBy.id, entry.getId(), entry);
     }
     
     public synchronized void removeFromNegativeCache(DomainBy domainBy, String key) {
@@ -227,9 +250,15 @@ public class DomainCache {
             CacheEntry cacheEntry = new CacheEntry(entry, mRefreshTTL);
             mNameCache.put(entry.getName(), cacheEntry);
             mIdCache.put(entry.getId(), cacheEntry);
+            
             String vhost[] = entry.getMultiAttr(Provisioning.A_zimbraVirtualHostname);            
             for (String vh : vhost)
-                mVirtualHostnameCache.put(vh.toLowerCase(), cacheEntry);            
+                mVirtualHostnameCache.put(vh.toLowerCase(), cacheEntry);          
+            
+            String foreignName[] = entry.getMultiAttr(Provisioning.A_zimbraForeignName);            
+            for (String fn : foreignName)
+                mForeignNameCache.put(fn.toLowerCase(), cacheEntry);  
+            
             String krb5Realm = entry.getAttr(Provisioning.A_zimbraAuthKerberos5Realm);
             if (krb5Realm != null)
                 mKrb5RealmCache.put(krb5Realm, cacheEntry);
@@ -238,7 +267,7 @@ public class DomainCache {
         }
     }
 
-    private Domain get(String key, LRUMap cache) {
+    private Domain get(String key, Map cache) {
         CacheEntry ce = (CacheEntry) cache.get(key);
         if (ce != null) {
             if (mRefreshTTL != 0 && ce.isStale()) {
@@ -300,6 +329,23 @@ public class DomainCache {
             Domain d = get(key.toLowerCase(), mVirtualHostnameCache);
             if (d == null)
                 d = mNegativeCache.get(DomainBy.virtualHostname, key);
+            return d;
+        default:
+            return null;
+        }
+    }
+    
+    public synchronized Domain getByForeignName(String key, GetFromDomainCacheOption option) {
+        
+        switch (option) {
+        case POSITIVE:
+            return get(key.toLowerCase(), mForeignNameCache);
+        case NEGATIVE:
+            return mNegativeCache.get(DomainBy.foreignName, key);
+        case BOTH:
+            Domain d = get(key.toLowerCase(), mForeignNameCache);
+            if (d == null)
+                d = mNegativeCache.get(DomainBy.foreignName, key);
             return d;
         default:
             return null;

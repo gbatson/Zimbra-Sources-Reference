@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -110,9 +110,9 @@ ZmApptChooserTabViewPage.SF_LABEL[ZmApptChooserTabViewPage.SF_FLOOR]	= "floor";
 
 // corresponding attributes for search command
 ZmApptChooserTabViewPage.SF_ATTR = {};
-ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_NAME]		  = "displayName";
+ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_NAME]		  = "fullName";
 ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_CAPACITY]	  = "zimbraCalResCapacity";
-ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_DESCRIPTION] = "description";
+ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_DESCRIPTION] = "notes";
 ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_CONTACT]	  = "zimbraCalResContactName";
 ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_SITE]		  = "zimbraCalResSite";
 ZmApptChooserTabViewPage.SF_ATTR[ZmApptChooserTabViewPage.SF_BUILDING]	  = "zimbraCalResBuilding";
@@ -125,11 +125,11 @@ ZmApptChooserTabViewPage.SF_OP[ZmApptChooserTabViewPage.SF_FLOOR]		= "eq";
 
 ZmApptChooserTabViewPage.ATTRS = {};
 ZmApptChooserTabViewPage.ATTRS[ZmCalBaseItem.LOCATION] =
-	["displayName", "mail", "zimbraCalResLocationDisplayName",
-	 "zimbraCalResCapacity", "zimbraCalResContactEmail", "description", "zimbraCalResType"];
+	["fullName", "email", "zimbraCalResLocationDisplayName",
+	 "zimbraCalResCapacity", "zimbraCalResContactEmail", "notes", "zimbraCalResType"];
 ZmApptChooserTabViewPage.ATTRS[ZmCalBaseItem.EQUIPMENT] =
-	["displayName", "mail", "zimbraCalResLocationDisplayName",
-	 "zimbraCalResContactEmail", "description", "zimbraCalResType"];
+	["fullName", "email", "zimbraCalResLocationDisplayName",
+	 "zimbraCalResContactEmail", "notes", "zimbraCalResType"];
 
 ZmApptChooserTabViewPage.SEARCH_FIELDS = {};
 ZmApptChooserTabViewPage.SEARCH_FIELDS[ZmCalBaseItem.PERSON] =
@@ -858,7 +858,7 @@ ZmApptChooserTabViewPage.prototype._handleResponseFreeBusy =
 function(itemsById, result) {
 	this._freeBusyRequest = null;
 
-	var args = result.getResponse().GetFreeBusyResponse.usr || [];
+	var args = result.getResponse().GetFreeBusyResponse.usr;
 	for (var i = args.length; --i >= 0;) {
 		var el = args[i];
 		var id = el.id;
@@ -880,9 +880,6 @@ function(itemsById, result) {
 		} else if (el.t) {
 			status = "<b style='color: orange'>" + ZmMsg.tentative + "</b>";
 			item.__fbStatus.status = 3;
-		} else if (el.n) {
-			status = "<b style='color: red'>" + ZmMsg.unknown + "</b>";
-			item.__fbStatus.status = 4;
 		}
 		item.__fbStatus.txt = status;
 		this._updateStatus(item, this._chooser.sourceListView);

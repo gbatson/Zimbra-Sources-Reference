@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -56,6 +56,8 @@ import com.zimbra.cs.mailclient.imap.MailboxInfo;
 import com.zimbra.cs.mailclient.imap.MessageData;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.util.Zimbra;
+
+import static com.zimbra.common.util.ArrayUtil.toIntArray;
 
 class ImapFolderSync {
     private final ImapSync imapSync;
@@ -123,10 +125,35 @@ class ImapFolderSync {
             createLocalFolder(ld);
         }
         if (tracker != null) {
+            remoteFolder.info("syncing remote folder " + path);
             // Check local folder flags for consistency with remote folder
             localFolder.updateFlags(ld);
         }
         return tracker;
+    }
+
+    /**
+     * @param folder
+     * @throws ServiceException
+     * @throws IOException
+     * Deletes existing local folder if it was deleted remotely
+     */
+    public void purgeLocalFolder(Folder folder) throws ServiceException, IOException {
+        if (!ds.isSyncEnabled(folder)) {
+            return;
+        }
+        localFolder = new LocalFolder(mailbox, folder);
+        tracker = imapSync.getTrackedFolders().getByItemId(folder.getId());
+        if(tracker != null) { //this folder was in sync before
+        	remoteFolder = new RemoteFolder(connection, tracker.getRemoteId());
+        	if (!remoteFolder.exists()) {
+                remoteFolder.info("folder was deleted");
+ 	            if (ds.isSyncEnabled(folder)) //only delete local if sync enabled
+ 	                localFolder.delete();
+ 	            imapSync.deleteFolderTracker(tracker);
+                tracker = null;
+            }
+        }
     }
 
     /*
@@ -145,9 +172,21 @@ class ImapFolderSync {
             remoteFolder = new RemoteFolder(connection, tracker.getRemoteId());
             if (!remoteFolder.exists()) {
                 remoteFolder.info("folder was deleted");
-                if (ds.isSyncEnabled(folder)) //only delete local if sync enabled
-                    localFolder.delete();
-                imapSync.deleteFolderTracker(tracker);
+
+                // Rescue the local folder if it contains unsync'd messages
+                List<Integer> messagesAddedLocallySinceLastSync = tracker.getNewMessageIds();
+                if (!messagesAddedLocallySinceLastSync.isEmpty()) {
+                    deleteAllMessagesExcept(messagesAddedLocallySinceLastSync);
+
+                    // act as if the local folder were newly created
+                    imapSync.deleteFolderTracker(tracker);
+                    tracker = null;
+                    return createRemoteFolderAndTracker(folder);
+                }
+
+	            if (ds.isSyncEnabled(folder)) //only delete local if sync enabled
+	                localFolder.delete();
+	            imapSync.deleteFolderTracker(tracker);
                 tracker = null;
             } else if (!ds.isSyncCapable(folder) && !localFolder.getPath().equals(tracker.getLocalPath())) {
             	//we moved local into archive, so delete remote
@@ -156,23 +195,34 @@ class ImapFolderSync {
                     tracker = null;
                 }
             }
-        } else if (ds.isSyncEnabled(folder)) {
-            remoteFolder = createRemoteFolder(folder);
-            if (remoteFolder == null)
-                return null;
-            try {
-                mailboxInfo = remoteFolder.status();
-            } catch (CommandFailedException e) {
-                syncFolderFailed(folder.getId(), remoteFolder.getPath(),
-                                 "Unable to select remote folder", e);
-                return null;
-            }
-            tracker = imapSync.createFolderTracker(
+        } else if (ds.isSyncEnabled(folder)) { //did not find this folder in sync. New folder.
+            return createRemoteFolderAndTracker(folder);
+        }
+        return tracker;
+    }
+
+    private void deleteAllMessagesExcept(Collection<Integer> messageIdsToPreserve) throws ServiceException {
+        List<Integer> messageIds = mailbox.listItemIds(mailbox.getOperationContext(), MailItem.TYPE_MESSAGE, tracker.getItemId());
+        messageIds.removeAll(messageIdsToPreserve);
+        mailbox.delete(mailbox.getOperationContext(), toIntArray(messageIds), MailItem.TYPE_MESSAGE, null);
+    }
+
+    private ImapFolder createRemoteFolderAndTracker(Folder folder) throws IOException, ServiceException {
+        remoteFolder = createRemoteFolder(folder);
+        if (remoteFolder == null)
+            return null;
+        try {
+            mailboxInfo = remoteFolder.status();
+        } catch (CommandFailedException e) {
+            syncFolderFailed(folder.getId(), remoteFolder.getPath(),
+                    "Unable to select remote folder", e);
+            return null;
+        }
+        tracker = imapSync.createFolderTracker(
                 folder.getId(), folder.getPath(), remoteFolder.getPath(),
                 mailboxInfo.getUidValidity());
-            // Force a full sync so we make sure to push all the local changes
-            fullSync = true;
-        }
+        // Force a full sync so we make sure to push all the local changes
+        fullSync = true;
         return tracker;
     }
 
@@ -192,6 +242,7 @@ class ImapFolderSync {
         }
         return newFolder;
     }
+
 
     /*
      * Synchronizes messages between local and remote folder.
@@ -266,7 +317,7 @@ class ImapFolderSync {
         if (fullSync) {
             // If UIDPLUS supported, use COPY rather than APPEND to remotely
             // move messages that have moved locally between folders.
-            if (hasCopyUid()) {
+            if (hasCopyUid() && !ds.isImportOnly()) {
                 moveMessages();
             }
             syncFlags(lastFetchedUid);
@@ -291,10 +342,12 @@ class ImapFolderSync {
             Collections.sort(addedUids, Collections.reverseOrder());
             fetchMessages(addedUids);
         }
-        
+
         // Delete and expunge messages
-        for (long uid : deletedUids) {
-            deleteMessage(uid);
+        if(!ds.isImportOnly()) {
+	        for (long uid : deletedUids) {
+	            deleteMessage(uid);
+	        }
         }
         remoteFolder.close();
 
@@ -308,7 +361,7 @@ class ImapFolderSync {
         return tracker != null && tracker.getUidValidity() > 0 &&
                ds.isSyncEnabled(localFolder.getFolder());
     }
-    
+
     private FolderSyncState newSyncState() throws ServiceException {
         FolderSyncState ss = new FolderSyncState();
         synchronized (mailbox) {
@@ -373,7 +426,7 @@ class ImapFolderSync {
 
     public void finishSync() throws ServiceException, IOException {
         if (!completed) return;
-        if (newMsgIds != null && !newMsgIds.isEmpty()) {
+        if (newMsgIds != null && !newMsgIds.isEmpty() && !ds.isImportOnly()) {
             appendMsgs(newMsgIds);
         }
         if (syncState != null) {
@@ -462,6 +515,7 @@ class ImapFolderSync {
             imapSync.deleteFolderTracker(tracker);
             // Create new local folder for remote path
             createLocalFolder(ld);
+            return (tracker != null);
         }
         return true;
     }
@@ -474,12 +528,17 @@ class ImapFolderSync {
             tracker = null;
             return;
         }
-        Flags flags = ld.getFlags();
-        long uidValidity = 0;
-        if (!flags.isNoselect()) {
+        //always check status; regardless of /noselect flag
+        //bug 41480; apparently some servers dont publish it
+        //make tracker null if STATUS command results in an error
+        try {
             mailboxInfo = remoteFolder.status();
-            uidValidity = mailboxInfo.getUidValidity();
+        } catch (IOException e) {
+            remoteFolder.info("Error in STATUS command", e);
+            tracker = null;
+            return;
         }
+        long uidValidity = mailboxInfo.getUidValidity();
         // Create local folder
         localFolder = new LocalFolder(mailbox, localPath);
         if (!localFolder.exists()) {
@@ -606,7 +665,8 @@ class ImapFolderSync {
                         clearError(msgId);
                     } catch (MailServiceException.NoSuchItemException e) {
                         // Message was deleted locally
-                        deletedUids.add(uid);
+                       	deletedUids.add(uid);
+
                         clearError(msgId);
                     } catch (Exception e) {
                         syncMessageFailed(msgId, "Unable to update message flags", e);
@@ -836,7 +896,7 @@ class ImapFolderSync {
         Message msg;
         try {
             ParsedMessage pm = mc.getParsedMessage(receivedDate, mailbox.attachmentsIndexingEnabled());
-            msg = imapSync.addMessage(null, pm, folderId, zflags, mc.getDeliveryContext());
+            msg = imapSync.addMessage(null, pm, mc.getSize(), folderId, zflags, mc.getDeliveryContext());
         } finally {
             mc.cleanup();
         }

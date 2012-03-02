@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -147,7 +147,7 @@ ZmSetting.CAL_VISIBILITY_PUB	= "public";
 ZmSetting.CLIENT_ADVANCED		= "advanced";				// zimbraPrefClientType
 ZmSetting.CLIENT_STANDARD		= "standard";
 ZmSetting.COMPOSE_FONT_COLOR	= "#000000";	 			// zimbraPrefHtmlEditorDefaultFontColor
-ZmSetting.COMPOSE_FONT_FAM 		= "arial,helvetica,sans-serif";		// zimbraPrefHtmlEditorDefaultFontFamily
+ZmSetting.COMPOSE_FONT_FAM 		= "Times New Roman";		// zimbraPrefHtmlEditorDefaultFontFamily
 ZmSetting.COMPOSE_FONT_SIZE 	= AjxMessageFormat.format(ZmMsg.pt,"12"); 			// zimbraPrefHtmlEditorDefaultFontSize
 ZmSetting.COMPOSE_TEXT 			= "text";					// zimbraPrefComposeFormat
 ZmSetting.COMPOSE_HTML 			= "html";
@@ -180,15 +180,18 @@ ZmSetting.INC_SMART_PRE_HDR		= "includeSmartAndHeadersWithPrefix";
 ZmSetting.LICENSE_BAD			= "bad";					// license status (network only)
 ZmSetting.LICENSE_GOOD			= "good";
 ZmSetting.LICENSE_GRACE			= "inGracePeriod";
+ZmSetting.LICENSE_NOT_ACTIVATED = "NOT_ACTIVATED";
+ZmSetting.LICENSE_NOT_INSTALLED = "NOT_INSTALLED";
 ZmSetting.MARK_READ_NONE		= -1;						// zimbraPrefMarkMsgRead
 ZmSetting.MARK_READ_NOW			= 0;						// zimbraPrefMarkMsgRead
 ZmSetting.MARK_READ_TIME		= 1;						// zimbraPrefMarkMsgRead
+ZmSetting.PRINT_FONT_SIZE 	    = AjxMessageFormat.format(ZmMsg.pt,"12"); 			// zimbraPrefDefaultPrintFontSize
 ZmSetting.PROTO_HTTP			= "http:";
 ZmSetting.PROTO_HTTPS			= "https:";
 ZmSetting.PROTO_MIXED			= "mixed:";
 ZmSetting.RIGHT_VIEW_FREE_BUSY	= "viewFreeBusy";
 ZmSetting.RIGHT_INVITE			= "invite";
-ZmSetting.RP_BOTTOM				= "bottom";					// zimbraPrefReadingPaneLocation / zimbraPrefConvReadingPaneLocation
+ZmSetting.RP_BOTTOM				= "bottom";					// zimbraPrefReadingPaneLocation / zimbraPrefConvReadingPaneLocation / zimbraPrefTasksReadingPaneLocation / zimbraPrefBriefcaseReadingPaneLocation
 ZmSetting.RP_OFF				= "off";
 ZmSetting.RP_RIGHT				= "right";
 ZmSetting.SIG_INTERNET			= "internet";				// zimbraPrefMailSignatureStyle
@@ -214,6 +217,8 @@ ZmSetting.CALENDAR_UPSELL_ENABLED	= "CALENDAR_UPSELL_ENABLED";
 ZmSetting.CONTACTS_UPSELL_ENABLED	= "CONTACTS_UPSELL_ENABLED";
 ZmSetting.MAIL_UPSELL_ENABLED		= "MAIL_UPSELL_ENABLED";
 ZmSetting.VOICE_UPSELL_ENABLED		= "VOICE_UPSELL_ENABLED";
+
+ZmSetting.MAIL_SEND_LATER_ENABLED	= "MAIL_SEND_LATER_ENABLED";
 
 // remove this block when offline.jsp upgrades
 ZmSetting.APPS_COOKIE			= "ZM_APPS";

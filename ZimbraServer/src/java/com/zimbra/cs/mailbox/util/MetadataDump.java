@@ -83,25 +83,28 @@ public class MetadataDump {
 
     private static final String METADATA_COLUMN = "metadata";
 
-    private static class Row {
+    private static class Row implements Iterable<Entry<String, String>> {
         private Map<String, String> mMap = new LinkedHashMap<String, String>();
 
-        public void addColumn(String colName, String value) {
-            mMap.put(colName.toLowerCase(), value);
+        Row()  { }
+
+        void addColumn(String colName, String data) throws ServiceException {
+            String key = colName.toLowerCase();
+            String value = key.equals(METADATA_COLUMN) ? DbMailItem.decodeMetadata(data) : data;
+            mMap.put(key, value);
         }
 
-        public Iterator<Entry<String, String>> iterator() {
+        @Override public Iterator<Entry<String, String>> iterator() {
             return mMap.entrySet().iterator();
         }
 
-        public String get(String colName) {
+        String get(String colName) {
             return mMap.get(colName.toLowerCase());
         }
 
-        public void print(PrintStream ps) throws ServiceException {
+        void print(PrintStream ps) throws ServiceException {
             ps.println("[Database Columns]");
-            for (Iterator<Entry<String, String>> iter = iterator(); iter.hasNext(); ) {
-                Entry<String, String> entry = iter.next();
+            for (Entry<String, String> entry : this) {
                 String col = entry.getKey();
                 if (!col.equalsIgnoreCase(METADATA_COLUMN)) {
                     String val = entry.getValue();
@@ -119,7 +122,7 @@ public class MetadataDump {
                 short volId = Short.parseShort(mMap.get("volume_id"));
                 Volume vol = Volume.getById(volId);
                 if (vol != null) {
-                    long mboxId = Long.parseLong(mMap.get("mailbox_id"));
+                    int mboxId = Integer.parseInt(mMap.get("mailbox_id"));
                     String itemIdStr = mMap.get("id");
                     if (itemIdStr == null)
                         itemIdStr = mMap.get("item_id");
@@ -138,18 +141,18 @@ public class MetadataDump {
         }
     }
 
-    private static long getMailboxGroup(Connection conn, long mboxId)
+    private static int getMailboxGroup(Connection conn, int mboxId)
     throws SQLException {
-        long gid = 0;
+        int gid = 0;
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
             stmt = conn.prepareStatement(
                     "SELECT group_id FROM mailbox WHERE id = ?");
-            stmt.setLong(1, mboxId);
+            stmt.setInt(1, mboxId);
             rs = stmt.executeQuery();
             if (rs.next())
-                gid = rs.getLong(1);
+                gid = rs.getInt(1);
         } finally {
             if (rs != null)
                 rs.close();
@@ -177,12 +180,12 @@ public class MetadataDump {
         }
     }
 
-    private static Row getItemRow(Connection conn, long groupId, long mboxId, int itemId)
+    private static Row getItemRow(Connection conn, int groupId, int mboxId, int itemId)
     throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            String sql = "SELECT * FROM " + DbMailItem.getMailItemTableName(mboxId, groupId) +
+            String sql = "SELECT * FROM " + DbMailItem.getMailItemTableName(mboxId, groupId, false) +
                          " WHERE mailbox_id = " + mboxId + " AND id = " + itemId;
             stmt = conn.prepareStatement(sql);
             rs = stmt.executeQuery();
@@ -209,12 +212,12 @@ public class MetadataDump {
         }
     }
 
-    private static List<Row> getRevisionRows(Connection conn, long groupId, long mboxId, int itemId)
+    private static List<Row> getRevisionRows(Connection conn, int groupId, int mboxId, int itemId)
     throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            String sql = "SELECT * FROM " + DbMailItem.getRevisionTableName(mboxId, groupId) +
+            String sql = "SELECT * FROM " + DbMailItem.getRevisionTableName(mboxId, groupId, false) +
                          " WHERE mailbox_id = " + mboxId + " AND item_id = " + itemId +
                          " ORDER BY mailbox_id, item_id, version DESC";
             stmt = conn.prepareStatement(sql);
@@ -254,7 +257,7 @@ public class MetadataDump {
                     throw ServiceException.FAILURE(
                             "Read " + bytesRead + " bytes when expecting " + length +
                             " bytes, from file " + file.getAbsolutePath(), null);
-                return new String(buf, "utf-8");
+                return DbMailItem.decodeMetadata(new String(buf, "utf-8"));
             } finally {
                 if (fis != null)
                     fis.close();
@@ -268,15 +271,15 @@ public class MetadataDump {
         ps.println("********************   " + title + "   ********************");
     }
 
-    private static String getTimestampStr(long time) {
+    static String getTimestampStr(long time) {
         DateFormat fmt = new SimpleDateFormat("EEE yyyy/MM/dd HH:mm:ss z");
         return fmt.format(time);
     }
 
     public static void main(String[] args) {
         try {
-            CliUtil.toolSetup();
-            long mboxId = 0;
+            CliUtil.toolSetup("WARN");
+            int mboxId = 0;
             int itemId = 0;
     
             PrintStream out = new PrintStream(System.out, true, "utf-8");
@@ -313,6 +316,7 @@ public class MetadataDump {
                 if (mboxIdStr == null || itemIdStr == null) {
                     usage(null);
                     System.exit(1);
+                    return;
                 }
                 if (mboxIdStr.matches("\\d+")) {
                     try {
@@ -334,7 +338,7 @@ public class MetadataDump {
     
                 if (conn == null)
                     conn = DbPool.getConnection();
-                long groupId = getMailboxGroup(conn, mboxId);
+                int groupId = getMailboxGroup(conn, mboxId);
     
                 boolean first = true;
     

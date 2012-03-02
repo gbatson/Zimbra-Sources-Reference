@@ -21,6 +21,7 @@ import junit.framework.TestCase;
 
 import org.apache.log4j.BasicConfigurator;
 
+import com.zimbra.common.util.Log;
 import com.zimbra.cs.mailclient.pop3.Pop3Capabilities;
 import com.zimbra.cs.mailclient.pop3.Pop3Config;
 import com.zimbra.cs.mailclient.pop3.Pop3Connection;
@@ -37,8 +38,6 @@ public class TestPop3Client extends TestCase {
     private static final String USER = "user1";
     private static final String PASS = "test123";
 
-    private static final boolean DEBUG = true;
-    
     static {
         BasicConfigurator.configure();
     }
@@ -50,7 +49,7 @@ public class TestPop3Client extends TestCase {
         config = null;
         connection = null;
     }
-    
+
     public void testLogin() throws Exception {
         login();
     }
@@ -66,7 +65,7 @@ public class TestPop3Client extends TestCase {
         connect();
         login();
     }
-    
+
     public void testCapabilities() throws Exception {
         connect();
         Pop3Capabilities caps = connection.getCapabilities();
@@ -133,10 +132,10 @@ public class TestPop3Client extends TestCase {
         }
         return count;
     }
-    
+
     private void login() throws IOException {
         connect();
-        connection.login(PASS);               
+        connection.login(PASS);
     }
 
     private void connect() throws IOException {
@@ -152,13 +151,12 @@ public class TestPop3Client extends TestCase {
         connection.connect();
     }
 
-    private static Pop3Config getConfig(boolean ssl) throws IOException {
+    private static Pop3Config getConfig(boolean ssl) {
         Pop3Config config = new Pop3Config(HOST);
         if (ssl) config.setSecurity(MailConfig.Security.SSL);
         config.setPort(ssl ? SSL_PORT : PORT);
         config.setSSLSocketFactory(SSLUtil.getDummySSLContext().getSocketFactory());
-        config.setDebug(DEBUG);
-        config.setTrace(true);
+        config.getLogger().setLevel(Log.Level.trace);
         config.setMechanism("PLAIN");
         config.setAuthenticationId(USER);
         return config;

@@ -18,19 +18,14 @@
  */
 package com.zimbra.cs.service.mail;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Map;
-
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.Account;
+import com.zimbra.cs.mailbox.AutoSendDraftTask;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailSender;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
@@ -40,6 +35,13 @@ import com.zimbra.cs.service.FileUploadServlet;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.soap.ZimbraSoapContext;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.Map;
 
 /**
  * @author dkarp
@@ -107,13 +109,21 @@ public class SaveDraft extends MailDocumentHandler {
         }
 
         ParsedMessage pm = new ParsedMessage(mm, date, mbox.attachmentsIndexingEnabled());
+
+        long autoSendTime = new Long(msgElem.getAttribute(MailConstants.A_AUTO_SEND_TIME, "0"));
+
+        Account acct = mbox.getAccount();
+        long quota = acct.getMailQuota();
+        if (autoSendTime != 0 && acct.isMailAllowReceiveButNotSendWhenOverQuota() && quota != 0 && mbox.getSize() > quota) {
+            throw MailServiceException.QUOTA_EXCEEDED(quota);            
+        }
+
         Message msg;
-        
         try {
             String origid = iidOrigid == null ? null : iidOrigid.toString(account == null ?
                 mbox.getAccountId() : account);
             
-            msg = mbox.saveDraft(octxt, pm, id, origid, replyType, identity, account);
+            msg = mbox.saveDraft(octxt, pm, id, origid, replyType, identity, account, autoSendTime);
         } catch (IOException e) {
             throw ServiceException.FAILURE("IOException while saving draft", e);
         }
@@ -135,9 +145,29 @@ public class SaveDraft extends MailDocumentHandler {
             }
         }
 
+        // for an auto-send-draft, save the new contacts now
+        if (autoSendTime != 0) {
+            MailSender.saveNewContacts(mimeData.newContacts, octxt, mbox);
+        }
+
+        if (schedulesAutoSendTask()) {
+            if (id != Mailbox.ID_AUTO_INCREMENT) {
+                // Cancel any existing auto-send task for this draft
+                AutoSendDraftTask.cancelTask(id, mbox.getId());
+            }
+            if (autoSendTime != 0) {
+                // schedule a new auto-send-draft task
+                AutoSendDraftTask.scheduleTask(msg.getId(), mbox.getId(), autoSendTime);
+            }
+        }
+
         Element response = zsc.createElement(MailConstants.SAVE_DRAFT_RESPONSE);
         // FIXME: inefficient -- this recalculates the MimeMessage (but SaveDraft is called rarely)
         ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true);
         return response;
+    }
+
+    protected boolean schedulesAutoSendTask() {
+        return true;
     }
 }

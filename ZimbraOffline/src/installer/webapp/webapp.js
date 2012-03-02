@@ -53,13 +53,19 @@ function startStopServer(verb) {
       zdctl.append("zdctl-wrapper.vbs");
       args = [zdctl.path, verb];
     }
-    else if (os == "darwin" || os == "linux") {
+    else if (os == "linux") {
       var appRoot = WebAppProperties.getAppRoot();
       var zdesktopRoot = appRoot.parent;
       zdesktopServer = zdesktopRoot.clone();
       zdesktopServer.append("bin");
       zdesktopServer.append("zdesktop");
       args = [verb];
+    }
+    else if (os == "darwin") {
+      zdesktopServer = Cc["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
+      zdesktopServer.initWithPath("/bin");
+      zdesktopServer.append("launchctl");
+      args = [verb, "com.zimbra.desktop"];
     }
 
     var process = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
@@ -92,6 +98,8 @@ function reloadWebAppIni(iniFile) {
   var newUri = WebAppProperties.uri; 
   var newPort = getPort(newUri);
 
+  // we may get an uri that's different from the one in webapp.ini (e.g. clicking on mailto link)
+  // so we'd better only update the port without messing with anything else.
   WebAppProperties.uri = oldPort != "" && oldPort != newPort ? 
     oldUri.replace(":" + oldPort + "/", ":" + newPort + "/") : oldUri;
 

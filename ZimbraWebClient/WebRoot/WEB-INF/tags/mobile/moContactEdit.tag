@@ -78,6 +78,8 @@
         </span>
     </div>
 </div>
+<div class="wrap-dcontent" id="wrap-dcontent-view">
+<div id="dcontent-view" style="padding-bottom:5px;">
 <div class="Stripes cont_view">
 <c:if test="${contact!=null}">
     <div class="View header">
@@ -102,7 +104,7 @@
             <div class="tr nr">
                 <span class="td">
                 <c:if test="${contact.isFlagged}">
-                                &nbsp;<mo:img src="startup/ImgFlagRed.gif" alt="flag"/></c:if>
+                                &nbsp;<mo:img src="startup/ImgFlagRed.png" alt="flag"/></c:if>
                 <c:if test="${contact.hasTags and mailbox.features.tagging}">
                         <c:set var="tags" value="${zm:getTags(pageContext, contact.tagIds)}"/>
                         <c:forEach items="${tags}" var="tag">
@@ -172,6 +174,8 @@
             <mo:contactEditField label="AB_FIELD_homeURL" contact="${contact}" field="homeURL"/>
         </div>
     </div>
+</div>
+</div>
 </div>
 </div>
 

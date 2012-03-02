@@ -14,6 +14,7 @@
  */
 package com.zimbra.cs.mailclient.imap;
 
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.mailclient.MailConfig;
 import com.zimbra.cs.mailclient.util.Config;
 
@@ -44,7 +45,7 @@ public class ImapConfig extends MailConfig {
 
     /** Maximum literal size to include in trace output if enabled */
     public static final int DEFAULT_MAX_LITERAL_TRACE_SIZE = 80;
-    
+
     /** Use LITERAL+ extension if supported by server */
     public static final boolean DEFAULT_USE_LITERAL_PLUS = true;
 
@@ -61,19 +62,21 @@ public class ImapConfig extends MailConfig {
         config.applyProperties(props);
         return config;
     }
-    
-    /**
-     * Creates a new <tt>ImapConfig</tt>.
-     */
-    public ImapConfig() {}
 
     /**
-     * Creates a new <tt>ImapConfig</tt> for the specified server host.
-     * 
+     * Creates a new {@link ImapConfig}.
+     */
+    public ImapConfig() {
+        super(ZimbraLog.imap_client);
+    }
+
+    /**
+     * Creates a new {@link ImapConfig} for the specified server host.
+     *
      * @param host the IMAP server host name
      */
     public ImapConfig(String host) {
-        super(host);
+        super(ZimbraLog.imap_client, host);
     }
 
     /**
@@ -90,7 +93,7 @@ public class ImapConfig extends MailConfig {
      * Returns the IMAP server port number. If not set, the default is
      * {@link #DEFAULT_PORT} for a plain text connection and
      * {@link #DEFAULT_SSL_PORT} for an SSL connection.
-     * 
+     *
      * @return the IMAP server port number
      */
     @Override
@@ -104,7 +107,7 @@ public class ImapConfig extends MailConfig {
      * Returns the maximum literal size to cache in memory. If a literal is
      * received that exceeds the specified number of bytes, then it will be
      * cached to disk. The default value is {@link #DEFAULT_MAX_LITERAL_MEM_SIZE}.
-     * 
+     *
      * @return the maximum literal memory size in bytes
      * @see #getLiteralDataDir
      */
@@ -126,7 +129,7 @@ public class ImapConfig extends MailConfig {
      * If tracing is enabled and literal is received exceeding this size in
      * bytes, then it will be abbreviated in the trace log. The default
      * value is {@link #DEFAULT_MAX_LITERAL_TRACE_SIZE}
-     * 
+     *
      * @return the maximum literal trace size in bytes
      */
     public int getMaxLiteralTraceSize() {
@@ -162,7 +165,7 @@ public class ImapConfig extends MailConfig {
     public void setLiteralDataDir(File dir) {
         literalDataDir = dir;
     }
-    
+
     public void setUseLiteralPlus(boolean useLiteralPlus) {
         this.useLiteralPlus = useLiteralPlus;
     }

@@ -15,22 +15,28 @@
 
 package com.zimbra.cs.zclient;
 
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.zclient.ZClientException;
-import com.zimbra.cs.zclient.event.ZModifyEvent;
-import com.zimbra.cs.zclient.event.ZModifyFolderEvent;
-import org.json.JSONException;
-
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import org.json.JSONException;
+
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.SystemUtil;
+import com.zimbra.common.zclient.ZClientException;
+import com.zimbra.cs.zclient.event.ZModifyEvent;
+import com.zimbra.cs.zclient.event.ZModifyFolderEvent;
+import com.zimbra.soap.mail.type.Folder;
+import com.zimbra.soap.mail.type.Grant;
+import com.zimbra.soap.mail.type.Mountpoint;
+import com.zimbra.soap.mail.type.SearchFolder;
+
 public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
-    
+
     public static final String ID_USER_ROOT = "1";
     public static final String ID_INBOX = "2";
     public static final String ID_TRASH = "3";
@@ -50,8 +56,9 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     public static final String ID_FIRST_USER_ID = "256";
 
     public static final String PERM_WRITE = "w";
-    
+
     private ZFolder.Color mColor;
+    private String mRgb;
     private String mId;
     private String mName;
     private int mUnreadCount;
@@ -74,6 +81,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     private boolean mIsPlaceholder;
     private ZMailbox mMailbox;
 
+    @Override
     public int compareTo(Object obj) {
         if (!(obj instanceof ZFolder))
             return 0;
@@ -92,11 +100,11 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         noInferiors('o');
 
         private char mFlagChar;
-        
+
         public char getFlagChar() { return mFlagChar; }
 
         public static String toNameList(String flags) {
-            if (flags == null || flags.length() == 0) return "";            
+            if (flags == null || flags.length() == 0) return "";
             StringBuilder sb = new StringBuilder();
             for (int i=0; i < flags.length(); i++) {
                 String v = null;
@@ -118,10 +126,10 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     }
 
     public enum Color {
-        
+
         defaultColor(0),
         blue(1),
-        cyan(2), 
+        cyan(2),
         green(3),
         purple(4),
         red(5),
@@ -129,18 +137,18 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         pink(7),
         gray(8),
         orange(9);
-        
+
         private int mValue;
 
         public int getValue() { return mValue; }
 
         public static Color fromString(String s) throws ServiceException {
             try {
-                return Color.values()[Integer.parseInt(s)];
+                return fromInt(Integer.parseInt(s));
             } catch (NumberFormatException e) {
             } catch (IndexOutOfBoundsException e) {
             }
-            
+
             try {
                 return Color.valueOf(s);
             } catch (IllegalArgumentException e) {
@@ -148,49 +156,45 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
             }
         }
 
-        Color(int value) { mValue = value; } 
-    }
+        Color(int value) { mValue = value; }
 
-    public enum View {
-        
-        appointment,
-        chat,
-        contact,
-        conversation,
-        document,
-        message,
-        remote,
-        search,
-        task,
-        voice,
-        wiki;
-
-        public static View fromString(String s) throws ServiceException {
+        public static Color fromInt(int i) throws ServiceException {
             try {
-                return s.equals("search folder") ? search : View.valueOf(s);
-            } catch (IllegalArgumentException e) {
-                if (s.equals("remote folder"))
-                    return remote;
-                else if (s.equals("search folder"))
-                    return search;
-                throw ZClientException.CLIENT_ERROR("invalid view: "+s+", valid values: "+Arrays.asList(View.values()), e);                
+                return values()[i];
+            } catch (IndexOutOfBoundsException e) {
+                throw ZClientException.CLIENT_ERROR("invalid color: "+i+", must be between 0 and " + (values().length - 1), null);
             }
         }
-
-        public boolean isAppointment() { return equals(appointment); }
-        public boolean isChat() { return equals(chat); }
-        public boolean isContact() { return equals(contact); }
-        public boolean isConversation() { return equals(conversation); }
-        public boolean isDocument() { return equals(document); }
-        public boolean isMessage() { return equals(message); }
-        public boolean isRemote() { return equals(remote); }
-        public boolean isSearch() { return equals(search); }
-        public boolean isTask() { return equals(task); }
-        public boolean isVoice() { return equals(voice); }
-        public boolean isWiki() { return equals(wiki); }
-
     }
-    
+
+    public static final String[] RGB_COLORS = {
+        // none,      blue,     cyan,      green,     purple
+        "#000000",  "#5b9bf2", "#43eded", "#6acb9e", "#ba86e5",
+        // red,     yellow,     pink,     gray      orange
+        "#f66666", "#f8fa33", "#fe98d3", "#bebebe", "#fdbc55"
+    };
+
+    public enum View {
+        appointment, chat, contact, conversation, document, message, remote,
+        search, task, unknown, voice, wiki;
+
+        public static View fromString(String src) {
+            if (src == null) {
+                return unknown;
+            } else if ("search folder".equals(src)) {
+                return search;
+            } else if ("remote folder".equals(src)) {
+                return remote;
+            }
+            try {
+                return View.valueOf(src);
+            } catch (IllegalArgumentException e) {
+                return unknown;
+            }
+        }
+        
+    }
+
     public ZFolder(Element e, ZFolder parent, ZMailbox mailbox) throws ServiceException {
         mMailbox = mailbox;
         mParent = parent;
@@ -199,6 +203,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         mParentId = e.getAttribute(MailConstants.A_FOLDER, null);
         mIsPlaceholder = mParentId == null;
         mFlags = e.getAttribute(MailConstants.A_FLAGS, null);
+        mRgb = e.getAttribute(MailConstants.A_RGB, "null");
         try {
             mColor = ZFolder.Color.fromString(e.getAttribute(MailConstants.A_COLOR, "0"));
         } catch (ServiceException se) {
@@ -208,7 +213,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         mImapUnreadCount = (int) e.getAttributeLong(MailConstants.A_IMAP_UNREAD, mUnreadCount);
         mMessageCount = (int) e.getAttributeLong(MailConstants.A_NUM, 0);
         mImapMessageCount = (int) e.getAttributeLong(MailConstants.A_IMAP_NUM, mMessageCount);
-        mDefaultView = View.fromString(e.getAttribute(MailConstants.A_DEFAULT_VIEW, View.conversation.name()));
+        mDefaultView = View.fromString(e.getAttribute(MailConstants.A_DEFAULT_VIEW, null));
         mModifiedSequence = (int) e.getAttributeLong(MailConstants.A_MODIFIED_SEQUENCE, -1);
         mContentSequence = (int) e.getAttributeLong(MailConstants.A_REVISION, -1);
         mImapUIDNEXT = (int) e.getAttributeLong(MailConstants.A_IMAP_UIDNEXT, -1);
@@ -216,7 +221,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         mRemoteURL = e.getAttribute(MailConstants.A_URL, null);
         mEffectivePerms = e.getAttribute(MailConstants.A_RIGHTS, null);
         mSize = e.getAttributeLong(MailConstants.A_SIZE, 0);
-        
+
         mGrants = new ArrayList<ZGrant>();
         mSubFolders = new ArrayList<ZFolder>();
 
@@ -235,12 +240,72 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         // search
         for (Element s : e.listElements(MailConstants.E_SEARCH))
             mSubFolders.add(new ZSearchFolder(s, this, mMailbox));
-        
+
         // link
         for (Element l : e.listElements(MailConstants.E_MOUNT))
             mSubFolders.add(new ZMountpoint(l, this, mMailbox));
     }
 
+    public ZFolder(Folder f, ZFolder parent, ZMailbox mailbox) throws ServiceException {
+        mMailbox = mailbox;
+        mParent = parent;
+        mId = f.getId();
+        mName = f.getName();
+        mParentId = f.getParentId();
+        mIsPlaceholder = mParentId == null;
+        mFlags = f.getFlags();
+        try {
+            mColor = ZFolder.Color.fromInt(SystemUtil.coalesce(f.getColor(), 0));
+        } catch (ServiceException se) {
+            mColor = ZFolder.Color.orange;
+        }
+        
+        mUnreadCount = SystemUtil.coalesce(f.getUnreadCount(), 0);
+        mImapUnreadCount = SystemUtil.coalesce(f.getImapUnreadCount(), mUnreadCount);
+        mMessageCount = SystemUtil.coalesce(f.getItemCount(), 0);
+        mImapMessageCount = SystemUtil.coalesce(f.getImapItemCount(), mMessageCount);
+        
+        mDefaultView = View.conversation;
+        if (f.getView() != null) {
+            mDefaultView = SoapConverter.FROM_SOAP_VIEW.apply(f.getView());
+        }
+        
+        mModifiedSequence = SystemUtil.coalesce(f.getModifiedSequence(), -1);
+        mContentSequence = SystemUtil.coalesce(f.getRevision(), -1);
+        mImapUIDNEXT = SystemUtil.coalesce(f.getImapUidNext(), -1);
+        mImapMODSEQ = SystemUtil.coalesce(f.getImapModifiedSequence(), -1);
+        mRemoteURL = f.getUrl();
+        mEffectivePerms = f.getPerm();
+        mSize = SystemUtil.coalesce(f.getTotalSize(), 0L);
+        
+        mGrants = new ArrayList<ZGrant>();
+        mSubFolders = new ArrayList<ZFolder>();
+        
+        for (Grant g : f.getGrants()) {
+            mGrants.add(new ZGrant(g));
+        }
+        for (Folder folder : f.getSubfolders()) {
+            if (folder instanceof SearchFolder) {
+                mSubFolders.add(new ZSearchFolder((SearchFolder) folder, this, mMailbox));
+            } else if (folder instanceof Mountpoint) {
+                mSubFolders.add(new ZMountpoint((Mountpoint) folder, this, mMailbox));
+            } else {
+                mSubFolders.add(new ZFolder(folder, this, getMailbox()));
+            }
+        }
+
+        // TODO
+        /*
+        // search
+        for (Element s : e.listElements(MailConstants.E_SEARCH))
+            mSubFolders.add(new ZSearchFolder(s, this, mMailbox));
+        
+        // link
+        for (Element l : e.listElements(MailConstants.E_MOUNT))
+            mSubFolders.add(new ZMountpoint(l, this, mMailbox));
+            */
+    }
+    
     protected ZFolder createSubFolder(Element element) throws ServiceException {
         return new ZFolder(element, this, getMailbox());
     }
@@ -250,13 +315,14 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         newSubs.add(folder);
         mSubFolders = newSubs;
     }
-    
+
     synchronized void removeChild(ZFolder folder) {
         List<ZFolder> newSubs = new ArrayList<ZFolder>(mSubFolders);
         newSubs.remove(folder);
         mSubFolders = newSubs;
     }
 
+    @Override
     public void modifyNotification(ZModifyEvent event) throws ServiceException {
         if (event instanceof ZModifyFolderEvent) {
             ZModifyFolderEvent fevent = (ZModifyFolderEvent) event;
@@ -285,11 +351,11 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         if (getDefaultView() != null) params.setTypes(getDefaultView().name());
         return new ZSearchContext(params,getMailbox());
     }
-    
+
     public ZMailbox getMailbox() {
         return mMailbox;
     }
-    
+
     public ZFolder getParent() {
         return mParent;
     }
@@ -298,6 +364,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         mParent = parent;
     }
 
+    @Override
     public String getId() {
         return mId;
     }
@@ -305,15 +372,15 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     /** Returns the folder's name.  Note that this is the folder's
      *  name (e.g. <code>"foo"</code>), not its absolute pathname
      *  (e.g. <code>"/baz/bar/foo"</code>).
-     * 
-     * @see #getPath() 
-     * 
+     *
+     * @see #getPath()
+     *
      */
     public String getName() {
         return mName;
     }
-    
-    /** Returns the folder's absolute path.  Paths are UNIX-style with 
+
+    /** Returns the folder's absolute path.  Paths are UNIX-style with
      *  <code>'/'</code> as the path delimiter.  Paths are relative to
      *  the user root folder,
      *  which has the path <code>"/"</code>.  So the Inbox's path is
@@ -373,7 +440,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     }
 
     /**
-     * 
+     *
      * @return parent id of folder, or null if root folder.
      */
     public String getParentId() {
@@ -392,14 +459,14 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
      * @return number of unread items in folder
      */
     public int getUnreadCount() {
-        return mUnreadCount; 
+        return mUnreadCount;
     }
 
     /**
      * @return number of unread items in folder, including IMAP \Deleted items
      */
     public int getImapUnreadCount() {
-        return mImapUnreadCount; 
+        return mImapUnreadCount;
     }
 
     /**
@@ -469,14 +536,14 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     public int getImapMODSEQ() {
         return mImapMODSEQ;
     }
-    
+
     /**
      *  checked in UI (#), exclude free/(b)usy info, IMAP subscribed (*)
      */
     public String getFlags() {
         return mFlags;
     }
-    
+
     public boolean hasFlags() {
         return mFlags != null && mFlags.length() > 0;
     }
@@ -511,31 +578,34 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
 
     /**
      * range 0-127; defaults to 0 if not present; client can display only 0-7
-     * 
+     *
      * @return color
      */
     public Color getColor() {
         return mColor;
     }
 
+    public String getRgb() {
+        return mRgb;
+    }
     /**
      * remote URL (RSS, iCal, etc) this folder syncs to
-     * 
+     *
      * @return
      */
     public String getRemoteURL() {
         return mRemoteURL;
     }
-    
+
     /**
      * for remote folders, the access rights the authenticated user has on the folder.
-     * 
+     *
      * @return
      */
     public String getEffectivePerms() {
         return mEffectivePerms;
     }
-    
+
     /**
      * return grants or empty list if no grants
      */
@@ -551,9 +621,9 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     }
 
     /**
-     * return sub folder with specified path. Path must not start with the mailbox path separator. 
+     * return sub folder with specified path. Path must not start with the mailbox path separator.
      * @param path
-     * @return sub folder of this folder, 
+     * @return sub folder of this folder,
      */
     public ZFolder getSubFolderByPath(String path) {
         if (path.length() == 0) return this;
@@ -576,7 +646,8 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
             return false;
         }
     }
-    
+
+    @Override
     public ZJSONObject toZJSONObject() throws JSONException {
         ZJSONObject jo = new ZJSONObject();
         jo.put("id", mId);
@@ -607,7 +678,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
         jo.put("contentSequence", getContentSequence());
         return jo;
     }
-    
+
     @Override public String toString() {
         return String.format("[ZFolder %s]", getPath());
     }
@@ -625,7 +696,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     public void sync() throws ServiceException { mMailbox.syncFolder(mId); }
 
     public void clearGrants() throws ServiceException {
-        mMailbox.updateFolder(mId, null, null, null, null, new ArrayList<ZGrant>());
+        mMailbox.updateFolder(mId, null, null, null, null, null, new ArrayList<ZGrant>());
     }
 
     public void empty(boolean recursive) throws ServiceException { mMailbox.emptyFolder(mId, recursive); }
@@ -633,7 +704,7 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
     public void importURL(String url) throws ServiceException { mMailbox.importURLIntoFolder(mId, url); }
 
     public void markRead() throws ServiceException { mMailbox.markFolderRead(mId); }
-    
+
     public void checked(boolean checked) throws ServiceException { mMailbox.modifyFolderChecked(mId, checked); }
 
     public void modifySyncFlag(boolean checked) throws ServiceException { mMailbox.modifyFolderSyncFlag(mId, checked); }
@@ -642,13 +713,13 @@ public class ZFolder implements ZItem, Comparable<Object>, ToZJSONObject {
 
     public void modifyColor(ZFolder.Color color) throws ServiceException { mMailbox.modifyFolderColor(mId, color); }
 
-    public void modifyFlags(String flags) throws ServiceException { mMailbox.updateFolder(mId, null, null, null, flags, null); }
+    public void modifyFlags(String flags) throws ServiceException { mMailbox.updateFolder(mId, null, null, null, null, flags, null); }
 
     public void modifyURL(String url) throws ServiceException { mMailbox.modifyFolderURL(mId, url); }
 
     public void rename(String newPath) throws ServiceException { mMailbox.renameFolder(mId, newPath); }
 
-    public void updateFolder(String name, String parentId, Color newColor, String flags, List<ZGrant> acl) throws ServiceException {
-        mMailbox.updateFolder(mId, name, parentId, newColor, flags, acl);
+    public void updateFolder(String name, String parentId, Color newColor, String rgbColor, String flags, List<ZGrant> acl) throws ServiceException {
+        mMailbox.updateFolder(mId, name, parentId, newColor, rgbColor, flags, acl);
     }
 }

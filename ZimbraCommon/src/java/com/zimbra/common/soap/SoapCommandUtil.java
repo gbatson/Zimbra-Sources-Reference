@@ -427,7 +427,7 @@ public class SoapCommandUtil implements SoapTransport.DebugListener {
             System.out.println("Sending request to " + mUrl);
         }
         if (mVerbose) {
-            System.out.println(request.prettyPrint());
+            System.out.println(request);
         }
         
         response = transport.invoke(request, false, !mUseSession, null);

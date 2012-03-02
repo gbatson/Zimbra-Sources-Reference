@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -518,7 +518,7 @@ ZmSchedTabViewPage.prototype._createDwtObjects =
 function() {
 	var timezoneListener = new AjxListener(this, this._timezoneListener);
 
-	this._tzoneSelect = new DwtSelect({parent:this, cascade:false});
+	this._tzoneSelect = new DwtSelect({parent:this, layout: DwtMenu.LAYOUT_SCROLL, maxRows:7});
 	this._tzoneSelect.reparentHtmlElement(this._tzoneSelectId);
 	this._tzoneSelect.addChangeListener(timezoneListener);
 	// NOTE: tzone select is initialized later
@@ -1282,7 +1282,7 @@ function(status) {
 
 ZmSchedTabViewPage.prototype._handleResponseFreeBusy =
 function(result) {
-	var args = result.getResponse().GetFreeBusyResponse.usr || [];
+	var args = result.getResponse().GetFreeBusyResponse.usr;
 
 	for (var i = 0; i < args.length; i++) {
 		var usr = args[i];

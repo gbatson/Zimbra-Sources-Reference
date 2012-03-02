@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -41,12 +41,12 @@
     </c:choose>
     <span class="td left">
         <a id="TAG${tag.id}" href="${fn:escapeXml(url)}">
-            <span class="SmlIcnHldr Tag${tag.color}">&nbsp;</span>
+            <c:if test="${ua.isiPad eq false}"><span class="Img ImgTag${zm:capitalize(tag.color)}"></span></c:if>&nbsp;
             ${fn:escapeXml(tag.name)}
             <c:if test="${tag.hasUnread}"> (${tag.unreadCount}) </c:if>
         </a>
     </span>
-        <span class="td right editFix" width="5%"> <a class="SmlIcnHldr Edit"
+        <span class="td right editFix" width="5%"> <a class="ImgEdit"
                         href="?st=${param.st}&_ajxnoca=1&showTagCreate=1&tid=${tag.id}">&nbsp;</a></span>            
     </div>
     </div>        

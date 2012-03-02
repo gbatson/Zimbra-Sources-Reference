@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,12 +15,13 @@
 package com.zimbra.cs.service.formatter;
 
 import com.zimbra.common.soap.Element;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 
 public class JsonFormatter extends XmlFormatter {
 
     @Override
-    public String getType() {
-        return "json";
+    public FormatType getType() {
+        return FormatType.JSON;
     }
 
     @Override

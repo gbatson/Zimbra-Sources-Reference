@@ -154,11 +154,124 @@
 </td></tr></table>
 </c:when>
 
+<c:when test="${skin eq 'carbon'}">
+<fmt:setBundle basename="/messages/ZhMsg" scope="request"/>
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr id='skin_tr_top'>
+			<td id='skin_spacing_top_row'>
+				<table class='skin_table' cellpadding=0 cellspacing=0 border=0>
+					<tr>
+						<td width="250" style="padding: 4px">
+							<c:choose>
+								<c:when test="${not empty logoUrl}">
+									<a href="${logoUrl}" target="_new"> <span style='cursor:pointer; display: block;' class='ImgAppBanner'></span> </a>
+								</c:when>
+								<c:otherwise>
+									<span style='display: block;' class='ImgAppBanner'></span>
+								</c:otherwise>
+							</c:choose>
+						</td>
+						<td width="90%"></td>
+						<td nowrap="nowrap" class="link">
+							<a href='<c:url value="/?client=advanced"/>'><fmt:message key="switchToAdvancedClient" /></a>
+						</td>
+					
+						<td nowrap="nowrap"><div class="divider" ></div></td>
+						<td nowrap="nowrap" class="link"><a class='skin_yahoo_link' target="_new" href="<c:url value="${helpUrl}"><c:param name='locid'><fmt:getLocale /></c:param></c:url>"><fmt:message key="help"/></a></td>
+						
+						<td nowrap="nowrap"><div class="divider" ></div></td>
+						<td nowrap="nowrap" class="link"><a class='skin_yahoo_link' href="<c:url value="/?loginOp=logout"/>"><fmt:message key="logOut"/></a> &nbsp;</td>
+						
+					</tr>
+					
+				</table>
+			</td>
+		</tr>
+</table>		
+
+<table width="100%" cellpadding="6" cellspacing='0' border="0"><tr><td>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+	<tr><td colspan="${empty editmode ? 4 : 3}" style="padding-bottom:6px;">
+		<table width=100% border=0 cellspacing="0" cellpadding="0"><tr>
+		<td valign="middle" align="center" width="150" style="padding: 4px 8px;">
+		</td>
+		<td style="padding: 4px 8px 4px 0px; white-space:nowrap;">
+		</td>
+		<td valign="top" class="TopContent" align="center">
+			<app:appTop mailbox="${mailbox}" keys="${keys}" query="${empty context.query ? param.sq : context.query}" calendars="${calendars}" voice="${voice}" tasks="${tasks}" briefcases="${briefcases}"/>
+		</td>
+		</tr></table>
+		<app:appStatus/>
+		</td>
+	</tr>
+
+	<tr>
+		<c:if test="${empty editmode}">
+			<td valign="top" class="Overview" rowspan="2">
+				<table cellspacing="0" cellpadding="0" border="0" width="100%" class="IEFix">
+				<!--<tr><td class="TbTop"></td></tr>-->
+				<tr><td valign="top">
+					<table cellspacing="0" cellpadding="0" border="0" align="center" width="100%">
+					<tr><td>
+						<app:appTopUser mailbox="${mailbox}" keys="${keys}" />
+						</td>
+					</tr>
+					<tr><td style="background-color: white;" valign="top">
+						<app:overviewTree mailbox="${mailbox}" keys="${keys}" minical="${minical}" calendars="${calendars}" contacts="${contacts}" notebook="${notebook}" voice="${voice}" tasks="${tasks}" briefcases="${briefcases}" tags="${tags}" searches="${searches}" folders="${folders}" editmode="${editmode}" date="${date}"/>
+						</td>
+					</tr>
+					</table>
+				</td>
+				</tr>
+				</table>
+			</td>
+		</c:if>
+		<td colspan="3" valign="top">
+			<table cellpadding="0" cellspacing="0" border="0" width="100%">
+			<tr>
+			<td valign="bottom" nowrap="nowrap"><app:appTabs context="${context}" mailbox="${mailbox}" keys="${keys}" selected='${selected}' nofiller="${true}"/></td>
+			<td align="right" nowrap="nowrap" style="padding-right:0.5em;">
+				<c:if test="${mailbox.attrs.zimbraIsDomainAdminAccount[0] eq 'TRUE' and not empty adminReference }">
+					<a class='skin_yahoo_link' target="_new" href="${adminReference}"><fmt:message key="adminLinkLabel"/></a>&nbsp;<font color="gray">|</font>&nbsp;
+				</c:if>
+				<!--<a class='skin_yahoo_link' target="_new" href="<fmt:message key='yahooYahooMailURL'/>"><fmt:message key='yahooYahooMail'/></a>&nbsp;<font color="gray">|</font>&nbsp;-->
+				
+			</td>
+			</tr>
+			</table>
+			<jsp:doBody/>
+		</td>
+	</tr>
+	<tr>
+			<c:set var="adsOn" value="${!empty ads}"/>
+<c:if test="${adsOn}" >
+		<td valign="top" colspan="3">
+			<table width="100%" cellpadding="0" cellspacing="0">
+				<tr>
+</c:if>
+		<td valign="top" colspan="3">
+		
+	</td>
+	<c:if test="${adsOn}" >
+						<td valign="top" style="border-top: 1px solid #98adbe; width: 180px;">
+							<app:ads content="${ads}"/>
+						</td>
+
+					</tr>
+				</table>
+			</td>
+	</c:if>
+</tr>
+</table>
+</td></tr></table>
+</c:when>
+
 <c:when test="${skin eq 'velodrome2'}">
 <c:if test="${statusBlocking}">
 	<div id="app_st_block_div" class="VeilOverlay" style="z-index:99;"></div>
 </c:if>
-<div class='${requestScope.statusClass}' style="z-index:100;position:relative;"><app:appStatus/></div>
+<div id="app_status_container" class='${requestScope.statusClass}' style="z-index:100;position:relative;"><app:appStatus/></div>
 	<table width="100%" cellspacing="0" cellpadding="0" border="0" height="100%">
 	<tr>
 		<td class='ImgSkin_Chrome_R1' colspan="2">
@@ -306,13 +419,13 @@
 																	<table cellspacing=0 cellpadding=0 class='Tb'>
 																	<tr>
 																	<c:if test="${selected != 'contacts' and selected != 'calendar' and mailbox.features.mail}">
-																		<app:button name="actionNewFolder" src="startup/ImgNewFolder.gif" tooltip="folderNew" text="folderNew"/>
+																		<app:button name="actionNewFolder" src="startup/ImgNewFolder.png" tooltip="folderNew" text="folderNew"/>
 																	</c:if>
 																	<c:if test="${selected eq 'contacts' and mailbox.features.newAddrBookEnabled}">
-																		<app:button id="OPNEWADDRBOOK" name="actionNewAddressBook" src="contacts/ImgNewContact.gif" tooltip="addressBookNew" text="addressBookNew"/>
+																		<app:button id="OPNEWADDRBOOK" name="actionNewAddressBook" src="contacts/ImgNewContact.png" tooltip="addressBookNew" text="addressBookNew"/>
 																	</c:if>
 																	<c:if test="${selected eq 'calendar'}">
-																		<app:button id="OPNEWCAL" name="actionNewCalendar" src="calendar/ImgNewAppointment.gif" tooltip="calendarNew" text="calendarNew"/>
+																		<app:button id="OPNEWCAL" name="actionNewCalendar" src="calendar/ImgNewAppointment.png" tooltip="calendarNew" text="calendarNew"/>
 																	</c:if>
 																	</tr>
 																</table>
@@ -503,7 +616,7 @@
 			<td class="Overview">
 
 			</td>
-			<td align="center" colspan="3">
+			<td id="app_status_container" align="center" colspan="3">
 				<app:appStatus/>
 			</td>
 		</tr>
@@ -603,13 +716,13 @@
 							</td>
 						</c:if>
 						<td align="left" class="ZhAppLinks">
-							<a target="_new" href="<c:url value="${helpUrl}"><c:param name='locid'><fmt:getLocale /></c:param></c:url>"><app:img altkey="ALT_APP_LINK_HELP" src="startup/ImgHelp.gif"  border="0"/>&nbsp;<fmt:message key="help"/></a>
+							<a target="_new" href="<c:url value="${helpUrl}"><c:param name='locid'><fmt:getLocale /></c:param></c:url>"><app:img altkey="ALT_APP_LINK_HELP" src="startup/ImgHelp.png"  border="0"/>&nbsp;<fmt:message key="help"/></a>
 						</td>
 						<td>
 							&nbsp;
 						</td>
 						<td align="right" class="ZhAppLinks">
-							<a href="<c:url value="/?loginOp=logout"/>"><app:img altkey="ALT_APP_LINK_LOGOFF" src="startup/ImgLogoff.gif" border="0"/>&nbsp;<fmt:message key="logOut"/></a>
+							<a href="<c:url value="/?loginOp=logout"/>"><app:img altkey="ALT_APP_LINK_LOGOFF" src="startup/ImgLogoff.png" border="0"/>&nbsp;<fmt:message key="logOut"/></a>
 						</td>
 					</tr>
 				</table>
@@ -620,7 +733,7 @@
 				&nbsp;
 			</td>
 			<td align="center" colspan="3">
-				<div style="z-index:100;position:relative;"><app:appStatus/></div>
+				<div id="app_status_container" style="z-index:100;position:relative;"><app:appStatus/></div>
 			</td>
 		</tr>
 		<tr>
@@ -637,7 +750,7 @@
 					</c:otherwise>
 				</c:choose>
 				<div class="SearchButton" style="padding:2px;" >
-					<a  href="${fn:escapeXml(composeUrl)}" style="text-decoration:none;color:black;"><span id='tab_ikon_compose'><app:img src="startup/ImgNewMessage.gif" altkey='ALT_APP_COMPOSE'/></span> &nbsp; <span id='tab_ikon_compose'></span><span><fmt:message key="compose"/></span></a>
+					<a  href="${fn:escapeXml(composeUrl)}" style="text-decoration:none;color:black;"><span id='tab_ikon_compose'><app:img src="startup/ImgNewMessage.png" altkey='ALT_APP_COMPOSE'/></span> &nbsp; <span id='tab_ikon_compose'></span><span><fmt:message key="compose"/></span></a>
 				</div
 
 			</td>--%>

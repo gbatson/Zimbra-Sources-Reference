@@ -31,9 +31,9 @@
     <c:when test="${calendar}">
         <fmt:message var="label" key="calendarNew"/>
         <fmt:message var="createLabel" key="createCalendar"/>
-        <c:set var="icon" value="${link ? 'calendar/ImgSharedCalendarFolder.gif' : 'calendar/ImgCalendarFolder.gif'}"/>
+        <c:set var="icon" value="${link ? 'calendar/ImgSharedCalendarFolder.png' : 'calendar/ImgCalendarFolder.png'}"/>
         <c:set var="newFolderColor" value="${empty param.newFolderColor ? 'blue' : param.newFolderColor}"/>
-        <c:set var="newFolderStyleColor" value="${zm:getFolderStyleColor(newFolderColor,'appointment')}"/>
+        <c:set var="newFolderStyleColor" value="${zm:getFolderRgbColor(newFolderColor,'appointment')}"/>
         <c:set var="newFolderExcludeFlag" value="${empty param.newFolderExcludeFlag ? '' : param.newFolderExcludeFlag}"/>
         <c:set var="newFolderCheckedFlag" value="${empty param.newFolderCheckedFlag ? '#' : param.newFolderCheckedFlag}"/>
         <fmt:message var="folderType" key="${url ? 'calendarSubscribed' : (link ? 'calendarShared' : 'calendarUser')}"/>
@@ -41,31 +41,31 @@
     <c:when test="${addressbook}">
         <fmt:message var="label" key="addressBookNew"/>
         <fmt:message var="createLabel" key="createAddressBook"/>
-        <c:set var="icon" value="${link ? 'contacts/ImgSharedContactsFolder.gif' : 'contacts/ImgContactsFolder.gif'}"/>
+        <c:set var="icon" value="${link ? 'contacts/ImgSharedContactsFolder.png' : 'contacts/ImgContactsFolder.png'}"/>
         <fmt:message var="folderType" key="${link ? 'addressBookShared' : 'addressBookUser'}"/>
         <c:set var="newFolderColor" value="${empty param.newFolderColor ? 'blue' : param.newFolderColor}"/>
-        <c:set var="newFolderStyleColor" value="${zm:getFolderStyleColor(newFolderColor,'appointment')}"/>
+        <c:set var="newFolderStyleColor" value="${zm:getFolderRgbColor(newFolderColor,'appointment')}"/>
     </c:when>
     <c:when test="${tasklist}">
         <fmt:message var="label" key="taskListNew"/>
         <fmt:message var="createLabel" key="createTaskList"/>
-        <c:set var="icon" value="${link ? 'tasks/ImgSharedTaskList.gif' : 'startup/ImgTaskList.gif'}"/>
+        <c:set var="icon" value="${link ? 'tasks/ImgSharedTaskList.png' : 'startup/ImgTaskList.png'}"/>
         <c:set var="newFolderColor" value="${empty param.newFolderColor ? 'gray' : param.newFolderColor}"/>
-        <c:set var="newFolderStyleColor" value="${zm:getFolderStyleColor(newFolderColor,'task')}"/>
+        <c:set var="newFolderStyleColor" value="${zm:getFolderRgbColor(newFolderColor,'task')}"/>
         <fmt:message var="folderType" key="${link ? 'taskListShared' : 'taskListUser'}"/>
     </c:when>
     <c:when test="${briefcase}">
         <fmt:message var="label" key="briefcaseNew"/>
         <fmt:message var="createLabel" key="createBriefcase"/>
-        <c:set var="icon" value="${link ? 'startup/ImgFolder.gif' : 'startup/ImgFolder.gif'}"/>
+        <c:set var="icon" value="${link ? 'startup/ImgFolder.png' : 'startup/ImgFolder.png'}"/>
         <c:set var="newFolderColor" value="${empty param.newFolderColor ? 'gray' : param.newFolderColor}"/>
-        <c:set var="newFolderStyleColor" value="${zm:getFolderStyleColor(newFolderColor,'task')}"/>
+        <c:set var="newFolderStyleColor" value="${zm:getFolderRgbColor(newFolderColor,'task')}"/>
         <fmt:message var="folderType" key="${link ? 'briefcaseShared' : 'briefcaseUser'}"/>
     </c:when>
     <c:otherwise>
-        <c:set var="newFolderStyleColor" value="Gray"/>
+        <c:set var="newFolderStyleColor"><fmt:message key="colorGray"/></c:set>
 
-        <c:set var="icon" value="${search ? 'startup/ImgSearchFolder.gif' : (url ? 'startup/ImgRSS.gif' : 'startup/ImgFolder.gif')}"/>
+        <c:set var="icon" value="${search ? 'startup/ImgSearchFolder.png' : (url ? 'startup/ImgRSS.png' : 'startup/ImgFolder.png')}"/>
         <c:choose>
             <c:when test="${url}">
                 <fmt:message var="label" key="folderNewRssAtomFeed"/>
@@ -87,7 +87,7 @@
 </c:choose>
 
 <table width=100% cellspacing=0 cellpadding=0>
-    <tr class="${newFolderStyleColor}${newFolderStyleColor ne 'Gray' ? 'Bg' :''}">
+    <tr style="background-color:${zm:lightenColor(newFolderStyleColor)}">
         <td width=20 style='padding-left:5px'>
             <app:img src="${icon}" alt='${fn:escapeXml(label)}'/>
         </td>
@@ -126,7 +126,7 @@
                 <option selected value="1"/>
                 <fmt:message key="rootFolder"/>
                 <zm:forEachFolder var="parent">
-                    <c:if test="${parent.isMessageMoveTarget and !parent.isTrash and !parent.isSpam}">
+                    <c:if test="${(parent.isMessageMoveTarget and !parent.isSpam) or parent.isTrash}">
                         <option value="${parent.id}"/>
                         ${fn:escapeXml(parent.rootRelativePath)}
                     </c:if>

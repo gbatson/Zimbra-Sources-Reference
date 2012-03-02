@@ -20,7 +20,6 @@ import com.zimbra.cs.mina.MinaHandler;
 import com.zimbra.cs.mina.MinaSession;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.Socket;
 
 public class MinaPop3Handler extends Pop3Handler implements MinaHandler {
@@ -35,19 +34,23 @@ public class MinaPop3Handler extends Pop3Handler implements MinaHandler {
         mSession.setMaxIdleSeconds(mConfig.getMaxIdleSeconds());
     }
 
+    @Override
     public void connectionOpened() throws IOException {
-        startConnection(((InetSocketAddress) mSession.getRemoteAddress()).getAddress());
+        startConnection(mSession.getRemoteAddress().getAddress());
     }
 
+    @Override
     public void connectionClosed() throws IOException {
         mSession.close();
     }
 
+    @Override
     public void connectionIdle() {
         ZimbraLog.pop.debug("idle connection");
         dropConnection();
     }
-    
+
+    @Override
     public void messageReceived(Object msg) throws IOException {
         try {
             processCommand((String) msg);
@@ -61,12 +64,13 @@ public class MinaPop3Handler extends Pop3Handler implements MinaHandler {
         mSession.startTls();
         sendOK("Begin TLS negotiation");
     }
-    
+
     @Override
     protected void dropConnection() {
         dropConnection(WRITE_TIMEOUT);
     }
-    
+
+    @Override
     public void dropConnection(long timeout) {
         if (mSession.isClosed())
             return;
@@ -78,7 +82,7 @@ public class MinaPop3Handler extends Pop3Handler implements MinaHandler {
         if (timeout >= 0) {
             // Wait for all remaining bytes to be written
             if (!mSession.drainWriteQueue(timeout)) {
-                ZimbraLog.pop.warn("Force closing session because write timed out: " + mSession);
+                ZimbraLog.pop.warn("Force closing session because write timed out: %s", mSession);
             }
         }
         mSession.close();

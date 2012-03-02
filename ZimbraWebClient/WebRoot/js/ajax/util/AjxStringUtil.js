@@ -29,6 +29,7 @@ AjxStringUtil = function() {
 AjxStringUtil.TRIM_RE = /^\s+|\s+$/g;
 AjxStringUtil.COMPRESS_RE = /\s+/g;
 AjxStringUtil.ELLIPSIS = " ... ";
+AjxStringUtil.LIST_SEP = ", ";
 
 AjxStringUtil.makeString =
 function(val) {
@@ -216,6 +217,27 @@ function(str, dels) {
 };
 
 /**
+ *
+ * splits the line into words, keeping leading whitespace with each word
+ *
+ * @param line the text to split
+ *
+ * @return {array} the array of words
+ */
+AjxStringUtil.splitKeepLeadingWhitespace =
+function(line) {
+
+	var wordWithLeadingSpaces = /\s*\S+/g;
+	var words = [];
+	var result;
+	while (result = wordWithLeadingSpaces.exec(line)) {
+		var word = result[0];
+		words.push(word);
+	}
+	return words;
+};
+
+/**
  * Wraps text to the given length and optionally quotes it. The level of quoting in the
  * source text is preserved based on the prefixes. Special lines such as email headers
  * always start a new line.
@@ -248,8 +270,8 @@ function(params) {
 	var pre = params.pre || "";
 	var eol = "\n";
 
-	text = AjxStringUtil.trim(text);
-	text = text.replace(/\n\r/g, eol);
+	text = AjxStringUtil.trim(text, false, "[\t ]");
+	text = text.replace(/\r\n/g, eol);
 	var lines = text.split(eol);
 	var words = [];
 
@@ -257,15 +279,14 @@ function(params) {
 	// the word's prefix, whether it's a paragraph break, and whether it's
 	// special (cannot be wrapped into a previous line)
 	for (var l = 0, llen = lines.length; l < llen; l++) {
-		var line = AjxStringUtil.trim(lines[l]);
+		var line = lines[l];
 		// get this line's prefix
 		var m = line.match(/^([\s>\|]+)/);
 		var prefix = m ? m[1] : "";
 		if (prefix) {
 			line = line.substr(prefix.length);
 		}
-		line = line.replace(/\s+/g, " ");	// compress all space into single spaces
-		var wds = line.split(" ");
+		var wds = AjxStringUtil.splitKeepLeadingWhitespace(line);
 		if (wds && wds[0] && wds[0].length) {
 			var isSpecial = AjxStringUtil.MSG_SEP_RE.test(line) || AjxStringUtil.COLON_RE.test(line) ||
 							AjxStringUtil.HDR_RE.test(line) || AjxStringUtil.SIG_RE.test(line);
@@ -292,7 +313,7 @@ function(params) {
 		if (word.para) {
 			// paragraph break - output what we have, add a blank line
 			if (wds.length) {
-				result += addPrefix + (curP || "") + wds.join(" ") + eol;
+				result += addPrefix + (curP || "") + wds.join("").replace(/^ /,"") + eol;
 			}
 			result += addPrefix + p + eol;
 			wds = [];
@@ -301,7 +322,7 @@ function(params) {
 		} else if ((apl + pl + curLen + sp + w.length <= max) && (p == curP || curP === null) && !word.special) {
 			// still room left on the current line, add the word
 			wds.push(w);
-			curLen += w.length + sp;
+			curLen += w.length;
 			curP = p;
 			if (word.lastWord && words[i + 1]) {
 				words[i + 1].special = true;
@@ -309,7 +330,7 @@ function(params) {
 		} else {
 			// output what we have and start a new line
 			if (wds.length) {
-				result += addPrefix + (curP || "") + wds.join(" ") + eol;
+				result += addPrefix + (curP || "") + wds.join("").replace(/^ /,"") + eol;
 			}
 			wds = [w];
 			curLen = w.length;
@@ -322,7 +343,7 @@ function(params) {
 
 	// handle last line
 	if (wds.length) {
-		result += addPrefix + curP + wds.join(" ") + eol;
+		result += addPrefix + curP + wds.join("").replace(/^ /,"") + eol;
 	}
 
 	return [before, result, after].join("");
@@ -560,15 +581,60 @@ function(str, removeContent) {
  * @return	{string}	the resulting string
  */
 AjxStringUtil.convertToHtml =
-function(str) {
+function(str, quotePrefix) {
 	if (!str) {return "";}
+
+	if (quotePrefix) {
+		// Convert a section of lines prefixed with > or |
+		// to a section encapsuled in <blockquote> tags
+		var prefix_re = /^(>|\|\s+)/;
+		var lines = str.split(/\r?\n/);
+		var level = 0;
+		for (var i=0; i<lines.length; i++) {
+			var line = lines[i];
+			if (line.length > 0) {
+				var lineLevel = 0;
+				while (line.match(prefix_re)) { // Remove prefixes while counting how many there are on the line
+					line = line.replace(prefix_re,"");
+					lineLevel++;
+				}
+				while (lineLevel > level) { // If the lineLevel has changed since the last line, add blockquote start or end tags, and adjust level accordingly
+					line = "<blockquote>" + line;
+					level++;
+				}
+				while (lineLevel < level) {
+					line = line + "</blockquote>";
+					level--;
+				}
+			}
+			lines[i] = line;
+		}
+		while (level > 0) {
+			lines.push("</blockquote>");
+			level--;
+		}
+
+		str = lines.join("\n");
+		str = str.replace(/&/mg, "&amp;");
+		
+		str = str.replace(/<(?!\/?blockquote)/mg, "&lt;"); // Replace "<" only if it is not followed by "blockquote"
+
+		str = str.replace(/(\/?blockquote)?>/mg, function($0, $1) { // Replace ">" only if it is not preceded by "blockquote"
+			return $1 ? $0 : '&gt;';
+		});
+
+	} else {
+		str = str
+			.replace(/&/mg, "&amp;")
+			.replace(/</mg, "&lt;")
+			.replace(/>/mg, "&gt;")
+	}
+		
+
 	str = str
-		.replace(/&/mg, "&amp;")
 		.replace(/  /mg, " &nbsp;")
 		.replace(/^ /mg, "&nbsp;")
 		.replace(/\t/mg, "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;")
-		.replace(/</mg, "&lt;")
-		.replace(/>/mg, "&gt;")
 		.replace(/\r?\n/mg, "<br>");
 	return str;
 };
@@ -970,6 +1036,10 @@ function(domRoot, convertor) {
 
 	if (!domRoot) { return null; }
 
+	if (convertor && AjxUtil.isFunction(convertor._before)) {
+		domRoot = convertor._before(domRoot);
+	}
+
 	if (typeof domRoot == "string") {
 		var domNode = document.createElement("SPAN");
 		domNode.innerHTML = domRoot;
@@ -979,7 +1049,14 @@ function(domRoot, convertor) {
 	var idx = 0;
 	var ctxt = {};
 	this._traverse(domRoot, text, idx, AjxStringUtil._NO_LIST, 0, 0, ctxt, convertor);
-	return text.join("");
+
+	var result = text.join("");
+
+	if (convertor && AjxUtil.isFunction(convertor._after)) {
+		result = convertor._after(result);
+	}
+
+	return result;
 };
 
 AjxStringUtil._traverse =
@@ -989,7 +1066,7 @@ function(el, text, idx, listType, listLevel, bulletNum, ctxt, convertor) {
 
 	var result = null;
 	if (convertor && convertor[nodeName]) {
-		result = convertor[nodeName](el);
+		result = convertor[nodeName](el,ctxt);
 	}
 
 	if (result != null) {
@@ -1352,6 +1429,10 @@ function(o) {
 	var _string = function (s) {
 		return '"' + s.replace(AjxStringUtil._SPECIAL_CHARS, _char) + '"';
 	}
+
+	if (o === null) {
+		return 'null';
+	}
 	
 	// String
 	if (t === 'string') {
@@ -1451,8 +1532,8 @@ function(obj, recurse, showFuncs, omit) {
 	}
 
 	if (AjxUtil.isObject(obj)) {
-		var objStr = obj.toString();
-		if (omit && omit[objStr]) {
+		var objStr = obj.toString ? obj.toString() : "";
+		if (omit && objStr && omit[objStr]) {
 			return "[" + objStr + "]";
 		}
 		if (AjxStringUtil._visited.contains(obj)) {
@@ -1505,7 +1586,7 @@ function(obj, recurse, showFuncs, omit) {
 				if (nextObj == window || nextObj == document || (!AjxEnv.isIE && nextObj instanceof Node)){
 					value = nextObj.toString();
 				}
-				if ((typeof(nextObj) == "function")){
+				if ((typeof(nextObj) == "function")) {
 					if (showFuncs) {
 						value = "[function]";
 					} else {
@@ -1517,7 +1598,9 @@ function(obj, recurse, showFuncs, omit) {
 					text += ",";
 				}
 				text += "\n" + indent;
-				if (value != null) {
+				if (omit && omit[key]) {
+					text += key + ": [" + key + "]";
+				} else if (value != null) {
 					text += key + ": " + value;
 				} else {
 					text += key + ": " + this._prettyPrint(nextObj, recurse, showFuncs, omit, indentLevel + 2, true, stopRecursion);
@@ -1548,3 +1631,97 @@ function(str){
 
 	return s;
 };
+
+// hidden SPANs for measuring regular and bold strings
+AjxStringUtil._testSpan;
+AjxStringUtil._testSpanBold;
+
+// cached string measurements
+AjxStringUtil.WIDTH			= {};		// regular strings
+AjxStringUtil.WIDTH_BOLD	= {};		// bold strings
+AjxStringUtil.MAX_CACHE		= 1000;		// max total number of cached strings
+AjxStringUtil._cacheSize	= 0;		// current number of cached strings
+
+/**
+ * Returns the width in pixels of the given string.
+ *
+ * @param {string}	str		string to measure
+ * @param {boolean}	bold	if true, string should be measured in bold font
+ */
+AjxStringUtil.getWidth =
+function(str, bold) {
+
+	if (!AjxStringUtil._testSpan) {
+		var span1 = AjxStringUtil._testSpan = document.createElement("SPAN");
+		var span2 = AjxStringUtil._testSpanBold = document.createElement("SPAN");
+		span1.style.position = span2.style.position = Dwt.ABSOLUTE_STYLE;
+		var shellEl = appCtxt.getShell().getHtmlElement();
+		shellEl.appendChild(span1);
+		shellEl.appendChild(span2);
+		Dwt.setLocation(span1, Dwt.LOC_NOWHERE, Dwt.LOC_NOWHERE);
+		Dwt.setLocation(span2, Dwt.LOC_NOWHERE, Dwt.LOC_NOWHERE);
+		span2.style.fontWeight = "bold";
+	}
+
+	var cache = bold ? AjxStringUtil.WIDTH_BOLD : AjxStringUtil.WIDTH;
+	if (cache[str]) {
+		return cache[str];
+	}
+
+	if (AjxStringUtil._cacheSize >= AjxStringUtil.MAX_CACHE) {
+		AjxStringUtil.WIDTH = {};
+		AjxStringUtil.WIDTH_BOLD = {};
+		AjxStringUtil._cacheSize = 0;
+	}
+
+	var span = bold ? AjxStringUtil._testSpanBold : AjxStringUtil._testSpan;
+	span.innerHTML = str;
+	var w = cache[str] = Dwt.getSize(span).x;
+	AjxStringUtil._cacheSize++;
+
+	return w;
+};
+
+/**
+ * correct the cross domain reference in passed url content
+ * eg: http://<ipaddress>/ url might have rest url page which points to http://<server name>/ pages
+ *
+ */
+AjxStringUtil.fixCrossDomainReference =
+function(url, restUrlAuthority) {
+	var urlParts = AjxStringUtil.parseURL(url);
+	if (urlParts.authority == window.location.host) {
+		return url;
+	}
+
+	if ((restUrlAuthority && url.indexOf(restUrlAuthority) >=0) || !restUrlAuthority) {
+		var oldRef = urlParts.protocol + "://" + urlParts.authority;
+		var newRef = window.location.protocol + "//" + window.location.host;
+		url = url.replace(oldRef, newRef);
+	}
+	return url;
+};
+
+
+AjxStringUtil._dummyDiv = document.createElement("DIV");
+
+/**
+ * compare two html code fragments, ignoring the case of tags, since the tags inside innnerHTML are returned differently by different browsers (and from Outlook)
+ * e.g. IE returns CAPS for tag names in innerHTML while FF returns lowercase tag names. Outlook signature creation also returns lowercase.
+ * this approach is also good in case the browser removes some of the innerHTML set to it, like I suspect might be in the case of stuff coming from Outlook. (e.g. it removes head tag since it's illegal inside a div)
+ *
+ * @param html1
+ * @param html2
+ */
+AjxStringUtil.equalsHtmlPlatformIndependent =
+function(html1, html2) {
+	var div = AjxStringUtil._dummyDiv;
+
+	div.innerHTML = html1;
+	var inner1 = div.innerHTML;
+	div.innerHTML = html2;
+	var inner2 = div.innerHTML;
+	div.innerHTML = "";
+	return inner1 == inner2;
+};
+

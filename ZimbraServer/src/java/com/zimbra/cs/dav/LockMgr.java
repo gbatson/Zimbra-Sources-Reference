@@ -14,12 +14,15 @@
  */
 package com.zimbra.cs.dav;
 
-import org.apache.commons.collections.map.LRUMap;
+import com.zimbra.common.util.MapUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * RFC 2518bis section 6.
@@ -48,11 +51,11 @@ public class LockMgr {
 	private HashMap<String,List<String>> mLockedResources;
 	
 	// map of token to lock
-	private LRUMap mLocks;
+	private Map<String,Lock> mLocks;
 	
 	private LockMgr() {
 		mLockedResources = new HashMap<String,List<String>>();
-		mLocks = new LRUMap(100);
+		mLocks = MapUtil.newLruMap(100);
 	}
 	
 	public enum LockType {
@@ -86,6 +89,18 @@ public class LockMgr {
 				return sTIMEOUTINFINITE;
 			return sTIMEOUTSEC + timeoutInSec;
 		}
+        // RFC4918 section 10.5
+        // Lock-Token = "Lock-Token" ":" Coded-URL
+        // Coded-URL  = "<" absolute-URI ">"
+        public String toLockTokenHeader() {
+            return "<" + token + ">";
+        }
+        public static String parseLockTokenHeader(String token) throws DavException {
+            int len = token.length();
+            if (token.charAt(0) == '<' && token.charAt(len-1) == '>')
+                return token.substring(1, len-1);
+            throw new DavException("bad Lock-Token", HttpServletResponse.SC_BAD_REQUEST);
+        }
 	}
 	
 	public synchronized List<Lock> getLocks(String path) {

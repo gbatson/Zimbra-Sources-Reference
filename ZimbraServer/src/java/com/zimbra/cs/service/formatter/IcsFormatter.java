@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,7 +16,6 @@ package com.zimbra.cs.service.formatter;
 
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.FileBufferedWriter;
 import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.HttpUtil.Browser;
@@ -34,9 +33,9 @@ import com.zimbra.cs.mailbox.calendar.ZCalendar.ZCalendarBuilder;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZICalendarParseHandler;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.mime.Mime;
-import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 
 import javax.mail.Part;
 import javax.servlet.ServletException;
@@ -50,8 +49,9 @@ import java.util.List;
 
 public class IcsFormatter extends Formatter {
 
-    public String getType() {
-        return "ics";
+    @Override
+    public FormatType getType() {
+        return FormatType.ICS;
     }
 
     public String[] getDefaultMimeTypes() {
@@ -62,7 +62,7 @@ public class IcsFormatter extends Formatter {
         return MailboxIndex.SEARCH_FOR_APPOINTMENTS;
     }
 
-    public void formatCallback(Context context) throws IOException, ServiceException {
+    public void formatCallback(UserServletContext context) throws IOException, ServiceException {
         Iterator<? extends MailItem> iterator = null;
         List<CalendarItem> calItems = new ArrayList<CalendarItem>();
         //ZimbraLog.mailbox.info("start = "+new Date(context.getStartTime()));
@@ -70,6 +70,7 @@ public class IcsFormatter extends Formatter {
         try {
         	long start = context.getStartTime();
         	long end = context.getEndTime();
+            boolean hasTimeRange = start != TIME_UNSPECIFIED && end != TIME_UNSPECIFIED;
             iterator = getMailItems(context, start, end, Integer.MAX_VALUE);
 
             // this is lame
@@ -77,9 +78,13 @@ public class IcsFormatter extends Formatter {
                 MailItem item = iterator.next();
                 if (item instanceof CalendarItem) {
                 	CalendarItem calItem = (CalendarItem) item;
-                	Collection<Instance> instances = calItem.expandInstances(start, end, false);
-                	if (!instances.isEmpty())
-                		calItems.add(calItem);
+                	if (hasTimeRange) {
+                    	Collection<Instance> instances = calItem.expandInstances(start, end, false);
+                    	if (!instances.isEmpty())
+                    		calItems.add(calItem);
+                	} else {
+                	    calItems.add(calItem);
+                	}
                 }
             }
         } finally {
@@ -119,7 +124,7 @@ public class IcsFormatter extends Formatter {
             if (htmlFormat)
                 fileBufferedWriter.write("<html><body><pre>");
             context.targetMailbox.writeICalendarForCalendarItems(
-                    fileBufferedWriter, octxt, calItems,
+                    fileBufferedWriter, octxt, calItems, (context.target != null && context.target instanceof Folder) ? (Folder)context.target : null,
                     useOutlookCompatMode, true, needAppleICalHacks, true, htmlFormat);
             if (htmlFormat)
                 fileBufferedWriter.write("</pre></body></html>");
@@ -128,25 +133,11 @@ public class IcsFormatter extends Formatter {
         }
     }
 
-    // get the whole calendar
-    public long getDefaultStartTime() {    
-        return 0;
-    }
-
-    // eventually get this from query param ?end=long|YYYYMMMDDHHMMSS
-    public long getDefaultEndTime() {
-        return System.currentTimeMillis() + (365 * 100 * Constants.MILLIS_PER_DAY);            
-    }
-
-    public boolean canBeBlocked() {
-        return false;
-    }
-
     public boolean supportsSave() {
         return true;
     }
 
-    public void saveCallback(UserServlet.Context context, String contentType, Folder folder, String filename)
+    public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename)
     throws UserServletException, ServiceException, IOException, ServletException {
         boolean continueOnError = context.ignoreAndContinueOnError();
         boolean preserveExistingAlarms = context.preserveAlarms();

@@ -57,8 +57,10 @@ public class Metadata {
     static final String FN_CREATOR         = "cr";
     static final String FN_MIME_TYPE       = "ct";
     static final String FN_DRAFT           = "d";
+    static final String FN_DESCRIPTION     = "de";
     static final String FN_REPLY_ORIG      = "do";
     static final String FN_REPLY_TYPE      = "dt";
+    static final String FN_AUTO_SEND_TIME  = "ast";
     static final String FN_ENTRIES         = "en";
     static final String FN_FRAGMENT        = "f";
     static final String FN_FIRST           = "f";
@@ -73,6 +75,8 @@ public class Metadata {
     static final String FN_INV             = "inv";
     static final String FN_BOUNDS          = "l";
     static final String FN_LAST_DATE       = "ld";
+    static final String FN_LOCK_OWNER      = "lo";
+    static final String FN_LOCK_TIMESTAMP  = "lt";
     static final String FN_MODSEQ          = "mseq";
     static final String FN_NUM_COMPONENTS  = "nc";
     static final String FN_NODES           = "no";
@@ -182,6 +186,7 @@ public class Metadata {
 
     public String get(String key, String defaultValue)  { Object value = mMap.get(key);  return (value == null ? defaultValue : value.toString()); }
     public long getLong(String key, long defaultValue) throws ServiceException        { String raw = get(key, null); return (raw == null ? defaultValue : Element.parseLong(key, raw)); }
+    public int getInt(String key, int defaultValue) throws ServiceException           { String raw = get(key, null); return (raw == null ? defaultValue : Element.parseInt(key, raw)); }
     public double getDouble(String key, double defaultValue) throws ServiceException  { String raw = get(key, null); return (raw == null ? defaultValue : Element.parseDouble(key, raw)); }
     public boolean getBool(String key, boolean defaultValue) throws ServiceException  { String raw = get(key, null); return (raw == null ? defaultValue : Element.parseBool(key, raw)); }
 

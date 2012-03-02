@@ -1,12 +1,12 @@
 <template id='calendar.Calendar#calendar_appt' width='10' height='7'>
-	<div id='${id}_body' class='appt_body ${bodyColor}'>
+	<div id='${id}_body' class='appt_body ${bodyColor} ${boxBorder}'>
 		<table cellspacing=0 cellpadding=0 style='width:100%; height:100%;${bodyStyle}'>
 		    <$ if(data.headerStyle) {$>
 			<tr style='${headerStyle}'>
 			<$ }else { $>
             <tr class='${headerColor}'>			
 			<$ } $>
-				<td width='4px' class='${showAsColor}' ></td>
+                <td class="${showAsColor}" width=4 rowspan="<$= data.hideTime ? 2 : 3 $>"></td>
 				<td class='appt${newState}_time' id='${id}_st'>
 					<$ if (data.icon) { $>
 						<div class='appt_icon'><$= AjxImg.getImageHtml(data.icon, "width:16") $></div>
@@ -14,11 +14,13 @@
 					<$ if (data.tagIcon) { $>
 						<div class='appt_icon'><$= AjxImg.getImageHtml(data.tagIcon, "width:16") $></div>
 					<$ } $>
+                    <$ if(data.isDraft) { $>
+                        <div class='appt_icon'><$= AjxImg.getImageHtml("Edit", "width:16") $></div>
+                    <$ } $>
 					${starttime}
 				</td>
 			</tr>
 			<tr valign=top>
-				<td width='4px' class='${showAsColor}' ></td>
 				<td class=appt${newState}_name style='height:100%'>
 					${name}
 					<$ if (data.location) { $>
@@ -28,7 +30,6 @@
 			</tr>
 			<$ if(!data.hideTime) {$>			
 			<tr>
-				<td width='4px' class='${showAsColor}' ></td>
 				<td class=appt_end_time id='${id}_et'>${endtime}</td>
 			</tr>
 			<$ } $>
@@ -37,14 +38,14 @@
 </template>
 
 <template id='calendar.Calendar#calendar_appt_bottom_only' width='10' height='7'>
-	<div id='${id}_body' class='appt_body ${bodyColor}'>
+	<div id='${id}_body' class='appt_body ${bodyColor} ${boxBorder}'>
 		<table cellspacing=0 cellpadding=0 style='width:100%;height:100%;${bodyStyle}'>
 			<tr valign=top>
 				<td width='4px' class='${showAsColor}' ></td>			
 				<td class=appt${newState}_name style='height:100%'>
 					${name}
 					<$ if (data.location) { $>
-						<BR>${location}
+						${location}
 					<$ } $>
 				</td>
 			</tr>
@@ -56,7 +57,7 @@
 </template>
 
 <template id='calendar.Calendar#calendar_appt_30' width='4' height='4'>
-	<div id='${id}_body' class='appt_30_body  ${headerColor}'>
+	<div id='${id}_body' class='appt_30_body  ${headerColor} ${boxBorder}'>
 		<$ if (!AjxEnv.isIE && !AjxEnv.isFirefox3up && data.icon) { $>
 			<div class='appt_icon'><$= AjxImg.getImageHtml(data.icon, "width:16") $></div>
 		<$ } $>
@@ -79,7 +80,7 @@
 </template>
 
 <template id='calendar.Calendar#calendar_appt_allday' width='4' height='4'>
-	<div id='${id}_body' class='appt_allday_body ${headerColor}'>
+	<div id='${id}_body' class='appt_allday_body ${headerColor} ${boxBorder}'>
 		<table width=100% cellspacing=0 cellpadding=0 style='width:100%;height:100%;${headerStyle}'>
 			<tr>
 				<td width='4px' class='${showAsColor}' ></td>
@@ -151,8 +152,24 @@
 <template id='calendar.Calendar#ListViewFolder'>
 	<table cellpadding=0 cellspacing=0 border=0>
 		<tr>
-			<td width=16><div class="calendar_listview_folder" style="background-color:${folderColor}"></div></td>
+			<td width=16><$= AjxImg.getImageHtml(data.folder.getIconWithColor()) $></td>
 			<td width=100%>${folderName}</td>
+		</tr>
+	</table>
+</template>
+
+<template id='calendar.Calendar#ListViewSearchBar'>
+	<table border=0 cellpadding=0 cellspacing=0 width=100%>
+		<tr><td id="${id}_searchBarControls"></td>
+            <td id="${id}_searchBarDate" class='calendar_date_search-dateRange'></td>
+        </tr>
+    </table>
+</template>
+
+<template id='calendar.Calendar#ListViewSearchBarInput'>
+	<table border=0 cellpadding=0 cellspacing=0 width=100%>
+		<tr><td class='calendar_date_search_td'><input autocomplete='off' style='height:22px;' type='text' size=14 id='${id}DateInput' value='${value}'></td>
+			<td id='${id}MiniCal'></td>
 		</tr>
 	</table>
 </template>
@@ -166,14 +183,20 @@
 	<tr id='${rowId}'>
 		<td width=100% valign=top>
 			<b>${reminderName}</b><br>
-			<$= ZmMsg.whenLabel $> ${durationText}<br>
+			<$ if (data.durationText != "") { $>
+			    <$= ZmMsg.whenLabel $> ${durationText}<br>
+            <$ } $>
 
 			<$ if (data.organizer) { $>
 				<$= ZmMsg.organizerLabel $> ${organizer}<br>
 			<$ } $>
 
 			<$ if (data.calName) { $>
-				<$= ZmMsg.calendarLabel $> ${calName}<br>
+				<$ if(data.type == ZmItem.APPT) { $>
+				    <$= ZmMsg.calendarLabel $> ${calName}<br>
+				<$ } else if (data.type == ZmItem.TASK) { $>
+                    <$= ZmMsg.tasks $>: ${calName}<br>
+				<$ } $>     
 			<$ } $>
 
 			<$ if (data.accountName) { $>

@@ -19,7 +19,7 @@ import com.zimbra.cs.mailclient.MailException;
 import com.zimbra.cs.mailclient.MailInputStream;
 import com.zimbra.cs.mailclient.MailOutputStream;
 import com.zimbra.cs.mailclient.CommandFailedException;
-import com.zimbra.cs.mailclient.util.TraceOutputStream;
+import com.zimbra.cs.mailclient.ParseException;
 import com.zimbra.cs.mailclient.util.Ascii;
 
 import java.io.IOException;
@@ -36,7 +36,6 @@ import java.util.Collection;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.apache.log4j.Logger;
 import org.apache.commons.codec.binary.Base64;
 
 public final class ImapConnection extends MailConnection {
@@ -45,10 +44,8 @@ public final class ImapConnection extends MailConnection {
     private ImapRequest request;
     private DataHandler dataHandler;
     private Character delimiter;
-    
-    private final AtomicInteger tagCount = new AtomicInteger();
 
-    private static final Logger LOGGER = Logger.getLogger(ImapConnection.class);
+    private final AtomicInteger tagCount = new AtomicInteger();
 
     private static final String TAG_FORMAT = "C%02d";
 
@@ -63,20 +60,23 @@ public final class ImapConnection extends MailConnection {
     public DataHandler getDataHandler() {
         return dataHandler;
     }
-    
+
     @Override
     protected MailInputStream newMailInputStream(InputStream is) {
-        return new ImapInputStream(is, this);
+        if (getLogger().isTraceEnabled()) {
+            return new ImapInputStream(is, this, getLogger());
+        } else {
+            return new ImapInputStream(is, this);
+        }
     }
 
     @Override
     protected MailOutputStream newMailOutputStream(OutputStream os) {
-        return new ImapOutputStream(os);
-    }
-
-    @Override
-    public Logger getLogger() {
-        return LOGGER;
+        if (getLogger().isTraceEnabled()) {
+            return new ImapOutputStream(os, getLogger());
+        } else {
+            return new ImapOutputStream(os);
+        }
     }
 
     @Override
@@ -174,11 +174,11 @@ public final class ImapConnection extends MailConnection {
     public void xatom(String cmd, Object... params) throws IOException {
         newRequest(cmd, params).sendCheckStatus();
     }
-    
+
     public IDInfo id() throws IOException {
         return id(null);
     }
-    
+
     public IDInfo id(IDInfo info) throws IOException {
         ImapRequest req = newRequest(CAtom.ID, info != null ? info : Atom.NIL);
         List<IDInfo> results = new ArrayList<IDInfo>(1);
@@ -190,7 +190,7 @@ public final class ImapConnection extends MailConnection {
     public synchronized boolean isSelected(String name) {
         return mailbox != null && mailbox.getName().equals(name);
     }
-    
+
     public synchronized MailboxInfo select(String name) throws IOException {
         mailbox = doSelectOrExamine(CAtom.SELECT, name);
         setState(State.SELECTED);
@@ -238,7 +238,7 @@ public final class ImapConnection extends MailConnection {
     public AppendResult append(String mbox, AppendMessage... msgs) throws IOException {
         return append(mbox, Arrays.asList(msgs));
     }
-    
+
     public AppendResult append(String mbox, Collection<AppendMessage> msgs)
         throws IOException {
         ImapRequest req = newRequest(CAtom.APPEND, new MailboxName(mbox));
@@ -278,7 +278,6 @@ public final class ImapConnection extends MailConnection {
         if (results.isEmpty()) {
             throw new MailException("Missing STATUS response data");
         }
-        results.get(0).setName(name);
         return results.get(0);
     }
 
@@ -345,6 +344,7 @@ public final class ImapConnection extends MailConnection {
     public List<Long> getUids(String seq) throws IOException {
         final List<Long> uids = new ArrayList<Long>();
         uidFetch(seq, "UID", new FetchResponseHandler() {
+            @Override
             public void handleFetchResponse(MessageData md) {
                 uids.add(md.getUid());
             }
@@ -356,6 +356,7 @@ public final class ImapConnection extends MailConnection {
         throws IOException {
         final Map<Long, MessageData> results = new HashMap<Long, MessageData>();
         fetch(seq, param, new FetchResponseHandler(false) {
+            @Override
             public void handleFetchResponse(MessageData md) {
                 long msgno = md.getMsgno();
                 if (msgno > 0) {
@@ -374,11 +375,12 @@ public final class ImapConnection extends MailConnection {
     public MessageData fetch(long msgno, Object param) throws IOException {
         return fetch(String.valueOf(msgno), param).get(msgno);
     }
-    
+
     public Map<Long, MessageData> uidFetch(String seq, Object param)
         throws IOException {
         final Map<Long, MessageData> results = new HashMap<Long, MessageData>();
         uidFetch(seq, param, new FetchResponseHandler(false) {
+            @Override
             public void handleFetchResponse(MessageData md) {
                 long uid = md.getUid();
                 if (uid > 0) {
@@ -397,7 +399,7 @@ public final class ImapConnection extends MailConnection {
     public MessageData uidFetch(long uid, Object param) throws IOException {
         return uidFetch(String.valueOf(uid), param).get(uid);
     }
-    
+
     public List<Long> search(Object... params) throws IOException {
         return doSearch(CAtom.SEARCH.name(), params);
     }
@@ -411,6 +413,7 @@ public final class ImapConnection extends MailConnection {
         final List<Long> results = new ArrayList<Long>();
         ImapRequest req = newRequest(cmd, params);
         req.setResponseHandler(new ResponseHandler() {
+            @Override
             public void handleResponse(ImapResponse res) {
                 if (res.getCCode() == CAtom.SEARCH) {
                     results.addAll((List<Long>) res.getData());
@@ -457,9 +460,9 @@ public final class ImapConnection extends MailConnection {
     }
 
     public ImapRequest newUidRequest(CAtom cmd, Object... params) {
-        return newRequest("UID " + cmd.toString(), params); 
+        return newRequest("UID " + cmd.toString(), params);
     }
-    
+
 
     public ImapCapabilities getCapabilities() {
         return capabilities;
@@ -470,10 +473,6 @@ public final class ImapConnection extends MailConnection {
         // be modified in-place in response to unsolicited messages from
         // the server.
         return mailbox != null ? new MailboxInfo(mailbox) : null;
-    }
-
-    public TraceOutputStream getTraceOutputStream() {
-        return traceOut;
     }
 
     public boolean hasCapability(String cap) {
@@ -491,7 +490,7 @@ public final class ImapConnection extends MailConnection {
     public boolean hasMechanism(String method) {
         return hasCapability("AUTH=" + method);
     }
-    
+
     public boolean hasUidPlus() {
         return hasCapability(ImapCapabilities.UIDPLUS);
     }
@@ -535,7 +534,7 @@ public final class ImapConnection extends MailConnection {
         return request != null && request.isIdle();
     }
 
-    private ImapResponse sendIdle(ImapRequest req) throws IOException {
+    private ImapResponse sendIdle(ImapRequest req) {
         request = req;
         try {
             req.write(getImapOutputStream());
@@ -545,6 +544,7 @@ public final class ImapConnection extends MailConnection {
             }
             assert res.isContinuation();
             Thread t = new Thread(new Runnable() {
+                @Override
                 public void run() {
                     idleHandler();
                 }
@@ -557,7 +557,7 @@ public final class ImapConnection extends MailConnection {
         }
         return null;
     }
-    
+
     private void idleHandler() {
         try {
             ImapResponse res = waitForResponse();
@@ -611,20 +611,6 @@ public final class ImapConnection extends MailConnection {
                 throw new LiteralException(res);
             }
         }
-        if (traceOut != null && traceOut.isEnabled()) {
-            int size = lit.getSize();
-            int maxSize = getImapConfig().getMaxLiteralTraceSize();
-            if (maxSize >= 0 && size > maxSize) {
-                String msg = String.format("<literal %d bytes>", size);
-                traceOut.suspendTrace(msg);
-                try {
-                    lit.writeData(out);
-                } finally {
-                    traceOut.resumeTrace();
-                }
-                return;
-            }
-        }
         lit.writeData(out);
     }
 
@@ -639,7 +625,7 @@ public final class ImapConnection extends MailConnection {
             this.res = res;
         }
     }
-    
+
     private boolean isShutdown() {
         return isClosed() || isLogout();
     }
@@ -658,7 +644,13 @@ public final class ImapConnection extends MailConnection {
     }
 
     private ImapResponse readResponse() throws IOException {
-        return ImapResponse.read((ImapInputStream) mailIn);
+        try {
+            return ImapResponse.read((ImapInputStream) mailIn);
+        } catch (ParseException pe) {
+            //read rest of the line so TraceInputStream dumps it for debugging
+            mailIn.readLine();
+            throw pe;
+        }
     }
 
     /*

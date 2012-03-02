@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -56,7 +56,7 @@
                            <tr>
                                <td nowrap="nowrap">
                                    <label for="searchField"><fmt:message key="find"/>&nbsp;:&nbsp;</label>
-                                   <input onkeydown="handleEnter(event);" style="background-color:#FFFFFF;height:auto;padding:2px 4px;cursor:text;" type="text" id="searchField" maxlength="50" name="contactsq" value="${fn:escapeXml(param.sq)}">
+                                   <input onkeydown="return handleEnter(event);" style="background-color:#FFFFFF;height:auto;padding:2px 4px;cursor:text;" type="text" id="searchField" maxlength="50" name="contactsq" value="${fn:escapeXml(param.sq)}">
                                </td>
                                <td>
                                    <app:button name="actionSearch" id="SEARCH_CONTACT" tooltip="search" text="search"/>
@@ -67,7 +67,7 @@
                            <tr>
                                <th class='CB'><input id="OPCHALL" onClick="checkAll(document.zform.id,this)" type=checkbox name="allids"/>
                                <c:if test="${mailbox.features.tagging}">
-                                <th class='Img' nowrap><app:img altkey='ALT_TAG_TAG' src="startup/ImgTagOrange.gif" alt="Tagged"/>
+                                <th class='Img' nowrap><app:img altkey='ALT_TAG_TAG' src="startup/ImgTag.png" alt="Tagged"/>
                                 </c:if>
                                <th class='Img'>&nbsp;
                                <th nowrap>
@@ -147,7 +147,7 @@
         try{
         var idex = 0;
         var c = [];
-        while (idex <= zrc )
+        while (idex < zrc )
         {
         if(document.getElementById("C"+idex).checked) {
             cid = document.getElementById("C"+idex).value;
@@ -157,11 +157,16 @@
         }
         }catch(ex){
         }
-        if (c.length==0) {
-            window.open("/h/printcontacts?st=${zm:cook(param.st)}&sfi=${context.folder.id}");
-        } else {
-            window.open("/h/printcontacts?st=${zm:cook(param.st)}&sq=${zm:cook(param.sq)}&id="+c.join("&id="));
+        var url = "/h/printcontacts?st=${zm:cook(param.st)}";
+        if (${not empty param.sq}) {
+            url += "&sq=${param.sq}";
         }
+        if (c.length==0) {
+            url += "&sfi=${context.folder.id}";
+        } else {
+            url += "&id=" + c.join("&id=");
+        }
+        window.open(url);
     }
     var zcheck = function() {var e = document.getElementById("CURRCHECK"); if (e) e.checked = !e.checked;}
     var zclick = function(id) { var e2 = document.getElementById(id); if (e2) e2.click(); }

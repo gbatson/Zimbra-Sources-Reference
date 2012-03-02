@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,12 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Timer;
 
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.smtpserver.SmtpToLmtp;
+import com.zimbra.common.soap.SoapTransport;
+import com.zimbra.common.util.ZimbraHttpConnectionManager;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
@@ -30,22 +36,14 @@ import com.zimbra.cs.db.Versions;
 import com.zimbra.cs.extension.ExtensionUtil;
 import com.zimbra.cs.im.IMRouter;
 import com.zimbra.cs.im.ZimbraIM;
-import com.zimbra.cs.imap.ImapServer;
 import com.zimbra.cs.index.MailboxIndex;
-import com.zimbra.cs.lmtpserver.LmtpServer;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.PurgeThread;
 import com.zimbra.cs.mailbox.ScheduledTaskManager;
 import com.zimbra.cs.mailbox.calendar.WellKnownTimeZones;
 import com.zimbra.cs.memcached.MemcachedConnector;
-import com.zimbra.cs.mime.TnefFileCache;
-import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.SoapTransport;
-import com.zimbra.common.util.ZimbraHttpConnectionManager;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.pop3.Pop3Server;
 import com.zimbra.cs.redolog.RedoLogProvider;
+import com.zimbra.cs.server.ServerManager;
 import com.zimbra.cs.servlet.FirstServlet;
 import com.zimbra.cs.session.SessionCache;
 import com.zimbra.cs.session.WaitSetMgr;
@@ -68,6 +66,8 @@ public class Zimbra {
      *  here. */
     private static void setSystemProperties() {
         System.setProperty("mail.mime.decodetext.strict", "false");
+        System.setProperty("mail.mime.encodefilename",    "true");
+        System.setProperty("mail.mime.charset",           "utf-8");
     }
 
     private static void checkForClass(String clzName, String jarName) {
@@ -119,11 +119,11 @@ public class Zimbra {
     }
     
     public static void startup() {
-	try {
-	    startup(true);
-	} catch (ServiceException se) {
-	    Zimbra.halt("Exception during startup, aborting server, please check your config", se);
-	}
+        try {
+            startup(true);
+        } catch (ServiceException se) {
+            Zimbra.halt("Exception during startup, aborting server, please check your config", se);
+        }
     }
 
     public static void startupCLI() throws ServiceException {
@@ -140,8 +140,9 @@ public class Zimbra {
             return;
 
         sIsMailboxd = forMailboxd;
-        if (sIsMailboxd)
+        if (sIsMailboxd) {
             FirstServlet.waitForInitialization();
+        }
 
         setSystemProperties();
 
@@ -159,8 +160,9 @@ public class Zimbra {
         
         AttributeManager.setMinimize(forMailboxd);
 
-        if (!Versions.checkVersions())
+        if (!Versions.checkVersions()) {
             Zimbra.halt("Data version mismatch.  Reinitialize or upgrade the backend data store.");
+        }
 
         DbPool.loadSettings();
 
@@ -175,8 +177,9 @@ public class Zimbra {
         Provisioning prov = Provisioning.getInstance();
         if (prov instanceof LdapProvisioning) {
             ZimbraLdapContext.waitForServer();
-            if (forMailboxd)
+            if (forMailboxd) {
                 AttributeManager.loadLdapSchemaExtensionAttrs((LdapProvisioning)prov);
+            }
         }
         
         try {
@@ -197,8 +200,9 @@ public class Zimbra {
 
         app.startup();
 
-        if (app.supports(MemcachedConnector.class.getName()))
+        if (app.supports(MemcachedConnector.class.getName())) {
             MemcachedConnector.startup();
+        }
 
         ExtensionUtil.initAll();
 
@@ -207,10 +211,11 @@ public class Zimbra {
         MailboxIndex.startup();
 
         RedoLogProvider redoLog = RedoLogProvider.getInstance();
-        if (sIsMailboxd)
+        if (sIsMailboxd) {
             redoLog.startup();
-        else
+        } else {
             redoLog.initRedoLogManager();
+        }
 
         System.setProperty("ical4j.unfolding.relaxed", "true");
 
@@ -223,7 +228,7 @@ public class Zimbra {
             if (!redoLog.isSlave()) {
                 Server server = Provisioning.getInstance().getLocalServer();
 
-                boolean useDirectBuffers = server.getBooleanAttr(Provisioning.A_zimbraMailUseDirectBuffers, false);
+                boolean useDirectBuffers = server.isMailUseDirectBuffers();
                 org.apache.mina.common.ByteBuffer.setUseDirectBuffers(useDirectBuffers);
                 ZimbraLog.misc.info("MINA setUseDirectBuffers(" + useDirectBuffers + ")");
 
@@ -231,33 +236,35 @@ public class Zimbra {
                     ZimbraIM.startup();
                 }
 
-                if (app.supports(LmtpServer.class.getName()))
-                    LmtpServer.startupLmtpServer();
-                if (app.supports(Pop3Server.class.getName()) && server.getBooleanAttr(Provisioning.A_zimbraPop3ServerEnabled, false))
-                    Pop3Server.startupPop3Server();
-                if (app.supports(Pop3Server.class.getName()) && server.getBooleanAttr(Provisioning.A_zimbraPop3SSLServerEnabled, false))
-                    Pop3Server.startupPop3SSLServer();
-                if (app.supports(ImapServer.class.getName()) && server.getBooleanAttr(Provisioning.A_zimbraImapServerEnabled, false))
-                    ImapServer.startupImapServer();
-                if (app.supports(ImapServer.class.getName()) && server.getBooleanAttr(Provisioning.A_zimbraImapSSLServerEnabled, false))
-                    ImapServer.startupImapSSLServer();
+                ServerManager.getInstance().startServers();
             }
 
-            if (app.supports(WaitSetMgr.class.getName()))
+            if (app.supports(WaitSetMgr.class.getName())) {
                 WaitSetMgr.startup();
+            }
 
-            if (app.supports(MemoryStats.class.getName()))
+            if (app.supports(MemoryStats.class.getName())) {
                 MemoryStats.startup();
+            }
 
-            if (app.supports(ScheduledTaskManager.class.getName()))
+            if (app.supports(ScheduledTaskManager.class.getName())) {
                 ScheduledTaskManager.startup();
+            }
 
-            if (app.supports(PurgeThread.class.getName()))
+            if (app.supports(PurgeThread.class.getName())) {
                 PurgeThread.startup();
+            }
+
+            if (LC.smtp_to_lmtp_enabled.booleanValue()) {
+                int smtpPort = LC.smtp_to_lmtp_port.intValue();
+                int lmtpPort = Provisioning.getInstance().getLocalServer().getLmtpBindPort();
+                SmtpToLmtp.startup(smtpPort, "localhost", lmtpPort);
+            }
 
             // should be last, so that other subsystems can add dynamic stats counters
-            if (app.supports(ZimbraPerf.class.getName()))
+            if (app.supports(ZimbraPerf.class.getName())) {
                 ZimbraPerf.initialize();
+            }
         }
 
         ExtensionUtil.postInitAll();
@@ -271,36 +278,33 @@ public class Zimbra {
 
         sInited = false;
 
-        if (sIsMailboxd)
+        if (sIsMailboxd) {
             PurgeThread.shutdown();
-        
+        }
+
         ZimbraApplication app = ZimbraApplication.getInstance();
 
         app.shutdown();
         
         if (sIsMailboxd) {
-            if (app.supports(MemoryStats.class.getName()))
-            	MemoryStats.shutdown();
+            if (app.supports(MemoryStats.class.getName())) {
+                MemoryStats.shutdown();
+            }
 
-            if (app.supports(WaitSetMgr.class.getName()))
-            	WaitSetMgr.shutdown();
+            if (app.supports(WaitSetMgr.class.getName())) {
+                WaitSetMgr.shutdown();
+            }
         }
 
         RedoLogProvider redoLog = RedoLogProvider.getInstance();
         if (sIsMailboxd) {
             if (!redoLog.isSlave()) {
-            	if (app.supports(LmtpServer.class.getName()))
-            		LmtpServer.shutdownLmtpServer();
-
-            	if (app.supports(Pop3Server.class.getName()))
-            		Pop3Server.shutdownPop3Servers();
-
-            	if (app.supports(ImapServer.class.getName()))
-            		ImapServer.shutdownImapServers();
+                ServerManager.getInstance().stopServers();
             }
 
-            if (app.supports(ZimbraIM.class.getName()))
-            	ZimbraIM.shutdown();
+            if (app.supports(ZimbraIM.class.getName())) {
+                ZimbraIM.shutdown();
+            }
 
             SessionCache.shutdown();
         }
@@ -308,24 +312,27 @@ public class Zimbra {
         MailboxIndex.shutdown();
 
         if (sIsMailboxd) {
-            if (app.supports(IMRouter.class.getName()))
+            if (app.supports(IMRouter.class.getName())) {
             	IMRouter.getInstance().shutdown();
+            }
+
+            redoLog.shutdown();
         }
 
-        if (sIsMailboxd)
-            redoLog.shutdown();
-
-        if (app.supports(ExtensionUtil.class.getName()))
+        if (app.supports(ExtensionUtil.class.getName())) {
             ExtensionUtil.destroyAll();
+        }
 
-        if (app.supports(MemcachedConnector.class.getName()))
+        if (app.supports(MemcachedConnector.class.getName())) {
             MemcachedConnector.shutdown();
+        }
 
         MailboxManager.getInstance().shutdown();
 
-        if (sIsMailboxd)
+        if (sIsMailboxd) {
             StoreManager.getInstance().shutdown();
-        
+        }
+
         ZimbraHttpConnectionManager.shutdownReaperThread();
 
         sTimer.cancel();
@@ -337,7 +344,7 @@ public class Zimbra {
     }
 
     public static synchronized boolean started() {
-	return sInited;
+        return sInited;
     }
     
     public static Timer sTimer = new Timer("Timer-Zimbra", true);

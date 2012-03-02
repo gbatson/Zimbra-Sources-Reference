@@ -16,89 +16,88 @@ package com.zimbra.cs.index;
 
 import org.apache.lucene.document.Document;
 
-import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 
-public class DocumentHit extends ZimbraHit {
+public final class DocumentHit extends ZimbraHit {
 
-    protected com.zimbra.cs.mailbox.Document mDocument;
-    protected int mMessageId;
-    protected Document mDoc;
+    private int mMessageId;
+    private Document mLuceneDoc;
+    private com.zimbra.cs.mailbox.Document mDocItem;
 
-    protected DocumentHit(ZimbraQueryResultsImpl results, Mailbox mbx, float score, int mailItemId, MailItem.UnderlyingData underlyingData, Document d) throws ServiceException {
-        this(results, mbx, score, mailItemId, underlyingData);
-        mDoc = d;
-    }
-
-    protected DocumentHit(ZimbraQueryResultsImpl results, Mailbox mbx, float score, int mailItemId, MailItem.UnderlyingData underlyingData) throws ServiceException {
-        this(results, mbx, score);
-        mMessageId = mailItemId;
-        if (underlyingData != null) {
-            MailItem item = mbx.getItemFromUnderlyingData(underlyingData);
-            assert(item instanceof com.zimbra.cs.mailbox.Document);
-            mDocument = (com.zimbra.cs.mailbox.Document) item;
-        }
-    }
-
-    protected DocumentHit(ZimbraQueryResultsImpl results, Mailbox mbx, float score) {
+    DocumentHit(ZimbraQueryResultsImpl results, Mailbox mbx, float score,
+            int mailItemId, Document luceneDoc,
+            com.zimbra.cs.mailbox.Document docItem) {
         super(results, mbx, score);
+        mMessageId = mailItemId;
+        mLuceneDoc = luceneDoc;
+        mDocItem = docItem;
     }
 
+    @Override
     public long getDate() {
-        return mDocument.getDate();
+        return mDocItem.getDate();
     }
 
+    @Override
     public long getSize() {
-    	return mDocument.getSize();
+        return mDocItem.getSize();
     }
 
+    @Override
     public int getConversationId() {
         return 0;
     }
 
+    @Override
     public int getItemId() {
         return mMessageId;
     }
 
     public byte getItemType() {
-        return mDocument.getType();
+        return mDocItem.getType();
     }
 
+    @Override
     void setItem(MailItem item) {
-        if (item instanceof com.zimbra.cs.mailbox.Document)
-            mDocument = (com.zimbra.cs.mailbox.Document) item;
+        if (item instanceof com.zimbra.cs.mailbox.Document) {
+            mDocItem = (com.zimbra.cs.mailbox.Document) item;
+        }
     }
 
+    @Override
     boolean itemIsLoaded() {
-        return mDocument != null;
+        return mDocItem != null;
     }
 
+    @Override
     public String getSubject() {
-        return mDocument.getName();
+        return mDocItem.getName();
     }
 
+    @Override
     public String getName() {
-        return mDocument.getName();
+        return mDocItem.getName();
     }
 
+    @Override
     public MailItem getMailItem() {
         return getDocument();
     }
 
     public com.zimbra.cs.mailbox.Document getDocument() {
-        return mDocument;
+        return mDocItem;
     }
 
     public int getVersion() {
-        if (mDoc != null) {
-            String verStr = mDoc.get(LuceneFields.L_VERSION);
+        if (mDocItem != null) {
+            String verStr = mLuceneDoc.get(LuceneFields.L_VERSION);
             if (verStr != null) {
                 return Integer.parseInt(verStr);
             }
         }
         // if there is no lucene Document, only the db search was done.
         // then just match the latest version.
-        return mDocument.getVersion();
+        return mDocItem.getVersion();
     }
 }

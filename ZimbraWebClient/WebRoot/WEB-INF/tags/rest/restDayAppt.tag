@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -78,14 +78,9 @@
                     <td width="1%" align="right">
                         <table border="0" cellspacing="0" cellpadding="0">
                             <tr>
-                                <c:if test="${appt.otherAttendees}">
-                                    <td valign='top'>
-                                        <app:img src="calendar/ImgApptMeeting.gif"/>
-                                    </td>
-                                </c:if>
                                 <c:if test="${appt.exception}">
                                     <td valign='top'>
-                                        <app:img src="calendar/ImgApptException.gif"/>
+                                        <app:img src="calendar/ImgApptException.png"/>
                                     </td>
                                 </c:if>
                                 <c:if test="${not empty appt.isFlagged}">
@@ -115,14 +110,9 @@
                     <td width="1%" align="right" class='${color}${appt.partStatusNeedsAction ? 'Dark' : 'Light'}'>
                         <table border="0" cellspacing="0" cellpadding="0">
                             <tr>
-                                <c:if test="${appt.otherAttendees}">
-                                    <td valign='top'>
-                                        <app:img src="calendar/ImgApptMeeting.gif" alt="meeting"/>
-                                    </td>
-                                </c:if>
                                 <c:if test="${appt.exception}">
                                     <td valign='top'>
-                                        <app:img src="calendar/ImgApptException.gif" alt="exception"/>
+                                        <app:img src="calendar/ImgApptException.png" alt="exception"/>
                                     </td>
                                 </c:if>
                                 <c:if test="${not empty appt.isFlagged}">
@@ -165,14 +155,9 @@
                     <td valign='top' width="1%" align="right" class='${color}${needsAction ? 'Dark' : 'Light'}'>
                         <table border="0" cellspacing="0" cellpadding="0">
                             <tr>
-                                <c:if test="${appt.otherAttendees}">
-                                    <td valign='top'>
-                                        <app:img src="calendar/ImgApptMeeting.gif" alt="meeting"/>
-                                    </td>
-                                </c:if>
                                 <c:if test="${appt.exception}">
                                     <td valign='top'>
-                                        <app:img src="calendar/ImgApptException.gif" alt="exception"/>
+                                        <app:img src="calendar/ImgApptException.png" alt="exception"/>
                                     </td>
                                 </c:if>
                                 <c:if test="${not empty appt.isFlagged}">

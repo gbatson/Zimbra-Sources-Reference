@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -305,9 +305,11 @@ function() {
  * same name. A new name will be generated for this folder and a rename is performed before the move.
  * 
  * @param	{ZmFolder}	newParent		the new parent
+ * @param	{boolean}	noUndo			true if the action should not be undoable
+ * @param	{String}	actionText		optional custom action text to display as summary
  */
 ZmFolder.prototype.move =
-function(newParent) {
+function(newParent, noUndo, actionText, batchCmd) {
 	var origName = this.name;
 	var name = this.name;
 	while (newParent.hasChild(name)) {
@@ -316,7 +318,7 @@ function(newParent) {
 	if (origName != name) {
 		this.rename(name);
 	}
-	ZmOrganizer.prototype.move.call(this, newParent);
+	ZmOrganizer.prototype.move.call(this, newParent, noUndo, actionText, batchCmd);
 };
 
 /**
@@ -571,17 +573,18 @@ function() {
 *
 * @param {Object}	what		the object(s) to possibly move into this folder (item or organizer)
 * @param {constant}	folderType	the contextual folder type (for tree view root items)
+* @param {boolean}	ignoreExisting  Set to true if checks for item presence in the folder should be skipped (e.g. when recovering deleted items)
 */
 ZmFolder.prototype.mayContain =
-function(what, folderType) {
+function(what, folderType, ignoreExisting) {
 	if (!what) { return true; }
 	if (this.isFeed() || this.isSyncIssuesFolder()) { return false; }
 
 	var thisType = folderType || this.type;
 	var invalid = false;
 	if (what instanceof ZmFolder) {
-		invalid = (what.parent == this || this.isChildOf(what) || this.nId == ZmFolder.ID_DRAFTS || this.nId == ZmFolder.ID_SPAM ||
-				   (!this.isInTrash() && this.hasChild(what.name)) ||
+		invalid = ((what.parent == this && !ignoreExisting) || this.isChildOf(what) || this.nId == ZmFolder.ID_DRAFTS || this.nId == ZmFolder.ID_SPAM ||
+				   (!this.isInTrash() && this.hasChild(what.name) && !ignoreExisting) ||
 				   (what.type == ZmOrganizer.FOLDER && thisType == ZmOrganizer.SEARCH) ||
 				   (what.type == ZmOrganizer.SEARCH && thisType == ZmOrganizer.FOLDER && this.nId == ZmOrganizer.ID_ROOT) ||
 				   (what.id == this.id) ||
@@ -601,28 +604,28 @@ function(what, folderType) {
 			invalid = true;
 		} else if (thisType == ZmOrganizer.SEARCH) {
 			invalid = true;														// can't drop items into saved searches
-		} else if ((item.type == ZmItem.CONTACT) && item.isGal) {
+		} else if (item && (item.type == ZmItem.CONTACT) && item.isGal) {
 			invalid = true;
-		} else if ((item.type == ZmItem.CONV) && item.list && item.list.search && (item.list.search.folderId == this.id)) {
+		} else if (item && (item.type == ZmItem.CONV) && item.list && item.list.search && (item.list.search.folderId == this.id)) {
 			invalid = true;														// convs which are a result of a search for this folder
 		} else {																// checks that need to be done for each item
 			for (var i = 0; i < items.length; i++) {
-				if (items[i].type == ZmItem.CONTACT) {
+				var item = items[i];
+				if (!item) {
+					invalid = true;
+					break;
+				}
+				if (item == ZmItem.CONTACT) {
 					if (this.nId != ZmFolder.ID_TRASH) {
 						// can only move contacts into Trash
 						invalid = true;
 						break;
 					}
-				} else if (Dwt.instanceOf(item, "ZmBriefcaseFolderItem")) {
-                     if (item.folder && item.folder.isRemote() && !item.folder.rid) {
-                        invalid = true;
-                        break;
-                     }
-                } else if (items[i].isDraft && (this.nId != ZmFolder.ID_TRASH && this.nId != ZmFolder.ID_DRAFTS && this.rid != ZmFolder.ID_DRAFTS)) {
+				} else if (item.isDraft && (this.nId != ZmFolder.ID_TRASH && this.nId != ZmFolder.ID_DRAFTS && this.rid != ZmFolder.ID_DRAFTS)) {
 					// can move drafts into Trash or Drafts
 					invalid = true;
 					break;
-				} else if ((this.nId == ZmFolder.ID_DRAFTS || this.rid == ZmFolder.ID_DRAFTS) && !items[i].isDraft)	{
+				} else if ((this.nId == ZmFolder.ID_DRAFTS || this.rid == ZmFolder.ID_DRAFTS) && !item.isDraft)	{
 					// only drafts can be moved into Drafts
 					invalid = true;
 					break;
@@ -633,7 +636,7 @@ function(what, folderType) {
 				// bug: 41531 - don't allow items to be moved into exchange
 				// account when moving across accounts
 				var acct = this.getAccount();
-				if (item.getAccount() != acct &&
+				if (acct && item.getAccount() != acct &&
 					(acct.type == ZmAccount.TYPE_MSE ||
 					 acct.type == ZmAccount.TYPE_EXCHANGE))
 				{
@@ -658,7 +661,7 @@ function(what, folderType) {
 
 			// can't move items to folder they're already in; we're okay if we
 			// have one item from another folder
-			if (!invalid) {
+			if (!invalid && !ignoreExisting) {
 				if (item.folderId) {
 					invalid = true;
 					for (var i = 0; i < items.length; i++) {
@@ -719,8 +722,8 @@ function(){
  */
 ZmFolder.prototype._remoteMoveOk =
 function(folder) {
-	if (!this.isRemote() && folder.isMountpoint && folder.rid) { return true; }
-    if (!this.link || !folder.link || this.zid != folder.zid) { return false; }
+	//if (!this.isRemote() && folder.isMountpoint) { return true; } // bug: 42017 - Disable moving remote folders into local folders until serverside code is ready
+	if (!this.link || !folder.link || this.zid != folder.zid) { return false; }
 	if (this.id.split(":")[0] != folder.id.split(":")[0]) { return false; }
 	var share = this.shares && this.shares[0];
 	if (!(share && share.isInsert())) { return false; }

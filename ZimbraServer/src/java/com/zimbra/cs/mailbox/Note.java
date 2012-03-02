@@ -12,17 +12,13 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on Sep 7, 2004
- */
 package com.zimbra.cs.mailbox;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-import org.apache.lucene.document.Field;
 
+import com.google.common.base.Objects;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.index.LuceneFields;
@@ -33,8 +29,8 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 
-
 /**
+ * @since Sep 7, 2004
  * @author dkarp
  */
 public class Note extends MailItem {
@@ -61,6 +57,7 @@ public class Note extends MailItem {
             return (r != null && x == r.x && y == r.y && width == r.width && height == r.height);
         }
 
+        @Override
         public String toString()  { return x + "," + y + "," + width + "," + height; }
     }
 
@@ -90,19 +87,39 @@ public class Note extends MailItem {
         return new Rectangle(mBounds);
     }
 
+    @Override
+    boolean isTaggable() {
+        return true;
+    }
 
-    boolean isTaggable()      { return true; }
-    boolean isCopyable()      { return true; }
-    boolean isMovable()       { return true; }
-    boolean isMutable()       { return true; }
-    boolean isIndexed()       { return true; }
+    @Override
+    boolean isCopyable() {
+        return true;
+    }
+
+    @Override
+    boolean isMovable() {
+        return true;
+    }
+
+    @Override
+    boolean isMutable() {
+        return true;
+    }
+
+    @Override
+    boolean isIndexed() {
+        return true;
+    }
+
+    @Override
     boolean canHaveChildren() { return false; }
 
 
     /** Creates a new Note and persists it to the database.  A real
      *  nonnegative item ID must be supplied from a previous call to
      *  {@link Mailbox#getNextItemId(int)}.
-     * 
+     *
      * @param id        The id for the new note.
      * @param folder    The {@link Folder} to create the note in.
      * @param content   The note's body.
@@ -136,7 +153,7 @@ public class Note extends MailItem {
         data.type        = TYPE_NOTE;
         data.folderId    = folder.getId();
         if (!folder.inSpam() || mbox.getAccount().getBooleanAttr(Provisioning.A_zimbraJunkMessagesIndexingEnabled, false))
-            data.indexId     = mbox.generateIndexId(id);
+            data.indexId     = id;
         data.date        = mbox.getOperationTimestamp();
         data.subject     = content;
         data.metadata    = encodeMetadata(color, 1, custom, location);
@@ -150,19 +167,16 @@ public class Note extends MailItem {
         return note;
     }
 
-    @Override public List<IndexDocument> generateIndexData(boolean doConsistencyCheck) {
+    @Override
+    public List<IndexDocument> generateIndexData(boolean doConsistencyCheck) {
         String toIndex = getText();
-
-        org.apache.lucene.document.Document doc = new org.apache.lucene.document.Document();
-        doc.add(new Field(LuceneFields.L_CONTENT, toIndex, Field.Store.NO, Field.Index.TOKENIZED));
-        doc.add(new Field(LuceneFields.L_H_SUBJECT, toIndex, Field.Store.NO, Field.Index.TOKENIZED));
-        doc.add(new Field(LuceneFields.L_PARTNAME, LuceneFields.L_PARTNAME_NOTE, Field.Store.YES, Field.Index.UN_TOKENIZED));
-        
-        List<IndexDocument> toRet = new ArrayList<IndexDocument>(1);
-        toRet.add(new IndexDocument(doc));
-        return toRet;
+        IndexDocument doc = new IndexDocument();
+        doc.addContent(toIndex);
+        doc.addSubject(toIndex);
+        doc.addPartName(LuceneFields.L_PARTNAME_NOTE);
+        return Collections.singletonList(doc);
     }
-    
+
 
     void setContent(String content) throws ServiceException {
         if (!isMutable())
@@ -204,12 +218,13 @@ public class Note extends MailItem {
         saveMetadata();
     }
 
-
+    @Override
     void decodeMetadata(Metadata meta) throws ServiceException {
         super.decodeMetadata(meta);
         mBounds = new Rectangle(meta.get(Metadata.FN_BOUNDS, null));
     }
 
+    @Override
     Metadata encodeMetadata(Metadata meta) {
         return encodeMetadata(meta, mRGBColor, mVersion, mExtendedData, mBounds);
     }
@@ -227,12 +242,11 @@ public class Note extends MailItem {
 
     private static final String CN_BOUNDS  = "bounds";
 
+    @Override
     public String toString() {
-        StringBuffer sb = new StringBuffer();
-        sb.append("note: {");
-        appendCommonMembers(sb).append(", ");
-        sb.append(CN_BOUNDS).append(": ").append(mBounds);
-        sb.append("}");
-        return sb.toString();
+        Objects.ToStringHelper helper = Objects.toStringHelper(this);
+        appendCommonMembers(helper);
+        helper.add(CN_BOUNDS, mBounds);
+        return helper.toString();
     }
 }

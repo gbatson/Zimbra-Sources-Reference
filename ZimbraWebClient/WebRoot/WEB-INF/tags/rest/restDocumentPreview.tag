@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -88,10 +88,7 @@
         </jsp:include>
 
         <!-- Packages -->
-        <c:set var="packages" value="Boot,DocsPreview" scope="request"/>
-        <c:if test="${isDevMode}">
-            <c:set var="packages" value="${packages},Debug" scope="page"/>
-        </c:if>
+        <c:set var="packages" value="Boot,DocsPreview,Debug" scope="request"/>
         <c:set var="pnames" value="${fn:split(packages,',')}" scope="request"/>
         <c:set var="pprefix" value="js" scope="request"/>
         <c:choose>
@@ -117,7 +114,12 @@
                 </c:otherwise>
             </c:choose>
         </c:forEach>
-        
+
+        <c:set var="version" value="${doc.version}"/>
+        <c:if test="${not empty param.ver}">
+            <c:set var="version" value="${param.ver}"/>
+        </c:if>
+
     </head>
     <body>
     <table width="100%" height="100%" cellspacing="0" cellpadding="0">
@@ -128,7 +130,7 @@
                     <table width="100%" height="100%" cellpadding="0" cellspacing="5">
                     <tr>
                         <td>
-                            <span style="font-size:18px;"><b>${zm:cook(doc.name)}</b></span>
+                            <span style="font-size:18px;"><b>${doc.name}</b></span>
                         </td>
                         <td>
                             &nbsp;
@@ -136,7 +138,7 @@
                     </tr>
                     <tr>
                         <td><fmt:message key="labelBy"/>&nbsp;${doc.creator}</td>
-                        <td align="right"><fmt:message key="labelVersion"/>: ${doc.version}  |  <fmt:message key="labelModifiedOn"/>: <fmt:formatDate value="${doc.modifiedDate}" pattern="M/d/yyyy h:mm a" timeZone="${timeZone}"/></td>
+                        <td align="right"><fmt:message key="labelVersion"/>: <span id="version_cont">${doc.version}</span>  |  <fmt:message key="labelModifiedOn"/>: <fmt:formatDate value="${doc.modifiedDate}" pattern="M/d/yyyy h:mm a" timeZone="${timeZone}"/></td>
                     </tr>
                     </table>
                 </td>
@@ -160,8 +162,11 @@
         </tbody>
     </table>
     <script type="text/javascript">
-        ZmDocsPreview._createDBG('${isDevMode}');
-        ZmDocsPreview.launch('zdocument');
+        window.DBG = new AjxDebug(AjxDebug.NONE, null, false);
+        ZmDocsPreview.launch('zdocument', {
+            version: '${zm:cook(version)}',
+            versionCont: "version_cont"
+        });
     </script>
     </body>
 </html>

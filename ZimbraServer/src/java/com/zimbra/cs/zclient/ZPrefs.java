@@ -15,29 +15,32 @@
 
 package com.zimbra.cs.zclient;
 
-import com.zimbra.common.calendar.TZIDMapper;
-import com.zimbra.cs.account.Provisioning;
-
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
 import java.util.TimeZone;
 
+import com.google.common.collect.Iterables;
+import com.zimbra.common.calendar.TZIDMapper;
+import com.zimbra.cs.account.Provisioning;
+
 public class ZPrefs {
 
-    private Map<String, List<String>> mPrefs;
+    private Map<String, Collection<String>> mPrefs;
 
-    public ZPrefs(Map<String, List<String>> prefs) {
+    public ZPrefs(Map<String, Collection<String>> prefs) {
         mPrefs = prefs;
     }
-
+    
     /**
      * @param name name of pref to get
      * @return null if unset, or first value in list
      */
     public String get(String name) {
-        List<String> value = mPrefs.get(name);
-        return (value == null || value.isEmpty()) ? null : value.get(0);
-
+        Collection<String> values = mPrefs.get(name);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        return Iterables.get(values, 0);
     }
 
     public boolean getBool(String name) {
@@ -53,7 +56,7 @@ public class ZPrefs {
         }
     }
 
-    public Map<String, List<String>> getPrefs() { return mPrefs; }
+    public Map<String, Collection<String>> getPrefs() { return mPrefs; }
 
     public String getAppleiCalDelegationEnabled() { return get(Provisioning.A_zimbraPrefAppleIcalDelegationEnabled); }
     
@@ -72,6 +75,8 @@ public class ZPrefs {
     public boolean getUseTimeZoneListInCalendar() { return getBool(Provisioning.A_zimbraPrefUseTimeZoneListInCalendar); }
 
     public boolean getReadingPaneEnabled() { return getBool(Provisioning.A_zimbraPrefReadingPaneEnabled); }
+
+    public String getReadingPaneLocation() { return get(Provisioning.A_zimbraPrefReadingPaneLocation); }
 
     public boolean getMailSignatureEnabled() { return getBool(Provisioning.A_zimbraPrefMailSignatureEnabled); }
 
@@ -176,6 +181,8 @@ public class ZPrefs {
 
     public String getTimeZoneCanonicalId() { return TZIDMapper.canonicalize(get(Provisioning.A_zimbraPrefTimeZoneId)); }
 
+    public String getDefaultPrintFontSize() {return get(Provisioning.A_zimbraPrefDefaultPrintFontSize);}
+
     private TimeZone mCachedTimeZone;
     private String mCachedTimeZoneId;
 
@@ -200,7 +207,7 @@ public class ZPrefs {
     
     public String getForwardIncludeOriginalText() { return get(Provisioning.A_zimbraPrefForwardIncludeOriginalText); }
     public boolean getForwardIncludeAsAttachment() { return "includeAsAttachment".equals(getForwardIncludeOriginalText()); }
-    public boolean getForwardIncludeBody() { return "includeBody".equals(getForwardIncludeOriginalText()) || "includeBodyAndHeaders".equals(getReplyIncludeOriginalText()); }
+    public boolean getForwardIncludeBody() { return "includeBody".equals(getForwardIncludeOriginalText()) || "includeBodyAndHeaders".equals(getForwardIncludeOriginalText()); }
     public boolean getForwardIncludeBodyWithPrefx() { return "includeBodyWithPrefix".equals(getForwardIncludeOriginalText()); }
     
     public String getForwardReplyFormat() { return get(Provisioning.A_zimbraPrefForwardReplyFormat); }

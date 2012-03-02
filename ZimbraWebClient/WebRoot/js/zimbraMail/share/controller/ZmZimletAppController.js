@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -95,10 +95,11 @@ ZmZimletAppController.prototype.getToolbar = function() {
 /**
  * Shows the controller.
  * 
+ *@return boolean <code>true</code> if previous view was not dirty and hence could swap it with new view; else <code>false</code>
  */
 ZmZimletAppController.prototype.show = function() {
 	this.getView();
-	this._app.pushView(this._getViewType());
+	return this._app.pushView(this._getViewType());
 };
 
 //

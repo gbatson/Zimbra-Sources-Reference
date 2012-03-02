@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,10 +16,12 @@
 ZmDocsEditView = function(parent, className, posStyle, controller, deferred) {
     className = className || "ZmDocsEditView";
     DwtComposite.call(this, {parent:parent, className:className, posStyle:DwtControl.ABSOLUTE_STYLE});
+
     this._buttons = {};
     this._controller = controller;
     this._docMgr = new ZmDocletMgr();
     this._initialize();    
+	this.getHtmlElement().style.overflow = "auto";
 };
 
 ZmDocsEditView.prototype = new DwtComposite;
@@ -45,16 +47,8 @@ ZmDocsEditView.prototype.save = function(){
 
     var fileInfo = ZmDocsEditApp.fileInfo;
     var fileName = this._buttons.fileName.getValue();
-    var message;
-
-    if(!fileInfo.id){
-        if (fileName == "") {
-            message = ZmMsg.emptyDocName;
-        } else {
-            message = this._docMgr.checkInvalidDocName(fileName);
-        }
-    }
-
+    
+    var message = this._docMgr.checkInvalidDocName(fileName);
     if (message) {
 		var style = DwtMessageDialog.WARNING_STYLE;
 		var dialog = this.warngDlg = appCtxt.getMsgDialog();
@@ -65,12 +59,12 @@ ZmDocsEditView.prototype.save = function(){
 	}
 
     ZmDocsEditApp.fileInfo.name    = fileName;
-    if(window.isTinyMCE) { //temp check
-        var ed = tinyMCE.get('tiny_mce_content');
-        ZmDocsEditApp.fileInfo.content = ed.getContent();
-    } else {
+    //    if(window.isTinyMCE) { //temp check
+    //        var ed = tinyMCE.get('tiny_mce_content');
+    //        ZmDocsEditApp.fileInfo.content = ed.getContent();
+    //    } else {
         ZmDocsEditApp.fileInfo.content = this._editor.getContent();
-    }
+    //    }
     ZmDocsEditController.savedDoc = ZmDocsEditApp.fileInfo.content; 
     ZmDocsEditApp.fileInfo.contentType = ZmDocsEditApp.APP_ZIMBRA_DOC;
     this._docMgr.setSaveCallback(new AjxCallback(this, this._saveHandler));
@@ -90,7 +84,7 @@ function(files, conflicts) {
             ZmDocsEditApp.fileInfo.version = files[0].ver;
 
             var item = this.loadData(ZmDocsEditApp.fileInfo.id);
-            if(!item.rest){    //TODO: Change this code to construct a rest url
+            if(item && !item.rest){    //TODO: Change this code to construct a rest url
                 item.rest = ZmDocsEditApp.restUrl;
             }
             if(item != null) {
@@ -101,9 +95,13 @@ function(files, conflicts) {
             if(window.isRestView) {
                 wAppCtxt = top.appCtxt;
             } else {
-                wAppCtxt = window.opener.appCtxt;
+                wAppCtxt = window.opener && window.opener.appCtxt;
             }
             appCtxt.setStatusMsg(ZmMsg.savedDoc, ZmStatusView.LEVEL_INFO);
+
+            if(this._saveClose){
+                window.close();
+            }
         }
     }
 
@@ -127,9 +125,9 @@ ZmDocsEditView.prototype.setFooterInfo = function(item){
             if(window.isRestView) {
                wAppCtxt = top.appCtxt;
             } else {
-               wAppCtxt = window.opener.appCtxt;
+               wAppCtxt = window.opener && window.opener.appCtxt;
             }
-            var docs = wAppCtxt.getById(folderId);
+            var docs = wAppCtxt && wAppCtxt.getById(folderId);
             if(!docs) {
                 break;
             }
@@ -215,7 +213,8 @@ ZmDocsEditView.prototype._initialize = function() {
     iFrame.setAttribute("allowtransparency", "true", false);
     iFrame.onload = AjxCallback.simpleClosure(this._stealFocus, this, iFrame.id);
 
-    if(window.isTinyMCE) {  //temp check
+    //if(window.isTinyMCE) {  //temp check
+      if(false) {
         var htmlEl = this.getHtmlElement();
         var divEl = document.createElement("div");
         divEl.setAttribute("style","padding:3px; height:98%");
@@ -327,6 +326,12 @@ function() {
 };
 
 ZmDocsEditView.prototype._saveButtonListener = function(ev) {
+    this._saveClose = false;
+    this.save();
+};
+
+ZmDocsEditView.prototype._saveCloseButtonListener = function(ev) {
+    this._saveClose = true;
     this.save();
 };
 
@@ -334,13 +339,10 @@ ZmDocsEditView.prototype._tbActionListener = function(ev) {
    var action = ev.item.getData(ZmDocsEditView.ZD_VALUE);
 
    if(action == "NewDocument") {
-
-      if(confirm(ZmMsg.exitDocUnSavedChanges)) {
-          this._buttons.fileName.setValue("");
-          ZmDocsEditApp.setFile();
-          this._pushIframeContent(this._iframe);
-          this._editor._enableDesignMode(this._editor._getIframeDoc());
-      }
+        var fileInfo = ZmDocsEditApp.fileInfo;
+        var url = ZmDocletMgr.getEditURLForContentType(fileInfo.contentType) + "?l="+fileInfo.folderId + (window.isTinyMCE ? "&editor=tinymce" : "") + (window.skin ? "&skin="+window.skin : "") + "&localeId=" + AjxEnv.DEFAULT_LOCALE;
+        var winName = (new Date()).getTime().toString();
+        window.open(url, winName);
 
    } else if(action = "OpenDocument") {
        /*if(!this._openDocDlg) {
@@ -595,8 +597,18 @@ ZmDocsEditView.prototype._createToolbar = function(toolbar) {
 
     new DwtControl({parent:toolbar, className:"vertSep"});
 
+    var b = this._buttons.saveAndCloseFile = new DwtToolBarButton(params);
+    b.setImage("Save");
+    b.setText(ZmMsg.saveClose);
+    b.setData(ZmDocsEditView.ZD_VALUE, "Save&Close");
+    b.addSelectionListener(new AjxListener(this, this._saveCloseButtonListener));
+    b.setToolTipContent(ZmMsg.saveClose);
+
     var listener = new AjxListener(this, this._tbActionListener);
+
     /*
+    new DwtControl({parent:toolbar, className:"vertSep"});
+
     b = this._buttons.clipboardCopy = new DwtToolBarButton(params);
 	b.setImage("Copy");
 	b.setData(ZmDocsEditView.ZD_VALUE, "ClipboardCopy");
@@ -616,7 +628,6 @@ ZmDocsEditView.prototype._createToolbar = function(toolbar) {
 	b.setToolTipContent(ZmMsg.paste);
 
     new DwtControl({parent:toolbar, className:"vertSep"});
-    */
 
     b = this._buttons.newDocument = new DwtToolBarButton(params);
     b.setText(ZmMsg.newDocument);
@@ -625,11 +636,13 @@ ZmDocsEditView.prototype._createToolbar = function(toolbar) {
     b.addSelectionListener(listener);
     b.setToolTipContent(ZmMsg.briefcaseCreateNewDocument);
 
-    /*b = this._buttons.clipboardPaste = new DwtToolBarButton(params);
+
+    b = this._buttons.clipboardPaste = new DwtToolBarButton(params);
     b.setText("Open Document");
     b.setData(ZmDocsEditView.ZD_VALUE, "OpenDocument");
     b.addSelectionListener(listener);
-    b.setToolTipContent(ZmMsg.paste);*/
+    b.setToolTipContent(ZmMsg.paste);
+    */
     
 };
 

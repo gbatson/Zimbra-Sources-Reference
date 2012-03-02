@@ -37,7 +37,7 @@ com_zimbra_srchhltr_HandlerObject.prototype.constructor = com_zimbra_srchhltr_Ha
 SearchHighlighterZimlet.prototype.init =
 function() {
 	this._searchController = appCtxt.getSearchController();
-	this._skipKeys = ["in:", "attachment:", "has:", "is:", "before:", "after:", "date:", "larger:", "smaller:",  "from:", "to:", "cc:", "bcc:", "and", "or"];
+	this._skipKeys = ["in:", "attachment:", "has:", "is:", "before:", "after:", "date:", "larger:", "smaller:",  "from:", "to:", "cc:", "bcc:", "and", "or", "not"];
 	this._skipKeysLen = this._skipKeys.length;
 	this._spanIds = [];
 };
@@ -77,7 +77,7 @@ SearchHighlighterZimlet.prototype.generateSpan =
 function(html, idx, obj, spanId, context) {
 	var id = Dwt.getNextId();
 	this._spanIds.push(id);
-	html[idx++] = ["<span id= '",id,"'style='background-color:#FEF481'>",obj,"</span>"].join("");
+	html[idx++] = ["<span id= '",id,"'class='ZmSearchResult'>",obj,"</span>"].join("");
 	return idx;
 };
 
@@ -90,14 +90,19 @@ function(searchStr) {
 	if(!searchStr) {
 		return [];
 	}
-	searchStr = searchStr.toLowerCase().replace(/in:"(\w+?\s).*"/, "");//folder with multip-word names
-	var dArry = searchStr.split(" ");
-	if (dArry == "") {
+	searchStr = searchStr.toLowerCase().replace(/in:\"(\w?[^a-zA-Z0-9_\"]?)+\"|in:(\w?[^a-zA-Z0-9_\"\s]?)+/g, "");//folder with multip-word names
+	searchStr = AjxStringUtil.trim(searchStr);
+	if(searchStr == "") {
 		return [];
 	}
+	var dArry = searchStr.split(" ");
+
 	var result1 = [];
 	for (var i = 0; i < dArry.length; i++) {
-		var d = dArry[i];
+		var d = AjxStringUtil.trim(dArry[i]);
+		if(d == "") {
+			continue;
+		}
 		var skipThis = false;
 		for (var j = 0; j < this._skipKeysLen; j++) {
 			var k = this._skipKeys[j];

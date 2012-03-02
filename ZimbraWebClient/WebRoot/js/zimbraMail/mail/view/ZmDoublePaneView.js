@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -205,7 +205,7 @@ function(newWidth, newHeight, force) {
 		var sashSize = sash.getSize();
 		var sashThickness = readingPaneOnRight ? sashSize.x : sashSize.y;
 		if (readingPaneOnRight) {
-			var listViewWidth = this._vertSashX || Math.floor(newWidth / 2.5);
+			var listViewWidth = this._vertSashX || (Number(ZmMsg.LISTVIEW_WIDTH)) || Math.floor(newWidth / 2.5);
 			this._mailListView.resetSize(listViewWidth, newHeight);
 			sash.setLocation(listViewWidth, 0);
 			this._msgView.setBounds(listViewWidth + sashThickness, 0,
@@ -267,7 +267,7 @@ function(delta) {
 				var firstHdr = this._mailListView._headerList[0];
 				var hdrWidth = firstHdr._width;
 				if (hdrWidth == "auto") {
-					var header = document.getById(firstHdr._id);
+					var header = Dwt.byId(firstHdr._id);
 					hdrWidth = header && Dwt.getSize(header).x;
 				}
 				this._minMLVWidth = hdrWidth;

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -407,7 +407,10 @@ ZmEditContactView.prototype.set = function(contact, isDirty) {
 				folderOrId = null;
 			}
 		}
-		this._setFolder(folderOrId || ZmOrganizer.ID_ADDRBOOK);
+
+        //check introduced to avoid choosing a readonly/shared folder as default folder location 
+		this._setFolder((folderOrId && !folderOrId.isReadOnly()) ? folderOrId : ZmOrganizer.ID_ADDRBOOK);
+
 	}
 
 	if (this.getControl("TAG"))
@@ -663,7 +666,7 @@ function(tagIds) {
 	for (var j = 0; j < tags.length; j++) {
 		var tag = tags[j];
 		if (!tag) { continue; }
-		var icon = ZmTag.COLOR_ICON[tag.color];
+		var icon = tag.getIconWithColor();
 		var attr = ["id='", tagCellId, tag.id, "'"].join("");
 		// XXX: set proper class name for link once defined!
 		html[idx++] = "<a href='javascript:;' class='' onclick='ZmEditContactView._tagClicked(";
@@ -671,7 +674,7 @@ function(tagIds) {
 		html[idx++] = tag.id;
 		html[idx++] = '"';
 		html[idx++] = "); return false;'>";
-		html[idx++] = AjxImg.getImageSpanHtml(icon, null, attr, AjxStringUtil.htmlEncode(tag.name));
+		html[idx++] = AjxImg.getImageSpanHtml(icon, null, attr, tag.name);
 		html[idx++] = "</a>&nbsp;";
 	}
 	return html.join("");
@@ -968,10 +971,10 @@ function(nattrs,id,prefixes,onlyvalue,listAttrs) {
 
 	// add attributes on contact that we don't know about
 	for (var aname in nattrs) {
-		aname = aname.replace(/\d+$/,"");
-		if (ZmContact.IS_IGNORE[aname]) continue;
-		if (!(aname in attributes)) {
-			array.push({type:aname,value:nattrs[aname]});
+		var anameNormalized = aname.replace(/\d+$/,"");
+		if (ZmContact.IS_IGNORE[anameNormalized]) continue;
+		if (!(anameNormalized in attributes)) {
+			array.push({type:anameNormalized,value:nattrs[aname]});
 			if (!listAttrs[id]) listAttrs[id] = [];
 			listAttrs[id].push(aname);
 		}
@@ -1082,7 +1085,7 @@ ZmEditContactViewImage.prototype.toString = function() {
 
 // Constants
 
-ZmEditContactViewImage.NO_IMAGE_URL = appContextPath + "/img/large/ImgPerson_48.gif";
+ZmEditContactViewImage.NO_IMAGE_URL = appContextPath + "/img/large/ImgPerson_48.png";
 ZmEditContactViewImage.IMAGE_URL = "/service/content/proxy?aid=@aid@";
 
 // Public methods
@@ -2239,6 +2242,7 @@ ZmEditContactViewOther.prototype._createHtmlFromTemplate = function(templateId, 
         // TODO: use template?
 
 		var calendar = new DwtCalendar({parent:container});
+        calendar.setSkipNotifyOnPage(true);
 		calendar.setDate(new Date());
 		calendar.setFirstDayOfWeek(appCtxt.get(ZmSetting.CAL_FIRST_DAY_OF_WEEK) || 0);
 		calendar.addSelectionListener(new AjxListener(this,this._handleDateSelection,[calendar]));

@@ -14,40 +14,27 @@
  */
 package com.zimbra.cs.index;
 
-import org.apache.lucene.document.Document;
-
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Task;
 import com.zimbra.cs.mailbox.calendar.Invite;
 
-/**
- * 
- */
-public class TaskHit extends CalendarItemHit {
-    
-    public static TaskHit create(ZimbraQueryResultsImpl results, Mailbox mbx, int mailItemId, Document d, float score, MailItem.UnderlyingData ud) throws ServiceException {
-        CalendarItem calItem = null;
-        byte type = MailItem.TYPE_TASK;
-        if (ud != null) {
-            calItem = (Task)mbx.getItemFromUnderlyingData(ud);
-            type = ud.type;
-        }
-        return new TaskHit(results, mbx, mailItemId, d, score, calItem, type);
+public final class TaskHit extends CalendarItemHit {
+
+    TaskHit(ZimbraQueryResultsImpl results, Mailbox mbx, int mailItemId,
+            float score, Task task) {
+        super(results, mbx, mailItemId, score, task,
+                task != null ? task.getType() : MailItem.TYPE_TASK);
     }
-    public TaskHit(ZimbraQueryResultsImpl results, Mailbox mbx, int mailItemId, Document d, float score, CalendarItem calItem, byte type) throws ServiceException {
-        super(results, mbx, mailItemId, d, score, calItem, type);
-    }
-    
+
     public long getDueTime() throws ServiceException {
         Task task = (Task)getCalendarItem();
         return task.getEndTime();
     }
-    
+
     public int getCompletionPercentage() throws ServiceException {
         Task task = (Task)getCalendarItem();
         Invite inv = task.getDefaultInviteOrNull();
@@ -64,26 +51,26 @@ public class TaskHit extends CalendarItemHit {
         }
         return 0;
     }
-    
+
     static enum Status {
         // these names correspond to the iCal data values.  Don't change!
-        // The number corresponds to sort-precidence when sorting by completion status 
-        NEED(0), 
+        // The number corresponds to sort-precidence when sorting by completion status
+        NEED(0),
         INPR(1),
         WAITING(2),
-        DEFERRED(3), 
-        COMP(4), 
+        DEFERRED(3),
+        COMP(4),
         ;
-        
+
         Status(int sortVal) { mSortVal = sortVal; }
         public int getSortVal() { return mSortVal; }
         private int mSortVal;
     }
-    
+
     public Status getStatus() throws ServiceException {
         Task task = (Task)getCalendarItem();
         Invite inv = task.getDefaultInviteOrNull();
-        if (inv != null) { 
+        if (inv != null) {
             String status = inv.getStatus();
             try {
                 Status s = Status.valueOf(status.toUpperCase());
@@ -94,7 +81,8 @@ public class TaskHit extends CalendarItemHit {
         }
         return Status.DEFERRED;
     }
-    
+
+    @Override
     public Object getSortField(SortBy sortOrder) throws ServiceException {
         switch (sortOrder.getType()) {
             case TASK_DUE_ASCENDING:
@@ -110,7 +98,8 @@ public class TaskHit extends CalendarItemHit {
                 return super.getSortField(sortOrder);
         }
     }
-    
+
+    @Override
     int compareBySortField(SortBy sortOrder, ZimbraHit other) throws ServiceException {
         switch (sortOrder.getType()) {
             case TASK_DUE_ASCENDING:
@@ -129,14 +118,14 @@ public class TaskHit extends CalendarItemHit {
                 return super.compareBySortField(sortOrder, other);
         }
     }
-    
+
     private static long getDueTime(ZimbraHit zh) throws ServiceException {
         if (zh instanceof ProxiedHit)
             return ((ProxiedHit)zh).getElement().getAttributeLong(MailConstants.A_TASK_DUE_DATE);
-        else 
+        else
             return ((TaskHit)zh).getDueTime();
     }
-    
+
     private static Status getStatus(ZimbraHit zh) throws ServiceException {
         if (zh instanceof ProxiedHit) {
             String s = ((ProxiedHit)zh).getElement().getAttribute(MailConstants.A_CAL_STATUS);
@@ -145,14 +134,14 @@ public class TaskHit extends CalendarItemHit {
             return ((TaskHit)zh).getStatus();
         }
     }
-    
+
     static int getCompletionPercentage(ZimbraHit zh) throws ServiceException {
-        if (zh instanceof ProxiedHit) 
+        if (zh instanceof ProxiedHit)
             return (int)(((ProxiedHit)zh).getElement().getAttributeLong(MailConstants.A_TASK_PERCENT_COMPLETE));
         else
             return ((TaskHit)zh).getCompletionPercentage();
     }
-    
+
     static final int compareByDueDate(boolean ascending, ZimbraHit lhs, ZimbraHit rhs) {
         int retVal = 0;
         try {
@@ -166,7 +155,7 @@ public class TaskHit extends CalendarItemHit {
             else
                 retVal = 0;
         } catch (ServiceException e) {
-            ZimbraLog.index.info("Caught ServiceException trying to compare TaskHit %s to TaskHit %s", 
+            ZimbraLog.index.info("Caught ServiceException trying to compare TaskHit %s to TaskHit %s",
                 lhs, rhs, e);
         }
         if (ascending)
@@ -188,7 +177,7 @@ public class TaskHit extends CalendarItemHit {
             else
                 retVal = 0;
         } catch (ServiceException e) {
-            ZimbraLog.index.info("Caught ServiceException trying to compare TaskHit %s to TaskHit %s", 
+            ZimbraLog.index.info("Caught ServiceException trying to compare TaskHit %s to TaskHit %s",
                 lhs, rhs, e);
         }
         if (ascending)
@@ -196,7 +185,7 @@ public class TaskHit extends CalendarItemHit {
         else
             return retVal;
     }
-    
+
     static final int compareByCompletionPercent(boolean ascending, ZimbraHit lhs, ZimbraHit rhs) {
         int retVal = 0;
         try {
@@ -210,7 +199,7 @@ public class TaskHit extends CalendarItemHit {
             else
                 retVal = 0;
         } catch (ServiceException e) {
-            ZimbraLog.index.info("Caught ServiceException trying to compare TaskHit %s to TaskHit %s", 
+            ZimbraLog.index.info("Caught ServiceException trying to compare TaskHit %s to TaskHit %s",
                 lhs, rhs, e);
         }
         if (ascending)

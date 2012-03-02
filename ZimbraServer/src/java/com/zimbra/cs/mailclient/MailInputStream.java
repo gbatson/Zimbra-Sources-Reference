@@ -14,32 +14,43 @@
  */
 package com.zimbra.cs.mailclient;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.EOFException;
 
+import com.zimbra.common.util.Log;
+
 /**
- * Input stream for reading line-oriented mail protocol data. Also supports a
- * single character look ahead.
+ * Input stream for reading line-oriented mail protocol data. Also supports a single character look ahead.
  */
 public class MailInputStream extends InputStream {
+
+    private Log log;
+    private ByteArrayOutputStream logbuf;
+
     /** The underlying input stream */
     protected final InputStream in;
 
     /** Character buffer for reading line data */
     protected final StringBuilder sbuf;
-    
+
     private int nextByte = -1;
 
     /**
-     * Creates a new <tt>MailInputStream</tt> for the specified underlying
-     * input stream.
-     * 
+     * Creates a new {@link MailInputStream} for the specified underlying input stream.
+     *
      * @param is the underlying input stream
      */
     public MailInputStream(InputStream is) {
         this.in = is;
         sbuf = new StringBuilder(132);
+    }
+
+    public MailInputStream(InputStream is, Log log) {
+        this(is);
+        this.log = log;
+        logbuf = new ByteArrayOutputStream(1024);
     }
 
     @Override
@@ -56,9 +67,16 @@ public class MailInputStream extends InputStream {
             b[off++] = (byte) nextByte;
             nextByte = -1;
             len = in.read(b, off, len - 1);
+            if (logbuf != null && len > 0) {
+                logbuf.write(b, off, len);
+            }
             return len != -1 ? len + 1 : 1;
         } else {
-            return in.read(b, off, len);
+            len = in.read(b, off, len);
+            if (logbuf != null && len > 0) {
+                logbuf.write(b, off, len);
+            }
+            return len;
         }
     }
 
@@ -88,9 +106,16 @@ public class MailInputStream extends InputStream {
         if (nextByte != -1) {
             int b = nextByte;
             nextByte = -1;
+            if (logbuf != null && b >= 0) {
+                logbuf.write(b);
+            }
             return b;
         } else {
-            return in.read();
+            int b = in.read();
+            if (logbuf != null && b >= 0) {
+                logbuf.write(b);
+            }
+            return b;
         }
     }
 
@@ -159,9 +184,18 @@ public class MailInputStream extends InputStream {
             return in.skip(n);
         }
     }
-    
+
     @Override
     public void close() throws IOException {
         in.close();
     }
+
+    public final void trace() {
+        if (logbuf == null || logbuf.size() == 0) {
+            return;
+        }
+        log.trace("S: %s", logbuf.toString());
+        logbuf.reset();
+    }
+
 }

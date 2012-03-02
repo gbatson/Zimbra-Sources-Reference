@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,24 +15,23 @@
 package com.zimbra.cs.taglib.tag;
 
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicLong;
 
-import com.google.common.base.Strings;
-import com.google.common.collect.MapMaker;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.taglib.bean.*;
 import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.cs.zclient.ZSearchParams;
 import com.zimbra.cs.zclient.ZSearchPagerResult;
 import com.zimbra.cs.zclient.ZPhoneAccount;
+import com.zimbra.common.util.MapUtil;
 
 import javax.servlet.jsp.JspTagException;
 import javax.servlet.jsp.PageContext;
 
-public final class SearchContext {
-    private static final String CACHE_ATTR = "SearchContext.cache";
-    private static final AtomicLong ID_GEN = new AtomicLong(1L);
-    private static final int CACHE_SIZE = 10;
+public class SearchContext {
+
+    private static long sNextSearchContext = 1;
+
+    private static final int MAX_QUERY_CACHE = 10;
 
     private String mTitle; // title to put in html page
     private String mBackTo; // text to use for "back to..."
@@ -45,12 +44,12 @@ public final class SearchContext {
     private String mSt; // from st = attr
     private String mSs; // from ss = attr
     private String mTypes; // search types
-
+    
     private ZFolderBean mFolderBean;
     private ZTagBean mTagBean;
-    private ZPhoneAccountBean mPhoneAccount;
+	private ZPhoneAccountBean mPhoneAccount;
 
-    public String getSq() { return mSq; }
+	public String getSq() { return mSq; }
     public void setSq(String sq) { mSq = sq; }
 
     public String getSfi() { return mSfi; }
@@ -75,23 +74,23 @@ public final class SearchContext {
     public boolean getIsMessageSearch() { return ZSearchParams.TYPE_MESSAGE.equals(mTypes); }
     public boolean getIsContactSearch() { return ZSearchParams.TYPE_CONTACT.equals(mTypes); }
     public boolean getIsGALSearch() { return ZSearchParams.TYPE_GAL.equals(mTypes); }
-    public boolean getIsTaskSearch() { return ZSearchParams.TYPE_TASK.equals(mTypes); }
+    public boolean getIsTaskSearch() { return ZSearchParams.TYPE_TASK.equals(mTypes); }    
     public boolean getIsBriefcaseSearch() { return ZSearchParams.TYPE_BRIEFCASE.equals(mTypes); }
     public boolean getIsWikiSearch() { return ZSearchParams.TYPE_WIKI.equals(mTypes); }
 
-    public boolean getIsVoiceMailSearch() { return ZSearchParams.TYPE_VOICE_MAIL.equals(mTypes); }
+    public boolean getIsVoiceMailSearch() { return ZSearchParams.TYPE_VOICE_MAIL.equals(mTypes); }    
     public boolean getIsCallSearch() { return ZSearchParams.TYPE_CALL.equals(mTypes); }
 
-    public ZPhoneAccountBean getPhoneAccount() { return mPhoneAccount; }
-    public void setPhoneAccount(ZPhoneAccount account) {
-        mPhoneAccount = account == null ? null : new ZPhoneAccountBean(account);
-    }
+	public ZPhoneAccountBean getPhoneAccount() { return mPhoneAccount; }
+	public void setPhoneAccount(ZPhoneAccount account) {
+		mPhoneAccount = account == null ? null : new ZPhoneAccountBean(account);
+	}
 
     public ZTagBean getTag() { return mTagBean; }
     public void setTag(ZTagBean tag) { mTagBean = tag; }
 
     public boolean getIsFolderSearch() { return mFolderBean != null && !mFolderBean.getIsSearchFolder(); }
-    public boolean getIsSearchFolderSearch() { return mFolderBean != null && mFolderBean.getIsSearchFolder(); }
+    public boolean getIsSearchFolderSearch() { return mFolderBean != null && mFolderBean.getIsSearchFolder(); }    
     public boolean getIsTagSearch() { return mTagBean != null; }
 
     private ZSearchParams mParams;
@@ -101,30 +100,32 @@ public final class SearchContext {
     private int mItemIndex; // index into search results
     private String mId; // my search context id
 
-    public static SearchContext getSearchContext(PageContext ctxt, String key) {
-        if (Strings.isNullOrEmpty(key)) {
+    private static synchronized String nextSearchContext() {
+        return Long.toString(sNextSearchContext++);
+    }
+
+    public static SearchContext getSearchContext(PageContext ctxt, String searchContext) {
+        if (searchContext == null || searchContext.length() == 0)
             return null;
-        }
-        return getSearchContextCache(ctxt).get(key);
+        Map cache = getSearchContextCache(ctxt);
+        return (SearchContext) cache.get(searchContext);
     }
 
     public static SearchContext newSearchContext(PageContext ctxt) {
-        SearchContext sc = new SearchContext(String.valueOf(ID_GEN.getAndIncrement()));
-        getSearchContextCache(ctxt).put(sc.getId(), sc);
+        Map cache = getSearchContextCache(ctxt);
+        SearchContext sc = new SearchContext(nextSearchContext());
+        cache.put(sc.getId(), sc);
         return sc;
     }
 
-    private static Map<String, SearchContext> getSearchContextCache(PageContext ctxt) {
-        synchronized (ctxt.getSession()) {
-            @SuppressWarnings("unchecked")
-            Map<String, SearchContext> cache = (Map<String, SearchContext>) ctxt.getAttribute(CACHE_ATTR,
-                    PageContext.SESSION_SCOPE);
-            if (cache == null) {
-                cache = new MapMaker().concurrencyLevel(1).maximumSize(CACHE_SIZE).makeMap();
-                ctxt.setAttribute(CACHE_ATTR, cache, PageContext.SESSION_SCOPE);
-            }
-            return cache;
+    private static Map getSearchContextCache(PageContext ctxt) {
+        Map cache = (Map) ctxt.getAttribute("SearchTag.queryCache", PageContext.SESSION_SCOPE);
+        if (cache == null) {
+            cache = MapUtil.newLruMap(MAX_QUERY_CACHE);
+            ctxt.setAttribute("SearchTag.queryCache", cache, PageContext.SESSION_SCOPE);
         }
+
+        return cache;
     }
 
     private SearchContext(String id) {
@@ -135,10 +136,12 @@ public final class SearchContext {
 
     public boolean getShowMatches() { return mShowMatches; }
     public void setShowMatches(boolean matches)  { mShowMatches = matches; }
-
+    
     public ZSearchResultBean getSearchResult() {
+        
         return mResult;
     }
+    //private void setSearchResult(ZSearchResultBean result) { mResult = result; }
 
     public String getTitle() { return mTitle; }
     public void setTitle(String title) { mTitle = title; }
@@ -163,9 +166,9 @@ public final class SearchContext {
     }
 
     public boolean getHasNextItem() {
-        return (mItemIndex < mResult.getHits().size()-1) || mResult.getHasMore();
+        return (mItemIndex < mResult.getHits().size()-1) || mResult.getHasMore();    
     }
-
+    
     public ZSearchHitBean getCurrentItem() {
         if (mResult == null || mResult.getHits() == null)
             return null;
@@ -173,7 +176,7 @@ public final class SearchContext {
         if (mItemIndex >= 0 && mItemIndex < size)
             return mResult.getHits().get(mItemIndex);
         else
-            return null;
+            return null;    
     }
 
     public int getCurrentItemIndex() {

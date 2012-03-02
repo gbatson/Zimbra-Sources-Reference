@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -166,7 +166,17 @@ public abstract class RedoableOp {
 
     public static final int OP_SET_CUSTOM_DATA          = 73;
 
-    public static final int OP_LAST                     = 74;
+    public static final int OP_LOCK_ITEM                = 74;
+    public static final int OP_UNLOCK_ITEM              = 75;
+
+    public static final int OP_PURGE_REVISION           = 76;
+
+    public static final int OP_DELETE_ITEM_FROM_DUMPSTER = 77;
+
+    public static final int OP_FIX_CALENDAR_ITEM_PRIORITY = 78;
+
+    public static final int OP_RECOVER_ITEM             = 79;
+    public static final int OP_LAST                     = 80;
 
 
     // Element index is same as Redoable.OP_* constants.
@@ -245,7 +255,13 @@ public abstract class RedoableOp {
         "FixCalendarItemTZ",            // 70
         "DateItem",
         "SetFolderDefaultView",
-        "SetCustomData"
+        "SetCustomData",
+        "LockItem",
+        "UnlockItem",
+        "PurgeRevision",
+        "DeleteItemFromDumpster",
+        "FixCalendarItemPriority",
+        "RecoverItem"
     };
 
     public static String getOpClassName(int opcode) {
@@ -262,7 +278,7 @@ public abstract class RedoableOp {
     private long mTimestamp;		// timestamp of the operation
     private int mChangeId = -1;
     private int mChangeConstraint;
-    private long mMailboxId;
+    private int mMailboxId;
     private RedoLogManager mRedoLogMgr;
     private boolean mUnloggedReplay;  // true if redo of this op is not redo-logged
     RedoCommitCallback mCommitCallback;
@@ -413,11 +429,11 @@ public abstract class RedoableOp {
         mTxnId = txnId;
     }
 
-    public long getMailboxId() {
+    public int getMailboxId() {
         return mMailboxId;
     }
 
-    public void setMailboxId(long mboxId) {
+    public void setMailboxId(int mboxId) {
         mMailboxId = mboxId;
     }
 
@@ -430,6 +446,7 @@ public abstract class RedoableOp {
         out.writeInt(mChangeId);
         out.writeInt(mChangeConstraint);
         mTxnId.serialize(out);
+        // still writing and reading long mailbox IDs for backwards compatibility, even though they're ints again
         out.writeLong(mMailboxId);
     }
 
@@ -442,10 +459,12 @@ public abstract class RedoableOp {
         mChangeConstraint = in.readInt();
         mTxnId = new TransactionId();
         mTxnId.deserialize(in);
-        if (getVersion().atLeast(1, 26))
-            mMailboxId = in.readLong();
-        else
+        // still writing and reading long mailbox IDs for backwards compatibility, even though they're ints again
+        if (getVersion().atLeast(1, 26)) {
+            mMailboxId = (int) in.readLong();
+        } else {
             mMailboxId = in.readInt();
+        }
 
         // Deserialize the subclass.
         deserializeData(in);

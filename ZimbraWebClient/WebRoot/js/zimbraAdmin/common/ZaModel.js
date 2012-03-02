@@ -45,18 +45,10 @@ ZaModel.FONT_SIZE_CHOICES = [
 	{value:"36pt", label: "36pt"}];
 	
 ZaModel.FONT_FAMILY_CHOICES = [
-	{label:"Sans Serif",		value:"arial, helvetica, sans-serif" },
-   	{label:"Serif",				value:"times new roman, new york, times, serif"},
-    {label:"Wide Block",       	value:"arial black,avant garde" },
-	{label:"Monospaced", 		value:"courier new, courier, monaco, monospace, sans-serif" },
-    {label:"Comic",		        value:"comic sans ms, comic sans, sans-serif" },
-    {label:"Console",           value:"lucida console, sans-serif" },
-    {label:"Garamond",          value:"garamond, new york, times, serif" },
-    {label:"Elegant",    		value:"georgia,serif" },
-    {label:"Professional",		value:"tahoma, new york, times, serif"},
-    {label:"Terminal",          value:"terminal,monaco" },
-    {label:"Modern",   			value:"trebuchet ms,sans-serif" },
-    {label:"Wide",      		value:"verdana, helvetica, sans-serif" }
+	{label:"Arial", 			value:"Arial, Helvetica, sans-serif" },
+	{label:"Times New Roman",	value:"Times New Roman, Times, serif" },
+	{label:"Courier", 			value:"Courier, Courier New, mono" },
+	{label:"Verdana",			value:"Verdana, Arial, Helvetica, sans-serif" }
 ];
 
 ZaModel.getComposeFormatChoices =   function () {
@@ -69,8 +61,15 @@ ZaModel.SEND_READ_RECEIPT_ALWAYS = "always";
 ZaModel.SEND_READ_RECEIPT_NEVER = "never";
 ZaModel.SEND_READ_RECEIPT_PROMPT = "prompt";
 
-ZaModel.SEND_READ_RECEPIT_CHOICES = [{value:ZaModel.SEND_READ_RECEIPT_ALWAYS,label:ZaMsg.SEND_READ_RECEIPT_ALWAYS},
-{value:ZaModel.SEND_READ_RECEIPT_NEVER,label:ZaMsg.SEND_READ_RECEIPT_NEVER},{value:ZaModel.SEND_READ_RECEIPT_PROMPT,label:ZaMsg.SEND_READ_RECEIPT_PROMPT}];
+
+ZaModel.getSendReadReceiptByChoices = function() {
+     return [
+        {value:ZaModel.SEND_READ_RECEIPT_ALWAYS,label:ZaMsg.SEND_READ_RECEIPT_ALWAYS},
+        {value:ZaModel.SEND_READ_RECEIPT_NEVER,label:ZaMsg.SEND_READ_RECEIPT_NEVER},
+        {value:ZaModel.SEND_READ_RECEIPT_PROMPT,label:ZaMsg.SEND_READ_RECEIPT_PROMPT}
+    ];
+}
+ZaModel.SEND_READ_RECEPIT_CHOICES = ZaModel.getSendReadReceiptByChoices;
 
 ZaModel.getGroupMailByChoices = function () {
     return [{value:"conversation", label:ZaMsg.Conversation}, {value:"message", label:ZaMsg.Message}];

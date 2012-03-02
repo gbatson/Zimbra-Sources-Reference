@@ -22,7 +22,7 @@ import java.util.StringTokenizer;
 
 import javax.servlet.http.HttpServletResponse;
 
-import org.apache.commons.collections.map.LRUMap;
+import com.zimbra.common.util.MapUtil;
 
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
@@ -38,7 +38,6 @@ import com.zimbra.cs.account.Server;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavException;
 import com.zimbra.cs.dav.service.DavServlet;
-import com.zimbra.cs.httpclient.URLUtil;
 import com.zimbra.cs.index.ContactHit;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
@@ -256,7 +255,7 @@ public class UrlNamespace {
 	/* Returns URL to the resource. */
 	public static String getResourceUrl(DavResource rs) {
 	    //return urlEscape(DavServlet.getDavUrl(user) + resourcePath);
-        return URLUtil.urlEscape(getRawResourceUrl(rs));
+        return HttpUtil.urlEscape(getRawResourceUrl(rs));
 	}
     
 	public static String getPrincipalUrl(Account account) {
@@ -289,11 +288,11 @@ public class UrlNamespace {
         return url;
 	}
     public static String getPrincipalUrl(String user) {
-        return URLUtil.urlEscape(PRINCIPALS_PATH + user + "/");
+        return HttpUtil.urlEscape(PRINCIPALS_PATH + user + "/");
     }
 	
     public static String getPrincipalCollectionUrl(Account acct) throws ServiceException {
-    	return URLUtil.urlEscape(PRINCIPALS_PATH);
+    	return HttpUtil.urlEscape(PRINCIPALS_PATH);
     }
     
     public static String getResourceUrl(Account user, String path) throws ServiceException {
@@ -311,7 +310,7 @@ public class UrlNamespace {
 		return DavServlet.getServiceUrl(server, domain, path);
     }
     
-	private static LRUMap sRenamedResourceMap = new LRUMap(100);
+	private static Map sRenamedResourceMap = MapUtil.newLruMap(100);
 	
 	public static void addToRenamedResource(String user, String path, DavResource rsc) {
 		synchronized (sRenamedResourceMap) {
@@ -414,39 +413,9 @@ public class UrlNamespace {
         			item = mbox.getCalendarItemByUid(octxt, uid);
         		}
             } else if (path.toLowerCase().endsWith(AddressObject.VCARD_EXTENSION)) {
-                try {
-                    String uid = URLDecoder.decode(path.substring(index + 1, path.length() - AddressObject.VCARD_EXTENSION.length()), "UTF-8");
-                    index = uid.indexOf(':');
-                    if (index > 0) {
-                        item = mbox.getContactById(octxt, Integer.parseInt(uid.substring(index+1)));
-                    } else {
-                        ZimbraQueryResults zqr = null;
-                        StringBuilder query = new StringBuilder();
-                        query.append("#").append(ContactConstants.A_vCardUID).append(":");
-                        query.append(uid);
-                        query.append(" OR ").append("#").append(ContactConstants.A_vCardURL).append(":");
-                        query.append(uid);
-                        ZimbraLog.dav.debug("query %s", query.toString());
-                        try {
-                            zqr = mbox.search(ctxt.getOperationContext(), query.toString(), new byte[] { MailItem.TYPE_CONTACT }, SortBy.NAME_ASCENDING, 10);
-                            if (zqr.hasNext()) {
-                                ZimbraHit hit = zqr.getNext();
-                                if (hit instanceof ContactHit) {
-                                    item = ((ContactHit)hit).getContact();
-                                }
-                            }
-                        } catch (Exception e) {
-                            ZimbraLog.dav.error("can't search for: uid="+uid, e);
-                        } finally {
-                            if (zqr != null)
-                                try {
-                                    zqr.doneWithSearchResults();
-                                } catch (ServiceException e) {}
-                        }
-                    }
-                } catch (UnsupportedEncodingException e) {
-                    ZimbraLog.dav.warn("Can't decode URL %s", path);
-                }
+                rs = AddressObject.getAddressObjectByUID(ctxt, path.substring(index + 1), account);
+                if (rs != null)
+                    return rs;
         	} else if (f.getId() == Mailbox.ID_FOLDER_INBOX || f.getId() == Mailbox.ID_FOLDER_SENT) {
         		ctxt.setPathInfo(path.substring(index+1));
         		// delegated scheduling and notification handling
@@ -530,7 +499,6 @@ public class UrlNamespace {
 				else
 					resource = new Collection(ctxt, f);
 				break;
-			case MailItem.TYPE_WIKI :
 			case MailItem.TYPE_DOCUMENT :
 				resource = new Notebook(ctxt, (Document)item);
 				break;

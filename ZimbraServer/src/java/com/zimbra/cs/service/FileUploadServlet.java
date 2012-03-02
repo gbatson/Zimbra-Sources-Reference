@@ -31,6 +31,7 @@ import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.FileUtil;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
+import com.zimbra.common.util.MapUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraHttpConnectionManager;
 import com.zimbra.common.util.ZimbraLog;
@@ -47,7 +48,6 @@ import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.store.BlobInputStream;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.Zimbra;
-import org.apache.commons.collections.LRUMap;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileUploadBase;
 import org.apache.commons.fileupload.FileUploadException;
@@ -183,7 +183,7 @@ public class FileUploadServlet extends ZimbraServlet {
     }
 
     static HashMap<String, Upload> mPending = new HashMap<String, Upload>(100);
-    static LRUMap mProxiedUploadIds = new LRUMap(100);
+    static Map<String, String> mProxiedUploadIds = MapUtil.newLruMap(100);
     static Log mLog = LogFactory.getLog(FileUploadServlet.class);
 
     static final long DEFAULT_MAX_SIZE = 10 * 1024 * 1024;
@@ -237,10 +237,7 @@ public class FileUploadServlet extends ZimbraServlet {
 
     private static Upload fetchRemoteUpload(String accountId, String uploadId, AuthToken authtoken) throws ServiceException {
         // check if we have fetched the Upload from the remote server previously
-        String localUploadId = null;
-        synchronized (mProxiedUploadIds) {
-        	localUploadId = (String)mProxiedUploadIds.get(uploadId);
-        }
+        String localUploadId = mProxiedUploadIds.get(uploadId);
         if (localUploadId != null) {
             synchronized (mPending) {
                 Upload up = mPending.get(localUploadId);
@@ -276,9 +273,7 @@ public class FileUploadServlet extends ZimbraServlet {
 
             // store the fetched upload along with original uploadId
             Upload up = saveUpload(get.getResponseBodyAsStream(), filename, contentType, accountId);
-            synchronized (mProxiedUploadIds) {
-                mProxiedUploadIds.put(uploadId, up.uuid);
-            }
+            mProxiedUploadIds.put(uploadId, up.uuid);
             return up;
         } catch (HttpException e) {
             throw ServiceException.PROXY_ERROR(e, url);
@@ -510,7 +505,7 @@ public class FileUploadServlet extends ZimbraServlet {
     private void handlePlainUpload(HttpServletRequest req, HttpServletResponse resp, String fmt, String accountId, boolean limitByFileUploadMaxSize) throws IOException, ServiceException {
         // metadata is encoded in the response's HTTP headers
         ContentType ctype = new ContentType(req.getContentType());
-        String contentType = ctype.getValue(), filename = ctype.getParameter("name");
+        String contentType = ctype.getContentType(), filename = ctype.getParameter("name");
         if (filename == null)
             filename = new ContentDisposition(req.getHeader("Content-Disposition")).getParameter("filename");
 

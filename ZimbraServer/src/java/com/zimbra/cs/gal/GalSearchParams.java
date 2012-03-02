@@ -24,6 +24,7 @@ import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.Provisioning.SearchGalResult;
 import com.zimbra.cs.account.gal.GalOp;
 import com.zimbra.cs.account.gal.GalUtil;
@@ -34,8 +35,9 @@ import com.zimbra.soap.ZimbraSoapContext;
 
 public class GalSearchParams {
 	private GalSearchConfig mConfig;
-	private Provisioning.GAL_SEARCH_TYPE mType;
+	private Provisioning.GalSearchType mType = Provisioning.GalSearchType.account;
 	private int mLimit;
+	private Integer mLdapLimit; // ldap search does not support paging, allow a different limit for ldap search
 	private int mPageSize;
 	private String mQuery;
 	private GalSyncToken mSyncToken;
@@ -47,10 +49,13 @@ public class GalSearchParams {
 	private Domain mDomain;
     private SearchParams mSearchParams;
     private GalSearchResultCallback mResultCallback;
+    private GalSearchQueryCallback mExtraQueryCallback;
     private Element mRequest;
     private QName mResponse;
     private DataSource mDataSource;
     private boolean mIdOnly;
+    private boolean mNeedCanExpand;
+    private boolean mFetchGroupMembers;
     private GalOp mOp;
 	
 	public GalSearchParams(Account account) {
@@ -61,7 +66,7 @@ public class GalSearchParams {
 	
 	public GalSearchParams(Account account, ZimbraSoapContext ctxt) {
 		this(account);
-        mSoapContext = ctxt;
+		mSoapContext = ctxt;
 	}
 	
     public GalSearchParams(Domain domain, ZimbraSoapContext ctxt) {
@@ -79,12 +84,16 @@ public class GalSearchParams {
 		return mConfig;
 	}
 	
-	public Provisioning.GAL_SEARCH_TYPE getType() {
+	public Provisioning.GalSearchType getType() {
 		return mType;
 	}
 
 	public int getLimit() {
 		return mLimit;
+	}
+	
+	public Integer getLdapLimit() {
+	    return mLdapLimit;
 	}
 
 	public int getPageSize() {
@@ -118,10 +127,23 @@ public class GalSearchParams {
 	}
 	
 	public Domain getDomain() throws ServiceException {
-		if (mDomain != null)
-			return mDomain;
-		return Provisioning.getInstance().getDomain(mAccount);
-	}
+        if (mDomain != null)
+            return mDomain;
+        
+        Domain domain = Provisioning.getInstance().getDomain(mAccount);
+        if (domain != null)
+            return domain;
+        
+        Account galSyncAcct = getGalSyncAccount();
+        if (galSyncAcct != null)
+            domain = Provisioning.getInstance().getDomain(galSyncAcct);
+        
+        if (domain != null)
+            return domain;
+        
+        throw ServiceException.FAILURE("Unable to get domain", null);
+    }
+	
 	public ZimbraSoapContext getSoapContext() {
 		return mSoapContext;
 	}
@@ -133,6 +155,13 @@ public class GalSearchParams {
 	        return mSoapContext.getAuthToken();
 	}
 	
+    public Account getAuthAccount() throws ServiceException {
+	    if (mSoapContext == null)
+            return getAccount();
+        else
+            return Provisioning.getInstance().get(AccountBy.id, mSoapContext.getAuthtokenAccountId());
+    }
+    
 	public SearchParams getSearchParams() {
 		return mSearchParams;
 	}
@@ -143,6 +172,10 @@ public class GalSearchParams {
 		return mResultCallback;
 	}
 	
+    public GalSearchQueryCallback getExtraQueryCallback() {
+        return mExtraQueryCallback;
+    }
+	   
 	public Element getRequest() {
 		return mRequest;
 	}
@@ -159,17 +192,25 @@ public class GalSearchParams {
 		return mIdOnly;
 	}
 	
+    public boolean getNeedCanExpand() {
+        return mNeedCanExpand;
+    }
+    
 	public void setSearchConfig(GalSearchConfig config) {
 		mConfig = config;
 	}
 	
-	public void setType(Provisioning.GAL_SEARCH_TYPE type) {
+	public void setType(Provisioning.GalSearchType type) {
 		mType = type;
 	}
 	
 	public void setLimit(int limit) {
 		mLimit = limit;
 	}
+	
+    public void setLdapLimit(int limit) {
+        mLdapLimit = limit;
+    }
 	
 	public void setPageSize(int pageSize) {
 		mPageSize = pageSize;
@@ -178,7 +219,7 @@ public class GalSearchParams {
 	public void setQuery(String query) {
 		mQuery = query;
 	}
-	
+	   
 	public void setToken(String token) {
 		mSyncToken = new GalSyncToken(token);
 	}
@@ -215,6 +256,10 @@ public class GalSearchParams {
 		return mResultCallback;
 	}
 	
+    public void setExtraQueryCallback(GalSearchQueryCallback callback) {
+        mExtraQueryCallback = callback;
+    }
+	
 	public void setRequest(Element req) {
 		mRequest = req;
 	}
@@ -224,12 +269,18 @@ public class GalSearchParams {
 	
 	public void createSearchConfig(GalSearchConfig.GalType type) throws ServiceException {
 		mConfig = GalSearchConfig.create(getDomain(), mOp, type, mType);
+		mConfig.getRules().setFetchGroupMembers(mFetchGroupMembers);
 	}
 	
 	public String generateLdapQuery() throws ServiceException {
 		assert(mConfig != null);
 		String token = (mSyncToken != null) ? mSyncToken.getLdapTimestamp(mConfig.mTimestampFormat) : null;
-		return GalUtil.expandFilter(mConfig.getTokenizeKey(), mConfig.getFilter(), mQuery, token, false);
+		
+		String extraQuery = null;
+		if (GalSearchConfig.GalType.zimbra == mConfig.getGalType() && mExtraQueryCallback != null) {
+		    extraQuery = mExtraQueryCallback.getZimbraLdapSearchQuery();
+		}
+		return GalUtil.expandFilter(mConfig.getTokenizeKey(), mConfig.getFilter(), mQuery, token, false, extraQuery);
 	}
 	
 	public void setGalSyncAccount(Account acct) {
@@ -239,6 +290,14 @@ public class GalSearchParams {
 	public void setIdOnly(boolean idOnly) {
 		mIdOnly = idOnly;
 	}
+	
+    public void setNeedCanExpand(boolean needCanExpand) {
+        mNeedCanExpand = needCanExpand;
+    }
+    
+    public void setFetchGroupMembers(boolean fetchGroupMembers) {
+        mFetchGroupMembers = fetchGroupMembers;
+    }
 	
 	public void setOp(GalOp op) {
 	    mOp = op;

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -80,18 +80,11 @@ public final class AllAccountsWaitSet extends WaitSetBase {
      */
     static AllAccountsWaitSet createWithSeqNo(String ownerAccountId, String id, int defaultInterest, String lastKnownSeqNo) throws ServiceException {
         AllAccountsWaitSet ws = new AllAccountsWaitSet(ownerAccountId, id, defaultInterest, true);
-        boolean success = false;
         try {
             // get us up to date
             ws.syncToCommitId(lastKnownSeqNo);
-            success = true;
         } catch (IOException e) {
             throw ServiceException.FAILURE("Caught IOException when syncing waitset to specified commit ID", e);
-        } finally {
-            if (!success) {
-                ws.destroy();  // Remove from sAllAccountsWaitSets map to prevent memory leak.
-                ws = null;
-            }
         }
         return ws;
     }
@@ -110,10 +103,7 @@ public final class AllAccountsWaitSet extends WaitSetBase {
         // add us to the global set of AllAccounts waitsets, update the global interest mask
         synchronized(sAllAccountsWaitSets) {
             sAllAccountsWaitSets.put(this, "");
-            if (ZimbraLog.session.isDebugEnabled()) {
-                ZimbraLog.session.debug("added: sAllAccountsWaitSets.size() = " + sAllAccountsWaitSets.size());
-            }
-
+            
             // update the static interest mask
             int newMask = 0;
             for (AllAccountsWaitSet ws : sAllAccountsWaitSets.keySet()) {
@@ -173,14 +163,14 @@ public final class AllAccountsWaitSet extends WaitSetBase {
         
         CommitId cid = CommitId.decodeFromString(commitIdStr);
         
-        Pair<Set<Long>, CommitId> changes = rmgr.getChangedMailboxesSince(cid);
+        Pair<Set<Integer>, CommitId> changes = rmgr.getChangedMailboxesSince(cid);
         if (changes == null) {
             throw ServiceException.FAILURE("Unable to sync to commit id "+commitIdStr, null);
         }
         
-        Set<Long> mailboxes = changes.getFirst();
+        Set<Integer> mailboxes = changes.getFirst();
         
-        for (Long id : mailboxes) {
+        for (Integer id : mailboxes) {
             try {
                 Mailbox mbox = MailboxManager.getInstance().getMailboxById(id);
                 if (mbox != null) {
@@ -238,10 +228,7 @@ public final class AllAccountsWaitSet extends WaitSetBase {
     HashMap<String, WaitSetAccount> destroy() {
         synchronized(sAllAccountsWaitSets) {
             sAllAccountsWaitSets.remove(this);
-            if (ZimbraLog.session.isDebugEnabled()) {
-                ZimbraLog.session.debug("removed: sAllAccountsWaitSets.size() = " + sAllAccountsWaitSets.size());
-            }
-
+            
             // update the static interest mask
             int newMask = 0;
             for (AllAccountsWaitSet ws : sAllAccountsWaitSets.keySet()) {

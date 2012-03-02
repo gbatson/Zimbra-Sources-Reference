@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -151,6 +151,9 @@ function(params, result) {
 		this.highlightMiniCal([]);
 	}
 
+    var errors = (miniCalResponse && miniCalResponse.error);
+    this.handleError(errors);
+
 	this.updateCache(params, data);
 
 	if (params.callback) {
@@ -174,7 +177,25 @@ function(miniCalResponse, data) {
 				}
 			}
 		}
+
+        var errors = (miniCalResponse[i] && miniCalResponse[i].error);
+        this.handleError(errors);
 	}
+};
+
+ZmMiniCalCache.prototype.handleError =
+function(errors) {
+    if (errors && errors.length) {
+        for (var i = 0; i < errors.length; i++) {
+            if (errors[i].code == ZmCsfeException.MAIL_NO_SUCH_MOUNTPOINT || errors[i].code == ZmCsfeException.ACCT_NO_SUCH_ACCOUNT || errors[i].code == ZmCsfeException.SVC_PERM_DENIED) {
+                var id = errors[i].id;
+                if (id && appCtxt.getById(id)) {
+                    var folder = appCtxt.getById(id);
+                    folder.noSuchFolder = true;
+                }
+            }
+        }
+    }
 };
 
 ZmMiniCalCache.prototype.highlightMiniCal =

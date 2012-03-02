@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -170,6 +170,7 @@ function(item, index) {
 		if (item.id) {
 			this._idHash[item.id] = item;
 		}
+		this._updateHashes(item, true);
 	}
 };
 
@@ -229,7 +230,9 @@ function(contact) {
  */
 ZmContactList.prototype._realizeContact =
 function(contact, idx) {
+
 	if (contact instanceof ZmContact) { return contact; }
+	if (contact && contact.type == ZmItem.CONTACT) { return contact; }	// instanceof often fails in new window
 
 	var args = {list:this};
 	var obj = eval(ZmList.ITEM_CLASS[this.type]);
@@ -411,12 +414,10 @@ function(params) {
 
 			if (contact.isShared() || params.folder.link) {
 				hardMove.push(contact);
-				if (contact.isLoaded) {
-					moveBatchCmd.add(this._getCopyCmd(contact, params.folder));
-				} else {
-					contact.load(null,null);
-					moveBatchCmd.add(this._getCopyCmd(contact, params.folder));
+				if (!contact.isLoaded) {
+					loadBatchCmd.add(new AjxCallback(contact, contact.load, [null, null]));
 				}
+				moveBatchCmd.add(this._getCopyCmd(contact, params.folder));
 			} else {
 				softMove.push(contact);
 			}
@@ -426,16 +427,17 @@ function(params) {
 	}
 
 	if (hardMove.length > 0) {
+		var params1 = {
+			items: hardMove,
+			action: "delete",
+			actionText: ZmMsg.actionMove,
+			actionArg: params.folder.getName(false, false, true)
+		};
+
 		if (loadBatchCmd.size()) {
-			var respCallback = new AjxCallback(this, this._handleResponseLoadMove, [moveBatchCmd, hardMove]);
+			var respCallback = new AjxCallback(this, this._handleResponseLoadMove, [moveBatchCmd, params1]);
 			loadBatchCmd.run(respCallback);
 		} else {
-			var params1 = {
-				items: hardMove,
-				action: "delete",
-				actionText: ZmMsg.actionMove,
-				actionArg: params.folder.getName(false, false, true)
-			};
 			var deleteCmd = new AjxCallback(this, this._itemAction, [params1]);
 			moveBatchCmd.add(deleteCmd);
 
@@ -452,9 +454,7 @@ function(params) {
 		params1.action = "move";
         params1.accountName = appCtxt.multiAccounts && appCtxt.accountList.mainAccount.name;
         if (params1.folder.id == ZmFolder.ID_TRASH) {
-			if (softMove.length > 1) {
-	            params1.actionText = ZmMsg.actionTrash;
-			}
+            params1.actionText = ZmMsg.actionTrash;
             // bug: 47389 avoid moving to local account's Trash folder.
             params1.accountName = appCtxt.multiAccounts && params.items[0].getAccount().name;
         } else {
@@ -489,8 +489,8 @@ function(result) {
  * @private
  */
 ZmContactList.prototype._handleResponseLoadMove =
-function(moveBatchCmd, hardMove) {
-	var deleteCmd = new AjxCallback(this, this._itemAction, [{items:hardMove, action:"delete"}]);
+function(moveBatchCmd, params) {
+	var deleteCmd = new AjxCallback(this, this._itemAction, [params]);
 	moveBatchCmd.add(deleteCmd);
 
 	var respCallback = new AjxCallback(this, this._handleResponseMoveBatchCmd);

@@ -35,19 +35,18 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailMimeMessage;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
-import com.zimbra.common.util.ZimbraLog;
-
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
-import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.soap.Element;
-import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailSender;
 import com.zimbra.cs.mailbox.MailServiceException;
@@ -73,7 +72,6 @@ import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.util.JMSession;
 import com.zimbra.soap.ZimbraSoapContext;
 
-
 /**
  * Process the <SendMsg> request from the client and send an email message.
  */
@@ -91,6 +89,11 @@ public class SendMsg extends MailDocumentHandler {
     @Override public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Mailbox mbox = getRequestedMailbox(zsc);
+        Account account = getRequestedAccount(zsc);
+        long quota = account.getMailQuota();
+        if (account.isMailAllowReceiveButNotSendWhenOverQuota() && quota != 0 && mbox.getSize() > quota) {
+            throw MailServiceException.QUOTA_EXCEEDED(quota);
+        }
         OperationContext octxt = getOperationContext(zsc, context);
         ItemIdFormatter ifmt = new ItemIdFormatter(zsc);
 
@@ -107,7 +110,8 @@ public class SendMsg extends MailDocumentHandler {
         ItemId iidOrigId = origId == null ? null : new ItemId(origId, zsc);
         String replyType = msgElem.getAttribute(MailConstants.A_REPLY_TYPE, MailSender.MSGTYPE_REPLY);
         String identityId = msgElem.getAttribute(MailConstants.A_IDENTITY_ID, null);
-
+        String draftId = msgElem.getAttribute(MailConstants.A_DRAFT_ID, null);
+        ItemId iidDraft = draftId == null ? null : new ItemId(draftId, zsc);
 
         SendState state = SendState.NEW;
         ItemId savedMsgId = null;
@@ -148,7 +152,7 @@ public class SendMsg extends MailDocumentHandler {
                 }
 
                 savedMsgId = doSendMessage(octxt, mbox, mm, mimeData.newContacts, mimeData.uploads, iidOrigId,
-                    replyType, identityId, noSaveToSent, needCalendarSentByFixup);
+                    replyType, identityId, noSaveToSent, needCalendarSentByFixup, iidDraft);
 
                 // (need to make sure that *something* gets recorded, because caching
                 //   a null ItemId makes the send appear to still be PENDING)
@@ -176,18 +180,18 @@ public class SendMsg extends MailDocumentHandler {
 
     public static ItemId doSendMessage(OperationContext oc, Mailbox mbox, MimeMessage mm, List<InternetAddress> newContacts,
                                        List<Upload> uploads, ItemId origMsgId, String replyType, String identityId,
-                                       boolean noSaveToSent, boolean needCalendarSentByFixup)
+                                       boolean noSaveToSent, boolean needCalendarSentByFixup, ItemId draftId)
     throws ServiceException {
         
         if (needCalendarSentByFixup)
             fixupICalendarFromOutlook(mbox, mm);
-
+        MailSender sender = mbox.getMailSender().setSavedDraftId(draftId);
         if (noSaveToSent)
-            return mbox.getMailSender().sendMimeMessage(oc, mbox, false, mm, newContacts, uploads,
-                                                        origMsgId, replyType, null, false, false);
+            return sender.sendMimeMessage(oc, mbox, false, mm, newContacts, uploads,
+                                                        origMsgId, replyType, null, false);
         else
-            return mbox.getMailSender().sendMimeMessage(oc, mbox, mm, newContacts, uploads,
-                                                        origMsgId, replyType, identityId, false, false);
+            return sender.sendMimeMessage(oc, mbox, mm, newContacts, uploads,
+                                                        origMsgId, replyType, identityId, false);
     }
 
     static MimeMessage parseUploadedMessage(ZimbraSoapContext zsc, String attachId, MimeMessageData mimeData) throws ServiceException {
@@ -206,7 +210,7 @@ public class SendMsg extends MailDocumentHandler {
         try {
             // if we may need to mutate the message, we can't use the "updateHeaders" hack...
             if (anySystemMutators || needCalendarSentByFixup) {
-                MimeMessage mm = new MimeMessage(JMSession.getSession(), up.getInputStream());
+                MimeMessage mm = new JavaMailMimeMessage(JMSession.getSession(), up.getInputStream());
                 if (anySystemMutators)
                     return mm;
 
@@ -220,9 +224,11 @@ public class SendMsg extends MailDocumentHandler {
             }
 
             // ... but in general, for most installs this is safe
-            return new MimeMessage(JMSession.getSession(), up.getInputStream()) {
+            return new JavaMailMimeMessage(JMSession.getSession(), up.getInputStream()) {
                 @Override protected void updateHeaders() throws MessagingException {
-                    setHeader("MIME-Version", "1.0");  if (getMessageID() == null) updateMessageID();
+                    setHeader("MIME-Version", "1.0");
+                    if (getMessageID() == null)
+                        updateMessageID();
                 }
             };
         } catch (MessagingException e) {
@@ -233,10 +239,10 @@ public class SendMsg extends MailDocumentHandler {
     }
 
 
-    private static final Map<Long, List<Pair<String, ItemId>>> sSentTokens = new HashMap<Long, List<Pair<String, ItemId>>>(100);
+    private static final Map<Integer, List<Pair<String, ItemId>>> sSentTokens = new HashMap<Integer, List<Pair<String, ItemId>>>(100);
     private static final int MAX_SEND_UID_CACHE = 5;
 
-    private static Pair<SendState, Pair<String, ItemId>> findPendingSend(Long mailboxId, String sendUid) {
+    private static Pair<SendState, Pair<String, ItemId>> findPendingSend(Integer mailboxId, String sendUid) {
         SendState state = SendState.NEW;
         Pair<String, ItemId> sendRecord = null;
 
@@ -267,7 +273,7 @@ public class SendMsg extends MailDocumentHandler {
         return new Pair<SendState, Pair<String, ItemId>>(state, sendRecord);
     }
 
-    private static void clearPendingSend(Long mailboxId, Pair<String, ItemId> sendRecord) {
+    private static void clearPendingSend(Integer mailboxId, Pair<String, ItemId> sendRecord) {
         if (sendRecord != null) {
             synchronized (sSentTokens) {
                 sSentTokens.get(mailboxId).remove(sendRecord);
@@ -305,15 +311,15 @@ public class SendMsg extends MailDocumentHandler {
 
         static class ICalendarModificationCallback implements MimeVisitor.ModificationCallback {
             private boolean mWouldModify;
-            public boolean wouldCauseModification()  { return mWouldModify; }
-            public boolean onModification()          { mWouldModify = true; return false; }
+            public boolean wouldCauseModification()    { return mWouldModify; }
+            @Override public boolean onModification()  { mWouldModify = true; return false; }
         }
 
         OutlookICalendarFixupMimeVisitor(Account acct, Mailbox mbox) {
             mAccount = acct;
             mMailbox = mbox;
             mMsgDepth = 0;
-            mDefaultCharset = (acct == null ? null : acct.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null));
+            mDefaultCharset = (acct == null ? null : acct.getPrefMailDefaultCharset());
         }
 
         @Override protected boolean visitMessage(MimeMessage mm, VisitPhase visitKind) throws MessagingException {
@@ -364,13 +370,11 @@ public class SendMsg extends MailDocumentHandler {
             return modified;
         }
 
-        @Override
-        protected boolean visitMultipart(MimeMultipart mp, VisitPhase visitKind) {
+        @Override protected boolean visitMultipart(MimeMultipart mp, VisitPhase visitKind) {
             return false;
         }
 
-        @Override
-        protected boolean visitBodyPart(MimeBodyPart bp) throws MessagingException {
+        @Override protected boolean visitBodyPart(MimeBodyPart bp) throws MessagingException {
             // Ignore any forwarded message parts.
             if (mMsgDepth != 1)
                 return false;
@@ -440,25 +444,25 @@ public class SendMsg extends MailDocumentHandler {
                     if (token == null)
                         continue;
                     switch (token) {
-                    case ORGANIZER:
-                    case ATTENDEE:
-                        if (mFromEmails != null && mSentBy != null) {
-                            String addr = prop.getValue();
-                            if (addressMatchesFrom(addr)) {
-                                ZParameter sentBy = prop.getParameter(ICalTok.SENT_BY);
-                                if (sentBy == null) {
-                                    prop.addParameter(new ZParameter(ICalTok.SENT_BY, mSentBy));
-                                    modified = true;
-                                    ZimbraLog.calendar.info(
-                                            "Fixed up " + token + " (" + addr +
-                                            ") by adding SENT-BY=" + mSentBy);
+                        case ORGANIZER:
+                        case ATTENDEE:
+                            if (mFromEmails != null && mSentBy != null) {
+                                String addr = prop.getValue();
+                                if (addressMatchesFrom(addr)) {
+                                    ZParameter sentBy = prop.getParameter(ICalTok.SENT_BY);
+                                    if (sentBy == null) {
+                                        prop.addParameter(new ZParameter(ICalTok.SENT_BY, mSentBy));
+                                        modified = true;
+                                        ZimbraLog.calendar.info(
+                                                "Fixed up " + token + " (" + addr +
+                                                ") by adding SENT-BY=" + mSentBy);
+                                    }
                                 }
                             }
-                        }
-                        break;
-                    case RRULE:
-                        isSeries = true;
-                        break;
+                            break;
+                        case RRULE:
+                            isSeries = true;
+                            break;
                     }
                 }
                 if (isSeries) {

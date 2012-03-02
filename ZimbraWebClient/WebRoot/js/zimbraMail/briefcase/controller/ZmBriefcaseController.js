@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -47,11 +47,18 @@ ZmBriefcaseController = function(container, app) {
 	this._listeners[ZmOperation.NEW_FILE] = new AjxListener(this, this._uploadFileListener);
 	this._listeners[ZmOperation.VIEW_FILE_AS_HTML] = new AjxListener(this, this._viewAsHtmlListener);
 	this._listeners[ZmOperation.CREATE_SLIDE_SHOW] = new AjxListener(this, this._createSlideShow);
-    this._listeners[ZmOperation.EDIT] = new AjxListener(this, this._editFileListener);
+    this._listeners[ZmOperation.EDIT_FILE] = new AjxListener(this, this._editFileListener);
+    this._listeners[ZmOperation.RENAME_FILE] = new AjxListener(this, this._renameFileListener);
+    this._listeners[ZmOperation.NEW_BRIEFCASE_WIN] = new AjxListener(this, this._newWinListener);
 
 	this._listeners[ZmOperation.NEW_SPREADSHEET] = new AjxListener(this, this._handleDoc, [ZmOperation.NEW_SPREADSHEET]);
 	this._listeners[ZmOperation.NEW_PRESENTATION] = new AjxListener(this, this._handleDoc, [ZmOperation.NEW_PRESENTATION]);
 	this._listeners[ZmOperation.NEW_DOC] = new AjxListener(this, this._handleDoc, [ZmOperation.NEW_DOC]);
+
+    this._listeners[ZmOperation.CHECKIN] = new AjxListener(this, this._handleCheckin);
+    this._listeners[ZmOperation.CHECKOUT] = new AjxListener(this, this._checkoutListener);
+    this._listeners[ZmOperation.DISCARD_CHECKOUT] = new AjxListener(this, this._handleDiscardCheckout);
+    this._listeners[ZmOperation.RESTORE_VERSION] = new AjxListener(this, this._restoreVerListener);
 
 	this._dragSrc = new DwtDragSource(Dwt.DND_DROP_MOVE);
 	this._dragSrc.addDragListener(new AjxListener(this, this._dragListener));
@@ -75,9 +82,8 @@ function() {
 // Constants
 ZmBriefcaseController._VIEWS = {};
 ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE]			= "ZmBriefcaseView";
-ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE_DETAIL]	= "ZmDetailListView";
+ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE_DETAIL]	= "ZmPreviewPaneView";
 ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE_COLUMN]	= "ZmMultiColView";
-ZmBriefcaseController._VIEWS[ZmId.VIEW_BRIEFCASE_PREVIEW]	= "ZmBriefcaseSplitView";
 
 // Stuff for the View menu
 ZmBriefcaseController.GROUP_BY_ICON = {};
@@ -85,19 +91,57 @@ ZmBriefcaseController.GROUP_BY_MSG_KEY = {};
 ZmBriefcaseController.GROUP_BY_VIEWS = [];
 
 ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE]			= "explorerView";
-ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE_DETAIL]	= "detailView";
+ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE_DETAIL]	= "previewView";
 ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE_COLUMN]	= "columnBrowserView";
-ZmBriefcaseController.GROUP_BY_MSG_KEY[ZmId.VIEW_BRIEFCASE_PREVIEW]	= "previewView";
 
 ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE]			= "IconView";
 ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE_DETAIL]		= "TasksListView";
 ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE_COLUMN]		= "ListView";
-ZmBriefcaseController.GROUP_BY_ICON[ZmId.VIEW_BRIEFCASE_PREVIEW]	= "FilePreview";
 
 ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE);
 ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE_DETAIL);
 ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE_COLUMN);
-ZmBriefcaseController.GROUP_BY_VIEWS.push(ZmId.VIEW_BRIEFCASE_PREVIEW);
+
+ZmBriefcaseController.RP_IDS = [ZmSetting.RP_BOTTOM, ZmSetting.RP_RIGHT, ZmSetting.RP_OFF];
+
+// reading pane options
+ZmBriefcaseController.PREVIEW_PANE_TEXT = {};
+ZmBriefcaseController.PREVIEW_PANE_TEXT[ZmSetting.RP_OFF]	= ZmMsg.previewPaneOff;
+ZmBriefcaseController.PREVIEW_PANE_TEXT[ZmSetting.RP_BOTTOM]	= ZmMsg.previewPaneAtBottom;
+ZmBriefcaseController.PREVIEW_PANE_TEXT[ZmSetting.RP_RIGHT]	= ZmMsg.previewPaneOnRight;
+
+ZmBriefcaseController.PREVIEW_PANE_ICON = {};
+ZmBriefcaseController.PREVIEW_PANE_ICON[ZmSetting.RP_OFF]	    = "SplitPaneOff";
+ZmBriefcaseController.PREVIEW_PANE_ICON[ZmSetting.RP_BOTTOM]	= "SplitPane";
+ZmBriefcaseController.PREVIEW_PANE_ICON[ZmSetting.RP_RIGHT]	    = "SplitPaneVertical";
+
+//List Views
+
+ZmBriefcaseController.LIST_VIEW = {};
+ZmBriefcaseController.LIST_VIEW[ZmId.VIEW_BRIEFCASE_DETAIL] =   {image: "GenericDoc", text: ZmMsg.byLatestFile };
+ZmBriefcaseController.LIST_VIEW[ZmId.VIEW_BRIEFCASE_REVISION] = {image: "VersionHistory", text: ZmMsg.byVersionHistory };
+
+/**
+ * The list view as a whole is the drop target, since it's the lowest-level widget. Still, we
+ * need to find out which item got dropped onto, so we get that from the original UI event
+ * (a mouseup). The header is within the list view, but not an item, so it's not a valid drop
+ * target. One drawback of having the list view be the drop target is that we can't exercise
+ * fine-grained control on what's a valid drop target. If you enter via an item and then drag to
+ * the header, it will appear to be valid.
+ * 
+ * @protected
+ */
+ZmBriefcaseController.prototype._dropListener =
+function(ev) {
+	var view = this._listView[this._currentView];
+	var div = view.getTargetItemDiv(ev.uiEvent);
+	var item = view.getItemFromElement(div);
+	if(!item || !item.isRevision) {
+		ZmListController.prototype._dropListener.call(this,ev);
+	} else {
+		ev.doIt = false;
+	}
+}
 
 ZmBriefcaseController.prototype._standardActionMenuOps =
 function() {
@@ -109,27 +153,31 @@ function() {
     var ops = [ZmOperation.NEW_MENU,
 			ZmOperation.SEP,
 			ZmOperation.NEW_FILE,
+            ZmOperation.SAVE_FILE,
+            ZmOperation.EDIT_FILE,
 			ZmOperation.SEP,
 			ZmOperation.DELETE, ZmOperation.MOVE,
+            ZmOperation.NEW_BRIEFCASE_WIN,
 			ZmOperation.SEP,
 			ZmOperation.TAG_MENU,
-			ZmOperation.SEP,
-			ZmOperation.VIEW_MENU,
-			ZmOperation.SEP];
+			ZmOperation.SEP
+			];
 
-	if (appCtxt.get(ZmSetting.DOCS_ENABLED)) {
-		   ops.push(ZmOperation.NEW_DOC);
-	}
+	/*if (appCtxt.get(ZmSetting.DOCS_ENABLED)) {
+		   ops.push(ZmOperation.NEW_DOC,ZmOperation.SEP);
+	}*/
 	if (appCtxt.get(ZmSetting.SPREADSHEET_ENABLED)) {
-		ops.push(ZmOperation.NEW_SPREADSHEET);
+		ops.push(ZmOperation.NEW_SPREADSHEET,ZmOperation.SEP);
 	}
 	if (appCtxt.get(ZmSetting.SLIDES_ENABLED)) {
-		ops.push(ZmOperation.NEW_PRESENTATION);
+		ops.push(ZmOperation.NEW_PRESENTATION,ZmOperation.SEP);
 	}
 
 	if (appCtxt.get(ZmSetting.MAIL_ENABLED)) {
-		ops.push(ZmOperation.SEND_FILE_MENU);
+		ops.push(ZmOperation.SEND_FILE_MENU,ZmOperation.SEP);
 	}
+
+    ops.push(ZmOperation.VIEW_MENU);
 
 	return ops;
 };
@@ -145,7 +193,7 @@ function(view) {
 	if (!this._toolbar[view]) {
 		ZmListController.prototype._initializeToolBar.call(this, view);
 		this._setupViewMenu(view, true);
-		this._setNewButtonProps(view, ZmMsg.uploadNewFile, "Upload", "UploadDis", ZmOperation.NEW_FILE);
+		this._setNewButtonProps(view, ZmMsg.newDocument, "Doc", "DocDis", ZmOperation.NEW_DOC);
 		var toolbar = this._toolbar[view];
 		button = toolbar.getButton(ZmOperation.DELETE);
 		button.setToolTipContent(ZmMsg.deletePermanentTooltip);
@@ -172,18 +220,27 @@ function(parent, num) {
 	// call base class
 	ZmListController.prototype._resetOperations.call(this, parent, num);
 
-	var isFolderSelected;
 	var items = this._listView[this._currentView].getSelection();
-	var noOfFolders = 0;
+	var isFolderSelected=false, noOfFolders = 0, isRevisionSelected=false, isBriefcaseItemSelected=false, isMixedSelected=false;
+    var hasHighestRevisionSelected = false;
 	if (items) {
 		for (var i = 0; i < items.length; i++) {
 			var item = items[i];
 			if (item.isFolder) {
 				isFolderSelected = true;
 				noOfFolders++;
-			}
+			}else if(item.isRevision){
+                isRevisionSelected = true;
+                if(item.parent.version == item.version){
+                    hasHighestRevisionSelected = true;
+                }
+            }else{
+                isBriefcaseItemSelected = true;
+            }
 		}
 	}
+
+    isMixedSelected = isFolderSelected ? (isBriefcaseItemSelected || isRevisionSelected) :  (isBriefcaseItemSelected && isRevisionSelected);
 
     var briefcase = appCtxt.getById(this._folderId);
     var isTrash = (briefcase && briefcase.nId == ZmOrganizer.ID_TRASH);
@@ -193,30 +250,69 @@ function(parent, num) {
 	var isItemSelected = (num>0);
 	var isZimbraAccount = appCtxt.getActiveAccount().isZimbraAccount;
 	var isMailEnabled = appCtxt.get(ZmSetting.MAIL_ENABLED);
+    var isAdmin = briefcase && briefcase.isAdmin(); 
 
-	if (appCtxt.get(ZmSetting.VIEW_ATTACHMENT_AS_HTML)) {
-		var isViewHtmlEnabled = true;
-
-		var items = this._listView[this._currentView].getSelection();
-		if (items) {
-			for (var i = 0; i < items.length; i++) {
-				if (!this.isConvertable(items[i])) {
-					isViewHtmlEnabled = false;
-					break;
-				}
-			}
-		}
-		parent.enable([ZmOperation.VIEW_FILE_AS_HTML], (isItemSelected && isViewHtmlEnabled));
-	}
-
+    var item = items[0];
+    var isRevision = item && item.isRevision;
+	
 	parent.enable([ZmOperation.SEND_FILE_MENU, ZmOperation.SEND_FILE, ZmOperation.SEND_FILE_AS_ATT], (isZimbraAccount && isMailEnabled && isItemSelected && !isMultiFolder && !isFolderSelected));
-	parent.enable(ZmOperation.OPEN_FILE, (isItemSelected && !isMultiFolder));
-	parent.enable(ZmOperation.DELETE, (!isReadOnly && isItemSelected));
-	parent.enable(ZmOperation.TAG_MENU, (!isShared && isItemSelected && !isFolderSelected));
+	parent.enable(ZmOperation.TAG_MENU, (!isShared && isItemSelected && !isFolderSelected && !isRevision));
 	parent.enable([ZmOperation.NEW_FILE, ZmOperation.VIEW_MENU], true);
 	parent.enable([ZmOperation.NEW_SPREADSHEET, ZmOperation.NEW_PRESENTATION, ZmOperation.NEW_DOC], true);
-	parent.enable(ZmOperation.MOVE, ( isItemSelected &&  !isReadOnly && !isShared));
+	parent.enable(ZmOperation.MOVE, ( isItemSelected &&  !isReadOnly && !isShared && !isRevision));
     parent.enable(ZmOperation.NEW_FILE, !(isTrash || isReadOnly));
+    parent.enable(ZmOperation.NEW_BRIEFCASE_WIN, (isItemSelected && !isFolderSelected));
+
+    var firstItem = items && items[0];
+    var isWebDoc = firstItem && !firstItem.isFolder && firstItem.isWebDoc();
+    var isLocked = firstItem && !firstItem.isFolder && firstItem.locked;
+    var isLockOwner = isLocked && (item.lockUser == appCtxt.getActiveAccount().name);
+
+
+    //Rename Operation
+    parent.enable(ZmOperation.RENAME_FILE, ( num ==1 && !isFolderSelected && !isReadOnly && !isRevision && (isLocked ? isLockOwner : true) ));
+
+    //Download - Files
+    parent.enable(ZmOperation.SAVE_FILE, isItemSelected && firstItem.isRealFile() && num == 1);
+
+    // Edit
+    parent.enable(ZmOperation.OPEN_FILE, (num == 1 && isWebDoc));
+    parent.enable(ZmOperation.EDIT_FILE, !isReadOnly && (  !isLocked || isLockOwner ) && isWebDoc && !isRevision && num == 1);
+
+    //Delete Operation
+    parent.enable(ZmOperation.DELETE, (!isReadOnly && isItemSelected && !isMixedSelected && (isLocked ? isLockOwner : true) &&  (isRevision ? !hasHighestRevisionSelected : true )));
+
+    if(parent &&  parent instanceof ZmActionMenu){
+
+        //Open - webDocs
+        parent.getOp(ZmOperation.OPEN_FILE) && parent.getOp(ZmOperation.OPEN_FILE).setVisible(isItemSelected && !isMultiFolder && isWebDoc);
+
+        //Case 1: Multiple Admins
+        //Case 2: Stale Lock ( Handle exception )
+
+        //Checkin
+        var checkinEnabled = !isReadOnly && isLockOwner && !isWebDoc && !isRevision;
+        parent.getOp(ZmOperation.CHECKIN) && parent.getOp(ZmOperation.CHECKIN).setVisible(checkinEnabled);
+        parent.enable(ZmOperation.CHECKIN, checkinEnabled && num == 1 );
+
+        //Checkout
+        var checkoutEnabled = !isReadOnly && !isLocked && !isRevision;
+        parent.getOp(ZmOperation.CHECKOUT) && parent.getOp(ZmOperation.CHECKOUT).setVisible(!isRevision && !isLocked);
+        parent.enable(ZmOperation.CHECKOUT, checkoutEnabled && num == 1);
+
+        //Discard Checkout
+        var discardCheckoutEnabled = (num == 1) && isLocked && !isRevision;
+        parent.getOp(ZmOperation.DISCARD_CHECKOUT) && parent.getOp(ZmOperation.DISCARD_CHECKOUT).setVisible(discardCheckoutEnabled);
+        parent.enable(ZmOperation.DISCARD_CHECKOUT, discardCheckoutEnabled && (isAdmin || isLockOwner || !isShared));
+
+        //Versioning
+        var versionEnabled = (!isReadOnly && num == 1 && isRevision);
+        var isHightestVersion = item && item.isRevision && ( item.parent.version == item.version );
+        parent.getOp(ZmOperation.RESTORE_VERSION) && parent.getOp(ZmOperation.RESTORE_VERSION).setVisible(isRevision);
+        parent.enable(ZmOperation.RESTORE_VERSION, versionEnabled && !isHightestVersion);
+
+
+    }
 
     var isDocOpEnabled = !(isTrash || isReadOnly);
     if (appCtxt.get(ZmSetting.DOCS_ENABLED)) {
@@ -242,25 +338,39 @@ function(items) {
 	if (!items) {
 		items = this._listView[this._currentView].getSelection();
 	}
+    var item = (items instanceof Array) ? items[0] : items;
+    if(!item) return;
 
-	var dialog = appCtxt.getConfirmationDialog();
-	var message = (items instanceof Array && items.length > 1) ? ZmMsg.confirmDeleteItemList : null;
+	var message = ( items.length > 1 ) ?  ( item.isRevision ? ZmMsg.confirmPermanentDeleteItemList : ZmMsg.confirmDeleteItemList ) : null;
 	if (!message) {
-		if (!this._confirmDeleteFormatter) {
-			this._confirmDeleteFormatter = new AjxMessageFormat(ZmMsg.confirmDeleteItem);
-		}
-
-		var item = (items instanceof Array) ? items[0] : items;
-		if (!item) { return; }
-		message = this._confirmDeleteFormatter.format(AjxStringUtil.htmlEncode(item.name));
+        var delMsgFormatter = new AjxMessageFormat( (this._folderId == String(ZmOrganizer.ID_TRASH) || item.isRevision ) ? ZmMsg.confirmPermanentDeleteItem : ZmMsg.confirmDeleteItem );
+		message = delMsgFormatter.format(AjxStringUtil.htmlEncode(item.name));
 	}
-	var callback = new AjxCallback(this, this._doDelete2, [items]);
-	dialog.popup(message, callback);
+
+    var dialog = appCtxt.getConfirmationDialog();
+	dialog.popup(message, new AjxCallback(this, this._doDelete2, [items]));
 };
 
 ZmBriefcaseController.prototype._doDelete2 =
 function(items) {
-	ZmListController.prototype._doDelete.call(this, items);
+
+    var item = (items instanceof Array) ? items[0] : items;
+
+    if(item.isRevision){
+        var view = this._parentView[this._currentView];
+        view.deleteVersions(items);
+        //this._delVersionListener(items);
+    }else if(item.isFolder){
+        var delBatchCmd = new ZmBatchCommand(true), folder;
+        var trashFolder = appCtxt.getById(ZmFolder.ID_TRASH);
+        for(var i=0; i< items.length; i++){
+            folder = items[i].folder;
+            delBatchCmd.add(new AjxCallback(folder, folder.move, [trashFolder, false, null, delBatchCmd]));
+        }
+        delBatchCmd.run();
+    }else{
+        ZmListController.prototype._doDelete.call(this, items);
+    }
 };
 
 // view management
@@ -272,7 +382,7 @@ function() {
 
 ZmBriefcaseController.prototype._defaultView =
 function() {
-	return ZmId.VIEW_BRIEFCASE_COLUMN;
+	return ZmId.VIEW_BRIEFCASE_DETAIL;
 };
 
 ZmBriefcaseController.prototype._createNewView =
@@ -295,7 +405,7 @@ function(view) {
 
 ZmBriefcaseController.prototype._getDefaultFocusItem =
 function() {
-	return this._toolbar[this._currentView];
+	return this._listView[this._currentView];
 };
 
 // Returns a list of subfolders of the given folder, as ZmBriefcaseItem objects
@@ -361,6 +471,8 @@ function(view, force) {
 	var viewChanged = (force || view != this._currentView);
 
 	if (viewChanged) {
+        var lv = this._listView[this._currentView];
+        if(lv)  lv.cleanup();
         this._switchView = true;
 		this._currentView = view;
 		this._setup(view);
@@ -377,21 +489,33 @@ function(view, force) {
 	Dwt.setTitle(this.getCurrentView().getTitle());
 };
 
+ZmBriefcaseController.prototype._preHideCallback =
+function(){
+
+    var lv = this._listView[this._currentView];
+    if(lv) lv.cleanup();
+
+    return ZmController.prototype._preHideCallback.call(this);
+};
+
 ZmBriefcaseController.prototype.getItemById =
 function(itemId) {
 	return (this._idMap[itemId] ? this._idMap[itemId].item : null);
 };
 
 ZmBriefcaseController.prototype.__popupUploadDialog =
-function(callback, title) {
+function(title, callback) {
 
-    var folderId = this._folderId;
+
+	var folderId = this._folderId;
     if(!folderId || folderId == ZmOrganizer.ID_TRASH)
         folderId = ZmOrganizer.ID_BRIEFCASE;
-
+    
     if(this.chkFolderPermission(folderId)){
         var cFolder = appCtxt.getById(folderId);
-		appCtxt.getUploadDialog().popup(cFolder, callback, title);
+		var uploadDialog = appCtxt.getUploadDialog();
+        uploadDialog.setConflictAction(ZmUploadDialog.ACTION_KEEP_MINE);
+        uploadDialog.popup(cFolder, callback, title, null, false, true, true);
     }	
 };
 
@@ -416,18 +540,21 @@ function(ev) {
 		var item = ev.item;
 		var restUrl = item.getRestUrl();
 
-        if(item.isFolder) return;
+        if(item.isFolder){
+            this._app.search({folderId:item.id, noClear:true});
+            return;
+        }
 
         if (item.isWebDoc()) {
             //added for bug: 45150
-            restUrl = this._app.fixCrossDomainReference(restUrl);
+            restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
 			restUrl = ZmBriefcaseApp.addEditorParam(restUrl);
-            restUrl = restUrl + "&preview=1" + "&localeId=" + AjxEnv.DEFAULT_LOCALE;
-		}
+            restUrl += (restUrl.match(/\?/) ? "&" : "?") + "localeId=" + AjxEnv.DEFAULT_LOCALE;
 
+		}
 		if (restUrl) {
             if(item.isDownloadable()) {
-                location.href = restUrl;
+                this._downloadFile(restUrl);
             }else {
 			    window.open(restUrl, this._getWindowName(item.name), item.isWebDoc() ? "" : ZmBriefcaseApp.getDocWindowFeatures());
             }
@@ -460,43 +587,182 @@ function(ev) {
 		actionMenu.setSelectedItem(0); // menu popped up via keyboard nav
 	}
 
-	var op = actionMenu.getOp(ZmOperation.SAVE_FILE);
-	if (op) {
-		op.setEnabled(item && item.isRealFile());
-	}
-    var op = actionMenu.getOp(ZmOperation.EDIT);
-	if (op) {
-		op.setEnabled(item && item.isWebDoc());
-	}
+    
 };
+
+ZmBriefcaseController.prototype._restoreVerListener =
+function(){
+    var view = this._parentView[this._currentView];
+    view._restoreVerListener();
+
+};
+
+//Checkin/Checkout
+
+ZmBriefcaseController.prototype._checkoutListener =
+function(){
+     var item = this._getSelectedItem();
+     if(item && item instanceof ZmBriefcaseItem){
+        this.checkout(item, item.isWebDoc() ? null : new AjxCallback(this, this._postCheckout, item));
+     }
+};
+
+ZmBriefcaseController.prototype._postCheckout =
+function(item){
+    if(AjxEnv.isSafari){
+        setTimeout(AjxCallback.simpleClosure(this.downloadFile, this, item), 100);
+    }else{
+        this.downloadFile(item);
+    }
+};
+
+ZmBriefcaseController.prototype._handleCheckin =
+function(){    
+    var item = this._getSelectedItem();
+    if(item && item instanceof ZmBriefcaseItem){
+        var dlg = this._getCheckinDlg();                                        
+        dlg.popup(item, new AjxCallback(this, this._doneCheckin, item));
+    }
+};
+
+ZmBriefcaseController.prototype._doneCheckin =
+function(item, file){
+    //Update item attribs
+    item.version = file.version;
+    item.name = file.name;
+    this.unlockItem(item, new AjxCallback(this, this.refreshItem, item));
+
+};
+
+ZmBriefcaseController.prototype._handleDiscardCheckout =
+function(){    
+    var item = this._getSelectedItem();
+    if(item && item instanceof ZmBriefcaseItem)
+        this.unlockItem(item);
+};
+
+ZmBriefcaseController.prototype.refreshItem =
+function(item){
+    //TODO: Handle version notifications than hard refresh
+    var view = this._parentView[this._currentView];
+    view.refreshItem(item);
+};
+
+ZmBriefcaseController.prototype.checkout =
+function(item, callback){        
+    this.lockItem(item, callback);
+};
+
+ZmBriefcaseController.prototype.checkin =
+function(item, callback){
+    this.unlockItem(item, callback);
+};
+
+ZmBriefcaseController.prototype.unlockItem =
+function(item, callback){
+   item.unlock(callback, new AjxCallback(this, this._handleErrorResponse, item)); 
+};
+
+ZmBriefcaseController.prototype.lockItem =
+function(item, callback){
+   item.lock(callback, new AjxCallback(this, this._handleErrorResponse, item));
+};
+
+ZmBriefcaseController.prototype._handleErrorResponse =
+function(item, response){
+    if(!(response && response.code)) return;
+
+    var msg;
+    switch(response.code){
+        case ZmCsfeException.CANNOT_UNLOCK:
+            msg = ZmMsg.unlockSufficientPermission;
+            break;
+
+        case ZmCsfeException.CANNOT_LOCK:
+            msg = ZmMsg.lockSuffientPermissions;
+            break;
+    }
+
+    if(msg){
+        var dialog = appCtxt.getMsgDialog();
+        dialog.setMessage(msg, DwtMessageDialog.WARNING_STYLE);
+        dialog.popup();
+    }
+
+    return msg;
+};        
+
+ZmBriefcaseController.prototype._getSelectedItem =
+function(){
+    var view = this._listView[this._currentView];
+	var items = view.getSelection();    
+    return ( items && items.length > 0 ) ? items[0] : null;
+};
+
+ZmBriefcaseController.prototype._getCheckinDlg =
+function(){
+    if(!this._checkinDlg){
+       this._checkinDlg = new ZmCheckinDialog(appCtxt.getShell());
+    }
+    return this._checkinDlg;
+};
+
+//End of Checkin/Checkout
 
 ZmBriefcaseController.prototype._getActionMenuOps =
 function() {
 	var list = [
 		ZmOperation.OPEN_FILE,
-        ZmOperation.EDIT,    
 		ZmOperation.SAVE_FILE,
+        ZmOperation.EDIT_FILE,            
 		ZmOperation.SEND_FILE,
 		ZmOperation.SEND_FILE_AS_ATT
-	];
-	if (appCtxt.get(ZmSetting.VIEW_ATTACHMENT_AS_HTML)) {
-		list.push(ZmOperation.VIEW_FILE_AS_HTML);
-	}
+	];	
     if (appCtxt.get(ZmSetting.SLIDES_ENABLED)) {
 		list.push(ZmOperation.CREATE_SLIDE_SHOW);
-	}	
+	}
+    list.push(ZmOperation.SEP);
+    list.push(ZmOperation.CHECKOUT, ZmOperation.CHECKIN, ZmOperation.DISCARD_CHECKOUT, ZmOperation.RESTORE_VERSION/*, ZmOperation.DELETE_VERSION*/);
+
 	list.push(ZmOperation.SEP);
 	list = list.concat(this._standardActionMenuOps());
+    list.push(ZmOperation.RENAME_FILE);
 	return list;
 };
+
+ZmBriefcaseController.prototype._renameFileListener =
+function(){
+
+    var view = this._listView[this._currentView];
+	var items = view.getSelection();
+	if (!items) { return; }
+
+    view.renameFile(items[0]);
+};
+
+ZmBriefcaseController.prototype._newWinListener =
+function(){
+    var view = this._listView[this._currentView];
+	var items = view.getSelection();
+	if (!items) { return; }
+    items = AjxUtil.toArray(items);
+    var item = items[0];
+    if (item) {
+        this.openFile(item);
+    }
+};
+
 
 ZmBriefcaseController.prototype._editFileListener =
 function() {
 	var view = this._listView[this._currentView];
 	var items = view.getSelection();
 	if (!items) { return; }
-    this.editFile(items);
-
+    items = AjxUtil.toArray(items);
+    var item = items[0];
+    if(item){
+        this.editFile(item);
+    }
 };
 
 ZmBriefcaseController.prototype.editFile =
@@ -509,13 +775,22 @@ function(items){
 
             if (item.isWebDoc()) {
                 //added for bug: 45150
-                restUrl = this._app.fixCrossDomainReference(restUrl);
+                restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
                 restUrl = ZmBriefcaseApp.addEditorParam(restUrl);
-                restUrl = restUrl + "&localeId=" + AjxEnv.DEFAULT_LOCALE;
+                restUrl += (restUrl.match(/\?/) ? '&' : '?') + "action=edit&localeId=" + AjxEnv.DEFAULT_LOCALE;
                 window.open(restUrl, this._getWindowName(item.name), "");
             }
         }
     }
+};
+
+ZmBriefcaseController.prototype._getWindowName =
+function(name){
+    if(!name){
+        return ZmMsg.briefcase;    
+    }
+    //IE does not like special chars as part of window name.
+    return AjxEnv.isIE ? name.replace(/[^\w]/g,'') : name;    
 };
 
 ZmBriefcaseController.prototype._openFileListener =
@@ -533,18 +808,41 @@ function(items){
 	for (var i = 0; i < items.length; i++) {
 		var item = items[i];
 		var restUrl = item.getRestUrl();
-		if (restUrl) {
-
-            if (item.isWebDoc()) {
-                //added for bug: 45150
-                restUrl = this._app.fixCrossDomainReference(restUrl);
-                restUrl = ZmBriefcaseApp.addEditorParam(restUrl);
-                restUrl = restUrl + "&preview=1" + "&localeId=" + AjxEnv.DEFAULT_LOCALE;
-			}
-			window.open(restUrl, this._getWindowName(item.name), item.isWebDoc() ? "" : ZmBriefcaseApp.getDocWindowFeatures());
+		if (!restUrl) {
+			continue;
 		}
+		restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
+		if (item.isWebDoc()) {
+			//added for bug: 45150
+			restUrl = ZmBriefcaseApp.addEditorParam(restUrl);
+			restUrl += (restUrl.match(/\?/) ? "&" : "?") + "localeId=" + AjxEnv.DEFAULT_LOCALE;
+		} else {
+			if (!ZmMimeTable.isRenderable(item.contentType) && !ZmMimeTable.isMultiMedia(item.contentType)) {
+               	restUrl += (restUrl.match(/\?/) ? "&" : "?") + "view=html";
+			}
+        }
+
+        
+        this._fileInfo={
+            "restUrl":restUrl,
+            "name":this._getWindowName(item.name),
+            "features":item.isWebDoc() ? "" : ZmBriefcaseApp.getDocWindowFeatures()
+        }
+
+		var ta = new AjxTimedAction(this, this._openChild);
+		AjxTimedAction.scheduleAction(ta, 100);
+
 	}
 };
+
+ZmBriefcaseController.prototype._openChild =
+function(){
+    if(this._fileInfo){
+     var opener = window.open(this._fileInfo.restUrl, this._fileInfo.name, this._fileInfo.features);
+     opener.focus();
+    }
+    this._fileInfo = null;
+}
 
 ZmBriefcaseController.prototype._saveFileListener =
 function() {
@@ -555,17 +853,28 @@ function() {
 	items = AjxUtil.toArray(items);
 
 	// Allow download to only one file.
-    this._downloadFile(items[0]);
+    this.downloadFile(items[0]);
+};
+
+ZmBriefcaseController.prototype.downloadFile =
+function(item){
+    var restUrl = item.getRestUrl();
+    if (!restUrl) {
+        return false;
+    }
+    restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
+    if (restUrl) {
+        restUrl += "?disp=a"+(item.version ? "&ver="+item.version : "");
+        this._downloadFile(restUrl)
+    }
 };
 
 ZmBriefcaseController.prototype._downloadFile =
-function(item){
-    var restUrl = item.getRestUrl();
-    if (item && restUrl) {
-        // bug fix #36618 - force new window since some users may get prompted for auth
-        window.open(restUrl+ "?disp=a");
+function(downloadUrl){
+    if(downloadUrl){
+        ZmZimbraMail.unloadHackCallback();
+        location.href = downloadUrl;
     }
-
 };
 
 ZmBriefcaseController.prototype._viewAsHtmlListener =
@@ -596,7 +905,16 @@ function(restUrl) {
 
 ZmBriefcaseController.prototype._uploadFileListener =
 function() {
-	this._app._handleNewItem();
+    this.__popupUploadDialog(ZmMsg.uploadFileToBriefcase, new AjxCallback(this, this._handlePostUpload));
+};
+
+ZmBriefcaseController.prototype._handlePostUpload =
+function(folder, filenames, files){
+     var msg = ZmMsg.successfullyUploaded;
+     if(files.length > 1){
+         msg = AjxMessageFormat.format(ZmMsg.successfullyUploadedFiles, files.length);
+     }
+     appCtxt.setStatusMsg(msg, ZmStatusView.LEVEL_INFO);    
 };
 
 ZmBriefcaseController.prototype._sendFileListener =
@@ -619,10 +937,6 @@ function(event) {
 			var remoteUri = appCtxt.get(ZmSetting.OFFLINE_REMOTE_SERVER_URI);
 			url = remoteUri + url.substring((url.indexOf("/",7)));
 		}
-
-        if(item.isWebDoc()) {
-            url += (url.match(/\?/) ?  '&' : '?') + 'preview=1';
-        }
         
 		urls.push(url);
 		names.push(item.name);
@@ -677,7 +991,12 @@ function(items, callback){
     var docInfo = [];
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        docInfo.push({id: item.id, ct: item.contentType, s: item.size});
+        docInfo.push({
+            id:     ( item.isRevision ? item.parent.id : item.id ),
+            ver:    ( item.isRevision ? item.version : null ),
+            ct:     item.contentType,
+            s:      item.size
+        });
     }
 
     if (docInfo.length == 0) { return; }
@@ -690,7 +1009,7 @@ function(items, callback){
     cc._setView({action:action, msg:msg, toOverride:toOverride, inNewWindow:false});
     var draftType = ZmComposeController.DRAFT_TYPE_AUTO;
     var sendDocsCallback = new AjxCallback(cc, cc._handleResponseSaveDraftListener, [draftType, callback]);
-    cc.sendDocs(docInfo, draftType, sendDocsCallback);
+    cc.saveDraft(draftType, null, docInfo, sendDocsCallback);
 };
 
 ZmBriefcaseController.prototype._resetOpForCurrentView =
@@ -724,35 +1043,132 @@ function(view) {
 ZmBriefcaseController.prototype._setupViewMenu =
 function(view, firstTime) {
 
-	var btn;
+	var btn, menu;
 	if (firstTime) {
 		btn = this._toolbar[view].getButton(ZmOperation.VIEW_MENU);
 		var menu = btn.getMenu();
 		if (!menu) {
 			menu = new ZmPopupMenu(btn);
 			btn.setMenu(menu);
-			for (var i = 0; i < ZmBriefcaseController.GROUP_BY_VIEWS.length; i++) {
-				var id = ZmBriefcaseController.GROUP_BY_VIEWS[i];
-                if(id == ZmId.VIEW_BRIEFCASE_PREVIEW && !appCtxt.get(ZmSetting.PREVIEW_ENABLED)) continue;
-				var mi = menu.createMenuItem(id, {image:ZmBriefcaseController.GROUP_BY_ICON[id],
-												  text:ZmMsg[ZmBriefcaseController.GROUP_BY_MSG_KEY[id]],
-												  style:DwtMenuItem.RADIO_STYLE});
-				mi.setData(ZmOperation.MENUITEM_ID, id);
-				mi.addSelectionListener(this._listeners[ZmOperation.VIEW]);
+            
+            //this._setupGroupByMenu(menu);
+            this._setupPreviewPaneMenu(menu);
+		}
+	}
+
+    if(!menu){
+       btn = this._toolbar[view].getButton(ZmOperation.VIEW_MENU);
+       menu = btn && btn.getMenu();
+    }
+	
+    this._resetPreviewPaneMenu(menu, view);
+};
+
+ZmBriefcaseController.prototype._groupbyListener =
+function(id, ev){
+    var view = this._parentView[this._currentView];
+    view.enableRevisionView((id == ZmId.VIEW_BRIEFCASE_REVISION));
+    view.reRenderListView(true);
+};
+
+
+ZmBriefcaseController.prototype._setupGroupByMenu =
+function(menu){
+
+    if (menu.getItemCount() > 0) {
+        new DwtMenuItem({parent:menu, style:DwtMenuItem.SEPARATOR_STYLE, id:"PREVIEW_SEPERATOR"});
+    }
+
+    var listViews = ZmBriefcaseController.LIST_VIEW, mi;
+    for(var id in listViews){
+        var desc = listViews[id];
+        if(!menu._menuItems[id]){
+            desc.style = DwtMenuItem.RADIO_STYLE;
+            desc.radioGroupId = "LV";
+            mi = menu.createMenuItem(id, desc);
+            mi.setData(ZmOperation.MENUITEM_ID, id);
+            mi.addSelectionListener(new AjxListener(this, this._groupbyListener, id));
+            if(id == ZmId.VIEW_BRIEFCASE_DETAIL)
+                mi.setChecked(true, true);
+        }
+    }
+};
+
+ZmBriefcaseController.prototype._setupPreviewPaneMenu =
+function(menu){
+
+    if (menu.getItemCount() > 0) {
+		new DwtMenuItem({parent:menu, style:DwtMenuItem.SEPARATOR_STYLE, id:"PREVIEW_SEPERATOR"});
+	}
+
+	var miParams = {text:ZmMsg.readingPaneAtBottom, style:DwtMenuItem.RADIO_STYLE, radioGroupId:"RP"};
+	var ids = ZmDoublePaneController.RP_IDS;
+	var pref = appCtxt.get(ZmSetting.READING_PANE_LOCATION_BRIEFCASE);
+	for (var i = 0; i < ids.length; i++) {
+		var id = ids[i];
+		if (!menu._menuItems[id]) {
+			miParams.text = ZmBriefcaseController.PREVIEW_PANE_TEXT[id];
+			miParams.image = ZmBriefcaseController.PREVIEW_PANE_ICON[id];
+			var mi = menu.createMenuItem(id, miParams);
+			mi.setData(ZmOperation.MENUITEM_ID, id);
+			mi.addSelectionListener(new AjxListener(this, this._previewPaneListener, id));
+			if (id == pref) {
+				mi.setChecked(true, true);
 			}
 		}
 	}
 
-	// select menu item for current view
-	btn = this._toolbar[view].getButton(ZmOperation.VIEW_MENU);
-	var menu = btn && btn.getMenu();
-	var mi = menu && menu.getItemById(ZmOperation.MENUITEM_ID, view);
-	if (mi) {
-		mi.setChecked(true, true);
-	}
+};
 
-	// always reset the view menu button icon to reflect the current view
-	btn.setImage(ZmBriefcaseController.GROUP_BY_ICON[view]);
+ZmBriefcaseController.prototype._resetPreviewPaneMenu =
+function(menu, view){
+    view = view || this._currentView;
+    var enabled = (view == ZmId.VIEW_BRIEFCASE_DETAIL);
+    var ids = ZmDoublePaneController.RP_IDS;    
+    for (var i = 0; i < ids.length; i++) {
+		var id = ids[i];
+		if (menu._menuItems[id]) {
+            menu._menuItems[id].setEnabled(enabled);
+        }
+    }
+};
+
+/**
+ * Checks if the reading pane is "on".
+ *
+ * @return	{Boolean}	<code>true</code> if the reading pane is "on"
+ */
+ZmBriefcaseController.prototype.isReadingPaneOn =
+function() {
+	return (this._getReadingPanePref() != ZmSetting.RP_OFF);
+};
+
+/**
+ * Checks if the reading pane is "on" right.
+ *
+ * @return	{Boolean}	<code>true</code> if the reading pane is "on" right.
+ */
+ZmBriefcaseController.prototype.isReadingPaneOnRight =
+function() {
+	return (this._getReadingPanePref() == ZmSetting.RP_RIGHT);
+};
+
+ZmBriefcaseController.prototype._getReadingPanePref =
+function() {
+	return appCtxt.get(ZmSetting.READING_PANE_LOCATION_BRIEFCASE);
+};
+
+ZmBriefcaseController.prototype._setReadingPanePref =
+function(value) {
+	appCtxt.set(ZmSetting.READING_PANE_LOCATION_BRIEFCASE, value);
+};
+
+ZmBriefcaseController.prototype._previewPaneListener =
+function(newPreviewStatus){
+    var oldPreviewStatus = appCtxt.get(ZmSetting.READING_PANE_LOCATION_BRIEFCASE);
+    appCtxt.set(ZmSetting.READING_PANE_LOCATION_BRIEFCASE, newPreviewStatus);
+    var lv = this._parentView[this._currentView];
+    lv.resetPreviewPane(newPreviewStatus, oldPreviewStatus);
 };
 
 ZmBriefcaseController.CONVERTABLE = {
@@ -760,7 +1176,8 @@ ZmBriefcaseController.CONVERTABLE = {
 	xls:/\.xls$/i,
 	pdf:/\.pdf$/i,
 	ppt:/\.ppt$/i,
-	zip:/\.zip$/i
+	zip:/\.zip$/i,
+    txt:/\.txt$/i
 };
 
 ZmBriefcaseController.prototype.isConvertable =
@@ -906,11 +1323,192 @@ function(create){
     }
 };
 
-ZmBriefcaseController.prototype._getWindowName =
-function(name){
-    if(!name){
-        return ZmMsg.briefcase;
-    }
-    //IE does not like special chars as part of window name.
-    return AjxEnv.isIE ? name.replace(/[^\w]/g,'') : name;
+ZmBriefcaseController.prototype.handleModifyNotify =
+function(modifies){
+    var view = this._listView[this._currentView];
+    if (view)
+        view.deselectAll();
+    this._resetToolbarOperations();
 };
+
+ZmBriefcaseController.prototype._actionErrorCallback =
+function(ex){
+
+    var handled = false;
+    if(ex.code == ZmCsfeException.MAIL_ALREADY_EXISTS){
+        handled = true;
+        var dlg = appCtxt.getMsgDialog();
+        dlg.setMessage(ZmMsg.errorFileAlreadyExistsResolution, DwtMessageDialog.WARNING_STYLE);
+        dlg.popup();
+    }
+
+    return handled;
+};
+
+
+//Add to Briefcase
+
+ZmBriefcaseController.prototype.createFromAttachment =
+function(msgId, partId, name){
+
+     var dlg = this._saveAttDialog = appCtxt.getChooseFolderDialog();
+	 var chooseCb = new AjxCallback(this, this._chooserCallback, [msgId, partId, name]);
+	 ZmController.showDialog(dlg, chooseCb, this._getCopyParams(dlg, msgId, partId));
+
+};
+
+ZmBriefcaseController.prototype._getCopyParams =
+function(dlg, msgId, partId) {
+	var params = {
+		data:			{msgId:msgId,partId:partId},
+		treeIds:		[ZmOrganizer.BRIEFCASE],
+		overviewId:		dlg.getOverviewId(this._app._name),
+		title:			ZmMsg.addToBriefcaseTitle,
+		description:	ZmMsg.targetFolder,
+		appName:		ZmApp.BRIEFCASE
+	};
+    params.omit = {};
+    params.omit[ZmFolder.ID_DRAFTS] = true;
+    params.omit[ZmFolder.ID_TRASH] = true;
+    return params;
+};
+
+ZmBriefcaseController.prototype._chooserCallback =
+function(msgId, partId, name, folder) {
+    //TODO: Avoid using search, instead try renaming on failure
+	var callback = new AjxCallback(this, this._handleDuplicateCheck, [msgId, partId, name, folder]);
+	this._app.search({query:folder.createQuery(), noRender:true, callback:callback, accountName:(folder && folder.account && folder.account.name) || undefined});
+};
+
+ZmBriefcaseController.prototype._handleDuplicateCheck =
+function(msgId, partId, name, folder, results) {
+
+	var msg = appCtxt.getById(msgId);
+
+	var briefcase = folder;
+	if (briefcase.isReadOnly(folder.id)) {
+		ZmOrganizer._showErrorMsg(ZmMsg.errorPermission);
+		return;
+	}
+
+	if (msgId.indexOf(":") < 0) {
+		msgId = msg.getAccount().id + ":" + msg.id;
+	}
+
+
+	var searchResult = results.getResponse();
+	var items = searchResult && searchResult.getResults(ZmItem.BRIEFCASE_ITEM);
+	if (items instanceof ZmList) {
+		items = items.getArray();
+	}
+
+    var itemFound = false;
+	for (var i = 0, len = items.length; i < len; i++) {
+		if (items[i].name == name) {
+			itemFound = items[i];
+			break;
+		}
+	}
+
+    var folderId = (!folder.account || folder.account == appCtxt.getActiveAccount() || (folder.id.indexOf(":") != -1)) ? folder.id : [folder.account.id, folder.id].join(":");
+    if(itemFound){
+        var dlg = this._conflictDialog = this._getFileConflictDialog();
+        dlg.setButtonListener(DwtDialog.OK_BUTTON, new AjxListener(this, this._handleConflictDialog, [msgId, partId, name, folderId, itemFound]))
+		dlg.popup();
+    }else{
+       this._createFromAttachment(msgId, partId, name, folderId);
+    }
+
+    if(this._saveAttDialog.isPoppedUp())
+        this._saveAttDialog.popdown();
+};
+
+ZmBriefcaseController.prototype._handleConflictDialog =
+function(msgId, partId, name, folderId, itemFound){
+
+    var attribs = {};
+    if(this._renameRadio.checked){
+        var newName = this._renameField.value;
+        var errorMsg = this.checkInvalidFileName(newName);
+        if(errorMsg){
+		    var dialog = appCtxt.getMsgDialog();
+		    dialog.setMessage(errorMsg, DwtMessageDialog.WARNING_STYLE);
+		    dialog.popup();
+		    return false;
+        }
+        attribs.rename = newName;
+    }else{
+        attribs.id = itemFound.id;
+        attribs.version = itemFound.version;
+    }
+
+    this._createFromAttachment(msgId, partId, name, folderId, attribs);
+};
+
+ZmBriefcaseController.prototype.checkInvalidFileName =
+function(fileName) {
+
+    var message;
+    fileName = fileName.replace(/^\s+/,"").replace(/\s+$/,"");
+
+    if(fileName == ""){
+        message = ZmMsg.emptyDocName;
+    }else if (!ZmOrganizer.VALID_NAME_RE.test(fileName)) {
+        message = AjxMessageFormat.format(ZmMsg.errorInvalidName, AjxStringUtil.htmlEncode(fileName));
+    } else if ( fileName.length > ZmOrganizer.MAX_NAME_LENGTH){
+        message = AjxMessageFormat.format(ZmMsg.nameTooLong, ZmOrganizer.MAX_NAME_LENGTH);
+    }
+
+    return message;
+};
+
+ZmBriefcaseController.prototype._createFromAttachment =
+function(msgId, partId, name, folderId, attribs){
+
+    attribs = attribs || {};
+    if(attribs.id || attribs.rename)
+        attribs.callback = new AjxCallback(this, this._handleSuccessCreateFromAttachment, [msgId, partId, name, folderId]);
+    if(attribs.rename)
+        attribs.errorCallback = new AjxCallback(this, this._handleErrorCreateFromAttachment, [msgId, partId, name, folderId]);
+
+    var srcData = new ZmBriefcaseItem();
+    srcData.createFromAttachment(msgId, partId, name, folderId, attribs);
+};
+
+ZmBriefcaseController.prototype._handleSuccessCreateFromAttachment =
+function(msgId, partId, name, folderId, response){
+    if(this._conflictDialog){
+        this._renameField.value = "";
+        this._conflictDialog.popdown();
+    }
+};
+
+ZmBriefcaseController.prototype._handleErrorCreateFromAttachment =
+function(msgId, partId, name, folderId, ex){
+
+    var handled = false;
+    if(ex.code == ZmCsfeException.MAIL_ALREADY_EXISTS){
+        handled = true;
+        var dlg = appCtxt.getMsgDialog();
+        dlg.setMessage(AjxMessageFormat.format(ZmMsg.errorFileExistsWarning, name), DwtMessageDialog.WARNING_STYLE);
+        dlg.popup();
+    }
+
+    return handled;
+};
+
+ZmBriefcaseController.prototype._getFileConflictDialog =
+function(){
+    if(!this._nameConflictDialog){
+       var dlg = this._nameConflictDialog = new DwtDialog({parent:appCtxt.getShell()});
+       var id = this._nameConflictId = Dwt.getNextId();
+       dlg.setContent(AjxTemplate.expand("briefcase.Briefcase#NameConflictDialog", {id: id}));
+       dlg.setTitle(ZmMsg.addToBriefcaseTitle);
+
+       this._renameRadio = document.getElementById(id+'_rename');
+       this._renameField = document.getElementById(id+'_newname');
+
+    }
+    return this._nameConflictDialog;
+};
+

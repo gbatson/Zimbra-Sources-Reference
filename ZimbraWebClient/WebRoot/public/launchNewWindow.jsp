@@ -5,7 +5,9 @@
 <%@ page import="com.zimbra.cs.taglib.bean.BeanUtils" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <%@ taglib prefix="fmt" uri="com.zimbra.i18n" %>
-<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %><%
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+
+<%
 	// Set to expire far in the past.
 	response.setHeader("Expires", "Tue, 24 Jan 2000 17:46:50 GMT");
 
@@ -80,7 +82,7 @@
 		localeId = request.getParameter("localeId");
 	}
 	if (localeId != null) {
-		localeId = BeanUtils.cook(localeId);
+        localeId = BeanUtils.cook(localeId);
         int index = localeId.indexOf("_");
         if (index == -1) {
 			locale = new Locale(localeId);
@@ -108,19 +110,17 @@
 	<jsp:param name="res" value="I18nMsg,AjxMsg,ZMsg,ZmMsg,AjxKeys,ZmKeys,AjxTemplateMsg" />
 	<jsp:param name="skin" value="${skin}" />
 </jsp:include>
-<link href='${contextPath}/css/common,dwt,msgview,login,zm,spellcheck,wiki,images,skin.css?v=${vers}${isDebug?"&debug=1":""}&skin=${skin}' rel='stylesheet' type="text/css">
+<link href='${contextPath}/css/common,dwt,msgview,login,zm,spellcheck,wiki,images,skin.css?v=${vers}${isDebug?"&debug=1":""}&skin=${zm:cook(skin)}' rel='stylesheet' type="text/css">
 <jsp:include page="Boot.jsp"/>
 <script type="text/javascript">
 	AjxEnv.DEFAULT_LOCALE = "${zm:javaLocaleId(locale)}";
 
 	appContextPath = "${contextPath}";
-	appCurrentSkin = "${skin}";
+	appCurrentSkin = "${zm:cook(skin)}";
+    appRequestLocaleId = "${locale}";
 	// NOTE: Force zimlets to load individually to avoid aggregation!
 	appExtension   = "js";
 	window.appDevMode     = true;
-    <c:if test="${isOfflineMode}">
-        isTinyMCE      = true;
-    </c:if>
 </script>
 <script>
 <jsp:include page="/js/ajax/util/AjxTimezoneData.js" />
@@ -129,20 +129,20 @@
 	String packages = "NewWindow_1,NewWindow_2";
 
     String extraPackages = request.getParameter("packages");
-    if (extraPackages != null) packages += ","+BeanUtils.cook(extraPackages);
+    if (extraPackages != null) packages += ","+extraPackages;
 
     String pprefix = isDevMode ? "public/jsp" : "js";
     String psuffix = isDevMode ? ".jsp" : "_all.js";
 
-      Pattern p = Pattern.compile("\\.|\\/|\\\\");
-      String[] pnames = packages.split(",");
-      for (String pname : pnames) {
-           //bug: 52944
-           // Security: Avoid including external pages inline
-           Matcher matcher = p.matcher(pname);
-           if(matcher.find()){
-               continue;
-           }
+    Pattern p = Pattern.compile("\\.|\\/|\\\\");
+    String[] pnames = packages.split(",");
+    for (String pname : pnames) {
+        //bug: 52944
+        // Security: Avoid including external pages inline
+        Matcher matcher = p.matcher(pname);
+        if(matcher.find()){
+            continue;
+        }
         String pageurl = "/"+pprefix+"/"+pname+psuffix;
 		pageContext.setAttribute("pageurl", pageurl);
 		if (isDevMode) { %>
@@ -174,7 +174,10 @@ for (var pkg in window.AjxTemplateMsg) {
     <script type="text/javascript" language="JavaScript">
 		var cacheKillerVersion = "${vers}";
 		function launch() {
-			DBG = new AjxDebug(AjxDebug.NONE, null, false);
+			if (window.opener && window.opener.DBG) {
+				// use main window's debug object
+				window.DBG = window.opener.DBG;
+			}
 			ZmNewWindow.run();
 		}
 		AjxCore.addOnloadListener(launch);

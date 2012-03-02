@@ -1,19 +1,3 @@
-<!--
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
--->
 <?xml version="1.0" encoding="UTF-8"?>
 
 <attrs>
@@ -208,6 +192,30 @@
 
 <attr name="offlineClientId" type="string" cardinality="single" optionalIn="account">
   <desc>a unique ID of this client</desc>
+</attr>
+
+<attr name="zimbraPrefOfflineBackupInterval" type="long" cardinality="single" optionalIn="account" callback="com.zimbra.cs.offline.backup.BackupIntervalCallback">
+  <desc>interval to run account backup</desc>
+</attr>
+
+<attr name="zimbraPrefOfflineBackupAccountId" type="string" cardinality="multi" optionalIn="account">
+  <desc>account ID(s) to backup</desc>
+</attr>
+
+<attr name="zimbraPrefOfflineBackupPath" type="string" cardinality="single" optionalIn="account">
+  <desc>path for backup output</desc>
+</attr>
+
+<attr name="zimbraPrefOfflineBackupKeep" type="integer" cardinality="single" optionalIn="account">
+  <desc>number of backups to keep for each acct</desc>
+</attr>
+
+<attr name="offlineBackupLastSuccess" type="long" cardinality="single" optionalIn="account">
+  <desc>timestamp of last backup success</desc>
+</attr>
+
+<attr name="zimbraPrefOfflineZimletSyncAccountId" type="string" cardinality="single" optionalIn="account">
+  <desc>account ID to sync zimlets with</desc>
 </attr>
 
 </attrs>

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,8 +23,9 @@ import java.util.zip.ZipInputStream;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.zip.ZipOutputStream;
 import com.zimbra.cs.service.UserServlet;
+import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.UserServlet.Context;
+import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 
 public class ZipFormatter extends ArchiveFormatter {
     public class ZipArchiveInputStream implements ArchiveInputStream {
@@ -110,17 +111,20 @@ public class ZipFormatter extends ArchiveFormatter {
         return new String[] { "application/zip", "application/x-zip-compressed" };
     }
 
-    @Override public String getType() { return "zip"; }
+    @Override 
+    public FormatType getType() { 
+        return FormatType.ZIP; 
+    }
 
     @Override protected boolean getDefaultMeta() { return false; }
     
-    protected ArchiveInputStream getInputStream(Context context,
+    protected ArchiveInputStream getInputStream(UserServletContext context,
         String charset) throws IOException, ServiceException, UserServletException {
         return new ZipArchiveInputStream(context.getRequestInputStream(-1),
             charset);
     }
 
-    protected ArchiveOutputStream getOutputStream(Context context, String
+    protected ArchiveOutputStream getOutputStream(UserServletContext context, String
         charset) throws IOException {
         OutputStream os = context.resp.getOutputStream();
         String zlv = context.params.get(UserServlet.QP_ZLV);

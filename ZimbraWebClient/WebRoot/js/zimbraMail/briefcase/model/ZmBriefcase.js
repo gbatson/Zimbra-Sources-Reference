@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -183,20 +183,22 @@ function(what, targetFolderType) {
                  || (what.isRemote() && !this._remoteMoveOk(what))
                  ||  what.disallowSubFolder
                  );
-    }else{ //ZmBriefcaseItem
+    } else { //ZmBriefcaseItem
         var items = AjxUtil.toArray(what);
 		var item = items[0];
-        if(item.type == ZmItem.BRIEFCASE_ITEM){
-            if (item instanceof ZmBriefcaseFolderItem){
-            invalid = (
-                    item.parent == this || this.isChildOf(item)
-                 || targetFolderType == ZmOrganizer.SEARCH || targetFolderType == ZmOrganizer.TAG
-                 || (!this.isInTrash() && this.hasChild(item.name))
-                 || (item.id == this.id)
-                 || (item.folder && item.folder.isRemote() && !this.isRemote() && !item.folder.rid)
-                 || (item.folder && this.isRemote())
-                    );
+        if (item.type == ZmItem.BRIEFCASE_ITEM){
+
+            if (!invalid) {
+                for (var i = 0; i < items.length; i++) {
+                    if (items[i] instanceof ZmBriefcaseFolderItem && (items[i].id == this.id ||             // Can't move folder items to themselves
+                    		this.isChildOf(items[i].folder))) { // Can't move parent folder to child folder
+                        invalid = true;
+                        break;
+                    }
+                }
             }
+            
+            
             // can't move items to folder they're already in; we're okay if
             // we have one item from another folder
             if (!invalid && item.folderId) {
@@ -209,18 +211,18 @@ function(what, targetFolderType) {
                     }
                 }
             }
-        }else{
+        } else {
             invalid = true;
         }
         
         // attachments from mail can be moved inside briefcase
-		if(item && item.msgId && item.partId){
+		if (item && item.msgId && item.partId) {
 			invalid = false;
 		}
 
     }
 
-    if(!invalid && this.link){
+    if (!invalid && this.link) {
         invalid = this.isReadOnly();
     }	
 

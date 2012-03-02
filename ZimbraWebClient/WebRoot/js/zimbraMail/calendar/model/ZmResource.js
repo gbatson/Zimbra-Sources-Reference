@@ -35,9 +35,10 @@ ZmResource = function(id, list, resType) {
 ZmResource.F_capacity			= "zimbraCalResCapacity";
 ZmResource.F_contactMail		= "zimbraCalResContactEmail";
 ZmResource.F_locationName		= "zimbraCalResLocationDisplayName";
-ZmResource.F_mail				= "mail";
-ZmResource.F_name				= "displayName";
-ZmResource.F_type				= "zimbraCalResType";
+ZmResource.F_mail			= "email";
+ZmResource.F_name			= "fullName";
+ZmResource.F_type			= "zimbraCalResType";
+ZmResource.F_description		= "notes";
 
 ZmResource.ATTR_LOCATION	= "Location";
 ZmResource.ATTR_EQUIPMENT	= "Equipment";
@@ -99,7 +100,8 @@ function() {
  */
 ZmResource.prototype.getFullName =
 function() {
-	return this.getAttr(ZmResource.F_name);
+	return ( this.getAttr(ZmResource.F_name)
+            || this.getAttr(ZmResource.F_locationName) );
 };
 
 /**
@@ -115,4 +117,18 @@ function(email) {
 	} else {
 		this.setAttr(ZmResource.F_mail, email);
 	}
+};
+
+ZmResource.prototype.getAttendeeText =
+function(type, shortForm) {
+	var text = "";
+	var name = this.getFullName();
+	var email = this.getEmail();
+	if (shortForm) {
+		text = name || email || "";
+	} else {
+		var e = new AjxEmailAddress(email, null, name);
+		text = e.toString();
+	}
+	return text;
 };

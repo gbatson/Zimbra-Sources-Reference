@@ -65,6 +65,7 @@ function() {
  *        callback		[AjxCallback]*	callback to run after each sub-request
  *        finalCallback	[AjxCallback]*	callback to run after all items have been processed
  *        count			[int]*			starting count for number of items processed
+ *        fromFolderId  [String]*       optional folder to represent when calculating tcon. If unspecified, use current search folder nId
  *        
  * @private
  */
@@ -75,24 +76,23 @@ function(params) {
 		return ZmList.prototype.moveItems.apply(this, arguments);
 	}
 
-	params = Dwt.getParams(arguments, ["items", "folder", "attrs", "callback", "finalCallback"]);
+	params = Dwt.getParams(arguments, ["items", "folder", "attrs", "callback", "finalCallback", "noUndo", "actionText", "fromFolderId"]);
 	params.items = AjxUtil.toArray(params.items);
 
 	var params1 = AjxUtil.hashCopy(params);
+	delete params1.fromFolderId;
 
 	params1.attrs = {};
-	params1.attrs.tcon = this._getTcon();
+	params1.attrs.tcon = this._getTcon(params.items, params.fromFolderId);
 	params1.attrs.l = params.folder.id;
 	params1.action = (params.folder.id == ZmFolder.ID_TRASH) ? "trash" : "move";
     if (params1.folder.id == ZmFolder.ID_TRASH) {
-		if (params1.items.length > 1) {
-	        params1.actionText = ZmMsg.actionTrash;
-		}
+        params1.actionText = params.actionText || ZmMsg.actionTrash;
     } else {
-        params1.actionText = ZmMsg.actionMove;
+        params1.actionText = params.actionText || ZmMsg.actionMove;
         params1.actionArg = params1.folder.getName(false, false, true);
     }
-	params1.callback = new AjxCallback(this, this._handleResponseMoveItems, params);
+	params1.callback = new AjxCallback(this, this._handleResponseMoveItems, [params]);
 
 	if (appCtxt.multiAccounts) {
 		// Reset accountName for multi-account to be the respective account if we're
@@ -101,7 +101,7 @@ function(params) {
 		// check if we're moving to or from a shared folder, in which case, always send
 		// request on-behalf-of the account the item originally belongs to.
         var folderId = params.items[0].getFolderId();
-        var fromFolder = appCtxt.getById(folderId);
+        var fromFolder = folderId && appCtxt.getById(folderId);
 		if ((params.items[0].isDraft && params.folder.id == ZmFolder.ID_DRAFTS) ||
 			(params.folder.isRemote()) || (fromFolder && fromFolder.isRemote()))
 		{
@@ -163,17 +163,13 @@ function(params) {
 
 	var params1 = AjxUtil.hashCopy(params);
 
-	if (this.type == ZmItem.MIXED && !this._mixedType) {
-		return this._mixedAction("spamItems", params);
-	}
-
 	params1.action = params.markAsSpam ? "spam" : "!spam";
 	params1.attrs = {};
 	params1.attrs.tcon = this._getTcon(params.items);
 	if (params.folder) {
 		params1.attrs.l = params.folder.id;
 	}
-    params1.actionText = params.markAsSpam ? ZmMsg.actionMarkAsJunk : ZmMsg.actionMarkAsNotJunk;
+	params1.actionText = params.markAsSpam ? ZmMsg.actionMarkAsJunk : ZmMsg.actionMarkAsNotJunk;
 
 	params1.callback = new AjxCallback(this, this._handleResponseSpamItems, params);
 	this._itemAction(params1);
@@ -251,7 +247,7 @@ function(params) {
 
 	params = Dwt.getParams(arguments, ["items", "hardDelete", "attrs", "childWin"]);
 
-	if (this.type == ZmItem.CONV || this._mixedType == ZmItem.CONV) {
+	if (this.type == ZmItem.CONV) {
 		var searchFolder = this.search ? appCtxt.getById(this.search.folderId) : null;
 		if (searchFolder && searchFolder.isHardDelete()) {
 			var instantOn = appCtxt.getAppController().getInstantNotify();
@@ -373,10 +369,13 @@ function(convs, msgs) {
 	var sortBy = this.search ? this.search.sortBy : null;
 	var sortIndex = {};
 	if (this.type == ZmItem.CONV) {
-
 		// handle new convs first so we can set their fragments later from new msgs
 		for (var id in convs) {
-			if (this.getById(id)) { continue; }	// already have this conv
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: handling conv create " + id);
+			if (this.getById(id)) {
+				AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: conv already exists " + id);
+				continue;
+			}
 			newConvId[id] = convs[id];
 			var conv = convs[id];
 			if (this.search && this.search.matches && this.search.matches(conv) && !conv.ignoreJunkTrash()) {
@@ -386,6 +385,26 @@ function(convs, msgs) {
 					// a new msg for this conv matches current search
 					conv.list = this;
 					newConvs.push(conv);
+					AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: conv added " + id);
+                    appCtxt.setNotifyDebug("Handling NOTIFY: notifyCreate ZmMailList --- New conv added");
+				}
+				else {
+					AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: conv failed account checks " + id);
+				}
+			}
+			else {
+				// debug info for bug 47589
+				var query = this.search ? this.search.query : "";
+				var ignore = conv.ignoreJunkTrash();
+				AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: conv does not match search '" + query + "' or was ignored (" + ignore + "); match function:");
+				var matchFunc = (this.search && this.search.matches) || "";
+				AjxDebug.println(AjxDebug.NOTIFY, matchFunc.toString());
+				if (!conv) {
+					AjxDebug.println(AjxDebug.NOTIFY, "conv is null!");
+				}
+				else {
+					var folders = AjxUtil.keys(conv.folders) || "";
+					AjxDebug.println(AjxDebug.NOTIFY, "conv folders: " + folders.join(" "));
 				}
 			}
 		}
@@ -393,9 +412,11 @@ function(convs, msgs) {
 		// a new msg can hand us a new conv, and update a conv's info
 		for (var id in msgs) {
 			var msg = msgs[id];
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: CLV handling msg create " + id);
 			var cid = msg.cid;
 			var matchFunc = this.search && this.search.matches;
 			var msgMatches =  matchFunc && matchFunc(msg) && !msg.ignoreJunkTrash();
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: CLV msg matches: " + msgMatches);
 			var isActiveAccount = (!appCtxt.multiAccounts || (appCtxt.multiAccounts && msg.getAccount() == appCtxt.getActiveAccount()));
 			var conv = newConvId[cid] || this.getById(cid);
 			if (msgMatches && isActiveAccount) {
@@ -414,6 +435,7 @@ function(convs, msgs) {
 					newConvId[cid] = conv;
 					conv.folders[msg.folderId] = true;
 					newConvs.push(conv);
+                    appCtxt.setNotifyDebug("Handling NOTIFY: in ZmMailList - notifyCreate - New message becomes a conv");
 				}
 				conv.list = this;
 			}
@@ -448,6 +470,7 @@ function(convs, msgs) {
 					}
 					modifiedItems.push(conv);
 				}
+				AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: conv list accepted msg " + id);
 				newMsgs.push(msg);
 			}
 		}
@@ -455,8 +478,12 @@ function(convs, msgs) {
 		// add new msg to list
 		for (var id in msgs) {
 			var msg = msgs[id];
+			AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: handling msg create " + id);
 			if (this.getById(id)) {
 				if (this.search.matches && this.search.matches && this.search.matches(msg) && !msg.ignoreJunkTrash()) {
+					var query = this.search ? this.search.query : "";
+					var ignore = msg.ignoreJunkTrash();
+					AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: msg does not match search '" + query + "' or was ignored (" + ignore + ")");
 					msg.list = this; // Even though we have the msg in the list, it sometimes has its list wrong.
 				}
 				continue;
@@ -464,15 +491,20 @@ function(convs, msgs) {
 			if (this.convId) { // MLV within CV
 				if (msg.cid == this.convId && !this.getById(msg.id)) {
 					msg.list = this;
+					AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: msg list (CV) accepted msg " + id);
 					newMsgs.push(msg);
 				}
 			} else { // MLV (traditional)
 				if (this.search.matches && this.search.matches && this.search.matches(msg) && !msg.ignoreJunkTrash()) {
 					msg.list = this;
+					AjxDebug.println(AjxDebug.NOTIFY, "ZmMailList: msg list (TV) accepted msg " + id);
 					newMsgs.push(msg);
 				}
 			}
 		}
+        if (window.isNotifyDebugOn && newMsgs.length > 1) {
+            appCtxt.setNotifyDebug("Handling NOTIFY: notifyCreate ZmMailList --- New message added to list");
+        }
 	}
 
 	// sort item list in reverse so they show up in correct order when processed (oldest appears first)
@@ -567,6 +599,13 @@ function(offset, limit) {
 		if (!msg) {
 			msg = list[0];	// no hot messages, use first msg
 		}
+
+        if(msg && msg.invite) {
+            var firstMsg = list[end-1];
+            if(firstMsg && firstMsg.invite && firstMsg.invite.isAllDayEvent()) {
+                msg.invite.setAllDayEvent(true);
+            }
+        }
 	}
 	
 	return msg;
@@ -641,14 +680,21 @@ function(items, sortBy, event, details) {
 };
 
 ZmMailList.prototype._getTcon =
-function() {
+function(items, nId) {
 	var chars = [];
 	var folders = [ZmFolder.ID_TRASH, ZmFolder.ID_SPAM, ZmFolder.ID_SENT];
-	var searchFolder = this.search && appCtxt.getById(this.search.folderId);
-	var nId = searchFolder && ( searchFolder.isRemote() ? searchFolder.rid : searchFolder.nId );
+
+    if(!nId){
+        var searchFolder = this.search && appCtxt.getById(this.search.folderId);
+        if(searchFolder){
+            nId = searchFolder.isRemote() ? searchFolder.rid : searchFolder.nId;
+        }
+    }
+
 	for (var i = 0; i < folders.length; i++) {
-		if (nId != folders[i]) {
-			chars.push(ZmFolder.TCON_CODE[folders[i]]);
+		var folder = folders[i];
+		if (nId != folder) {
+			chars.push(ZmFolder.TCON_CODE[folder]);
 		}
 	}
 	return (chars.length) ?  ("-" + chars.join("")) : "";

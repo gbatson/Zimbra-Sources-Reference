@@ -29,6 +29,7 @@ import javax.mail.internet.MimeMessage;
 import com.zimbra.common.util.ZimbraLog;
 
 import com.zimbra.common.auth.ZAuthToken;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
@@ -46,6 +47,7 @@ import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mailbox.Mailbox.AddInviteData;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
@@ -139,7 +141,7 @@ public class SendInviteReply extends CalendarRequest {
                 Account intendedAcct = null;
                 if (intendedFor != null) {
                     try {
-                        InternetAddress intendedForAddr = new InternetAddress(intendedFor);
+                        InternetAddress intendedForAddr = new JavaMailInternetAddress(intendedFor);
                         intendedAcct = Provisioning.getInstance().get(AccountBy.name, intendedForAddr.getAddress());
                     } catch (AddressException e) {
                         throw ServiceException.INVALID_REQUEST("The intended account " + intendedFor + " is invalid", e);
@@ -207,10 +209,10 @@ public class SendInviteReply extends CalendarRequest {
                                 folder = calItem.getFolderId();
                             }
                             ParsedMessage pm = new ParsedMessage(msg.getMimeMessage(false), false);
-                            int[] ids = mbox.addInvite(octxt, inv, folder, pm, false, untrashing, true);
-                            if (ids == null || ids.length == 0)
+                            AddInviteData aid = mbox.addInvite(octxt, inv, folder, pm, false, untrashing, true);
+                            if (aid == null)
                                 throw ServiceException.FAILURE("Could not create/update calendar item", null);
-                            calItemId = ids[0];
+                            calItemId = aid.calItemId;
                             // Refetch updated item.
                             calItem = safeGetCalendarItemById(mbox, octxt, calItemId);
                             if (calItem == null)
@@ -278,17 +280,9 @@ public class SendInviteReply extends CalendarRequest {
                 // If we're replying to a non-exception instance of a recurring appointment, create a local
                 // exception instance first.  Then reply to it.
                 if (calItem != null && oldInv.isRecurrence() && exceptDt != null) {
-                    Invite localException = oldInv.newCopy();
-                    localException.setLocalOnly(true);
-    
-                    localException.setRecurrence(null);
-                    RecurId rid = new RecurId(exceptDt, RecurId.RANGE_NONE);
-                    localException.setRecurId(rid);
+                    Invite localException = oldInv.makeInstanceInvite(exceptDt);
                     long now = octxt != null ? octxt.getTimestamp() : System.currentTimeMillis();
                     localException.setDtStamp(now);
-                    ParsedDateTime dtEnd = exceptDt.add(localException.getEffectiveDuration());
-                    localException.setDtStart(exceptDt);
-                    localException.setDtEnd(dtEnd);
     
                     String partStat = verb.getXmlPartStat();
                     localException.setPartStat(partStat);
@@ -315,7 +309,7 @@ public class SendInviteReply extends CalendarRequest {
                     calItem = safeGetCalendarItemById(mbox, octxt, calItemId);
                     if (calItem == null)
                         throw MailServiceException.NO_SUCH_CALITEM(iid.toString(), "Could not find calendar item");
-                    oldInv = calItem.getInvite(rid);
+                    oldInv = calItem.getInvite(new RecurId(exceptDt, RecurId.RANGE_NONE));
                 }
 
                 if (updateOrg && oldInv.hasOrganizer()) {
@@ -458,7 +452,6 @@ public class SendInviteReply extends CalendarRequest {
         
         ZMailbox.Options zoptions = new ZMailbox.Options(zat, AccountUtil.getSoapUri(targetAcct));
         zoptions.setNoSession(true);
-        zoptions.setResponseProtocol(SoapProtocol.SoapJS);
         zoptions.setTargetAccount(targetAcct.getId());
         zoptions.setTargetAccountBy(Provisioning.AccountBy.id);
         return ZMailbox.getMailbox(zoptions);

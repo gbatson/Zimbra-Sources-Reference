@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -171,6 +171,15 @@ function(date) {
     date.setTime(date.getTime() + AjxDateUtil.MSEC_PER_DAY);
 };
 
+/**
+ * rolls to next day. This can be used to roll to prev day avoiding the daylight saving shift in time.
+ */
+AjxDateUtil.rollToPrevDay =
+function(date) {
+    date.setHours(0,0,0,0);
+    date.setTime(date.getTime() - AjxDateUtil.MSEC_PER_DAY);
+};
+
 // Computes the difference between now and <dateMSec>. Returns a string describing
 // the difference
 AjxDateUtil.computeDateDelta =
@@ -263,6 +272,10 @@ function(now, dateMSec) {
 	return AjxDateUtil.simpleComputeDateStr(date);
 };
 
+AjxDateUtil.computeDateStrNoYear =
+function(date) {
+    return AjxDateUtil._dateFormatNoYear.format(date);
+};
 
 // Example output: "Today, 9:44 AM" "Yesterday, 12:22 PM" "Sun, 1/11/01 1:11 PM"
 AjxDateUtil.computeWordyDateStr =
@@ -542,12 +555,12 @@ function(date, useUTC) {
 };
 
 AjxDateUtil.parseServerTime = 
-function(serverStr, date) {
+function(serverStr, date, noSpecialUtcCase) {
 	if (serverStr.charAt(8) == 'T') {
 		var hh = parseInt(serverStr.substr(9,2), 10);
 		var mm = parseInt(serverStr.substr(11,2), 10);
 		var ss = parseInt(serverStr.substr(13,2), 10);
-		if (serverStr.charAt(15) == 'Z') {
+		if (!noSpecialUtcCase && serverStr.charAt(15) == 'Z') {
 			mm += AjxTimezone.getOffset(AjxTimezone.DEFAULT, date);
 		}
 		date.setHours(hh, mm, ss, 0);
@@ -613,7 +626,7 @@ AjxDateUtil.TZDSegment.prototype.parse = function(o, s, i) {
 };
 
 AjxDateUtil.parseServerDateTime = 
-function(serverStr) {
+function(serverStr, noSpecialUtcCase) {
 	if (serverStr == null) return null;
 
 	var d = new Date();
@@ -624,7 +637,7 @@ function(serverStr) {
 	d.setMonth(MM - 1);
 	d.setMonth(MM - 1); // DON'T remove second call to setMonth (see bug #3839)
 	d.setDate(dd);
-	AjxDateUtil.parseServerTime(serverStr, d);
+	AjxDateUtil.parseServerTime(serverStr, d, noSpecialUtcCase);
 	return d;
 };
 
@@ -1267,7 +1280,13 @@ function(value) {
 	if (value.length == 2) {
 		var d = new Date;
 		d.setYear(parseInt(value, 10));
-		value = String(d.getFullYear()).substr(0,2) + value;
+        var fullYear = d.getFullYear();
+        if (fullYear <= AjxMsg.dateParsing2DigitStartYear) {
+            value = String(fullYear + 100);
+        }
+        else {
+            value = String(fullYear).substr(0,2) + value;
+        }
 	}
 	return parseInt(value, 10);
 };

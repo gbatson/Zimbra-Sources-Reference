@@ -24,7 +24,9 @@
       </New>
     </Set>
 
-
+    <Call class="com.zimbra.common.jetty.JettyMonitor" name="setThreadPool">
+      <Arg><Ref id="pool"/></Arg>
+    </Call>
 
     <!-- =========================================================== -->
     <!-- Set connectors                                              -->
@@ -41,10 +43,9 @@
           <Set name="port"><SystemProperty name="jetty.port" default="7070"/></Set>
           <Set name="useDirectBuffers">false</Set>
           <Set name="maxIdleTime">30000</Set>
-          <Set name="lowResourcesMaxIdleTime">1000</Set>
+          <Set name="lowResourceMaxIdleTime">1000</Set>
           <Set name="Acceptors">2</Set>
           <Set name="confidentialPort">7443</Set>
-	  <Set name="Forwarded">true</Set>
         </New>
       </Arg>
     </Call>
@@ -58,7 +59,7 @@
           <Set name="Port">7443</Set>
           <Set name="useDirectBuffers">false</Set>
           <Set name="maxIdleTime">30000</Set>
-          <Set name="lowResourcesMaxIdleTime">1000</Set>
+          <Set name="lowResourceMaxIdleTime">1000</Set>
           <Set name="Acceptors">2</Set>
           <Set name="keystore"><SystemProperty name="jetty.home" default="."/>/etc/keystore</Set>
           <Set name="password">zimbra</Set>
@@ -74,7 +75,6 @@
               <Item>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</Item>
             </Array>
           </Set>
-          <Set name="Forwarded">true</Set>
         </New>
       </Arg>
     </Call>
@@ -84,8 +84,8 @@
         <New id="admin" class="org.mortbay.jetty.security.SslSelectChannelConnector">
           <Set name="Port">7071</Set>
           <Set name="useDirectBuffers">false</Set>
-          <Set name="maxIdleTime">0</Set>
-          <Set name="lowResourcesMaxIdleTime">0</Set>
+          <Set name="maxIdleTime">30000</Set>
+          <Set name="lowResourceMaxIdleTime">1000</Set>
           <Set name="Acceptors">2</Set>
           <Set name="keystore"><SystemProperty name="jetty.home" default="."/>/etc/keystore</Set>
           <Set name="password">zimbra</Set>
@@ -101,7 +101,6 @@
               <Item>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</Item>
             </Array>
           </Set>
-          <Set name="Forwarded">true</Set>
         </New>
       </Arg>
     </Call>
@@ -115,7 +114,7 @@
           <Set name="Port">7072</Set>
           <Set name="useDirectBuffers">false</Set>
           <Set name="maxIdleTime">30000</Set>
-          <Set name="lowResourcesMaxIdleTime">1000</Set>
+          <Set name="lowResourceMaxIdleTime">1000</Set>
           <Set name="Acceptors">2</Set>
         </New>
       </Arg>
@@ -140,6 +139,7 @@
         <Call name="addRewriteRule"><Arg>/zimbra/user/*</Arg><Arg>/service/user</Arg></Call>
         <!-- stop if we've hit the proper webapps -->
         <Call name="addRewriteRule"><Arg>/service/*</Arg><Arg></Arg></Call>
+        <Call name="addRewriteRule"><Arg>/spnego/*</Arg><Arg></Arg></Call>
         <Call name="addRewriteRule"><Arg>/zimlet/*</Arg><Arg></Arg></Call>
         <Call name="addRewriteRule"><Arg>/zimbraAdmin/*</Arg><Arg></Arg></Call>
         <Call name="addRewriteRule"><Arg>/zimbra/*</Arg><Arg></Arg></Call>
@@ -225,6 +225,19 @@
         </New>
       </Set>
     </New>
+    
+    <!-- uncomment if global config attr zimbraSpnegoAuthEnabled is TRUE -->
+    <!-- zimbraSpnegoAuthEnabled
+    <New id="spnego" class="org.mortbay.jetty.webapp.WebAppContext">
+      <Arg><Ref id="Contexts"/></Arg>
+      <Arg><SystemProperty name="jetty.home" default="."/>/webapps/spnego</Arg>
+      <Arg>/spnego</Arg>
+      <Set name="configurationClasses"><Ref id="plusConfig"/></Set>
+      <Set name="defaultsDescriptor"><SystemProperty name="jetty.home" default="."/>/etc/webdefault.xml</Set>
+      <Set name="tempDirectory"><SystemProperty name="jetty.home" default="."/>/work/spnego</Set>
+    </New>
+    zimbraSpnegoAuthEnabled -->
+    <!-- end uncomment if global config attr zimbraSpnegoAuthEnabled is TRUE -->
 
     <!-- =========================================================== -->
     <!-- Configure the context deployer                              -->
@@ -284,14 +297,16 @@
     <!-- =========================================================== -->
     <Set name="UserRealms">
       <Array type="org.mortbay.jetty.security.UserRealm">
-        <!--
+        <!-- uncomment if global config attr zimbraSpnegoAuthEnabled is TRUE -->
+        <!-- zimbraSpnegoAuthEnabled
         <Item>
-          <New class="org.mortbay.jetty.security.HashUserRealm">
-            <Set name="name">Test Realm</Set>
-            <Set name="config"><SystemProperty name="jetty.home" default="."/>/etc/realm.properties</Set>
+          <New class="org.mortbay.jetty.security.SpnegoUserRealm">
+            <Set name="name">Spnego Authentication Realm</Set>
+            <Set name="config"><SystemProperty name="jetty.home" default="."/>/etc/spnego.properties</Set>
           </New>
         </Item>
-	-->
+        zimbraSpnegoAuthEnabled -->
+        <!-- end uncomment if global config attr zimbraSpnegoAuthEnabled is TRUE -->
       </Array>
     </Set>
 
@@ -305,7 +320,7 @@
     <Ref id="RequestLog">
       <Set name="requestLog">
         <New id="RequestLogImpl" class="org.mortbay.jetty.NCSARequestLog">
-          <Arg><SystemProperty name="jetty.home" default="."/>/../log/access_log.yyyy_mm_dd</Arg>
+          <Arg><SystemProperty name="jetty.home" default="."/>/logs/access_log.yyyy_mm_dd</Arg>
           <Set name="logDateFormat">dd/MMM/yyyy:HH:mm:ss Z</Set>
           <Set name="retainDays">30</Set>
           <Set name="append">true</Set>
@@ -322,7 +337,7 @@
         <Set name="handler"><Ref id="oldhandler"/></Set>
         <Set name="outputStream">
           <New class="org.mortbay.util.RolloverFileOutputStream">
-            <Arg type="String"><SystemProperty name="jetty.home" default="."/>/../log/yyyy_mm_dd.trace.log</Arg>
+            <Arg type="String"><SystemProperty name="jetty.home" default="."/>/logs/yyyy_mm_dd.trace.log</Arg>
             <Arg type="boolean">true</Arg> <!-- append -->
             <Arg type="int">10</Arg> <!-- retain days -->
           </New>

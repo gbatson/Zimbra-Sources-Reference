@@ -1,15 +1,15 @@
 /*
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2004, 2005, 2006, 2007 Zimbra, Inc.
- * 
+ *
  * The contents of this file are subject to the Yahoo! Public License
  * Version 1.0 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
+ *
  * ***** END LICENSE BLOCK *****
  */
 
@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.google.common.base.Objects;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
@@ -113,11 +114,11 @@ public abstract class MailItem implements Comparable<MailItem> {
         "task",
         "chat",
     };
-    
+
     /**
      * @param mailItemType
      * @return the mail item type mapped to a bitmask, useful in places
-     *         as a substitute for passing around a Set<Byte> for a list  
+     *         as a substitute for passing around a Set<Byte> for a list
      *         of MailItem types
      */
     public static final int typeToBitmask(byte mailItemType) {
@@ -141,7 +142,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         assert(false);
         return 0;
     }
-    
+
     /** Throws {@link ServiceException} <tt>mail.INVALID_TYPE</tt> if the
      *  specified internal Zimbra item type is not supported.  At present, all
      *  types from 1 to {@link #TYPE_MAX} <b>except 7</b> are supported. */
@@ -188,7 +189,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         public byte   type;
         public int    parentId = -1;
         public int    folderId = -1;
-        public String indexId;
+        public int    indexId  = -1;
         public int    imapId   = -1;
         public String locator;
         private String blobDigest;
@@ -212,7 +213,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         public void setBlobDigest(String digest) {
             blobDigest = "".equals(digest) ? null : digest;
         }
-        
+
         public boolean isUnread() {
             return (unreadCount > 0);
         }
@@ -305,7 +306,7 @@ public abstract class MailItem implements Comparable<MailItem> {
             type = (byte) meta.getLong(FN_TYPE, 0);
             parentId = (int) meta.getLong(FN_PARENT_ID, -1);
             folderId = (int) meta.getLong(FN_FOLDER_ID, -1);
-            indexId = meta.get(FN_INDEX_ID, null);
+            indexId = meta.getInt(FN_INDEX_ID, -1);
             imapId = (int) meta.getLong(FN_IMAP_ID, -1);
             locator = meta.get(FN_LOCATOR, null);
             blobDigest = meta.get(FN_BLOB_DIGEST, null);
@@ -409,7 +410,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         /** Returns whether an item is in the user's sent folder.  Returns
          *  <tt>false</tt> if the user has set their sent folder to be
          *  any folder other than the default "/Sent" folder, folder 5.<p>
-         *  
+         *
          *  The reason we don't just compare the item's folder against the
          *  user's configured sent folder is that when the user sets their
          *  sent folder to be "/Inbox", *all* Inbox messages will be skipped
@@ -557,6 +558,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         mMailbox = mbox;
         decodeMetadata(mData.metadata);
         mData.metadata = null;
+
         if ((data.flags & Flag.BITMASK_UNCACHED) == 0)
             mbox.cache(this);           // store the item in the mailbox's cache
     }
@@ -573,7 +575,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     /** Returns the numeric ID of the {@link Mailbox} this item belongs to. */
-    public long getMailboxId() {
+    public int getMailboxId() {
         return mMailbox.getId();
     }
 
@@ -598,7 +600,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     public Color getRgbColor() {
         return mRGBColor;
     }
-    
+
     /** Returns the item's name.  If the item doesn't have a name (e.g.
      *  messages, contacts, appointments), returns <tt>""</tt>.
      *  If not <tt>""</tt>, this name should be unique across all item
@@ -634,7 +636,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  for non-indexed items.  For indexed items, the "index ID" will be the
      *  same as the item ID unless the item is a copy of another item; in that
      *  case, the "index ID" is the same as the original item's "index ID". */
-    public String getIndexId() {
+    public int getIndexId() {
         return mData.indexId;
     }
 
@@ -653,7 +655,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     /** Returns the SHA-1 hash of the item's uncompressed blob.
-     * 
+     *
      * @return the blob digest, or <tt>null</tt> if no blob exists */
     public String getDigest() {
         return mData.getBlobDigest();
@@ -672,14 +674,14 @@ public abstract class MailItem implements Comparable<MailItem> {
     public long getDate() {
         return mData.date * 1000L;
     }
-    
+
     /** Returns the change ID corresponding to the last time the item's
      *  content was modified.  For immutable objects (e.g. received messages),
      *  this will be the same change ID as when the item was created. */
     public int getSavedSequence() {
         return mData.modContent;
     }
-    
+
     /** Returns the date the item's metadata and/or content was last modified.
      *  This includes changes in tags and flags as well as folder-to-folder
      *  moves and recoloring. */
@@ -728,8 +730,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Returns the SORT-FORM (UPPERCASED, maybe truncated, etc.) of the
      *  subject of this mail item. */
     public String getSortSubject() {
-        String subject = getSubject();
-        return subject.toUpperCase().substring(0, Math.min(DbMailItem.MAX_SUBJECT_LENGTH, subject.length()));
+        return DbMailItem.truncateSubjectToMaxAllowedLength(getSubject()).toUpperCase();
     }
 
     /** Returns the SORT-FORM (UPPERCASED, maybe truncated, etc.) of the
@@ -791,10 +792,10 @@ public abstract class MailItem implements Comparable<MailItem> {
 
 
     /** Returns the "internal" flag bitmask, which does not include
-     *  {@link Flag#BITMASK_UNREAD}.  This is the same bitmask as is stored
+     *  {@link Flag#BITMASK_UNREAD} and {@link Flag@BITMASK_IN_DUMPSTER}.  This is the same bitmask as is stored
      *  in the database's <tt>MAIL_ITEM.FLAGS</tt> column. */
     public int getInternalFlagBitmask() {
-        return mData.flags;
+        return mData.flags & ~Flag.BITMASK_IN_DUMPSTER;
     }
 
     /** Returns the external string representation of this item's flags.
@@ -815,7 +816,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     public String getTagString() {
         return Tag.bitmaskToTags(mData.tags);
     }
-    
+
     public List<Tag> getTagList() throws ServiceException {
         return Tag.bitmaskToTagList(mMailbox, mData.tags);
     }
@@ -834,10 +835,10 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     /** Returns whether the given flag bitmask applies to the object.<p>
-     * 
+     *
      *  Equivalent to <code>((getFlagBitmask() & <b>mask</b>) != 0)</code>. */
     boolean isFlagSet(int mask) {
-        return ((getFlagBitmask() & mask) != 0); 
+        return ((getFlagBitmask() & mask) != 0);
     }
 
     /** Returns whether the item's unread count is >0.
@@ -902,7 +903,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  yet implemented.)</i>  The authenticated user is fetched from the
      *  transaction's {@link OperationContext} via a call to
      *  {@link Mailbox#getAuthenticatedAccount}.
-     * 
+     *
      * @param rightsNeeded  A set of rights (e.g. {@link ACL#RIGHT_READ}
      *                      and {@link ACL#RIGHT_DELETE}).
      * @throws ServiceException on errors fetching LDAP entries or
@@ -912,13 +913,13 @@ public abstract class MailItem implements Comparable<MailItem> {
     boolean canAccess(short rightsNeeded) throws ServiceException {
         return canAccess(rightsNeeded, mMailbox.getAuthenticatedAccount(), mMailbox.isUsingAdminPrivileges());
     }
-    
+
     /** Returns whether the specified account has the requested access rights
      *  on this item.  The owner of the {@link Mailbox} has all rights on all
      *  items in the Mailbox, as do all admin accounts.  All other users must
      *  be explicitly granted access.  <i>(Tag sharing and negative rights not
      *  yet implemented.)</i>
-     * 
+     *
      * @param rightsNeeded  A set of rights (e.g. {@link ACL#RIGHT_READ}
      *                      and {@link ACL#RIGHT_DELETE}).
      * @param authuser      The user whose rights we need to query.
@@ -938,7 +939,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  all rights on all items in the Mailbox, as do all admin accounts.
      *  All other users must be explicitly granted access.  <i>(Tag sharing
      *  and negative rights not yet implemented.)</i>
-     * 
+     *
      * @param rightsNeeded  A set of rights (e.g. {@link ACL#RIGHT_READ}
      *                      and {@link ACL#RIGHT_DELETE}).
      * @param authuser      The user whose rights we need to query.
@@ -947,7 +948,8 @@ public abstract class MailItem implements Comparable<MailItem> {
      * @see Folder#checkRights(short, Account, boolean) */
     short checkRights(short rightsNeeded, Account authuser, boolean asAdmin) throws ServiceException {
         // check to see what access has been granted on the enclosing folder
-        short granted = getFolder().checkRights(rightsNeeded, authuser, asAdmin);
+        Folder folder = !inDumpster() ? getFolder() : getMailbox().getFolderById(Mailbox.ID_FOLDER_TRASH);
+        short granted = folder.checkRights(rightsNeeded, authuser, asAdmin);
         // FIXME: check to see what access has been granted on the item's tags
         //   granted |= getTags().getGrantedRights(rightsNeeded, authuser);
         // and see if the granted rights are sufficient
@@ -958,7 +960,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Returns the {@link MailboxBlob} corresponding to the item's on-disk
      *  representation.  If the item is memory- or database-only, returns
      *  <tt>null</tt>.
-     * 
+     *
      * @throws MailServiceException.NO_SUCH_BLOB if the file cannot be found.
      * @throws ServiceException
      * */
@@ -975,7 +977,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  the message.  This is the message body as received via SMTP; no
      *  postprocessing has been performed to make opaque attachments (e.g.
      *  TNEF) visible.
-     * 
+     *
      * @return The data stream, or <tt>null</tt> if the item has no blob
      * @throws ServiceException when the message file does not exist.
      * @see #getMimeMessage()
@@ -999,7 +1001,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  array.  For messages, this is the message body as received via SMTP;
      *  no postprocessing has been performed to make opaque attachments
      *  (e.g. TNEF) visible.  When possible, this content is cached in the
-     * 
+     *
      * @return The blob content, or <tt>null</tt> if the item has no blob.
      * @throws ServiceException when the blob file does not exist.
      * @see #getMimeMessage()
@@ -1015,32 +1017,32 @@ public abstract class MailItem implements Comparable<MailItem> {
         }
     }
 
-    public int compareTo(MailItem that) {
+    @Override public int compareTo(MailItem that) {
         if (this == that)
             return 0;
         return mId - that.getId();
     }
 
     public static final class SortIdAscending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             return m1.getId() - m2.getId();
         }
     }
 
     public static final class SortIdDescending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             return m2.getId() - m1.getId();
         }
     }
 
     public static final class SortModifiedSequenceAscending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             return m1.getModifiedSequence() - m2.getModifiedSequence();
         }
     }
 
     public static final class SortDateAscending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             long t1 = m1.getDate(), t2 = m2.getDate();
 
             if (t1 < t2)        return -1;
@@ -1050,7 +1052,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     public static final class SortDateDescending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             long t1 = m1.getDate(), t2 = m2.getDate();
 
             if (t1 < t2)        return 1;
@@ -1060,19 +1062,19 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     public static final class SortImapUid implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             return m1.getImapUid() - m2.getImapUid();
         }
     }
 
     public static final class SortSubjectAscending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             return m1.getSubject().compareToIgnoreCase(m2.getSubject());
         }
     }
 
     public static final class SortSubjectDescending implements Comparator<MailItem> {
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             return -m1.getSubject().compareToIgnoreCase(m2.getSubject());
         }
     }
@@ -1098,7 +1100,7 @@ public abstract class MailItem implements Comparable<MailItem> {
                 return this;
             }
         }
-        public int compare(MailItem m1, MailItem m2) {
+        @Override public int compare(MailItem m1, MailItem m2) {
             if (m1.getName() == null)
                 return returnResult(1);
             else if (m2.getName() == null)
@@ -1152,7 +1154,7 @@ public abstract class MailItem implements Comparable<MailItem> {
             return result;
         }
     }
-    
+
     public static final class SortNameNaturalOrderDescending extends SortNameNaturalOrder {
         @Override protected int returnResult(int result) {
             return -result;
@@ -1169,7 +1171,7 @@ public abstract class MailItem implements Comparable<MailItem> {
             default:       return null;
         }
     }
-    
+
     /**
      * This class intentionally does not inherit from ServiceException, the
      *  exception is internal-only and should never be exposed outside of this package.
@@ -1179,14 +1181,14 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     /**
-     * Returns the indexable data to be passed into reIndex.  This API is generally 
-     * to be called WITHOUT the Mailbox lock is held -- it is the implementation's 
+     * Returns the indexable data to be passed into reIndex.  This API is generally
+     * to be called WITHOUT the Mailbox lock is held -- it is the implementation's
      * responsibility to lock the mailbox if that is necessary to get a consistent
      * snapshot.
      * <p>
      * Note that <code>doConsistencyCheck</code> <u>must</u> be <tt>false</tt> when
      * this method is called from {@see Mailbox#endTransaction(boolean)}.
-     * 
+     *
      * @param doConsistencyCheck  If <tt>true</tt>, also perform a sanity check by
      *                            comparing the overview data (subject, fragment,
      *                            etc.) with that in the object itself; if the check
@@ -1205,19 +1207,19 @@ public abstract class MailItem implements Comparable<MailItem> {
 
     /** Returns the item's parent.  Returns <tt>null</tt> if the item
      *  does not have a parent.
-     * 
+     *
      * @throws ServiceException if there is an error retrieving the
-     *         Mailbox's item cache or fetching the parent's data from 
+     *         Mailbox's item cache or fetching the parent's data from
      *         the database. */
     MailItem getParent() throws ServiceException {
-        if (mData.parentId == -1)
+        if (mData.parentId == -1 || inDumpster())
             return null;
         return mMailbox.getItemById(mData.parentId, TYPE_UNKNOWN);
     }
 
     /** Returns the item's {@link Folder}.  All items in the system must
      *  have a containing folder.
-     * 
+     *
      * @throws ServiceException should never be thrown, as the set of all
      *                          folders must already be cached. */
     Folder getFolder() throws ServiceException {
@@ -1242,7 +1244,11 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     static MailItem getById(Mailbox mbox, int id, byte type) throws ServiceException {
-        return mbox.getItem(DbMailItem.getById(mbox, id, type));
+        return getById(mbox, id, type, false);
+    }
+
+    static MailItem getById(Mailbox mbox, int id, byte type, boolean fromDumpster) throws ServiceException {
+        return mbox.getItem(DbMailItem.getById(mbox, id, type, fromDumpster));
     }
 
     static List<MailItem> getById(Mailbox mbox, Collection<Integer> ids, byte type) throws ServiceException {
@@ -1262,7 +1268,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  the item described by the {@link MailItem.UnderlyingData}.  Will
      *  not create memory-only <tt>MailItem</tt>s like {@link Flag}
      *  and {@link VirtualConversation}.
-     * 
+     *
      * @param mbox  The {@link Mailbox} the item is created in.
      * @param data  The contents of a <tt>MAIL_ITEM</tt> database row. */
     public static MailItem constructItem(Mailbox mbox, UnderlyingData data) throws ServiceException {
@@ -1289,7 +1295,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Returns {@link MailServiceException.NoSuchItemException} tailored
      *  for the given type.  Does not actually <u>throw</u> the exception;
      *  that's the caller's job.
-     * 
+     *
      * @param id    The id of the missing item.
      * @param type  The type of the missing item (e.g. {@link #TYPE_TAG}). */
     public static MailServiceException noSuchItem(int id, byte type) {
@@ -1318,7 +1324,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  {@link #TYPE_FLAG} and you wanted things of type {@link #TYPE_TAG}.
      *  The exception to this rule is that a desired {@link #TYPE_UNKNOWN}
      *  matches any actual item type.
-     * 
+     *
      * @param desired  The type of item that you wanted.
      * @param actual   The type of item that you've got.
      * @return <tt>true</tt> if the types match, if <tt>desired</tt> is
@@ -1351,7 +1357,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  instance, returns <tt>true</tt> if the item is a {@link Flag} and you
      *  wanted things of type {@link #TYPE_TAG}.  The exception to this rule
      *  is that a desired {@link #TYPE_UNKNOWN} matches any actual item type.
-     * 
+     *
      * @param desired  The type of item that you wanted.
      * @return <tt>true</tt> if the types match, if <tt>desired</tt> is
      *         {@link #TYPE_UNKNOWN}, or if the item is a subclass of the
@@ -1359,7 +1365,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     public boolean isAcceptableType(byte desired) {
         return isAcceptableType(desired, getType());
     }
-    
+
     boolean checkChangeID() throws ServiceException {
         return mMailbox.checkItemChangeID(this);
     }
@@ -1378,7 +1384,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
     /** Adds this item to the {@link Mailbox}'s list of items modified during
      *  the transaction.
-     * 
+     *
      * @param reason  The bitmask of changes made to the item.
      * @see PendingModifications.Change */
     void markItemModified(int reason) {
@@ -1409,7 +1415,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Updates various lists and counts as the result of item creation.  This
      *  method should always be called immediately after a new item is created
      *  and persisted to the database.
-     * 
+     *
      * @param parent  The created item's parent.  The parent's addChild()
      *                method will be called during the function. */
     protected void finishCreation(MailItem parent) throws ServiceException {
@@ -1428,19 +1434,28 @@ public abstract class MailItem implements Comparable<MailItem> {
         if (isLeafNode()) {
             boolean isDeleted = isTagged(Flag.ID_FLAG_DELETED);
 
-            mMailbox.updateSize(mData.size);
+            mMailbox.updateSize(mData.size, isQuotaCheckRequired());
             folder.updateSize(1, isDeleted ? 1 : 0, mData.size);
-            
+
             // let the folder and tags know if the new item is unread
             folder.updateUnread(mData.unreadCount, isDeleted ? mData.unreadCount : 0);
             updateTagUnread(mData.unreadCount, isDeleted ? mData.unreadCount : 0);
         }
     }
 
+    /**
+     * Returns {@code true} if a quota check is required when creating
+     * this item.  See bug 15666.
+     */
+    @SuppressWarnings("unused")
+    protected boolean isQuotaCheckRequired() throws ServiceException {
+        return true;
+    }
+
     /** Changes the item's color.  Color is specified in RGB, with
      *  one byte each for red, blue, and green.  The highest byte
      *  is unused.
-     * 
+     *
      * @param color  The item's new color.
      * @perms {@link ACL#RIGHT_WRITE} on the item
      * @throws ServiceException  The following error codes are possible:<ul>
@@ -1455,11 +1470,11 @@ public abstract class MailItem implements Comparable<MailItem> {
         mRGBColor.set(color);
         saveMetadata();
     }
-    
+
     /** Changes the item's color.  The server does no value-to-color mapping;
      *  the supplied color is treated as an opaque byte.  Note than even
      *  "immutable" items can have their color changed.
-     * 
+     *
      * @param color  The item's new color.
      * @perms {@link ACL#RIGHT_WRITE} on the item
      * @throws ServiceException  The following error codes are possible:<ul>
@@ -1477,7 +1492,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     /** Changes the item's date.
-     * 
+     *
      * @param date  The item's new date.
      * @perms {@link ACL#RIGHT_WRITE} on the item
      * @throws ServiceException  The following error codes are possible:<ul>
@@ -1545,14 +1560,14 @@ public abstract class MailItem implements Comparable<MailItem> {
         MessageCache.purge(this);
 
         // update the object to reflect its new contents
-        long size = staged == null ? 0 : staged.getStagedSize();
+        long size = staged == null ? 0 : staged.getSize();
         if (mData.size != size) {
-            mMailbox.updateSize(size - mData.size);
+            mMailbox.updateSize(size - mData.size, isQuotaCheckRequired());
             mData.size = size;
         }
         getFolder().updateSize(0, 0, size - mData.size);
 
-        mData.setBlobDigest(staged == null ? null : staged.getStagedDigest());
+        mData.setBlobDigest(staged == null ? null : staged.getDigest());
         mData.date   = mMailbox.getOperationTimestamp();
         mData.imapId = mMailbox.isTrackingImap() ? 0 : mData.id;
         mData.contentChanged(mMailbox);
@@ -1572,7 +1587,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         mData.locator = mblob == null ? null : mblob.getLocator();
 
         // rewrite the DB row to reflect our new view (MUST call saveData)
-        reanalyze(content);
+        reanalyze(content, size);
 
         return mblob;
     }
@@ -1587,7 +1602,7 @@ public abstract class MailItem implements Comparable<MailItem> {
             mRevisions = new ArrayList<MailItem>();
 
             if (isTagged(Flag.ID_FLAG_VERSIONED)) {
-                for (UnderlyingData data : DbMailItem.getRevisionInfo(this))
+                for (UnderlyingData data : DbMailItem.getRevisionInfo(this, inDumpster()))
                     mRevisions.add(constructItem(mMailbox, data));
             }
         }
@@ -1619,7 +1634,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
                 if (mVersion <= maxVer) {
                     ZimbraLog.mailop.info("Item's current version is not greater than highest revision; " +
-                    		              "adjusting to " + (maxVer + 1) + " (was " + mVersion + ")");
+                                          "adjusting to " + (maxVer + 1) + " (was " + mVersion + ")");
                     mVersion = maxVer + 1;
                 }
             }
@@ -1629,7 +1644,7 @@ public abstract class MailItem implements Comparable<MailItem> {
             data.flags   |= Flag.BITMASK_UNCACHED;
             mRevisions.add(constructItem(mMailbox, data));
 
-            mMailbox.updateSize(mData.size);
+            mMailbox.updateSize(mData.size, isQuotaCheckRequired());
             folder.updateSize(0, 0, mData.size);
 
             ZimbraLog.mailop.debug("saving revision %d for %s", mVersion, getMailopContext(this));
@@ -1652,7 +1667,7 @@ public abstract class MailItem implements Comparable<MailItem> {
                 for (Iterator<MailItem> it = revisions.iterator(); it.hasNext() && numPurged < numRevsToPurge; numPurged++) {
                     MailItem revision = it.next();
                     toPurge.add(revision);
-                    it.remove();                    
+                    it.remove();
                 }
 
                 // The following logic depends on version, mod_metadata and mod_content each being
@@ -1670,7 +1685,7 @@ public abstract class MailItem implements Comparable<MailItem> {
                 }
                 // Purge revisions from db.
                 int highestPurgedVer = toPurge.get(toPurge.size() - 1).getVersion();
-                DbMailItem.purgeRevisions(this, highestPurgedVer);
+                DbMailItem.purgeRevisions(this, highestPurgedVer, true);
             }
             if (revisions.isEmpty())
                 tagChanged(mMailbox.getFlagById(Flag.ID_FLAG_VERSIONED), false);
@@ -1695,13 +1710,20 @@ public abstract class MailItem implements Comparable<MailItem> {
         return null;
     }
 
+    void purgeRevision(int version, boolean includeOlderRevisions) throws ServiceException {
+        if (!canAccess(ACL.RIGHT_WRITE))
+            throw ServiceException.PERM_DENIED("you do not have the necessary permissions on the item");
+        DbMailItem.purgeRevisions(this, version, includeOlderRevisions);
+        mRevisions = null;
+    }
+
     /** Recalculates the size, metadata, etc. for an existing MailItem and
      *  persists that information to the database.  Maintains any existing
      *  mutable metadata.  Updates mailbox and folder sizes appropriately.
-     * 
+     *
      * @param data  The (optional) extra item data for indexing (e.g.
      *              a Message's {@link com.zimbra.cs.index.ParsedMessage}. */
-    void reanalyze(Object data) throws ServiceException {
+    void reanalyze(Object data, long newSize) throws ServiceException {
         throw ServiceException.FAILURE("reanalysis of " + getNameForType(this) + "s not supported", null);
     }
 
@@ -1710,7 +1732,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Updates the item's unread state.  Persists the change to the
      *  database and cache, and also updates the unread counts for the
      *  item's {@link Folder} and {@link Tag}s appropriately.
-     * 
+     *
      * @param unread  <tt>true</tt> to mark the item unread,
      *                <tt>false</tt> to mark it as read.
      * @perms {@link ACL#RIGHT_WRITE} on the item
@@ -1742,9 +1764,9 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  parent is not fetched from the database, so notifications may be off
      *  in the case of uncached {@link Conversation}s when a {@link Message}
      *  changes state.<p>
-     * 
+     *
      *  You must use {@link #alterUnread} to change an item's unread state.
-     * 
+     *
      * @param tag  The tag or flag to add or remove from the item.
      * @param add  <tt>true</tt> to tag the item, <tt>false</tt> to untag it.
      * @perms {@link ACL#RIGHT_WRITE} on the item
@@ -1829,7 +1851,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
     /** Updates the object's in-memory state to reflect a {@link Tag} change.
      *  Does not update the database.
-     * 
+     *
      * @param tag  The tag that was added or rmeoved from this object.
      * @param add  <tt>true</tt> if the item was tagged,
      *             <tt>false</tt> if the item was untagged. */
@@ -1855,7 +1877,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Updates the in-memory unread count for the item.  The base-class
      *  implementation does not cascade the change to the item's parent,
      *  folder, and tags, as {@link Message#updateUnread(int,int)} does.
-     * 
+     *
      * @param delta  The change in unread count for this item. */
     protected void updateUnread(int delta, int deletedDelta) throws ServiceException {
         if (delta == 0 || !trackUnread())
@@ -1870,7 +1892,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
     /** Adds <tt>delta</tt> to the unread count of each {@link Tag}
      *  assigned to this <code>MailItem</code>.
-     * 
+     *
      * @param delta  The (signed) change in number unread.
      * @throws ServiceException  The following error codes are possible:<ul>
      *    <li><tt>mail.NO_SUCH_FOLDER</tt> - if there's an error fetching the
@@ -1901,7 +1923,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  not change system flags that are normally immutable after item
      *  creation, like {@link Flag#BITMASK_ATTACHED} and {@link Flag#BITMASK_DRAFT}.
      *  If a specified flag or tag does not exist, it is ignored.
-     * 
+     *
      * @param flags  The bitmask of user-settable flags to apply.
      * @param tags   The bitmask of tags to apply.
      * @perms {@link ACL#RIGHT_WRITE} on the item
@@ -1951,7 +1973,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     /** Copies an item to a {@link Folder}.  Persists the new item to the
      *  database and the in-memory cache.  Copies to the same folder as the
      *  original item will succeed.<p>
-     * 
+     *
      *  Immutable copied items (both the original and the target) share the
      *  same entry in the index and get the {@link Flag#BITMASK_COPIED} flag to
      *  facilitate garbage collection of index entries.  (Mutable copied items
@@ -1959,7 +1981,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  although the system will use a hard link where possible.  Copying a
      *  {@link Message} will put it in the same {@link Conversation} as the
      *  original (exceptions: draft messages, messages in the Junk folder).
-     * 
+     *
      * @param folder    The folder to copy the item to.
      * @param copyId    The item id for the newly-created copy.
      * @param parentId  The target parent ID for the new copy.
@@ -1984,13 +2006,14 @@ public abstract class MailItem implements Comparable<MailItem> {
             throw ServiceException.PERM_DENIED("you do not have the required rights on the target folder");
 
         // we'll share the index entry if this item can't change out from under us
-        String indexId = mData.indexId;
+        int indexId = mData.indexId;
         if (isIndexed()) {
             // reindex the copy if existing item (a) wasn't indexed or (b) is mutable
-            if (indexId == null || isMutable())
-                indexId = folder.inSpam() ? null : Integer.toString(copyId);
+            // or (c) existing item is in dumpster (which implies copy is not in dumpster)
+            if (indexId == -1 || isMutable() || inDumpster())
+                indexId = folder.inSpam() ? -1 : copyId;
         }
-        boolean shared = indexId != null && indexId.equals(mData.indexId);
+        boolean shared = indexId != -1 && indexId == mData.indexId;
 
         // if the copy or original is in Spam, put the copy in its own conversation
         boolean detach = parentId <= 0 || isTagged(Flag.ID_FLAG_DRAFT) || inSpam() != folder.inSpam();
@@ -2002,10 +2025,13 @@ public abstract class MailItem implements Comparable<MailItem> {
                 ZimbraLog.mailop.debug("setting copied flag for %s", getMailopContext(this));
         }
 
+        boolean inDumpster = inDumpster();
+        StoreManager sm = StoreManager.getInstance();
+
+        // main item
         String locator = null;
         MailboxBlob srcMblob = getBlob();
         if (srcMblob != null) {
-            StoreManager sm = StoreManager.getInstance();
             MailboxBlob mblob = sm.link(srcMblob, mMailbox, copyId, mMailbox.getOperationChangeID());
             mMailbox.markOtherItemDirty(mblob);
             locator = mblob.getLocator();
@@ -2018,16 +2044,34 @@ public abstract class MailItem implements Comparable<MailItem> {
         data.metadata = encodeMetadata();
         data.contentChanged(mMailbox);
 
-        // if the copy needs to be reindexed, just set the deferred flag now and index it later
-        if (indexId != null && !indexId.equals(mData.indexId))
-            mMailbox.queueForIndexing(this, false, null);
-
         ZimbraLog.mailop.info("Copying %s: copyId=%d, folderId=%d, folderName=%s, parentId=%d.",
                               getMailopContext(this), copyId, folder.getId(), folder.getName(), data.parentId);
-        DbMailItem.copy(this, copyId, folder, data.indexId, data.parentId, data.locator, data.metadata);
+        DbMailItem.copy(this, copyId, folder, data.indexId, data.parentId, data.locator, data.metadata, inDumpster);
+        if (this instanceof CalendarItem)
+            DbMailItem.copyCalendarItem((CalendarItem) this, copyId, inDumpster);
+
+        // older revisions
+        // Copy revisions only when recovering from dumpster.  When copying from one non-dumpster folder to another,
+        // it is never desirable to copy old revisions. (bug 55070)
+        if (inDumpster) {
+            for (MailItem revision : loadRevisions()) {
+                MailboxBlob srcRevBlob = revision.getBlob();
+                String revLocator = null;
+                if (srcRevBlob != null) {
+                    MailboxBlob copyRevBlob = sm.link(srcRevBlob, mMailbox, copyId, revision.getSavedSequence());
+                    mMailbox.markOtherItemDirty(copyRevBlob);
+                    revLocator = copyRevBlob.getLocator();
+                }
+                DbMailItem.copyRevision(revision, copyId, revLocator, inDumpster);
+            }
+        }
 
         MailItem copy = constructItem(mMailbox, data);
         copy.finishCreation(parent);
+
+        // if the copy needs to be reindexed, just set the deferred flag now and index it later
+        if ((indexId != -1 && indexId != mData.indexId) || inDumpster())
+            mMailbox.queueForIndexing(copy, false, null);
 
         return copy;
     }
@@ -2036,7 +2080,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  database and the in-memory cache.  Copies to the same folder as the
      *  original item will succeed, but it is strongly suggested that
      *  {@link #copy(Folder, int, int, short)} be used in that case.<p>
-     * 
+     *
      *  Immutable copied items (both the original and the target) share the
      *  same entry in the index and get the {@link Flag#BITMASK_COPIED} flag to
      *  facilitate garbage collection of index entries.  (Mutable copied items
@@ -2045,7 +2089,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  {@link Message}s are remain in the same {@link Conversation}, but the
      *  <b>original</b> Message is placed in a new {@link VirtualConversation}
      *  rather than being grouped with the copied Message.
-     * 
+     *
      * @param target  The folder to copy the item to.
      * @param copyId  The item id for the newly-created copy.
      * @perms {@link ACL#RIGHT_INSERT} on the target folder,
@@ -2097,17 +2141,17 @@ public abstract class MailItem implements Comparable<MailItem> {
         data.metadata = encodeMetadata();
         data.imapId = copyId;
         data.contentChanged(mMailbox);
-        
+
         // we'll share the index entry if this item can't change out from under us
         if (isIndexed()) {
             // reindex the copy if existing item (a) wasn't indexed or (b) is mutable
-            if (data.indexId == null || isMutable())
-                data.indexId = target.inSpam() ? null : Integer.toString(copyId);
+            if (data.indexId == -1 || isMutable())
+                data.indexId = target.inSpam() ? null : copyId;
         }
-        boolean shared = data.indexId != null && data.indexId.equals(mData.indexId);
+        boolean shared = data.indexId != -1 && data.indexId == mData.indexId;
 
         // if the copy needs to be reindexed, just set the deferred flag now and index it later
-        if (data.indexId != null && !data.indexId.equals(mData.indexId))
+        if (data.indexId != -1 && data.indexId != mData.indexId)
             mMailbox.queueForIndexing(this, false, null);
 
         ZimbraLog.mailop.info("Performing IMAP copy of %s: copyId=%d, folderId=%d, folderName=%s, parentId=%d.",
@@ -2131,7 +2175,7 @@ public abstract class MailItem implements Comparable<MailItem> {
             mData.metadataChanged(mMailbox);
             mData.parentId = mData.type == TYPE_MESSAGE ? -mId : -1;
         }
-        
+
         return copy;
     }
 
@@ -2151,7 +2195,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  characters, and may not contain any characters banned in XML or
      *  contained in {@link #INVALID_NAME_CHARACTERS} (':', '/', '"', '\t',
      *  '\r', '\n').
-     * 
+     *
      * @param name  The proposed item name.
      * @throws ServiceException  The following error codes are possible:<ul>
      *    <li><tt>mail.INVALID_NAME</tt> - if the name is not acceptable</ul>
@@ -2188,7 +2232,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
     /** Renames the item in place.  Altering an item's name's case (e.g.
      *  from <tt>foo</tt> to <tt>FOO</tt>) is allowed.
-     * 
+     *
      * @param name  The new name for this item.
      * @perms {@link ACL#RIGHT_WRITE} on the item
      * @throws ServiceException   The following error codes are possible:<ul>
@@ -2208,7 +2252,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  (e.g. from <tt>foo</tt> to <tt>FOO</tt>) is allowed.  If you don't
      *  want the item to be moved, you must pass <tt>folder.getFolder()</tt>
      *  as the second parameter.
-     * 
+     *
      * @param name    The new name for this item.
      * @param target  The new parent folder to move this item to.
      * @perms {@link ACL#RIGHT_WRITE} on the item to rename it,
@@ -2259,7 +2303,7 @@ public abstract class MailItem implements Comparable<MailItem> {
                 ZimbraLog.mailop.debug("renaming " + getMailopContext(this) + " to " + name);
 
             // XXX: note that we don't update mData.folderId here, as we need the subsequent
-            //   move() to execute (it does several things that this code does not) 
+            //   move() to execute (it does several things that this code does not)
             markItemModified(Change.MODIFIED_NAME);
             mData.name    = name;
             mData.subject = name;
@@ -2279,16 +2323,16 @@ public abstract class MailItem implements Comparable<MailItem> {
         if (moved)
             move(target);
     }
-    
+
     /** Moves an item to a different {@link Folder}.  Persists the change
      *  to the database and the in-memory cache.  Updates all relevant
      *  unread counts, folder sizes, etc.<p>
-     * 
+     *
      *  Items moved to the Trash folder are automatically marked read.
      *  {@link Message}s moved to the Junk folder are removed from their
      *  {@link Conversation} (if any).  Conversations moved to the Junk
      *  folder will not receive newly-delivered messages.
-     * 
+     *
      * @param target  The folder to move the item to.
      * @perms {@link ACL#RIGHT_INSERT} on the target folder,
      *        {@link ACL#RIGHT_DELETE} on the source folder
@@ -2336,8 +2380,8 @@ public abstract class MailItem implements Comparable<MailItem> {
 
         // item moved out of spam, so update the index id
         //   (will be written to DB in DbMailItem.setFolder());
-        if (inSpam() && !target.inSpam() && isIndexed() && mData.indexId != null) {
-            mData.indexId = Integer.toString(mData.id);
+        if (inSpam() && !target.inSpam() && isIndexed() && mData.indexId != -1) {
+            mData.indexId = mData.id;
             getMailbox().queueForIndexing(this, false, null);
         }
 
@@ -2346,18 +2390,18 @@ public abstract class MailItem implements Comparable<MailItem> {
         folderChanged(target, 0);
         return true;
     }
-    
+
     /** Records all relevant changes to the in-memory object for when an item's
      *  index_id is changed.  Does <u>not</u> persist those
      *  changes to the database. */
-    void indexIdChanged(String indexId) {
-        mData.indexId = indexId;        
+    void indexIdChanged(int indexId) {
+        mData.indexId = indexId;
     }
 
     /** Records all relevant changes to the in-memory object for when an item
      *  gets moved to a new {@link Folder}.  Does <u>not</u> persist those
      *  changes to the database.
-     * 
+     *
      * @param newFolder  The folder the item is being moved to.
      * @param imapId     The new IMAP ID for the item after the operation.
      * @throws ServiceException if we're not in a transaction */
@@ -2392,7 +2436,7 @@ public abstract class MailItem implements Comparable<MailItem> {
     public static class PendingDelete {
         /** The id of the item that {@link MailItem#delete} was called on. */
         public int rootId;
-        
+
         /** a bitmask of all the types of MailItems that are being deleted.
          * see {@link MailItem#typeToBitmask} */
         public int deletedTypes;
@@ -2425,13 +2469,13 @@ public abstract class MailItem implements Comparable<MailItem> {
         public Set<Integer> modifiedIds = new HashSet<Integer>(2);
 
         /** The document ids that need to be removed from the index. */
-        public List<String> indexIds = new ArrayList<String>(1);
+        public List<Integer> indexIds = new ArrayList<Integer>(1);
 
         /** The ids of all items with the {@link Flag#BITMASK_COPIED} flag being
          *  deleted.  Items in <tt>sharedIndex</tt> whose last copies are
          *  being removed are added to {@link #indexIds} via a call to
          *  {@link DbMailItem#resolveSharedIndex}. */
-        public Set<String> sharedIndex;
+        public Set<Integer> sharedIndex;
 
         /** The {@link com.zimbra.cs.store.Blob}s for all items being deleted that have content
          *  persisted in the store. */
@@ -2446,7 +2490,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
         /** Combines the data from another <tt>PendingDelete</tt> into
          *  this object.  The other <tt>PendingDelete</tt> is unmodified.
-         * 
+         *
          * @return this item */
         PendingDelete add(PendingDelete other) {
             if (other != null) {
@@ -2466,7 +2510,7 @@ public abstract class MailItem implements Comparable<MailItem> {
                 if (other.cascadeIds != null)
                     (cascadeIds == null ? cascadeIds = new ArrayList<Integer>(other.cascadeIds.size()) : cascadeIds).addAll(other.cascadeIds);
                 if (other.sharedIndex != null)
-                    (sharedIndex == null ? sharedIndex = new HashSet<String>(other.sharedIndex.size()) : sharedIndex).addAll(other.sharedIndex);
+                    (sharedIndex == null ? sharedIndex = new HashSet<Integer>(other.sharedIndex.size()) : sharedIndex).addAll(other.sharedIndex);
                 for (Map.Entry<Integer, DbMailItem.LocationCount> entry : other.messages.entrySet()) {
                     DbMailItem.LocationCount lcount = messages.get(entry.getKey());
                     if (lcount == null)
@@ -2497,10 +2541,15 @@ public abstract class MailItem implements Comparable<MailItem> {
             info.itemIds.remove(getType(), mId);
         }
 
-        delete(mMailbox, info, this, scope, writeTombstones);
+        delete(mMailbox, info, this, scope, writeTombstones, inDumpster());
     }
 
     static void delete(Mailbox mbox, PendingDelete info, MailItem item, DeleteScope scope, boolean writeTombstones) throws ServiceException {
+        delete(mbox, info, item, scope, writeTombstones, false);
+    }
+
+    static void delete(Mailbox mbox, PendingDelete info, MailItem item, DeleteScope scope, boolean writeTombstones, boolean fromDumpster)
+    throws ServiceException {
         // short-circuit now if nothing's actually being deleted
         if (info.itemIds.isEmpty())
             return;
@@ -2514,25 +2563,27 @@ public abstract class MailItem implements Comparable<MailItem> {
             parent = item.getParent();
         }
 
-        // update the mailbox's size
-        mbox.updateSize(-info.size);
-        mbox.updateContactCount(-info.contacts);
+        if (!fromDumpster) {
+            // update the mailbox's size
+            mbox.updateSize(-info.size);
+            mbox.updateContactCount(-info.contacts);
 
-        // update conversations and unread counts on folders and tags
-        if (item != null) {
-            item.propagateDeletion(info);
-        } else {
-            // update message counts
-            List<UnderlyingData> unreadData = DbMailItem.getById(mbox, info.unreadIds, TYPE_MESSAGE);
-            for (UnderlyingData data : unreadData) {
-                MailItem unread = mbox.getItem(data);
-                unread.updateUnread(-data.unreadCount, unread.isTagged(Flag.ID_FLAG_DELETED) ? -data.unreadCount : 0);
-            }
+            // update conversations and unread counts on folders and tags
+            if (item != null) {
+                item.propagateDeletion(info);
+            } else {
+                // update message counts
+                List<UnderlyingData> unreadData = DbMailItem.getById(mbox, info.unreadIds, TYPE_MESSAGE);
+                for (UnderlyingData data : unreadData) {
+                    MailItem unread = mbox.getItem(data);
+                    unread.updateUnread(-data.unreadCount, unread.isTagged(Flag.ID_FLAG_DELETED) ? -data.unreadCount : 0);
+                }
 
-            for (Map.Entry<Integer, DbMailItem.LocationCount> entry : info.messages.entrySet()) {
-                int folderID = entry.getKey();
-                DbMailItem.LocationCount lcount = entry.getValue();
-                mbox.getFolderById(folderID).updateSize(-lcount.count, -lcount.deleted, -lcount.size);
+                for (Map.Entry<Integer, DbMailItem.LocationCount> entry : info.messages.entrySet()) {
+                    int folderID = entry.getKey();
+                    DbMailItem.LocationCount lcount = entry.getValue();
+                    mbox.getFolderById(folderID).updateSize(-lcount.count, -lcount.deleted, -lcount.size);
+                }
             }
         }
 
@@ -2544,7 +2595,7 @@ public abstract class MailItem implements Comparable<MailItem> {
                 else
                     ZimbraLog.mailop.info("Deleting %s%s.", scope == DeleteScope.CONTENTS_ONLY ? "contents of " : "", getMailopContext(item));
             }
-            
+
             // If there are any related items being deleted, log them in blocks of 200.
             int itemId = item == null ? 0 : Math.abs(item.getId()); // Use abs() for VirtualConversations
             Set<Integer> idSet = new TreeSet<Integer>();
@@ -2566,11 +2617,11 @@ public abstract class MailItem implements Comparable<MailItem> {
 
         // actually delete the items from the DB
         if (info.incomplete || item == null) {
-            DbMailItem.delete(mbox, info.itemIds.getAll());
+            DbMailItem.delete(mbox, info.itemIds.getAll(), fromDumpster);
         } else if (scope == DeleteScope.CONTENTS_ONLY) {
-            DbMailItem.deleteContents(item);
+            DbMailItem.deleteContents(item, fromDumpster);
         } else {
-            DbMailItem.delete(item);
+            DbMailItem.delete(item, fromDumpster);
         }
 
         // remove the deleted item(s) from the mailbox's cache
@@ -2594,7 +2645,7 @@ public abstract class MailItem implements Comparable<MailItem> {
         // also delete any conversations whose messages have all been removed
         if (info.cascadeIds != null && !info.cascadeIds.isEmpty()) {
             try {
-                DbMailItem.delete(mbox, info.cascadeIds);
+                DbMailItem.delete(mbox, info.cascadeIds, false);
             } catch (ServiceException se) {
                 MailboxErrorUtil.handleCascadeFailure(mbox, info.cascadeIds, se);
             }
@@ -2609,12 +2660,12 @@ public abstract class MailItem implements Comparable<MailItem> {
         mbox.markOtherItemDirty(info);
 
         // write a deletion record for later sync
-        if (writeTombstones && mbox.isTrackingSync() && !info.itemIds.isEmpty())
+        if (writeTombstones && mbox.isTrackingSync() && !info.itemIds.isEmpty() && !fromDumpster)
             DbMailItem.writeTombstones(mbox, info.itemIds);
 
         // don't actually delete the blobs or index entries here; wait until after the commit
     }
-    
+
     static String getMailopContext(MailItem item) {
         if (item == null || !ZimbraLog.mailop.isInfoEnabled()) {
             return "<undefined>";
@@ -2637,7 +2688,7 @@ public abstract class MailItem implements Comparable<MailItem> {
      *  to be deleted.  If the caller has specified the maximum change
      *  number they know about, this set will also exclude any item for
      *  which the (modification/content) change number is greater.
-     * 
+     *
      * @perms {@link ACL#RIGHT_DELETE} on the item
      * @return A fully-populated <tt>PendingDelete</tt> object. */
     PendingDelete getDeletionInfo() throws ServiceException {
@@ -2649,26 +2700,35 @@ public abstract class MailItem implements Comparable<MailItem> {
         info.rootId = mId;
         info.size   = getTotalSize();
         info.itemIds.add(getType(), id);
-        if (mData.unreadCount != 0 && mMailbox.getFlagById(Flag.ID_FLAG_UNREAD).canTag(this))
-            info.unreadIds.add(id);
 
-        boolean isDeleted = isTagged(Flag.ID_FLAG_DELETED);
-        info.messages.put(getFolderId(), new DbMailItem.LocationCount(1, isDeleted ? 1 : 0, getTotalSize()));
+        if (!inDumpster()) {
+            if (mData.unreadCount != 0 && mMailbox.getFlagById(Flag.ID_FLAG_UNREAD).canTag(this))
+                info.unreadIds.add(id);
 
-        if (mData.indexId != null) {
-            if (!isTagged(Flag.ID_FLAG_COPIED))
-                info.indexIds.add(mData.indexId);
-            else
-                (info.sharedIndex = new HashSet<String>()).add(mData.indexId);
+            boolean isDeleted = isTagged(Flag.ID_FLAG_DELETED);
+            info.messages.put(getFolderId(), new DbMailItem.LocationCount(1, isDeleted ? 1 : 0, getTotalSize()));
         }
 
-        List<MailItem> items = new ArrayList<MailItem>(3);
-        items.add(this);  items.addAll(loadRevisions());
-        for (MailItem revision : items) {
-            try {
-                info.blobs.add(revision.getBlob());
-            } catch (Exception e) {
-                ZimbraLog.mailbox.error("missing blob for id: " + mId + ", change: " + revision.getSavedSequence());
+        // Clean up from blob store and Lucene if:
+        // 1) deleting a regular item and dumpster is not in use, OR
+        // 2) permantently deleting an item from dumpster
+        // In other words, skip the blob/index deletes when soft-deleting item to dumpster.
+        if (!getMailbox().dumpsterEnabled() || inDumpster() || (inSpam() && !getMailbox().useDumpsterForSpam())) {
+            if (mData.indexId != -1) {
+                if (!isTagged(Flag.ID_FLAG_COPIED))
+                    info.indexIds.add(mData.indexId);
+                else
+                    (info.sharedIndex = new HashSet<Integer>()).add(mData.indexId);
+            }
+
+            List<MailItem> items = new ArrayList<MailItem>(3);
+            items.add(this);  items.addAll(loadRevisions());
+            for (MailItem revision : items) {
+                try {
+                    info.blobs.add(revision.getBlob());
+                } catch (Exception e) {
+                    ZimbraLog.mailbox.error("missing blob for id: " + mId + ", change: " + revision.getSavedSequence());
+                }
             }
         }
 
@@ -2739,9 +2799,9 @@ public abstract class MailItem implements Comparable<MailItem> {
     }
 
     public static class Color {
-    	private static final int  ORANGE = 9;
-    	private static final long RGB_INDICATOR      = 0x01000000;
-    	private static final long RGB_MASK           = 0x00ffffff;
+        private static final int  ORANGE = 9;
+        private static final long RGB_INDICATOR      = 0x01000000;
+        private static final long RGB_MASK           = 0x00ffffff;
         private static final long[] COLORS = {
             // none,  blue,     cyan,     green,    purple
             0x000000, 0x5b9bf2, 0x43eded, 0x6acb9e, 0xba86e5,
@@ -2764,24 +2824,24 @@ public abstract class MailItem implements Comparable<MailItem> {
         public static Color fromMetadata(long value) {
             return (value & RGB_INDICATOR) != 0 ? new Color(value & RGB_MASK) : new Color((byte)value);
         }
-		public static byte getMappedColor(String s) {
-			if (s == null) return (byte)ORANGE;
-			try {
-				long value = s.startsWith("#") ? Long.parseLong(s.substring(1), 16) : Long.parseLong(s);
-				for (int i = 0; i < COLORS.length; i++) {
-					if (value == COLORS[i]) {
-						return (byte)i;
-					}
-				}
-			}
-			catch (NumberFormatException e) {
-				// ignore
-			}
-			return (byte)ORANGE;
-	    }
-		public long getValue() {
-			return mValue;
-		}
+        public static byte getMappedColor(String s) {
+            if (s == null) return (byte)ORANGE;
+            try {
+                long value = s.startsWith("#") ? Long.parseLong(s.substring(1), 16) : Long.parseLong(s);
+                for (int i = 0; i < COLORS.length; i++) {
+                    if (value == COLORS[i]) {
+                        return (byte)i;
+                    }
+                }
+            }
+            catch (NumberFormatException e) {
+                // ignore
+            }
+            return (byte)ORANGE;
+        }
+        public long getValue() {
+            return mValue;
+        }
         public byte getRed() {
             return (byte)((getRgb() >> 16) & 0xff);
         }
@@ -2836,7 +2896,7 @@ public abstract class MailItem implements Comparable<MailItem> {
 
         @Override public boolean equals(Object that) {
             if (that instanceof Color)
-                return mValue == ((Color)that).mValue;
+                return mValue == ((Color) that).mValue;
             return false;
         }
         @Override public String toString() {
@@ -2895,6 +2955,29 @@ public abstract class MailItem implements Comparable<MailItem> {
         DbMailItem.saveData(this, mData.subject, sender, metadata);
     }
 
+    /**
+     * Locks this MailItem with exclusive write lock.
+     * When a MailItem is locked, only the user who locked the item
+     * can move the item or change the content.
+     *
+     * @param authuser
+     * @throws ServiceException
+     */
+    void lock(Account authuser) throws ServiceException {
+        throw MailServiceException.CANNOT_LOCK(mId);
+    }
+
+    /**
+     * Unlocks this MailItem.  The user who previously locked
+     * the item, or anyone who has admin privilige to this
+     * MailItem can perform unlock operation.
+     *
+     * @param authuser
+     * @throws ServiceException
+     */
+    void unlock(Account authuser) throws ServiceException {
+        throw MailServiceException.CANNOT_UNLOCK(mId);
+    }
 
     private static final String CN_ID           = "id";
     private static final String CN_TYPE         = "type";
@@ -2913,33 +2996,42 @@ public abstract class MailItem implements Comparable<MailItem> {
     private static final String CN_VERSION      = "version";
     private static final String CN_IMAP_ID      = "imap_id";
 
-    protected StringBuffer appendCommonMembers(StringBuffer sb) {
-        sb.append(CN_ID).append(": ").append(mId).append(", ");
-        sb.append(CN_TYPE).append(": ").append(mData.type).append(", ");
-        if (mData.name != null)
-            sb.append(CN_NAME).append(": ").append(mData.name).append(", ");
-        sb.append(CN_UNREAD_COUNT).append(": ").append(mData.unreadCount).append(", ");
-        if (mData.flags != 0)
-            sb.append(CN_FLAGS).append(": ").append(getFlagString()).append(", ");
-        if (mData.tags != 0)
-            sb.append(CN_TAGS).append(": [").append(getTagString()).append("], ");
-        sb.append(CN_FOLDER_ID).append(": ").append(mData.folderId).append(", ");
-        sb.append(CN_SIZE).append(": ").append(mData.size).append(", ");
-        if (mVersion > 1)
-            sb.append(CN_VERSION).append(": ").append(mVersion).append(", ");
-        if (mData.parentId > 0)
-            sb.append(CN_PARENT_ID).append(": ").append(mData.parentId).append(", ");
-        if (mRGBColor != null)
-            sb.append(CN_COLOR).append(": ").append(mRGBColor.getMappedColor()).append(", ");
-        if (mData.subject != null)
-            sb.append(CN_SUBJECT).append(": ").append(mData.subject).append(", ");
-        if (getDigest() != null)
-            sb.append(CN_BLOB_DIGEST).append(": ").append(getDigest()).append(", ");
-        if (mData.imapId > 0)
-            sb.append(CN_IMAP_ID).append(": ").append(mData.imapId).append(", ");
-        sb.append(CN_DATE).append(": ").append(mData.date).append(", ");
-        sb.append(CN_REVISION).append(": ").append(mData.modContent).append(", ");
-        return sb;
+    protected Objects.ToStringHelper appendCommonMembers(Objects.ToStringHelper helper) {
+        helper.add(CN_ID, mId);
+        helper.add(CN_TYPE, mData.type);
+        if (mData.name != null) {
+            helper.add(CN_NAME, mData.name);
+        }
+        helper.add(CN_UNREAD_COUNT, mData.unreadCount);
+        if (mData.flags != 0) {
+            helper.add(CN_FLAGS, getFlagString());
+        }
+        if (mData.tags != 0) {
+            helper.add(CN_TAGS, getTagString());
+        }
+        helper.add(CN_FOLDER_ID, mData.folderId);
+        helper.add(CN_SIZE, mData.size);
+        if (mVersion > 1) {
+            helper.add(CN_VERSION, mVersion);
+        }
+        if (mData.parentId > 0) {
+            helper.add(CN_PARENT_ID, mData.parentId);
+        }
+        if (mRGBColor != null) {
+            helper.add(CN_COLOR, mRGBColor.getMappedColor());
+        }
+        if (mData.subject != null) {
+            helper.add(CN_SUBJECT, mData.subject);
+        }
+        if (getDigest() != null) {
+            helper.add(CN_BLOB_DIGEST, getDigest());
+        }
+        if (mData.imapId > 0) {
+            helper.add(CN_IMAP_ID, mData.imapId);
+        }
+        helper.add(CN_DATE, mData.date);
+        helper.add(CN_REVISION, mData.modContent);
+        return helper;
     }
 
     Metadata serializeUnderlyingData() {
@@ -2949,5 +3041,9 @@ public abstract class MailItem implements Comparable<MailItem> {
         encodeMetadata(metaMeta);
         meta.put(UnderlyingData.FN_METADATA, metaMeta.toString());
         return meta;
+    }
+
+    public boolean inDumpster() {
+        return (mData.flags & Flag.BITMASK_IN_DUMPSTER) != 0;
     }
 }

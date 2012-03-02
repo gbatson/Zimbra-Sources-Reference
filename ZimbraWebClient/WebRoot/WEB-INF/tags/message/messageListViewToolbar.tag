@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,12 +32,12 @@
 					<c:choose>
 						<c:when test="${context.isFolderSearch and context.folder.isFeed}">
 							<td><input type="hidden" name="contextFolderId" value="${context.selectedId}"></td>
-							<app:button name="actionLoadFeed" src="startup/ImgRefresh.gif" tooltip="checkFeed" text="checkFeed"/>
+							<app:button name="actionLoadFeed" src="startup/ImgRefresh.png" tooltip="checkFeed" text="checkFeed"/>
 						</c:when>
 						<c:otherwise>
 							<td nowrap>
 								<zm:currentResultUrl var="refreshUrl" value="/h/search" context="${context}" refresh="true" />
-								<a href="${fn:escapeXml(refreshUrl)}" <c:if test="${keys}"></c:if>><app:img src="startup/ImgRefresh.gif" altkey="refresh"/><span>&nbsp;<fmt:message key="refresh"/></span></a>
+								<a href="${fn:escapeXml(refreshUrl)}" <c:if test="${keys}"></c:if>><app:img src="startup/ImgRefresh.png" altkey="refresh"/><span>&nbsp;<fmt:message key="refresh"/></span></a>
 							</td>
 						</c:otherwise>
 					</c:choose>
@@ -52,21 +52,21 @@
 									<c:url var="composeUrl" value="/h/search?action=compose"/>
 								</c:otherwise>
 							</c:choose>
-							<a href="${fn:escapeXml(composeUrl)}" <c:if test="${keys}"></c:if>><app:img src="startup/ImgNewMessage.gif" altkey="compose"/><span>&nbsp;<fmt:message key="compose"/></span></a>
+							<a href="${fn:escapeXml(composeUrl)}" <c:if test="${keys}"></c:if>><app:img src="startup/ImgNewMessage.png" altkey="compose"/><span>&nbsp;<fmt:message key="compose"/></span></a>
 						</td>
 						<td><div class='vertSep'></div></td>
 					</c:if>
 					<c:choose>
 						<c:when test="${context.isFolderSearch and context.folder.isTrash}">
-							<app:button id="${keys ? 'OPDELETE' : ''}" name="actionHardDelete" text="actionDelete" tooltip="actionTrashTT" src="startup/ImgDelete.gif"/>
+							<app:button id="${keys ? 'OPDELETE' : ''}" name="actionHardDelete" text="actionDelete" tooltip="actionTrashTT" src="startup/ImgDelete.png"/>
 						</c:when>
 						<c:otherwise>
-							<app:button id="${keys ? 'OPDELETE' : ''}" name="actionDelete" text="actionDelete" tooltip="actionTrashTT" src="startup/ImgDelete.gif"/>
+							<app:button id="${keys ? 'OPDELETE' : ''}" name="actionDelete" text="actionDelete" tooltip="actionTrashTT" src="startup/ImgDelete.png"/>
 						</c:otherwise>
 					</c:choose>
 					<td><div class='vertSep'></div></td>
 					<td height="100%" nowrap valign="middle" style="padding: 0 1px 0 1px">
-						<input onclick="zprint();return false;" id="${keys ? 'IOPPRINT' : ''}" name="actionPrint" type="image" src="${iconPath}/startup/ImgPrint.gif" alt='<fmt:message key="actionPrint" />' title='<fmt:message key="actionPrint" />' />
+						<input onclick="zprint();return false;" id="${keys ? 'IOPPRINT' : ''}" name="actionPrint" type="image" src="<app:imgurl value='startup/ImgPrint.png'/>" alt='<fmt:message key="actionPrint" />' title='<fmt:message key="actionPrint" />' />
 					</td>
 					<td height="100%" nowrap valign="middle" style="padding: 0 1px 0 1px">
 						<input onclick="zprint();return false;" id="${keys ? 'SOPPRINT' : ''}" name="actionPrint" type="submit" value='<fmt:message key="actionPrint" />' title='<fmt:message key="actionPrint" />' />
@@ -106,16 +106,16 @@
 
 					<td><div class='vertSep'></div></td>
 					<c:if test="${!context.isFolderSearch or (context.isFolderSearch and !context.folder.isSpam)}">
-						<app:button id="${keys ? 'OPSPAM' :''}" name="actionSpam" tooltip="actionSpamTT" text="actionSpam" src="startup/ImgJunkMail.gif"/>
+						<app:button id="${keys ? 'OPSPAM' :''}" name="actionSpam" tooltip="actionSpamTT" text="actionSpam" src="startup/ImgJunkMail.png"/>
 					</c:if>
 					<c:if test="${context.isFolderSearch and context.folder.isSpam}">
-						<app:button id="${keys ? 'OPSPAM' : ''}" name="actionNotSpam" tooltip="actionNotSpamTT" text="actionNotSpam" src="startup/ImgInbox.gif"/>
+						<app:button id="${keys ? 'OPSPAM' : ''}" name="actionNotSpam" tooltip="actionNotSpamTT" text="actionNotSpam" src="startup/ImgInbox.png"/>
 					</c:if>
 					<c:if test="${context.isFolderSearch}">
 						<c:choose>
 							<c:when test="${context.folder.isTrash}">
 								<td><div class='vertSep'></div><input type="hidden" name="contextFolderId" value="${context.selectedId}"></td>
-								<app:button extra="onclick='return validatefn();'" name="actionEmpty" src="startup/ImgDelete.gif" tooltip="emptyTrash" text="emptyTrash"/>
+								<app:button extra="onclick='return validatefn();'" name="actionEmpty" src="startup/ImgDelete.png" tooltip="emptyTrash" text="emptyTrash"/>
 								<input type="hidden" name="confirmed" value="0"/>
 								<script type="text/javascript">
 									var validatefn = function(){
@@ -137,14 +137,14 @@
 							</c:when>
 							<c:when test="${context.folder.isSpam}">
 								<td><div class='vertSep'></div><input type="hidden" name="contextFolderId" value="${context.selectedId}"></td>
-								<app:button name="actionEmpty" src="mail/ImgEmptyFolder.gif" tooltip="emptyJunk" text="emptyJunk"/>
+								<app:button name="actionEmpty" src="mail/ImgEmptyFolder.png" tooltip="emptyJunk" text="emptyJunk"/>
 							</c:when>
 						</c:choose>
 					</c:if>
 					<c:if test="${mailbox.features.conversations}">
 					<td><div class='vertSep'></div></td>
 					<td nowrap valign="middle">
-						<fmt:message key="viewLabel"/>
+						<fmt:message key="groupMailBy"/>
 						<select name="${keys ? 'viewOp' : ' '}" id="${keys ? 'viewOp' : ' '}" onchange="${keys ? "zclick('SOPSET')" : "setviewOp(this.value)"}">
 							<c:if test="${!empty param.st}">
 								<option value="byConv" ${param.st eq 'conversation' ? 'selected=selected' : ''}><fmt:message key="byConversation"/></option>
@@ -158,6 +158,23 @@
 						<app:button id="${keys ? 'OPSET' : ''}" name="viewAction" text="actionGo" />
 					</td>
 					</c:if>
+                    <td><div class='vertSep'></div></td>
+					<td nowrap valign="middle">
+						<fmt:message key="viewLabel"/>
+						<select name="${keys ? 'readingPaneOp' : ' '}" id="${keys ? 'readingPaneOp' : ' '}" onchange="${keys ? "zclick('SOPVIEW')" : "setreadingPaneOp(this.value)"}">
+							<c:if test="${!empty param.st}">
+                                <option value="right" ${mailbox.prefs.readingPaneLocation eq 'right' ? 'selected=selected' : ''}><fmt:message key="readingPaneOnRight"/></option>
+                                <option value="bottom" ${mailbox.prefs.readingPaneLocation eq 'bottom' ? 'selected=selected' : ''}><fmt:message key="readingPaneAtBottom"/></option>
+                                <option value="off" ${mailbox.prefs.readingPaneLocation eq 'off' ? 'selected=selected' : ''}><fmt:message key="readingPaneOff"/></option>
+							</c:if>
+							<c:if test="${empty param.st}">
+                                <option value="right" ${mailbox.prefs.readingPaneLocation eq 'right' ? 'selected=selected' : ''}><fmt:message key="readingPaneOnRight"/></option>
+                                <option value="bottom" ${mailbox.prefs.readingPaneLocation eq 'bottom' ? 'selected=selected' : ''}><fmt:message key="readingPaneAtBottom"/></option>
+                                <option value="off" ${mailbox.prefs.readingPaneLocation eq 'off' ? 'selected=selected' : ''}><fmt:message key="readingPaneOff"/></option>
+							</c:if>
+                        </select>
+						<app:button id="${keys ? 'OPVIEW' : ''}" name="readingPaneAction" text="actionGo" />
+					</td>
 				</tr>
 			</table>
 		</td>

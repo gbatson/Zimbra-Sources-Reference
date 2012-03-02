@@ -17,8 +17,8 @@ package com.zimbra.cs.mailbox;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,17 +34,17 @@ import javax.mail.internet.MimeMessage;
 
 import org.dom4j.QName;
 
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.util.BigByteBuffer;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zclient.ZClientException;
-import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.SoapFaultException;
-import com.zimbra.common.soap.SoapProtocol;
-import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -70,36 +70,36 @@ import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class PushChanges {
-	
-	private static class LocalInviteMimeLocator implements InviteMimeLocator {
-		ZcsMailbox ombx;
-		
-		public LocalInviteMimeLocator(ZcsMailbox ombx) {
-			this.ombx = ombx;
-		}
-		
-		public Pair<Integer, InputStream> getInviteMime(int calendarItemId, int inviteId) throws ServiceException {
-			CalendarItem cal = ombx.getCalendarItemById(PushChanges.sContext, calendarItemId);
-			MimeMessage mm = cal.getSubpartMessage(inviteId);
-			BigByteBuffer bbb = null;
-			try {
-				if (mm != null) {
-	                bbb = new BigByteBuffer(mm.getSize());
-				    mm.writeTo(bbb);
-				} else {
-	                bbb = new BigByteBuffer();
-				}
-				bbb.doneWriting();
-				return new Pair<Integer, InputStream>(bbb.length(), bbb.getInputStream());
-			} catch (Exception x) {
-			    if (bbb != null)
-			        try {
-			            bbb.destroy();
-			        } catch (IOException e) {}
-				throw ServiceException.FAILURE("calitem=" + calendarItemId + ";inv=" + inviteId, x);
-			}
-		}
-	}
+    
+    private static class LocalInviteMimeLocator implements InviteMimeLocator {
+        ZcsMailbox ombx;
+        
+        public LocalInviteMimeLocator(ZcsMailbox ombx) {
+            this.ombx = ombx;
+        }
+        
+        public Pair<Integer, InputStream> getInviteMime(int calendarItemId, int inviteId) throws ServiceException {
+            CalendarItem cal = ombx.getCalendarItemById(PushChanges.sContext, calendarItemId);
+            MimeMessage mm = cal.getSubpartMessage(inviteId);
+            BigByteBuffer bbb = null;
+            try {
+                if (mm != null) {
+                    bbb = new BigByteBuffer(mm.getSize());
+                    mm.writeTo(bbb);
+                } else {
+                    bbb = new BigByteBuffer();
+                }
+                bbb.doneWriting();
+                return new Pair<Integer, InputStream>(bbb.length(), bbb.getInputStream());
+            } catch (Exception x) {
+                if (bbb != null)
+                    try {
+                        bbb.destroy();
+                    } catch (IOException e) {}
+                throw ServiceException.FAILURE("calitem=" + calendarItemId + ";inv=" + inviteId, x);
+            }
+        }
+    }
 
     /** The bitmask of all message changes that we propagate to the server. */
     static final int MESSAGE_CHANGES = Change.MODIFIED_UNREAD | Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS |
@@ -172,8 +172,6 @@ public class PushChanges {
     private ZMailbox getZMailbox() throws ServiceException {
         if (mZMailbox == null) {
             ZMailbox.Options options = new ZMailbox.Options(ombx.getAuthToken(), ombx.getSoapUri());
-        	options.setRequestProtocol(SoapProtocol.Soap12);
-        	options.setResponseProtocol(SoapProtocol.Soap12);
             options.setNoSession(true);
             options.setUserAgent(OfflineLC.zdesktop_name.value(), OfflineLC.getFullVersion());
             options.setTimeout(OfflineLC.zdesktop_request_timeout.intValue());
@@ -205,9 +203,9 @@ public class PushChanges {
             tombstones = ombx.getTombstones(0);
             changes = ombx.getLocalChanges(sContext);
             if (!changes.isEmpty()) {
-            	simpleReadChanges = ombx.getSimpleUnreadChanges(sContext, false);
-            	simpleUnreadChanges = ombx.getSimpleUnreadChanges(sContext, true);
-            	simpleFolderMoveChanges = ombx.getFolderMoveChanges(sContext);
+                simpleReadChanges = ombx.getSimpleUnreadChanges(sContext, false);
+                simpleUnreadChanges = ombx.getSimpleUnreadChanges(sContext, true);
+                simpleFolderMoveChanges = ombx.getFolderMoveChanges(sContext);
             }
         }
 
@@ -255,20 +253,20 @@ public class PushChanges {
         Set<Integer> batched = new HashSet<Integer>();
         if (simpleReadChanges != null && simpleReadChanges.size() > 0) {
             OfflineSyncManager.getInstance().continueOK();
-        	pushSimpleChanges(simpleReadChanges, Change.MODIFIED_UNREAD, false, 0, batched);
+            pushSimpleChanges(simpleReadChanges, Change.MODIFIED_UNREAD, false, 0, batched);
         }
         
         if (simpleUnreadChanges != null && simpleUnreadChanges.size() > 0) {
             OfflineSyncManager.getInstance().continueOK();
-        	pushSimpleChanges(simpleUnreadChanges, Change.MODIFIED_UNREAD, true, 0, batched);
+            pushSimpleChanges(simpleUnreadChanges, Change.MODIFIED_UNREAD, true, 0, batched);
         }
         
         if (simpleFolderMoveChanges != null && simpleFolderMoveChanges.size() > 0) {
-        	Set<Integer> folders = simpleFolderMoveChanges.keySet();
-	        for (int folderId : folders) {
-	            OfflineSyncManager.getInstance().continueOK();
-	        	pushSimpleChanges(simpleFolderMoveChanges.get(folderId), Change.MODIFIED_FOLDER, false, folderId, batched);
-	        }
+            Set<Integer> folders = simpleFolderMoveChanges.keySet();
+            for (int folderId : folders) {
+                OfflineSyncManager.getInstance().continueOK();
+                pushSimpleChanges(simpleFolderMoveChanges.get(folderId), Change.MODIFIED_FOLDER, false, folderId, batched);
+            }
         }
 
         // modifies must come after folder and tag creates so that move/tag ops can succeed
@@ -278,31 +276,35 @@ public class PushChanges {
                 if (ids == null)
                     continue;
                 for (int id : ids) {
-	                if (OfflineSyncManager.getInstance().isInSkipList(id)) {
-	                	OfflineLog.offline.warn("Skipped push item id=%d per zdesktop_sync_skip_idlist", id);
-	                	continue;
-	                }
-                	
-                	if (batched.contains(id)) //already done
-                		continue;
-                	
+                    if (OfflineSyncManager.getInstance().isInSkipList(id)) {
+                        OfflineLog.offline.warn("Skipped push item id=%d per zdesktop_sync_skip_idlist", id);
+                        continue;
+                    } else if (ombx.isTransientItem(id)) {
+                        OfflineLog.offline.debug("skipped push transient item id=%d", id);
+                        continue;
+                    }
+                    
+                    if (batched.contains(id)) //already done
+                        continue;
+                    
                     OfflineSyncManager.getInstance().continueOK();
-                	
-                	try {
-	                    switch (type) {
-	                        case MailItem.TYPE_TAG:         syncTag(id);          break;
-	                        case MailItem.TYPE_CONTACT:     syncContact(id);      break;
-	                        case MailItem.TYPE_MESSAGE:     syncMessage(id);      break;
-	                        case MailItem.TYPE_APPOINTMENT: syncCalendarItem(id, true); break;
-	                        case MailItem.TYPE_TASK:        syncCalendarItem(id, false); break;
-	                        case MailItem.TYPE_WIKI:
-	                        case MailItem.TYPE_DOCUMENT:    syncDocument(id);     break;
-	                    }
-                	} catch (Exception x) {
-                		SyncExceptionHandler.checkRecoverableException("PushChanges.sync", x);
-                		SyncExceptionHandler.pushItemFailed(ombx, id, x);
-                		ombx.setChangeMask(sContext, id, type, 0); //clear change mask since we failed to push up an item due to unrecoverable reasons
-                	}
+                    
+                    try {
+                        switch (type) {
+                            case MailItem.TYPE_TAG:         syncTag(id);          break;
+                            case MailItem.TYPE_CONTACT:     syncContact(id);      break;
+                            case MailItem.TYPE_MESSAGE:     syncMessage(id);      break;
+                            case MailItem.TYPE_APPOINTMENT: syncCalendarItem(id, true); break;
+                            case MailItem.TYPE_TASK:        syncCalendarItem(id, false); break;
+                            case MailItem.TYPE_WIKI:
+                            case MailItem.TYPE_DOCUMENT:    syncDocument(id);     break;
+                        }
+                    } catch (Exception x) {
+                        if (!SyncExceptionHandler.isRecoverableException(ombx, id, "PushChanges.sync", x)) {
+                            SyncExceptionHandler.pushItemFailed(ombx, id, x);
+                            ombx.setChangeMask(sContext, id, type, 0); //clear change mask since we failed to push up an item due to unrecoverable reasons
+                        }
+                    }
                 }
             }
         }
@@ -310,7 +312,7 @@ public class PushChanges {
         // folder deletes need to come after moves are processed, else we'll be deleting items we shouldn't
         if (!tombstones.isEmpty()) {
             OfflineSyncManager.getInstance().continueOK();
-        	
+            
             String ids = concatenateIds(tombstones.getAll());
             Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
             request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_HARD_DELETE).addAttribute(MailConstants.A_ID, ids);
@@ -341,17 +343,17 @@ public class PushChanges {
      *  drafts from the list of pending creates that need to be pushed to the
      *  server. */
     private int sendPendingMessages(boolean isOnRequest) throws ServiceException {
-    	int totalSent = 0;
-    	OfflineSyncManager syncMan = OfflineSyncManager.getInstance();
-        for (Iterator<Integer> iterator = OutboxTracker.iterator(ombx, isOnRequest ? 0L : ombx.getSyncFrequency());	iterator.hasNext();) {
-        	int id = iterator.next();
+        int totalSent = 0;
+        OfflineSyncManager syncMan = OfflineSyncManager.getInstance();
+        for (Iterator<Integer> iterator = OutboxTracker.iterator(ombx, isOnRequest ? 0L : ombx.getSyncFrequency());    iterator.hasNext();) {
+            int id = iterator.next();
             try {
                 Message msg = ombx.getMessageById(sContext, id);
                 if (msg.getFolderId() != DesktopMailbox.ID_FOLDER_OUTBOX) {
-                	OutboxTracker.remove(ombx, id);
-                	continue;
+                    OutboxTracker.remove(ombx, id);
+                    continue;
                 }
-                
+
                 OfflineLog.offline.debug("push: sending mail (" + id + "): " + msg.getSubject());
                 syncMan.syncStart(ombx.getAccount());
 
@@ -362,7 +364,7 @@ public class PushChanges {
                 sSendUIDs.put(msgKey, new Pair<Integer, String>(msg.getSavedSequence(), sendUID));
 
                 try {
-                	String uploadId = uploadMessage(msg);
+                    String uploadId = uploadMessage(msg);
                     Element request = new Element.XMLElement(MailConstants.SEND_MSG_REQUEST).addAttribute(MailConstants.A_SEND_UID, sendUID);
                     Element m = request.addElement(MailConstants.E_MSG).addAttribute(MailConstants.A_ATTACHMENT_ID, uploadId);
                     if (!msg.getDraftOrigId().equals(""))
@@ -374,59 +376,59 @@ public class PushChanges {
                     //run one more time to make sure it's still in outbox after we finished uploading the message
                     msg = ombx.getMessageById(sContext, id);
                     if (msg.getFolderId() != DesktopMailbox.ID_FOLDER_OUTBOX) {
-                    	OutboxTracker.remove(ombx, id);
-                    	continue;
+                        OutboxTracker.remove(ombx, id);
+                        continue;
                     }
-                    
-                	ombx.sendRequest(request);
-                	OfflineLog.offline.debug("push: sent mail (" + id + "): " + msg.getSubject());
-                	++totalSent;
+
+                    ombx.sendRequest(request);
+                    OfflineLog.offline.debug("push: sent mail (" + id + "): " + msg.getSubject());
+                    ++totalSent;
 
                     // remove the draft from the outbox
                     ombx.delete(sContext, id, MailItem.TYPE_MESSAGE);
                     OfflineLog.offline.debug("push: deleted pending draft (" + id + ')');
                 } catch (ServiceException x) {
-                	if ((x instanceof ZClientException || x instanceof SoapFaultException) && !x.isReceiversFault() &&
-                			!x.getCode().equals(ZClientException.IO_ERROR) && !x.getCode().equals(ZClientException.UPLOAD_FAILED)) { //supposedly this is client fault
-                		OfflineLog.offline.debug("push: failed to send mail (" + id + "): " + msg.getSubject(), x);
-                		
-                		ombx.move(sContext, id, MailItem.TYPE_MESSAGE, Mailbox.ID_FOLDER_DRAFTS); //move message back to drafts folder;
-                		
-                		//we need to tell user of the failure
-                		try {
-                		    MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession());
-                			mm.setSentDate(new Date());
-                			mm.setFrom(new InternetAddress("donotreply@host.local", "Desktop Notifier"));
-	                		mm.setRecipient(RecipientType.TO, new InternetAddress(ombx.getAccount().getName()));
-	                		
-	                		String sentDate = new SimpleDateFormat("MMMMM d, yyyy").format(msg.getDate());
-	                		String sentTime = new SimpleDateFormat("h:mm a").format(msg.getDate());
-	                		
-	                		String text = "Your message \"" + msg.getSubject() + "\" sent on " + sentDate + " at " + sentTime + " to \"" + msg.getRecipients() + "\" can't be delivered.  None of the recipients will receive the message.  It has been returned to Drafts folder for your review.\n";
-	                		String subject = null;
-	                		if (x.getCode().equals(ZClientException.UPLOAD_SIZE_LIMIT_EXCEEDED))
-	                			subject = "message size exceeds server limit";
-	                		else if (x.getCode().equals(MailServiceException.SEND_ABORTED_ADDRESS_FAILURE))
-	                			subject = x.getMessage();
-	                		else {
-	                			text += "\n----------------------------------------------------------------------------\n\n" +
-	                				    SyncExceptionHandler.sendMailFailed(ombx, id, x);
-	                			subject = x.getCode();
-	                		}
-	                		mm.setSubject("Delivery Failure Notification: " + subject);
-	                		mm.setText(text);
+                    if ((x instanceof ZClientException || x instanceof SoapFaultException) && !x.isReceiversFault() &&
+                            !x.getCode().equals(ZClientException.IO_ERROR) && !x.getCode().equals(ZClientException.UPLOAD_FAILED)) { //supposedly this is client fault
+                        OfflineLog.offline.debug("push: failed to send mail (" + id + "): " + msg.getSubject(), x);
 
-	                		mm.saveChanges(); //must call this to update the headers
-	                		ParsedMessage pm = new ParsedMessage(mm, true);
-	                		ombx.addMessage(sContext, pm, DesktopMailbox.ID_FOLDER_INBOX, true, Flag.BITMASK_UNREAD, null);
-                		} catch (Exception e) {
-                			OfflineLog.offline.warn("can't save warning of failed push (" + id + ")" + msg.getSubject(), e);
-                		}
-                	} else {
-                		OutboxTracker.recordFailure(ombx, id);
-                		OfflineLog.offline.info("push: %s when sending message: %s", x.getCode(), msg.getSubject(), x);
-                		continue; //will retry later
-                	}
+                        ombx.move(sContext, id, MailItem.TYPE_MESSAGE, Mailbox.ID_FOLDER_DRAFTS); //move message back to drafts folder;
+
+                        //we need to tell user of the failure
+                        try {
+                            MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession());
+                            mm.setSentDate(new Date());
+                            mm.setFrom(new InternetAddress("donotreply@host.local", "Desktop Notifier"));
+                            mm.setRecipient(RecipientType.TO, new JavaMailInternetAddress(ombx.getAccount().getName()));
+
+                            String sentDate = new SimpleDateFormat("MMMMM d, yyyy").format(msg.getDate());
+                            String sentTime = new SimpleDateFormat("h:mm a").format(msg.getDate());
+
+                            String text = "Your message \"" + msg.getSubject() + "\" sent on " + sentDate + " at " + sentTime + " to \"" + msg.getRecipients() + "\" can't be delivered.  None of the recipients will receive the message.  It has been returned to Drafts folder for your review.\n";
+                            String subject = null;
+                            if (x.getCode().equals(ZClientException.UPLOAD_SIZE_LIMIT_EXCEEDED))
+                                subject = "message size exceeds server limit";
+                            else if (x.getCode().equals(MailServiceException.SEND_ABORTED_ADDRESS_FAILURE))
+                                subject = x.getMessage();
+                            else {
+                                text += "\n----------------------------------------------------------------------------\n\n" +
+                                SyncExceptionHandler.sendMailFailed(ombx, id, x);
+                                subject = x.getCode();
+                            }
+                            mm.setSubject("Delivery Failure Notification: " + subject);
+                            mm.setText(text);
+
+                            mm.saveChanges(); //must call this to update the headers
+                            ParsedMessage pm = new ParsedMessage(mm, true);
+                            ombx.addMessage(sContext, pm, DesktopMailbox.ID_FOLDER_INBOX, true, Flag.BITMASK_UNREAD, null);
+                        } catch (Exception e) {
+                            OfflineLog.offline.warn("can't save warning of failed push (" + id + ")" + msg.getSubject(), e);
+                        }
+                    } else {
+                        OutboxTracker.recordFailure(ombx, id);
+                        OfflineLog.offline.info("push: %s when sending message: %s", x.getCode(), msg.getSubject(), x);
+                        continue; //will retry later
+                    }
                 }
 
                 OutboxTracker.remove(ombx, id);
@@ -442,7 +444,7 @@ public class PushChanges {
     }
     
     public static int sendPendingMessages(ZcsMailbox ombx, boolean isOnRequest) throws ServiceException {
-    	return new PushChanges(ombx).sendPendingMessages(isOnRequest);
+        return new PushChanges(ombx).sendPendingMessages(isOnRequest);
     }
     
     /**
@@ -455,10 +457,10 @@ public class PushChanges {
      *  of 5 seconds, plus 1 second per 25K of message size. */
     private String uploadMessage(Message msg) throws ServiceException {
         int timeout = (int) (OfflineLC.http_connection_timeout.intValue() + msg.getSize() / 25000 * Constants.MILLIS_PER_SECOND);
-    	if (ombx.getRemoteServerVersion().isAtLeast(minServerVersionForUploadStreaming))
-    		return getZMailbox().uploadContentAsStream("msg-" + msg.getId(), msg.getContentStream(), MimeConstants.CT_MESSAGE_RFC822, msg.getSize(), timeout);
-    	else
-    		return getZMailbox().uploadAttachment("message", msg.getContent(), MimeConstants.CT_MESSAGE_RFC822, timeout);
+        if (ombx.getRemoteServerVersion().isAtLeast(minServerVersionForUploadStreaming))
+            return getZMailbox().uploadContentAsStream("msg-" + msg.getId(), msg.getContentStream(), MimeConstants.CT_MESSAGE_RFC822, msg.getSize(), timeout);
+        else
+            return getZMailbox().uploadAttachment("message", msg.getContent(), MimeConstants.CT_MESSAGE_RFC822, timeout);
     }
 
     /** Turns a List of Integers into a String of the form <tt>1,2,3,4</tt>. */
@@ -608,7 +610,7 @@ public class PushChanges {
             if (create) {
                 // make sure the old item matches the new item...
                 if (!ombx.renumberItem(sContext, id, MailItem.TYPE_SEARCHFOLDER, createData.getFirst()))
-                	return true;
+                    return true;
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
@@ -676,7 +678,7 @@ public class PushChanges {
             if (create) {
                 // make sure the old item matches the new item...
                 if (!ombx.renumberItem(sContext, id, MailItem.TYPE_FOLDER, createData.getFirst()))
-                	return true;
+                    return true;
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
@@ -743,7 +745,7 @@ public class PushChanges {
                 }
                 // make sure the old item matches the new item...
                 if (!ombx.renumberItem(sContext, id, MailItem.TYPE_TAG, newId))
-                	return true;
+                    return true;
                 id = newId;
             }
         } catch (SoapFaultException sfe) {
@@ -766,59 +768,59 @@ public class PushChanges {
     }
 
     private void pushSimpleChanges(List<Pair<Integer, Integer>> changes, int changeMask, boolean isUnread, int folderId, Set<Integer> doneSet) throws ServiceException {
-    	assert (changes != null && changes.size() > 0);
+        assert (changes != null && changes.size() > 0);
         assert (changeMask == Change.MODIFIED_UNREAD || changeMask == Change.MODIFIED_FOLDER); //only these two are considered simple
         
         Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
         Element action = request.addElement(MailConstants.E_ACTION);
         
         switch (changeMask) {
-        	case Change.MODIFIED_FOLDER:
-        		action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_MOVE);
-        		action.addAttribute(MailConstants.A_FOLDER, folderId);
-        		break;
-        	case Change.MODIFIED_UNREAD:
-        		action.addAttribute(MailConstants.A_OPERATION, (isUnread ? "!" : "") + ItemAction.OP_READ);
-        		break;
-        	default:
-        		assert (false);
-        		break;
+            case Change.MODIFIED_FOLDER:
+                action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_MOVE);
+                action.addAttribute(MailConstants.A_FOLDER, folderId);
+                break;
+            case Change.MODIFIED_UNREAD:
+                action.addAttribute(MailConstants.A_OPERATION, (isUnread ? "!" : "") + ItemAction.OP_READ);
+                break;
+            default:
+                assert (false);
+                break;
         }
 
         StringBuilder sb = new StringBuilder();
         int[] ids = new int[changes.size()];
         for (int i = 0; i < changes.size(); ++i) {
-        	int id = changes.get(i).getFirst();
-        	sb.append((i > 0 ? "," : "") + id);
-        	ids[i] = id;
+            int id = changes.get(i).getFirst();
+            sb.append((i > 0 ? "," : "") + id);
+            ids[i] = id;
         }
         action.addAttribute(MailConstants.A_ID, sb.toString());
 
         try {
-        	/* Element response = */ ombx.sendRequest(request);
-        	OfflineLog.offline.info("push: batch updated " + sb.toString());
+            /* Element response = */ ombx.sendRequest(request);
+            OfflineLog.offline.info("push: batch updated " + sb.toString());
         } catch (SoapFaultException sfe) {
             OfflineLog.offline.warn("push: failed batch update of " + sb.toString() + "; fall back to itemized push", sfe);
             return;
         }
         
         synchronized (ombx) {
-        	Map<Integer, Integer> refresh = ombx.getItemModSequences(sContext, ids);
+            Map<Integer, Integer> refresh = ombx.getItemModSequences(sContext, ids);
             for (Pair<Integer, Integer> pair : changes) {
-            	int id = pair.getFirst();
-            	Integer newModSequence = refresh.get(id);
-            	if (newModSequence != null) {
-            		if (newModSequence.intValue() == pair.getSecond()) {
-            			//because we know the item hasn't changed since we last checked,
-            			//and we know it was a simple change, we can simply clear the mask.
-    		            ombx.setChangeMask(sContext, id, MailItem.TYPE_UNKNOWN, 0);
-    		            doneSet.add(id);
-            		} else {
-            			OfflineLog.offline.debug("push: item " + id + " further modified from local during push");
-            		}
-            	} else {
-            		OfflineLog.offline.debug("push: item " + id + " deleted from local during push");
-            	}
+                int id = pair.getFirst();
+                Integer newModSequence = refresh.get(id);
+                if (newModSequence != null) {
+                    if (newModSequence.intValue() == pair.getSecond()) {
+                        //because we know the item hasn't changed since we last checked,
+                        //and we know it was a simple change, we can simply clear the mask.
+                        ombx.setChangeMask(sContext, id, MailItem.TYPE_UNKNOWN, 0);
+                        doneSet.add(id);
+                    } else {
+                        OfflineLog.offline.debug("push: item " + id + " further modified from local during push");
+                    }
+                } else {
+                    OfflineLog.offline.debug("push: item " + id + " deleted from local during push");
+                }
             }
         }
     }
@@ -826,7 +828,7 @@ public class PushChanges {
     private boolean syncContact(int id) throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.MODIFY_CONTACT_REQUEST).addAttribute(MailConstants.A_REPLACE, "1");
         Element cnElem = request.addElement(MailConstants.E_CONTACT).addAttribute(MailConstants.A_ID, id);
-    	
+        
         int flags, folderId;
         long date, tags;
         byte color;
@@ -853,35 +855,35 @@ public class PushChanges {
                     cnElem.addKeyValuePair(name, value);
                 }
             } else {
-            	request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
-            	cnElem = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
+                request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+                cnElem = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
             }
             
             if (create || (mask & Change.MODIFIED_FLAGS) != 0)
-            	cnElem.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
+                cnElem.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
             if (create || (mask & Change.MODIFIED_TAGS) != 0)
-            	cnElem.addAttribute(MailConstants.A_TAGS, cn.getTagString());
+                cnElem.addAttribute(MailConstants.A_TAGS, cn.getTagString());
             if (create || (mask & Change.MODIFIED_FOLDER) != 0)
-            	cnElem.addAttribute(MailConstants.A_FOLDER, folderId);
+                cnElem.addAttribute(MailConstants.A_FOLDER, folderId);
             if (create || (mask & Change.MODIFIED_COLOR) != 0)
-            	cnElem.addAttribute(MailConstants.A_COLOR, color);
+                cnElem.addAttribute(MailConstants.A_COLOR, color);
         }
 
         try {
-        	if (cn.hasAttachment()) {
-        		ParsedContact pc = new ParsedContact(cn);
-        		for (Attachment attach : pc.getAttachments()) {
-        			String aid = getZMailbox().uploadAttachment(attach.getName(), attach.getContent(), attach.getContentType(),
-        					(int) ((5 + attach.getSize() / 25000) * Constants.MILLIS_PER_SECOND));
-        			cnElem.addKeyValuePair(attach.getName(), null).addAttribute(MailConstants.A_ATTACHMENT_ID, aid);
-        		}
-        	}
-        	
+            if (cn.hasAttachment()) {
+                ParsedContact pc = new ParsedContact(cn);
+                for (Attachment attach : pc.getAttachments()) {
+                    String aid = getZMailbox().uploadAttachment(attach.getName(), attach.getContent(), attach.getContentType(),
+                            (int) ((5 + attach.getSize() / 25000) * Constants.MILLIS_PER_SECOND));
+                    cnElem.addKeyValuePair(attach.getName(), null).addAttribute(MailConstants.A_ATTACHMENT_ID, aid);
+                }
+            }
+            
             Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_CONTACT, null, folderId);
             if (create) {
                 // make sure the old item matches the new item...
                 if (!ombx.renumberItem(sContext, id, MailItem.TYPE_CONTACT, createData.getFirst()))
-                	return true;
+                    return true;
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
@@ -909,13 +911,13 @@ public class PushChanges {
     }
 
     private boolean syncWikiItem(WikiItem item, boolean create) throws ServiceException {
-    	int id = item.getId();
+        int id = item.getId();
         Element request = new Element.XMLElement(MailConstants.SAVE_WIKI_REQUEST);
         Element w = request.addElement(MailConstants.E_WIKIWORD);
         w.addAttribute(MailConstants.A_NAME, item.getName());
         if (!create) {
-        	w.addAttribute(MailConstants.A_ID, id);
-        	w.addAttribute(MailConstants.A_VERSION, ombx.getLastSyncedVersionForMailItem(id));
+            w.addAttribute(MailConstants.A_ID, id);
+            w.addAttribute(MailConstants.A_VERSION, ombx.getLastSyncedVersionForMailItem(id));
         }
         w.addAttribute(MailConstants.A_FOLDER, item.getFolderId());
         try {
@@ -925,78 +927,78 @@ public class PushChanges {
         boolean retry = false;
         while (response == null) {
             try {
-            	response = ombx.sendRequest(request);
+                response = ombx.sendRequest(request);
             } catch (SoapFaultException e) {
-            	if (e.getCode().equals(MailServiceException.ALREADY_EXISTS) ||
-            			e.getCode().equals(MailServiceException.MODIFY_CONFLICT)) {
-            		String iid = e.getArgumentValue("id");
-            		String v = e.getArgumentValue("ver");
-            		w.addAttribute(MailConstants.A_ID, iid);
-            		w.addAttribute(MailConstants.A_VERSION, v);
-            		if (!retry) {
-            			response = null;
-            	        ArrayList<SyncExceptionHandler.Revision> revisions = new ArrayList<SyncExceptionHandler.Revision>();
-            	        int firstV = ombx.getLastSyncedVersionForMailItem(id);
-            	        int lastV = Integer.parseInt(v);
-            	        for (int i = firstV+1; i <= lastV; i++) {
-                    		SyncExceptionHandler.Revision rev = new SyncExceptionHandler.Revision();
-                    		rev.editor = "";
-                    		rev.version = i;
-                    		rev.modifiedDate = 0;
-            	        	revisions.add(rev);
-            	        }
-                    	SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
-            		}
-            		retry = true;
-            	}
+                if (e.getCode().equals(MailServiceException.ALREADY_EXISTS) ||
+                        e.getCode().equals(MailServiceException.MODIFY_CONFLICT)) {
+                    String iid = e.getArgumentValue("id");
+                    String v = e.getArgumentValue("ver");
+                    w.addAttribute(MailConstants.A_ID, iid);
+                    w.addAttribute(MailConstants.A_VERSION, v);
+                    if (!retry) {
+                        response = null;
+                        ArrayList<SyncExceptionHandler.Revision> revisions = new ArrayList<SyncExceptionHandler.Revision>();
+                        int firstV = ombx.getLastSyncedVersionForMailItem(id);
+                        int lastV = Integer.parseInt(v);
+                        for (int i = firstV+1; i <= lastV; i++) {
+                            SyncExceptionHandler.Revision rev = new SyncExceptionHandler.Revision();
+                            rev.editor = "";
+                            rev.version = i;
+                            rev.modifiedDate = 0;
+                            revisions.add(rev);
+                        }
+                        SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
+                    }
+                    retry = true;
+                }
             }
         }
-		w = response.getElement(MailConstants.E_WIKIWORD);
-		int newid = (int)w.getAttributeLong(MailConstants.A_ID);
-		int ver = (int)w.getAttributeLong(MailConstants.A_VERSION);
-		if (create) {
+        w = response.getElement(MailConstants.E_WIKIWORD);
+        int newid = (int)w.getAttributeLong(MailConstants.A_ID);
+        int ver = (int)w.getAttributeLong(MailConstants.A_VERSION);
+        if (create) {
             if (!ombx.renumberItem(sContext, id, MailItem.TYPE_WIKI, newid))
-            	return true;
-		}
-		ombx.setSyncedVersionForMailItem("" + id, ver);
-		return true;
+                return true;
+        }
+        ombx.setSyncedVersionForMailItem("" + id, ver);
+        return true;
     }
     
     private boolean syncDocument(int id) throws ServiceException {
         if (!OfflineLC.zdesktop_sync_documents.booleanValue() ||
-        		!ombx.getRemoteServerVersion().isAtLeast(InitialSync.sMinDocumentSyncVersion)) {
-        	return true;
+                !ombx.getRemoteServerVersion().isAtLeast(InitialSync.sMinDocumentSyncVersion)) {
+            return true;
         }
-    	MailItem item = null;
-    	boolean create = false;
-    	synchronized (ombx) {
+        MailItem item = null;
+        boolean create = false;
+        synchronized (ombx) {
             if (id > ZcsMailbox.FIRST_OFFLINE_ITEM_ID) {
-            	create = true;
+                create = true;
             }
-        	item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
-    	}
+            item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
+        }
 
-    	String digest = item.getDigest();
-    	String name = item.getName();
-    	byte type = item.getType();
-    	
-    	if (!ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
-    			type == MailItem.TYPE_WIKI) {
-    		syncWikiItem((WikiItem)item, create);
-    	} else {
-    		if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) && 
-    				!create)
-    			checkDocumentSyncConflict(item);
-    		Pair<Integer,Integer> resp = ombx.sendMailItem(item);
+        String digest = item.getDigest();
+        String name = item.getName();
+        byte type = item.getType();
+        
+        if (!ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
+                type == MailItem.TYPE_WIKI) {
+            syncWikiItem((WikiItem)item, create);
+        } else {
+            if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) && 
+                    !create)
+                checkDocumentSyncConflict(item);
+            Pair<Integer,Integer> resp = ombx.sendMailItem(item);
             if (create) {
                 if (!ombx.renumberItem(sContext, id, type, resp.getFirst()))
-                	return true;
-    		}
-    		ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
-    	}
-    	
+                    return true;
+            }
+            ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
+        }
+        
         synchronized (ombx) {
-        	item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
+            item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
             int mask = 0;
             if (!StringUtil.equal(digest, item.getDigest()))  mask |= Change.MODIFIED_CONTENT;
             if (!StringUtil.equal(name, item.getName()))      mask |= Change.MODIFIED_NAME;
@@ -1006,8 +1008,8 @@ public class PushChanges {
     }
     
     private void checkDocumentSyncConflict(MailItem item) throws ServiceException {
-    	int id = item.getId();
-    	int lastSyncVersion = ombx.getLastSyncedVersionForMailItem(id);
+        int id = item.getId();
+        int lastSyncVersion = ombx.getLastSyncedVersionForMailItem(id);
         Element request = new Element.XMLElement(MailConstants.LIST_DOCUMENT_REVISIONS_REQUEST);
         Element wiki = request.addElement(MailConstants.E_DOC);
         wiki.addAttribute(MailConstants.A_ID, id);
@@ -1017,19 +1019,19 @@ public class PushChanges {
         boolean conflict = false;
         ArrayList<SyncExceptionHandler.Revision> revisions = new ArrayList<SyncExceptionHandler.Revision>();
         while (iter.hasNext()) {
-        	Element e = iter.next();
-        	int ver = (int)e.getAttributeLong(MailConstants.A_VERSION);
-        	if (lastSyncVersion > 0 && ver > lastSyncVersion) {
-        		conflict = true;
-        		SyncExceptionHandler.Revision rev = new SyncExceptionHandler.Revision();
-        		rev.editor = e.getAttribute(MailConstants.A_CREATOR);
-        		rev.version = (int)e.getAttributeLong(MailConstants.A_VERSION);
-        		rev.modifiedDate = e.getAttributeLong(MailConstants.A_MODIFIED_DATE);
-        		revisions.add(rev);
-        	}
+            Element e = iter.next();
+            int ver = (int)e.getAttributeLong(MailConstants.A_VERSION);
+            if (lastSyncVersion > 0 && ver > lastSyncVersion) {
+                conflict = true;
+                SyncExceptionHandler.Revision rev = new SyncExceptionHandler.Revision();
+                rev.editor = e.getAttribute(MailConstants.A_CREATOR);
+                rev.version = (int)e.getAttributeLong(MailConstants.A_VERSION);
+                rev.modifiedDate = e.getAttributeLong(MailConstants.A_MODIFIED_DATE);
+                revisions.add(rev);
+            }
         }
         if (conflict) {
-        	SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
+            SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
         }
     }
     
@@ -1045,17 +1047,17 @@ public class PushChanges {
         boolean upload = false;
         Message msg = null;
         synchronized (ombx) {
-        	try {
-        		msg = ombx.getMessageById(sContext, id);
-        	} catch (NoSuchItemException x) {
-        		OfflineLog.offline.debug("push: message %d deleted before push", id);
-        		return false;
-        	}
+            try {
+                msg = ombx.getMessageById(sContext, id);
+            } catch (NoSuchItemException x) {
+                OfflineLog.offline.debug("push: message %d deleted before push", id);
+                return false;
+            }
             digest = msg.getDigest();  flags = msg.getFlagBitmask();  tags = msg.getTagBitmask();
             color = msg.getColor();    folderId = msg.getFolderId();
             
-        	if (folderId == DesktopMailbox.ID_FOLDER_OUTBOX)
-        		return false; //don't mind anything left over in Outbox, most likely sending message failed due to server side issues
+            if (folderId == DesktopMailbox.ID_FOLDER_OUTBOX)
+                return false; //don't mind anything left over in Outbox, most likely sending message failed due to server side issues
 
             int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_MESSAGE);
             if ((mask & Change.MODIFIED_CONFLICT) != 0) {
@@ -1068,7 +1070,7 @@ public class PushChanges {
                     action.addAttribute(MailConstants.A_DATE, msg.getDate());
                 upload = true;
                 create = true;
-            } else if ((mask & Change.MODIFIED_CONTENT) != 0) {            	
+            } else if ((mask & Change.MODIFIED_CONTENT) != 0) {                
                 // for draft message content changes, need to go through the SaveDraft door instead of the MsgAction door
                 if (!msg.isDraft())
                     throw MailServiceException.IMMUTABLE_OBJECT(id);
@@ -1084,40 +1086,51 @@ public class PushChanges {
                 action.addAttribute(MailConstants.A_FOLDER, folderId);
             if (create || (mask & Change.MODIFIED_COLOR) != 0)
                 action.addAttribute(MailConstants.A_COLOR, color);
+            if (msg.isDraft() && (create || (mask & Change.MODIFIED_METADATA) != 0) && msg.getDraftAutoSendTime() != 0)
+                action.addAttribute(MailConstants.A_AUTO_SEND_TIME, msg.getDraftAutoSendTime());
         }
 
         try {
             if (upload) {
                 // upload draft message body to the remote FileUploadServlet, then use the returned attachment id to save draft
-            	String attachId = uploadMessage(msg);
+                String attachId = uploadMessage(msg);
                 action.addAttribute(MailConstants.A_ATTACHMENT_ID, attachId);
             }
-        	
+            
             Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_MESSAGE, null, folderId);
             if (create) {
                 // make sure the old item matches the new item...
                 if (!ombx.renumberItem(sContext, id, MailItem.TYPE_MESSAGE, createData.getFirst()))
-                	return true;
+                    return true;
                 id = createData.getFirst();
             }
-        } catch (ZClientException x) {
-        	if (!x.getCode().equals(ZClientException.UPLOAD_SIZE_LIMIT_EXCEEDED))
-        		throw x;
-        	OfflineLog.offline.info("push: draft message %d too large to save to remote Drafts folder", id);
-        	//let it fall through so we clear the dirty bit so we don't try to push it up any more
-        } catch (SoapFaultException sfe) {
-            if (!sfe.getCode().equals(MailServiceException.NO_SUCH_MSG))
-                throw sfe;
-            OfflineLog.offline.info("push: remote message " + id + " has been deleted; skipping");
+        } catch (ServiceException e) {
+            //bug 54080 
+            //rather than synchronizing whole method on mbox (thereby blocking mailbox while potentially long upload occurs)
+            //lets see if the message still exists
+            try {
+                ombx.getMessageById(sContext, id);
+            } catch (NoSuchItemException x) {
+                OfflineLog.offline.debug("push: message %d deleted during push", id);
+                return false;
+            }
+            if (e.getCode().equals(ZClientException.UPLOAD_SIZE_LIMIT_EXCEEDED)) {
+                OfflineLog.offline.info("push: draft message %d too large to save to remote Drafts folder", id);
+                //let it fall through so we clear the dirty bit so we don't try to push it up any more
+            } else if (e.getCode().equals(MailServiceException.NO_SUCH_MSG)) {
+                OfflineLog.offline.info("push: remote message " + id + " has been deleted; skipping");
+            } else {
+                throw e;
+            }
         }
 
         synchronized (ombx) {
-        	try {
-        		msg = ombx.getMessageById(sContext, id);
-        	} catch (NoSuchItemException x) {
-        		OfflineLog.offline.debug("push: message %d deleted after push", id);
-        		return false;
-        	}
+            try {
+                msg = ombx.getMessageById(sContext, id);
+            } catch (NoSuchItemException x) {
+                OfflineLog.offline.debug("push: message %d deleted after push", id);
+                return false;
+            }
             // check to see if the message was changed while we were pushing the update...
             int mask = 0;
             if (flags != msg.getFlagBitmask())    mask |= Change.MODIFIED_FLAGS;
@@ -1155,42 +1168,42 @@ public class PushChanges {
             color = cal.getColor();
             mask = ombx.getChangeMask(sContext, id, type);
 
-	        if ((mask & Change.MODIFIED_CONFLICT) != 0 || (mask & Change.MODIFIED_CONTENT) != 0 || (mask & Change.MODIFIED_INVITE) != 0) { // need to push to the server
-	        	request = new Element.XMLElement(isAppointment ? MailConstants.SET_APPOINTMENT_REQUEST : MailConstants.SET_TASK_REQUEST);
-	            ToXML.encodeCalendarItemSummary(request, new ItemIdFormatter(true), ombx.getOperationContext(), cal, ToXML.NOTIFY_FIELDS, true);
-	            request = InitialSync.makeSetCalRequest(request.getElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK), new LocalInviteMimeLocator(ombx), getZMailbox(), ombx.getAccount(), isAppointment);
-	        	create = true; //content mod is considered same as create since we use SetAppointment for both
-	        } else {
-	        	request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
-	        	Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
-		        if ((mask & Change.MODIFIED_TAGS) != 0)
-		        	action.addAttribute(MailConstants.A_TAGS, cal.getTagString());
-		        if ((mask & Change.MODIFIED_FLAGS) != 0)
-		        	action.addAttribute(MailConstants.A_FLAGS, cal.getFlagString());
-		        if ((mask & Change.MODIFIED_FOLDER) != 0)
-		        	action.addAttribute(MailConstants.A_FOLDER, folderId);
-		        if ((mask & Change.MODIFIED_COLOR) != 0)
-		        	action.addAttribute(MailConstants.A_COLOR, color);
-	        }
+            if ((mask & Change.MODIFIED_CONFLICT) != 0 || (mask & Change.MODIFIED_CONTENT) != 0 || (mask & Change.MODIFIED_INVITE) != 0) { // need to push to the server
+                request = new Element.XMLElement(isAppointment ? MailConstants.SET_APPOINTMENT_REQUEST : MailConstants.SET_TASK_REQUEST);
+                ToXML.encodeCalendarItemSummary(request, new ItemIdFormatter(true), ombx.getOperationContext(), cal, ToXML.NOTIFY_FIELDS, true);
+                request = InitialSync.makeSetCalRequest(request.getElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK), new LocalInviteMimeLocator(ombx), getZMailbox(), ombx.getAccount(), isAppointment);
+                create = true; //content mod is considered same as create since we use SetAppointment for both
+            } else {
+                request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+                Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
+                if ((mask & Change.MODIFIED_TAGS) != 0)
+                    action.addAttribute(MailConstants.A_TAGS, cal.getTagString());
+                if ((mask & Change.MODIFIED_FLAGS) != 0)
+                    action.addAttribute(MailConstants.A_FLAGS, cal.getFlagString());
+                if ((mask & Change.MODIFIED_FOLDER) != 0)
+                    action.addAttribute(MailConstants.A_FOLDER, folderId);
+                if ((mask & Change.MODIFIED_COLOR) != 0)
+                    action.addAttribute(MailConstants.A_COLOR, color);
+            }
         }
 
         try {
-        	if (create) {
-            	//Since we are using SetAppointment for both new and existing appointments we always need to sync ids
-				Element response = ombx.sendRequest(request);
-				int serverItemId = (int)response.getAttributeLong(MailConstants.A_CAL_ID);
-				  
-				//We are not processing the invIds from the SetAppointment response.
-				//Instead, we just let it bounce back as a calendar update from server.
-				//mod sequence will always be bounced back in the next sync so we'll set there.
-				if (serverItemId != id) { //new item
-					if (!ombx.renumberItem(sContext, id, type, serverItemId))
-						return true;
-				}
-				id = serverItemId;
-        	} else {
-        		pushRequest(request, create, id, type, name, folderId);
-        	}
+            if (create) {
+                //Since we are using SetAppointment for both new and existing appointments we always need to sync ids
+                Element response = ombx.sendRequest(request);
+                int serverItemId = (int)response.getAttributeLong(MailConstants.A_CAL_ID);
+                  
+                //We are not processing the invIds from the SetAppointment response.
+                //Instead, we just let it bounce back as a calendar update from server.
+                //mod sequence will always be bounced back in the next sync so we'll set there.
+                if (serverItemId != id) { //new item
+                    if (!ombx.renumberItem(sContext, id, type, serverItemId))
+                        return true;
+                }
+                id = serverItemId;
+            } else {
+                pushRequest(request, create, id, type, name, folderId);
+            }
         } catch (SoapFaultException sfe) {
             if (!sfe.getCode().equals(MailServiceException.NO_SUCH_CONTACT))
                 throw sfe;

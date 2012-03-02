@@ -58,7 +58,6 @@ import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
-import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
@@ -116,7 +115,7 @@ public class Invite {
             RecurId recurrenceId,
             long dtstamp,
             int seqno,
-            long mailboxId,
+            int mailboxId,
             int mailItemId,
             int componentNum,
             boolean sentByMe,
@@ -228,7 +227,7 @@ public class Invite {
      * @param sentByMe TRUE if this mailbox sent this invite 
      */
     public static Invite createInvite(
-            long mailboxId,
+            int mailboxId,
             byte itemType,
             String method,
             TimeZoneMap tzMap, 
@@ -551,7 +550,7 @@ public class Invite {
      * @return
      * @throws ServiceException
      */
-    public static Invite decodeMetadata(long mailboxId, Metadata meta, CalendarItem calItem, ICalTimeZone accountTZ) 
+    public static Invite decodeMetadata(int mailboxId, Metadata meta, CalendarItem calItem, ICalTimeZone accountTZ) 
     throws ServiceException {
         byte itemType = (byte) meta.getLong(FN_ITEMTYPE, MailItem.TYPE_APPOINTMENT);
         String uid = meta.get(FN_UID, null);
@@ -936,33 +935,6 @@ public class Invite {
         return mCalItem.getSubpartMessage(mMailItemId);
     }
 
-    /**
-     * The public version updates the metadata in the DB as well
-     * @param flag -- flag to up
-     * @param add TRUE means set bit (OR with value) FALSE means unset bit
-     */
-    void modifyFlag(Mailbox mbx, int flag, boolean add) throws ServiceException {
-        boolean changed = false;
-        if (add) {
-            if ((mFlags & flag) == 0) {
-                mFlags |= flag;
-                changed = true;
-            }
-        } else {
-            if ((mFlags & flag) != 0) {
-                mFlags &= ~flag;
-                changed = true;
-            }
-        }
-        
-        if (changed) {
-            mCalItem.saveMetadata();
-            if (mbx != null) {
-                mCalItem.markItemModified(Change.MODIFIED_INVITE);
-            }
-        }
-    } 
-    
     public void setPartStat(String partStat) { mPartStat = partStat; }
     
     /**
@@ -1017,8 +989,8 @@ public class Invite {
     }
     public int getComponentNum() { return mComponentNum; }
     public void setComponentNum(int num) { mComponentNum = num; }
-    public long getMailboxId() { return mMailboxId; }
-    void setMailboxId(long id) { mMailboxId = id; }
+    public int getMailboxId() { return mMailboxId; }
+    void setMailboxId(int id) { mMailboxId = id; }
     public int getMailItemId() { return mMailItemId; }
     public void setMailItemId(int id) { mMailItemId = id; }
     public int getFlags() { return mFlags; }
@@ -1141,6 +1113,8 @@ public class Invite {
             return null;
         ParsedDuration dur = mDuration;
         if (dur == null) {
+            if (isTodo())
+                return null;
             if (!mStart.hasTime())
                 dur = ParsedDuration.ONE_DAY;
             else
@@ -1157,7 +1131,7 @@ public class Invite {
      * 
      * @return
      */
-    public ParsedDuration getEffectiveDuration() throws ServiceException {
+    public ParsedDuration getEffectiveDuration() {
         if (mDuration != null)
             return mDuration;
         if (mStart == null)
@@ -1165,6 +1139,8 @@ public class Invite {
         if (mEnd != null)
             return mEnd.difference(mStart);
         // DTSTART is there, but neither DTEND nor DURATION is set.
+        if (isTodo())
+            return null;
         if (!mStart.hasTime())
             return ParsedDuration.ONE_DAY;
         else
@@ -1205,7 +1181,25 @@ public class Invite {
             mFlags &= ~APPT_FLAG_HAS_ATTACHMENT;
         }
     }
-    
+
+    public boolean isDraft() { return ((mFlags & APPT_FLAG_DRAFT)!=0); }
+    public void setDraft(boolean draft) {
+        if (draft) {
+            mFlags |= APPT_FLAG_DRAFT;
+        } else {
+            mFlags &= ~APPT_FLAG_DRAFT;
+        }
+    }
+
+    public boolean isNeverSent() { return ((mFlags & APPT_FLAG_NEVER_SENT)!=0); }
+    public void setNeverSent(boolean neverSent) {
+        if (neverSent) {
+            mFlags |= APPT_FLAG_NEVER_SENT;
+        } else {
+            mFlags &= ~APPT_FLAG_NEVER_SENT;
+        }
+    }
+
     public String toString() {
         StringBuffer sb = new StringBuffer();
         sb.append("{ ");
@@ -1238,6 +1232,10 @@ public class Invite {
         sb.append(", recurId: ").append(getRecurId());
         sb.append(", DTStamp: ").append(mDTStamp);
         sb.append(", mSeqNo ").append(mSeqNo);
+        if (isDraft())
+            sb.append(", draft: ").append(true);
+        if (isNeverSent())
+            sb.append(", neverSent: ").append(true);
 
         for (Alarm alarm : mAlarms) {
             sb.append(", alarm: ").append(alarm.toString());
@@ -1262,7 +1260,9 @@ public class Invite {
     public static final int APPT_FLAG_HASALARM        = 0x10;  // obsolete
     public static final int APPT_FLAG_ISRECUR         = 0x20;
     public static final int APPT_FLAG_NEEDS_REPLY     = 0x40;  // obsolete
-    public static final int APPT_FLAG_HAS_ATTACHMENT  = 0x80;  // obsolete
+    public static final int APPT_FLAG_HAS_ATTACHMENT  = 0x80;
+    public static final int APPT_FLAG_DRAFT           = 0x100;
+    public static final int APPT_FLAG_NEVER_SENT      = 0x200;  // true means attendees have never been notified
     
     protected CalendarItem mCalItem = null;
     
@@ -1293,7 +1293,7 @@ public class Invite {
     protected boolean mRsvp = false;
 
     // not in metadata:
-    protected long mMailboxId = 0;
+    protected int mMailboxId = 0;
     protected int mMailItemId = 0;
     protected int mComponentNum = 0;
 
@@ -1476,10 +1476,27 @@ public class Invite {
         return null;
     }
 
+    public ZAttendee getMatchingAttendee(ZAttendee matchAttendee) throws ServiceException {
+        // Look up internal account for the attendee.  For internal users we want to match
+        // on all email addresses of the account.
+        Account matchAcct = null;
+        String matchAddress = matchAttendee.getAddress();
+        if (matchAddress != null)
+            matchAcct = Provisioning.getInstance().get(AccountBy.name, matchAddress);
+        for (ZAttendee at : getAttendees()) {
+            if (matchAttendee.addressesMatch(at) ||
+                (matchAcct != null && CalendarItem.accountMatchesCalendarUser(matchAcct, at))) {
+                return at;
+            }
+        }
+        return null;
+    }
+
     /**
      * Updates the ATTENDEE entries in this invite which match entries in the other one -- presumably 
-     * because the attendee has sent us a reply to change his status.  This function writes the MetaData 
-     * through to SQL and also sends a notification of MailItem change.
+     * because the attendee has sent us a reply to change his status.  The Caller is responsible
+     * for ensuring the changed MetaData is written through to SQL and sending a notification of 
+     * MailItem change.
      * 
      * @param reply
      * @return
@@ -1493,48 +1510,37 @@ public class Invite {
         
         boolean modified = false;
         
-        OUTER: 
-            for (ZAttendee replyAt : reply.getAttendees()) {
-                // Look up internal account for the attendee.  For internal users we want to match
-                // on all email addresses of the account.
-                Account replyAcct = null;
-                String replyAddress = replyAt.getAddress();
-                if (replyAddress != null)
-                    replyAcct = Provisioning.getInstance().get(AccountBy.name, replyAddress);
-                for (ZAttendee at : attendees) {
-                    if (replyAt.addressesMatch(at) ||
-                        (replyAcct != null && CalendarItem.accountMatchesCalendarUser(replyAcct, at))) {
-                    	// BUG:4911  When an invitee responds they include an ATTENDEE record, but
-                    	// it doesn't have to have all fields.  In particular, we don't want to let them
-                    	// change their ROLE...
-//                        if (replyAt.hasRole() && !replyAt.getRole().equals(at.getRole())) {
-//                            at.setRole(replyAt.getRole());
-//                            modified = true;
-//                        }
-                        
-                        if (replyAt.hasPartStat() && !replyAt.getPartStat().equals(at.getPartStat())) {
-                            at.setPartStat(replyAt.getPartStat());
-                            modified = true;
-                        }
+        for (ZAttendee replyAt : reply.getAttendees()) {
+            ZAttendee at = getMatchingAttendee(replyAt);
+            if (at != null) {
+                // BUG:4911  When an invitee responds they include an ATTENDEE record, but
+                // it doesn't have to have all fields.  In particular, we don't want to let them
+                // change their ROLE...
+                //     if (replyAt.hasRole() && !replyAt.getRole().equals(at.getRole())) {
+                //         at.setRole(replyAt.getRole());
+                //         modified = true;
+                //     }
+                // bug 21848: Similar to above comment on bug 4911, we don't want the reply to
+                // update the RSVP.  It seems most CUAs will send ATTENDEE record without setting
+                // RSVP.  Because RSVP=FALSE by default, transferring the RSVP value to the invite
+                // would end up inadvertently clearing the original RSVP value.
+                //     if (replyAt.hasRsvp() && !replyAt.getRsvp().equals(at.getRsvp())) {
+                //         at.setRsvp(replyAt.getRsvp());
+                //         modified = true;
+                //     }
 
-                        // bug 21848: Similar to above comment on bug 4911, we don't want the reply to
-                        // update the RSVP.  It seems most CUAs will send ATTENDEE record without setting
-                        // RSVP.  Because RSVP=FALSE by default, transferring the RSVP value to the invite
-                        // would end up inadvertently clearing the original RSVP value.
-//                        if (replyAt.hasRsvp() && !replyAt.getRsvp().equals(at.getRsvp())) {
-//                            at.setRsvp(replyAt.getRsvp());
-//                            modified = true;
-//                        }
-
-                        continue OUTER;
-                    }
+                if (replyAt.hasPartStat() && !replyAt.getPartStat().equals(at.getPartStat())) {
+                    at.setPartStat(replyAt.getPartStat());
+                    modified = true;
                 }
-
-                // Attendee in the reply was not in the appointment's invite.  Add the new attendee if not
-                // a decline reply.
-                if (!IcalXmlStrMap.PARTSTAT_DECLINED.equalsIgnoreCase(replyAt.getPartStat()))
-                    toAdd.add(replyAt);
+                continue;
             }
+
+            // Attendee in the reply was not in the appointment's invite.  Add the new attendee if not
+            // a decline reply.
+            if (!IcalXmlStrMap.PARTSTAT_DECLINED.equalsIgnoreCase(replyAt.getPartStat()))
+                toAdd.add(replyAt);
+        }
         
         if (toAdd.size() > 0) {
             for (ZAttendee add : toAdd) {
@@ -1542,17 +1548,7 @@ public class Invite {
                 attendees.add(add);
             }
         }
-        
-        if (modified) {
-            mCalItem.saveMetadata();
-            Mailbox mbx = mCalItem.getMailbox();
-            if (mbx != null) {
-                mCalItem.markItemModified(Change.MODIFIED_INVITE);
-            }
-            return true;
-        } else {
-            return false;
-        }
+        return modified;
     }
 
     public List<ZAttendee> getAttendees() {
@@ -1836,6 +1832,8 @@ public class Invite {
                                     if (isEvent) {
                                         ParsedDateTime dtend = ParsedDateTime.parse(prop, tzmap);
                                         newInv.setDtEnd(dtend);
+                                        if (!dtend.hasTime())
+                                            newInv.setIsAllDayEvent(true);
                                     }
                                     break;
                                 case DUE:
@@ -1843,6 +1841,8 @@ public class Invite {
                                         ParsedDateTime due = ParsedDateTime.parse(prop, tzmap);
                                         // DUE is for VTODO what DTEND is for VEVENT.
                                         newInv.setDtEnd(due);
+                                        if (!due.hasTime())
+                                            newInv.setIsAllDayEvent(true);
                                     }
                                     break;
                                 case DURATION:
@@ -1988,6 +1988,9 @@ public class Invite {
                                         newInv.setLocalOnly(true);
                                     break;
                                 case X_ZIMBRA_DISCARD_EXCEPTIONS:
+                                    newInv.addXProp(prop);
+                                    break;
+                                case X_ZIMBRA_CHANGES:
                                     newInv.addXProp(prop);
                                     break;
                                 }
@@ -2414,6 +2417,13 @@ public class Invite {
     public void addXProp(ZProperty prop) {
         mXProps.add(prop);
     }
+    public void removeXProp(String xpropName) {
+        for (Iterator<ZProperty> iter = mXProps.iterator(); iter.hasNext(); ) {
+            ZProperty prop = iter.next();
+            if (prop.getName().equalsIgnoreCase(xpropName))
+                iter.remove();
+        }
+    }
     public ZProperty getXProperty(String xpropName) {
         for (ZProperty prop : mXProps) {
             if (prop.getName().equalsIgnoreCase(xpropName))
@@ -2458,7 +2468,7 @@ public class Invite {
         return thisSeq >= otherSeq;
     }
 
-    public Invite newCopy() throws ServiceException {
+    public Invite newCopy() {
         List<ZAttendee> attendees = new ArrayList<ZAttendee>(mAttendees.size());
         for (ZAttendee at : mAttendees) {
             attendees.add(new ZAttendee(at));  // add a copy of attendee
@@ -2491,11 +2501,6 @@ public class Invite {
         inv.setDontIndexMimeMessage(getDontIndexMimeMessage());
         inv.mLocalOnly = mLocalOnly;
         inv.mDescInMeta = mDescInMeta;
-
-        inv.clearAlarms();
-        for (Alarm alarm : mAlarms) {
-            inv.addAlarm(alarm.newCopy());
-        }
         return inv;
     }
 
@@ -2552,16 +2557,20 @@ public class Invite {
             else
                 ZimbraLog.calendar.warn("UID missing; subject=" + mName);
         }
-        mUid = fixupIfOutlookUid(mUid);
 
-        // Keep all-day flag and DTSTART in sync.
-        if (mStart == null) {
+        // Don't let a task have DTSTART without DUE.
+        if (isTodo() && mStart != null && mEnd == null)
+            mStart = null;
+
+        // Keep all-day flag and DTSTART/DTEND/DUE in sync.
+        ParsedDateTime dt = mStart != null ? mStart : mEnd;  // Use DTSTART if given.  Fall back to DTEND/DUE.
+        if (dt == null) {
             // No DTSTART.  Force non-all-day.
             setIsAllDayEvent(false);
-        } else if (!mStart.hasTime()) {
+        } else if (!dt.hasTime()) {
             // DTSTART has no time part.  Force all-day.
             setIsAllDayEvent(true);
-        } else if (!mStart.hasZeroTime()) {
+        } else if (!dt.hasZeroTime()) {
             // Time part is not T000000.  Force non-all-day.
             setIsAllDayEvent(false);
         } else {
@@ -2599,6 +2608,14 @@ public class Invite {
                 ZimbraLog.calendar.warn("recurrence used without DTSTART; removing recurrence; UID=" + mUid + ", subject=" + mName);
                 mRecurrence = null;
             }
+        }
+
+        // Don't allow using different time zones in DTSTART and DTEND for a recurrence. (prevents future problems)
+        if (isRecurrence() && mStart != null && mEnd != null &&  !mStart.getTimeZone().equals(mEnd.getTimeZone())) {
+            ZimbraLog.calendar.warn(
+                    "recurrence uses different time zones in DTSTART and DTEND; forcing DTEND to DTSTART time zone; UID=" +
+                    mUid + ", subject=" + mName);
+            mEnd.toTimeZone(mStart.getTimeZone());
         }
 
         mPercentComplete = limitIntegerRange(mPercentComplete, 0, 100, null);
@@ -2688,30 +2705,46 @@ public class Invite {
         mXProps.clear();
     }
 
-    private static boolean isHexDigits(String str) {
-        int len = str.length();
-        for (int i = 0; i < len; ++i) {
-            char ch = str.charAt(i);
-            if ((ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'F') || (ch >= 'a' &&  ch <= 'f'))
-                continue;
-            return false;
-        }
-        return true;
+    /**
+     * If this Invite is a series invite, create a new Invite object for the instance denoted by recurIdDt.
+     * Returns null if this Invite is not a series Invite. 
+     * @param recurIdDt
+     * @return
+     */
+    public Invite makeInstanceInvite(ParsedDateTime recurIdDt) {
+        if (!isRecurrence())
+            return null;
+        Invite instInv = newCopy();
+        instInv.setLocalOnly(true);
+        instInv.setRecurrence(null);
+        RecurId rid = new RecurId(recurIdDt, RecurId.RANGE_NONE);
+        instInv.setRecurId(rid);
+        instInv.setDtStamp(System.currentTimeMillis());
+        ParsedDateTime dtEnd = recurIdDt.add(instInv.getEffectiveDuration());
+        instInv.setDtStart(recurIdDt);
+        instInv.setDtEnd(dtEnd);
+        return instInv;
     }
 
-    private static final String OUTLOOK_GLOBAL_ID_PREFIX = "040000008200E00074C5B7101A82E008";
-
-    // Outlook-generated UIDs are supposed to be uppercase.  (bug 57727)
-    public static String fixupIfOutlookUid(String uid) {
-        if (uid == null)
-            return null;
-        int len = uid.length();
-        if (len >= 82 && len % 2 == 0 && isHexDigits(uid)) {
-            String upper = uid.toUpperCase();
-            if (upper.startsWith(OUTLOOK_GLOBAL_ID_PREFIX)) {
-                return upper;
-            }
+    // iCalendar PRIORITY to hi/med/low mapping according to RFC5545 Section 3.8.1.9
+    public boolean isHighPriority() {
+        if (mPriority != null) {
+            int prio = 0;
+            try {
+                prio = Integer.parseInt(mPriority);
+            } catch (NumberFormatException e) {}
+            return prio >= 1 && prio <= 4;
         }
-        return uid;
+        return false;
+    }
+    public boolean isLowPriority() {
+        if (mPriority != null) {
+            int prio = 0;
+            try {
+                prio = Integer.parseInt(mPriority);
+            } catch (NumberFormatException e) {}
+            return prio >= 6 && prio <= 9;
+        }
+        return false;
     }
 }

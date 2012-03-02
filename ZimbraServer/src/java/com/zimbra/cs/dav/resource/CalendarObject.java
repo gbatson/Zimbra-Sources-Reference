@@ -65,41 +65,74 @@ public interface CalendarObject {
     public boolean match(Filter filter);
     public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException;
 
-    public static abstract class LocalCalendarObjectBase extends MailItemResource {
-        public LocalCalendarObjectBase(DavContext ctxt, String path, MailItem item) throws ServiceException {
-            super(ctxt, path, item);
+    public static class Vcalendar {
+
+        private static Invite getFixedUpCopy(Invite inv, Account acct) throws ServiceException {
+            ZAttendee attendee = inv.getMatchingAttendee(acct);
+            if (attendee != null && attendee.hasRsvp() && attendee.getRsvp() && IcalXmlStrMap.PARTSTAT_NEEDS_ACTION.equals(attendee.getPartStat())) {
+                Invite copy = inv.newCopy();
+                ZCalendar.ZProperty prop = new ZCalendar.ZProperty("X-APPLE-NEEDS-REPLY");
+                prop.setValue("TRUE");
+                copy.addXProp(prop);
+                return copy;
+            } else {
+                return inv;
+            }
         }
 
-        protected static Invite getFixedUpCopy(DavContext ctxt, Invite inv, Account acct, boolean delegated, boolean isScheduleMsg)
-        throws ServiceException {
-            if (ctxt.isIcalClient() && !inv.isOrganizer()) {
-                Invite copy = inv.newCopy();
-                boolean iCal3NeedsReplyProp = false;
-                ZAttendee attendee = copy.getMatchingAttendee(acct);
-                if (!delegated) {
-                    if (attendee != null) {
-                        iCal3NeedsReplyProp =
-                            attendee.hasRsvp() && attendee.getRsvp() &&
-                            IcalXmlStrMap.PARTSTAT_NEEDS_ACTION.equals(attendee.getPartStat());
-                    } else {
-                        // iCal supports accept/decline action only when user is listed as attendee.  (bug 58513)
-                        attendee = new ZAttendee(acct.getName());
-                        copy.addAttendee(attendee);
-                        iCal3NeedsReplyProp = true;
-                    }
-                    if (iCal3NeedsReplyProp && isScheduleMsg) {
-                        ZCalendar.ZProperty prop = new ZCalendar.ZProperty("X-APPLE-NEEDS-REPLY");
-                        prop.setValue("TRUE");
-                        copy.addXProp(prop);
-                    }
-                }
-                if (!isScheduleMsg && attendee != null) {
-                    // iCal doesn't like seeing RSVP=TRUE on appointments.  (bug 40833)
-                    attendee.setRsvp(null);
-                }
-                return copy;
+        public static String toString(Account acct, Invite inv, Filter filter, boolean allowPrivateAccess) throws IOException {
+            CharArrayWriter wr = null;
+            try {
+                wr = new CharArrayWriter();
+                Invite fixedInv = getFixedUpCopy(inv, acct);
+                ZComponent comp = fixedInv.newToVComponent(false, allowPrivateAccess);
+                if (filter == null || filter.match(comp))
+                    comp.toICalendar(wr, true);
+                wr.flush();
+                return wr.toString();
+            } catch (ServiceException se) {
+                ZimbraLog.dav.warn("cannot convert to iCalendar", se);
+                return "";
+            } finally {
+                if (wr != null)
+                    wr.close();
             }
-            return inv;
+        }
+
+        public static String toString(Account acct, Invite[] invites, Filter filter, boolean allowPrivateAccess) throws IOException {
+            CharArrayWriter wr = null;
+            try {
+                wr = new CharArrayWriter();
+                if (!LC.calendar_apple_ical_compatible_canceled_instances.booleanValue()) {
+                    for (Invite inv : invites) {
+                        Invite fixedInv = getFixedUpCopy(inv, acct);
+                        ZComponent comp = fixedInv.newToVComponent(false, allowPrivateAccess);
+                        if (filter == null || filter.match(comp))
+                            comp.toICalendar(wr, true);
+                    }
+                } else {
+                    Invite[] fixedInvs = new Invite[invites.length];
+                    for (int i = 0; i < invites.length; ++i) {
+                        fixedInvs[i] = getFixedUpCopy(invites[i], acct);
+                    }
+                    boolean appleICalExdateHack = LC.calendar_apple_ical_compatible_canceled_instances.booleanValue();
+                    ZComponent[] vcomps = Invite.toVComponents(fixedInvs, allowPrivateAccess, false, appleICalExdateHack);
+                    if (vcomps != null) {
+                        for (ZComponent vcomp : vcomps) {
+                            if (filter == null || filter.match(vcomp))
+                                vcomp.toICalendar(wr, true);
+                        }
+                    }
+                }
+                wr.flush();
+                return wr.toString();
+            } catch (ServiceException se) {
+                ZimbraLog.dav.warn("cannot convert to iCalendar", se);
+                return "";
+            } finally {
+                if (wr != null)
+                    wr.close();
+            }
         }
     }
 
@@ -123,52 +156,38 @@ public interface CalendarObject {
             return path.toString();
         }
     }
-    public static class ScheduleMessage extends LocalCalendarObjectBase implements CalendarObject {
+    public static class ScheduleMessage extends MailItemResource implements CalendarObject {
         public ScheduleMessage(DavContext ctxt, String path, String owner, Invite inv, Message msg) throws ServiceException {
             super(ctxt, path, msg);
             mInvite = inv;
             addProperty(CalDavProperty.getCalendarData(this));
         }
-        public String getUid() {
+        @Override public String getUid() {
             return mInvite.getUid();
         }
-        public boolean match(Filter filter) {
+        @Override public boolean match(Filter filter) {
             return true;
         }
-        public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
-            CharArrayWriter wr = null;
+        @Override public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
+            StringBuilder buf = new StringBuilder();
+            buf.append("BEGIN:VCALENDAR\r\n");
+            buf.append("VERSION:").append(ZCalendar.sIcalVersion).append("\r\n");
+            buf.append("PRODID:").append(ZCalendar.sZimbraProdID).append("\r\n");
+            buf.append("METHOD:").append(mInvite.getMethod()).append("\r\n");
+            Account acct = ctxt.getAuthAccount();
+            boolean allowPrivateAccess = false;
             try {
-                wr = new CharArrayWriter();
-                wr.append("BEGIN:VCALENDAR\r\n");
-                wr.append("VERSION:").append(ZCalendar.sIcalVersion).append("\r\n");
-                wr.append("PRODID:").append(ZCalendar.sZimbraProdID).append("\r\n");
-                wr.append("METHOD:").append(mInvite.getMethod()).append("\r\n");
-                Account acct = ctxt.getAuthAccount();
-                boolean allowPrivateAccess = false;
-                try {
-                    Mailbox mbox = getMailbox(ctxt);
-                    OperationContext octxt = ctxt.getOperationContext();
-                    Folder folder = mbox.getFolderById(octxt, mFolderId);
-                    allowPrivateAccess = CalendarItem.allowPrivateAccess(
-                            folder, ctxt.getAuthAccount(), octxt.isUsingAdminPrivileges());
-                } catch (ServiceException se) {
-                    ZimbraLog.dav.warn("cannot determine private access status", se);
-                }
-                boolean delegated = !acct.getId().equalsIgnoreCase(mOwnerId);
-                Invite fixedInv = getFixedUpCopy(ctxt, mInvite, acct, delegated, true);
-                ZComponent comp = fixedInv.newToVComponent(false, allowPrivateAccess);
-                if (filter == null || filter.match(comp))
-                    comp.toICalendar(wr, true);
-                wr.append("END:VCALENDAR\r\n");
-                wr.flush();
-                return wr.toString();
+                Mailbox mbox = getMailbox(ctxt);
+                OperationContext octxt = ctxt.getOperationContext();
+                Folder folder = mbox.getFolderById(octxt, mFolderId);
+                allowPrivateAccess = CalendarItem.allowPrivateAccess(
+                        folder, ctxt.getAuthAccount(), octxt.isUsingAdminPrivileges());
             } catch (ServiceException se) {
-                ZimbraLog.dav.warn("cannot convert to iCalendar", se);
-                return "";
-            } finally {
-                if (wr != null)
-                    wr.close();
+                ZimbraLog.dav.warn("cannot determine private access status", se);
             }
+            buf.append(Vcalendar.toString(acct, mInvite, filter, allowPrivateAccess));
+            buf.append("END:VCALENDAR\r\n");
+            return buf.toString();
         }
         @Override public InputStream getContent(DavContext ctxt) throws IOException, DavException {
             return new ByteArrayInputStream(getVcalendar(ctxt, null).getBytes("UTF-8"));
@@ -176,14 +195,12 @@ public interface CalendarObject {
         @Override public boolean isCollection() {
             return false;
         }
+        // work around for bug 45241
+        // mark appointment invite email read instead of moving to trash.
         @Override public void delete(DavContext ctxt) throws DavException {
             try {
                 Mailbox mbox = getMailbox(ctxt);
-                if (mbox.getAccount().isPrefDeleteInviteOnReply()) {
-                    super.delete(ctxt);
-                } else {
-                    mbox.alterTag(ctxt.getOperationContext(), mId, MailItem.TYPE_MESSAGE, Flag.ID_FLAG_UNREAD, false);
-                }
+                mbox.alterTag(ctxt.getOperationContext(), mId, MailItem.TYPE_MESSAGE, Flag.ID_FLAG_UNREAD, false);
             } catch (ServiceException se) {
                 int resCode = se instanceof MailServiceException.NoSuchItemException ?
                         HttpServletResponse.SC_NOT_FOUND : HttpServletResponse.SC_FORBIDDEN;
@@ -193,7 +210,7 @@ public interface CalendarObject {
         private Invite mInvite;
     }
     public static class LightWeightCalendarObject extends DavResource implements CalendarObject {
-        private long mMailboxId;
+        private int mMailboxId;
         private int mId;
         private String mUid;
         private String mEtag;
@@ -211,10 +228,10 @@ public interface CalendarObject {
             setProperty(DavElements.P_GETETAG, mEtag);
             addProperty(CalDavProperty.getCalendarData(this));
         }
-        public String getUid() {
+        @Override public String getUid() {
             return mUid;
         }
-        public boolean match(Filter filter) {
+        @Override public boolean match(Filter filter) {
             TimeRange range = filter.getTimeRange();
             if (range == null)
                 return true;
@@ -223,7 +240,7 @@ public interface CalendarObject {
         @Override public String getEtag() {
             return mEtag;
         }
-        public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
+        @Override public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
             ZimbraLog.dav.debug("constructing full resource");
             return getFullResource(ctxt).getVcalendar(ctxt, filter);
         }
@@ -254,7 +271,7 @@ public interface CalendarObject {
             return true;
         }
     }
-    public static class LocalCalendarObject extends LocalCalendarObjectBase implements CalendarObject {
+    public static class LocalCalendarObject extends MailItemResource implements CalendarObject {
 
         public LocalCalendarObject(DavContext ctxt, CalendarItem calItem) throws ServiceException {
             this(ctxt, calItem, false);
@@ -297,12 +314,12 @@ public interface CalendarObject {
         private String mUid;
         private Invite[] mInvites;
         private TimeZoneMap mTzmap;
-        private long mMailboxId;
+        private int mMailboxId;
         private long mStart;
         private long mEnd;
 
         /* Returns true if the supplied Filter matches this calendar object. */
-        public boolean match(Filter filter) {
+        @Override public boolean match(Filter filter) {
             TimeRange range = filter.getTimeRange();
             if (range != null && !range.matches(mMailboxId, mId, mStart, mEnd))
                 return false;
@@ -324,64 +341,38 @@ public interface CalendarObject {
          * the supplied filter.
          */
         public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
-            CharArrayWriter wr = null;
-            try {
-                wr = new CharArrayWriter();
-                wr.append("BEGIN:VCALENDAR\r\n");
-                wr.append("VERSION:").append(ZCalendar.sIcalVersion).append("\r\n");
-                wr.append("PRODID:").append(ZCalendar.sZimbraProdID).append("\r\n");
-                Iterator<ICalTimeZone> iter = mTzmap.tzIterator();
-                while (iter.hasNext()) {
-                    ICalTimeZone tz = iter.next();
-                    tz.newToVTimeZone().toICalendar(wr, true);
-                }
-                Account acct = ctxt.getAuthAccount();
-                boolean allowPrivateAccess = false;
-                try {
-                    Mailbox mbox = getMailbox(ctxt);
-                    OperationContext octxt = ctxt.getOperationContext();
-                    Folder folder = mbox.getFolderById(octxt, mFolderId);
-                    allowPrivateAccess = CalendarItem.allowPrivateAccess(
-                            folder, ctxt.getAuthAccount(), octxt.isUsingAdminPrivileges());
-                } catch (ServiceException se) {
-                    ZimbraLog.dav.warn("cannot determine private access status", se);
-                }
-                boolean delegated = !acct.getId().equalsIgnoreCase(mOwnerId);
-                if (!LC.calendar_apple_ical_compatible_canceled_instances.booleanValue()) {
-                    for (Invite inv : mInvites) {
-                        Invite fixedInv = getFixedUpCopy(ctxt, inv, acct, delegated, false);
-                        ZComponent comp = fixedInv.newToVComponent(false, allowPrivateAccess);
-                        if (filter == null || filter.match(comp))
-                            comp.toICalendar(wr, true);
-                    }
-                } else {
-                    Invite[] fixedInvs = new Invite[mInvites.length];
-                    for (int i = 0; i < mInvites.length; ++i) {
-                        fixedInvs[i] = getFixedUpCopy(ctxt, mInvites[i], acct, delegated, false);
-                    }
-                    boolean appleICalExdateHack = LC.calendar_apple_ical_compatible_canceled_instances.booleanValue();
-                    ZComponent[] vcomps = Invite.toVComponents(fixedInvs, allowPrivateAccess, false, appleICalExdateHack);
-                    if (vcomps != null) {
-                        for (ZComponent vcomp : vcomps) {
-                            if (filter == null || filter.match(vcomp))
-                                vcomp.toICalendar(wr, true);
-                        }
-                    }
-                }
-                wr.append("END:VCALENDAR\r\n");
+            StringBuilder buf = new StringBuilder();
+
+            buf.append("BEGIN:VCALENDAR\r\n");
+            buf.append("VERSION:").append(ZCalendar.sIcalVersion).append("\r\n");
+            buf.append("PRODID:").append(ZCalendar.sZimbraProdID).append("\r\n");
+            Iterator<ICalTimeZone> iter = mTzmap.tzIterator();
+            while (iter.hasNext()) {
+                ICalTimeZone tz = iter.next();
+                CharArrayWriter wr = new CharArrayWriter();
+                tz.newToVTimeZone().toICalendar(wr, true);
                 wr.flush();
-                return wr.toString();
-            } catch (ServiceException se) {
-                ZimbraLog.dav.warn("cannot convert to iCalendar", se);
-                return "";
-            } finally {
-                if (wr != null)
-                    wr.close();
+                buf.append(wr.toCharArray());
+                wr.close();
             }
+            Account acct = ctxt.getAuthAccount();
+            boolean allowPrivateAccess = false;
+            try {
+                Mailbox mbox = getMailbox(ctxt);
+                OperationContext octxt = ctxt.getOperationContext();
+                Folder folder = mbox.getFolderById(octxt, mFolderId);
+                allowPrivateAccess = CalendarItem.allowPrivateAccess(
+                        folder, ctxt.getAuthAccount(), octxt.isUsingAdminPrivileges());
+            } catch (ServiceException se) {
+                ZimbraLog.dav.warn("cannot determine private access status", se);
+            }
+            buf.append(Vcalendar.toString(acct, mInvites, filter, allowPrivateAccess));
+            buf.append("END:VCALENDAR\r\n");
+            return buf.toString();
         }
 
         @Override
-        public InputStream getRawContent(DavContext ctxt) throws IOException, DavException {
+        public InputStream getContent(DavContext ctxt) throws IOException, DavException {
             return new ByteArrayInputStream(getVcalendar(ctxt, null).getBytes("UTF-8"));
         }
 

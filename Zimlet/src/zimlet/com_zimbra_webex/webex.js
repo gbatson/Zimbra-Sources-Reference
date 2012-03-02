@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -169,6 +169,7 @@ WebExZimlet.WEEK_NAME_MAP = { "MO": "MONDAY","TU": "TUESDAY","WE": "WEDNESDAY","
  */
 WebExZimlet.prototype.init = function() {
 	this.metaData = appCtxt.getActiveAccount().metaData;
+	WebExZimlet.PROP_COMPANY_ID["defaultVal"] = this.getUserProperty("webexZimlet_companyId");
 	//this._displayGeneralPrefsDlg();
 };
 
@@ -327,7 +328,7 @@ WebExZimlet.prototype._saveAsWebExHandler = function(ev) {
 			}
 		}
 	} catch(ex) {
-		this._showErrorMessage(ex);
+		this._webexZimlet._showErrorMessage(ex);
 		return;
 	}
 };
@@ -452,7 +453,6 @@ WebExZimlet.prototype._createOrUpdateMeeting = function(params) {
 			params["seriesMeetingKey"] = meetingKey;//store this to params(not newParams) so we can store this
 		}
 	}
-
 	var request = this._getCreateOrModifyMeetingRequest(newParams);
 	AjxRpc.invoke(request, this.postUri(), {"Content-Type":"text/xml"}, new AjxCallback(this, this._createOrUpdateMeetingResponseHdlr, params), false, false);
 };
@@ -630,7 +630,7 @@ WebExZimlet.prototype._getCreateOrModifyMeetingRequest = function(params) {
 		apiType = "java:com.webex.service.binding.meeting.CreateMeeting";
 		meetingKeyStr = "";
 	}
-	if (pwd == "" || pwd == "N/A") {
+	if (!pwd || pwd == "" || pwd == "N/A" || pwd == "null") {
 		var pwdStr = "";
 	} else {
 		var pwdStr = ["<accessControl><meetingPassword>", pwd, "</meetingPassword></accessControl>"].join("");
@@ -638,7 +638,7 @@ WebExZimlet.prototype._getCreateOrModifyMeetingRequest = function(params) {
 	var requestBody = [
 		"<bodyContent xsi:type=\"",apiType,"\">",
 		pwdStr,
-		"<metaData><confName>", subject, "</confName>",
+		"<metaData><confName>", AjxStringUtil.xmlEncode(subject), "</confName>",
 		"<location>",loc,"</location><meetingType>3</meetingType></metaData>",
 		"<participants><attendees>", emls.join(""),altHostsEmls.join(""), "</attendees></participants>",
 		"<schedule>",
@@ -754,7 +754,19 @@ WebExZimlet.prototype._updateMeetingBodyAndSave = function(params) {
 		}
 	}
 	composeView.getHtmlEditor().setContent(newContent);
-	params.apptController._saveListener();
+	//delay to avoid race condition b/w setting content and sending msg
+	setTimeout(AjxCallback.simpleClosure(this._saveAppt, this, params.apptController), 500);
+};
+/**
+ * Saves appointment
+ * @param {ZmApptController} Appointment Controller
+ */
+WebExZimlet.prototype._saveAppt = function(apptController) {
+	if(apptController._sendListener) {
+		apptController._sendListener();
+	} else if(apptController._saveListener) {
+		apptController._saveListener();
+	}
 	appCtxt.getAppController().setStatusMsg(this.getMessage("WebExZimlet_successfullyCreatedWebEx"), ZmStatusView.LEVEL_INFO);
 };
 
@@ -932,17 +944,12 @@ WebExZimlet.prototype._getMeetingDetailshdr = function(hdrName, editorType) {
  * @return	{string}	the formatted date
  */
 WebExZimlet.prototype._formatDate = function(d) {
-	var date = new Date();
-	date.setMonth(d.getMonth());
-	date.setDate(d.getDate());
-	date.setYear(d.getFullYear());
-	date.setHours(parseInt(d.getHours()));
-	date.setMinutes((Math.ceil(d.getMinutes() / 15) * 15) % 60);
-	date.setSeconds(0);
-	date.setMilliseconds(0);
+	d.setMinutes((Math.ceil(d.getMinutes() / 15) * 15) % 60);
+	d.setSeconds(0);
+	d.setMilliseconds(0);
 
 	var formatter = new AjxDateFormat("MM/dd/yyyy HH:mm:ss");
-	return formatter.format(date);
+	return formatter.format(d);
 };
 
 /**
@@ -964,10 +971,7 @@ WebExZimlet.prototype.postUri = function(securityParams) {
  *
  */
 WebExZimlet.prototype.singleClicked = function() {
-	var dlg = appCtxt.getMsgDialog();
-	dlg.reset();//reset dialog since we could be using it
-	dlg.setMessage(this.getMessage("WebExZimlet_rightClickForOptions"), DwtMessageDialog.INFO_STYLE);
-	dlg.popup();
+	this._displayGeneralPrefsDlg();
 };
 
 /**
@@ -984,7 +988,6 @@ WebExZimlet.prototype.doubleClicked = function() {
  *
  */
 WebExZimlet.prototype.menuItemSelected = function(itemId) {
-
 	switch (itemId) {
 		case "ACCOUNT_PREFERENCES":
 			this._displayAccntPrefsDialog();
@@ -1148,11 +1151,19 @@ function() {
 };
 
 /**
- * Gets Account preferences meta data.
+ * Gets Account preferences meta data.[dela
  *
  * @param {AjxCallback} postCallback  a callback
  */
 WebExZimlet.prototype._getAccPrefsMetaData =
+function(postCallback) {
+	setTimeout(AjxCallback.simpleClosure(this._doGetAccPrefsMetaData, this, postCallback), 500);
+};
+
+/**
+ * @private Called by _getAccPrefsMetaData after .5 secs to avoid race condition in some browsers
+ */
+WebExZimlet.prototype._doGetAccPrefsMetaData =
 function(postCallback) {
 	this.metaData.get("webexZimletAccountPreferences", null, new AjxCallback(this, this._handleGetAccPrefsMetaData, postCallback));
 };
@@ -1222,16 +1233,31 @@ WebExZimlet.prototype._isAtLeastOneAccountConfigured = function() {
 		throw new AjxException(this.getMessage("WebExZimlet_noWebExAccount"), AjxException.INTERNAL_ERROR, this.getMessage("WebExZimlet_label"));
 	}
 	for(var i = 1; i < 6; i++) {
-		if(this._webexZimletAccountPreferences[WebExZimlet.PROP_USERNAME.propId + i] != "" && 
-			this._webexZimletAccountPreferences[WebExZimlet.PROP_USERNAME.propId + i] != "N/A"
-			&& this._webexZimletAccountPreferences[WebExZimlet.PROP_PASSWORD.propId + i] != "" && 
-			this._webexZimletAccountPreferences[WebExZimlet.PROP_PASSWORD.propId + i] != "N/A"
-			&& this._webexZimletAccountPreferences[WebExZimlet.PROP_COMPANY_ID.propId + i] != "" && 
-			this._webexZimletAccountPreferences[WebExZimlet.PROP_COMPANY_ID.propId + i] != "N/A") {
+		if(this._isAccountConfigured(i)) {
 			return true;
 		}
 	}
 	throw new AjxException(this.getMessage("WebExZimlet_noWebExAccount"), AjxException.INTERNAL_ERROR, this.getMessage("WebExZimlet_label"));
+};
+
+/**
+ * Checks if at least one Account is configured
+ * @param {number} index  Account index. Starts from 1
+ * @return {boolean} <code>true</code> if configured
+ */
+WebExZimlet.prototype._isAccountConfigured = function(index) {
+	if(!this._webexZimletAccountPreferences) {
+		return false;
+	}
+	if(this._webexZimletAccountPreferences[WebExZimlet.PROP_USERNAME.propId + index] != "" && 
+			this._webexZimletAccountPreferences[WebExZimlet.PROP_USERNAME.propId + index] != "N/A"
+			&& this._webexZimletAccountPreferences[WebExZimlet.PROP_PASSWORD.propId + index] != "" && 
+			this._webexZimletAccountPreferences[WebExZimlet.PROP_PASSWORD.propId + index] != "N/A"
+			&& this._webexZimletAccountPreferences[WebExZimlet.PROP_COMPANY_ID.propId + index] != "" && 
+			this._webexZimletAccountPreferences[WebExZimlet.PROP_COMPANY_ID.propId + index] != "N/A") {
+			return true;
+	}
+	return false;
 };
 
 /**
@@ -1272,11 +1298,11 @@ WebExZimlet.prototype._validateCurrentAccount = function(accntNumber) {
 WebExZimlet.prototype._setDataToAccPrefsDlg =
 function() {
 	try {
-		var useDefaultVals = false;
-		if (this._webexZimletAccountPreferences == undefined) {
-			useDefaultVals = true;
-		}
 		for (var indx = 1; indx < 6; indx++) {
+			var useDefaultVals = true;
+			if(this._isAccountConfigured(indx)) {
+				useDefaultVals = false;
+			}
 			for (var i = 0; i < WebExZimlet.ALL_ACCNT_PROPS.length; i++) {
 				var objId = WebExZimlet.ALL_ACCNT_PROPS[i].propId;
 				var key = objId + indx;
@@ -1426,7 +1452,11 @@ function(indx) {
 
 	var requestBody = "<bodyContent xsi:type=\"java:com.webex.service.binding.user.GetUser\"><webExId>" + userName + "</webExId></bodyContent>";
 	var request = this.newWebExRequest(requestBody, params);
-	var result = AjxRpc.invoke(request, this.postUri(params), {"Content-Type":"text/xml"}, null, false, false);
+	var result = AjxRpc.invoke(request, this.postUri(params), {"Content-Type":"text/xml"}, new AjxCallback(this, this._handleTestWebExAccount), false, false);
+};
+
+WebExZimlet.prototype._handleTestWebExAccount =
+function(result) {
 	var objResult = this.xmlToObject(result);
 	if (!this._validateWebExResult(objResult, this.getMessage("WebExZimlet_testFailed"))) {
 		return;
@@ -1539,7 +1569,7 @@ function() {
 	view.getHtmlElement().innerHTML = this._createGeneralPrefsView();
 	//this.pView.setSize("510", "350");
 	//this.pView.getHtmlElement().style.background = "white";
-	this.generalPrefsDlg = new ZmDialog({parent: this.getShell(), title:this.getMessage("WebExZimlet_generalPreferences"), view:view, standardButtons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON]});
+	this.generalPrefsDlg = new ZmDialog({parent: this.getShell(), title:this.getMessage("WebExZimlet_preferences"), view:view, standardButtons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON]});
 	this.generalPrefsDlg.setButtonListener(DwtDialog.OK_BUTTON, new AjxListener(this, this._generalPrefsOkBtnListner));
 	var postCallback = new AjxCallback(this, this._setDataToGeneralPrefsDlg);
 	this._getGeneralPrefsMetaData(postCallback);
@@ -1724,8 +1754,13 @@ function(key, postCallback) {
 WebExZimlet.prototype._handleGetApptIdsHashMetaData =
 function(postCallback, result) {
 	this._apptIdsMetaData = null;//nullify old data
+	var response = result.getResponse();
+	if(response && response.BatchResponse && response.BatchResponse.GetCustomMetadataResponse) {
+		response = response.BatchResponse.GetCustomMetadataResponse;
+	} else {
+		return;
+	}
 	try {
-		var response = result.getResponse().BatchResponse.GetCustomMetadataResponse[0];
 		if (response.meta && response.meta[0]) {
 			this._apptIdsMetaData = response.meta[0]._attrs;
 		}
@@ -1841,9 +1876,11 @@ function(accountNumber) {
 	} catch(ex) {
 		this._showErrorMessage(ex);
 		return;
-	}	
-	document.getElementById(this._showSelectAccntsDlg._altHostFieldId).value = this._currentWebExAccount[WebExZimlet.PROP_ALT_HOSTS.propId];
-	document.getElementById(this._showSelectAccntsDlg._mPwdFieldId).value = this._currentWebExAccount[WebExZimlet.PROP_MEETING_PASSWORD.propId];
+	}
+	var altHost = this._currentWebExAccount[WebExZimlet.PROP_ALT_HOSTS.propId];
+	var mPwd = this._currentWebExAccount[WebExZimlet.PROP_MEETING_PASSWORD.propId];
+	document.getElementById(this._showSelectAccntsDlg._altHostFieldId).value = altHost == "N/A"? "" : altHost;
+	document.getElementById(this._showSelectAccntsDlg._mPwdFieldId).value = mPwd == "N/A" ? "" : mPwd;
 };
 
 /**

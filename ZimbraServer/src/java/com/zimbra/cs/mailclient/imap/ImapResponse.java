@@ -36,11 +36,12 @@ public final class ImapResponse {
     public static ImapResponse read(ImapInputStream is) throws IOException {
         ImapResponse res = new ImapResponse();
         res.readResponse(is);
+        is.trace();
         return res;
     }
 
     private ImapResponse() {}
-    
+
     private void readResponse(ImapInputStream is) throws IOException {
         tag = is.readText(' ');
         is.skipChar(' ');
@@ -81,7 +82,7 @@ public final class ImapResponse {
             is.skipChar(' ');
             data = Flags.read(is);
             break;
-        case LIST: case LSUB:                       
+        case LIST: case LSUB:
             // "LIST" SP mailbox-list / "LSUB" SP mailbox-list
             // mailbox-list    = "(" [mbx-list-flags] ")" SP
             //                   (DQUOTE QUOTED-CHAR DQUOTE / nil) SP mailbox
@@ -125,7 +126,7 @@ public final class ImapResponse {
         }
         return ids;
     }
-    
+
     private void readTagged(ImapInputStream is) throws IOException {
         code = is.readAtom();
         is.skipChar(' ');
@@ -166,7 +167,7 @@ public final class ImapResponse {
     public CAtom getCCode() {
         return ccode;
     }
-    
+
     public Object getData() {
         return data;
     }
@@ -175,7 +176,7 @@ public final class ImapResponse {
     public boolean isBAD() { return ccode == CAtom.BAD; }
     public boolean isNO()  { return ccode == CAtom.NO; }
     public boolean isBYE() { return ccode == CAtom.BYE; }
-    
+
     public boolean isStatus() {
         switch (ccode) {
         case OK: case BAD: case NO: case BYE:
@@ -199,13 +200,14 @@ public final class ImapResponse {
     public String getContinuation() {
         return isContinuation() ? getResponseText().getText() : null;
     }
-    
+
     public void dispose() {
         if (data instanceof MessageData) {
             ((MessageData) data).dispose();
         }
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(tag);
         sb.append(' ');

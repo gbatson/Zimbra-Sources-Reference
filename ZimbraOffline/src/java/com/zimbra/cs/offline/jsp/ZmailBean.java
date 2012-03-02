@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,7 +22,10 @@ import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.DataSource;
+import com.zimbra.cs.offline.OfflineLog;
+import com.zimbra.cs.account.DataSource.ConnectionType;
 import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.cs.offline.jsp.JspConstants.JspVerb;
 
 public class ZmailBean extends MailBean {
     public ZmailBean() {
@@ -108,9 +111,13 @@ public class ZmailBean extends MailBean {
                     } else if (verb.isReset()) {
                         stub.resetOfflineAccount(accountId);
                     } else if (verb.isDelete()) {
+                        OfflineLog.offline.debug("deleting account %s",accountId);
                         stub.deleteOfflineAccount(accountId);
                     } else if (verb.isReindex()) {
                         stub.reIndex(accountId);
+                    } else if (verb.isResetGal()) {
+                        OfflineLog.offline.debug("reseting gal for account %s", accountId);
+                        stub.resetGal(accountId);
                     } else {
                         setError(getMessage("UnknownAct"));
                     }
@@ -149,5 +156,31 @@ public class ZmailBean extends MailBean {
     public void setPassword(String input) {
         this.password = input;
     }
-}
 
+    public static String createAccount(String accountName, String username, String password, String email, String host, int port, boolean isSSL) throws Exception {
+        ZmailBean xb = new ZmailBean();
+        xb.verb = JspVerb.add;
+        xb.type = "xsync";
+        xb.accountFlavor = "Xsync";
+        xb.accountName = accountName;
+        xb.username = username;
+        xb.password = password;
+        xb.email = email;
+        xb.host = host;
+        xb.port = "" + port;
+        xb.connectionType = isSSL ? ConnectionType.ssl : ConnectionType.cleartext;
+        xb.isDebugTraceEnabled = true;
+        xb.syncFreqSecs=-1;
+        xb.doRequest();
+        if (xb.getError() != null)
+            throw new RuntimeException(xb.getError());
+        return xb.accountId;
+    }
+
+    public static void deleteAccount(String accountId) throws Exception {
+        ZmailBean xb = new ZmailBean();
+        xb.verb = JspVerb.del;
+        xb.accountId = accountId;
+        xb.doRequest();
+    }
+}

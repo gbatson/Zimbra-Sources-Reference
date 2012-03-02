@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -36,7 +36,7 @@
  */
 ZmContactPicker = function(buttonInfo) {
 
-	DwtDialog.call(this, {parent:appCtxt.getShell(), title:ZmMsg.selectAddresses});
+	DwtDialog.call(this, {parent:appCtxt.getShell(), title:ZmMsg.selectAddresses, id: "ZmContactPicker"});
 
 	this._buttonInfo = buttonInfo;
 	this._initialized = false;
@@ -373,7 +373,7 @@ function(account) {
 	var selectCellId = this._htmlElId + "_listSelect";
 	var selectCell = document.getElementById(selectCellId);
 	if (selectCell) {
-		this._selectDiv = new DwtSelect({parent:this, parentElement:selectCellId});
+		this._selectDiv = new DwtSelect({parent:this, parentElement:selectCellId, id: Dwt.getNextId("ZmContactPickerSelect_")});
 		this._resetSelectDiv();
 		this._selectDiv.addChangeListener(new AjxListener(this, this._searchTypeListener));
 	} else {
@@ -833,11 +833,46 @@ ZmContactChooserSourceListView.prototype._getHeaderList =
 function() {
 	var headerList = [];
 	headerList.push(new DwtListHeaderItem({field:ZmItem.F_TYPE, icon:"Folder", width:ZmMsg.COLUMN_WIDTH_FOLDER_CN}));
-	headerList.push(new DwtListHeaderItem({field:ZmItem.F_NAME, text:ZmMsg._name, width:ZmMsg.COLUMN_WIDTH_NAME_CN}));
-	headerList.push(new DwtListHeaderItem({field:ZmItem.F_EMAIL, text:ZmMsg.email}));
-	headerList.push(new DwtListHeaderItem({field:ZmItem.F_DEPARTMENT, text:ZmMsg.department, width:ZmMsg.COLUMN_WIDTH_DEPARTMENT_CN}));
+	headerList.push(new DwtListHeaderItem({field:ZmItem.F_NAME, text:ZmMsg._name, width:ZmMsg.COLUMN_WIDTH_NAME_CN, resizeable: true}));
+	headerList.push(new DwtListHeaderItem({field:ZmItem.F_DEPARTMENT, text:ZmMsg.department, width:ZmMsg.COLUMN_WIDTH_DEPARTMENT_CN, resizeable: true}));
+	headerList.push(new DwtListHeaderItem({field:ZmItem.F_EMAIL, text:ZmMsg.email, resizeable: true}));
+
 
 	return headerList;
+};
+
+ 
+// Override of DwtListView.prototype._resetColWidth to set width; without overrriding causes vertical scrollbars to disapper
+// on header resize
+ZmContactChooserSourceListView.prototype._resetColWidth =
+function() {
+
+	if (!this.headerColCreated) { return; }
+
+	var lastColIdx = this._getLastColumnIndex();
+    if (lastColIdx) {
+        var lastCol = this._headerList[lastColIdx];
+        var lastCell = document.getElementById(lastCol._id);
+		if (lastCell) {
+			var div = lastCell.firstChild;
+			lastCell.style.width = div.style.width = (lastCol._width || ""); 
+		}
+    }
+};
+
+/**
+ * override for scrollbars in IE
+ * @param headerIdx
+ */
+ZmContactChooserSourceListView.prototype._calcRelativeWidth =
+function(headerIdx) {
+	var column = this._headerList[headerIdx];
+	if (!column._width || (column._width && column._width == "auto")) {
+		var cell = document.getElementById(column._id);
+		// UGH: clientWidth is 5px more than HTML-width (20px for IE to deal with scrollbars)
+		return (cell) ? (cell.clientWidth - (AjxEnv.isIE ? Dwt.SCROLLBAR_WIDTH : 5)) : null;
+	}
+	return column._width;
 };
 
 /**
@@ -857,7 +892,32 @@ function(ev, div) {
  */
 ZmContactChooserSourceListView.prototype._getCellContents =
 function(html, idx, item, field, colIdx, params) {
-	return ZmContactsHelper._getEmailField(html, idx, item, field, colIdx, params);
+	if (field == ZmItem.F_EMAIL && AjxEnv.isIE) {
+		var maxWidth = AjxStringUtil.getWidth(item.address);
+		html[idx++] = "<div style='float; left; overflow: visible; width: " + maxWidth + ";'>";
+		idx = ZmContactsHelper._getEmailField(html, idx, item, field, colIdx, params);
+		html[idx++] = "</div>";		
+	}
+	else {
+		idx = ZmContactsHelper._getEmailField(html, idx, item, field, colIdx, params);
+	}
+	return idx;
+};
+
+/**
+ * Returns a string of any extra attributes to be used for the TD.
+ *
+ * @param item		[object]	item to render
+ * @param field		[constant]	column identifier
+ * @param params	[hash]*		hash of optional params
+ * 
+ * @private
+ */
+ZmContactChooserSourceListView.prototype._getCellAttrText =
+function(item, field, params) {
+	if (field == ZmItem.F_EMAIL) {
+		return "style='position: relative; overflow: visible;'";
+	}
 };
 
 /***********************************************************************************/
@@ -905,8 +965,8 @@ function() {
 	if (this._showType) {
 		headerList.push(new DwtListHeaderItem({field:ZmItem.F_TYPE, icon:"ContactsPicker", width:ZmMsg.COLUMN_WIDTH_TYPE_CN}));
 	}
-	headerList.push(new DwtListHeaderItem({field:ZmItem.F_NAME, text:ZmMsg._name, width:ZmMsg.COLUMN_WIDTH_NAME_CN}));
-	headerList.push(new DwtListHeaderItem({field:ZmItem.F_EMAIL, text:ZmMsg.email}));
+	headerList.push(new DwtListHeaderItem({field:ZmItem.F_NAME, text:ZmMsg._name, width:ZmMsg.COLUMN_WIDTH_NAME_CN, resizeable: true}));
+	headerList.push(new DwtListHeaderItem({field:ZmItem.F_EMAIL, text:ZmMsg.email, resizeable: true}));
 
 	return headerList;
 };
@@ -925,8 +985,67 @@ function(html, idx, item, field, colIdx, params) {
 		item.setType(item._buttonId);
 		html[idx++] = ZmMsg[item.getTypeAsString()];
 		html[idx++] = ":";
-	} else {
+	}
+	else if (field == ZmItem.F_EMAIL && AjxEnv.isIE) {
+		var maxWidth = AjxStringUtil.getWidth(item.address) + 10;
+		html[idx++] = "<div style='float; left;  width: " + maxWidth + ";'>";
+		idx = ZmContactsHelper._getEmailField(html, idx, item, field, colIdx, params);
+		html[idx++] = "</div>";
+	}
+	else {
 		idx = ZmContactsHelper._getEmailField(html, idx, item, field, colIdx);
 	}
 	return idx;
+};
+
+
+// Override of DwtListView.prototype._resetColWidth to set width; without overrriding causes vertical scrollbars to disapper
+// on header resize
+ZmContactChooserTargetListView.prototype._resetColWidth =
+function() {
+
+	if (!this.headerColCreated) { return; }
+
+	var lastColIdx = this._getLastColumnIndex();
+
+	
+    if (lastColIdx) {
+        var lastCol = this._headerList[lastColIdx];
+        var lastCell = document.getElementById(lastCol._id);
+		if (lastCell) {
+			var div = lastCell.firstChild;
+			lastCell.style.width = div.style.width = (lastCol._width || "");
+		}
+    }
+};
+
+/**
+ * override for scrollbars in IE
+ * @param headerIdx
+ */
+ZmContactChooserTargetListView.prototype._calcRelativeWidth =
+function(headerIdx) {
+	var column = this._headerList[headerIdx];
+	if (!column._width || (column._width && column._width == "auto")) {
+		var cell = document.getElementById(column._id);
+		// UGH: clientWidth is 5px more than HTML-width (20px for IE to deal with scrollbars)
+		return (cell) ? (cell.clientWidth - (AjxEnv.isIE ? Dwt.SCROLLBAR_WIDTH : 5)) : null;
+	}
+	return column._width;
+};
+
+/**
+ * Returns a string of any extra attributes to be used for the TD.
+ *
+ * @param item		[object]	item to render
+ * @param field		[constant]	column identifier
+ * @param params	[hash]*		hash of optional params
+ * 
+ * @private
+ */
+ZmContactChooserTargetListView.prototype._getCellAttrText =
+function(item, field, params) {
+	if (field == ZmItem.F_EMAIL) {
+		return "style='position: relative; overflow: visible;'";
+	}
 };

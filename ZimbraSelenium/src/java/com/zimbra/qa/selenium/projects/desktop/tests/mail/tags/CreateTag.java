@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.desktop.tests.mail.tags;
 
 import org.testng.annotations.Test;
@@ -6,7 +22,6 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 //import com.zimbra.qa.selenium.projects.ajax.ui.mail.*;
 import com.zimbra.qa.selenium.projects.desktop.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.desktop.ui.DialogTag;
@@ -38,6 +53,7 @@ public class CreateTag extends AjaxCommonTest {
 		dialog.zSubmit(name);
 
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		app.zPageMain.zWaitForDesktopLoadingSpinner(5000);
 
 		// Make sure the tag was created on the server
 		TagItem tag = app.zPageMail.zGetTagItem(app.zGetActiveAccount(), name);
@@ -63,6 +79,7 @@ public class CreateTag extends AjaxCommonTest {
             	"</CreateTagRequest>");
 
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		app.zPageMain.zWaitForDesktopLoadingSpinner(5000);
 
 		// Get the tag
 		TagItem tag2 = app.zPageMail.zGetTagItem(app.zGetActiveAccount(), name2);
@@ -76,6 +93,7 @@ public class CreateTag extends AjaxCommonTest {
 		dialog.zSubmit(name1);
 
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		app.zPageMain.zWaitForDesktopLoadingSpinner(5000);
 
 		// Make sure the folder was created on the server
 		TagItem tag1 = app.zPageMail.zGetTagItem(app.zGetActiveAccount(), name1);
@@ -104,6 +122,7 @@ public class CreateTag extends AjaxCommonTest {
 		dialog.zSubmit(name);
 
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		app.zPageMain.zWaitForDesktopLoadingSpinner(5000);
 
 		// Make sure the folder was created on the server
 		TagItem tag = app.zPageMail.zGetTagItem(app.zGetActiveAccount(), name);

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -137,6 +137,9 @@ ZaOperation.MORE_ACTIONS = ++ZA_OP_INDEX;
 ZaOperation.EXPIRE_SESSION = ++ZA_OP_INDEX;
 ZaOperation.ADD_DOMAIN_ALIAS = ++ZA_OP_INDEX;
 ZaOperation.INSTALL_DOMAIN_CERT = ++ZA_OP_INDEX;
+// For Appliance
+ZaOperation.LEFT_BRACKET = ++ZA_OP_INDEX;
+ZaOperation.RIGHT_BRACKET = ++ZA_OP_INDEX;
 
 
 var ZaOpList = [
@@ -200,7 +203,9 @@ var ZaOpList = [
 	"MORE_ACTIONS",
 	"EXPIRE_SESSION",
 	"ADD_DOMAIN_ALIAS",
-	"INSTALL_DOMAIN_CERT"
+	"INSTALL_DOMAIN_CERT",
+    "LEFT_BRACKET",
+    "RIGHT_BRACKET"
 	/* other operation name */
 ];
 

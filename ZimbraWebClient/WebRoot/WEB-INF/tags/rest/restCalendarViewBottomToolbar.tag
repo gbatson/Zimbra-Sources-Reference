@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,7 +28,7 @@
     <tr>
         <td align="left" class="TbBt">
             <c:if test="${not empty requestScope.zimbra_target_item_name}">
-                <a href="/home/${requestScope.zimbra_target_account_name}${requestScope.zimbra_target_item_path}.ics"><app:img src="startup/ImgCalendarApp.png" alt="ics"/><span style='padding-left:5px'>${requestScope.zimbra_target_item_name}.ics</span></a>
+                <a href="/home/${requestScope.zimbra_target_account_name}${requestScope.zimbra_target_item_path}.ics"><app:img src="startup/ImgCalendarApp.png" alt="ics"/><span style='padding-left:5px'>${zm:cook(requestScope.zimbra_target_item_name)}.ics</span></a>
             </c:if>
         </td>
         <td align='right' class='ZhCalTimeZone'>

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -76,14 +76,16 @@ ZmZimbraMail = function(params) {
 
 	this._upsellView = {};
 	this._activeApp = null;
-	this._sessionTimer = new AjxTimedAction(null, ZmZimbraMail.logOff);
+	this._sessionTimer = new AjxTimedAction(null, ZmZimbraMail.executeSessionTimer);
 	this._sessionTimerId = -1;
 	this._pollActionId = null;	// AjaxTimedAction ID of timer counting down to next poll time
 	this._pollRequest = null;	// HTTP request of poll we've sent to server
 	this._pollInstantNotifications = false; // if TRUE, we're in "instant notification" mode
-
 	this.statusView = null;
-
+	ZmZimbraMail._exitTimer = new AjxTimedAction(null, ZmZimbraMail.exitSession);
+	ZmZimbraMail._exitTimerId = -1;
+	ZmZimbraMail.stayOnPagePrompt = false;
+	ZmZimbraMail.STAYONPAGE_INTERVAL = 2;  //in minutes
     // setup history support
     if (appCtxt.get(ZmSetting.HISTORY_SUPPORT_ENABLED) && !AjxEnv.isSafari) {
         window.historyMgr = appCtxt.getHistoryMgr();
@@ -220,6 +222,10 @@ function() {
 			childWin.win.close();
 		}
 	}
+	
+	ZmZimbraMail.stayOnPagePrompt = false;
+	ZmZimbraMail.setExitTimer(false);
+	ZmZimbraMail.sessionTimerInvoked = false;
 	window._zimbraMail = window.onload = window.onunload = window.onresize = window.document.onkeypress = null;
 };
 
@@ -323,6 +329,9 @@ function(params) {
 				var account = appCtxt.multiAccounts && appCtxt.accountList.mainAccount;
 				if (appCtxt.get(ZmSetting.CALENDAR_ENABLED, null, account)) {
 					this.handleCalendarComponents();
+				}
+                if (appCtxt.get(ZmSetting.TASKS_ENABLED, null, account)) {
+					this.handleTaskComponents();
 				}
 				var sc = appCtxt.getSearchController();
 				sc.getSearchToolbar().initAutocomplete();
@@ -659,6 +668,27 @@ function(params, result) {
 	{
 		this.handleCalendarComponents();
 	}
+    if (appCtxt.get(ZmSetting.TASKS_ENABLED, null, account) &&
+		!this._doingPostRenderStartup &&
+		(params.startApp != ZmApp.TASKS))
+	{
+		this.handleTaskComponents();
+	}
+};
+
+/**
+ * Creates & show Task Reminders on delay
+ *
+ * @private
+ */
+ZmZimbraMail.prototype.handleTaskComponents =
+function() {
+    // reminder controlled by calendar preferences setting
+	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
+		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
+		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
+		AjxTimedAction.scheduleAction(reminderAction, delay);
+	}
 };
 
 /**
@@ -680,14 +710,7 @@ function() {
 		var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
 		AjxTimedAction.scheduleAction(reminderAction, delay);
 	}
-	
-	// reminder controlled by calendar preferences setting
-	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
-		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
-		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
-		AjxTimedAction.scheduleAction(reminderAction, delay);
-	}
-	
+
 };
 
 /**
@@ -2229,6 +2252,34 @@ function(login, username) {
 	this._components[ZmAppViewMgr.C_QUOTA_INFO].setToolTipContent(html);
 };
 
+/**
+ * If a user has been prompted and elects to stay on page, this timer automatically logs them off after an interval of time.
+ * @param startTimer {boolean} true to start timer, false to cancel
+ */
+ZmZimbraMail.setExitTimer = 
+function(startTimer) {
+	if (startTimer && ZmZimbraMail.stayOnPagePrompt) {
+		DBG.println(AjxDebug.DBG1, "user has clicked stay on page. scheduled exit timer at " + new Date().toLocaleString());
+		if (ZmZimbraMail._exitTimerId == -1) {
+			ZmZimbraMail._exitTimerId = AjxTimedAction.scheduleAction(ZmZimbraMail._exitTimer, ZmZimbraMail.STAYONPAGE_INTERVAL * 60 * 1000); //give user 2 minutes
+			if (AjxEnv.isFirefox) {
+				var msg = AjxMessageFormat.format(ZmMsg.appExitPrompt, [ZmZimbraMail.STAYONPAGE_INTERVAL]);
+				var msgDialog = appCtxt.getMsgDialog();
+				msgDialog.setMessage(msg, DwtMessageDialog.CRITICAL_STYLE); //Firefox 4+ doesn't allow custom stay on page message. Prompt user they have X minutes
+				//wait 2 seconds before popping up  so FF doesn't show dialog when leave page is clicked
+				setTimeout(function() { msgDialog.popup()}, 1000 * 2);
+			}
+		}
+
+	}
+	else if (!startTimer && ZmZimbraMail._exitTimerId) {
+		DBG.println(AjxDebug.DBG1, "canceling exit timer at " + new Date().toLocaleString());
+		AjxTimedAction.cancelAction(ZmZimbraMail._exitTimerId);
+		ZmZimbraMail._exitTimerId = -1;
+	}
+	
+};
+
 // Listeners
 
 /**
@@ -2249,7 +2300,30 @@ function() {
 
 	var url = AjxUtil.formatUrl({path:appContextPath, qsArgs:{loginOp:'logout'}});
 	ZmZimbraMail.sendRedirect(url);	// will trigger onbeforeunload
+	if (AjxEnv.isFirefox) {
+		DBG.println(AjxDebug.DBG1, "calling setExitTimer from logoff "  + new Date().toLocaleString());
+		ZmZimbraMail.setExitTimer(true);	
+	}
+	
+
 };
+
+/**
+ * Logs user off when session has expired and user has choosen to stay on page when prompted
+ */
+ZmZimbraMail.exitSession =
+function() {
+	DBG.println(AjxDebug.DBG1, "exit timer called  " + new Date().toLocaleString());
+	ZmZimbraMail.logOff();
+};
+
+ZmZimbraMail.executeSessionTimer = 
+function() {
+	ZmZimbraMail.sessionTimerInvoked = true;
+	DBG.println(AjxDebug.DBG1, "session timer invoked  " + new Date().toLocaleString());
+	ZmZimbraMail.logOff();
+};
+
 
 /**
  * @private
@@ -2473,8 +2547,25 @@ function() {
 		appCtxt.accountList.saveImplicitPrefs();
 
 		if (appCtxt.get(ZmSetting.WARN_ON_EXIT) && !ZmZimbraMail._isOkToExit()) {
+			if (ZmZimbraMail.stayOnPagePrompt) {
+				DBG.println(AjxDebug.DBG1, "user has already been prompted. Forcing exit " + new Date().toLocaleString());
+				return;
+			}
+			
 			ZmZimbraMail._isLogOff = false;
-			return (appCtxt.isOffline) ? ZmMsg.appExitWarningZD : ZmMsg.appExitWarning;
+			DBG.println(AjxDebug.DBG1, "prompting to user to stay on page or leave " + new Date().toLocaleString());
+			var msg = (appCtxt.isOffline) ? ZmMsg.appExitWarningZD : ZmMsg.appExitWarning;
+			
+			if (ZmZimbraMail.sessionTimerInvoked) {
+				ZmZimbraMail.stayOnPagePrompt = true;
+				msg = AjxMessageFormat.format(msg + ZmMsg.appExitTimeWarning, [ZmZimbraMail.STAYONPAGE_INTERVAL]); //append time warning
+			}
+			if (!AjxEnv.isFirefox) {
+				DBG.println(AjxDebug.DBG1, "calling setExitTimer  "  + new Date().toLocaleString());
+				ZmZimbraMail.setExitTimer(true);
+			}
+			return msg;
+			
 		}
 
 		ZmZimbraMail._endSession();

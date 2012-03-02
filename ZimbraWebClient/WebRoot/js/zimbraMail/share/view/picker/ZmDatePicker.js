@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -102,10 +102,18 @@ ZmDatePicker.prototype._updateQuery =
 function() {
 	var d = this._cal.getDate();
 	if (d) {
+      var query;
+      if(appCtxt.getAppController().getAppViewMgr().getCurrentViewId()==ZmId.VIEW_CAL && this._select.getValue()=="date"){
+        query = [this._select.getValue(),":",d.getTime()].join("");
+      }
+      else{
         var formatter = AjxDateFormat.getDateInstance(AjxDateFormat.SHORT);
         var date = formatter.format(d);
-        var query = [this._select.getValue(),':"',date,'"'].join("");
-        this.setQuery(query);
+        query = [this._select.getValue(),':"',date,'"'].join("");
+      }
+
+      this.setQuery(query);
+
 	} else {
 		this.setQuery("");
 	}

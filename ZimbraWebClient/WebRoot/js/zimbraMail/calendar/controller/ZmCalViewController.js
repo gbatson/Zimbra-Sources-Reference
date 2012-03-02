@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -873,6 +873,7 @@ function(toolbar) {
 // Switch to selected view.
 ZmCalViewController.prototype._viewActionMenuItemListener =
 function(ev) {
+	Dwt.setLoadingTime("ZmCalItemView", new Date());
 	if (appCtxt.multiAccounts) {
 		this.apptCache.clearCache();
 	}
@@ -883,6 +884,7 @@ function(ev) {
 // Switch to selected view.
 ZmCalViewController.prototype._viewMenuItemListener =
 function(ev) {
+	Dwt.setLoadingTime("ZmCalViewItem", new Date())
 	if (ev.detail == DwtMenuItem.CHECKED ||
 		ev.detail == DwtMenuItem.UNCHECKED)
 	{
@@ -1041,12 +1043,17 @@ function(mailItem, date, subject) {
 	var newAppt = this._newApptObject(date, null, null, mailItem);
 	newAppt.setFromMailMessage(mailItem, subject);
 
-    var addAttendeeDlg = this._attAttendeeDlg = appCtxt.getYesNoMsgDialog();
-	addAttendeeDlg.reset();
-	addAttendeeDlg.setMessage(ZmMsg.addRecipientstoAppt, DwtMessageDialog.WARNING_STYLE, ZmMsg.addAttendees);
-	addAttendeeDlg.registerCallback(DwtDialog.YES_BUTTON, this._addAttendeeYesCallback, this, [newAppt]);
-	addAttendeeDlg.registerCallback(DwtDialog.NO_BUTTON, this._addAttendeeNoCallback, this, [newAppt]);
-	addAttendeeDlg.popup();
+    if (appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED)) {
+        var addAttendeeDlg = this._attAttendeeDlg = appCtxt.getYesNoMsgDialog();
+        addAttendeeDlg.reset();
+        addAttendeeDlg.setMessage(ZmMsg.addRecipientstoAppt, DwtMessageDialog.WARNING_STYLE, ZmMsg.addAttendees);
+        addAttendeeDlg.registerCallback(DwtDialog.YES_BUTTON, this._addAttendeeYesCallback, this, [newAppt]);
+        addAttendeeDlg.registerCallback(DwtDialog.NO_BUTTON, this._addAttendeeNoCallback, this, [newAppt]);
+        addAttendeeDlg.popup();
+    }
+    else {
+        this.newAppointment(newAppt, ZmCalItem.MODE_NEW, true);
+    }
 };
 
 
@@ -1492,6 +1499,10 @@ function(appt, mode, params) {
           appt.replaceAttendee(myEmail,origOrganizer);
           appt.organizer=myEmail;
           appt.isOrg=true;
+          if(appt.isShared()) {
+            appt.isSharedCopy = true;
+            appt.setFolderId(ZmOrganizer.ID_CALENDAR);
+          }
           var dlg = appCtxt.getMsgDialog();
 		  var callback = new AjxCallback(this, this.newAppointment,[appt,mode,true]);
 		  var listener = new AjxListener(this, this._handleReadonlyOk, [callback, dlg]);
@@ -1735,7 +1746,7 @@ function(appt, mode) {
 		var msg = isTrash ? ZmMsg.confirmPermanentCancelAppt : ZmMsg.confirmCancelAppt;
 
 		if (appt.isRecurring() && !isTrash) {
-			msg = (mode == ZmCalItem.MODE_DELETE_INSTANCE) ? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, appt.name) :  ZmMsg.confirmCancelApptSeries;
+			msg = (mode == ZmCalItem.MODE_DELETE_INSTANCE) ? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, AjxStringUtil.htmlEncode(appt.name)) :  ZmMsg.confirmCancelApptSeries;
 		}
 		confirmDialog.popup(msg, cancelNoReplyCallback);
 	}
@@ -1788,7 +1799,7 @@ function(appt, mode) {
 		var msg = ZmMsg.confirmCancelAppt;
 		if (appt.isRecurring()) {
 			msg = (mode == ZmCalItem.MODE_DELETE_INSTANCE)
-				? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, appt.name)
+				? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, AjxStringUtil.htmlEncode(appt.name))
 				: ZmMsg.confirmCancelApptSeries;
 		}
 		this._deleteNotifyDialog = new ZmApptDeleteNotifyDialog({
@@ -2401,7 +2412,7 @@ function(appt, action, mode, startDateOffset, endDateOffset) {
 ZmCalViewController.prototype._handleResponseUpdateApptDateSave =
 function(appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback, result) {
          var isExceptionAllowed = appCtxt.get(ZmSetting.CAL_EXCEPTION_ON_SERIES_TIME_CHANGE);
-         var showWarning = appt.isRecurring() && appt.getAttendees(ZmCalBaseItem.PERSON) && !isExceptionAllowed && viewMode==ZmCalItem.MODE_EDIT_SERIES;
+         var showWarning = appt.isRecurring() && appt.hasEx && appt.getAttendees(ZmCalBaseItem.PERSON) && !isExceptionAllowed && viewMode==ZmCalItem.MODE_EDIT_SERIES;
          if(showWarning){
             var respCallback = new AjxCallback(this, this._handleResponseUpdateApptDateSaveContinue, [appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback, result]);
             this._showExceptionWarning(respCallback);
@@ -3601,8 +3612,13 @@ function(actionCode) {
 		case ZmKeyMap.CAL_MONTH_VIEW:
 		case ZmKeyMap.CAL_SCHEDULE_VIEW:
 		case ZmKeyMap.CAL_LIST_VIEW:
-		case ZmKeyMap.CAL_FB_VIEW:
 			this.show(ZmCalViewController.ACTION_CODE_TO_VIEW[actionCode]);
+			break;
+
+        case ZmKeyMap.CAL_FB_VIEW:
+            if(appCtxt.get(ZmSetting.FREE_BUSY_VIEW_ENABLED)) {
+                this.show(ZmCalViewController.ACTION_CODE_TO_VIEW[actionCode]);
+            }
 			break;
 
 		case ZmKeyMap.TODAY:

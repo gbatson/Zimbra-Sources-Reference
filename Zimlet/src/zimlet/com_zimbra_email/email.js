@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -129,7 +129,6 @@ function() {
 // create bubble for address in header
 EmailTooltipZimlet.prototype.generateSpan =
 function(html, idx, obj, spanId, context, options) {
-
 	options = options || {};
 	if (options.addrBubbles) {
 		this._isBubble[spanId] = true;
@@ -604,6 +603,9 @@ function(ev){
 		rule = new ZmFilterRule();
 		rule.addAction(ZmFilterRule.A_KEEP);
 	}
+	else {
+		rule = this._rules.getRuleByName(rule.name) || rule;
+	}
 
 	var addr = this._getAddress(this._actionObject);
 	if (AjxUtil.isString(addr) && this.isMailToLink(addr)) {
@@ -840,9 +842,7 @@ function(ev, addr) {
 	this.popdown();
 
 	var obj = this._actionObject;
-	if (!addr) {
-		addr = this._getAddress(obj) || "";
-	}
+	addr = addr ? this._getAddress(addr) : (obj ? this._getAddress(obj) : "");
 
 	var params = {};
 	var inNewWindow = (!appCtxt.get(ZmSetting.NEW_WINDOW_COMPOSE) && ev && ev.shiftKey) ||

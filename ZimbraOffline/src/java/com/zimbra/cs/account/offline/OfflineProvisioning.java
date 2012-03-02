@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,6 +34,7 @@ import javax.mail.Session;
 import javax.mail.Transport;
 import javax.security.auth.login.LoginException;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.sun.mail.smtp.SMTPTransport;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
@@ -205,6 +206,19 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         mGranterCache = new NamedEntryCache<Account>(64, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
         DbPool.disableUsageWarning();
     }
+
+    @VisibleForTesting
+    protected OfflineProvisioning(boolean extend) {
+        mLocalConfig = null;
+        mLocalServer = null;
+        mDefaultCos = null;
+        mMimeTypes = null;
+        mZimlets = null;
+        mSyncServerCache = null;
+        mAccountCache = null;
+        mGranterCache = null;
+    }
+
 
     public ZMailbox newZMailbox(OfflineAccount account, String serviceUri) throws ServiceException {
         ZMailbox.Options options;
@@ -621,7 +635,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return account.getAttr(A_offlineRemoteServerUri, null) != null;
     }
 
-    private void testDataSource(OfflineDataSource ds) throws ServiceException {
+    public void testDataSource(OfflineDataSource ds) throws ServiceException {
         try {
             DataSourceManager.test(ds);
         } catch (ServiceException x) {
@@ -870,6 +884,11 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized void createMountpointAccount(String name, String id, OfflineAccount account) throws ServiceException {
         String granteeId = account.getId();
         DbOfflineDirectory.GranterEntry ge = DbOfflineDirectory.readGranter(name, granteeId);
+        if (ge != null && !id.equals(ge.id)) {
+            DbOfflineDirectory.deleteGranter(name, ge.id);
+            mGranterCache.remove(ge.name, ge.id);
+            ge = null;
+        }
         if (ge == null) {
             DbOfflineDirectory.createGranterEntry(name, id, granteeId);
             makeGranter(name, id, account);

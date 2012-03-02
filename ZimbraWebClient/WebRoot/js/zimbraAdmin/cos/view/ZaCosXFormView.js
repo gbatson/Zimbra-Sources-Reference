@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1061,7 +1061,11 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
     if(_tab7) {
         var case7 = {type:_ZATABCASE_, numCols:1, colSizes:["auto"], caseKey:_tab7, id:"cos_form_advanced_tab"};
         var case7Items = [
-            ZaItem.getZeroIsUnlimitedItem () ,    
+            { type: _DWT_ALERT_,
+              style: DwtAlert.WARNING,
+	      iconVisible: false,
+	      content: ZaMsg.NAD_ZERO_UNLIMETED
+	    },      
             {type:_ZA_TOP_GROUPER_, id:"cos_attachment_settings",
                 label:ZaMsg.NAD_AttachmentsGrouper,visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,
                                                           			[ZaCos.A_zimbraAttachmentsBlocked]]],
@@ -1181,7 +1185,7 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
                     { type: _DWT_ALERT_,
                       containerCssStyle: "padding-bottom:0px",
                       style: DwtAlert.WARNING,
-                      iconVisible:  (!ZaCosXFormView.isAllAuthfromInternal()),
+                      iconVisible:  false,
                       content: ((ZaCosXFormView.isAllAuthfromInternal())?ZaMsg.Alert_InternalPassword:ZaMsg.Alert_ExternalPassword)
                     },
                     {ref:ZaCos.A_zimbraPasswordLocked, type:_CHECKBOX_,

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -39,6 +39,7 @@ import com.zimbra.cs.servlet.ZimbraServlet;
 public abstract class SSOServlet extends ZimbraServlet {
     private final static String IGNORE_LOGIN_URL = "/?ignoreLoginURL=1";
     
+    protected abstract boolean redirectToRelativeURL();
     
     public void init() throws ServletException {
         String name = getServletName();
@@ -114,25 +115,27 @@ public abstract class SSOServlet extends ZimbraServlet {
         Provisioning prov = Provisioning.getInstance();
         Server server = prov.getServer(acct);
         
+        boolean relative = redirectToRelativeURL();
+        
         String redirectUrl;
         if (isAdmin) {
-            redirectUrl = getAdminUrl(server);
+            redirectUrl = getAdminUrl(server, relative);
         } else {
-            redirectUrl = getMailUrl(server);
+            redirectUrl = getMailUrl(server, relative);
         }
         
         // always append the ignore loginURL query so we do not get into a redirect loop.
         redirectUrl = redirectUrl + IGNORE_LOGIN_URL;  // not yet supported for admin console
         
-        /*
-        URL url = new URL(redirectUrl);
-        boolean isRedirectProtocolSecure = isProtocolSecure(url.getProtocol());
-        
-        if (secureCookie && !isRedirectProtocolSecure) {
-            throw ServiceException.INVALID_REQUEST("cannot redirect to non-secure protocol: " + redirectUrl, null);
+        if (!relative) {
+            URL url = new URL(redirectUrl);
+            boolean isRedirectProtocolSecure = isProtocolSecure(url.getProtocol());
+            
+            if (secureCookie && !isRedirectProtocolSecure) {
+                throw ServiceException.INVALID_REQUEST("cannot redirect to non-secure protocol: " + redirectUrl, null);
+            }
         }
-        */
-        
+                
         ZimbraLog.account.debug("SSOServlet - redirecting (with auth token) to: " + redirectUrl);
         resp.sendRedirect(redirectUrl);
     }
@@ -141,17 +144,18 @@ public abstract class SSOServlet extends ZimbraServlet {
     // The default error page is the webapp's regular entry page where user can
     // enter his username/password.
     protected void redirectToErrorPage(HttpServletRequest req, HttpServletResponse resp, 
-            boolean isAdminRequest, String errorUrl) throws IOException, ServiceException {
+            boolean isAdminRequest, String errorUrl) 
+    throws IOException, ServiceException {
         String redirectUrl;
         
         if (errorUrl == null) {
-            
+            boolean relative = redirectToRelativeURL();
             Server server = Provisioning.getInstance().getLocalServer();
             
             if (isAdminRequest) {
-                redirectUrl = getAdminUrl(server); 
+                redirectUrl = getAdminUrl(server, relative); 
             } else {
-                redirectUrl = getMailUrl(server);
+                redirectUrl = getMailUrl(server, relative);
             }
             
             // always append the ignore loginURL query so we do not get into a redirect loop.
@@ -170,19 +174,27 @@ public abstract class SSOServlet extends ZimbraServlet {
         return URLUtil.PROTO_HTTPS.equalsIgnoreCase(protocol);
     }
     
-    protected String getMailUrl(Server server) throws ServiceException {
+    private String getMailUrl(Server server, boolean relative) throws ServiceException {
         final String DEFAULT_MAIL_URL = "/zimbra";
     
         String serviceUrl = server.getAttr(Provisioning.A_zimbraMailURL, DEFAULT_MAIL_URL);
-        return serviceUrl;
-        // return URLUtil.getServiceURL(server, serviceUrl, true);
+        
+        if (relative) {
+            return serviceUrl;
+        } else {
+            return URLUtil.getServiceURL(server, serviceUrl, true);
+        }
     }
     
-    protected String getAdminUrl(Server server) throws ServiceException {
+    private String getAdminUrl(Server server, boolean relative) throws ServiceException {
         final String DEFAULT_ADMIN_URL = "/zimbraAdmin";
         
         String serviceUrl = server.getAttr(Provisioning.A_zimbraAdminURL, DEFAULT_ADMIN_URL);
-        return serviceUrl;
-        // return URLUtil.getAdminURL(server, serviceUrl, true);
+        
+        if (relative) {
+            return serviceUrl;
+        } else {
+            return URLUtil.getAdminURL(server, serviceUrl, true);
+        }
     }
 }

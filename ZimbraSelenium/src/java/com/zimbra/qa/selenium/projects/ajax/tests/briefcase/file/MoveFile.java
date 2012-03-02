@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import org.testng.annotations.Test;
@@ -47,14 +63,13 @@ public class MoveFile extends AjaxCommonTest {
 				+ "<folder name='" + name + "' l='" + briefcaseFolderId + "'/>"
 				+ "</CreateFolderRequest>");
 
-		FolderItem subFolder = FolderItem.importFromSOAP(account, name);
+		FolderItem subFolderItem = FolderItem.importFromSOAP(account, name);
 
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, folderItem, true);
 
-		// Click on created subfolder
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, subFolder);
+		// Click on created subfolder		
+		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, subFolderItem);
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
@@ -88,14 +103,20 @@ public class MoveFile extends AjaxCommonTest {
 		// Click on created file
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 
-		// Click on Move selected item icon in toolbar
+		// Click on 'Move selected item' icon in toolbar
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+		"8.0.")){
+			// Click move -> subfolder
+			app.zPageBriefcase.zToolbarPressPulldown(Button.B_MOVE, subFolderItem);
+		}else{
 		DialogMove chooseFolder = (DialogMove) app.zPageBriefcase
 				.zToolbarPressButton(Button.B_MOVE, fileItem);
 
 		// Click OK on Confirmation dialog
-		chooseFolder.zClickTreeFolder(subFolder);
+		chooseFolder.zClickTreeFolder(subFolderItem);
 		chooseFolder.zClickButton(Button.B_OK);
-
+		}
+		
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, folderItem, false);
 
@@ -104,7 +125,7 @@ public class MoveFile extends AjaxCommonTest {
 				.getName()), "Verify document was moved from the folder");
 
 		// click on subfolder in tree view
-		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, subFolder, true);
+		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, subFolderItem, true);
 
 		// Verify document was moved to the selected folder
 		boolean present = app.zPageBriefcase.isPresentInListView(fileItem

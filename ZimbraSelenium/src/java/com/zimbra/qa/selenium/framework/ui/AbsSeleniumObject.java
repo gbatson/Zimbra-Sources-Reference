@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.framework.ui;
 
 import java.util.Arrays;
@@ -392,6 +408,20 @@ public abstract class AbsSeleniumObject {
 		logger.info("zType(" + locator + "," + value + ")");
 	}
 
+	/**
+	 * This method uses sTypeKeys to simulate the activation of textfield,
+	 * then change the property internally through sType method
+	 * The weakness of sTypeKeys is some characters such as '.' don't get
+	 * printed to the textfield
+	 * @param locator
+	 * @param value
+	 */
+	public void zTypeKeys(String locator, String value) {
+	   sTypeKeys(locator, value);
+	   sType(locator, value);
+	   logger.info("zTypeKeys(" + locator + "," + value + ")");
+	}
+
 	public void zKeyDown(String keyCode) throws HarnessException {
 
 		if (keyCode == null || keyCode.isEmpty())
@@ -647,6 +677,17 @@ public abstract class AbsSeleniumObject {
 		((DefaultSelenium) ClientSessionFactory.session().selenium())
 				.doubleClick(locator);
 		logger.info("doubleClick(" + locator + ")");
+	}
+
+	/**
+	 * Ger Center point of item in "(x,y)" format based on given locator
+	 * @param locator
+	 * @return
+	 */
+	public String zGetCenterPoint(String locator) {
+	   String centerHeight = Integer.toString(ClientSessionFactory.session().selenium().getElementHeight(locator).intValue() / 2);
+	   String centerWidth = Integer.toString(ClientSessionFactory.session().selenium().getElementWidth(locator).intValue() / 2);
+	   return new StringBuilder("(").append(centerWidth).append(",").append(centerHeight).append(")").toString();
 	}
 
 	/**
@@ -1154,6 +1195,14 @@ public abstract class AbsSeleniumObject {
 	public void sCheck(String locator) {
 		ClientSessionFactory.session().selenium().check(locator);
 		logger.info("check(" + locator + ")");
+	}
+
+	/**
+    * DefaultSelenium.uncheck()
+    */
+	public void sUncheck(String locator) {
+	   ClientSessionFactory.session().selenium().uncheck(locator);
+      logger.info("uncheck(" + locator + ")");
 	}
 
 	/**

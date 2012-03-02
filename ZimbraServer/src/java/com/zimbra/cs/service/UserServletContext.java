@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -86,16 +86,17 @@ public final class UserServletContext {
 
     public static class Item {
         public int id;
+        public String acctId;
         public int ver;
         public boolean versioned;
         public MailItem mailItem;
         public Item(String itemId, Account targetAccount) throws ServiceException {
             String[] vals = itemId.split("\\.");
             ItemId iid = new ItemId((vals.length > 0) ? vals[0] : itemId, targetAccount == null ? (String) null : targetAccount.getId());
-            if (!iid.belongsTo(targetAccount)) {
-                throw ServiceException.INVALID_REQUEST("Cross account multi list is not supported. Requested id "+itemId+" in account "+(targetAccount == null ? "null" : targetAccount.getId()), null);
-            }
             id = iid.getId();
+            if (targetAccount != null && !targetAccount.getId().equals(iid.getAccountId())) {
+                acctId = iid.getAccountId();
+            }
             if (vals.length == 2) {
                 versioned = true;
                 ver = Integer.parseInt(vals[1]);
@@ -208,10 +209,21 @@ public final class UserServletContext {
             String[] ids = listParam.split(",");
             requestedItems = new ArrayList<Item>();
             reqListIds = new int[ids.length];
+            String proxyAcct = null;
             for (int i = 0; i < ids.length; ++i) {
                 Item item = new Item(ids[i], targetAccount);
                 requestedItems.add(item);
                 reqListIds[i] = item.id;
+                if (targetAccount != null && !targetAccount.getId().equals(item.acctId)) {
+                    if (proxyAcct != null && !proxyAcct.equals(item.acctId)) {
+                        throw ServiceException.INVALID_REQUEST("Cross account multi list is not supported. already requested item from "+proxyAcct+" also found "+item.acctId+":"+item.id, null);
+                    } else if (proxyAcct == null) {
+                        proxyAcct = item.acctId;
+                    }
+                }
+            }
+            if (proxyAcct != null) {
+                targetAccount = prov.get(AccountBy.id, proxyAcct, authToken);
             }
         }
 

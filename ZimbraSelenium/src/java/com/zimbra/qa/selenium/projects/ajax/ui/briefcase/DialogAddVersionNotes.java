@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -31,7 +47,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		logger.info(myPageName() + " zIsVisible()");
+		logger.info(myPageName() + " zIsActive()");
 
 		String locator = "class=" + Locators.zDialogClass;
 
@@ -43,15 +59,14 @@ public class DialogAddVersionNotes extends AbsDialog {
 			return (false); // Not visible per position
 		}
 
-		logger.info(myPageName() + " zIsVisible() = true");
+		// Yes, visible
+		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
-
 	}
 
 	@Override
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton(" + button + ")");
-
 		tracer.trace("Click dialog button " + button);
 
 		String locator = null;
@@ -67,7 +82,9 @@ public class DialogAddVersionNotes extends AbsDialog {
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
 		}
-
+		
+		// Default behavior, click the locator
+		
 		// Make sure the locator was set
 		if (locator == null) {
 			throw new HarnessException("Button " + button + " not implemented");
@@ -84,7 +101,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 		// "]");
 		
 		this.zClickAt(locator,"0,0");
-
+		
 		return (null);
 	}
 
@@ -109,9 +126,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 
 		this.sFocus(locator);
 		this.zClickAt(locator,"0,0");
-		this.sType(locator, notes);
-
-		this.zWaitForBusyOverlay();
+		this.sType(locator, notes);		
 	}
 
 	public void zDismissAddVersionNotesDlg(String parentWindow)

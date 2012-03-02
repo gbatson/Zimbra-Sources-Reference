@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -474,7 +474,7 @@ function(identity, table, signatures, index) {
 	var cell = row.insertCell(-1);
 	cell.className = "ZOptionsLabel";
 	var id = identity.id + "_name";
-	cell.innerHTML = "<span id='" + id + "'>" + name + ":</span>";
+	cell.innerHTML = "<span id='" + id + "'>" + AjxStringUtil.htmlEncode(name) + ":</span>";
 
 	this._sigSelect[identity.id] = {};
 	for (var i = 0; i < ZmSignaturesPage.SIG_FIELDS.length; i++) {

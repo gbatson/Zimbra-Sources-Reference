@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -94,7 +94,11 @@ public class YMailClient {
 
     private static SoapHttpTransport getTransport(Auth auth) {
         SoapHttpTransport transport =
-            new SoapHttpTransport(SOAP_URL + "?" + getQueryString(auth));
+            new SoapHttpTransport(SOAP_URL + "?" + getQueryString(auth)) {
+            public boolean generateContextHeader() {
+                return false;
+            }
+        }; 
         transport.setUserAgent(OfflineLC.zdesktop_name.value(), OfflineLC.getFullVersion());
         transport.setRequestProtocol(SoapProtocol.Soap11);
         transport.setResponseProtocol(SoapProtocol.Soap11);

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -219,6 +219,11 @@ public final class ZimbraLog {
      * the "zimbra.gal" logger. For gal-related events.
      */
     public static final Log gal = LogFactory.getLog("zimbra.gal");
+
+    /**
+     * the "zimbra.gal.concurrency" logger. For gal concurrency events.
+     */
+    public static final Log galconcurrency = LogFactory.getLog("zimbra.gal.concurrency");
 
     /**
      * the "zimbra.ldap" logger. For ldap-related events.

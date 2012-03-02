@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 administrator 20110708-2131 */
+    /* build: 7.0.0_BETA1_1111 administrator 20110826-1045 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -2377,6 +2377,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraCustomerCareTier = "zimbraCustomerCareTier";
 
     /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public static final String A_zimbraCustomMimeHeaderNameAllowed = "zimbraCustomMimeHeaderNameAllowed";
+
+    /**
      * SQL statements that take longer than this duration to execute will be
      * logged to the sqltrace category in mailbox.log.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
@@ -4075,6 +4084,19 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=850)
     public static final String A_zimbraGalType = "zimbraGalType";
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public static final String A_zimbraGlobalConfigExtraObjectClass = "zimbraGlobalConfigExtraObjectClass";
 
     /**
      * Deprecated since: 3.2.0. greatly simplify dl/group model. Orig desc:
@@ -5854,6 +5876,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraPasswordAllowedChars = "zimbraPasswordAllowedChars";
 
     /**
+     * regex of allowed punctuation characters in password
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1256)
+    public static final String A_zimbraPasswordAllowedPunctuationChars = "zimbraPasswordAllowedPunctuationChars";
+
+    /**
      * registered change password listener name
      *
      * @since ZCS 5.0.1
@@ -5953,6 +5983,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1162)
     public static final String A_zimbraPasswordMinAlphaChars = "zimbraPasswordMinAlphaChars";
+
+    /**
+     * minimum number of numeric or ascii punctuation characters required in
+     * a password
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1255)
+    public static final String A_zimbraPasswordMinDigitsOrPuncs = "zimbraPasswordMinDigitsOrPuncs";
 
     /**
      * minimum length of a password
@@ -8634,6 +8673,24 @@ public class ZAttrProvisioning {
     public static final String A_zimbraSpamTagPercent = "zimbraSpamTagPercent";
 
     /**
+     * Mail header name for flagging a message as not spam. If set, this
+     * takes precedence over zimbraSpamHeader.
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1257)
+    public static final String A_zimbraSpamWhitelistHeader = "zimbraSpamWhitelistHeader";
+
+    /**
+     * regular expression for matching the value of zimbraSpamWhitelistHeader
+     * for flagging a message as not spam
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1258)
+    public static final String A_zimbraSpamWhitelistHeaderValue = "zimbraSpamWhitelistHeaderValue";
+
+    /**
      * The list of available dictionaries that can be used for spell
      * checking.
      *
@@ -8733,6 +8790,24 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=564)
     public static final String A_zimbraSSLPrivateKey = "zimbraSSLPrivateKey";
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public static final String A_zimbraStandardClientCustomPrefTab = "zimbraStandardClientCustomPrefTab";
+
+    /**
+     * whether extra custom tabs in the Preferences page in HTML client are
+     * enabled
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1266)
+    public static final String A_zimbraStandardClientCustomPrefTabsEnabled = "zimbraStandardClientCustomPrefTabsEnabled";
 
     /**
      * Prefixes of thread names. Each value is a column in threads.csv that
@@ -9118,6 +9193,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=288)
     public static final String A_zimbraZimletContentObject = "zimbraZimletContentObject";
+
+    /**
+     * whether zimlets that send sensitive data are disabled in
+     * &quot;mixed&quot; zimbraMailMode
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1269)
+    public static final String A_zimbraZimletDataSensitiveInMixedModeDisabled = "zimbraZimletDataSensitiveInMixedModeDisabled";
 
     /**
      * Zimlet description

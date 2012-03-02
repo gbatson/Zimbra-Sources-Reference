@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -675,7 +675,7 @@ ZmTreeView.prototype._handleAddShare = function() {
     var requests = [];
     for (var i = 0; i < shares.length; i++) {
         var share = shares[i];
-        var name = share.folderPath.substr(1).replace("/"," ");
+        var name = share.folderPath.substr(1).replace(/\//g," ");
         var ownerName = (share.normalizedOwnerName.indexOf('@') >1) ? share.normalizedOwnerName.substr(0, share.normalizedOwnerName.indexOf('@')) : share.normalizedOwnerName;
         requests.push({
             _jsns: "urn:zimbraMail",

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -696,6 +696,60 @@ extends TestCase {
         String content = zMessage.getMimeStructure().getContent();
         assertTrue("template vars should be replaced", !content.contains("${FROM}") && !content.contains("${BODY}"));
         assertTrue(content.contains(TestUtil.getAddress(REMOTE_USER_NAME)) && content.contains(body));
+    }
+
+    public void testNotifyActionUseOrigHeaders()
+    throws Exception {
+        List<ZFilterRule> rules = new ArrayList<ZFilterRule>();
+        List<ZFilterCondition> conditions = new ArrayList<ZFilterCondition>();
+        List<ZFilterAction> actions = new ArrayList<ZFilterAction>();
+        conditions.add(new ZFilterCondition.ZTrueCondition());
+        // add an action to notify user2
+        // copy headers From,To,Cc,Subject from the original message onto the notification message
+        actions.add(new ZFilterAction.ZNotifyAction(
+                TestUtil.getAddress(REMOTE_USER_NAME), null, "${BODY}", -1, "From,To,Cc,Subject"));
+        rules.add(new ZFilterRule("testNotifyAction", true, false, conditions, actions));
+        saveIncomingRules(mMbox, new ZFilterRules(rules));
+
+        String subject = NAME_PREFIX + " testNotifyActionUseOrigHeaders";
+        String body = "Hi, How r u?";
+        String msg = new MessageBuilder().withFrom(REMOTE_USER_NAME).withToRecipient(USER_NAME).
+                withCcRecipient(USER_NAME).withSubject(subject).withBody(body).create();
+        // send msg to user1
+        TestUtil.addMessageLmtp(new String[] { USER_NAME }, REMOTE_USER_NAME, msg);
+        // check notification msg from user1 in user2's mailbox
+        ZMessage zMessage =
+                TestUtil.waitForMessage(TestUtil.getZMailbox(REMOTE_USER_NAME),
+                                        "in:inbox subject:\"" + subject + "\"");
+        boolean checkedFrom = false, checkedTo = false, checkedCc = false;
+        List<ZEmailAddress> msgAddrs = zMessage.getEmailAddresses();
+        for (ZEmailAddress addr : msgAddrs) {
+            if ("f".equals(addr.getType())) {
+                assertEquals(TestUtil.addDomainIfNecessary(REMOTE_USER_NAME), addr.getAddress());
+                if (!checkedFrom) {
+                    checkedFrom = true;
+                } else {
+                    fail("multiple From addresses");
+                }
+            }
+            if ("t".equals(addr.getType())) {
+                assertEquals(TestUtil.addDomainIfNecessary(USER_NAME), addr.getAddress());
+                if (!checkedTo) {
+                    checkedTo = true;
+                } else {
+                    fail("multiple To addresses");
+                }
+            }
+            if ("c".equals(addr.getType())) {
+                assertEquals(TestUtil.addDomainIfNecessary(USER_NAME), addr.getAddress());
+                if (!checkedCc) {
+                    checkedCc = true;
+                } else {
+                    fail("multiple Cc addresses");
+                }
+            }
+        }
+        assertEquals(subject, zMessage.getSubject());
     }
 
     public void testNotifyWithDiscard()

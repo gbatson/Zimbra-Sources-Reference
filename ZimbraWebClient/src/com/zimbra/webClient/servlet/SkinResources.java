@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -48,6 +48,8 @@ import com.zimbra.cs.util.Zimbra;
 import com.zimbra.kabuki.util.Colors;
 
 import java.awt.Color;
+
+import java.net.URLEncoder;
 
 /**
  * TODO: Clean up this code!
@@ -591,7 +593,7 @@ public class SkinResources
             for (File file : files) {
                 if (!file.exists()) {
                     out.print(commentStart);
-                    out.print("Error: file doesn't exist - " + file.getAbsolutePath().replaceAll("^.*/webapps/",""));
+					out.print("Error: file doesn't exist - " + URLEncoder.encode(file.getAbsolutePath().replaceAll("^.*/webapps/", ""), "UTF-8"));
                     out.println(commentEnd);
                     out.println();
                     continue;

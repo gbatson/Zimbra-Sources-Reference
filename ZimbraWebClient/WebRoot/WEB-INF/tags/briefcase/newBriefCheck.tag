@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -45,15 +45,21 @@
                     <zm:saveBriefcase var="result" folderId="${empty param.sfi ? mailbox.briefcase.id : param.sfi}" compose="${uploader.compose}"/>
                 </c:if>
             </c:when>
+            <c:when test="${uploader.isLimitExceeded}">
+                <c:set var="needUploadView" value="${false}"/>
+                <c:set var="needListView" value="${false}"/>
+                <fmt:message var="errorMsg" key="zclient.UPLOAD_SIZE_LIMIT_EXCEEDED"/>
+                <app:status style="Warning">${errorMsg}</app:status>
+            </c:when>
         </c:choose>
     </c:if>
 
     <c:if test="${needUploadView}">
-            <jsp:forward page="/h/briefcaseupload"/>
+        <jsp:forward page="/h/briefcaseupload"/>
     </c:if>
 
     <c:if test="${needListView}">
-            <c:redirect url="/h/search?st=briefcase&sfi=${empty param.sfi ? mailbox.briefcase.id : param.sfi}"/>
+        <c:redirect url="/h/search?st=briefcase&sfi=${empty param.sfi ? mailbox.briefcase.id : param.sfi}"/>
     </c:if>
 
 </app:handleError>

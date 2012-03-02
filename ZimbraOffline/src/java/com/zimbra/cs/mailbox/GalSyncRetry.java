@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -50,6 +50,10 @@ public final class GalSyncRetry {
         return this.mboxRetryMap.get(galMbox);
     }
 
+    private synchronized MailboxGalSyncRetry getExistingRetry(Mailbox galMbox) {
+        return this.mboxRetryMap.get(galMbox);
+    }
+
     public static void checkpoint(ZcsMailbox mbox, Mailbox galMbox, List<String> retryContactIds)
     throws ServiceException {
         LazyHolder.instance.getRetry(mbox, galMbox).checkpoint(retryContactIds);
@@ -58,6 +62,15 @@ public final class GalSyncRetry {
     public static void retry(ZcsMailbox mbox, Mailbox galMbox, List<String> retryContactIds)
     throws ServiceException, IOException {
         LazyHolder.instance.getRetry(mbox, galMbox).retry(retryContactIds);
+    }
+
+    public static boolean remove(Mailbox galMbox) throws ServiceException {
+        MailboxGalSyncRetry retry = LazyHolder.instance.getExistingRetry(galMbox);
+        if (retry != null) {
+            retry.remove();
+            return true;
+        }
+        return false;
     }
 
     private static final class MailboxGalSyncRetry {
@@ -160,6 +173,11 @@ public final class GalSyncRetry {
 
         void checkpoint() throws ServiceException {
             this.md.put(this.galMbox.getAccountId(), getRetryItems());
+            this.galMbox.setConfig(null, OfflineGalSyncRetry, this.md);
+        }
+
+        void remove() throws ServiceException {
+            this.md = null;
             this.galMbox.setConfig(null, OfflineGalSyncRetry, this.md);
         }
 

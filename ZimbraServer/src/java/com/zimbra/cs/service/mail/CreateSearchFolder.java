@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -55,10 +55,13 @@ public class CreateSearchFolder extends MailDocumentHandler  {
         String sort      = t.getAttribute(MailConstants.A_SORTBY, null);
         String flags     = t.getAttribute(MailConstants.A_FLAGS, null);
         byte color       = (byte) t.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+        String rgb       = t.getAttribute(MailConstants.A_RGB, null);
+
+        MailItem.Color itemColor = rgb != null ? new MailItem.Color(rgb) : new MailItem.Color(color);
         ItemId iidParent = new ItemId(t.getAttribute(MailConstants.A_FOLDER), zsc);
 
         SearchFolder search = mbox.createSearchFolder(octxt, iidParent.getId(),
-            name, query, types, sort, Flag.flagsToBitmask(flags), color);
+            name, query, types, sort, Flag.flagsToBitmask(flags), itemColor);
 
         Element response = zsc.createElement(MailConstants.CREATE_SEARCH_FOLDER_RESPONSE);
         if (search != null)

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1352,13 +1352,13 @@ function(sd) {
 ZmCalItemEditView.prototype._setEmailReminderControls =
 function() {
     var email = appCtxt.get(ZmSetting.CAL_EMAIL_REMINDERS_ADDRESS);
-    var emailText = ZmCalItemEditView.__getReminderCheckboxText(ZmMsg.emailWithAddress, email);
+    var emailText = ZmCalItemEditView.__getReminderCheckboxText(ZmMsg.emailWithAddress, AjxStringUtil.htmlEncode(email));
     var emailEnabled = Boolean(email);
     this._reminderEmailCheckbox.setEnabled(emailEnabled);
     this._reminderEmailCheckbox.setText(emailText);
 
     var deviceEmail = appCtxt.get(ZmSetting.CAL_DEVICE_EMAIL_REMINDERS_ADDRESS);
-    var deviceEmailText = ZmCalItemEditView.__getReminderCheckboxText(ZmMsg.deviceEmailWithAddress, deviceEmail);
+    var deviceEmailText = ZmCalItemEditView.__getReminderCheckboxText(ZmMsg.deviceEmailWithAddress, AjxStringUtil.htmlEncode(deviceEmail));
     var deviceEmailEnabled = appCtxt.get(ZmSetting.CAL_DEVICE_EMAIL_REMINDERS_ENABLED) && Boolean(deviceEmail);
     this._reminderDeviceEmailCheckbox.setEnabled(deviceEmailEnabled);
     this._reminderDeviceEmailCheckbox.setText(deviceEmailText);

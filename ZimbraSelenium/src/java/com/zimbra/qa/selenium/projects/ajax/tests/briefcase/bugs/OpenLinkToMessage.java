@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.bugs;
 
 import java.util.HashMap;
@@ -37,7 +53,7 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 
 	@Bugs(ids = "56802")
 	@Test(description = "Open link to the message - Verify List View Rows are displayed after message closed", groups = { "functional" })
-	public void OpenLink_01() throws HarnessException {
+	public void OpenLinkToMessage_01() throws HarnessException {
 		// Create the message data to be sent
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 
@@ -78,7 +94,7 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 
 			for (String p : query.split("&")) {
 				if (p.contains("=")) {
-					map.put(p.split("=")[0], p.split("=")[1]);
+					map.put(p.split("=")[0], p.split("=")[1].substring(0,1));
 				}
 			}
 		}
@@ -93,6 +109,8 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 		app.zPageBriefcase.zClickAt(
 				PageMail.Locators.zCloseIconBtn_messageWindow, "0,0");
 
+		SleepUtil.sleepVerySmall();
+		
 		ZAssert
 				.assertTrue(app.zPageBriefcase
 						.sIsElementPresent(PageMail.Locators.zTVRows),

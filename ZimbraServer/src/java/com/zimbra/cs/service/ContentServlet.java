@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -42,6 +42,7 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.Provisioning.ServerBy;
+import com.zimbra.cs.html.DefangFactory;
 import com.zimbra.cs.html.HtmlDefang;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailItem;
@@ -329,7 +330,7 @@ public class ContentServlet extends ZimbraServlet {
         resp.setContentType(contentType);
         InputStream is = null;
         try {
-            String html = HtmlDefang.defang(is = mp.getInputStream(), FORMAT_DEFANGED_HTML.equals(fmt));
+            String html = DefangFactory.getDefanger(contentType).defang(is = mp.getInputStream(), FORMAT_DEFANGED_HTML.equals(fmt));
             ByteArrayInputStream bais = new ByteArrayInputStream(html.getBytes("utf-8"));
             ByteUtil.copy(bais, false, resp.getOutputStream(), false);
         } finally {

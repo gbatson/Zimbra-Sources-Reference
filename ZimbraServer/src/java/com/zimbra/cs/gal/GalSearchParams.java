@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -45,6 +45,7 @@ public class GalSearchParams {
 	private ZimbraSoapContext mSoapContext;
 	
 	private Account mAccount;
+	private String mUserAgent;
 	private Account mGalSyncAccount;
 	private Domain mDomain;
     private SearchParams mSearchParams;
@@ -309,8 +310,15 @@ public class GalSearchParams {
         mFetchGroupMembers = fetchGroupMembers;
     }
 
-	
 	public void setOp(GalOp op) {
 	    mOp = op;
+	}
+	
+	public void setUserAgent(String ua) {
+	    mUserAgent = ua;
+	}
+	
+	public String getUserInfo() {
+	    return mAccount.getName() + " (" + ((mUserAgent == null) ? "" : mUserAgent) + ")";
 	}
 }

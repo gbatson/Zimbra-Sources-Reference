@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -326,17 +326,17 @@ function(content) {
 	}
 
 	content = content || "";
+	AjxDebug.println(AjxDebug.REPLY, "DwtHtmlEditor::setContent - Content length: " + content.length);
 	if (this._mode == DwtHtmlEditor.HTML) {
 		// If the html editor is initialized then go ahead and set the content, else let
 		// _finishHtmlModeInit run before we try setting the content
 		this._pendingContent = content;
-		AjxDebug.println(AjxDebug.REPLY, "Editor in HTML mode, initialized: " + this._htmlModeInited);
+		AjxDebug.println(AjxDebug.REPLY, "HTML mode, initialized: " + this._htmlModeInited);
 		if (this._htmlModeInited) {
-			AjxDebug.println(AjxDebug.REPLY, "Editor in HTML mode, setting content on timer");
 			this._setContentOnTimer();
 		} // ELSE: _finishHtmlModeInit is about to run and it'll use _pendingContent
 	} else {
-		AjxDebug.println(AjxDebug.REPLY, "Editor in text mode, content length: " + content.length);
+		AjxDebug.println(AjxDebug.REPLY, "Text mode, set textarea value");
 		document.getElementById(this._textAreaId).value = content;
 	}
 }
@@ -536,6 +536,9 @@ DwtHtmlEditor.prototype.applyCellProperties = function(table, cells, props) {
 	var last_row = true;
 	for (var row_i = cells.length; --row_i >= 0;) {
 		var row = cells[row_i];
+		if (!row) {
+			continue;
+		}
 		var first_row = (row_i == 0);
 		var last_col = true;
 		for (var cell_i = row.length; --cell_i >= 0;) {
@@ -755,6 +758,8 @@ function(mode, convert, convertor) {
 		var iFrame;
 		var content = convert ? AjxStringUtil.convertToHtml(textArea.value, true) : textArea.value;
 		if (this._iFrameId) {
+			AjxDebug.println(AjxDebug.REPLY, "DwtHtmlEditor::setMode - content length = " + content.length);
+			AjxDebug.println(AjxDebug.REPLY, "Set innerHTML of iframe body");
 			idoc.body.innerHTML = content;
 			iFrame = document.getElementById(this._iFrameId);
 		} else {
@@ -889,10 +894,22 @@ function(content) {
 	// occur if we go back to using onload, so maybe something got fixed in FF.
 	// iFrame.onload = cont;
 
+    if( this._isPasteEnabled ){
+        var pastecont = AjxCallback.simpleClosure(this._registerPasteEvent, this);
+        iFrame.onload = pastecont;
+    }
 	iFrame.src = this._blankIframeSrc || "";
 	htmlEl.appendChild(iFrame);
 
 	return iFrame;
+};
+
+DwtHtmlEditor.prototype._registerPasteEvent = function(){
+    var editor = this,
+        doc = editor._getIframeDoc();
+    //Always unregister event handler as safari and chrome fires multiple times if registered multiple
+    editor._unregisterEditorEventHandler(doc,"paste");
+    editor._registerEditorEventHandler(doc,"paste");
 };
 
 DwtHtmlEditor.prototype._finishHtmlModeInit =
@@ -1711,6 +1728,7 @@ function(iFrameDoc) {
 
 DwtHtmlEditor.prototype._onContentInitialized =
 function() {
+	AjxDebug.println(AjxDebug.REPLY, "DwtHtmlEditor::_onContentInitialized - clear pending content, length = " + this._pendingContent.length);
 	this._pendingContent = null;
 };
 
@@ -1720,11 +1738,13 @@ function() {
 	try {
 		AjxDebug.println(AjxDebug.REPLY, "DwtHtmlEditor::_setContentOnTimer");
 		if (this._pendingContent != null) {
-			AjxDebug.println(AjxDebug.REPLY, "setting content, length: " + this._pendingContent.length);
+			AjxDebug.println(AjxDebug.REPLY, "Pending content length: " + this._pendingContent.length);
+			AjxDebug.println(AjxDebug.REPLY, "Set innerHTML of iframe body");
 			iframeDoc.body.innerHTML = this._pendingContent;
 		}
 		// XXX: mozilla hack
 		if (AjxEnv.isGeckoBased || AjxEnv.isSafari) {
+			AjxDebug.println(AjxDebug.REPLY, "Turn on design mode");
 			this._enableDesignMode(iframeDoc);
 		}
 		this._onContentInitialized();
@@ -1791,7 +1811,7 @@ DwtHtmlEditor.prototype.insertLink = function(params) {
 				node.innerHTML = selectionHtml;
 			}
 			else {
-				node.innerHTML = params.text;
+				node.innerText = params.text;
 			}
             this.selectNodeContents(node);
         } else {

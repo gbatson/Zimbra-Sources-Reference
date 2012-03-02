@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import org.testng.annotations.Test;
@@ -28,8 +44,8 @@ public class UnTagFile extends AjaxCommonTest {
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-		+ "/data/public/other/com_zimbra_ymaps.zip";
-		
+				+ "/data/public/other/com_zimbra_ymaps.zip";
+
 		FileItem fileItem = new FileItem(filePath);
 
 		// Upload file to server through RestUtil
@@ -67,7 +83,7 @@ public class UnTagFile extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created document
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 
@@ -116,6 +132,9 @@ public class UnTagFile extends AjaxCommonTest {
 		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
 				"t");
 
+		ZAssert.assertNotNull(id,
+				"Verify the search response returns the document tag id");
+
 		ZAssert.assertEquals(id, tagId,
 				"Verify the tag was attached to the document");
 
@@ -123,7 +142,7 @@ public class UnTagFile extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on tagged document
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 
@@ -144,7 +163,7 @@ public class UnTagFile extends AjaxCommonTest {
 
 		ZAssert.assertStringDoesNotContain(id, tagId,
 				"Verify that the tag is removed from the message");
-		
+
 		// delete file upon test completion
 		app.zPageBriefcase.deleteFileByName(fileItem.getName());
 	}

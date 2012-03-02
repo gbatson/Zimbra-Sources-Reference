@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.filter;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
@@ -246,6 +247,7 @@ public class ZimbraMailAdapter implements MailAdapter
                 } else if (action instanceof ActionReply) {
                     // reply to mail
                     ActionReply reply = (ActionReply) action;
+                    ZimbraLog.filter.debug("Replying to message");
                     try {
                         handler.reply(reply.getBodyTemplate());
                     } catch (Exception e) {
@@ -254,11 +256,13 @@ public class ZimbraMailAdapter implements MailAdapter
                     }
                 } else if (action instanceof ActionNotify) {
                     ActionNotify notify = (ActionNotify) action;
+                    ZimbraLog.filter.debug("Sending notification message to %s.", notify.getEmailAddr());
                     try {
                         handler.notify(notify.getEmailAddr(),
-                                        notify.getSubjectTemplate(),
-                                        notify.getBodyTemplate(),
-                                        notify.getMaxBodyBytes());
+                                       notify.getSubjectTemplate(),
+                                       notify.getBodyTemplate(),
+                                       notify.getMaxBodyBytes(),
+                                       notify.getOrigHeaders());
                     } catch (Exception e) {
                         ZimbraLog.filter.warn("Unable to notify.", e);
                         explicitKeep();
@@ -353,6 +357,11 @@ public class ZimbraMailAdapter implements MailAdapter
     private Message explicitKeep()
     throws ServiceException {
         String folderPath = handler.getDefaultFolderPath();
+        if (ZimbraLog.filter.isDebugEnabled()) {
+            ZimbraLog.filter.debug(
+                    appendFlagTagActionsInfo(
+                            "Explicit keep - fileinto " + folderPath, getFlagActions(), getTagActions()));
+        }
         Message msg = null;
         if (filedIntoPaths.contains(folderPath)) {
             ZimbraLog.filter.info("Ignoring second attempt to file into %s.", folderPath);
@@ -373,6 +382,10 @@ public class ZimbraMailAdapter implements MailAdapter
      */
     private void fileInto(String folderPath)
     throws ServiceException {
+        if (ZimbraLog.filter.isDebugEnabled()) {
+            ZimbraLog.filter.debug(
+                    appendFlagTagActionsInfo("fileinto " + folderPath, getFlagActions(), getTagActions()));
+        }
         if (filedIntoPaths.contains(folderPath)) {
             ZimbraLog.filter.info("Ignoring second attempt to file into %s.", folderPath);
         } else {
@@ -382,6 +395,18 @@ public class ZimbraMailAdapter implements MailAdapter
                 addedMessageIds.add(id);
             }
         }
+    }
+
+    private static String appendFlagTagActionsInfo(
+            String deliveryActionInfo, Collection<ActionFlag> flagActions,  Collection<ActionTag> tagActions) {
+        StringBuilder builder = new StringBuilder(deliveryActionInfo);
+        for (ActionFlag flagAction : flagActions) {
+            builder.append(",Flag ").append(flagAction.getName());
+        }
+        for (ActionTag tagAction : tagActions) {
+            builder.append(",Tag ").append(tagAction.getTagName());
+        }
+        return builder.toString();
     }
 
     private String getTags()

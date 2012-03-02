@@ -44,7 +44,7 @@
             	<c:redirect url="${logoutRedirectUrl}"/>
             </c:if>
         </c:when>
-        <c:when test="${(param.loginOp eq 'login') && !(empty trimmedUserName) && !(empty param.password)}">
+        <c:when test="${(param.loginOp eq 'login') && !(empty trimmedUserName) && !(empty param.password) && (pageContext.request.method eq 'POST')}">
         	<c:choose>
 	        	<c:when test="${(fn:indexOf(trimmedUserName,'@') == -1) and !(empty param.customerDomain)}">
 	        		<c:set var="fullUserName" value="${trimmedUserName}@${param.customerDomain}"/>
@@ -55,7 +55,8 @@
 		    </c:choose>        
 		    <c:choose>
 	        	<c:when test="${!empty cookie.ZM_TEST}">
-		            <zm:login username="${fullUserName}" password="${param.password}" varRedirectUrl="postLoginUrl" varAuthResult="authResult"
+		            <zm:login username="${fullUserName}" password="${param.password}" varRedirectUrl="postLoginUrl"
+                              varAuthResult="authResult" varNeedRefer="needRefer"
 		                      newpassword="${param.loginNewPassword}" rememberme="${param.zrememberme == '1'}"
 							  requestedSkin="${param.skin}"/>
 		            <%-- continue on at not empty authResult test --%>
@@ -71,7 +72,7 @@
 	        <c:set var="authtoken" value="${not empty param.zauthtoken ? param.zauthtoken : cookie.ZM_AUTH_TOKEN.value}"/>
 	        <c:if test="${not empty authtoken}">
 	            <zm:login authtoken="${authtoken}" authtokenInUrl="${not empty param.zauthtoken}"
-	                      varRedirectUrl="postLoginUrl" varAuthResult="authResult"
+	                      varRedirectUrl="postLoginUrl" varAuthResult="authResult" varNeedRefer="needRefer"
 	                      rememberme="${param.zrememberme == '1'}"
 						  requestedSkin="${param.skin}" adminPreAuth="${param.adminPreAuth == '1'}"/>
 	            <%-- continue on at not empty authResult test --%>
@@ -84,16 +85,31 @@
     <c:choose>
         <c:when test="${not empty postLoginUrl}">
             <c:choose>
-                <c:when test="${not empty param.client}">
-                    <c:redirect url="${postLoginUrl}">
-                        <c:param name="client" value="${param.client}"/>
-                    </c:redirect>
+                <c:when test="${needRefer}">
+                    <%--
+                    bug 63258: Need to redirect to a different server, avoid browser redirect to the post login URL.
+                    Do a JSP redirect which will do a onload form submit with ZAuthToken as a hidden param.
+                    In case of JS-disabled browser, make the user do a manual submit.
+                    --%>
+                    <jsp:forward page="/h/postLoginRedirect">
+                       <jsp:param name="postLoginUrl" value="${postLoginUrl}"/>
+                       <jsp:param name="zauthtoken" value="${authResult.authToken.value}"/>
+                       <jsp:param name="client" value="${param.client}"/>
+                    </jsp:forward>
                 </c:when>
                 <c:otherwise>
-                    <c:redirect url="${postLoginUrl}"/>
+                    <c:choose>
+                        <c:when test="${not empty param.client}">
+                            <c:redirect url="${postLoginUrl}">
+                                <c:param name="client" value="${param.client}"/>
+                            </c:redirect>
+                        </c:when>
+                        <c:otherwise>
+                            <c:redirect url="${postLoginUrl}"/>
+                        </c:otherwise>
+                    </c:choose>
                 </c:otherwise>
             </c:choose>
-
         </c:when>
         <c:otherwise>
             <c:set var="client" value="${param.client}"/>
@@ -125,7 +141,12 @@
 
         		</c:when>
         		<c:when test="${client eq 'standard'}">
-		            <c:redirect url="/h/search?mesg=welcome&initial=true&app=${param.app}">
+		            <c:redirect url="/h/search">
+                        <c:param name="mesg" value='welcome'/>
+                        <c:param name="init" value='true'/>
+                        <c:if test="${not empty param.app}">
+                            <c:param name="app" value='${param.app}'/>
+                        </c:if>
                         <c:forEach var="p" items="${paramValues}">
                             <c:forEach var='value' items='${p.value}'>
                                 <c:if test="${not fn:contains(ignoredQueryParams, p.key)}">
@@ -226,7 +247,7 @@ if (application.getInitParameter("offlineMode") != null)  {
  login.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in

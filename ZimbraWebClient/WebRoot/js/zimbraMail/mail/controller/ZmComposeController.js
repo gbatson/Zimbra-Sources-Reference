@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -91,6 +91,9 @@ ZmComposeController.DRAFT_TYPE_DELAYSEND	= "delaysend";
 
 ZmComposeController.DEFAULT_TAB_TEXT = ZmMsg.compose;
 
+ZmComposeController.NEW_WINDOW_WIDTH = 975;
+ZmComposeController.NEW_WINDOW_HEIGHT = 475;
+
 ZmComposeController._setStatics =
 function() {
 
@@ -179,9 +182,18 @@ function() {
 ZmComposeController.prototype.doAction =
 function(params) {
 
-
-	// is zdesktop, its possible there are no accounts that support smtp
+	AjxDebug.println(AjxDebug.REPLY, "-------------- " + params.action + " ----------------------------------");
 	var ac = window.parentAppCtxt || window.appCtxt;
+	if (params.action == ZmOperation.REPLY || params.action == ZmOperation.REPLY_ALL) {
+		var str = ["Browser: " + AjxEnv.browser,
+				   "Offline: " + Boolean(ac.isOffline),
+				   "Multi accts: " + ac.multiAccounts,
+				   "New Window: " + params.inNewWindow,
+				   "Reading pane location: " + ac.get(ZmSetting.READING_PANE_LOCATION)].join(" / ");
+		AjxDebug.println(AjxDebug.REPLY, str);
+	}
+	
+	// in zdesktop, it's possible there are no accounts that support smtp
 	if (ac.isOffline && !ac.get(ZmSetting.OFFLINE_COMPOSE_ENABLED)) {
 		var d = ac.getMsgDialog();
 		d.setMessage(ZmMsg.composeDisabled, DwtMessageDialog.CRITICAL_STYLE);
@@ -192,7 +204,7 @@ function(params) {
 	this._msgSent = false;
 	if (params.inNewWindow) {
         var msgId = params.msg ? params.msg.nId : (this._msg ? this._msg.nId : Dwt.getNextId());
-		var newWinObj = ac.getNewWindow(false, null, null, ZmId.VIEW_COMPOSE + "_" + msgId);
+		var newWinObj = ac.getNewWindow(false, ZmComposeController.NEW_WINDOW_WIDTH, ZmComposeController.NEW_WINDOW_HEIGHT, ZmId.VIEW_COMPOSE + "_" + msgId);
 
 		// this is how child window knows what to do once loading:
 		newWinObj.command = "compose";
@@ -251,7 +263,7 @@ function() {
 
 	// this is how child window knows what to do once loading:
     var msgId = (msg && msg.nId) || Dwt.getNextId();
-	var newWinObj = appCtxt.getNewWindow(false, null, null, ZmId.VIEW_COMPOSE + "_" + msgId);
+	var newWinObj = appCtxt.getNewWindow(false, ZmComposeController.NEW_WINDOW_WIDTH, ZmComposeController.NEW_WINDOW_HEIGHT, ZmId.VIEW_COMPOSE + "_" + msgId);
     if (newWinObj.win) {
         newWinObj.win.focus();
     }
@@ -896,7 +908,7 @@ function(params) {
 	params.identity = identity;
 
 	this._composeMode = params.composeMode || this._getComposeMode(msg, identity);
-	this._curIncOptions = null;
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeController::_setView - Compose mode: " + this._composeMode);
 
 	if (this._needComposeViewRefresh) {
 		this._composeView.dispose();
@@ -909,7 +921,7 @@ function(params) {
 		this.initComposeView(null, this._composeMode);
 		cv = this._composeView;
 	} else {
-		cv.setComposeMode(this._composeMode);
+		cv.setComposeMode(this._composeMode, false, true);
 	}
 
 	if (identity) {
@@ -921,8 +933,10 @@ function(params) {
 
 	this._setAddSignatureVisibility();
 
+	this._curIncOptions = null;
 	cv.set(params);
 	this._setOptionsMenu();
+	appCtxt.notifyZimlets("initializeToolbar", [this._app, this._toolbar, this, this.viewId], {waitUntilLoaded:true});
 
     if (params.readReceipt) {
         var menu = this._optionsMenu[this._action];
@@ -1053,7 +1067,6 @@ function() {
 		button.setMenu(menu);
 	}
 
-	appCtxt.notifyZimlets("initializeToolbar", [this._app, tb, this, this.viewId], {waitUntilLoaded:true});
 };
 
 ZmComposeController.prototype._initAutoSave =
@@ -1406,6 +1419,7 @@ function(draftType, msg, resp) {
 				listController = window.parentAppCtxt.getApp(ZmApp.MAIL).getMailListController();
 			}
 		}
+		//listController is available only when editing an existing draft.
 		if (listController && listController._draftSaved) {
 			var savedMsg = appCtxt.isChildWindow ? null : msg;
 			var savedResp = appCtxt.isChildWindow ? resp.m[0] : null; //Pass the mail response to the parent window such that the ZmMailMsg obj is created in the parent window.
@@ -1455,7 +1469,7 @@ function(ev) {
 // Cancel button was pressed
 ZmComposeController.prototype._cancelListener =
 function(ev) {
-	AjxDebug.println(AjxDebug.REPLY, "Reset compose view: _cancelListener");
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeController: _cancelListener");
 	this._cancelCompose();
 };
 
@@ -1712,7 +1726,7 @@ function() {
 ZmComposeController.prototype.showDelayPastDialog =
 function() {
 	if (!this._delayPastDialog) {
-		this._delayPastDialog = new DwtMessageDialog({parent:this._shell, buttons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON]});
+		this._delayPastDialog = new DwtMessageDialog({parent:this._shell, buttons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON], id: "ShowDelayPastDialog"});
 		this._delayPastDialog.setMessage(ZmMsg.sendLaterPastError, DwtMessageDialog.WARNING_STYLE);
 		this._delayPastDialog.registerCallback(DwtDialog.OK_BUTTON, this._handleDelayPastDialog, this, []);
 	}
@@ -1996,4 +2010,32 @@ function(){
     return this._msg;
 };
 
+ZmComposeController.prototype._pasteHandler = function( ev ){
+    var items,blob,controller,req;
+    if (ev.clipboardData){
+        items = ev.clipboardData.items;
+        if( items ){
+            blob = items[0].getAsFile();
+            if( blob ){
+                controller = this;
+                req = new XMLHttpRequest();
+                req.open("POST", appCtxt.get(ZmSetting.CSFE_ATTACHMENT_UPLOAD_URI)+"?fmt=extended,raw", true);
+                req.setRequestHeader("Cache-Control", "no-cache");
+                req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+                req.setRequestHeader("Content-Type", blob.type);
+                req.setRequestHeader("Content-Disposition", 'attachment; filename="' + ev.timeStamp + '"');//For paste from clipboard filename is undefined so we are using timestamp
+                req.onreadystatechange = function(){
+                    if(req.readyState === 4 && req.status === 200) {
+                        var resp = eval("["+req.responseText+"]");
+                        if(resp.length === 3) {
+                            resp[2].clipboardPaste = true;
+                            controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, resp[2]);
+                        }
+                    }
+                }
+                req.send(blob);
+            }
+        }
+    }
+};
 

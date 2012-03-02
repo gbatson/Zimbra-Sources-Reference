@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.desktop.core;
 
 import java.io.*;
@@ -88,6 +104,14 @@ public class AjaxCommonTest {
 	public final static String yahooPassword = ZimbraSeleniumProperties.getStringProperty("desktop.yahoo.password");
 	public final static String gmailUserName = ZimbraSeleniumProperties.getStringProperty("desktop.gmail.login");
 	public final static String gmailPassword = ZimbraSeleniumProperties.getStringProperty("desktop.gmail.password");
+	public final static String hotmailUserName = ZimbraSeleniumProperties.getStringProperty("desktop.hotmail.login");
+	public final static String hotmailPassword = ZimbraSeleniumProperties.getStringProperty("desktop.hotmail.password");
+	public final static String hotmailUserName2 = ZimbraSeleniumProperties.getStringProperty("desktop.hotmail2.login");
+	public final static String hotmailPassword2 = ZimbraSeleniumProperties.getStringProperty("desktop.hotmail2.password");
+	public final static String gmailImapReceivingServer = "imap.gmail.com";
+	public final static String gmailImapSmtpServer = "smtp.gmail.com";
+	public final static String hotmailPopReceivingServer = "pop3.live.com";
+	public final static String hotmailPopSmtpServer = "smtp.live.com";
 
 	// This variable is to track desktop current account, if new account is created
 	// then, desktop has to add that newly created account, while removing the
@@ -475,6 +499,7 @@ public class AjaxCommonTest {
 			}
 
 			if (startingPage != app.zPageAddNewAccount) {
+			   ZimbraAdminAccount.GlobalAdmin().authenticateToMailClientHost();
 				ZimbraAccount.AccountZWC().authenticateToMailClientHost();
 			}
 
@@ -489,8 +514,9 @@ public class AjaxCommonTest {
 		//
 		if ( (startingAccountPreferences != null) && (!startingAccountPreferences.isEmpty()) ) {
 			logger.debug("commonTestBeforeMethod: startingAccountPreferences are defined");
+         ZimbraAccount.AccountZWC().modifyPreferences(startingAccountPreferences, destType);
 
-			StringBuilder settings = new StringBuilder();
+         /**StringBuilder settings = new StringBuilder();
 			for (Map.Entry<String, String> entry : startingAccountPreferences.entrySet()) {
 				settings.append(String.format("<a n='%s'>%s</a>", entry.getKey(), entry.getValue()));
 			}
@@ -498,9 +524,9 @@ public class AjaxCommonTest {
 					"<ModifyAccountRequest xmlns='urn:zimbraAdmin'>"
 					+		"<id>"+ ZimbraAccount.AccountZWC().ZimbraId +"</id>"
 					+		settings.toString()
-					+	"</ModifyAccountRequest>");
+					+	"</ModifyAccountRequest>", destType);
 
-
+*/
 			// Set the flag so the account is reset for the next test
 			ZimbraAccount.AccountZWC().accountIsDirty = true;
 		}

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,11 +32,10 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 import javax.mail.util.SharedByteArrayInputStream;
 
+import org.junit.runner.JUnitCore;
+
 import junit.framework.Assert;
 import junit.framework.TestCase;
-
-import org.testng.TestListenerAdapter;
-import org.testng.TestNG;
 
 import com.zimbra.common.lmtp.LmtpClient;
 import com.zimbra.common.localconfig.LC;
@@ -45,11 +44,11 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.Attribute;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapHttpTransport;
 import com.zimbra.common.soap.SoapTransport;
-import com.zimbra.common.soap.Element.Attribute;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.CliUtil;
 import com.zimbra.common.util.StringUtil;
@@ -59,9 +58,9 @@ import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.Provisioning.DataSourceBy;
+import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.soap.SoapProvisioning;
 import com.zimbra.cs.client.LmcSession;
 import com.zimbra.cs.client.soap.LmcAdminAuthRequest;
@@ -216,7 +215,7 @@ extends Assert {
         return mbox.addMessage(null, pm, folderId, false, Flag.BITMASK_UNREAD, null);
     }
 
-    private static String getTestMessage(String subject)
+    public static String getTestMessage(String subject)
     throws ServiceException, MessagingException, IOException {
         return new MessageBuilder().withSubject(subject).create();
     }
@@ -559,21 +558,10 @@ extends Assert {
     }
 
     public static void runTest(Class<?> testClass) {
-        TestNG testng = TestUtil.newTestNG();
-        ZimbraLog.test.info("Starting unit test %s.\nSee %s/index.html for results.",
-            testClass.getName(), testng.getOutputDirectory());
-        TestListenerAdapter listener = new TestListenerAdapter();
-        testng.addListener(listener);
-        testng.addListener(new TestLogger());
-
-        Class<?>[] classArray = new Class<?>[1];
-        classArray[0] = testClass;
-
-        testng.setTestClasses(classArray);
-        if (TestCase.class.isAssignableFrom(testClass)) {
-            testng.setJUnit(true);
-        }
-        testng.run();
+        JUnitCore junit = new JUnitCore();
+        junit.addListener(new TestLogger());
+        ZimbraLog.test.info("Starting unit test %s.", testClass.getName());
+        junit.run(testClass);
     }
 
 
@@ -966,15 +954,6 @@ extends Assert {
             attrStrings.add(String.format("%s=%s", attr.getKey(), attr.getValue()));
         }
         return StringUtil.join(",", attrStrings);
-    }
-    /**
-     * Returns a new <tt>TestNG</tt> object that writes test results to
-     * <tt>/opt/zimbra/test-output</tt>.
-     */
-    public static TestNG newTestNG() {
-        TestNG testng = new TestNG();
-        testng.setOutputDirectory("/opt/zimbra/test-output");
-        return testng;
     }
 
     public static String getHeaderValue(ZMailbox mbox, ZMessage msg, String headerName)

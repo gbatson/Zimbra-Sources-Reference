@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package  com.zimbra.qa.selenium.projects.desktop.ui.addressbook;
 
 import java.awt.event.KeyEvent;
@@ -11,8 +27,8 @@ import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.desktop.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.desktop.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.desktop.ui.*;
 import com.zimbra.qa.selenium.projects.desktop.ui.mail.FormMailNew;
@@ -120,7 +136,7 @@ public class PageAddressbook extends AbsTab {
 			throw new HarnessException("Can't locate addressbook icon");
 		}
 
-		
+
 		// Click on Addressbook icon
 		zClick(PageMain.Locators.zAppbarContact);
 
@@ -150,11 +166,11 @@ public class PageAddressbook extends AbsTab {
 		for (int i = 1; i <= count; i++) {
 			String commonLocator = "//div[@id='zv__CNS']/div["+ i +"]";
 			String contactType = getContactType(commonLocator);
-		    
+
 			ContactItem ci=null;
 			String contactDisplayedLocator = commonLocator + "/table/tbody/tr/td[3]";
 			String fileAs = ClientSessionFactory.session().selenium().getText(contactDisplayedLocator);
-			
+
 			//check if it is a contactgroup or a contactgroup item
 			if ( contactType.equals(ContactGroupItem.IMAGE_CLASS)) {
                 ci=new ContactGroupItem(fileAs);
@@ -165,15 +181,39 @@ public class PageAddressbook extends AbsTab {
 			else {
 				throw new HarnessException("Image not neither conntact group nor contact.");		
 			}
-			
+
 			list.add(ci);	    	      
 		}
-
 
 		return list;		
 	}
 
-				
+	public AbsPage zKeyboardShortcut(Shortcut shortcut) throws HarnessException {
+      logger.info(myPageName() + " zKeyboardShortcut("+ shortcut.getKeys() +")");
+
+      tracer.trace("Click the shortcut "+ shortcut.getKeys() );
+
+      // Default behavior variables
+      AbsPage page = null; // If set, this page will be returned
+
+      if ( (shortcut == Shortcut.S_NEWTAG) ){
+         page = new DialogTag(MyApplication,((AppAjaxClient) MyApplication).zPageAddressbook);  
+      }
+      else if ( (shortcut == Shortcut.S_MOVE) ){
+         page = new DialogMove(MyApplication, this);  
+
+      }
+      // Click it
+      zKeyboardTypeString(shortcut.getKeys());  
+
+      zWaitForBusyOverlay();
+
+      if ( page != null ) {
+         page.zWaitForActive();
+      }
+      return (page);
+   }
+
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
@@ -249,6 +289,15 @@ public class PageAddressbook extends AbsTab {
 		   locator = "id="+ id;
 		   page = new FormMailNew(MyApplication);	
 
+	    } else if ( button == Button.B_CANCEL) {
+	         String id ="zb__CN__CANCEL";
+	         
+	         if (sIsElementPresent("css=div[id=" + id + "][class*=ZDisabledImage]")) {
+	           throw new HarnessException("Tried clicking on "+ id +" but it was disabled ");
+	         }
+
+	         locator = "id="+ id;
+	         page = new DialogWarning(DialogWarning.DialogWarningID.CancelCreateContact, this.MyApplication, ((AppAjaxClient)this.MyApplication).zPageAddressbook);
 	    } else if (isAlphabetButton(button))
           {
        	   locator=DisplayContactGroup.ALPHABET_PREFIX + button.toString() + DisplayContactGroup.ALPHABET_POSTFIX;
@@ -285,48 +334,46 @@ public class PageAddressbook extends AbsTab {
 		return (page);
 	}
 
-	public ContactGroupItem createUsingSOAPSelectContactGroup(AppAjaxClient app, String ... tagIDArray)  throws HarnessException {	
-	  // Create a contact group via Soap
-	  ContactGroupItem group = ContactGroupItem.createUsingSOAP(app, tagIDArray);
-		             
-	  group.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-	  String[] dlist = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
-	  for (int i=0; i<dlist.length; i++) {
-		  group.addDListMember(dlist[i]);
-	  }
-	  
-	  
+   public ContactGroupItem createUsingSOAPSelectContactGroup(AppAjaxClient app, Action action, String ... tagIDArray)  throws HarnessException {   
+      // Create a contact group via Soap
+      ContactGroupItem group = ContactGroupItem.createUsingSOAP(app, tagIDArray);
+                    
+      group.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
+      String[] dlist = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
+      for (int i=0; i<dlist.length; i++) {
+         group.addDListMember(dlist[i]);
+      }
+      
+      
       // Refresh the view, to pick up the new contact
       FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
       GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+      zWaitForDesktopLoadingSpinner(5000);
       app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
-    
+     
       // Select the item
-      zListItem(Action.A_LEFTCLICK, group.fileAs);
-      
+      zListItem(action, group.fileAs);
+       
       return group;
-    }
+   }
 
-	public ContactItem createUsingSOAPSelectContact(AppAjaxClient app, String ... tagIDArray)  throws HarnessException {	
-		  // Create a contact via Soap
-		  ContactItem contactItem = ContactItem.createUsingSOAP(app, tagIDArray);			             
-		  contactItem.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-		  		  
-		  
-	      // Refresh the view, to pick up the new contact
-	      FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
-	      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-	      zWaitForDesktopLoadingSpinner(5000);
-	      app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
-
-	      // Select the item
-	      zListItem(Action.A_LEFTCLICK, contactItem.fileAs);
-	      Object[] params = {"css=table[class*='contactHeaderTable'] div[class*='contactHeader']"};
-	      GeneralUtility.waitFor(null, this, false, "sGetText", params, WAIT_FOR_OPERAND.EQ,
-	            contactItem.firstName + " " + contactItem.lastName, 30000, 1000);
-	      
-	      return contactItem;
-	    }
+   public ContactItem createUsingSOAPSelectContact(AppAjaxClient app, Action action, String ... tagIDArray)  throws HarnessException { 
+      // Create a contact via Soap
+      ContactItem contactItem = ContactItem.createUsingSOAP(app, tagIDArray);                     
+      contactItem.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
+               
+         
+      // Refresh the view, to pick up the new contact
+      FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
+      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+      zWaitForDesktopLoadingSpinner(5000);
+      app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
+        
+      // Select the item
+      zListItem(action, contactItem.fileAs);
+          
+      return contactItem;
+   }
 		
 
 	@Override
@@ -709,46 +756,64 @@ public class PageAddressbook extends AbsTab {
 		}
 		return (page);
 
-		
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, String contact) throws HarnessException {
 		logger.info(myPageName() + " zListItem("+ action +", "+ contact +")");
-        String contactLocator=getContactLocator(contact);
-        
+		String contactLocator = getContactLocator(contact);
+
 		tracer.trace(action +" on contact = "+ contact);
 
 		if ( action == Action.A_LEFTCLICK ) {
 			//click
 			this.zClick(contactLocator);
 			//zWaitForBusyOverlay();
-			
+
 			ArrayList<String> selectedContactArrayList=getSelectedContactLocator();			
-	        String contactType = getContactType(selectedContactArrayList.get(0));
-		
-	        //check if it is a contact or a contact group item
-		    if ( contactType.equals(ContactGroupItem.IMAGE_CLASS)) {
-			  return  new DisplayContactGroup(MyApplication);		
-		    }
-		    else if (  contactType.equals(ContactItem.IMAGE_CLASS) ) {
-			  return new DisplayContact(MyApplication);
-		    }
-		    else {
-			  throw new HarnessException(" Error: not support the contact type");						    	
-		    }
-			
-		}
-		else if (action == Action.A_RIGHTCLICK ) {
-			
+			String contactType = getContactType(selectedContactArrayList.get(0));
+
+			//check if it is a contact or a contact group item
+			if ( contactType.equals(ContactGroupItem.IMAGE_CLASS)) {
+			   return  new DisplayContactGroup(MyApplication);		
+			}
+			else if (  contactType.equals(ContactItem.IMAGE_CLASS) ) {
+			   return new DisplayContact(MyApplication);
+			}
+			else {
+			   throw new HarnessException(" Error: not support the contact type");						    	
+			}
+
+		} else if ( action == Action.A_CHECKBOX) {
+		   logger.info("==== > contactLocator is : " + contactLocator);
+         //get the checkbox locator
+         contactLocator = contactLocator.substring(0, contactLocator.length() - 2) + "1]/center/div";
+
+         //check the box
+         this.zClickAt(contactLocator, zGetCenterPoint(contactLocator));
+
+         //zWaitForBusyOverlay();
+
+         ArrayList<String> selectedContactArrayList=getSelectedContactLocator();       
+         String contactType = getContactType(selectedContactArrayList.get(0));
+
+         //check if it is a contact or a contact group item
+         if ( contactType.equals(ContactGroupItem.IMAGE_CLASS)) {
+            return  new DisplayContactGroup(MyApplication);     
+         } else if (  contactType.equals(ContactItem.IMAGE_CLASS) ) {
+            return new DisplayContact(MyApplication);
+         } else {
+            throw new HarnessException(" Error: not support the contact type");                        
+         }
+
+      } else if (action == Action.A_RIGHTCLICK ) {
+
             this.zRightClick(contactLocator); 
             //zWaitForBusyOverlay();
     		return (new ContextMenu(MyApplication));			
 		}
-			
-		
+
 		throw new HarnessException("action not supported ");
-	
 	}
 
 	private AbsPage newFormSelected() throws HarnessException {

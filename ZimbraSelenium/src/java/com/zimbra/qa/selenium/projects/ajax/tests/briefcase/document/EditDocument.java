@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
 import org.testng.annotations.AfterMethod;
@@ -63,7 +79,7 @@ public class EditDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created document
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem1);
@@ -147,7 +163,7 @@ public class EditDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created document
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem1);
 
@@ -180,7 +196,7 @@ public class EditDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on modified document
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem2);
@@ -195,7 +211,7 @@ public class EditDocument extends AjaxCommonTest {
 			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 					.zToolbarPressPulldown(Button.B_ACTIONS,
 							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem2);
-		
+
 		app.zPageBriefcase.isOpenDocLoaded(docItem2);
 
 		String name = "";
@@ -260,7 +276,14 @@ public class EditDocument extends AjaxCommonTest {
 						+ "</SearchRequest>");
 
 		String docId = account.soapSelectValue("//mail:doc", "id");
+
+		ZAssert.assertNotNull(docId,
+				"Verify the search response returns the document id");
+
 		String version = account.soapSelectValue("//mail:doc", "ver");
+
+		ZAssert.assertNotNull(docId,
+				"Verify the search response returns the document version");
 
 		docItem.setDocText("editText"
 				+ ZimbraSeleniumProperties.getUniqueString());
@@ -300,7 +323,7 @@ public class EditDocument extends AjaxCommonTest {
 			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 					.zToolbarPressPulldown(Button.B_ACTIONS,
 							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem);
-		
+
 		app.zPageBriefcase.isOpenDocLoaded(docItem);
 
 		String text = "";
@@ -403,7 +426,7 @@ public class EditDocument extends AjaxCommonTest {
 			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 					.zToolbarPressPulldown(Button.B_ACTIONS,
 							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem);
-		
+
 		app.zPageBriefcase.isOpenDocLoaded(docItem);
 
 		String text = "";

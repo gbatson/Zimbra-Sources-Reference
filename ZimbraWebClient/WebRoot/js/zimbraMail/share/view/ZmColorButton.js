@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,7 +16,7 @@
 ZmColorButton = function(params) {
     if (arguments.length == 0) return;
     DwtButton.call(this, params);
-    var menu = new ZmColorMenu({parent:this});
+    var menu = new ZmColorMenu({parent:this,hideNone:params.hideNone});
     menu.addSelectionListener(new AjxListener(this, this._handleSelection));
     this.setMenu(menu);
     this._colorMenu = menu;

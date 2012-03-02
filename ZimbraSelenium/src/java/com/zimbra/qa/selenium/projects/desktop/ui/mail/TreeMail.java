@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -82,15 +98,10 @@ public class TreeMail extends AbsTree {
 
 		} else if (action == Action.A_RIGHTCLICK) {
 
-			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-				actionLocator = "css=[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
-				":main_Mail__'][id$=':" + f.getId() + "_textCell']";
-			} else {
-				actionLocator = "zti__main_Mail__" + f.getId() + "_textCell";
-			}
+		   actionLocator = "css=[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
+		   ":main_Mail__'] td:contains('" + f.getName() + "')";
 
 			GeneralUtility.waitForElementPresent(this, actionLocator);
-			// actionLocator= Locators.zTagsHeader;
 			this.zRightClick(actionLocator);
 
 			page = new DialogEditFolder(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
@@ -235,13 +246,9 @@ public class TreeMail extends AbsTree {
 
 		} else if (action == Action.A_RIGHTCLICK) {
 
-			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-				actionLocator = "css=[id^='zti__"
-					+ MyApplication.zGetActiveAccount().EmailAddress
-					+ ":main_Mail__'][id$=':" + t.getId() + "_textCell']";
-			} else {
-				actionLocator = "zti__main_Mail__" + t.getId() + "_textCell";
-			}
+		   actionLocator = "css=[id^='zti__"
+		      + MyApplication.zGetActiveAccount().EmailAddress
+		      + ":main_Mail__'] td:contains('" + t.getName() + "')";
 
 			GeneralUtility.waitForElementPresent(this, actionLocator);
 			// actionLocator= Locators.zTagsHeader;
@@ -315,14 +322,10 @@ public class TreeMail extends AbsTree {
 			// FALL THROUGH
 
 		} else if ( action == Action.A_RIGHTCLICK ) {
-			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-				locator = new StringBuffer("css=td[id^='zti__").
-				append(MyApplication.zGetActiveAccount().EmailAddress).
-				append(":main_Mail__']").append("[id$='").
-				append(folder.getId()).append("_textCell']").toString();
-			} else {
-				locator = "id=zti__main_Mail__"+ folder.getId() +"_textCell";
-			}
+		   locator = new StringBuffer("css=td[id^='zti__").
+		         append(MyApplication.zGetActiveAccount().EmailAddress).
+		         append(":main_Mail__']").append(":contains('").
+		         append(folder.getName()).append("')").toString();
 
 			// Select the folder
 			this.zRightClick(locator);
@@ -368,6 +371,8 @@ public class TreeMail extends AbsTree {
 		if ( locator == null )
 			throw new HarnessException("locator is null for action "+ action);
 
+
+		GeneralUtility.waitForElementPresent(this, locator);
 
 		// Default behavior.  Click the locator
 		zClick(locator);
@@ -440,6 +445,32 @@ public class TreeMail extends AbsTree {
       }
 
       return isCollapsed;
+	}
+
+	public boolean zCollapseAll() throws HarnessException {
+      // Browse all inventory in case of multiple accounts situation
+	   int i = 1;
+	   String locator = null;
+	   String expandCollapseLocator = null;
+	   boolean isCollapsed = true;
+	   for (i = 1; i < 100; i++) {
+	      locator = Locators.multipleTrees.replace("<NUM>",
+	            Integer.toString(i));
+	      if (!sIsElementPresent(locator)) {
+	         break;
+	      } else {
+	         expandCollapseLocator = Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+	               Integer.toString(i));
+	         expandCollapseLocator = expandCollapseLocator.replace(
+	               "ImgNode", "ImgNodeExpanded");
+	         if (sIsElementPresent(expandCollapseLocator)) {
+	            zClickAt(Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+	                  Integer.toString(i)), "0,0");
+	         }
+	      }
+	   }
+
+	   return isCollapsed;
 	}
 
 	protected AbsPage zTreeItem(Action action, SavedSearchFolderItem savedSearch) throws HarnessException {

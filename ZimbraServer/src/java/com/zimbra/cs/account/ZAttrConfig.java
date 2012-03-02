@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -41,7 +41,7 @@ public class ZAttrConfig extends Entry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 administrator 20110708-2131 */
+    /* build: 7.0.0_BETA1_1111 administrator 20110826-1045 */
 
     /**
      * RFC2256: descriptive information
@@ -5865,6 +5865,149 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @return zimbraCustomMimeHeaderNameAllowed, or empty array if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public String[] getCustomMimeHeaderNameAllowed() {
+        return getMultiAttr(Provisioning.A_zimbraCustomMimeHeaderNameAllowed);
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param zimbraCustomMimeHeaderNameAllowed new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public void setCustomMimeHeaderNameAllowed(String[] zimbraCustomMimeHeaderNameAllowed) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCustomMimeHeaderNameAllowed, zimbraCustomMimeHeaderNameAllowed);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param zimbraCustomMimeHeaderNameAllowed new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public Map<String,Object> setCustomMimeHeaderNameAllowed(String[] zimbraCustomMimeHeaderNameAllowed, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCustomMimeHeaderNameAllowed, zimbraCustomMimeHeaderNameAllowed);
+        return attrs;
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param zimbraCustomMimeHeaderNameAllowed new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public void addCustomMimeHeaderNameAllowed(String zimbraCustomMimeHeaderNameAllowed) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraCustomMimeHeaderNameAllowed, zimbraCustomMimeHeaderNameAllowed);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param zimbraCustomMimeHeaderNameAllowed new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public Map<String,Object> addCustomMimeHeaderNameAllowed(String zimbraCustomMimeHeaderNameAllowed, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraCustomMimeHeaderNameAllowed, zimbraCustomMimeHeaderNameAllowed);
+        return attrs;
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param zimbraCustomMimeHeaderNameAllowed existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public void removeCustomMimeHeaderNameAllowed(String zimbraCustomMimeHeaderNameAllowed) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraCustomMimeHeaderNameAllowed, zimbraCustomMimeHeaderNameAllowed);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param zimbraCustomMimeHeaderNameAllowed existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public Map<String,Object> removeCustomMimeHeaderNameAllowed(String zimbraCustomMimeHeaderNameAllowed, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraCustomMimeHeaderNameAllowed, zimbraCustomMimeHeaderNameAllowed);
+        return attrs;
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public void unsetCustomMimeHeaderNameAllowed() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCustomMimeHeaderNameAllowed, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Custom RFC822 header names (case-sensitive) allowed to specify in
+     * SendMsgRequest
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1265)
+    public Map<String,Object> unsetCustomMimeHeaderNameAllowed(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraCustomMimeHeaderNameAllowed, "");
+        return attrs;
+    }
+
+    /**
      * This attribute is used for DNS check by customers that configure their
      * MX to point at spam relays or other non-zimbra inbox smtp servers
      *
@@ -8812,7 +8955,7 @@ public class ZAttrConfig extends Entry {
      */
     @ZAttr(id=52)
     public String[] getGalLdapFilterDef() {
-        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapFilterDef); return value.length > 0 ? value : new String[] {"zimbraAccounts:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))","zimbraAccountAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))","zimbraAccountSync:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))","zimbraResources:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraCalendarResource))","zimbraResourceAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(objectclass=zimbraCalendarResource))","zimbraResourceSync:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraCalendarResource))","zimbraGroups:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraDistributionList))","zimbraGroupAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(objectclass=zimbraDistributionList))","zimbraGroupSync:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraDistributionList))","zimbraAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))","zimbraSearch:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))","zimbraSync:(&(|(displayName=*)(cn=*)(sn=*)(gn=*)(mail=*)(zimbraMailDeliveryAddress=*)(zimbraMailAlias=*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE)))","ad:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(givenName=*%s*)(mail=*%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))","adAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(givenName=%s*)(mail=%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))","externalLdapAutoComplete:(|(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*))","email_has:(mail=*%s*)","email2_has:(mail=*%s*)","email3_has:(mail=*%s*)","department_has:(ou=*%s*)"};
+        String[] value = getMultiAttr(Provisioning.A_zimbraGalLdapFilterDef); return value.length > 0 ? value : new String[] {"zimbraAccounts:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))","zimbraAccountAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))","zimbraAccountSync:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(objectclass=zimbraCalendarResource)))","zimbraResources:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraCalendarResource))","zimbraResourceAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(objectclass=zimbraCalendarResource))","zimbraResourceSync:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraCalendarResource))","zimbraGroups:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraDistributionList))","zimbraGroupAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(objectclass=zimbraDistributionList))","zimbraGroupSync:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(objectclass=zimbraDistributionList))","zimbraAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))","zimbraSearch:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))","zimbraSync:(&(|(displayName=*)(cn=*)(sn=*)(gn=*)(mail=*)(zimbraMailDeliveryAddress=*)(zimbraMailAlias=*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE)))","ad:(&(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(givenName=*%s*)(mail=*%s*))(!(msExchHideFromAddressLists=TRUE))(|(&(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))","adAutoComplete:(&(|(displayName=%s*)(cn=%s*)(sn=%s*)(givenName=%s*)(mail=%s*))(!(msExchHideFromAddressLists=TRUE))(|(&(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))","externalLdapAutoComplete:(|(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*))","email_has:(mail=*%s*)","email2_has:(mail=*%s*)","email3_has:(mail=*%s*)","department_has:(ou=*%s*)"};
     }
 
     /**
@@ -9883,6 +10026,185 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetGalTokenizeSearchKey(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraGalTokenizeSearchKey, "");
+        return attrs;
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @return zimbraGlobalConfigExtraObjectClass, or empty array if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public String[] getGlobalConfigExtraObjectClass() {
+        return getMultiAttr(Provisioning.A_zimbraGlobalConfigExtraObjectClass);
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param zimbraGlobalConfigExtraObjectClass new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public void setGlobalConfigExtraObjectClass(String[] zimbraGlobalConfigExtraObjectClass) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGlobalConfigExtraObjectClass, zimbraGlobalConfigExtraObjectClass);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param zimbraGlobalConfigExtraObjectClass new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public Map<String,Object> setGlobalConfigExtraObjectClass(String[] zimbraGlobalConfigExtraObjectClass, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGlobalConfigExtraObjectClass, zimbraGlobalConfigExtraObjectClass);
+        return attrs;
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param zimbraGlobalConfigExtraObjectClass new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public void addGlobalConfigExtraObjectClass(String zimbraGlobalConfigExtraObjectClass) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraGlobalConfigExtraObjectClass, zimbraGlobalConfigExtraObjectClass);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param zimbraGlobalConfigExtraObjectClass new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public Map<String,Object> addGlobalConfigExtraObjectClass(String zimbraGlobalConfigExtraObjectClass, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraGlobalConfigExtraObjectClass, zimbraGlobalConfigExtraObjectClass);
+        return attrs;
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param zimbraGlobalConfigExtraObjectClass existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public void removeGlobalConfigExtraObjectClass(String zimbraGlobalConfigExtraObjectClass) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraGlobalConfigExtraObjectClass, zimbraGlobalConfigExtraObjectClass);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param zimbraGlobalConfigExtraObjectClass existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public Map<String,Object> removeGlobalConfigExtraObjectClass(String zimbraGlobalConfigExtraObjectClass, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraGlobalConfigExtraObjectClass, zimbraGlobalConfigExtraObjectClass);
+        return attrs;
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public void unsetGlobalConfigExtraObjectClass() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGlobalConfigExtraObjectClass, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Object classes added on the global config entry. Unlike other
+     * zimbra***ExtraObjectClass attributes, object classes specified in this
+     * attributes will not be automatically added to the global config entry.
+     * Extra object class on the global config entry must be added using
+     * &quot;zmprov mcf +objectClass {object class}&quot;, then recorded in
+     * this attributes.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1254)
+    public Map<String,Object> unsetGlobalConfigExtraObjectClass(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGlobalConfigExtraObjectClass, "");
         return attrs;
     }
 
@@ -15779,25 +16101,25 @@ public class ZAttrConfig extends Entry {
      *
      * @see #getMailSSLProxyClientCertPortAsString()
      *
-     * @return zimbraMailSSLProxyClientCertPort, or 0 if unset
+     * @return zimbraMailSSLProxyClientCertPort, or 3443 if unset
      *
      * @since ZCS 7.1.1
      */
     @ZAttr(id=1212)
     public int getMailSSLProxyClientCertPort() {
-        return getIntAttr(Provisioning.A_zimbraMailSSLProxyClientCertPort, 0);
+        return getIntAttr(Provisioning.A_zimbraMailSSLProxyClientCertPort, 3443);
     }
 
     /**
      * SSL client certificate port for HTTP proxy
      *
-     * @return zimbraMailSSLProxyClientCertPort, or "0" if unset
+     * @return zimbraMailSSLProxyClientCertPort, or "3443" if unset
      *
      * @since ZCS 7.1.1
      */
     @ZAttr(id=1212)
     public String getMailSSLProxyClientCertPortAsString() {
-        return getAttr(Provisioning.A_zimbraMailSSLProxyClientCertPort, "0");
+        return getAttr(Provisioning.A_zimbraMailSSLProxyClientCertPort, "3443");
     }
 
     /**
@@ -33322,6 +33644,160 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
+     * Mail header name for flagging a message as not spam. If set, this
+     * takes precedence over zimbraSpamHeader.
+     *
+     * @return zimbraSpamWhitelistHeader, or null if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1257)
+    public String getSpamWhitelistHeader() {
+        return getAttr(Provisioning.A_zimbraSpamWhitelistHeader, null);
+    }
+
+    /**
+     * Mail header name for flagging a message as not spam. If set, this
+     * takes precedence over zimbraSpamHeader.
+     *
+     * @param zimbraSpamWhitelistHeader new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1257)
+    public void setSpamWhitelistHeader(String zimbraSpamWhitelistHeader) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeader, zimbraSpamWhitelistHeader);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Mail header name for flagging a message as not spam. If set, this
+     * takes precedence over zimbraSpamHeader.
+     *
+     * @param zimbraSpamWhitelistHeader new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1257)
+    public Map<String,Object> setSpamWhitelistHeader(String zimbraSpamWhitelistHeader, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeader, zimbraSpamWhitelistHeader);
+        return attrs;
+    }
+
+    /**
+     * Mail header name for flagging a message as not spam. If set, this
+     * takes precedence over zimbraSpamHeader.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1257)
+    public void unsetSpamWhitelistHeader() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeader, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Mail header name for flagging a message as not spam. If set, this
+     * takes precedence over zimbraSpamHeader.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1257)
+    public Map<String,Object> unsetSpamWhitelistHeader(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeader, "");
+        return attrs;
+    }
+
+    /**
+     * regular expression for matching the value of zimbraSpamWhitelistHeader
+     * for flagging a message as not spam
+     *
+     * @return zimbraSpamWhitelistHeaderValue, or null if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1258)
+    public String getSpamWhitelistHeaderValue() {
+        return getAttr(Provisioning.A_zimbraSpamWhitelistHeaderValue, null);
+    }
+
+    /**
+     * regular expression for matching the value of zimbraSpamWhitelistHeader
+     * for flagging a message as not spam
+     *
+     * @param zimbraSpamWhitelistHeaderValue new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1258)
+    public void setSpamWhitelistHeaderValue(String zimbraSpamWhitelistHeaderValue) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeaderValue, zimbraSpamWhitelistHeaderValue);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regular expression for matching the value of zimbraSpamWhitelistHeader
+     * for flagging a message as not spam
+     *
+     * @param zimbraSpamWhitelistHeaderValue new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1258)
+    public Map<String,Object> setSpamWhitelistHeaderValue(String zimbraSpamWhitelistHeaderValue, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeaderValue, zimbraSpamWhitelistHeaderValue);
+        return attrs;
+    }
+
+    /**
+     * regular expression for matching the value of zimbraSpamWhitelistHeader
+     * for flagging a message as not spam
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1258)
+    public void unsetSpamWhitelistHeaderValue() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeaderValue, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regular expression for matching the value of zimbraSpamWhitelistHeader
+     * for flagging a message as not spam
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1258)
+    public Map<String,Object> unsetSpamWhitelistHeaderValue(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraSpamWhitelistHeaderValue, "");
+        return attrs;
+    }
+
+    /**
      * The list of available dictionaries that can be used for spell
      * checking.
      *
@@ -36492,6 +36968,83 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetXMPPServerDialbackKey(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraXMPPServerDialbackKey, "");
+        return attrs;
+    }
+
+    /**
+     * whether zimlets that send sensitive data are disabled in
+     * &quot;mixed&quot; zimbraMailMode
+     *
+     * @return zimbraZimletDataSensitiveInMixedModeDisabled, or true if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1269)
+    public boolean isZimletDataSensitiveInMixedModeDisabled() {
+        return getBooleanAttr(Provisioning.A_zimbraZimletDataSensitiveInMixedModeDisabled, true);
+    }
+
+    /**
+     * whether zimlets that send sensitive data are disabled in
+     * &quot;mixed&quot; zimbraMailMode
+     *
+     * @param zimbraZimletDataSensitiveInMixedModeDisabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1269)
+    public void setZimletDataSensitiveInMixedModeDisabled(boolean zimbraZimletDataSensitiveInMixedModeDisabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraZimletDataSensitiveInMixedModeDisabled, zimbraZimletDataSensitiveInMixedModeDisabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether zimlets that send sensitive data are disabled in
+     * &quot;mixed&quot; zimbraMailMode
+     *
+     * @param zimbraZimletDataSensitiveInMixedModeDisabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1269)
+    public Map<String,Object> setZimletDataSensitiveInMixedModeDisabled(boolean zimbraZimletDataSensitiveInMixedModeDisabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraZimletDataSensitiveInMixedModeDisabled, zimbraZimletDataSensitiveInMixedModeDisabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether zimlets that send sensitive data are disabled in
+     * &quot;mixed&quot; zimbraMailMode
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1269)
+    public void unsetZimletDataSensitiveInMixedModeDisabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraZimletDataSensitiveInMixedModeDisabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether zimlets that send sensitive data are disabled in
+     * &quot;mixed&quot; zimbraMailMode
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1269)
+    public Map<String,Object> unsetZimletDataSensitiveInMixedModeDisabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraZimletDataSensitiveInMixedModeDisabled, "");
         return attrs;
     }
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,6 +34,7 @@ import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.Invite;
+import com.zimbra.cs.mailbox.calendar.InviteChanges;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
@@ -232,6 +233,26 @@ public class ModifyCalendarItem extends CalendarRequest {
                 // Clear to/cc/bcc from the MimeMessage, so that the sendCalendarMessage call only updates the organizer's
                 // own appointment without notifying any attendees.  Notifications will be sent later,
                 removeAllRecipients(dat.mMm);
+
+                // If this is a change that removes exceptions, send cancel notification to attendees who are only
+                // on the exception instances.  They will be removed from the appointment entirely as a result.
+                // (unless they are added as new series attendees)
+                if (!acct.isCalendarKeepExceptionsOnSeriesTimeChange()) {
+                    InviteChanges ic = new InviteChanges(seriesInv, dat.mInvite);
+                    if (ic.isExceptionRemovingChange()) {
+                        Invite[] invites = calItem.getInvites();
+                        for (Invite except : invites) {
+                            if (!except.isNeverSent() && except.hasRecurId() && !except.isCancel()) {
+                                List<ZAttendee> toNotify = CalendarUtils.getRemovedAttendees(
+                                        except.getAttendees(), seriesInv.getAttendees(), false, acct);
+                                if (!toNotify.isEmpty()) {
+                                    notifyRemovedAttendees(zsc, octxt, acct, mbox, calItem, except, toNotify);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Save the change to the series as specified by the client.
                 sendCalendarMessage(zsc, octxt, folderId, acct, mbox, dat, response, true);
 

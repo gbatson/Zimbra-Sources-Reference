@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -465,6 +465,7 @@ function(batchResp, searchParams, miniCalParams, reminderSearchParams) {
 
 	var list = this.processSearchResponse(searchResp[0], searchParams);
 	accountList.addList(list);
+    this._accountsSearchList = accountList.clone();
 
 	if (searchParams.accountFolderIds && searchParams.accountFolderIds.length > 0) {
 		this._doBatchRequest(searchParams, miniCalParams);
@@ -477,7 +478,6 @@ function(batchResp, searchParams, miniCalParams, reminderSearchParams) {
 		if (searchParams.callback) {
 			searchParams.callback.run(accountList, null, searchParams.query);
 		} else {
-			this._accountsSearchList = accountList.clone();
             return accountList;
 		}
 	}
@@ -613,6 +613,7 @@ function(request, params) {
 	request.sortBy = "none";
 	request.limit = "500";
 	// AjxEnv.DEFAULT_LOCALE is set to the browser's locale setting in the case
+
 	// when the user's (or their COS) locale is not set.
 	request.locale = { _content: AjxEnv.DEFAULT_LOCALE };
 	request.calExpandInstStart = params.start;
@@ -621,6 +622,19 @@ function(request, params) {
 	request.offset = params.offset;
 
 	var query = params.query;
+
+    if((query && query.indexOf("date:")!=-1)){
+        var dtArray = query.split(":");
+        query = null;
+        var curDate = new Date(parseInt(dtArray[1]));
+        curDate.setHours(0,0,0,0);
+        var endDate = new Date(curDate.getTime());
+        AjxDateUtil.rollToNextDay(endDate);
+        request.calExpandInstStart = curDate.getTime();
+	    request.calExpandInstEnd = endDate.getTime();
+    }
+
+
 	if (params.queryHint) {
 		query = (query != null)
 			? (query + " (" + params.queryHint + ")")

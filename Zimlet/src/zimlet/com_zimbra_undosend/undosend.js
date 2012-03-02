@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -114,6 +114,12 @@ function(controller) {
 	var sendNowId = "UndoSendHdlrZimlet_sendNow" + viewId;
 	this._viewIdAndParamsMap[viewId] = {tab:tab, title:title, undoLinkId:undoLinkId, timerSpanId:timerSpanId, sendNowId:sendNowId};
 	this._viewIdAndStatusesMap[viewId] = {undoLinkClicked:false, sendNowLinkClicked:false,  currentCounter:this._totalWaitTimeInSeconds};
+
+	//clear auto-save timer to ensure there are no left-over drafts
+	if(controller._autoSaveTimer) {
+		clearInterval(controller._autoSaveTimer);
+		controller._autoSaveTimer = null;
+	}
 
 	if(!appCtxt.isChildWindow) {
 		this.appViewMgr.popView(true, viewId);

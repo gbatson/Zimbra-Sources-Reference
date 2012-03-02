@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -376,12 +376,12 @@ public class  ZFolderBean {
     }
 
     public static String getRgbColor(Color color, View view) {
-        int colorIndex = color.getValue();
+        int colorIndex = (int) color.getValue();
         if (color == Color.defaultColor) {
             if (view == View.contact || view == View.task)
-                colorIndex = Color.gray.getValue();
+                colorIndex = (int) Color.gray.getValue();
             else
-                colorIndex = Color.orange.getValue();
+                colorIndex = (int) Color.orange.getValue();
         }
         return ZFolder.RGB_COLORS[colorIndex];
     }

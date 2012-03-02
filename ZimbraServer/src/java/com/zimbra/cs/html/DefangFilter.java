@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,6 +24,8 @@ import org.apache.xerces.xni.XMLResourceIdentifier;
 import org.apache.xerces.xni.XMLString;
 import org.apache.xerces.xni.XNIException;
 import org.cyberneko.html.filters.DefaultFilter;
+
+import com.google.common.base.Strings;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -88,8 +90,8 @@ public class DefangFilter extends DefaultFilter {
     private static final Pattern AV_SCRIPT_TAG = Pattern.compile("</?script/?>", Pattern.CASE_INSENSITIVE);
     
     // regex for URLs href. TODO: beef this up
-	private static final Pattern VALID_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|cid:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
-	private static final Pattern VALID_IMG = Pattern.compile("^data:|\\.(jpg|jpeg|png|gif)$");
+	private static final Pattern VALID_EXT_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALID_INT_IMG = Pattern.compile("^data:|^cid:|\\.(jpg|jpeg|png|gif)$");
 
     //
     // Data
@@ -243,7 +245,7 @@ public class DefangFilter extends DefaultFilter {
             acceptElement("button", CORE_LANG+KBD+"disabled,name,type,value");
             acceptElement("fieldset", CORE_LANG);
             acceptElement("form", CORE_LANG+"action,accept,acceptcharset,enctype,method,name,target");
-            acceptElement("input", CORE_LANG+"accept,align,alt,checked,disabled,maxlength,name,readonly,size,type,value");
+            acceptElement("input", CORE_LANG+"accept,align,alt,checked,disabled,maxlength,name,readonly,size,type,value,src");
             acceptElement("legend", CORE_LANG+"align");
             acceptElement("map", CORE_LANG+"name");
             acceptElement("optgroup", CORE_LANG+"disabled,label");
@@ -328,7 +330,7 @@ public class DefangFilter extends DefaultFilter {
         String key = element.toLowerCase();
         Object value = NULL;
         mRemovedElements.put(key, value);
-    } // removeElement(String)
+    }
 
     //
     // XMLDocumentHandler methods
@@ -343,7 +345,7 @@ public class DefangFilter extends DefaultFilter {
     throws XNIException {
         mRemovalElementCount = 0;
         super.startDocument(locator, encoding, nscontext, augs);
-    } // startDocument(XMLLocator,String,NamespaceContext,Augmentations)
+    }
 
     // old methods
 
@@ -351,7 +353,7 @@ public class DefangFilter extends DefaultFilter {
     @Override public void startDocument(XMLLocator locator, String encoding, Augmentations augs)
     throws XNIException {
         startDocument(locator, encoding, null, augs);
-    } // startDocument(XMLLocator,String,Augmentations)
+    }
 
     /** Start prefix mapping. */
     @Override public void startPrefixMapping(String prefix, String uri, Augmentations augs)
@@ -359,7 +361,7 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.startPrefixMapping(prefix, uri, augs);
         }
-    } // startPrefixMapping(String,String,Augmentations)
+    }
 
     /** Start element. */
     @Override public void startElement(QName element, XMLAttributes attributes, Augmentations augs)
@@ -374,7 +376,7 @@ public class DefangFilter extends DefaultFilter {
         }
         if (name.equalsIgnoreCase("style"))
             mStyleDepth++;
-    } // startElement(QName,XMLAttributes,Augmentations)
+    }
 
     /** Empty element. */
     @Override public void emptyElement(QName element, XMLAttributes attributes, Augmentations augs)
@@ -382,15 +384,15 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null && handleOpenTag(element, attributes)) {
             super.emptyElement(element, attributes, augs);
         }
-    } // emptyElement(QName,XMLAttributes,Augmentations)
+    }
 
     /** Comment. */
     @Override public void comment(XMLString text, Augmentations augs)
     throws XNIException {
-        if (mRemovalElementName == null) {
-            super.comment(text, augs);
-        }
-    } // comment(XMLString,Augmentations)
+        // we can safely ignore comments
+        // they can only provide loop holes for hackers to exploit
+        // e.g. CDATA sections are reported as comments with our HTML parser configuration
+    }
 
     /** Processing instruction. */
     @Override public void processingInstruction(String target, XMLString data, Augmentations augs)
@@ -398,7 +400,7 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.processingInstruction(target, data, augs);
         }
-    } // processingInstruction(String,XMLString,Augmentations)
+    }
 
     /** Characters. */
     @Override public void characters(XMLString text, Augmentations augs) 
@@ -412,7 +414,7 @@ public class DefangFilter extends DefaultFilter {
                 super.characters(text, augs);
             }
         }
-    } // characters(XMLString,Augmentations)
+    }
 
     /** Ignorable whitespace. */
     @Override public void ignorableWhitespace(XMLString text, Augmentations augs) 
@@ -420,7 +422,7 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.ignorableWhitespace(text, augs);
         }
-    } // ignorableWhitespace(XMLString,Augmentations)
+    }
 
     /** Start general entity. */
     @Override public void startGeneralEntity(String name, XMLResourceIdentifier id, String encoding, Augmentations augs)
@@ -428,7 +430,7 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.startGeneralEntity(name, id, encoding, augs);
         }
-    } // startGeneralEntity(String,XMLResourceIdentifier,String,Augmentations)
+    }
 
     /** Text declaration. */
     @Override public void textDecl(String version, String encoding, Augmentations augs)
@@ -436,7 +438,7 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.textDecl(version, encoding, augs);
         }
-    } // textDecl(String,String,Augmentations)
+    }
 
     /** End general entity. */
     @Override public void endGeneralEntity(String name, Augmentations augs)
@@ -444,21 +446,21 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.endGeneralEntity(name, augs);
         }
-    } // endGeneralEntity(String,Augmentations)
+    }
 
     /** Start CDATA section. */
     @Override public void startCDATA(Augmentations augs) throws XNIException {
         if (mRemovalElementName == null) {
             super.startCDATA(augs);
         }
-    } // startCDATA(Augmentations)
+    }
 
     /** End CDATA section. */
     @Override public void endCDATA(Augmentations augs) throws XNIException {
         if (mRemovalElementName == null) {
             super.endCDATA(augs);
         }
-    } // endCDATA(Augmentations)
+    }
 
     /** End element. */
     @Override public void endElement(QName element, Augmentations augs)
@@ -473,7 +475,7 @@ public class DefangFilter extends DefaultFilter {
         }
         if (name.equalsIgnoreCase("style"))
             mStyleDepth--;
-    } // endElement(QName,Augmentations)
+    }
 
     /** End prefix mapping. */
     @Override public void endPrefixMapping(String prefix, Augmentations augs)
@@ -481,7 +483,7 @@ public class DefangFilter extends DefaultFilter {
         if (mRemovalElementName == null) {
             super.endPrefixMapping(prefix, augs);
         }
-    } // endPrefixMapping(String,Augmentations)
+    }
 
     //
     // Protected methods
@@ -491,13 +493,13 @@ public class DefangFilter extends DefaultFilter {
     protected static boolean elementAccepted(String element) {
         String key = element.toLowerCase();
         return mAcceptedElements.containsKey(key);
-    } // elementAccepted(String):boolean
+    }
 
     /** Returns true if the specified element should be removed. */
     protected static boolean elementRemoved(String element) {
         String key = element.toLowerCase();
         return mRemovedElements.containsKey(key);
-    } // elementRemoved(String):boolean
+    }
 
     /** Handles an open tag. */
     protected boolean handleOpenTag(QName element, XMLAttributes attributes) {
@@ -536,19 +538,24 @@ public class DefangFilter extends DefaultFilter {
                 attributes.removeAllAttributes();
             }
 
-            if (eName.equals("img")) {
+            if (eName.equals("img") || eName.equals("input")) {
                 fixUrlBase(attributes, "src");
             } else if (eName.equals("a") || eName.equals("area")) {
                 fixUrlBase(attributes, "href");                
             }
             fixUrlBase(attributes, "background");
 
-            if (eName.equals("img") && mNeuterImages) {
-                neuterTag(attributes, "src");
-            } else if (eName.equals("a") || eName.equals("area")) {
+                            
+            if (eName.equals("a") || eName.equals("area")) {
                 fixATag(attributes);
             }
             if (mNeuterImages) {
+                String srcValue = Strings.nullToEmpty(attributes.getValue("src"));
+                if((eName.equals("img") || eName.equals("input")) && 
+                 (VALID_EXT_URL.matcher(srcValue).find() || // check for valid urls, and definitely defang
+                 !VALID_INT_IMG.matcher(srcValue).find())) { 
+                        neuterTag(attributes, "src");    
+                }
                 neuterTag(attributes, "background");
             }
 
@@ -558,7 +565,7 @@ public class DefangFilter extends DefaultFilter {
             mRemovalElementCount = 1;
         }
         return false;
-    } // handleOpenTag(QName,XMLAttributes):boolean
+    }
 
     private void fixUrlBase(XMLAttributes attributes, String attrName) {
         int index = attributes.getIndex(attrName);
@@ -632,8 +639,10 @@ public class DefangFilter extends DefaultFilter {
      */
     private boolean removeAttrValue(String eName, String aName, XMLAttributes attributes, int i) {
         String value = attributes.getValue(i);
+        // get rid of any spaces that might throw off the regex
+        value = value == null? null: value.trim();
         if (aName.equalsIgnoreCase("href") || aName.equalsIgnoreCase("longdesc") || aName.equalsIgnoreCase("usemap")){
-            if (!VALID_URL.matcher(value).find()) {
+            if (!VALID_EXT_URL.matcher(value).find()) {
                 return true;
             }
         }
@@ -642,8 +651,8 @@ public class DefangFilter extends DefaultFilter {
         // a valid url as well as just a valid filename in the
         // case that its an inline image
         if(aName.equals("src")) {
-            if (!(VALID_URL.matcher(value).find() ||
-                VALID_IMG.matcher(value).find())) {
+            if (!(VALID_EXT_URL.matcher(value).find() ||
+                VALID_INT_IMG.matcher(value).find())) {
                 attributes.setValue(i, "#");
                 return false;
             }
@@ -660,7 +669,6 @@ public class DefangFilter extends DefaultFilter {
         String value = attributes.getValue(i);
         String result = AV_JS_ENTITY.matcher(value).replaceAll("JS-ENTITY-BLOCKED");
         result = AV_SCRIPT_TAG.matcher(result).replaceAll("SCRIPT-TAG-BLOCKED");
-                
         if (aName.equalsIgnoreCase("style")) {
             result = value.replaceAll("/\\*.*\\*/","");
             result = result.replaceAll("[uU][Rr][Ll]\\s*\\(.*\\)","none");
@@ -672,4 +680,4 @@ public class DefangFilter extends DefaultFilter {
         }
     }
 
-} // class DefaultFilter
+}

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -617,21 +617,21 @@ class ZMLookupHandlerVar extends ProxyConfVar{
 	}
 }
 
-class ZMSSOEnablerVar extends ProxyConfVar {
-	public ZMSSOEnablerVar() {
-		super("web.sso.enabled",
+class ZMSSOCertAuthDefaultEnablerVar extends ProxyConfVar {
+	public ZMSSOCertAuthDefaultEnablerVar() {
+		super("web.sso.certauth.default.enabled",
 			  null,
               null,
               ProxyConfValueType.ENABLER,
               ProxyConfOverride.CUSTOM,
-              "whether to turn on sso");
+              "whether to turn on certauth in global/server level");
 	}
 	
 	@Override
 	public void update() throws ServiceException {
 		String certMode = 
 			serverSource.getAttr(Provisioning.A_zimbraReverseProxyClientCertMode, "off");
-       if (certMode.equals("on") ||certMode.equals("optional")) {
+       if (certMode.equals("on") || certMode.equals("optional")) {
     	   mValue = true;
        } else {
     	   // ... we may add more condition if more sso auth method is introduced
@@ -652,13 +652,8 @@ class ClientCertAuthDefaultCAVar extends ProxyConfVar {
 	
 	@Override
 	public void update() throws ServiceException {
-		//"ssl.clientcertca.default" indicates the local client ca cert path other than file content
-        String defaultClientCertCaContent = serverSource.getAttr(mAttribute, "");
-        if (!ProxyConfUtil.isEmptyString(defaultClientCertCaContent)) {
-            String defaultClientCertCaPath = (String)mDefault;
-            ProxyConfUtil.writeContentToFile(defaultClientCertCaContent, defaultClientCertCaPath);
-        }
-        mValue = mDefault; 
+        
+        mValue = mDefault; //must be the value of getDefaultClientCertCaPath
 	}
 }
 
@@ -684,12 +679,52 @@ class SSORedirectEnablerVar extends ProxyConfVar {
 	}
 }
 
+class ZMSSOEnablerVar extends ProxyConfVar {
+	public ZMSSOEnablerVar() {
+		super("web.sso.enabled",
+		      "zimbraReverseProxyClientCertMode", 
+		      false, 
+		      ProxyConfValueType.ENABLER, 
+		      ProxyConfOverride.CUSTOM, 
+		      "whether enable sso for domain level");
+	}
+	
+	@Override
+	public void update() throws ServiceException {
+        if (ProxyConfGen.isDomainClientCertVerifyEnabled()) {
+	        	mValue = true;
+        } else {
+            mValue = false;
+		}
+	}
+}
+
+class ZMSSODefaultEnablerVar extends ProxyConfVar {
+	public ZMSSODefaultEnablerVar() {
+		super("web.sso.enabled",
+		      "zimbraReverseProxyClientCertMode", 
+		      false, 
+		      ProxyConfValueType.ENABLER, 
+		      ProxyConfOverride.CUSTOM, 
+		      "whether enable sso for global/server level");
+	}
+	
+	@Override
+	public void update() throws ServiceException {
+        if (ProxyConfGen.isClientCertVerifyEnabled()) {
+            mValue = true;
+        } else {
+        	mValue = false;
+        }
+	}
+}
+
 /**
  * A simple class of Triple<VirtualHostName, VirtualIPAddress, DomainName>. Uses
  * this only for convenient and HashMap can't guarantee order
  * @author jiankuan
  */
-class DnVhnVIPItem {
+class DomainAttrItem {
     public String domainName;
     public String virtualHostname;
     public String virtualIPAddress;
@@ -700,7 +735,7 @@ class DnVhnVIPItem {
     public String clientCertMode;
     public String clientCertCa;
 
-    public DnVhnVIPItem(String dn, String vhn, String vip, String scrt, String spk, 
+    public DomainAttrItem(String dn, String vhn, String vip, String scrt, String spk, 
     		String ccm, String cca) {
         this.domainName = dn;
         this.virtualHostname = vhn;
@@ -737,7 +772,7 @@ public class ProxyConfGen
     private static Server mServer = null;
     private static Map<String, ProxyConfVar> mConfVars = new HashMap<String, ProxyConfVar>();
     private static Map<String, String> mVars = new HashMap<String, String>();
-    private static List<DnVhnVIPItem> mQualifiedVhnsAndVIPs;
+    static List<DomainAttrItem> mDomainReverseProxyAttrs;
     
     private static enum IPMode {
     	UNKNOWN,
@@ -813,15 +848,15 @@ public class ProxyConfGen
     }
     
     /**
-     * Retrieve all the zimbraVirtualHostname and zimbraVirtualIPAddress pairs
-     * for all domains which contain custom certificates and private keys.
+     * Retrieve all the necessary domain level reverse proxy attrs, like
+     * virtualHostname, ssl certificate, ...
      * 
-     * @return a list of <code>DnVhnVIPItem</code>
+     * @return a list of <code>DomainAttrItem</code>
      * @throws ServiceException
      *             this method can work only when LDAP is available
      * @author Jiankuan
      */
-    private static List<DnVhnVIPItem> loadReverseProxyVhnAndVIP()
+    private static List<DomainAttrItem> loadDomainReverseProxyAttrs()
             throws ServiceException {
 
         if (!(mProv instanceof LdapProvisioning))
@@ -834,8 +869,9 @@ public class ProxyConfGen
         attrsNeeded.add(Provisioning.A_zimbraSSLPrivateKey);
         attrsNeeded.add(Provisioning.A_zimbraReverseProxyClientCertMode);
         attrsNeeded.add(Provisioning.A_zimbraReverseProxyClientCertCA);
+        attrsNeeded.add(Provisioning.A_zimbraWebClientLoginURL);
 
-        final List<DnVhnVIPItem> result = new ArrayList<DnVhnVIPItem>();
+        final List<DomainAttrItem> result = new ArrayList<DomainAttrItem>();
 
         // visit domains
         NamedEntry.Visitor visitor = new NamedEntry.Visitor() {
@@ -874,10 +910,8 @@ public class ProxyConfGen
                         if (!ProxyConfUtil.isEmptyString(clientCertCA)){
 
                             createDomainSSLDirIfNotExists();
-                            String clientCertCaPath = getClientCertCaPathByDomain(domainName);
-                            ProxyConfUtil.writeContentToFile(clientCertCA, clientCertCaPath);
                         }
-                        result.add(new DnVhnVIPItem(domainName,
+                        result.add(new DomainAttrItem(domainName,
                                 virtualHostnames[i], vip, certificate, privateKey, 
                                 clientCertMode, clientCertCA));
 
@@ -892,6 +926,36 @@ public class ProxyConfGen
         mProv.getAllDomains(visitor,
             attrsNeeded.toArray(new String[attrsNeeded.size()]));
         return result;
+    }
+
+    /**
+     * Load all the client cert ca content
+     * @return
+     */
+    private static String loadAllClientCertCA() {
+        // to avoid redundancy CA if some domains share the same CA
+        HashSet<String> caSet = new HashSet<String>(); 
+        String globalCA = ProxyConfVar.serverSource.getAttr(Provisioning.A_zimbraReverseProxyClientCertCA, "");
+        if (!ProxyConfUtil.isEmptyString(globalCA)) {
+            caSet.add(globalCA);
+        }
+        
+        for (DomainAttrItem item : mDomainReverseProxyAttrs) {
+            if (!ProxyConfUtil.isEmptyString(item.clientCertCa)) {
+                caSet.add(item.clientCertCa);
+            }
+        }
+        
+        StringBuilder sb = new StringBuilder();
+        String separator = System.getProperty("line.separator");
+        for (String ca: caSet) {
+            sb.append(ca);
+            sb.append(separator);
+        }
+        if (sb.length() > separator.length()) {
+            sb.setLength(sb.length() - separator.length()); // trim the last separator
+        }
+        return sb.toString();
     }
 
     public static void createDomainSSLDirIfNotExists( ){
@@ -1040,25 +1104,25 @@ public class ProxyConfGen
      */
     private static void expandTemplateExplodeSSLConfigsForAllVhnsAndVIPs(
         BufferedReader temp, BufferedWriter conf) throws IOException, ProxyConfException {
-        int size = mQualifiedVhnsAndVIPs.size();
+        int size = mDomainReverseProxyAttrs.size();
         List<String> cache = null;
         if (size > 0) {
-            Iterator<DnVhnVIPItem> it = mQualifiedVhnsAndVIPs.iterator();
-            DnVhnVIPItem item = it.next();
-            fillVhnAndVIPVars(item);
+            Iterator<DomainAttrItem> it = mDomainReverseProxyAttrs.iterator();
+            DomainAttrItem item = it.next();
+            fillVarsWithDomainAttrs(item);
 
             cache = expandTemplateAndCache(temp, conf);
             conf.newLine();
-            
+
             while (it.hasNext()) {
                 item = it.next();
-                fillVhnAndVIPVars(item);
+                fillVarsWithDomainAttrs(item);
                 expandTempateFromCache(cache, conf);
                 conf.newLine();
             }
         }
     }
-	private static void fillVhnAndVIPVars(DnVhnVIPItem item)
+	private static void fillVarsWithDomainAttrs(DomainAttrItem item)
 			throws UnknownHostException, ProxyConfException {
 		InetAddress addr = null;
 		String defaultVal = null;;
@@ -1111,6 +1175,11 @@ public class ProxyConfGen
 
 		if ( item.clientCertMode != null ){
 		    mVars.put("ssl.clientcertmode", item.clientCertMode );
+		    if ( item.clientCertMode.equals("on") || item.clientCertMode.equals("optional")) {
+		    	mVars.put("web.sso.certauth.enabled", "");
+		    } else {
+		    	mVars.put("web.sso.certauth.enabled", "#");
+		    }
 		}
 		else {
 		    defaultVal = mVars.get("ssl.clientcertmode.default");
@@ -1293,7 +1362,9 @@ public class ProxyConfGen
         mConfVars.put("zmlookup.retryinterval", new ProxyConfVar("zmlookup.retryinterval", "zimbraReverseProxyRouteLookupTimeoutCache", new Long(60000), ProxyConfValueType.TIME, ProxyConfOverride.SERVER,"Time interval (ms) given to lookup handler to cache a failed response to route a previous lookup request (after this time elapses, Proxy retries this host)"));
         mConfVars.put("zmlookup.dpasswd", new ProxyConfVar("zmlookup.dpasswd", "ldap_nginx_password", "zmnginx", ProxyConfValueType.STRING, ProxyConfOverride.LOCALCONFIG, "Password for master credentials used by NGINX to log in to upstream for GSSAPI authentication"));
         mConfVars.put("web.sso.certauth.port", new ProxyConfVar("web.sso.certauth.port", Provisioning.A_zimbraMailSSLProxyClientCertPort, new Integer(0), ProxyConfValueType.INTEGER, ProxyConfOverride.SERVER,"reverse proxy client cert auth port"));
+        mConfVars.put("web.sso.certauth.default.enabled", new ZMSSOCertAuthDefaultEnablerVar());
         mConfVars.put("web.sso.enabled", new ZMSSOEnablerVar());
+        mConfVars.put("web.sso.default.enabled", new ZMSSODefaultEnablerVar());
     }
 
     /* update the default variable map from the active configuration */
@@ -1446,15 +1517,18 @@ public class ProxyConfGen
         }
 
         /* upgrade the variable map from the config in force */
+        mLog.debug("Loading Attrs in Domain Level");
+        mDomainReverseProxyAttrs = loadDomainReverseProxyAttrs();
+        
         mLog.debug("Updating Default Variable Map");
         updateDefaultVars();
 
         mLog.debug("Processing Config Overrides");
         overrideDefaultVars(cl);
         
-        mLog.debug("Loading virtual host names and domain names");
-        mQualifiedVhnsAndVIPs = loadReverseProxyVhnAndVIP();
-        
+        String clientCA = loadAllClientCertCA();
+        writeClientCAtoFile(clientCA);
+       
         if (cl.hasOption('D')) {
             displayVariables();
             exitCode = 0;
@@ -1529,8 +1603,73 @@ public class ProxyConfGen
         return (exitCode);
     }
 
-    public static void main(String[] args) throws ServiceException,
-        ProxyConfException {
+    private static void writeClientCAtoFile(String clientCA)
+            throws ServiceException {
+        int exitCode;
+        ProxyConfVar clientCAEnabledVar = null;
+
+        if (ProxyConfUtil.isEmptyString(clientCA)) {
+            clientCAEnabledVar = new ProxyConfVar(
+                    "ssl.clientcertca.enabled", null, false, 
+                    ProxyConfValueType.ENABLER, 
+                    ProxyConfOverride.CUSTOM, "is there valid client ca cert");
+            
+            if(isClientCertVerifyEnabled() || isDomainClientCertVerifyEnabled()) {
+                mLog.error("Client certificate verification is enabled but no client cert ca is provided");
+                exitCode = 1;
+                System.exit(exitCode);
+            }
+            
+        } else {
+            clientCAEnabledVar = new ProxyConfVar(
+                    "ssl.clientcertca.enabled", null, true, 
+                    ProxyConfValueType.ENABLER, 
+                    ProxyConfOverride.CUSTOM, "is there valid client ca cert");
+             mLog.debug("Write Client CA file");
+             ProxyConfUtil.writeContentToFile(clientCA, getDefaultClientCertCaPath());
+        }
+        mConfVars.put("ssl.clientcertca.enabled", clientCAEnabledVar);
+        try {
+            mVars.put("ssl.clientcertca.enabled", clientCAEnabledVar.confValue());
+        } catch (ProxyConfException e) {
+            mLog.error("ProxyConfException during format ssl.clientcertca.enabled", e);
+            System.exit(1);
+        }
+    }
+    
+    /**
+     * check whether client cert verify is enabled in server level
+     * @return
+     */
+    static boolean isClientCertVerifyEnabled() {
+        String globalMode = ProxyConfVar.serverSource.getAttr(
+                Provisioning.A_zimbraReverseProxyClientCertMode, "off");
+        
+        if (globalMode.equals("on") ||
+            globalMode.equals("optional")) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * check whether client cert verify is enabled in domain level
+     * @return
+     */
+    static boolean isDomainClientCertVerifyEnabled() {
+        for (DomainAttrItem item: mDomainReverseProxyAttrs) {
+            if (item.clientCertMode != null &&
+                (item.clientCertMode.equals("on") ||
+                 item.clientCertMode.equals("optional"))) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    public static void main(String[] args) throws ServiceException, ProxyConfException {
         int exitCode = createConf(args);
         System.exit(exitCode);
     }

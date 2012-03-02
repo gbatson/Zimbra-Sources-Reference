@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -37,7 +37,7 @@ public class OfflineGalGroupInfoProvider extends GalGroupInfoProvider {
     public GroupInfo getGroupInfo(String addr, boolean needCanExpand,
             Account requestedAcct, Account authedAcct) {
         try {
-            Contact con = GalSyncUtil.getGalContact(requestedAcct, addr);
+            Contact con = GalSyncUtil.getGalDlistContact(requestedAcct, addr);
             if (con != null && con.isGroup()) {
                 return needCanExpand ? GroupInfo.CAN_EXPAND : GroupInfo.IS_GROUP;
             }

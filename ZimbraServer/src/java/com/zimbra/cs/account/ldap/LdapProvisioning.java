@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -298,10 +298,6 @@ public class LdapProvisioning extends Provisioning {
 
     /**
      * should only be called internally.
-     *
-     * @param initCtxt
-     * @param attrs
-     * @throws ServiceException
      */
     protected void modifyAttrsInternal(Entry entry, ZimbraLdapContext initZlc, Map<?, ?> attrs)
             throws ServiceException {
@@ -3983,7 +3979,8 @@ public class LdapProvisioning extends Provisioning {
         int minNumeric = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinNumericChars, 0);
         int minPunctuation = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinPunctuationChars, 0);
         int minAlpha = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinAlphaChars, 0);
-        
+        int minNumOrPunc = getInt(acct, cos, attrs, Provisioning.A_zimbraPasswordMinDigitsOrPuncs, 0);
+
         String allowedChars = getString(acct, cos, attrs, Provisioning.A_zimbraPasswordAllowedChars);
         Pattern allowedCharsPattern = null;
         if (allowedChars != null) {
@@ -3994,9 +3991,19 @@ public class LdapProvisioning extends Provisioning {
                         " is not valid regex: " + e.getMessage());
             }
         }
-        
+        String allowedPuncChars = getString(acct, cos, attrs, Provisioning.A_zimbraPasswordAllowedPunctuationChars);
+        Pattern allowedPuncCharsPattern = null;
+        if (allowedPuncChars != null) {
+            try {
+                allowedPuncCharsPattern = Pattern.compile(allowedPuncChars);
+            } catch (PatternSyntaxException e) {
+                throw AccountServiceException.INVALID_PASSWORD(Provisioning.A_zimbraPasswordAllowedPunctuationChars +
+                        " is not valid regex: " + e.getMessage());
+            }
+        }
+
         boolean hasPolicies = minUpperCase > 0 || minLowerCase > 0 || minNumeric > 0 || minPunctuation > 0 ||
-                minAlpha > 0 || allowedCharsPattern != null;
+                minAlpha > 0 || minNumOrPunc > 0 || allowedCharsPattern != null || allowedPuncCharsPattern != null;
             
         if (!hasPolicies) {
             return;
@@ -4009,9 +4016,16 @@ public class LdapProvisioning extends Provisioning {
         int alpha = 0;
 
         for (int i=0; i < password.length(); i++) {
-            int ch = password.charAt(i);
-            boolean isAlpha = true;
+            char ch = password.charAt(i);
 
+            if (allowedCharsPattern != null) {
+                if (!allowedCharsPattern.matcher(Character.toString(ch)).matches()) {
+                    throw AccountServiceException.INVALID_PASSWORD(ch + " is not an allowed character",
+                            new Argument(Provisioning.A_zimbraPasswordAllowedChars, allowedChars, Argument.Type.STR));
+                }
+            }
+
+            boolean isAlpha = true;
             if (Character.isUpperCase(ch)) {
                 upper++;
             } else if (Character.isLowerCase(ch)) {
@@ -4019,23 +4033,18 @@ public class LdapProvisioning extends Provisioning {
             } else if (Character.isDigit(ch)) {
                 numeric++;
                 isAlpha = false;
+            } else if (allowedPuncCharsPattern != null) {
+                if (allowedPuncCharsPattern.matcher(Character.toString(ch)).matches()) {
+                    punctuation++;
+                    isAlpha = false;
+                }
             } else if (isAsciiPunc(ch)) {
                 punctuation++;
                 isAlpha = false;
             }
-            
             if (isAlpha) {
                 alpha++;
             }
-            
-            if (allowedCharsPattern != null) {
-                char character = password.charAt(i);
-                if (!allowedCharsPattern.matcher(Character.toString(character)).matches()) {
-                    throw AccountServiceException.INVALID_PASSWORD(character + " is not an allowed character", 
-                            new Argument(Provisioning.A_zimbraPasswordAllowedChars, allowedChars, Argument.Type.STR));
-                }
-            }
-            
         }
 
         if (upper < minUpperCase) {
@@ -4058,9 +4067,13 @@ public class LdapProvisioning extends Provisioning {
             throw AccountServiceException.INVALID_PASSWORD("not enough alpha characters", 
                     new Argument(Provisioning.A_zimbraPasswordMinAlphaChars, minAlpha, Argument.Type.NUM));
         }
+        if (numeric + punctuation < minNumOrPunc) {
+            throw AccountServiceException.INVALID_PASSWORD("not enough numeric or punctuation characters",
+                    new Argument(Provisioning.A_zimbraPasswordMinDigitsOrPuncs, minNumOrPunc, Argument.Type.NUM));
+        }
     }
 
-    private boolean isAsciiPunc(int ch) {
+    private boolean isAsciiPunc(char ch) {
         return
             (ch >= 33 && ch <= 47) || // ! " # $ % & ' ( ) * + , - . /
             (ch >= 58 && ch <= 64) || // : ; < = > ? @
@@ -4327,34 +4340,42 @@ public class LdapProvisioning extends Provisioning {
     throws ServiceException {
         if (zimbraId == null)
             return null;
-        LdapCalendarResource resource =
-            (LdapCalendarResource) sAccountCache.getById(zimbraId);
-        if (resource == null) {
-            zimbraId = LdapUtil.escapeSearchFilterArg(zimbraId);
-            resource = (LdapCalendarResource) getAccountByQuery(
-                mDIT.mailBranchBaseDN(),
-                LdapFilter.calendarResourceById(zimbraId),
-                null, loadFromMaster);
-            sAccountCache.put(resource);
+        Account acct = sAccountCache.getById(zimbraId);
+        if (acct != null) {
+            if (acct instanceof LdapCalendarResource) {
+                return (LdapCalendarResource) acct;
+            } else {
+                // could be a non-resource Account
+                return null;
+            }
         }
+        zimbraId = LdapUtil.escapeSearchFilterArg(zimbraId);
+        LdapCalendarResource resource = (LdapCalendarResource) getAccountByQuery(
+            mDIT.mailBranchBaseDN(),
+            LdapFilter.calendarResourceById(zimbraId),
+            null, loadFromMaster);
+        sAccountCache.put(resource);
         return resource;
     }
 
     private CalendarResource getCalendarResourceByName(String emailAddress, boolean loadFromMaster)
     throws ServiceException {
-
         emailAddress = fixupAccountName(emailAddress);
-
-        LdapCalendarResource resource =
-            (LdapCalendarResource) sAccountCache.getByName(emailAddress);
-        if (resource == null) {
-            emailAddress = LdapUtil.escapeSearchFilterArg(emailAddress);
-            resource = (LdapCalendarResource) getAccountByQuery(
-                mDIT.mailBranchBaseDN(),
-                LdapFilter.calendarResourceByName(emailAddress),
-                null, loadFromMaster);
-            sAccountCache.put(resource);
+        Account acct = sAccountCache.getByName(emailAddress);
+        if (acct != null) {
+            if (acct instanceof LdapCalendarResource) {
+                return (LdapCalendarResource) acct;
+            } else {
+                // could be a non-resource Account
+                return null;
+            }
         }
+        emailAddress = LdapUtil.escapeSearchFilterArg(emailAddress);
+        LdapCalendarResource resource = (LdapCalendarResource) getAccountByQuery(
+            mDIT.mailBranchBaseDN(),
+            LdapFilter.calendarResourceByName(emailAddress),
+            null, loadFromMaster);
+        sAccountCache.put(resource);
         return resource;
     }
 
@@ -5722,21 +5743,24 @@ public class LdapProvisioning extends Provisioning {
 
         if (LdapSignature.isAccountSignature(account, signatureId)) {
             LdapSignature.deleteAccountSignature(this, account);
-            return;
+        } else {
+            ZimbraLdapContext zlc = null;
+            try {
+                zlc = new ZimbraLdapContext(true);
+                Signature signature = getSignatureById(account, ldapEntry, signatureId, zlc);
+                if (signature == null)
+                    throw AccountServiceException.NO_SUCH_SIGNATURE(signatureId);
+                String dn = getSignatureDn(ldapEntry, signature.getName());
+                zlc.unbindEntry(dn);
+            } catch (NamingException e) {
+                throw ServiceException.FAILURE("unable to delete signarure: " + signatureId, e);
+            } finally {
+                ZimbraLdapContext.closeContext(zlc);
+            }
         }
 
-        ZimbraLdapContext zlc = null;
-        try {
-            zlc = new ZimbraLdapContext(true);
-            Signature signature = getSignatureById(account, ldapEntry, signatureId, zlc);
-            if (signature == null)
-                throw AccountServiceException.NO_SUCH_SIGNATURE(signatureId);
-            String dn = getSignatureDn(ldapEntry, signature.getName());
-            zlc.unbindEntry(dn);
-        } catch (NamingException e) {
-            throw ServiceException.FAILURE("unable to delete signarure: "+signatureId, e);
-        } finally {
-            ZimbraLdapContext.closeContext(zlc);
+        if (signatureId.equals(account.getPrefDefaultSignatureId())) {
+            account.unsetPrefDefaultSignatureId();
         }
     }
 
@@ -6844,7 +6868,7 @@ public class LdapProvisioning extends Provisioning {
             LdapUtil.SearchLdapVisitor visitor) throws ServiceException {
 
         final int batchSize = 10;  // num ids per search
-        final String queryStart = "(&(objectClass=" + objectClass + ")(";
+        final String queryStart = "(&(objectClass=" + objectClass + ")(|";
         final String queryEnd = "))";
 
         StringBuilder query = new StringBuilder();
@@ -6852,7 +6876,7 @@ public class LdapProvisioning extends Provisioning {
 
         int i = 0;
         for (String id : unresolvedIds) {
-            query.append("|(" + Provisioning.A_zimbraId + "=" + id + ")");
+            query.append("(" + Provisioning.A_zimbraId + "=" + id + ")");
             if ((++i) % batchSize == 0) {
                 query.append(queryEnd);
                 LdapUtil.searchLdapOnReplica(base, query.toString(), returnAttrs, visitor);
@@ -6916,4 +6940,5 @@ public class LdapProvisioning extends Provisioning {
         System.out.println(LdapUtil.computeAuthDn("schemers@example.zimbra.com", "n(%n)u(%u)d(%d)D(%D)(%%)"));
     }
 
+    
 }

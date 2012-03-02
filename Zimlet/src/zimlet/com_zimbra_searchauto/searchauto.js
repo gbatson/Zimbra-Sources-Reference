@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -115,6 +115,7 @@ function(val) {
 
 ZmSearchAutoZimlet.prototype.onKeyPressSearchField =
 function(val) {
+
     if (appCtxt.getSearchController()._searchFor != ZmId.SEARCH_MAIL) {//if its not mail/conv search.. dont show
         return;
 	}
@@ -350,11 +351,12 @@ function(obj) {
 
 ZmSearchAutoZimlet.prototype._parseQuery =
 function() {
-    this._query = document.getElementById('mainSearchInputFieldID').value;
+    this._query = AjxStringUtil.htmlEncode(document.getElementById('mainSearchInputFieldID').value);
     this._noFldrQuery = this._query.replace(/in:\w*\s/, "");//remove any folder-context(like in:inbox) to get actual search-query
     this._fldrInQuery = this._query.match(/in:\w*\s/, "");
-    if (this._fldrInQuery == undefined)
+    if (this._fldrInQuery == undefined) {
         this._fldrInQuery = "";
+	}
 };
 
 ZmSearchAutoZimlet.prototype.returnHistory =

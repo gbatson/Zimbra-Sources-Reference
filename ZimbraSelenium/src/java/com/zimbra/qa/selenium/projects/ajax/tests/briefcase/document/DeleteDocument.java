@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
 import org.testng.annotations.Test;
@@ -66,7 +82,7 @@ public class DeleteDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created document
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
@@ -101,6 +117,10 @@ public class DeleteDocument extends AjaxCommonTest {
 
 		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
 				"id");
+
+		ZAssert.assertNotNull(id,
+				"Verify the search response returns the document id");
+
 		ZAssert.assertEquals(id, docId,
 				"Verify the document was moved to the trash folder");
 	}
@@ -141,7 +161,7 @@ public class DeleteDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created document
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
@@ -203,7 +223,7 @@ public class DeleteDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created document
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
@@ -347,7 +367,7 @@ public class DeleteDocument extends AjaxCommonTest {
 		// refresh briefcase page
 		app.zTreeBriefcase
 				.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, false);
-		
+
 		SleepUtil.sleepVerySmall();
 
 		// Verify items are deleted);
@@ -371,6 +391,9 @@ public class DeleteDocument extends AjaxCommonTest {
 
 			String id = account.soapSelectValue(
 					"//mail:SearchResponse//mail:doc", "id");
+
+			ZAssert.assertNotNull(id,
+					"Verify the search response returns the document id");
 
 			ZAssert
 					.assertEquals(docId, id, "Verify the deleted document: "

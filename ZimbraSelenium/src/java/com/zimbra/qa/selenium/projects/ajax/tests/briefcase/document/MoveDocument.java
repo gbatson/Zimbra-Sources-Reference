@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
 import org.testng.annotations.Test;
@@ -87,13 +103,19 @@ public class MoveDocument extends AjaxCommonTest {
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
 
 		// Click on 'Move selected item' icon in toolbar
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+		"8.0.")){
+			// Click move -> subfolder
+			app.zPageBriefcase.zToolbarPressPulldown(Button.B_MOVE, subFolderItem);
+		}else{
 		DialogMove chooseFolder = (DialogMove) app.zPageBriefcase
 				.zToolbarPressButton(Button.B_MOVE, docItem);
-
+		
 		// Choose folder and click OK on Confirmation dialog
 		chooseFolder.zClickTreeFolder(subFolderItem);
 		chooseFolder.zClickButton(Button.B_OK);
-
+		}
+		
 		// refresh briefcase page
 		app.zTreeBriefcase
 				.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, false);

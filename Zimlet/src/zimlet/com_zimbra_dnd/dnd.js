@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -271,13 +271,13 @@ Com_Zimbra_DnD.prototype._uploadFiles = function(file, controller) {
     try {
 
         var req = new XMLHttpRequest();
-        var fileName = null;
+        var fileName = file.name || file.fileName;
         this.upLoadC = this.upLoadC + 1;
         req.open("POST", appCtxt.get(ZmSetting.CSFE_ATTACHMENT_UPLOAD_URI)+"?fmt=extended,raw", true);
         req.setRequestHeader("Cache-Control", "no-cache");
         req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
         req.setRequestHeader("Content-Type",  (file.type || "application/octet-stream") + ";");
-        req.setRequestHeader("Content-Disposition", 'attachment; filename="'+ this.convertToEntities(file.fileName) + '"');
+        req.setRequestHeader("Content-Disposition", 'attachment; filename="'+ this.convertToEntities(fileName) + '"');
 
         var tempThis = req;
         req.onreadystatechange = AjxCallback.simpleClosure(this._handleResponse, this, tempThis, controller);

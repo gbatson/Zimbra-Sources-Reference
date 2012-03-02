@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -13,10 +29,12 @@ import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.DialogCreateFolder;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 import com.zimbra.qa.selenium.framework.util.RestUtil;
 import org.apache.commons.httpclient.HttpStatus;
@@ -86,6 +104,8 @@ public class PageBriefcase extends AbsTab {
 				"css=html>body");
 		public static final Locators zHeaderCheckBox = new Locators(
 				"css=div[id=zlhi__BDLV__se]");
+		public static final Locators zListItemLockIcon = new Locators(
+		"css=div[id^=zlif__BDLV__][id$=__loid][class=ImgPadLock]");
 
 		private final String locator;
 
@@ -335,8 +355,8 @@ public class PageBriefcase extends AbsTab {
 
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option,
 			IItem item) throws HarnessException {
-		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("
-				+ pulldown + ", " + option + ")");
+		logger.info(myPageName() + " zToolbarPressPulldown(" + pulldown + ", "
+				+ option + ")");
 
 		tracer.trace("Click pulldown " + pulldown + " then " + option);
 
@@ -347,18 +367,23 @@ public class PageBriefcase extends AbsTab {
 			throw new HarnessException("Option cannot be null!");
 
 		// Default behavior variables
-		//
 		String pulldownLocator = null; // If set, this will be expanded
 		String optionLocator = null; // If set, this will be clicked
 		AbsPage page = null; // If set, this page will be returned
 
 		// Based on the button specified, take the appropriate action(s)
-		//
-
 		if (pulldown == Button.B_NEW) {
 			pulldownLocator = Locators.zNewMenuArrowBtn.locator;
 			if (option == Button.O_NEW_BRIEFCASE) {
-				throw new HarnessException("implement me!");
+				if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+						"7.1."))
+					optionLocator = "css=tr[id=POPUP_NEW_BRIEFCASE]";
+				else
+					optionLocator = "css=div#zb__BDLV__NEW_MENU_NEW_BRIEFCASE";
+
+				page = new DialogCreateBriefcaseFolder(this.MyApplication,((AppAjaxClient) MyApplication).zPageBriefcase);
+
+				// FALL THROUGH
 			} else if (option == Button.O_NEW_DOCUMENT) {
 				if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
 						"7.1."))
@@ -466,9 +491,52 @@ public class PageBriefcase extends AbsTab {
 						"no logic defined for pulldown/option " + pulldown
 								+ "/" + option);
 			}
+		} else if (pulldown == Button.B_MOVE) {
+
+			if (option == Button.O_NEW_FOLDER) {
+
+				// Check if we are CLV or MV
+				if (this.zIsVisiblePerPosition("css=div#ztb__CLV", 0, 0)) {
+					pulldownLocator = "css=td#zb__CLV__MOVE_MENU_dropdown>div";
+				} else {
+					pulldownLocator = "css=td#zb__TV__MOVE_MENU_dropdown>div";
+				}
+				optionLocator = "css=div[class='DwtFolderChooser'] div[id$='_newButtonDivId'] td[id$='_title']";
+				page = new DialogCreateFolder(this.MyApplication, this);
+
+			} else {
+				throw new HarnessException("no logic defined for B_MOVE and "
+						+ option);
+			}
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException(pulldownLocator + " not present!");
+			}
+
+			// 8.0 change ... need zClickAt()
+			// this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator, "0,0");
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			if (!this.sIsElementPresent(optionLocator)) {
+				throw new HarnessException(optionLocator + " not present!");
+			}
+
+			this.zClick(optionLocator);
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			page.zWaitForActive();
+
+			return (page);
+
 		} else {
-			throw new HarnessException("no logic defined for pulldown "
-					+ pulldown);
+			throw new HarnessException("no logic defined for pulldown/option "
+					+ pulldown + "/" + option);
 		}
 
 		// Default behavior
@@ -487,7 +555,7 @@ public class PageBriefcase extends AbsTab {
 			// sMouseDownRight(pulldownLocator);
 			// sMouseUpRight(pulldownLocator);
 
-			if ( zIsBrowserMatch(BrowserMasks.BrowserMaskIE) ) {
+			if (zIsBrowserMatch(BrowserMasks.BrowserMaskIE)) {
 				if (pulldown == Button.B_NEW) {
 					sGetEval("if(document.createEventObject()){var evObj = document.createEventObject(); "
 							+ "var x = selenium.browserbot.findElementOrNull('"
@@ -538,9 +606,11 @@ public class PageBriefcase extends AbsTab {
 			// If we click on pulldown/option and the page is specified, then
 			// wait for the page to go active
 			if (page != null) {
-				page.zWaitForActive();
-				if (option == Button.O_SEND_AS_ATTACHMENT)
+				if (option == Button.O_SEND_AS_ATTACHMENT){
 					zWaitForElementPresent("css=div[id$=_attachments_div] a[class='AttLink']");
+					return page;
+				} else
+				page.zWaitForActive();
 			}
 		}
 		// Return the specified page, or null if not set
@@ -618,6 +688,88 @@ public class PageBriefcase extends AbsTab {
 				zWaitForBusyOverlay();
 			}
 
+			// If we click on pulldown/option and the page is specified, then
+			// wait for the page to go active
+			if (page != null) {
+				page.zWaitForActive();
+			}
+		}
+		// Return the specified page, or null if not set
+		return (page);
+	}
+
+	/**
+	 * Activate a pulldown with dynamic values, such as "Move to folder" and
+	 * "Add a tag".
+	 * 
+	 * @param pulldown
+	 *            the toolbar button to press
+	 * @param dynamic
+	 *            the toolbar item to click such as FolderItem or TagItem
+	 * @throws HarnessException
+	 */
+	public AbsPage zToolbarPressPulldown(Button pulldown, Object dynamic)
+			throws HarnessException {
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("
+				+ pulldown + ", " + dynamic + ")");
+
+		tracer.trace("Click pulldown " + pulldown + " then " + dynamic);
+
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (dynamic == null)
+			throw new HarnessException("Option cannot be null!");
+
+		// Default behavior variables
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+
+		if (pulldown == Button.B_MOVE) {
+
+			if (!(dynamic instanceof FolderItem))
+				throw new HarnessException("if pulldown = " + Button.B_MOVE
+						+ ", then dynamic must be FolderItem");
+
+			FolderItem folder = (FolderItem) dynamic;
+
+			pulldownLocator = "css=td#zb__BDLV__MOVE_MENU_dropdown>div";
+			optionLocator = "css=td#zti__DwtFolderChooser_BriefcaseBDLV__"
+					+ folder.getId() + "_textCell";
+
+			page = null;
+		} else {
+			throw new HarnessException("no logic defined for pulldown/dynamic "
+					+ pulldown + "/" + dynamic);
+		}
+		// Default behavior
+		if (pulldownLocator != null) {
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown
+						+ " pulldownLocator " + pulldownLocator
+						+ " not present!");
+			}
+			this.zClickAt(pulldownLocator, "");
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			SleepUtil.sleepVerySmall();
+
+			if (optionLocator != null) {
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException(" dynamic " + dynamic
+							+ " optionLocator " + optionLocator
+							+ " not present!");
+				}
+				this.zClickAt(optionLocator, "");
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+			}
 			// If we click on pulldown/option and the page is specified, then
 			// wait for the page to go active
 			if (page != null) {
@@ -854,7 +1006,7 @@ public class PageBriefcase extends AbsTab {
 
 			} else if (option == Button.O_SEND_AS_ATTACHMENT) {
 
-				optionLocator = "css=td#zmi__Briefcase__SEND_FILE_AS_ATT_title:contains('Send as attachment')";
+				optionLocator = "css=div#zmi__Briefcase__SEND_FILE_AS_ATT:contains(Send as attachment(s))";
 
 				page = new FormMailNew(this.MyApplication);
 
@@ -875,6 +1027,16 @@ public class PageBriefcase extends AbsTab {
 				optionLocator = "css=td#zmi__Briefcase__TAG_MENU_title:contains('Tag File')";
 
 				page = new DialogMove(MyApplication, this);
+			} else if (option == Button.O_CHECK_IN_FILE) {
+
+				optionLocator = "css=td#zmi__Briefcase__CHECKIN_title:contains('Check In File')";
+
+				page = new DialogCheckInFile(MyApplication, this);
+			} else if (option == Button.O_DISCARD_CHECK_OUT) {
+
+				optionLocator = "css=td#zmi__Briefcase__DISCARD_CHECKOUT_title:contains('Discard Check Out')";
+
+				page = null;
 			} else {
 				throw new HarnessException("implement action: " + action
 						+ " option:" + option);
@@ -892,6 +1054,10 @@ public class PageBriefcase extends AbsTab {
 		}
 
 		if (page != null) {
+			if (option == Button.O_SEND_AS_ATTACHMENT){
+				zWaitForElementPresent("css=div[id$=_attachments_div] a[class='AttLink']");
+				return page;
+			} else
 			page.zWaitForActive();
 		}
 
@@ -1022,6 +1188,13 @@ public class PageBriefcase extends AbsTab {
 			page = new DialogTag(MyApplication, this);
 
 			keyCode = "78,84";
+		} else if (shortcut == Shortcut.S_NEWFOLDER) {
+
+			// "NEW Folder" shortcut opens "Create New Folder" dialog
+			// due to the bug #63029 it opens dialog with Mail tree view
+			page = new DialogCreateBriefcaseFolder(MyApplication, this);
+
+			keyCode = "78,70";
 		} else if (shortcut == Shortcut.S_MOVE) {
 
 			// "Move" shortcut opens "Choose Folder" dialog
@@ -1158,6 +1331,43 @@ public class PageBriefcase extends AbsTab {
 
 	public boolean isOptionDisabled(Locators name) throws HarnessException {
 		return sIsElementPresent(name.locator + "[class*=ZDisabled]");
+	}
+	
+	public boolean isLockIconPresent(IItem item) throws HarnessException {
+		boolean present = false;
+		String itemName = item.getName();
+
+		String listLocator = Locators.briefcaseListView.locator;
+		String itemLocator = listLocator
+				+ " div[id^='zli__BDLV__'][class^='Row']";
+		String itemNameLocator = itemLocator + " div:contains(" + itemName
+				+ ")";
+
+		zWaitForElementPresent(itemNameLocator);
+
+		String lockIconLocator = "";
+
+		int count = sGetCssCount(itemLocator);
+
+		for (int i = 1; i <= count; i++) {
+			if (sIsElementPresent(itemLocator + ":nth-child(" + i
+					+ "):contains(" + itemName + ")")) {
+				lockIconLocator = itemLocator + ":nth-child(" + i
+						+ ") div[id^=zlif__BDLV__][id$=__loid][class^=Img]";
+				break;
+			}
+		}
+	
+		if (!this.sIsElementPresent(lockIconLocator))
+			throw new HarnessException("Lock icon locator is not present "
+					+ lockIconLocator);
+
+		String image = this.sGetAttribute(lockIconLocator + "@class");
+
+		if (image.equals("ImgPadLock"))
+		present = true;
+	
+		return present;		
 	}
 
 	public boolean waitForDeletedFromListView(String itemName)

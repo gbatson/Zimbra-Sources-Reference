@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.desktop.ui.mail;
 
 import java.util.List;
@@ -9,9 +25,6 @@ import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 import com.zimbra.qa.selenium.projects.desktop.ui.*;
-
-
-
 
 /**
  * The <code>FormMailNew<code> object defines a compose new message view
@@ -91,18 +104,6 @@ public class FormMailNew extends AbsForm {
 		
 		logger.info("new " + FormMailNew.class.getCanonicalName());
 
-	}
-
-	public boolean zIsVisible() throws HarnessException {
-		String locator = "//div[contains(@id,'ztb__COMPOSE')]";
-		
-		if ( !this.sIsElementPresent(locator) )
-			return (false);
-		
-		if ( !this.zIsVisiblePerPosition(locator, 0, 0) )
-			return (false);
-		
-		return (true);
 	}
 
 	@Override
@@ -406,7 +407,7 @@ public class FormMailNew extends AbsForm {
 				this.sFocus(locator);
 				this.zClickAt(locator, "0,0");
 				this.zWaitForBusyOverlay();
-				this.zType(locator, value);
+				this.zTypeKeys(locator, value);
 				
 				return;
 				
@@ -426,7 +427,7 @@ public class FormMailNew extends AbsForm {
 
 					this.sFocus(locator);
 					this.zClickAt(locator, "0,0");
-					this.zType(locator, value);
+					this.zTypeKeys(locator, value);
 					
 				} finally {
 					// Make sure to go back to the original iframe
@@ -493,35 +494,40 @@ public class FormMailNew extends AbsForm {
 		if ( !(item instanceof MailItem) ) {
 			throw new HarnessException("Invalid item type - must be MailItem");
 		}
-		
+
 		// Convert object to MailItem
 		MailItem mail = (MailItem) item;
-		
+
 		// Fill out the form
 		//
-		
+
 		// Handle the subject
 		if ( mail.dSubject != null ) {
-			
+
 			zFillField(Field.Subject, mail.dSubject);
 
 		}
-		
+
 		if ( mail.dBodyText != null ) {
-			
+
 			zFillField(Field.Body, mail.dBodyText);
-			
+
 		}
-		
+
+		if ( mail.dBodyHtml != null ) {
+
+         zFillField(Field.Body, mail.dBodyHtml);
+
+      }
 		// TODO: how to handle HTML body?
-		
+
 		// Handle the Recipient list, which can be a combination
 		// of To, Cc, Bcc, and From
 		StringBuilder to = null;
 		StringBuilder cc = null;
 		StringBuilder bcc = null;
 		StringBuilder from = null;
-		
+
 		// Convert the list of recipients to a semicolon separated string
 		List<RecipientItem> recipients = mail.dAllRecipients();
 		if ( recipients != null ) {
@@ -592,7 +598,7 @@ public class FormMailNew extends AbsForm {
 			return (false);	
 		}
 		
-		if ( !this.zIsVisiblePerPosition(locator, 150, 80) ) {
+		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
 			return (false);
 		}
 		

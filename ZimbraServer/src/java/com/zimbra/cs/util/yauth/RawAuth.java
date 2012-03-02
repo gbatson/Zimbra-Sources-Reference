@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,6 +28,7 @@ import org.apache.log4j.Level;
 
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.Constants;
 
 /**
  * Implementation of Yahoo "Raw Auth" aka "Token Login v2"
@@ -125,7 +126,7 @@ public class RawAuth implements Auth {
         wssId = res.getRequiredField(WSSID);
         String s = res.getRequiredField(EXPIRATION);
         try {
-            expiration = System.currentTimeMillis() + Long.parseLong(s);
+            expiration = System.currentTimeMillis() + Long.parseLong(s) * Constants.MILLIS_PER_SECOND;
         } catch (NumberFormatException e) {
             throw new IOException(
                 "Invalid integer value for field '" + EXPIRATION + "': " + s);

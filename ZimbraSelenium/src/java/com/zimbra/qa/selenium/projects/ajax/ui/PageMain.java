@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -168,17 +184,17 @@ public class PageMain extends AbsTab {
 	 */
 	public void zCloseComposeTabs() throws HarnessException {
 		
-		String locator = "//td[contains(@id,'ztb_appChooser_item_')]//div[contains(@id,'zb__App__tab_COMPOSE')]";
+		String locator = "css=td[id^='ztb_appChooser_item_'] div[id^='zb__App__tab_COMPOSE']";
 		if ( sIsElementPresent(locator) ) {
 			logger.debug("Found compose tabs");
 			
-			String xpath = "//td[contains(@id,'ztb_appChooser_item_')]//div[contains(@id,'zb__App__tab_COMPOSE')]";
-			int count = this.sGetXpathCount(xpath);
+			int count = this.sGetCssCount(locator);
 			for (int i = 1; i <= count; i++) {
-				locator = xpath + "//td[contains(@id,'_left_icon')]["+ i +"]";
-				if ( !sIsElementPresent(locator) ) 
-					throw new HarnessException("Unable to find compose tab close icon "+ locator);
-				this.zClick(locator);
+				final String composeLocator = locator + ":nth-child("+i+") td[id$='_left_icon']";
+				if ( !sIsElementPresent(composeLocator) ) 
+					throw new HarnessException("Unable to find compose tab close icon "+ composeLocator);
+				this.zClick(composeLocator);
+				this.zWaitForBusyOverlay();
 			}
 		}
 	}

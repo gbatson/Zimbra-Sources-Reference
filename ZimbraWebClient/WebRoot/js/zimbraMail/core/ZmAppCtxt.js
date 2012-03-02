@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -340,7 +340,7 @@ function() {
 ZmAppCtxt.prototype.getMsgDialog =
 function() {
 	if (!this._msgDialog) {
-		this._msgDialog = new DwtMessageDialog({parent:this._shell});
+		this._msgDialog = new DwtMessageDialog({parent:this._shell, id: "ZmMsgDialog"});
 	}
 	return this._msgDialog;
 };
@@ -436,6 +436,20 @@ function() {
 		this._renameTagDialog = new ZmRenameTagDialog(this._shell);
 	}
 	return this._renameTagDialog;
+};
+
+/**
+ * Gets the password update dialog.
+ *
+ * @return	{ZmPasswordUpdateDialog}		the rename tag dialog
+ */
+ZmAppCtxt.prototype.getPasswordChangeDialog =
+function() {
+	if (!this._passwordUpdateDialog) {
+		AjxDispatcher.require("Extras");
+		this._passwordUpdateDialog = new ZmPasswordUpdateDialog(this._shell);
+	}
+	return this._passwordUpdateDialog;
 };
 
 /**
@@ -1440,20 +1454,20 @@ function() {
  * @param {Hash}	options			a hash of options
  * @param {Boolean}	options.noChildWindow		if <code>true</code>, skip notify if we are in a child window
  * @param	{Boolean}	options.waitUntilLoaded	if <code>true</code> and zimlets are not yet loaded, add a listener so that notify happens on load
- * 
+ * @return	{Boolean} Returns <code>true</code> if at least one Zimlet handles the notification
  */
 ZmAppCtxt.prototype.notifyZimlets =
 function(event, args, options) {
 
 	var context = this.isChildWindow ? parentAppCtxt : this;
 
-	if (options && options.noChildWindow && this.isChildWindow) { return; }
+	if (options && options.noChildWindow && this.isChildWindow) { return false; }
 
 	if (!context.areZimletsLoaded()) {
 		if (options && options.waitUntilLoaded) {
 			context.addZimletsLoadedListener(new AjxListener(this, this.notifyZimlets, [event, args]));
 		}
-		return;
+		return false;
 	}
 
 	return this.getZimletMgr().notifyZimlets(event, args);
@@ -1761,4 +1775,14 @@ function() {
 		this._toolTipMgr = new ZmToolTipMgr();
 	}
 	return this._toolTipMgr;
+};
+
+/**
+ * Returns true if Prism and the user is online
+ *
+ */
+ZmAppCtxt.prototype.isZDOnline =
+function() {
+    var ac = window["appCtxt"].getAppController();
+    return ac._isPrismOnline && ac._isUserOnline;
 };

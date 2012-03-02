@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,7 +22,7 @@
 <zm:getMailbox var="mailbox"/>
 <c:set var="folder" value="${zm:getFolder(pageContext, contact.folderId)}"/>
 <fmt:message var="colorGray" key="colorGray"/>
-<c:set var="color" value="${zm:lightenColor(not empty folder ? ((folder.rgb != 'null') ? folder.rgb : folder.rgbColor) : colorGray)}"/>
+<c:set var="color" value="${zm:lightenColor(not empty folder.rgb ? folder.rgb : (not empty folder.rgbColor ? folder.rgbColor : colorGray))}"/>
 <table width="100%" cellspacing="0" cellpadding="0">
 <tr bgcolor="${color}">
     <td class='ZhBottomSep'>

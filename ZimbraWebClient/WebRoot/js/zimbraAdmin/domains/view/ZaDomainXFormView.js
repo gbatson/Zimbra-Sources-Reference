@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -923,7 +923,25 @@ ZaDomainXFormView.myXFormModifier = function(xFormObject,entry) {
 							visibilityChangeEventSources:[ZaDomain.A_AuthUseBindPassword]
 						}											
 					]
-				}
+				},
+						{type: _SPACER_, height: 10 },
+						{ref:ZaDomain.A_zimbraPasswordChangeListener, type:_TEXTFIELD_, 
+							label:ZaMsg.Domain_zimbraPasswordChangeListener, labelLocation:_LEFT_, 
+                                                        visibilityChecks:[function() {
+                                                                var instance = this.getInstance();
+                                                                return (instance.attrs[ZaDomain.A_AuthMech] !=  ZaDomain.AuthMech_zimbra);
+                                                        }],
+                                                        visibilityChangeEventSources:[ZaDomain.A_AuthMech]
+						},
+                                                {ref:ZaDomain.A_zimbraAuthFallbackToLocal, type:_CHECKBOX_,
+                                                        label:ZaMsg.Domain_zimbraAuthFallbackToLocal, labelLocation:_RIGHT_,
+                                                        trueValue:"TRUE", falseValue:"FALSE",
+                                                        visibilityChecks:[function() {
+                                                                var instance = this.getInstance();
+                                                                return (instance.attrs[ZaDomain.A_AuthMech] !=  ZaDomain.AuthMech_zimbra);
+                                                        }],
+                                                        visibilityChangeEventSources:[ZaDomain.A_AuthMech]
+                                                }
 			]
 		};
 		switchGroup.items.push(case3);	

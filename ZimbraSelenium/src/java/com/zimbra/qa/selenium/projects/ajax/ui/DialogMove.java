@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.items.FolderItem;
@@ -45,19 +61,15 @@ public class DialogMove extends AbsDialog {
 
 		if (button == Button.B_NEW) {
 
-			// TODO: L10N this
-			locator = "//div[@id='" + Locators.zDialogId + "']//div[@id='"+ Locators.zDialogButtonsId + "']//td[text()='New']";
-			throw new HarnessException("implement me!");
+			locator = "css=div[id='ChooseFolderDialog_buttons'] td[id^='New_'] td[id$='_title']";
 
 		} else if (button == Button.B_OK) {
 
-			// TODO: L10N this
-			locator = "//div[@id='" + Locators.zDialogId + "']//div[@id='"+ Locators.zDialogButtonsId + "']//td[text()='OK']";
+			locator = "css=div[id='ChooseFolderDialog_buttons'] td[id^='OK_'] td[id$='_title']";
 
 		} else if (button == Button.B_CANCEL) {
 
-			// TODO: L10N this
-			locator = "//div[@id='" + Locators.zDialogId + "']//div[@id='"+ Locators.zDialogButtonsId + "']//td[text()='Cancel']";
+			locator = "css=div[id='ChooseFolderDialog_buttons'] td[id^='Cancel_'] td[id$='_title']";
 
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
@@ -89,7 +101,7 @@ public class DialogMove extends AbsDialog {
 
 		logger.info(myPageName() + " zIsActive()");
 
-		String locator = "id="+ Locators.zDialogId;
+		String locator = "css=div[id='"+ Locators.zDialogId +"']";
 		
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false); // Not even present
@@ -100,7 +112,7 @@ public class DialogMove extends AbsDialog {
 		}
 	
 		// Yes, visible
-		logger.info(myPageName() + " zIsVisible() = true");
+		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
 
 	}
@@ -110,7 +122,7 @@ public class DialogMove extends AbsDialog {
 	 * @param folder
 	 */
 	public void zEnterFolderName(String folder) throws HarnessException {
-		String locator = "//div[contains(@id, '_inputDivId')]/div/input";
+		String locator = "css=div[id='ChooseFolderDialog_inputDivId']>div>input";
 		
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("unable to find folder name field "+ locator);

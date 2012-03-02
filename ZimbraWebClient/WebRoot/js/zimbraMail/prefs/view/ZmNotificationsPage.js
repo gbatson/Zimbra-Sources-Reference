@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -192,7 +192,7 @@ ZmNotificationsPage.prototype._resetPageListener = function() {
 //
 
 ZmNotificationsPage.prototype._setupCustomForm = function() {
-	return new ZmNotificationsPageForm({parent:this,sectionTemplate:this._section.templateId});
+	return new ZmNotificationsPageForm({parent:this, sectionTemplate:this._section.templateId, id:"ZmNotificationsPage"});
 };
 
 ZmNotificationsPage.prototype._smsDataLoaded = function() {

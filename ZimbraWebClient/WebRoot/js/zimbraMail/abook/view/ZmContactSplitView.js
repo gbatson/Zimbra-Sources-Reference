@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -142,7 +142,6 @@ function(offset) {
  */
 ZmContactSplitView.prototype.setContact =
 function(contact, isGal) {
-
 	if (!isGal) {
 		// Remove and re-add listeners for current contact if exists
 		if (this._contact) {
@@ -466,6 +465,7 @@ function(contact, isGal, oldContact, expandDL) {
 	}
 
 	this._setHeaderInfo();
+	Dwt.setLoadedTime("ZmContactItem", new Date());
 };
 
 ZmContactSplitView.prototype._showContact =
@@ -516,6 +516,8 @@ function(data) {
 		data.name1 = ++i > 1 || ZmContact.IS_ADDONE[data.name] ? data.name + i : data.name;
 		var values = data.attrs[data.name1];
 		if (!values) { break; }
+		data.name1 = AjxStringUtil.htmlEncode(data.name1);
+		data.type = AjxStringUtil.htmlEncode(data.type);
 		values = AjxUtil.toArray(values);
 		for (var j=0; j<values.length; j++) {
 			var value = values[j];
@@ -1111,7 +1113,7 @@ function(contact, params) {
 				val = imAddr.screenName;
 			}
 		}
-		fileAs = [AjxStringUtil.htmlEncode(ZmMsg.noName), val].join(" ");
+		fileAs = [AjxStringUtil.htmlEncode(ZmMsg.noName), AjxStringUtil.htmlEncode(val)].join(" ");
 	}
 	htmlArr[idx++] = "<td id='" + this._getFieldId(contact, "fileas") + "' style='vertical-align:middle;'>&nbsp;";
 	htmlArr[idx++] = fileAs;

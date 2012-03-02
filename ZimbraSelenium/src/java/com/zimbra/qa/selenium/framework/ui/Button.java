@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.framework.ui;
 
 
@@ -149,6 +165,9 @@ public class Button {
 	public static final Button O_OPEN = new Button("O_OPEN");
 	public static final Button O_DELETE = new Button("O_DELETE");
 	public static final Button O_TAG_FILE = new Button("O_TAG_FILE");
+	public static final Button O_RENAME = new Button("O_RENAME");
+	public static final Button O_CHECK_IN_FILE = new Button("O_CHECK_IN_FILE");
+	public static final Button O_DISCARD_CHECK_OUT = new Button("O_DISCARD_CHECK_OUT");
 	
     //Addressbook button
 	public static final Button B_EDIT = new Button("zb__CNS__EDIT");

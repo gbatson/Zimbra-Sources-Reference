@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -82,6 +82,11 @@ public class Move extends DavMethod {
     }
     protected Collection getDestinationCollection(DavContext ctxt) throws DavException {
         String destinationUrl = getDestination(ctxt);
+        try {
+            destinationUrl = URLDecoder.decode(destinationUrl, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            ZimbraLog.dav.warn("can't decode destination url %s", destinationUrl, e);
+        }
         if (!destinationUrl.endsWith("/")) {
             int slash = destinationUrl.lastIndexOf('/');
             destinationUrl = destinationUrl.substring(0, slash+1);

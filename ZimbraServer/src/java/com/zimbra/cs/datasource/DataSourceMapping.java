@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -33,7 +33,7 @@ public class DataSourceMapping {
     
     public DataSourceMapping(DataSource ds, int itemId) throws ServiceException {
         this.ds = ds;
-        dsi = DbDataSource.getMapping(ds, itemId);
+        dsi = DataSourceDbMapping.getInstance().getMapping(ds, itemId);
         if (dsi.remoteId == null)
             throw MailServiceException.NO_SUCH_ITEM(itemId);
         parseMetaData();
@@ -41,7 +41,7 @@ public class DataSourceMapping {
     
     public DataSourceMapping(DataSource ds, String remoteId) throws ServiceException {
         this.ds = ds;
-        dsi = DbDataSource.getReverseMapping(ds, remoteId);
+        dsi = DataSourceDbMapping.getInstance().getReverseMapping(ds, remoteId);
         if (dsi.itemId == 0)
             throw MailServiceException.NO_SUCH_ITEM(remoteId);
         parseMetaData();
@@ -88,24 +88,24 @@ public class DataSourceMapping {
     public void setRemoteId(String remoteId) { dsi.remoteId = remoteId; }
     
     public void add() throws ServiceException {
-        DbDataSource.addMapping(ds, dsi);
+        DataSourceDbMapping.getInstance().addMapping(ds, dsi);
     }
     
     public void delete() throws ServiceException {
-        DbDataSource.deleteMapping(ds, dsi.itemId);
+        DataSourceDbMapping.getInstance().deleteMapping(ds, dsi.itemId);
     }
     
     public void set() throws ServiceException {
         try {
-            DbDataSource.addMapping(ds, dsi);
+            DataSourceDbMapping.getInstance().addMapping(ds, dsi);
         } catch (Exception e) {
             delete();
-            DbDataSource.addMapping(ds, dsi);
+            DataSourceDbMapping.getInstance().addMapping(ds, dsi);
         }
     }
     
     public void update() throws ServiceException {
-        DbDataSource.updateMapping(ds, dsi);
+        DataSourceDbMapping.getInstance().updateMapping(ds, dsi);
     }
     
     protected void parseMetaData() throws ServiceException {}

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -176,7 +176,7 @@ final class ConnectionManager {
         if (!ds.isOffline() && ic.hasCapability(ImapCapabilities.ID)) {
             try {
                 IDInfo id = ic.id();
-                if ("Zimbra".equalsIgnoreCase(id.getName())) {
+                if ("Zimbra".equalsIgnoreCase(id.get(IDInfo.NAME))) {
                     String user = id.get("user");
                     String server = id.get("server");
                     return user != null && user.equals(ds.getAccount().getName()) &&

@@ -1,7 +1,7 @@
 
 ' * ***** BEGIN LICENSE BLOCK *****
 ' * Zimbra Collaboration Suite Server
-' * Copyright (C) 2009, 2010 Zimbra, Inc.
+' * Copyright (C) 2009, 2010, 2011 VMware, Inc.
 ' * 
 ' * The contents of this file are subject to the Zimbra Public License
 ' * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,16 @@ Dim sLocalAppDir, bIsUpgrade, sTmpDir, sRestoreDir, aUserDirs, aUserFiles, sVers
 
 const HKEY_CURRENT_USER = &H80000001
 
+Sub LogMsg(sMsg, iLevel)
+    If (InStr(Wscript.FullName,"cscript") > 0) Then
+        WScript.StdOut.WriteLine(sMsg)
+    End If
+    If iLevel <= iLogLevel Then
+        oShell.LogEvent iLevel, "Zimbra Desktop: " & sMsg
+    End If
+End Sub
+
+
 Sub FindAndReplace(sFile, oTokens)
     Dim oFso, oInFile, oOutFile, sTmpFile
     
@@ -30,12 +40,12 @@ Sub FindAndReplace(sFile, oTokens)
     On Error Resume Next
     Set oInFile = oFso.OpenTextFile(sFile, 1, false)
     If Err.number <> 0 Then
-        WScript.StdOut.WriteLine "failed to open file: " & sFile
+        LogMsg "failed to open file: " & sFile, 1
         Exit Sub
     End If
     Set oOutFile = oFso.OpenTextFile(sTmpFile, 2, true)
     If Err.number <> 0 Then
-        WScript.StdOut.WriteLine "failed to open file: " & sTmpFile
+        LogMsg "failed to open file: " & sTmpFile, 1
         Exit Sub   
     End If
     
@@ -273,7 +283,9 @@ End If
 
 Dim sMsg
 sMsg = "Initializing, please wait..."
-WScript.Echo sMsg
+If (InStr(Wscript.FullName,"cscript") > 0) Then
+    WScript.Echo sMsg
+End If
 oShell.Popup sMsg, 5, "Zimbra Desktop", 64
 
 StopProcesses

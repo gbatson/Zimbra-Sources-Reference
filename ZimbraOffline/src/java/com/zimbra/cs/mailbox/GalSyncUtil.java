@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -131,14 +131,18 @@ public final class GalSyncUtil {
      * @return Contact for the address or null if it does not exist
      * @throws ServiceException
      */
-    public static Contact getGalContact(Account requestedAcct, String addr) throws ServiceException {
+    public static Contact getGalDlistContact(Account requestedAcct, String addr) throws ServiceException {
         Contact con = null;
-        ZimbraQueryResults dlResult = (new OfflineGal((OfflineAccount)requestedAcct)).search(addr, "all", "", 0, 0, null);
+        ZimbraQueryResults dlResult = (new OfflineGal((OfflineAccount)requestedAcct)).search(addr, "group", "", 0, 0, null);
         if (dlResult != null) {
             try {
                 if (dlResult.hasNext()) {
                     ZimbraHit hit = dlResult.getNext();
                     con = (Contact) hit.getMailItem();
+                    while (OfflineLog.offline.isDebugEnabled() && dlResult.hasNext()) {
+                        Contact dupe = (Contact) dlResult.getNext().getMailItem();
+                        OfflineLog.offline.debug("Ignoring duplicate group %s",dupe);
+                    }
                 }
             } finally {
                 dlResult.doneWithSearchResults();
@@ -256,14 +260,15 @@ public final class GalSyncUtil {
                         GalSyncCheckpointUtil.checkpoint(galMbox, token, galAcctId, reqIds);
                     } else {
                         SortedMap<Integer, String> sorted = new TreeMap<Integer, String>();
+                        int count = Integer.MAX_VALUE;
                         for (Entry<String, ParsedContact> entry : parsedContacts.entrySet()) {
                             int itemId = GalSyncUtil.findContact(entry.getKey(), ds);
                             if (itemId > 0) {
                                 sorted.put(itemId, entry.getKey()); //exists, sort by local item id
                             } else {
-                                sorted.put(Integer.MAX_VALUE, entry.getKey()); //doesn't exist; add at end; new items have highest id
+                                sorted.put(count--, entry.getKey()); //doesn't exist; add at end; new items have highest id
                             }
-                        } 
+                        }
                         for (String id : sorted.values()) {
                             ParsedContact pc = parsedContacts.get(id);
                             saveParsedContact(galMbox, ctxt, syncFolder, id, pc, getContactLogStr(pc), false, ds);
@@ -291,13 +296,21 @@ public final class GalSyncUtil {
                 while (dlResult.hasNext()) {
                     ZimbraHit hit = dlResult.getNext();
                     Contact contact = (Contact) hit.getMailItem();
-                    String listName = contact.getEmailAddresses().size() > 0 ? contact.getEmailAddresses().get(0) : contact.getFileAsString();
-                    groups.add(listName);
+                    if (contact.getEmailAddresses().size() > 0) {
+                        groups.addAll(contact.getEmailAddresses());
+                    } else {
+                        groups.add(contact.getFileAsString());
+                    }
                 }
             } finally {
                 dlResult.doneWithSearchResults();
             }
         }
         return groups;
+    }
+
+    public static void removeConfig(ZcsMailbox mbox, Mailbox galMbox) throws ServiceException {
+        GalSyncCheckpointUtil.removeCheckpoint(mbox);
+        GalSyncRetry.remove(galMbox);
     }
 }

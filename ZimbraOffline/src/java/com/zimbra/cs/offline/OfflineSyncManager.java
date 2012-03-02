@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -48,6 +49,7 @@ import com.zimbra.common.soap.SoapHttpTransport;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ExceptionToString;
+import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.SystemUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
@@ -68,9 +70,9 @@ import com.zimbra.cs.offline.common.OfflineConstants.SyncStatus;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.formatter.ArchiveFormatter;
+import com.zimbra.cs.service.formatter.ArchiveFormatter.Resolve;
 import com.zimbra.cs.service.formatter.FormatListener;
 import com.zimbra.cs.service.formatter.Formatter;
-import com.zimbra.cs.service.formatter.ArchiveFormatter.Resolve;
 import com.zimbra.cs.util.Zimbra;
 import com.zimbra.cs.util.ZimbraApplication;
 import com.zimbra.cs.util.yauth.AuthenticationException;
@@ -89,6 +91,14 @@ public class OfflineSyncManager implements FormatListener {
     private static final String A_ZDSYNC_ERRORCODE = "code";
     private static final String A_ZDSYNC_MESSAGE = "message";
     private static final String A_ZDSYNC_UNREAD = "unread";
+
+    private boolean pendingStatusChanges = false;
+
+    public boolean hasPendingStatusChanges() {
+        synchronized (syncStatusTable) {
+            return pendingStatusChanges;
+        }
+    }
 
     private static class SyncError {
         String message;
@@ -126,6 +136,7 @@ public class OfflineSyncManager implements FormatListener {
         ZAuthToken authToken; //null for data sources
         long authExpires; //0 for data sources
         private Thread currentSyncThread = null;
+        private Map<String, Pair<Boolean, Object>> syncInfoMap = new ConcurrentHashMap<String, Pair<Boolean, Object>>();
 
         private void setCurrentSyncThread() {
             if (currentSyncThread == null) {
@@ -244,6 +255,29 @@ public class OfflineSyncManager implements FormatListener {
             if (mError != null) {
                 mError.encode(e);
             }
+            for (String key : this.syncInfoMap.keySet()) {
+                Pair<Boolean, Object> value = this.syncInfoMap.get(key);
+                if (value.getFirst()) {
+                    e.addAttribute(key, value.getSecond().toString());
+                }
+            }
+        }
+        
+        public boolean updateSyncInfo(String key, Object value, boolean isEnabled) {
+            try {
+                Pair<Boolean, Object> pair = null;
+                if (!this.syncInfoMap.containsKey(key)) {
+                    pair = new Pair<Boolean, Object>(isEnabled, value);
+                    this.syncInfoMap.put(key, pair);
+                } else {
+                    pair = this.syncInfoMap.get(key);
+                    pair.setFirst(isEnabled);
+                    pair.setSecond(value);
+                }
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
         }
 
         SyncStatus getSyncStatus() {
@@ -346,6 +380,7 @@ public class OfflineSyncManager implements FormatListener {
            }
         }
         synchronized (syncStatusTable) {
+            pendingStatusChanges = true;
             b = getStatus(entry).syncStart();
         }
         lock.unlock();
@@ -356,6 +391,7 @@ public class OfflineSyncManager implements FormatListener {
     public void syncComplete(NamedEntry entry) {
         boolean b;
         synchronized (syncStatusTable) {
+            pendingStatusChanges = true;
             b = getStatus(entry).syncComplete();
         }
         if (b)
@@ -363,6 +399,13 @@ public class OfflineSyncManager implements FormatListener {
         lock.lock();
         waiting.signalAll();
         lock.unlock();
+    }
+
+    public void syncInfoUpdate(NamedEntry entry, String key, String value, boolean isAvailalbe) {
+        synchronized (syncStatusTable) {
+            OfflineSyncStatus status = getStatus(entry);
+            status.updateSyncInfo(key, value, isAvailalbe);
+        }
     }
 
     public void resetLastSyncTime(NamedEntry entry) {
@@ -373,6 +416,7 @@ public class OfflineSyncManager implements FormatListener {
 
     private void connectionDown(NamedEntry entry, String code) {
         synchronized (syncStatusTable) {
+            pendingStatusChanges = true;
             getStatus(entry).connectionDown(code);
         }
         notifyStateChange();
@@ -380,6 +424,7 @@ public class OfflineSyncManager implements FormatListener {
 
     private void authFailed(NamedEntry entry, String code, String password) {
         synchronized (syncStatusTable) {
+            pendingStatusChanges = true;
             getStatus(entry).authFailed(code, password);
         }
         notifyStateChange();
@@ -387,6 +432,7 @@ public class OfflineSyncManager implements FormatListener {
 
     private void syncFailed(NamedEntry entry, String code, String message, Throwable t) {
         synchronized (syncStatusTable) {
+            pendingStatusChanges = true;
             getStatus(entry).syncFailed(code, message, t);
         }
         notifyStateChange();
@@ -402,6 +448,7 @@ public class OfflineSyncManager implements FormatListener {
 
     public void authSuccess(NamedEntry entry, String password, ZAuthToken token, long expires) {
         synchronized (syncStatusTable) {
+            pendingStatusChanges = true;
             getStatus(entry).authSuccess(password, token, expires);
         }
     }
@@ -614,12 +661,14 @@ public class OfflineSyncManager implements FormatListener {
         return toSkipList.contains(itemId);
     }
 
-    private boolean isConnectionDown = false, isServiceUp = false, isUiLoading = false;
+    private volatile boolean isConnectionDown = false;
+    private volatile boolean isServiceUp = false;
+    private volatile boolean isUiLoading = false;
     private Lock lock = new ReentrantLock();
     private Condition waiting  = lock.newCondition(); 
-    private int suspendCount = 0;  
+    private volatile int suspendCount = 0;
 
-    public synchronized boolean isConnectionDown() {
+    public boolean isConnectionDown() {
         return isConnectionDown;
     }
 
@@ -646,7 +695,7 @@ public class OfflineSyncManager implements FormatListener {
      * Returns true once ZD jetty is listening on configured host/port (e.g. localhost:7733)
      * Does not care if remote connection is down; only local
      */
-    public synchronized boolean isServiceUp () {
+    public boolean isServiceUp () {
         return isServiceUp;
     }
 
@@ -669,33 +718,20 @@ public class OfflineSyncManager implements FormatListener {
         if (!isConnectionDown)
             waiting.signalAll();
         lock.unlock();
-        if (b) {
-            synchronized(syncStatusTable) {
-                for (OfflineSyncStatus status: syncStatusTable.values()) {
-                    if (status.currentSyncThread != null) {
-                        try {
-                            OfflineLog.offline.info("interrupting sync thread %s",status.currentSyncThread.getName());
-                            status.currentSyncThread.interrupt();
-                        } catch (Exception e) {
-                            OfflineLog.offline.warn("Exception while interrupting sync thread",e);
-                        }
-                    }
-                }
-            }
-        }
     }
 
     public synchronized void setUILoading(boolean b) {
         //this mechanism can get stuck if load_end event isn't received; either due to UI or server error
         lock.lock();
         isUiLoading = b;
-        OfflineLog.offline.debug("setting uiloading to %s",b);
-        if (!isUiLoading)
+        OfflineLog.offline.debug("setting uiloading to %s", b);
+        if (!isUiLoading) {
             waiting.signalAll();
+        }
         lock.unlock();
     }
-    
-    public synchronized boolean isUILoading() {
+
+    public boolean isUILoading() {
         return isUiLoading;
     }
 
@@ -849,6 +885,9 @@ public class OfflineSyncManager implements FormatListener {
         </zdsync>
      */
     public void encode(Element context, String requestedAccountId) throws ServiceException {
+        synchronized (syncStatusTable) {
+            pendingStatusChanges = false;
+        }
         OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
         Element zdsync = context.addUniqueElement(ZDSYNC_ZDSYNC);
         List<Account> accounts = prov.getAllAccounts();
@@ -857,7 +896,7 @@ public class OfflineSyncManager implements FormatListener {
             try {
                 mb = MailboxManager.getInstance().getMailboxByAccount(account);
             } catch (Exception e) {
-                OfflineLog.offline.error("exception fetching mailbox for account ["+account+"]",e);
+                OfflineLog.offline.error("exception fetching mailbox for account ["+account.getName()+"]",e);
                 markAccountSyncDisabled(account, e);
                 continue;
             }
@@ -885,7 +924,6 @@ public class OfflineSyncManager implements FormatListener {
         } else {
             OfflineLog.offline.warn("cannot mark non-offline account as disabled sync.");
         }
-        
     }
 
     private long lastClientPing;

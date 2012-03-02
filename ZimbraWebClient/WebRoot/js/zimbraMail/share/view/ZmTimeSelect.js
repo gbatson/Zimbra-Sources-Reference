@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -376,7 +376,7 @@ function() {
  * @private
 */
 ZmTimeInput = function(parent, id, parentElement) {
-    var params = {parent:parent};
+    var params = {parent:parent, id: "ZmTimeInput"};
     if(parentElement) {
         params.parentElement = parentElement;
     }
@@ -739,7 +739,7 @@ function() {
 
 	this.getHtmlElement().innerHTML = AjxTemplate.expand("calendar.Appointment#ApptTimeInput", {id: this._htmlElId});
 
-    var inputId = Dwt.getNextId();
+    var inputId = Dwt.getNextId("ZmTimeInputSelect_");
     if (this.id && this.id == ZmTimeSelect.START) {
        inputId += "_startTimeInput";
     }
@@ -753,7 +753,8 @@ function() {
         type: DwtInputField.STRING,
         errorIconStyle: DwtInputField.ERROR_ICON_NONE,
         validationStyle: DwtInputField.CONTINUAL_VALIDATION,
-        inputId: inputId
+        inputId: inputId,
+	    id: Dwt.getNextId("ZmTimeInputField_")
     };
 
     this._timeSelectInput = new DwtInputField(params);

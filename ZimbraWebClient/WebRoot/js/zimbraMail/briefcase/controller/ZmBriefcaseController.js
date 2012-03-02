@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -283,7 +283,7 @@ function(parent, num) {
     parent.enable(ZmOperation.RENAME_FILE, ( num ==1 && !isFolderSelected && !isReadOnly && !isRevision && (isLocked ? isLockOwner : true) ));
 
     //Download - Files
-    parent.enable(ZmOperation.SAVE_FILE, num >0 );
+    parent.enable(ZmOperation.SAVE_FILE, num >0 && (!isFolderSelected || isBriefcaseItemSelected));
 
     // Edit
     parent.enable(ZmOperation.OPEN_FILE, (num == 1 && isWebDoc));
@@ -546,7 +546,7 @@ function(folderId){
 
 ZmBriefcaseController.prototype._listSelectionListener =
 function(ev) {
-
+	Dwt.setLoadingTime("ZmBriefcaseItem", new Date());
 	ZmListController.prototype._listSelectionListener.call(this, ev);
 
 	if (ev.detail == DwtListView.ITEM_DBL_CLICKED) {
@@ -909,19 +909,27 @@ function() {
 ZmBriefcaseController.prototype.downloadFile =
 function(items){
 
-    var restUrl, length= items.length;
+    var restUrl, item, length= items.length;
     if(length > 1){
         var params = [];
         var organizer = appCtxt.getById(items[0].folderId);
         for(var i=0; i< length; i++){
-            var item = items[i];
-            params.push((item.isRevision ? item.parent.id : item.getNormalizedItemId())+"."+item.version);
+            item = items[i];
+	        if (!item.isFolder) {
+				var itemId;
+				if (appCtxt.isOffline && organizer.isShared()) {
+					itemId = item.id;
+				} else {
+					itemId = item.getNormalizedItemId();
+				}
+				params.push((item.isRevision ? item.parent.id : itemId )+"."+item.version);
+	        }
         }
-        restUrl = [ (organizer.isShared()?organizer.getOwnerRestUrl():organizer.getRestUrl()), "?fmt=zip&list=", params.join(',')].join('');
+        restUrl = [ ((organizer.isShared() && !appCtxt.isOffline ) ? organizer.getOwnerRestUrl() : organizer.getRestUrl()), "?fmt=zip&list=", params.join(',')].join('');
     }else{
-       var item = AjxUtil.isArray(items) ? items[0] : items;
-       restUrl = item.getRestUrl();
-       restUrl += "?disp=a"+(item.version ? "&ver="+item.version : "");
+        item = AjxUtil.isArray(items) ? items[0] : items;
+        restUrl = item.getRestUrl();
+        restUrl += "?disp=a"+(item.version ? "&ver="+item.version : "");
     }
 
     if (!restUrl) {

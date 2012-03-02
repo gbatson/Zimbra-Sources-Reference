@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -254,11 +254,20 @@ public class Props2JsServlet extends HttpServlet {
         return req.getLocale();
     }
 
+	private String getCommentSafeString(String st) {
+		return st.replaceAll("<", "") //make sure you can't start a "script" tag within the comment cuz genius IE supposedly exectutes it
+				.replaceAll("\n", ""); //make sure no newline can be injected to start a malicious script too
+
+	}
+
     protected byte[] getBuffer(HttpServletRequest req,
         Locale locale, String uri) throws IOException {
         BufferStream bos = new BufferStream(24 * 1024);
         DataOutputStream out = new DataOutputStream(bos);
-        out.writeBytes("// Locale: " + locale + '\n');
+		String sanitizedLocale = locale.toString()
+				.replaceAll("<", "") //make sure you can't start a "script" tag within the comment cuz genius IE supposedly exectutes it
+				.replaceAll("\n", ""); //make sure no newline can be injected to start a malicious script too
+		out.writeBytes("// Locale: " + getCommentSafeString(locale.toString()) + '\n');
 
         // tokenize the list of patterns
         List<String> patternsList = this.getBasenamePatternsList(req);
@@ -316,7 +325,7 @@ public class Props2JsServlet extends HttpServlet {
         String basedir, String dirname, String classname) throws IOException {
         String basename = basedir + classname;
 
-        out.writeBytes("// Basename: " + basename + '\n');
+        out.writeBytes("// Basename: " + getCommentSafeString(basename) + '\n');
         for (List<String> basenames : basenamePatterns) {
             try {
                 ClassLoader parentLoader = this.getClass().getClassLoader();

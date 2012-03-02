@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -987,7 +987,7 @@ ZaServerXFormView.myXFormModifier = function(xFormObject, entry) {
 								{ ref: ZaServer.A_zimbraImapBindPort, type:_TEXTFIELD_,
 								  enableDisableChecks:[ZaServerXFormView.getIMAPEnabled,ZaItem.hasReadPermission],
 								  enableDisableChangeEventSources:[ZaServer.A_ImapServerEnabled],
-								  label: ZaMsg.IMAP_Port+":", width: "5em",
+								  label: ZaMsg.LBL_IMAP_Port, width: "5em",
 								  onChange: ZaServerXFormView.onFormFieldChanged/*,
 						      	  resetToSuperLabel:ZaMsg.NAD_ResetToGlobal*/
 								},
@@ -1138,7 +1138,7 @@ ZaServerXFormView.myXFormModifier = function(xFormObject, entry) {
 							numCols:1,colSizes:["auto"],label:ZaMsg.VM_VolumesGrpTitle,
 							cssStyle:"margin-top:10px;margin-bottom:10px;padding-bottom:0px;margin-left:10px;margin-right:10px;",
 							items: [
-								{ref:ZaServer.A_Volumes, type:_DWT_LIST_, height:"200", width:"100%",
+								{ref:ZaServer.A_Volumes, type:_DWT_LIST_, height:"200", width:"99%",
 									 	preserveSelection:false, multiselect:true,cssClass: "DLSource",
 									 	headerList:headerList, widgetClass:ZaServerVolumesListView,
 									 	onSelection:ZaServerXFormView.volumeSelectionListener,

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -755,15 +755,15 @@ GlobalConfigXFormView.myXFormModifier = function(xFormObject, entry) {
 						  	  label: ZaMsg.LBL_zimbraFreebusyExchangeUserOrg, width: "20em"
 						  	},
                               {type: _SPACER_, height: 10 },
-                              {type: _GROUP_, colSpan:2, numCols:5, colSizes: ["120px", "10px", "100px", "20px", "120px" ], items :[
+                              {type: _GROUP_, colSpan:2, numCols:5, colSizes: ["120px", "120px", "10px", "120px", "*" ], items :[
                                   {   type:_CELLSPACER_ },
                                   {
-                                      type: _DWT_BUTTON_ , colSpan: 2, label: ZaMsg.Check_Settings, width: "15em",
+                                      type: _DWT_BUTTON_ , label: ZaMsg.Check_Settings, width: "115px",
                                       onActivate: ZaItem.checkInteropSettings, enableDisableChecks:[[ZaItem.hasRight,ZaGlobalConfig.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT,ZaZimbraAdmin.currentAdminAccount]]
                                   } ,
                                   {   type:_CELLSPACER_ } ,
                                   {
-                                      type: _DWT_BUTTON_ , colSpan: 2, label: ZaMsg.Clear_Settings, width: "15em",
+                                      type: _DWT_BUTTON_ , label: ZaMsg.Clear_Settings, width: "115px",
                                       onActivate: ZaItem.clearInteropSettings,
                                       enableDisableChecks:[[ZaItem.hasRight,ZaGlobalConfig.CHECK_EXCHANGE_AUTH_CONFIG_RIGHT,ZaZimbraAdmin.currentAdminAccount]]
                                   },

@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -15,6 +31,7 @@ import org.apache.log4j.*;
 import org.testng.*;
 import org.testng.xml.*;
 
+import com.zimbra.qa.selenium.framework.util.performance.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 
@@ -86,12 +103,12 @@ public class ExecuteHarnessMain {
 	/**
 	 * The list of groups to execute
 	 */
-	public List<String> groups = Arrays.asList("always", "sanity");
+	public ArrayList<String> groups = new ArrayList<String>(Arrays.asList("always", "sanity"));
 
 	/**
 	 * The list of groups to exclude
 	 */
-	public List<String> excludeGroups = Arrays.asList("skip");
+	public ArrayList<String> excludeGroups = new ArrayList<String>(Arrays.asList("skip"));
 		
 	/**
 	 * The suite verbosity
@@ -301,7 +318,16 @@ public class ExecuteHarnessMain {
 	 */
 	protected List<XmlSuite> getXmlSuiteList() throws HarnessException {
 
+		// Add network or foss based on the server version
+		if ( ZimbraSeleniumProperties.zimbraGetVersionString().toLowerCase().contains("network") ) {
+			excludeGroups.add("foss");
+		} else {
+			excludeGroups.add("network");
+		}
 		
+		// If groups contains "performance", then enable performance metrics gathering
+		PerfMetrics.getInstance().Enabled = groups.contains("performance");
+
 		// Only one suite per run in the zimbra process (subject to change)
 		XmlSuite suite = new XmlSuite();
 		suite.setName("zimbra");
@@ -350,6 +376,7 @@ public class ExecuteHarnessMain {
 
 		StringBuilder result = new StringBuilder();
 		FileAppender appender = new FileAppender(new PatternLayout("%-4r %-5p %c %x - %m%n"), testoutputfoldername + "/debug.txt", false);
+		PerfMetrics.setOutputFolder(testoutputfoldername);
 
 		try {
 
@@ -857,13 +884,13 @@ public class ExecuteHarnessMain {
 	        if ( cmd.hasOption('g') ) {
 	        	// Remove spaces and split on commas
 	        	String[] values = cmd.getOptionValue('g').replaceAll("\\s+", "").split(",");
-	        	this.groups = Arrays.asList(values);
+	        	this.groups = new ArrayList<String>(Arrays.asList(values));
 	        }
 	      
 	        if ( cmd.hasOption("eg") ) {
 	        	// Remove spaces and split on commas
 	        	String[] values = cmd.getOptionValue("eg").replaceAll("\\s+", "").split(",");
-	        	this.excludeGroups = Arrays.asList(values);
+	        	this.excludeGroups = new ArrayList<String>(Arrays.asList(values));
 	        }
 	        
 	        if ( cmd.hasOption('v') ) {

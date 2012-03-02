@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.desktop.ui.accounts;
 
 import com.zimbra.qa.selenium.framework.items.DesktopAccountItem;
@@ -7,8 +23,9 @@ import com.zimbra.qa.selenium.framework.ui.AbsForm;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
+import com.zimbra.qa.selenium.projects.desktop.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.desktop.ui.PageLogin;
-import com.zimbra.qa.selenium.projects.desktop.ui.accounts.FormAddImapAccount.Locators;
 
 public class FormAddZimbraAccount extends AbsForm {
 
@@ -142,7 +159,24 @@ public class FormAddZimbraAccount extends AbsForm {
 
    @Override
    public void zSubmit() throws HarnessException {
+      zSubmit(false);
+   }
+
+   public void zSubmit(boolean ssl) throws HarnessException {
       zPressButton(Button.B_VALIDATE_AND_SAVE);
+      if (ssl) {
+         Object[] params = {"Invalid or untrusted server SSL certificate"};
+         boolean messageAppears = (Boolean)GeneralUtility.waitFor(null, ((AppAjaxClient)MyApplication).zPageAddNewAccount, false, "zMessageContains",
+               params, WAIT_FOR_OPERAND.EQ, true, 30000, 1000);
+
+         if (messageAppears) {
+            // Accept Untrusted Certificate
+            zPressButton(Button.B_VALIDATE_AND_SAVE);
+         } else {
+            // Fall through
+            logger.debug("This may be not the first time adding a SSL account to the ZCS server");
+         }
+      }
       GeneralUtility.waitForElementPresent(this, PageLogin.Locators.zBtnLoginDesktop);
    }
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -617,14 +617,16 @@ function(id, type) {
  */
 ZmOrganizer.parseId =
 function(id, result) {
+	var ac = window.parentAppCtxt || window.appCtxt;
+
 	result = result || {};
 	if (id == null) { return result; }
 	var idx = (typeof id == "string") ? id.indexOf(":") : -1;
 	if (idx == -1) {
-		result.account = appCtxt.accountList.mainAccount;
+		result.account = ac.accountList.mainAccount;
 		result.id = id;
 	} else {
-		result.account = appCtxt.accountList.getAccount(id.substring(0, idx));
+		result.account = ac.accountList.getAccount(id.substring(0, idx));
 		result.id = id.substr(idx + 1);
 	}
 	return result;
@@ -1827,6 +1829,7 @@ function(params, actionLogItem, result) {
 	if (params.actionText) {
 		var actionController = appCtxt.getActionController();
 		var summary = ZmOrganizer.getActionSummary(params.actionText, params.numItems || 1, this.type, params.actionArg);
+		summary = AjxStringUtil.htmlEncode(summary); //encode html special chars such as < and > so won't be interpreted as html (both for security and for not losing visibility of characters)
 		var undoLink = actionLogItem && actionController && actionController.getUndoLink(actionLogItem);
 		if (undoLink && actionController) {
 			actionController.onPopup();

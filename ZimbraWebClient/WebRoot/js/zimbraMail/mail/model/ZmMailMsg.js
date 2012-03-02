@@ -2,7 +2,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1362,6 +1362,13 @@ function(request, isDraft, accountName, requestReadReceipt, sendTime) {
 			this._addReadReceipt(addrNodes, accountName);
 		}
 	}
+	//Let Zimlets set custom mime headers. They need to push header-name and header-value like below:
+	//customMimeHeaders.push({name:"header1", _content:"headerValue"})
+	var customMimeHeaders = [];
+	appCtxt.notifyZimlets("addCustomMimeHeaders", [customMimeHeaders]);
+	if((customMimeHeaders instanceof Array) && customMimeHeaders.length > 0) {
+		 msgNode.header = customMimeHeaders;
+	}
 	msgNode.su = {_content:this.subject};
 
 	var topNode = {ct:this._topPart.getContentType()};
@@ -1661,7 +1668,7 @@ function() {
 		if (bodyPart.ct == ZmMimeTable.TEXT_HTML) {
 			content = bodyPart.content;
 			var msgRef = this;
-			content.replace(/dfsrc=([\x27\x22])cid:([^\x27\x22]+)\1/ig, function(s, q, cid) {
+			content.replace(/src=([\x27\x22])cid:([^\x27\x22]+)\1/ig, function(s, q, cid) {
 				var attach = msgRef.findInlineAtt("<" + AjxStringUtil.urlComponentDecode(cid)  + ">");
 				if (attach) {
 					attach.foundInMsgBody = true;
@@ -1677,7 +1684,7 @@ function() {
 	var body = this.getBodyPart(ZmMimeTable.TEXT_HTML);
 	if (body) {
 		body = AjxUtil.isString(body) ? body : body.content;
-		if (body && body.search(/dfsrc=([\x27\x22])cid:([^\x27\x22]+)\1/ig) != -1) {
+		if (body && body.search(/src=([\x27\x22])cid:([^\x27\x22]+)\1/ig) != -1) {
 			return true;
 		}
 	}

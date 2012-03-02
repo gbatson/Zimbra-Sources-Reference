@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,7 +17,7 @@ package com.zimbra.cs.account.ldap.upgrade;
 import com.zimbra.common.service.ServiceException;
 
 public enum UpgradeTask {
-    BUG_10287(zimbraPrefCalendarReminderSendEmail.class),
+    BUG_11562(Bug11562.class),
     BUG_14531(ZimbraGalLdapFilterDef_zimbraSync.class),
     BUG_18277(AdminRights.class),
     BUG_22033(ZimbraCreateTimestamp.class),
@@ -49,8 +49,9 @@ public enum UpgradeTask {
     BUG_58084(Bug58084.class),
     BUG_58481(Bug58481.class),
     BUG_58514(Bug58514.class),
-    BUG_59720(Bug59720.class);
-    
+    BUG_59720(Bug59720.class),
+    BUG_63475(Bug63475.class);
+
     
     private Class mUpgradeClass;
     

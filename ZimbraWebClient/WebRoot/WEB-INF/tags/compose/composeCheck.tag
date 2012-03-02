@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,6 +29,7 @@
         <c:remove var="temp_draftid" scope="session"/>
     </c:if>
 </c:if>
+
 <c:if test="${uploader.isUpload}">
     <c:set var="composeformat" value="${mailbox.prefs.composeFormat}" />
     <c:if test="${mailbox.prefs.forwardReplyInOriginalFormat && !empty param.rf && (param.rf eq 'html' || param.rf eq 'text')}">
@@ -169,6 +170,12 @@
             <%-- TODO: check for errors, etc, set success message var and forward to prev page, or set error message and continue --%>
             <app:status><fmt:message key="draftSavedSuccessfully"/></app:status>
             <c:set var="needComposeView" value="${true}"/>
+        </c:when>
+        <c:when test="${uploader.isLimitExceeded}">
+            <c:set var="statusClass" scope="request" value="StatusCritical"/>
+            <c:set var="uploadError" scope="request" value="${true}"/>
+            <fmt:message var="errorMsg" key="zclient.UPLOAD_SIZE_LIMIT_EXCEEDED"/>
+            <c:set var="statusMessage" scope="request" value="${errorMsg}"/>
         </c:when>
     </c:choose>
 </c:if>

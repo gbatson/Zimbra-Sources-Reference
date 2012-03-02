@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -10,51 +26,49 @@ public class PageLogin extends AbsTab {
 	public static class Locators {
 
 		// Buttons
-		public static final String zBtnLogin = "xpath=//input[@class='zLoginButton']";
-	    // Desktop-specific
-      public static final String zAddNewAccountButton = "css=td div[class*='ZPanel'][onclick*='OnAdd()']";
-      public static final String zMyAccountsTab = "css=div[class$='ctive ZPanelFirstTab']";
-      public static final String zBtnLoginDesktop = "css=div[id*='loginButton']";
-      public static final String zDeleteButton = "css=div[class*='ZPanelInfoInner'] a[href*='OnDelete']";
-		
+		public static final String zBtnLogin = "css=input[class='zLoginButton']";
+
+
+		// Desktop-specific
+		public static final String zAddNewAccountButton = "css=td div[class*='ZPanel'][onclick*='OnAdd()']";
+		public static final String zMyAccountsTab = "css=div[class$='ctive ZPanelFirstTab']";
+		public static final String zBtnLoginDesktop = "css=div[id*='loginButton']";
+		public static final String zDeleteButton = "css=div[class*='ZPanelInfoInner'] a[href*='OnDelete']";
+
 		// Text Input
-		public static final String zInputUsername = "xpath=//*[@id='username']";
-		public static final String zInputPassword = "xpath=//*[@id='password']";
-		public static final String zInputRemember = "xpath=//*[@id='remember']";
-		
+		public static final String zInputUsername = "css=input[id='username']";
+		public static final String zInputPassword = "css=input[id='password']";
+		public static final String zInputRemember = "css=input[id='remember']";
+
 		// Displayed text
-		public static final String zDisplayedZLoginAppName = "xpath=//*[@id='ZLoginAppName']";
-		public static final String zDisplayedusername = "xpath=//form[@name='loginForm']//label[@for='username']";
-		public static final String zDisplayedpassword = "xpath=//td[@class='zLoginLabelContainer']//label[@for='password']";
-		public static final String zDisplayedremember = "xpath=//td[@class='zLoginCheckboxLabelContainer']//label[@for='remember']";
-		public static final String zDisplayedwhatsthis = "xpath=//*[@id='ZLoginWhatsThisAnchor']";
-		public static final String zDisplayedcopyright = "xpath=//div[@class='copyright']";
+		public static final String zDisplayedusername = "css=form[name='loginForm'] label[for='username']";
+		public static final String zDisplayedcopyright = "css=div[class='copyright']";
 
 	}
-	
-	
-	
+
+
+
 	public PageLogin(AbsApplication application) {
 		super(application);
-		
+
 		logger.info("new " + PageLogin.class.getCanonicalName());
 
 	}
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-	   AppType appType = ZimbraSeleniumProperties.getAppType();
-	   String locator = null;
+		AppType appType = ZimbraSeleniumProperties.getAppType();
+		String locator = null;
 
-	   switch (appType) {
-	   case AJAX:
-	      locator = Locators.zBtnLogin;
-	      break;
-	   case DESKTOP:
-	      locator = Locators.zAddNewAccountButton;
-	      break;
-	   default:
-	      throw new HarnessException("Please add a support for appType: " + appType);
+		switch (appType) {
+		case AJAX:
+			locator = Locators.zBtnLogin;
+			break;
+		case DESKTOP:
+			locator = Locators.zAddNewAccountButton;
+			break;
+		default:
+			throw new HarnessException("Please add a support for appType: " + appType);
 		}
 
 		// Look for the login button. 
@@ -69,7 +83,7 @@ public class PageLogin extends AbsTab {
 			logger.debug("isActive() visible = "+ visible);
 			return (false);
 		}
-		
+
 		logger.debug("isActive() = " + true);
 		return (true);
 	}
@@ -86,70 +100,45 @@ public class PageLogin extends AbsTab {
 			// This page is already active.
 			return;
 		}
-		
-		
+
+
 		// Logout
 		if ( ((AppAjaxClient)MyApplication).zPageMain.zIsActive() ) {
 			((AppAjaxClient)MyApplication).zPageMain.zLogout();
 		}
-		
+
 		zWaitForActive();
-		
+
 	}
 
 
-	
+
 	/**
 	 * Login as the specified account
 	 * @param account
 	 * @throws HarnessException
 	 */
 	public void zLogin(ZimbraAccount account) throws HarnessException {
-	   logger.debug("login(ZimbraAccount account)" + account.EmailAddress);
-	   
-	   tracer.trace("Login to the "+ MyApplication.myApplicationName() +" using user/password "+ account.EmailAddress +"/"+ account.Password);
+		logger.debug("login(ZimbraAccount account)" + account.EmailAddress);
 
-	   zNavigateTo();
+		tracer.trace("Login to the "+ MyApplication.myApplicationName() +" using user/password "+ account.EmailAddress +"/"+ account.Password);
 
-	   AppType appType = ZimbraSeleniumProperties.getAppType();
-	   switch (appType) {
-	   case AJAX:
-	      // Fill out the form
-	      zSetLoginName(account.EmailAddress);
-	      zSetLoginPassword(account.Password);
-	      
-	      // Click the Login button
-	      sClick(Locators.zBtnLogin);
-	      break;
+		zNavigateTo();
 
-	   case DESKTOP:
-	      // Click the Login button
-	      if (!this.sIsElementPresent(Locators.zBtnLoginDesktop) ||
-	            !this.sIsVisible(Locators.zBtnLoginDesktop)) {
-	         if (this.sIsElementPresent(Locators.zMyAccountsTab)) {
-	            sClick(Locators.zMyAccountsTab);
-	         } else {
-	            throw new HarnessException("It looks like account hasn't been created," +
-	            		" please check the logic.");
-	         }
-	      }
+		zSetLoginName(account.EmailAddress);
+		zSetLoginPassword(account.Password);
 
-	      GeneralUtility.waitForElementPresent(this, Locators.zBtnLoginDesktop);
-	      sClick(Locators.zBtnLoginDesktop);
-	      break;
+		// Click the Login button
+		sClick(Locators.zBtnLogin);
 
-	   default:
-	      throw new HarnessException("Please add a support for appType: " + appType);
-	   }
+		// Wait for the app to load
+		sWaitForPageToLoad();
+		((AppAjaxClient)MyApplication).zPageMain.zWaitForActive();
 
-	   // Wait for the app to load
-	   sWaitForPageToLoad();
-	   ((AppAjaxClient)MyApplication).zPageMain.zWaitForActive();
-	   
-	   ((AppAjaxClient)MyApplication).zSetActiveAcount(account);
-		
+		((AppAjaxClient)MyApplication).zSetActiveAcount(account);
+
 	}
-	
+
 	/**
 	 * Add the specified name to the login name field
 	 * @param name
@@ -160,13 +149,13 @@ public class PageLogin extends AbsTab {
 		if ( name == null ) {
 			throw new HarnessException("Name is null");
 		}
-			
+
 		if ( !this.sIsElementPresent(locator) ) {
 			throw new HarnessException("Login field does not exist "+ locator);
 		}
 		sType(locator, name);
 	}
-	
+
 	/**
 	 * Add the specified password to the login password field
 	 * @param name
@@ -182,9 +171,9 @@ public class PageLogin extends AbsTab {
 		}
 		sType(locator, password);
 	}
-	
 
-	
+
+
 
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
@@ -208,7 +197,7 @@ public class PageLogin extends AbsTab {
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
-			throws HarnessException {
+	throws HarnessException {
 		throw new HarnessException("Login page does not have lists");
 	}
 

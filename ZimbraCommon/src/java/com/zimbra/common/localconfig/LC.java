@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -388,13 +388,14 @@ public final class LC {
     @Supported
     public static final KnownKey ldap_amavis_password = KnownKey.newKey("zmamavis");
     public static final KnownKey ldap_nginx_password = KnownKey.newKey("zmnginx");
+    public static final KnownKey ldap_bes_searcher_password = KnownKey.newKey("zmbes-searcher");
 
     @Supported
     public static final KnownKey ldap_starttls_supported = KnownKey.newKey(0);
 
     @Supported
     public static final KnownKey ldap_starttls_required = KnownKey.newKey(true);
-    
+
     @Supported
     public static final KnownKey zimbra_directory_max_search_result = KnownKey.newKey(5000);
 
@@ -720,24 +721,10 @@ public final class LC {
 
     public static final KnownKey text_attachments_base64 = KnownKey.newKey(true);
 
-    @Supported
-    public static final KnownKey nio_imap_enabled = KnownKey.newKey(false);
-    @Supported
-    public static final KnownKey nio_pop3_enabled = KnownKey.newKey(false);
-
     public static final KnownKey imap_max_request_size = KnownKey.newKey(10 * 1024);
     public static final KnownKey imap_max_idle_time = KnownKey.newKey(60);
     public static final KnownKey imap_authenticated_max_idle_time = KnownKey.newKey(1800);
     public static final KnownKey pop3_max_idle_time = KnownKey.newKey(60);
-
-    // NIO IMAP configuration settings. Move these to zimbra-attrs.xml once
-    // they have been finalized.
-    public static final KnownKey nio_imap_min_threads = KnownKey.newKey(20);
-    public static final KnownKey nio_imap_max_sessions = KnownKey.newKey(200);
-    public static final KnownKey nio_imap_max_scheduled_write_bytes = KnownKey.newKey(1024 * 1024);
-    public static final KnownKey nio_imap_write_timeout = KnownKey.newKey(60);
-    public static final KnownKey nio_imap_write_chunk_size = KnownKey.newKey(8 * 1024);
-    public static final KnownKey nio_imap_thread_keep_alive_time = KnownKey.newKey(60);
     public static final KnownKey data_source_imap_reuse_connections = KnownKey.newKey(false);
 
     public static final KnownKey milter_bind_port = KnownKey.newKey(0);
@@ -822,6 +809,7 @@ public final class LC {
     // This is a workaround for an issue in Jetty 6.1.22.zc6m when we upgrade
     // we should re-evaluate/remove these settings and the code that uses them
     public static final KnownKey zimbra_archive_formatter_disable_timeout = KnownKey.newKey(true);
+    public static final KnownKey zimbra_archive_formatter_search_chunk_size = KnownKey.newKey(4096);
     public static final KnownKey zimbra_gal_sync_disable_timeout = KnownKey.newKey(true);
 
     public static final KnownKey zimbra_admin_waitset_default_request_timeout = KnownKey.newKey(300);
@@ -887,7 +875,7 @@ public final class LC {
 
     public static final KnownKey httpclient_internal_connmgr_keepalive_connections = KnownKey.newKey(true);
     public static final KnownKey httpclient_external_connmgr_keepalive_connections = KnownKey.newKey(true);
-    
+
     public static final KnownKey httpclient_internal_connmgr_tcp_nodelay = KnownKey.newKey(false);
     public static final KnownKey httpclient_external_connmgr_tcp_nodelay = KnownKey.newKey(false);
 
@@ -902,7 +890,7 @@ public final class LC {
 
     public static final KnownKey httpclient_internal_connmgr_idle_reaper_sleep_interval = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
     public static final KnownKey httpclient_external_connmgr_idle_reaper_sleep_interval = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
-    
+
     public static final KnownKey httpclient_internal_connmgr_idle_reaper_connection_timeout = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
     public static final KnownKey httpclient_external_connmgr_idle_reaper_connection_timeout = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
 
@@ -1127,6 +1115,11 @@ public final class LC {
     public static final KnownKey zimbra_vami_user = KnownKey.newKey("vmware");
     public static final KnownKey zimbra_vami_password = KnownKey.newKey("vmware").protect();
     public static final KnownKey zimbra_vami_installmode = KnownKey.newKey("single");
+
+    public static final KnownKey http_store_local_cache_max_bytes = KnownKey.newKey(1024 * 1024 * 1024); // 1GB
+    public static final KnownKey http_store_local_cache_max_files = KnownKey.newKey(10000);
+
+    public static final KnownKey http_store_local_cache_min_lifetime = KnownKey.newKey(Constants.MILLIS_PER_MINUTE);
 
     static {
         // Automatically set the key name with the variable name.

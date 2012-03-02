@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -247,7 +247,7 @@ function() {
 				control = this._setupLocales(id, setup, value);
 			}
 			else if (type == ZmPref.TYPE_PASSWORD) {
-				this._addButton(elem, setup.displayName, 50, new AjxListener(this, this._changePasswordListener));
+				this._addButton(elem, setup.displayName, 50, new AjxListener(this, this._changePasswordListener), "CHANGE_PASSWORD");
 				continue;
 			}
 			else if (type == ZmPref.TYPE_IMPORT) {
@@ -537,8 +537,12 @@ function(id, useDefault) {
 
 // Add a button to the preferences page
 ZmPreferencesPage.prototype._addButton =
-function(parentIdOrElem, text, width, listener) {
-	var button = new DwtButton({parent:this});
+function(parentIdOrElem, text, width, listener, id) {
+	var params = {parent: this};
+	if (id) {
+		params.id = id;
+	}
+	var button = new DwtButton(params);
 	button.setSize(width, Dwt.DEFAULT);
 	button.setText(text);
 	button.addSelectionListener(listener);
@@ -646,7 +650,8 @@ function(id, setup, value) {
 	var options = setup.options || setup.displayOptions || setup.choices;
 	var isChoices = setup.choices;
 	var isDisplayString = AjxUtil.isString(setup.displayOptions);
-
+    var inputId = setup.inputId;
+    
 	var radioIds = {};
 	var selectedId;
 	var name = Dwt.getNextId();
@@ -656,7 +661,8 @@ function(id, setup, value) {
 		optLabel = ZmPreferencesPage.__formatLabel(optLabel, optValue);
 		var isSelected = value == optValue;
 
-		var radioBtn = new DwtRadioButton({parent:container, name:name, checked:isSelected});
+        var automationId  = AjxUtil.isArray(inputId) && inputId[i] ? inputId[i] : Dwt.getNextId();
+		var radioBtn = new DwtRadioButton({parent:container, name:name, checked:isSelected, id: automationId});
 		radioBtn.setText(optLabel);
 		radioBtn.setValue(optValue);
 

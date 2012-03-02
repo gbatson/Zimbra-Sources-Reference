@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -95,8 +95,8 @@ function(parent) {
 	html[i++] = "</table>";
 	picker.getHtmlElement().innerHTML = html.join("");
 
-	this._installOnClick(lastHourId, "date:>-60min");
-	this._installOnClick(last4HoursId, "date:>-240min");
+	this._installOnClick(lastHourId, "date:>-60mi");
+	this._installOnClick(last4HoursId, "date:>-240mi");
 	this._installOnClick(todayId, "date:-0day");
 	this._installOnClick(yesterdayId, "date:yesterday");
 	this._installOnClick(thisWeekId, "date:-0week");

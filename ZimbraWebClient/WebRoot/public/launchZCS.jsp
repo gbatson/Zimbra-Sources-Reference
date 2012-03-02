@@ -61,7 +61,7 @@
  launchZCS.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -109,8 +109,9 @@
 	String mode = getAttribute(request, "mode", null);
 	boolean isDevMode = mode != null && mode.equalsIgnoreCase("mjsf");
 	boolean isSkinDebugMode = mode != null && mode.equalsIgnoreCase("skindebug");
-
-	String vers = getAttribute(request, "version", "");
+    boolean isPerfMetric = getParameter(request, "perfMetric", "0").equals("1");
+	
+    String vers = getAttribute(request, "version", "");
 
 	String prodMode = getAttribute(request, "prodMode", "");
 	String editor = getParameter(request, "editor", "");
@@ -150,6 +151,7 @@
 	pageContext.setAttribute("isLeakDetectorOn", isLeakDetectorOn);
 	pageContext.setAttribute("editor", editor);
     pageContext.setAttribute("isCoverage", isCoverage);
+    pageContext.setAttribute("isPerfMetric", isPerfMetric);
 %>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 <fmt:setLocale value='${locale}' scope='request' />
@@ -178,6 +180,7 @@
     window.appCoverageMode = ${isCoverage};
     window.isScriptErrorOn   = ${isScriptErrorOn};
     window.isNotifyDebugOn   = ${isNotifyDebugOn};
+    window.isPerfMetric = ${isPerfMetric};
 </script>
 <noscript>
 <meta http-equiv="Refresh" content="0;url=public/noscript.jsp" >
@@ -279,7 +282,7 @@
     	if (extraPackages.equals("dev")) {
             extraPackages = "Startup2,CalendarCore,Calendar,CalendarAppt,ContactsCore,Contacts,MailCore,Mail,Mixed,BriefcaseCore,Briefcase,PreferencesCore,Preferences,TasksCore,Tasks,Assistant,Browse,Extras,Share,Zimlet,ZimletApp,Alert,ImportExport,BrowserPlus";
     	}
-    	allPackages += "," + extraPackages;
+    	allPackages += "," + BeanUtils.cook(extraPackages);;
     }
 
     String pprefix = isDevMode  && !isCoverage ? "public/jsp" : "js";

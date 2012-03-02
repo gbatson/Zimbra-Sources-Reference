@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -95,11 +95,16 @@ public abstract class SoapCLI {
     private boolean mAuth;
     private Options mOptions;
     private Options mHiddenOptions;
+    private boolean mDisableTargetServerOption;
     
     private SoapTransport mTrans = null;
     private String mServerUrl;
-    
+
     protected SoapCLI() throws ServiceException {
+        this(false);
+    }
+
+    protected SoapCLI(boolean disableTargetServerOption) throws ServiceException {
         // get admin username from local config
         mUser = LC.zimbra_ldap_user.value();
         // get password from localconfig
@@ -118,6 +123,11 @@ public abstract class SoapCLI {
             throw ServiceException.FAILURE("Unable to get admin port number from provisioning", null);
         mOptions = new Options();
         mHiddenOptions = new Options();
+        mDisableTargetServerOption = disableTargetServerOption;
+    }
+
+    protected void setServer(String hostname) {
+        mHost = hostname;
     }
 
     /**
@@ -145,8 +155,8 @@ public abstract class SoapCLI {
             usage(null, showHiddenOptions);
             return null;
         }
-        if (cl.hasOption(O_S))
-            mHost = cl.getOptionValue(O_S);
+        if (!mDisableTargetServerOption && cl.hasOption(O_S))
+            setServer(cl.getOptionValue(O_S));
         return cl;
     }
 
@@ -245,8 +255,10 @@ public abstract class SoapCLI {
      *
      */
     protected void setupCommandLineOptions() {
-        Option s = new Option(O_S, "server", true, "Mail server hostname. Default is localhost.");
-        mOptions.addOption(s);
+        if (!mDisableTargetServerOption) {
+            Option s = new Option(O_S, "server", true, "Mail server hostname. Default is localhost.");
+            mOptions.addOption(s);
+        }
         mOptions.addOption(O_H, "help", false, "Displays this help message.");
         mHiddenOptions.addOption(null, O_HIDDEN, false, "Include hidden options in help output");
     }

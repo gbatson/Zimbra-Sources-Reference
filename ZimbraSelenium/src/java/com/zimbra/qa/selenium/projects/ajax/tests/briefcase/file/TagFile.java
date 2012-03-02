@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import org.testng.annotations.AfterMethod;
@@ -32,8 +48,8 @@ public class TagFile extends AjaxCommonTest {
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-		+ "/data/public/other/testpptfile.ppt";
-		
+				+ "/data/public/other/testpptfile.ppt";
+
 		FileItem fileItem = new FileItem(filePath);
 
 		String fileName = fileItem.getName();
@@ -50,10 +66,10 @@ public class TagFile extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on created File
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
-		
+
 		// Click on header check box
 		// app.zPageBriefcase.zHeader(Action.A_BRIEFCASE_HEADER_CHECKBOX);
 
@@ -87,6 +103,9 @@ public class TagFile extends AjaxCommonTest {
 		String name = account.soapSelectValue(
 				"//mail:SearchResponse//mail:doc", "name");
 
+		ZAssert.assertNotNull(name,
+				"Verify the search response returns the document name");
+
 		ZAssert.assertEquals(name, fileName, "Verify tagged File name");
 
 		// Make sure the tag was applied to the File
@@ -106,11 +125,14 @@ public class TagFile extends AjaxCommonTest {
 		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
 				"t");
 
+		ZAssert.assertNotNull(id,
+				"Verify the search response returns the document tag id");
+
 		ZAssert.assertEquals(id, tagId,
 				"Verify the tag was attached to the File");
-		
-		//delete file upon test completion
-		app.zPageBriefcase.deleteFileByName(fileName);		
+
+		// delete file upon test completion
+		app.zPageBriefcase.deleteFileByName(fileName);
 	}
 
 	@Test(description = "Tag uploaded File using pre-existing Tag", groups = { "functional" })
@@ -122,8 +144,8 @@ public class TagFile extends AjaxCommonTest {
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-		+ "/data/public/other/testpptfile.ppt";
-		
+				+ "/data/public/other/testpptfile.ppt";
+
 		FileItem fileItem = new FileItem(filePath);
 
 		String fileName = fileItem.getName();
@@ -145,17 +167,17 @@ public class TagFile extends AjaxCommonTest {
 
 		// Make sure the tag was created on the server
 		TagItem tag = TagItem.importFromSOAP(app.zGetActiveAccount(), tagName);
-		
+
 		ZAssert.assertNotNull(tag, "Verify the new tag was created");
 
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on uploaded file
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
-		
+
 		// Click on header check box
 		// app.zPageBriefcase.zHeader(Action.A_BRIEFCASE_HEADER_CHECKBOX);
 
@@ -165,18 +187,24 @@ public class TagFile extends AjaxCommonTest {
 		// Make sure the tag was applied to the File
 		account
 				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-						+ "<query>" + fileName + "</query>" + "</SearchRequest>");
+						+ "<query>"
+						+ fileName
+						+ "</query>"
+						+ "</SearchRequest>");
 
 		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
 				"t");
 
+		ZAssert.assertNotNull(id,
+				"Verify the search response returns the document tag id");
+
 		ZAssert.assertStringContains(id, tag.getId(),
 				"Verify the tag was attached to the File");
-		
-		//delete file upon test completion
-		app.zPageBriefcase.deleteFileByName(fileName);		
+
+		// delete file upon test completion
+		app.zPageBriefcase.deleteFileByName(fileName);
 	}
-	
+
 	@Test(description = "Tag uploaded File using Right Click context menu", groups = { "functional" })
 	public void TagFile_03() throws HarnessException {
 		ZimbraAccount account = app.zGetActiveAccount();
@@ -186,8 +214,8 @@ public class TagFile extends AjaxCommonTest {
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-		+ "/data/public/other/testpptfile.ppt";
-		
+				+ "/data/public/other/testpptfile.ppt";
+
 		FileItem fileItem = new FileItem(filePath);
 
 		String fileName = fileItem.getName();
@@ -208,39 +236,47 @@ public class TagFile extends AjaxCommonTest {
 				+ "</CreateTagRequest>");
 
 		// Make sure the tag was created on the server
-		TagItem tagItem = TagItem.importFromSOAP(app.zGetActiveAccount(), tagName);
-	
+		TagItem tagItem = TagItem.importFromSOAP(app.zGetActiveAccount(),
+				tagName);
+
 		ZAssert.assertNotNull(tagItem, "Verify the new tag was created");
 
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		SleepUtil.sleepVerySmall();
-		
+
 		// Click on uploaded file
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
-		
+
 		// Click on header check box
 		// app.zPageBriefcase.zHeader(Action.A_BRIEFCASE_HEADER_CHECKBOX);
 
 		// Tag File using Right Click context menu
-		app.zPageBriefcase.zListItem(Action.A_RIGHTCLICK, Button.O_TAG_FILE, tagItem.getName(), fileItem);
+		app.zPageBriefcase.zListItem(Action.A_RIGHTCLICK, Button.O_TAG_FILE,
+				tagItem.getName(), fileItem);
 
 		// Make sure the tag was applied to the File
 		account
 				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-						+ "<query>" + fileName + "</query>" + "</SearchRequest>");
+						+ "<query>"
+						+ fileName
+						+ "</query>"
+						+ "</SearchRequest>");
 
 		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
 				"t");
 
+		ZAssert.assertNotNull(id,
+				"Verify the search response returns the document tag id");
+
 		ZAssert.assertStringContains(id, tagItem.getId(),
 				"Verify the tag was attached to the File");
-		
-		//delete file upon test completion
-		app.zPageBriefcase.deleteFileByName(fileName);		
+
+		// delete file upon test completion
+		app.zPageBriefcase.deleteFileByName(fileName);
 	}
-	
+
 	@AfterMethod(groups = { "always" })
 	public void afterMethod() throws HarnessException {
 		logger.info("Checking for the opened window ...");
@@ -249,7 +285,8 @@ public class TagFile extends AjaxCommonTest {
 		String[] windows = ClientSessionFactory.session().selenium()
 				.getAllWindowNames();
 		for (String window : windows) {
-			if (!window.isEmpty() && !window.contains("null") && !window.contains(PageBriefcase.pageTitle)
+			if (!window.isEmpty() && !window.contains("null")
+					&& !window.contains(PageBriefcase.pageTitle)
 					&& !window.contains("main_app_window")
 					&& !window.contains("undefined")) {
 				logger.warn(window + " window was still active. Closing ...");

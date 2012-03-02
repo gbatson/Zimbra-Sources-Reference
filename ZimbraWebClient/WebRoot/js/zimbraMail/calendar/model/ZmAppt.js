@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -219,7 +219,7 @@ function(controller) {
 	var appt = this.apptClone || this._orig || this;
 	var needDetails = (!appt._toolTip || (appt.otherAttendees && !appt.ptstHashMap));
 	if (needDetails) {
-		return {callback:new AjxCallback(appt, appt._getToolTip, [controller]), loading:false};
+        return {callback:new AjxCallback(appt, appt._getToolTip, [controller]), loading:false};
 	} else {
 		return appt._toolTip || appt._getToolTip(controller);
 	}
@@ -236,7 +236,6 @@ function(controller, callback) {
 
 ZmAppt.prototype._handleResponseGetToolTip =
 function(controller, callback) {
-
 	var organizer = this.getOrganizer();
 	var sentBy = this.getSentBy();
 	var userName = appCtxt.get(ZmSetting.USERNAME);
@@ -387,7 +386,7 @@ function(isHtml) {
 		buf[i++] = "<p>\n<table border='0'>\n";
 	}
 	var modified = isEdit && (orig.getName() != this.getName());
-	var params = [ ZmMsg.subjectLabel, this.name, modified ? ZmMsg.apptModifiedStamp : "" ];
+	var params = [ ZmMsg.subjectLabel, AjxStringUtil.htmlEncode(this.name), modified ? ZmMsg.apptModifiedStamp : "" ];
 	buf[i++] = formatter.format(params);
 	buf[i++] = "\n";
 
@@ -424,10 +423,11 @@ function(isHtml) {
 	}
 
 	var locationLabel = this.getLocation();
+	var locationText = isHtml ? AjxStringUtil.htmlEncode(locationLabel) : locationLabel;
 	var origLocationLabel = orig ? orig.getLocation() : "";
 	var emptyLocation = (locationLabel == origLocationLabel && origLocationLabel == "");
 	if (!emptyLocation || this.isForwardMode) {
-		params = [ZmMsg.locationLabel, locationLabel, (isEdit && locationLabel != origLocationLabel && !this.isForwardMode ) ? ZmMsg.apptModifiedStamp : ""];
+		params = [ZmMsg.locationLabel, locationText, (isEdit && locationLabel != origLocationLabel && !this.isForwardMode ) ? ZmMsg.apptModifiedStamp : ""];
 		buf[i++] = formatter.format(params);
 		buf[i++] = "\n";
 	}
@@ -436,7 +436,8 @@ function(isHtml) {
 	if (location) {
 		var origLocationText = ZmApptViewHelper.getAttendeesString(this.origLocations, ZmCalBaseItem.LOCATION, true);
 		modified = (isEdit && (origLocationText != location));
-		params = [ZmMsg.resourcesLabel, location, modified ? ZmMsg.apptModifiedStamp : ""];
+		var resourcesText = isHtml ? AjxStringUtil.htmlEncode(location) : location;
+		params = [ZmMsg.resourcesLabel, resourcesText, modified ? ZmMsg.apptModifiedStamp : ""];
 		buf[i++] = formatter.format(params);
 		buf[i++] = "\n";
 	}
@@ -445,7 +446,8 @@ function(isHtml) {
 	if (equipment) {
 		var origEquipmentText = ZmApptViewHelper.getAttendeesString(this.origEquipment, ZmCalBaseItem.EQUIPMENT, true);
 		modified = (isEdit && (origEquipmentText != equipment));
-		params = [ZmMsg.resourcesLabel, equipment, modified ? ZmMsg.apptModifiedStamp : "" ];
+		var equipmentText = isHtml ? AjxStringUtil.htmlEncode(equipment) : equipment;
+		params = [ZmMsg.resourcesLabel, equipmentText, modified ? ZmMsg.apptModifiedStamp : "" ];
 		buf[i++] = formatter.format(params);
 		buf[i++] = "\n";
 	}
@@ -460,13 +462,15 @@ function(isHtml) {
 		buf[i++] = "\n";
 		var reqAttString = ZmApptViewHelper.getAttendeesByRole(this._attendees[ZmCalBaseItem.PERSON], ZmCalBaseItem.PERSON, ZmCalItem.ROLE_REQUIRED, 10);
 		var optAttString = ZmApptViewHelper.getAttendeesByRole(this._attendees[ZmCalBaseItem.PERSON], ZmCalBaseItem.PERSON, ZmCalItem.ROLE_OPTIONAL, 10);
+		var reqAttText = isHtml ? AjxStringUtil.htmlEncode(reqAttString) : reqAttString;
+		var optAttText = isHtml ? AjxStringUtil.htmlEncode(optAttString) : optAttString;
 
 		var attendeeTitle = (optAttString == "") ? ZmMsg.invitees : ZmMsg.requiredInvitees ;
-		params = [ attendeeTitle + ":", reqAttString, "" ];
+		params = [ attendeeTitle + ":", reqAttText, "" ];
 		buf[i++] = formatter.format(params);
 		buf[i++] = "\n";
 
-		params = [ ZmMsg.optionalInvitees + ":", optAttString, "" ];
+		params = [ ZmMsg.optionalInvitees + ":", optAttText, "" ];
 		if (optAttString != "") {
 			buf[i++] = formatter.format(params);
 		}
@@ -852,6 +856,7 @@ function(calItemNode, instNode) {
 	this.location = this._getAttr(calItemNode, instNode, "loc");
     this.isDraft = this._getAttr(calItemNode, instNode, "draft");
     this.inviteNeverSent = this._getAttr(calItemNode, instNode, "neverSent") || false;
+    this.hasEx = this._getAttr(calItemNode, instNode, "hasEx") || false;
 };
 
 ZmAppt.prototype._getSoapForMode =
@@ -1248,7 +1253,7 @@ function(callback, errorCallback) {
 	var inv = soapDoc.set("inv", null, m);
 	var comp = soapDoc.set("comp", null, inv);
 
-	if (this.ridZ && this.isRecurring() && (this.viewMode == ZmCalItem.MODE_EDIT_SINGLE_INSTANCE)) {
+	if (this.ridZ) {
 		var exceptId = soapDoc.set("exceptId", null, comp);
 		exceptId.setAttribute("d", this.ridZ);
 	}

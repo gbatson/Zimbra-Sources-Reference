@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -103,7 +103,13 @@ function(params) {
 		// OR,
 		// check if we're moving to or from a shared folder, in which case, always send
 		// request on-behalf-of the account the item originally belongs to.
-        var folderId = params.items[0].getFolderId();
+        var folderId = params.items[0].getFolderId && params.items[0].getFolderId();
+
+        // on bulk delete, when the second chunk loads try to get folderId from the item id.
+        if (!folderId) {
+            var itemId = params.items[0] && params.items[0].id;
+            folderId = itemId && appCtxt.getById(itemId) && appCtxt.getById(itemId).folderId;
+        }
         var fromFolder = folderId && appCtxt.getById(folderId);
 		if ((params.items[0].isDraft && params.folder.id == ZmFolder.ID_DRAFTS) ||
 			(params.folder.isRemote()) || (fromFolder && fromFolder.isRemote()))
@@ -697,7 +703,7 @@ function(items, nId) {
         var folder;
         // get folder object from qualified Ids for multi-account
         if (appCtxt.multiAccounts) {
-            var acct  = items && items[0].getAccount();
+            var acct  = items && items[0].getAccount && items[0].getAccount();
             var acctId = acct ? acct.id : appCtxt.getActiveAccount().id;
             var fId = [acctId, ":", folderId].join("");
             folder = appCtxt.getById(fId);
@@ -705,7 +711,8 @@ function(items, nId) {
             folder = appCtxt.getById(folderId);
         }
         var nFolder = (id) ? appCtxt.getById(id) : appCtxt.getById(nId);
-		if (nId != folderId && folder && nFolder && !nFolder.isChildOf(folder)) {
+        // if nId is undefined send the default tcon [-tjs].
+		if (!nId || (nId != folderId && folder && nFolder && !nFolder.isChildOf(folder))) {
 			chars.push(ZmFolder.TCON_CODE[folderId]);
 		}
 	}

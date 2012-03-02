@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -10,7 +26,6 @@ import com.zimbra.qa.selenium.framework.items.ContextMenuItem.CONTEXT_MENU_ITEM_
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
@@ -564,7 +579,90 @@ public class PageMail extends AbsTab {
 
 	}
 
+   public AbsPage zToolbarPressPulldown(Button pulldown, Button option,String dynamic) throws HarnessException {
+      //logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
+      tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+      if (pulldown == null)
+         throw new HarnessException("Pulldown cannot be null!");
 
+      if (option == null)
+         throw new HarnessException("Option cannot be null!");
+      if (dynamic == null)
+         throw new HarnessException("dynamic string cannot be null!");
+      // Default behavior variables
+
+      String pulldownLocator = null; // If set, this will be expanded
+      String optionLocator = null; // If set, this will be clicked
+      AbsPage page = null; // If set, this page will be returned
+
+      if ((pulldown == Button.B_SIGNATURE)&& (option == Button.O_ADD_SIGNATURE)) {
+         String name = (String)dynamic;
+         logger.info(name);
+         pulldownLocator = "css=td[id$='_ADD_SIGNATURE_dropdown']>div[class='ImgSelectPullDownArrow']";
+         dynamic ="css=td[id*='_title']td:contains('"+ name + "')";
+         page = null;
+
+      } else {
+         throw new HarnessException("no logic defined for pulldown/option "
+               + pulldown + "/" + option);
+      }
+
+      // Default behavior
+      if (pulldownLocator != null) {
+
+         // Make sure the locator exists
+         if (!this.sIsElementPresent(pulldownLocator)) {
+            throw new HarnessException("Button " + pulldown + " option "
+                  + option + " pulldownLocator " + pulldownLocator
+                  + " not present!");
+         }
+
+         this.zClick(pulldownLocator);
+
+         // If the app is busy, wait for it to become active
+         zWaitForBusyOverlay();
+
+         if (optionLocator != null) {
+
+            // Make sure the locator exists
+            if (!this.sIsElementPresent(optionLocator)) {
+               throw new HarnessException("Button " + pulldown
+                     + " option " + option + " optionLocator "
+                     + optionLocator + " not present!");
+            }
+
+            this.zClick(optionLocator);
+
+            // If the app is busy, wait for it to become active
+            zWaitForBusyOverlay();
+         }
+         if (dynamic != null) {
+
+            GeneralUtility.waitForElementPresent(this, dynamic);
+            // Make sure the locator exists
+            if (!this.sIsElementPresent(dynamic)) {
+               throw new HarnessException("Button " + pulldown
+                     + " option " + option + " optionLocator "
+                     + dynamic + " not present!");
+            }
+
+            this.zClick(dynamic);
+
+            // If the app is busy, wait for it to become active
+            zWaitForBusyOverlay();
+         }
+
+         // If we click on pulldown/option and the page is specified, then
+         // wait for the page to go active
+         if (page != null) {
+            page.zWaitForActive();
+         }
+      }
+      // Return the specified page, or null if not set
+      return (page);
+
+
+   }
 
 
 	public enum PageMailView {
@@ -868,6 +966,8 @@ public class PageMail extends AbsTab {
 	      if (found) {
 	         break;
 	      }
+
+	      count = this.sGetXpathCount(listLocator + rowLocator);
 	   }
 	   
 	}

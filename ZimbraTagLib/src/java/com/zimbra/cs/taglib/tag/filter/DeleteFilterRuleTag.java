@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,7 @@
 package com.zimbra.cs.taglib.tag.filter;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.taglib.tag.ZimbraSimpleTag;
 import com.zimbra.cs.taglib.bean.ZTagLibException;
 import com.zimbra.cs.zclient.ZFilterRule;
@@ -40,7 +41,8 @@ public class DeleteFilterRuleTag extends ZimbraSimpleTag {
             List<ZFilterRule> newRules = new ArrayList<ZFilterRule>();
             boolean found = false;
             for (ZFilterRule rule: rules.getRules()) {
-                if (rule.getName().equalsIgnoreCase(mName)) {
+                String ruleName = StringUtil.escapeHtml(rule.getName());
+                if (ruleName.equalsIgnoreCase(mName)) {
                     found = true;
                 } else {
                     newRules.add(rule);

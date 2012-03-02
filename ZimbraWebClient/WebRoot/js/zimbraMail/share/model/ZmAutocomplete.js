@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -486,7 +486,7 @@ ZmAutocompleteMatch = function(match, options, isContact) {
 				}
 			}
 			this.email = emails.join(";");
-			this.text = match.display || this.email;
+			this.text = AjxStringUtil.htmlEncode(match.display) || this.email;
 			this.icon = "Group";
 		} else {
 			// Local contact, GAL contact, or distribution list

@@ -1,8 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -11,7 +10,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.db;
@@ -56,11 +54,6 @@ public abstract class AbstractRetry<T> {
         int tries = 0;
         SQLException sqle = null;
         while (tries < RETRY_LIMIT) {
-            if (Thread.interrupted()) {
-                //necessary for SQLite since native code in driver does not respond to interrupts
-                //this keeps us from starting to invoke a new command after thread has been interrupted
-                throw new SQLException("Interrupted during I/O, likely due to connection down");
-            }
             try {
                 return execute();
             } catch (SQLException e) {

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import javax.mail.Message.RecipientType;
 import javax.mail.internet.InternetAddress;
@@ -34,12 +35,14 @@ import javax.mail.internet.MimeMessage;
 
 import org.dom4j.QName;
 
+import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.util.BigByteBuffer;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
@@ -182,6 +185,9 @@ public class PushChanges {
         return mZMailbox;
     }
 
+    private TagSync getTagSync() {
+        return ombx.getTagSync();
+    }
 
     public static boolean sync(ZcsMailbox ombx, boolean isOnRequest) throws ServiceException {
         return new PushChanges(ombx).sync(isOnRequest);
@@ -220,7 +226,7 @@ public class PushChanges {
         List<Integer> tagDeletes = tombstones.getIds(MailItem.TYPE_TAG);
         if (tagDeletes != null && !tagDeletes.isEmpty()) {
             Element request = new Element.XMLElement(MailConstants.TAG_ACTION_REQUEST);
-            request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_HARD_DELETE).addAttribute(MailConstants.A_ID, concatenateIds(tagDeletes));
+            request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_HARD_DELETE).addAttribute(MailConstants.A_ID, concatenateIds(getTagSync().remoteIds(tagDeletes)));
             ombx.sendRequest(request);
             OfflineLog.offline.debug("push: pushed tag deletes: " + tagDeletes);
 
@@ -738,7 +744,7 @@ public class PushChanges {
 
     private boolean syncTag(int id) throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.TAG_ACTION_REQUEST);
-        Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
+        Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, getTagSync().remoteTagId(id));
 
         byte colorByte = 0;
         String colorStr = null;
@@ -762,13 +768,11 @@ public class PushChanges {
                 action = request.addElement(MailConstants.E_TAG);
                 create = true;
             }
-            if (create || (mask & Change.MODIFIED_COLOR) != 0) {
-                if (color.hasMapping()) {
-                    action.addAttribute(MailConstants.A_COLOR, colorByte);
-                }
-                else {
-                    action.addAttribute(MailConstants.A_RGB, colorStr);
-                }
+            //in ZCS 7 & 8 tagaction op=update seems to reset color if not specified on request...so always encode it
+            if (color.hasMapping()) {
+                action.addAttribute(MailConstants.A_COLOR, colorByte);
+            } else {
+                action.addAttribute(MailConstants.A_RGB, colorStr);
             }
             if (create || (mask & Change.MODIFIED_NAME) != 0)
                 action.addAttribute(MailConstants.A_NAME, name);
@@ -777,9 +781,9 @@ public class PushChanges {
         try {
             Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_TAG, name, Mailbox.ID_FOLDER_TAGS);
             if (create) {
-                int newId = createData.getFirst();
+                int newId = getTagSync().getOrMapLocalIdFromRemote(createData.getFirst(), id);
                 // first, deal with more headaches caused by reusing tag ids
-                if (id != createData.getFirst() && DeltaSync.getTag(ombx, newId) != null) {
+                if (id != newId && DeltaSync.getTag(ombx, newId) != null) {
                     int renumber = DeltaSync.getAvailableTagId(ombx);
                     if (renumber < 0)
                         ombx.delete(sContext, newId, MailItem.TYPE_TAG);
@@ -897,23 +901,36 @@ public class PushChanges {
                 cnElem = request.addElement(MailConstants.E_CONTACT);
                 create = true;
             }
-            
+
             if (create || (mask & Change.MODIFIED_CONTENT) != 0) {
                 for (Map.Entry<String, String> field : cn.getFields().entrySet()) {
                     String name = field.getKey(), value = field.getValue();
                     if (name == null || name.trim().equals("") || value == null || value.equals(""))
                         continue;
-                    cnElem.addKeyValuePair(name, value);
+                    if (name.equals(ContactConstants.A_dlist) && ombx.getRemoteServerVersion().getMajor() >= 8) {
+                        Set<String> emails = new HashSet<String>();
+                        emails.addAll(Arrays.asList(value.trim().split(",")));
+                        for(String email : emails) {
+                            if(email.contains("@")) {
+                                XMLElement mTarget = new XMLElement(MailConstants.E_CONTACT_GROUP_MEMBER);
+                                mTarget.addAttribute(MailConstants.A_VALUE, email);
+                                mTarget.addAttribute(MailConstants.A_CONTACT_TYPE, "I");
+                                cnElem.addElement(mTarget);
+                            }
+                        }
+                    } else {
+                        cnElem.addKeyValuePair(name, value);
+                    }
                 }
             } else {
                 request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
                 cnElem = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
             }
-            
+
             if (create || (mask & Change.MODIFIED_FLAGS) != 0)
                 cnElem.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
             if (create || (mask & Change.MODIFIED_TAGS) != 0)
-                cnElem.addAttribute(MailConstants.A_TAGS, cn.getTagString());
+                cnElem = getTagSync().addOutboundTagsAttr(cnElem, cn.getTagString());
             if (create || (mask & Change.MODIFIED_FOLDER) != 0)
                 cnElem.addAttribute(MailConstants.A_FOLDER, folderId);
             if (create || (mask & Change.MODIFIED_COLOR) != 0) {
@@ -1074,7 +1091,7 @@ public class PushChanges {
             Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
             Element action = request.addElement(MailConstants.E_ACTION);
             action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
-            action.addAttribute(MailConstants.A_TAGS, item.getTagString()); 
+            action = getTagSync().addOutboundTagsAttr(action, item.getTagString()); 
             action.addAttribute(MailConstants.A_ID, id);
             ombx.sendRequest(request);
         }
@@ -1174,7 +1191,7 @@ public class PushChanges {
             if (create || (mask & Change.MODIFIED_FLAGS | Change.MODIFIED_UNREAD) != 0)
                 action.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
             if (create || (mask & Change.MODIFIED_TAGS) != 0)
-                action.addAttribute(MailConstants.A_TAGS, msg.getTagString());
+                action = getTagSync().addOutboundTagsAttr(action, msg.getTagString());
             if (create || (mask & Change.MODIFIED_FOLDER) != 0)
                 action.addAttribute(MailConstants.A_FOLDER, folderId);
             if (create || (mask & Change.MODIFIED_COLOR) != 0) {
@@ -1279,13 +1296,13 @@ public class PushChanges {
             if ((mask & Change.MODIFIED_CONFLICT) != 0 || (mask & Change.MODIFIED_CONTENT) != 0 || (mask & Change.MODIFIED_INVITE) != 0) { // need to push to the server
                 request = new Element.XMLElement(isAppointment ? MailConstants.SET_APPOINTMENT_REQUEST : MailConstants.SET_TASK_REQUEST);
                 ToXML.encodeCalendarItemSummary(request, new ItemIdFormatter(true), ombx.getOperationContext(), cal, ToXML.NOTIFY_FIELDS, true);
-                request = InitialSync.makeSetCalRequest(request.getElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK), new LocalInviteMimeLocator(ombx), getZMailbox(), ombx.getAccount(), isAppointment);
+                request = InitialSync.makeSetCalRequest(request.getElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK), new LocalInviteMimeLocator(ombx), getZMailbox(), ombx.getOfflineAccount(), isAppointment, true, getTagSync());
                 create = true; //content mod is considered same as create since we use SetAppointment for both
             } else {
                 request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
                 Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
                 if ((mask & Change.MODIFIED_TAGS) != 0)
-                    action.addAttribute(MailConstants.A_TAGS, cal.getTagString());
+                    action = getTagSync().addOutboundTagsAttr(action, cal.getTagString());
                 if ((mask & Change.MODIFIED_FLAGS) != 0)
                     action.addAttribute(MailConstants.A_FLAGS, cal.getFlagString());
                 if ((mask & Change.MODIFIED_FOLDER) != 0)

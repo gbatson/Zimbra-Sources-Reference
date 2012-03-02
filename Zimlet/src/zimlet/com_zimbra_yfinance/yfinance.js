@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -217,7 +217,7 @@ function(toolbar) {
 
 Com_Zimbra_YFinance.prototype._fetchStockInfo =
 function(symbols, callback){
-	var url = ZmZimletBase.PROXY + AjxStringUtil.urlComponentEncode(Com_Zimbra_YFinance.QUOTES_URL + symbols);
+	var url = ZmZimletBase.PROXY + AjxStringUtil.urlComponentEncode(Com_Zimbra_YFinance.QUOTES_URL + AjxStringUtil.urlComponentEncode(symbols));
 	AjxRpc.invoke(null, url, null, new AjxCallback(this, this._stockStatusCallback, [callback]), true);	
 };
 
@@ -629,7 +629,7 @@ Com_Zimbra_YFinance.prototype._showStockUpdate = function(modifiedList, force){
 
 Com_Zimbra_YFinance.prototype._searchStockInfo =
 function(symbols, callback){
-	var zUrl = "http://quote.yahoo.com/d/quotes.csv?f="+ Com_Zimbra_YFinance.STOCK_QUERY.join("") +"&e=.csv&s="+symbols;
+	var zUrl = "http://quote.yahoo.com/d/quotes.csv?f="+ Com_Zimbra_YFinance.STOCK_QUERY.join("") +"&e=.csv&s="+AjxStringUtil.urlComponentEncode(symbols);
 	var url = ZmZimletBase.PROXY + AjxStringUtil.urlComponentEncode(zUrl);
 	AjxRpc.invoke(null, url, null, new AjxCallback(this, this._searchCallback, [callback]), true);	
 };

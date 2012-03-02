@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -495,10 +495,17 @@ function(params) {
 		// OR,
 		// check if we're moving to or from a shared folder, in which case, always send
 		// request on-behalf-of the account the item originally belongs to.
-        var folderId = params.items[0].getFolderId();
+
+        var folderId = params.items[0].getFolderId && params.items[0].getFolderId();
+
+        // on bulk delete, when the second chunk loads try to get folderId from the item id.
+        if (!folderId) {
+            var itemId = params.items[0] && params.items[0].id;
+            folderId = itemId && appCtxt.getById(itemId) && appCtxt.getById(itemId).folderId;
+        }
         var fromFolder = appCtxt.getById(folderId);
 		if ((params.items[0].isDraft && params.folder.id == ZmFolder.ID_DRAFTS) ||
-			(params.folder.isRemote()) || (fromFolder.isRemote()))
+			(params.folder.isRemote()) || (fromFolder && fromFolder.isRemote()))
 		{
 			params1.accountName = params.items[0].getAccount().name;
 		}
@@ -1007,6 +1014,7 @@ function(summary, actionLogItem, showToastOnParentWindow) {
 		ZmList.progressDialog = null;
 	}
 	if (summary) {
+		summary = AjxStringUtil.htmlEncode(summary); //encode html special chars such as < and > so won't be interpreted as html (both for security and for not losing visibility of characters)
 		var ctxt = showToastOnParentWindow ? parentAppCtxt : appCtxt;
 		var actionController = ctxt.getActionController();
 		var undoLink = actionLogItem && actionController && actionController.getUndoLink(actionLogItem);

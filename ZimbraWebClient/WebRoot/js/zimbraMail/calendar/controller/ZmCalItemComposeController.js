@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -366,17 +366,17 @@ function() {
 		var m = new DwtMenu({parent:formatButton});
 		formatButton.setMenu(m);
 
-		var mi = new DwtMenuItem({parent:m, style:DwtMenuItem.RADIO_STYLE});
+		var mi = new DwtMenuItem({parent:m, style:DwtMenuItem.RADIO_STYLE, id:[ZmId.WIDGET_MENU_ITEM,this.viewId,ZmOperation.FORMAT_HTML].join("_")});
 		mi.setImage("HtmlDoc");
 		mi.setText(ZmMsg.htmlDocument);
 		mi.setData(ZmHtmlEditor._VALUE, DwtHtmlEditor.HTML);
-		mi.addSelectionListener(new AjxListener(this, this._formatListener));
+        mi.addSelectionListener(new AjxListener(this, this._formatListener));
 
-		mi = new DwtMenuItem({parent:m, style:DwtMenuItem.RADIO_STYLE});
+		mi = new DwtMenuItem({parent:m, style:DwtMenuItem.RADIO_STYLE, id:[ZmId.WIDGET_MENU_ITEM,this.viewId,ZmOperation.FORMAT_TEXT].join("_")});
 		mi.setImage("GenericDoc");
 		mi.setText(ZmMsg.plainText);
 		mi.setData(ZmHtmlEditor._VALUE, DwtHtmlEditor.TEXT);
-		mi.addSelectionListener(new AjxListener(this, this._formatListener));
+        mi.addSelectionListener(new AjxListener(this, this._formatListener));
 	}
 
 	this._toolbar.addSelectionListener(ZmOperation.SPELL_CHECK, new AjxListener(this, this._spellCheckListener));

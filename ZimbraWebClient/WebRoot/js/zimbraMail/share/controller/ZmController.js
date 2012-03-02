@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -97,7 +97,7 @@ function(msg, ex, noExecReset, hideReportButton, expanded) {
 		html[i++] = "<table>";
 		for (var j = 0; j < fields.length; j++) {
 			var fld = fields[j];
-			var value = ex[fld];
+			var value = AjxStringUtil.htmlEncode(ex[fld]);
 			if (value) {
 				if (fld == "request") {
 					value = ["<pre>", value, "</pre>"].join("");
@@ -113,7 +113,7 @@ function(msg, ex, noExecReset, hideReportButton, expanded) {
 		detailStr = html.join("");
 	}
 	errorDialog.registerCallback(DwtDialog.OK_BUTTON, this._errorDialogCallback, this);
-	errorDialog.setMessage(msg, detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
+	errorDialog.setMessage(AjxStringUtil.htmlEncode(msg), detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
 	errorDialog.popup(null, hideReportButton);
 	if (expanded)
 		errorDialog.showDetail();

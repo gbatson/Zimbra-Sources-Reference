@@ -1,8 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -11,7 +10,6 @@
  * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.accesscontrol;
@@ -260,14 +258,16 @@ public class CollectEffectiveRights {
         
         if (sLog.isDebugEnabled()) {
             StringBuilder sbAllowed = new StringBuilder();
-            for (Map.Entry<Right, Integer> a : allowed.entrySet())
+            for (Map.Entry<Right, Integer> a : allowed.entrySet()) {
                 sbAllowed.append("(" + a.getKey().getName() + ", " + a.getValue() + ") ");
+            }
             sLog.debug("allowed: " + sbAllowed.toString());
             
             StringBuilder sbDenied = new StringBuilder();
-            for (Map.Entry<Right, Integer> a : allowed.entrySet())
+            for (Map.Entry<Right, Integer> a : denied.entrySet()) {
                 sbDenied.append("(" + a.getKey().getName() + ", " + a.getValue() + ") ");
-                sLog.debug("denied: " + sbDenied.toString());
+            }
+            sLog.debug("denied: " + sbDenied.toString());
         }
         
         Set<Right> conflicts = SetUtil.intersect(allowed.keySet(), denied.keySet());

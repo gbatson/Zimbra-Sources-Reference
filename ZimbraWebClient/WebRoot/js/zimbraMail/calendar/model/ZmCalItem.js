@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -535,11 +535,11 @@ function() {
 	var folder = this.getFolder();
 	var owner = folder && folder.link && folder.owner;
 
-	var acct = (!owner && appCtxt.multiAccounts && folder.getAccount());
-	if (acct) {
-		owner = acct.name;
-	}
-
+    if (!owner && appCtxt.multiAccounts) {
+        var acct = folder.getAccount();
+        var isMain = acct && acct.isMain;
+        owner = isMain ?  appCtxt.accountList.defaultAccount.name : (acct && acct.name);
+    }
 	return owner;
 };
 
@@ -2030,11 +2030,14 @@ function(soapDoc, attachmentId, notifyList, accountName) {
 
 	var calendar = this.getFolder();
 	var acct = calendar.getAccount();
+    if (appCtxt.multiAccounts && acct.isMain) {
+        acct = appCtxt.accountList.defaultAccount;
+    }
     var isOnBehalfOf = accountName && acct && acct.name != accountName;
 	m.setAttribute("l", (isOnBehalfOf ? this.getFolder().rid : this.folderId));
 
 	var inv = soapDoc.set("inv", null, m);
-	if (this.uid != null && this.uid != -1) {
+	if (this.uid != null && this.uid != -1 && !this.isSharedCopy) {
 		inv.setAttribute("uid", this.uid);
 	}
 

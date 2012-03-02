@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -125,10 +125,11 @@
             <select name="newFolderParentId" id="parentFolder">
                 <option selected value="1"/>
                 <fmt:message key="rootFolder"/>
-                <zm:forEachFolder var="parent">
+                 <zm:forEachFolder var="parent">
                     <c:if test="${(parent.isMessageMoveTarget and !parent.isSpam) or parent.isTrash}">
                         <option value="${parent.id}"/>
-                        ${fn:escapeXml(parent.rootRelativePath)}
+                        <c:set var="label" value="${zm:getFolderPath(pageContext, parent.id)}"/>
+                        ${fn:escapeXml(label)}
                     </c:if>
                 </zm:forEachFolder>
             </select>
@@ -149,7 +150,8 @@
                 <zm:forEachFolder var="parent">
                     <c:if test="${parent.isDocumentMoveTarget and !parent.isTrash and !parent.isSpam}">
                         <option value="${parent.id}"/>
-                        ${fn:escapeXml(parent.rootRelativePath)}
+                        <c:set var="label" value="${zm:getFolderPath(pageContext, parent.id)}"/>
+                        ${fn:escapeXml(label)}
                     </c:if>
                 </zm:forEachFolder>
             </select>

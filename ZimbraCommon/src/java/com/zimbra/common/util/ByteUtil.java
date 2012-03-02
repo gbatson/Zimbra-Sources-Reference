@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -816,24 +816,38 @@ public class ByteUtil {
         private OutputStream stream1, stream2;
 
         public TeeOutputStream(OutputStream one, OutputStream two) {
-            if (one == two)
-                two = null;
-            stream1 = one;  stream2 = two;
+            stream1 = one;
+            stream2 = one == two ? null : two;
         }
 
-        @Override public void write(int b) throws IOException {
-            if (stream1 != null)  stream1.write(b);
-            if (stream2 != null)  stream2.write(b);
+        @Override
+        public void write(int b) throws IOException {
+            if (stream1 != null) {
+                stream1.write(b);
+            }
+            if (stream2 != null) {
+                stream2.write(b);
+            }
         }
 
-        @Override public void flush() throws IOException {
-            if (stream1 != null)  stream1.flush();
-            if (stream2 != null)  stream2.flush();
+        @Override
+        public void flush() throws IOException {
+            if (stream1 != null) {
+                stream1.flush();
+            }
+            if (stream2 != null) {
+                stream2.flush();
+            }
         }
 
-        @Override public void write(byte b[], int off, int len) throws IOException {
-            if (stream1 != null)  stream1.write(b, off, len);
-            if (stream2 != null)  stream2.write(b, off, len);
+        @Override
+        public void write(byte b[], int off, int len) throws IOException {
+            if (stream1 != null) {
+                stream1.write(b, off, len);
+            }
+            if (stream2 != null) {
+                stream2.write(b, off, len);
+            }
         }
     }
 
@@ -849,30 +863,38 @@ public class ByteUtil {
             super(is);
         }
 
-        @Override public int read() throws IOException {
+        @Override
+        public int read() throws IOException {
             int c = super.read();
-            if (c != -1)
+            if (c != -1) {
                 position++;
+            }
             return c;
         }
 
-        @Override public int read(byte[] b, int off, int len) throws IOException {
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
             int count = super.read(b, off, len);
-            position += count;
+            if (count > 0) {
+                position += count;
+            }
             return count;
         }
 
-        @Override public synchronized void mark(int readlimit) {
+        @Override
+        public synchronized void mark(int readlimit) {
             super.mark(readlimit);
             mark = position;
         }
 
-        @Override public synchronized void reset() throws IOException {
+        @Override
+        public synchronized void reset() throws IOException {
             super.reset();
             position = mark;
         }
 
-        @Override public long skip(long n) throws IOException {
+        @Override
+        public long skip(long n) throws IOException {
             long delta = super.skip(n);
             position += delta;
             return delta;
@@ -883,7 +905,8 @@ public class ByteUtil {
             return position;
         }
 
-        @Override public void close() {
+        @Override
+        public void close() {
             ByteUtil.closeStream(in);
         }
     }
@@ -909,19 +932,23 @@ public class ByteUtil {
             return mLimit - getPosition();
         }
 
-        @Override public int available() {
+        @Override
+        public int available() {
             return (int) Math.min(actualAvailable(), Integer.MAX_VALUE);
         }
 
-        @Override public int read() throws IOException {
+        @Override
+        public int read() throws IOException {
             return available() <= 0 ? -1 : super.read();
         }
 
-        @Override public int read(byte[] b, int off, int len) throws IOException {
+        @Override
+        public int read(byte[] b, int off, int len) throws IOException {
             return available() <= 0 ? -1 : super.read(b, off, Math.min(len, available()));
         }
 
-        @Override public long skip(long n) throws IOException {
+        @Override
+        public long skip(long n) throws IOException {
             return super.skip(Math.max(Math.min(n, actualAvailable()), 0L));
         }
     }

@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.framework.items;
 
 import org.apache.log4j.LogManager;
@@ -18,6 +34,19 @@ public class DesktopAccountItem implements IItem {
    public String incomingServer = null;
    public String port = null;
    public boolean ssl = false;
+
+   // Needed for IMAP and POP
+   public String receivingUsernname = null;
+   public String receivingPassword = null;
+   public String receiving = null;
+   public String receivingIncomingServer = null;
+   public SECURITY_TYPE receivingSecurityType = null;
+   public String receivingPort = null;
+   public String sendingSmtpServer = null;
+   public boolean sendingThroughSsl = false;
+   public String sendingPort = null;
+   public String sendingUserName = null;
+   public String sendingPassword = null;
 
    public DesktopAccountItem() {
       super();
@@ -61,7 +90,7 @@ public class DesktopAccountItem implements IItem {
    }
 
    /**
-    * Generate Desktop's Yahoo account Item with specified email address
+    * Generate Desktop's Yahoo account Item with specified parameters
     * @param emailAddress Email Address of Yahoo Account
     * @param password Password of Yahoo Account
     * @return Desktop Yahoo Account Item
@@ -84,7 +113,7 @@ public class DesktopAccountItem implements IItem {
    }
 
    /**
-    * Generate Desktop's Gmail account Item with specified email address
+    * Generate Desktop's Gmail account Item with specified parameters
     * @param emailAddress Email Address of Gmail Account
     * @param password Password of Gmail Account
     * @return Desktop Gmail Account Item
@@ -102,6 +131,107 @@ public class DesktopAccountItem implements IItem {
       desktopAccountItem.fullName = "Gmail" + ZimbraSeleniumProperties.getUniqueString();
       desktopAccountItem.emailAddress = emailAddress;
       desktopAccountItem.password = password;
+
+      return desktopAccountItem;
+   }
+
+   public enum SECURITY_TYPE {
+      NONE,
+      SSL,
+      TLS,
+      TLS_IF_AVAILABLE
+   }
+
+   /**
+    * Generate Desktop's IMAP account Item with specified parameters
+    * @param emailAddress
+    * @param receivingUsername
+    * @param receivingPassword
+    * @param receivingIncomingServer
+    * @param receivingSecurityType
+    * @param receivingPort
+    * @param sendingSmtpServer
+    * @param sendingThroughSsl
+    * @param sendingPort
+    * @param sendingUserName
+    * @param sendingPassword
+    * @return Desktop IMAP Account Item
+    * @throws HarnessException
+    */
+   public static DesktopAccountItem generateDesktopImapAccountItem(
+         String emailAddress,
+         String receivingUsername,
+         String receivingPassword,
+         String receivingIncomingServer,
+         SECURITY_TYPE receivingSecurityType,
+         String receivingPort,
+         String sendingSmtpServer,
+         boolean sendingThroughSsl,
+         String sendingPort,
+         String sendingUserName,
+         String sendingPassword) throws HarnessException{
+      DesktopAccountItem desktopAccountItem = new DesktopAccountItem();
+      desktopAccountItem.accountName = "name" + ZimbraSeleniumProperties.getUniqueString();
+      desktopAccountItem.fullName = "Imap" + ZimbraSeleniumProperties.getUniqueString();
+      desktopAccountItem.emailAddress = emailAddress;
+      desktopAccountItem.receivingUsernname = receivingUsername;
+      desktopAccountItem.receivingPassword = receivingPassword;
+      desktopAccountItem.receivingIncomingServer = receivingIncomingServer;
+      desktopAccountItem.receivingSecurityType = receivingSecurityType;
+      desktopAccountItem.receivingPort = receivingPort;
+      desktopAccountItem.sendingSmtpServer = sendingSmtpServer;
+      desktopAccountItem.sendingSmtpServer = sendingSmtpServer;
+      desktopAccountItem.sendingThroughSsl = sendingThroughSsl;
+      desktopAccountItem.sendingPort = sendingPort;
+      desktopAccountItem.sendingUserName = sendingUserName;
+      desktopAccountItem.sendingPassword = sendingPassword;
+
+      return desktopAccountItem;
+   }
+
+   /**
+    * Generate Desktop's POP account Item with specified parameters
+    * @param emailAddress
+    * @param receivingUsername
+    * @param receivingPassword
+    * @param receivingIncomingServer
+    * @param receivingSecurityType
+    * @param receivingPort
+    * @param sendingSmtpServer
+    * @param sendingThroughSsl
+    * @param sendingPort
+    * @param sendingUserName
+    * @param sendingPassword
+    * @return Desktop POP Account Item
+    * @throws HarnessException
+    */
+   public static DesktopAccountItem generateDesktopPopAccountItem(
+         String emailAddress,
+         String receivingUsername,
+         String receivingPassword,
+         String receivingIncomingServer,
+         SECURITY_TYPE receivingSecurityType,
+         String receivingPort,
+         String sendingSmtpServer,
+         boolean sendingThroughSsl,
+         String sendingPort,
+         String sendingUserName,
+         String sendingPassword) throws HarnessException{
+      DesktopAccountItem desktopAccountItem = new DesktopAccountItem();
+      desktopAccountItem.accountName = "name" + ZimbraSeleniumProperties.getUniqueString();
+      desktopAccountItem.fullName = "Imap" + ZimbraSeleniumProperties.getUniqueString();
+      desktopAccountItem.emailAddress = emailAddress;
+      desktopAccountItem.receivingUsernname = receivingUsername;
+      desktopAccountItem.receivingPassword = receivingPassword;
+      desktopAccountItem.receivingIncomingServer = receivingIncomingServer;
+      desktopAccountItem.receivingSecurityType = receivingSecurityType;
+      desktopAccountItem.receivingPort = receivingPort;
+      desktopAccountItem.sendingSmtpServer = sendingSmtpServer;
+      desktopAccountItem.sendingSmtpServer = sendingSmtpServer;
+      desktopAccountItem.sendingThroughSsl = sendingThroughSsl;
+      desktopAccountItem.sendingPort = sendingPort;
+      desktopAccountItem.sendingUserName = sendingUserName;
+      desktopAccountItem.sendingPassword = sendingPassword;
 
       return desktopAccountItem;
    }

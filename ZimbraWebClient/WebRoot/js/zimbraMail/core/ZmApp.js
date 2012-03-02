@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1021,4 +1021,52 @@ function() {
 		}
 	}
 	return defaultAcct;
+};
+
+/**
+ * Sets a hidden div for performance metrics.  Marks the time an app has been launched
+ * @param appName {String}
+ * @param date {Date}
+ * @private
+ */
+ZmApp.prototype._setLaunchTime = 
+function(appName, date) {
+	if (!window.isPerfMetric) {
+		return;
+	}
+	var id = appName + "_launched";
+	if (!date) {
+		date = new Date();
+	}
+	if (!document.getElementById(id)) {
+		var div = document.createElement("DIV");
+		div.id = id;
+		div.innerHTML = date.getTime();
+		div.style.display = "none";
+		document.body.appendChild(div);
+	}	
+};
+
+/**
+ * Sets a hidden div for performance metrics.  Marks the time an app has completed loading
+ * @param appName {String}
+ * @param date {Date}
+ * @private
+ */
+ZmApp.prototype._setLoadedTime = 
+function(appName, date) {
+	if (!window.isPerfMetric) {
+		return;
+	}
+	var id = appName + "_loaded";
+	if (!date) {
+		date = new Date();
+	}
+	if (!document.getElementById(id)) {
+		var div = document.createElement("DIV");
+		div.id = id;
+		div.innerHTML = date.getTime();
+		div.style.display = "none";
+		document.body.appendChild(div);
+	}
 };

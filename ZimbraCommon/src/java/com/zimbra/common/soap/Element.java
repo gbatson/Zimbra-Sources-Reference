@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -1495,8 +1495,27 @@ public abstract class Element implements Cloneable {
     private static boolean isSensitiveElement(Element element) {
         // - elements having name that ends with "password" or "Password"
         // - elements like: <a n='zimbraGalLdapBindPassword'>...</a>
+        // - elements like: <a n='hostPwd'>...</a>
+        // - elements like (zimlet specific case): <a n='webexZimlet_pwd1'>...</a>
+        // - elements like: <prop name='passwd'>...</prop>
         String name = element.getName();
-        return name.endsWith("assword") || (name.equals("a") && element.getAttribute("n", "").endsWith("assword"));
+        if (name.endsWith("assword")) {
+            return true;
+        } else if (name.equals("a")) {
+            String propName = element.getAttribute("n", null);
+            if (propName != null &&
+                    (propName.endsWith("assword") || propName.endsWith("Pwd") ||
+                            propName.contains("webexZimlet_pwd"))) {
+                return true;
+            }
+        } else if (name.equals("prop")) {
+            String propName = element.getAttribute("name", null);
+            if (propName != null &&
+                    (propName.endsWith("assword") || propName.endsWith("asswd") || propName.endsWith("Pwd"))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void main(String[] args) throws ContainerException, SoapParseException {

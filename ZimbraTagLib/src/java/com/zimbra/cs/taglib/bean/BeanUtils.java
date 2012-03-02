@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -300,17 +300,15 @@ public class BeanUtils {
         String REGEX = "<(?:!(?:--[\\s\\S]*?--\\s*)?(>)\\s*|(?:script|style|SCRIPT|STYLE)[\\s\\S]*?<\\/(?:script|style|SCRIPT|STYLE)>)";
         Pattern p = Pattern.compile(REGEX);
 
-        // Use quoteReplacement() to escape the replacement text so that '$' and '/', if present
-        // in the replacement text, does not hold any special meaning.
-        html = Matcher.quoteReplacement(html);
-        
         Matcher m = p.matcher(html); // get a matcher object
         StringBuffer sb = new StringBuffer();
         while(m.find()) {
             if(m.group(1) != null)
                 m.appendReplacement(sb, " ");
             else {
-                m.appendReplacement(sb, m.group());
+                // Use quoteReplacement() to escape the replacement text so that '$' and '/', if present
+                // in the replacement text, does not hold any special meaning.
+                m.appendReplacement(sb, Matcher.quoteReplacement(m.group()));
             }
         }
         m.appendTail(sb);
@@ -1492,6 +1490,7 @@ public class BeanUtils {
         Matcher m;
         for (String str : allowedUA) {
             pattern = Pattern.compile(str);
+            if (ua.getUserAgent() == null) return false;
             m = pattern.matcher(ua.getUserAgent());
             if (m.find())
                 return true;

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,8 +16,8 @@ package com.zimbra.common.mime.shim;
 
 import javax.mail.internet.InternetHeaders;
 
+import org.junit.Assert;
 import org.junit.Test;
-import org.testng.Assert;
 
 public class JavaMailInternetHeadersTest {
 
@@ -34,7 +34,7 @@ public class JavaMailInternetHeadersTest {
         headers.addHeader("From", FROM_1);
         headers.addHeader("From", FROM_2);
 
-        Assert.assertEquals(headers.getHeader("FROM", null), FROM_1, "select first From");
-        Assert.assertEquals(headers.getHeader("content-TYPE", null), CTYPE_2, "select last Content-Type");
+        Assert.assertEquals("select first From", FROM_1, headers.getHeader("FROM", null));
+        Assert.assertEquals("select last Content-Type", CTYPE_2, headers.getHeader("content-TYPE", null));
     }
 }

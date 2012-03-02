@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -182,7 +182,7 @@ UINT __stdcall ZShutdown(MSIHANDLE hInstall) {
 	if (RegOpenKeyEx(HKEY_CURRENT_USER, subkey, 0, KEY_QUERY_VALUE, &hKey) == ERROR_SUCCESS) {
 		if (RegQueryValueEx(hKey, "DataRoot", NULL, NULL, (LPBYTE)data_root, &sz) == ERROR_SUCCESS) {
 			zdctl_path = new char[sz + 20];
-			sprintf(zdctl_path, "%s\\bin\\zdctl.vbs", data_root);
+			sprintf(zdctl_path, "%s\\bin\\zdctl-wrapper.vbs", data_root);
 		}
 		RegCloseKey(hKey);
 	}
@@ -192,7 +192,7 @@ UINT __stdcall ZShutdown(MSIHANDLE hInstall) {
 		GetSystemDirectory(sysdir, sizeof(sysdir));
 		
 		char cmdline[2048];
-		sprintf(cmdline, "\"%s\\cscript.exe\" \"%s\" shutdown", sysdir, zdctl_path);
+		sprintf(cmdline, "\"%s\\wscript.exe\" //B \"%s\" shutdown", sysdir, zdctl_path);
 
 		PROCESS_INFORMATION pi;
 		STARTUPINFO si;

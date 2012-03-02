@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -53,6 +53,7 @@ import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
 import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
+import com.zimbra.cs.store.StagedBlob;
 
 /**
  * @since Aug 23, 2004
@@ -665,6 +666,13 @@ public class Contact extends MailItem {
                 return new ArrayList<IndexDocument>();
             }
         }
+    }
+    
+    @Override
+    MailboxBlob setContent(StagedBlob staged, Object content) throws ServiceException, IOException {
+        ZimbraLog.mailop.info("modifying contact %s: id=%d, folderId=%d, folderName=%s.",
+                    get(ContactConstants.A_email), getId(), getFolderId(), getFolder().getName());
+        return super.setContent(staged, content);
     }
 
     @Override void reanalyze(Object data, long newSize) throws ServiceException {

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -563,13 +563,13 @@ WebExZimlet.prototype._getDayInWeekStr = function(repeatWeeklyDays, appt) {
 };
 
 /**
- * Create create or modify WebEx meeting request.
+ * Gets createMeetingAttendeeRequest XML
  *
  * @param {hash} params	a hash of parameters
  * @params {string} params.emails meeting invitees
  * @params {string} params.meetingkey meeting key (aka sessionkey)
  */
-WebExZimlet.prototype._getRegisterAttendeesRequest = function(params) {
+WebExZimlet.prototype._getCreateAttendeesRequest = function(params) {
 	var emails = params.emails;
 	var sessionKey = params.meetingKey;
 	var emls = [];
@@ -582,17 +582,23 @@ WebExZimlet.prototype._getRegisterAttendeesRequest = function(params) {
 			continue;
 		}
 		var fn = a.getFullName ? a.getFullName() : (a.getDispName ? a.getDispName() : "");
-		emls[j++] = ["<attendees><person><email>",e, "</email>"].join("");
+		if(i != 0) {
+			emls[j++] = "<attendees>";
+		}
+		emls[j++] = ["<person><email>",e, "</email>"].join("");
 
 		if (fn != "" && fn != undefined) {
 			emls[j++] = ["<name>", fn, "</name>"].join("");
 		}
 		emls[j++] = "</person>";
+		emls[j++] = "<joinStatus>INVITE</joinStatus>";
 		emls[j++] = ["<sessionKey>",sessionKey,"</sessionKey>"].join("");
-		emls[j++] = "</attendees>";
+		if(i != 0) {
+			emls[j++] = "</attendees>";
+		}
 	}
 	var requestBody = [
-		"<bodyContent xsi:type=\"java:com.webex.service.binding.attendee.RegisterMeetingAttendee\">",
+		"<bodyContent xsi:type=\"java:com.webex.service.binding.attendee.CreateMeetingAttendee\">",
 		 emls.join(""),
 		"</bodyContent>"].join("");
 
@@ -685,7 +691,7 @@ WebExZimlet.prototype._getCreateOrModifyMeetingRequest = function(params) {
 	}
 	var sendWebExEmailStr = "";
 	//if(params.sendWebExEmail) { //used for one-click meetings
-		 sendWebExEmailStr = "<attendeeOptions><emailInvitations>TRUE</emailInvitations><auto>TRUE</auto></attendeeOptions>";
+		 sendWebExEmailStr = "<attendeeOptions><emailInvitations>TRUE</emailInvitations></attendeeOptions>";
 	//}
 	var requestBody = [
 		"<bodyContent xsi:type=\"",apiType,"\">",
@@ -736,7 +742,7 @@ WebExZimlet.prototype._createOrUpdateMeetingResponseHdlr = function(params, resu
 	var emails = params.emails;
 	if(emails && (emails instanceof Array) && emails.length > 0) {
 		//register attendees.
-		var request = this._getRegisterAttendeesRequest({emails: params.emails, meetingKey: meetingKey})
+		var request = this._getCreateAttendeesRequest({emails: params.emails, meetingKey: meetingKey})
 		var result = AjxRpc.invoke(request, this.postUri(), {"Content-Type":"text/xml"}, null, false, false);
 		var objResult = this.xmlToObject(result);
 		if (!this._validateWebExResult(objResult, this.getMessage("WebExZimlet_couldNotRegisterAttendees"))) {
@@ -821,8 +827,19 @@ WebExZimlet.prototype._updateMeetingBodyAndSave = function(params) {
 	//delay to avoid race condition b/w setting content and sending msg
 	if(!params.dontSaveMeeting) {
 		setTimeout(AjxCallback.simpleClosure(this._saveAppt, this, params.apptController), 500);
+	} else {
+		this._showModifyAlertDialog();
 	}
 };
+
+WebExZimlet.prototype._showModifyAlertDialog = function() {
+	if (!this._modifyAlertDlg) {
+		this._modifyAlertDlg = new DwtMessageDialog({parent:this.getShell(), buttons:[DwtDialog.OK_BUTTON]});
+		this._modifyAlertDlg.setMessage(this.getMessage("modifyAlertNotice"));
+	}
+	this._modifyAlertDlg.popup();
+};
+
 /**
  * Saves appointment
  * @param {ZmApptController} Appointment Controller
@@ -834,6 +851,7 @@ WebExZimlet.prototype._saveAppt = function(apptController) {
 		apptController._saveListener();
 	}
 	appCtxt.getAppController().setStatusMsg(this.getMessage("WebExZimlet_successfullyCreatedWebEx"), ZmStatusView.LEVEL_INFO);
+	this._showModifyAlertDialog();
 };
 
 /**

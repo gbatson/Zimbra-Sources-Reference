@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1473,4 +1473,52 @@ function(el1, el2) {
 	var bottom1 = top1 + size1.y, bottom2 = top2 + size2.y;
 
 	return !(left1 > right2 || right1 < left2 || top1 > bottom2 || bottom1 < top2);
+};
+
+/**
+ * Sets up a hidden div for performance metrics.  Use to set the start of object rendering
+ * @param id {String}
+ * @param date {Date}
+ */
+Dwt.setLoadingTime = 
+function(id, date) {
+	if (!window.isPerfMetric) {
+		return;
+	}
+	if (!date) {
+		date = new Date();
+	}
+	id += "_loading";
+	var div = document.getElementById(id);
+	if (!div) {
+		div = document.createElement("div");
+		div.id = id;
+		div.style.display = "none";
+		document.body.appendChild(div);
+	}
+	div.innerHTML = date.getTime();
+};
+
+/**
+ * Sets up a hidden div for performance metrics.  Use to set the end of object rendering
+ * @param id {String}
+ * @param date {Date}
+ */
+Dwt.setLoadedTime = 
+function(id, date) {
+	if (!window.isPerfMetric) {
+		return;
+	}
+	if (!date) {
+		date = new Date();
+	} 
+	id += "_loaded";
+	var div = document.getElementById(id);
+	if (!div) {
+		div = document.createElement("div");
+		div.id = id;
+		div.style.display = "none";
+		document.body.appendChild(div);
+	}
+	div.innerHTML = date.getTime();
 };

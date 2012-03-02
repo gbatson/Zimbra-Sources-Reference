@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,7 +30,7 @@
 ZmAcceptShareDialog = function(parent, className) {
 	className = className || "ZmAcceptShareDialog";
 	DwtDialog.call(this, {parent:parent, className:className, title:ZmMsg.acceptShare,
-						  standardButtons:[DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON]});
+						  standardButtons:[DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON], id: "ZmAcceptShare"});
 	this.setButtonListener(DwtDialog.YES_BUTTON, new AjxListener(this, this._handleYesButton));
 	this.setButtonListener(DwtDialog.NO_BUTTON, new AjxListener(this, this._handleNoButton));
 	
@@ -65,7 +65,7 @@ function(share, fromAddr) {
 
 	this._share = share;
 	this._fromAddr = fromAddr;
-	this._headerEl.innerHTML = this._headerFormatter.format([share.grantor.name || share.grantor.email, share.link.name]);
+	this._headerEl.innerHTML = this._headerFormatter.format([share.grantor.name || share.grantor.email, AjxStringUtil.htmlEncode(share.link.name)]);
 
 	var role = ZmShare._getRoleFromPerm(share.link.perm);
 	var params = [
@@ -149,17 +149,21 @@ function() {
 	this._headerEl.style.marginBottom = "0.5em";
 	this._detailsEl = document.createElement("DIV");
 	this._detailsEl.style.marginBottom = "1em";
+	this._detailsEl.id = "ZmAcceptShare_details";
 	this._questionEl = document.createElement("DIV");
 	this._questionEl.style.marginBottom = "0.5em";
+	this._questionEl.id = "ZmAcceptShare_questions";
 	this._nameEl = document.createElement("INPUT");
 	this._nameEl.style.width = "20em";
+	this._nameEl.id = "ZmAcceptShare_name";
 	var nameElement = this._nameEl;
 
-	this._color = new ZmColorButton({parent:this});
+	this._color = new ZmColorButton({parent:this, id: "ZmAcceptShare_color"});
 
 	var props = this._propSheet = new DwtPropertySheet(view);
 	var propsEl = props.getHtmlElement();
 	propsEl.style.marginBottom = "0.5em";
+	propsEl.id = "ZmAcceptShare_props";
 	props.addProperty(ZmMsg.nameLabel, nameElement);
 	props.addProperty(ZmMsg.colorLabel, this._color);
 
@@ -167,6 +171,7 @@ function() {
 
 	var settings = document.createElement("DIV");
 	settings.style.marginLeft = "1.5em";
+	settings.id = "ZmAcceptShare_settings";
 	settings.appendChild(propsEl);
 	settings.appendChild(this._reply.getHtmlElement());	
 

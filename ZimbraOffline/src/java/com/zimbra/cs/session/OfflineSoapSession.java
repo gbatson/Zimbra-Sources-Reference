@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,7 @@ import java.util.List;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
+import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 
@@ -69,4 +70,13 @@ public class OfflineSoapSession extends SoapSession {
         }
     }
 
+    @Override
+    public RegisterNotificationResult registerNotificationConnection(final PushChannel sc) throws ServiceException {
+        RegisterNotificationResult result = super.registerNotificationConnection(sc);
+        if (result == RegisterNotificationResult.BLOCKING && OfflineSyncManager.getInstance().hasPendingStatusChanges()) {
+            //if any pending sync state changes make it DATA_READY
+            result = RegisterNotificationResult.DATA_READY; 
+        }
+        return result;
+    }
 }

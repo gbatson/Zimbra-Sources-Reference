@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -147,11 +147,7 @@ function(parent, type, id) {
 	if (op) {
 		op.setText(deleteText);
 	}
-	op = parent.getOp(ZmOperation.RECOVER_DELETED_ITEMS);
-	if (op) {
-		op.setVisible(isTrash);
-		op.setEnabled(isTrash);
-	}
+	this._enableRecoverDeleted(parent, isTrash);
 
 	// we always enable sharing in case we're in multi-mbox mode
 	this._resetButtonPerSetting(parent, ZmOperation.SHARE_ADDRBOOK, appCtxt.get(ZmSetting.SHARING_ENABLED));

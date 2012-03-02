@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.desktop.ui.preferences.signature;
 
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
@@ -26,6 +42,7 @@ public class PageSignature extends AbsTab{
 	//	public static final String zSignatureListView = "//div[@class='ZmSignatureListView']/div//tbody/tr/td";
 		public static final String zSignatureListView = "//div[@class='ZmSignatureListView']";
 		public static final String zNewSignature ="//td[contains(@id,'_title') and contains (text(),'New Signature')]";
+		public static final String zDeleteSignature ="//td[contains(@id,'DWT') and contains (text(),'Delete')]";
 
 	}
 
@@ -86,7 +103,11 @@ public class PageSignature extends AbsTab{
 			page = new FormSignatureNew(this.MyApplication);
 
 
-		}  else {
+		}  else if(button== Button.B_DELETE) {
+         locator = Locators.zDeleteSignature;
+         page = null;
+         
+      } else {
 			throw new HarnessException("no logic defined for button " + button);
 		}
 
@@ -104,7 +125,27 @@ public class PageSignature extends AbsTab{
 		return (page);
 	}
 
-	@Override
+	public String zGetSignatureBodyText() throws HarnessException{
+
+	   //bug 59078
+	   String locator = null;
+	   locator="selenium.browserbot.getCurrentWindow().document.getElementById('TEXTAREA_SIGNATURE').value";
+	   String textsig= this.sGetEval(locator);
+	   return textsig;
+
+	}
+
+	public String zGetHtmlSignatureBody() throws HarnessException {
+	   try {
+	      sSelectFrame("css=iframe[id*='DWT']");
+	      String sigbodyhtml = this.sGetHtmlSource();
+	      return sigbodyhtml;
+	   } finally {
+	      this.sSelectFrame("relative=top");
+	   }
+	}
+
+	   @Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
 	throws HarnessException {
 		// TODO Auto-generated method stub

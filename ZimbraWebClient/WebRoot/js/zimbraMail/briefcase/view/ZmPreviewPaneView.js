@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -518,6 +518,11 @@ ZmPreviewView = function(params){
 ZmPreviewView.prototype = new DwtComposite;
 ZmPreviewView.prototype.constructor = ZmPreviewView;
 
+ZmPreviewView.prototype.toString = 
+function() {
+	return "ZmPreviewView";	
+};
+
 ZmPreviewView.prototype._initialize =
 function(){
 
@@ -623,7 +628,6 @@ function(url){
 
 ZmPreviewView.prototype.set =
 function(item){
-
     if(!item){
         this.enablePreview(false);
         return;
@@ -658,6 +662,7 @@ function(item){
     }
 
     this._iframePreview.setSrc(restUrl);
+	Dwt.setLoadedTime("ZmBriefcaseItem", new Date()); //iframe src set but item may not be downloaded by browser
 };
 
 ZmPreviewView.prototype._setupLoading =
@@ -753,7 +758,7 @@ ZmPreviewView.prototype._setHeader =
 function(item){
 
     //Name
-    this._headerName.innerHTML = item.name;
+    this._headerName.innerHTML = AjxStringUtil.htmlEncode(item.name);
 
     //Image icon
     var contentType = item.contentType;

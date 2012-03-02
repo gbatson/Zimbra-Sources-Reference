@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -411,7 +411,8 @@ function() {
 		orientation:		ZmPref.ORIENT_VERTICAL,
 		displayOptions: 	[ZmMsg.composeAsHTML, ZmMsg.composeAsText],
 		options: 			[ZmSetting.COMPOSE_HTML, ZmSetting.COMPOSE_TEXT],
-		precondition:		ZmSetting.HTML_COMPOSE_ENABLED
+		precondition:		ZmSetting.HTML_COMPOSE_ENABLED,
+		inputId:            ["COMPOSE_AS_HTML", "COMPOSE_AS_TEXT"]
 	});
 
 	ZmPref.registerPref("COMPOSE_INIT_FONT_COLOR", {
@@ -420,16 +421,30 @@ function() {
 		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
 	});
 
+	var keys = [ "fontFamilyIntl", "fontFamilyBase" ];
+	var i, j, key, value, name;
+	var names = [];
+	var styles = [];
+	for (j = 0; j < keys.length; j++) {
+		for (i = 1; value = AjxMsg[keys[j]+i+".css"]; i++) {
+			if (value.match(/^#+$/)) break;
+			value = value.replace(/,\s/g,",");
+			name = AjxMsg[keys[j]+i+".display"];
+			names.push(name);
+			styles.push(value);
+		}
+	}
+
 	ZmPref.registerPref("COMPOSE_INIT_FONT_FAMILY", {
 		displayName:		ZmMsg.defaultFontSettings,
 		displayContainer:	ZmPref.TYPE_SELECT,
-		displayOptions: 	["Andale Mono","Arial", "Arial Black","Book Antiqua","Bookman Old Style","Comic Sans MS","Courier New", "Garamond",
-                             "Georgia", "Helvetica", "Impact", "Lucida Console", "Symbol", "Tahoma", "Terminal", "Times New Roman", "Trebuchet MS",
-                             "Verdana","Webdings","Wingdings"],
-		options: 			["Andale Mono","Arial", "Arial Black","Book Antiqua","Bookman Old Style","Comic Sans MS","Courier New", "Garamond",
-                             "Georgia", "Helvetica", "Impact", "Lucida Console", "Symbol", "Tahoma", "Terminal", "Times New Roman", "Trebuchet MS",
-                             "Verdana","Webdings","Wingdings"],
-		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
+		displayOptions: 	names,
+		options: 		styles,
+		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED]
+	});
+
+    ZmPref.registerPref("QUICK_COMMAND_LIST", {
+		displayContainer:	ZmPref.TYPE_CUSTOM
 	});
 
 	// Yuck: Should add functionality in Pref. to add prefix/postfix to all options. Meanwhile...

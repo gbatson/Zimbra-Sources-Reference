@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -82,7 +82,9 @@ public class ItemData {
             ud.unreadCount = json.getInt(Keys.unread.toString());
             ud.flags = json.getInt(Keys.flags.toString()) |
                 Flag.BITMASK_UNCACHED;
-            ud.tags = json.getLong(Keys.tags.toString());
+            if (!json.isNull(Keys.tags.toString())) {
+                ud.tags = json.getLong(Keys.tags.toString());
+            }
             ud.subject = json.optString(Keys.subject.toString());
             ud.name = json.optString(Keys.name.toString());
             ud.metadata = json.optString(Keys.metadata.toString());

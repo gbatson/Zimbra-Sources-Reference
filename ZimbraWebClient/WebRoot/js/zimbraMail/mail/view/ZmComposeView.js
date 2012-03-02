@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -155,7 +155,7 @@ function(params) {
 	// list of msg Id's to add as attachments
 	this._msgIds = params.msgIds;
 
-	AjxDebug.println(AjxDebug.REPLY, "Reset compose view: set compose view");
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeView::set - Reset compose view");
 	this.reset(true);
 
 	this._setFromSelect(msg);
@@ -515,7 +515,7 @@ function(attId, isDraft, dummyMsg, forceBail, contactId) {
 
 	var zeroSizedAttachments = false;
 	// handle Inline Attachments
-	if (this._attachDialog && this._attachDialog.isInline() && attId) {
+    if (attId && ( (this._attachDialog && this._attachDialog.isInline()) || attId.clipboardPaste ) ){
 		for (var i = 0; i < attId.length; i++) {
 			var att = attId[i];
 			if (att.s == 0) {
@@ -916,8 +916,11 @@ function(type, addr) {
 
 // Sets the mode ZmHtmlEditor should be in.
 ZmComposeView.prototype.setComposeMode =
-function(composeMode, switchPreface) {
-	if (composeMode == this._composeMode) return;
+function(composeMode, switchPreface, dontReplaceContent) {
+
+	if (composeMode == this._composeMode) { return; }
+	
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeView::setComposeMode (new mode) - " + composeMode);
 	var htmlMode = (composeMode == DwtHtmlEditor.HTML);
 	if (!htmlMode || appCtxt.get(ZmSetting.HTML_COMPOSE_ENABLED)) {
 
@@ -957,13 +960,18 @@ function(composeMode, switchPreface) {
 				}
 			}
 
-			baseContent = baseContent.replace(/\n/g,"<br/>");
+			if (this._action == ZmOperation.DRAFT) { //see below why this is only in case of draft
+				baseContent = baseContent.replace(/\n/g,"<br/>");
+			}
 
 			// Do the mode switch
 			this._htmlEditor.setMode(composeMode, true);
 			
-			if (this._action != ZmOperation.DRAFT) {
-				// Re-set the whole body, with optional replied/forwarded msg and signature automatically added. baseContent is the text that the user may have written before switching
+			if (this._action != ZmOperation.DRAFT && !dontReplaceContent) {
+				baseContent = AjxStringUtil.convertToHtml(baseContent, true);
+				baseContent = baseContent.replace(/\n/g,"<br/>");
+				// Re-set the whole body, with optional replied/forwarded msg and signature automatically added.
+				// baseContent is the text that the user may have written before switching
 				this._setBody(this._action, this._msg || null, baseContent || "\n", null, true);
 			}
 		} else {
@@ -1193,6 +1201,7 @@ function(msg, idoc, account) {
             }
 		}
 	}
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeView::_fixMultipartRelatedImages - num images: " + images.length);
 	return (num == images.length);
 };
 
@@ -1328,7 +1337,7 @@ function(bEnableInputs) {
 	this.cleanupAttachments(true);
 
 	this._resetBodySize();
-
+	this._controller._curIncOptions = null;
 	this._msgAttId = null;
 	this._clearFormValue();
 
@@ -2221,6 +2230,8 @@ function(action, msg, subjOverride) {
 
 ZmComposeView.prototype._setBody =
 function(action, msg, extraBodyText) {
+	
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeView::_setBody");
 	var htmlMode = (this._composeMode == DwtHtmlEditor.HTML);
 
 	var isDraft = (action == ZmOperation.DRAFT);
@@ -2256,7 +2267,8 @@ function(action, msg, extraBodyText) {
 	if (incOptions.what == ZmSetting.INC_ATTACH && !this._msg) {
 		incOptions.what = ZmSetting.INC_NONE;
 	}
-
+	AjxDebug.println(AjxDebug.REPLY, "Inc options: " + [incOptions.what, incOptions.prefix, incOptions.headers].join(" / ")); 
+	
 	var crlf = htmlMode ? "<br>" : ZmMsg.CRLF;
 	var crlf2 = htmlMode ? "<br><br>" : ZmMsg.CRLF2;
 
@@ -2267,6 +2279,7 @@ function(action, msg, extraBodyText) {
 	if (msg && (what == ZmSetting.INC_BODY || what == ZmSetting.INC_SMART)) {
 		bodyInfo = this._getBodyContent(msg, htmlMode);
 		body = bodyInfo.body;
+		AjxDebug.println(AjxDebug.REPLY, "Body length: " + body.length);
 		// Bug 7160: Strip off the ~*~*~*~ from invite replies.
 		if (this._isInviteReply(action)) {
 			body = body.replace(ZmItem.NOTES_SEPARATOR, "");
@@ -2288,6 +2301,7 @@ function(action, msg, extraBodyText) {
 					}
 				}
 			}
+			AjxDebug.println(AjxDebug.REPLY, "Body length in smart mode: " + body.length);
 		}
 	}
 
@@ -2296,6 +2310,7 @@ function(action, msg, extraBodyText) {
 	if (ac.get(ZmSetting.SIGNATURES_ENABLED, null, account)) {
 		sig = this.getSignatureContentSpan(null, null, account);
 		sigStyle = sig && ac.get(ZmSetting.SIGNATURE_STYLE, null, account);
+		AjxDebug.println(AjxDebug.REPLY, "Sig style: " + sigStyle);
 		sigId = this._controller.getSelectedSignature();
 		var signature = this.getSignatureById(sigId);
 		sigFormat = signature && signature.getContentType();
@@ -2305,6 +2320,10 @@ function(action, msg, extraBodyText) {
 	}
 
 	extraBodyText = extraBodyText || "";
+	if (htmlMode) {
+		extraBodyText = extraBodyText.replace(/\n/g, "<br>");
+	}
+
 	var preText;
 	if (sigPre) {
 		if (extraBodyText) {
@@ -2330,6 +2349,7 @@ function(action, msg, extraBodyText) {
 	} else { // No signature, just take the extraBodyText
 		preText = extraBodyText;
 	}
+	AjxDebug.println(AjxDebug.REPLY, "preText: " + AjxStringUtil.htmlEncode(preText));
 
 	if (incOptions.headers && msg) {
 		for (var i = 0; i < ZmComposeView.QUOTED_HDRS.length; i++) {
@@ -2352,6 +2372,7 @@ function(action, msg, extraBodyText) {
 	} else {
 		var preface = this._preface = this._getPreface();
 		var divider = !body ? "" : htmlMode ? preface : preface + crlf;
+		AjxDebug.println(AjxDebug.REPLY, "divider: " + AjxStringUtil.htmlEncode(divider));
 		var leadingSpace = preText ? "" : crlf2;
 		var wrapParams = ZmHtmlEditor.getWrapParams(htmlMode, incOptions);
 		wrapParams.preserveReturns = true;
@@ -2362,7 +2383,9 @@ function(action, msg, extraBodyText) {
 				var headerText = headers.length ? headers.join(crlf) + crlf2 : "";
 				wrapParams.text = isDraft ? body : headerText + body;
 				var bodyText = AjxStringUtil.wordWrap(wrapParams);
+				AjxDebug.println(AjxDebug.REPLY, "bodyText length: " + bodyText.length);
 				value = leadingSpace + preText + divider + bodyText;
+				AjxDebug.println(AjxDebug.REPLY, "value length A: " + value.length);
 			} else {
 				var headerText = "";
 				if (headers.length) {
@@ -2406,11 +2429,13 @@ function(action, msg, extraBodyText) {
 	}
 
 	var vLen = value ? value.length : 0;
-	AjxDebug.println(AjxDebug.REPLY, "Compose view, reply length: " + vLen);
+	AjxDebug.println(AjxDebug.REPLY, "value length B: " + vLen);
 	if (!isDraft && sigStyle == ZmSetting.SIG_INTERNET) {
+		AjxDebug.println(AjxDebug.REPLY, "internet style sig, call addSignature()");
 		this.addSignature(value);
 	} else {
 		value = value || (htmlMode ? "<br>" : "");
+		AjxDebug.println(AjxDebug.REPLY, "value snippet: " + AjxStringUtil.htmlEncode(value.substr(0, 200)));
 		this._htmlEditor.setContent(value);
 	}
 
@@ -2670,9 +2695,15 @@ function(composeMode) {
 		this._bodyFieldId = this._htmlEditor.getBodyFieldId();
 		this._bodyField = document.getElementById(this._bodyFieldId);
 	} else {
-		this._htmlEditor = new ZmHtmlEditor(this, DwtControl.RELATIVE_STYLE, null, this._composeMode);
+        if( AjxEnv.isChrome ){
+            this._isPasteEnabled = true;
+        }
+		this._htmlEditor = new ZmHtmlEditor(this, DwtControl.RELATIVE_STYLE, null, this._composeMode, null, this._isPasteEnabled);
 		this._bodyFieldId = this._htmlEditor.getBodyFieldId();
 		this._bodyField = document.getElementById(this._bodyFieldId);
+        if( this._isPasteEnabled ){
+            this._htmlEditor.addEventCallback( new AjxListener(this, this._handleEditorEvent) );
+        }
 	}
 	this._includedPreface = "";
 
@@ -3291,7 +3322,9 @@ function(incAddrs, incSubject) {
 	if (incSubject) {
 		vals.push(this._subjectField.value);
 	}
-	vals.push(this._htmlEditor.getContent());
+	var content = this._htmlEditor.getContent();
+	AjxDebug.println(AjxDebug.REPLY, "ZmComposeView::_formValue - content length: " + content.length);
+	vals.push(content);
 	var str = vals.join("|");
 	str = str.replace(/\|+/, "|");
 	return str;
@@ -3353,7 +3386,8 @@ function(addrs) {
 	for (var i = 0; i < ZmMailMsg.COMPOSE_ADDRS.length; i++) {
 		var type = ZmMailMsg.COMPOSE_ADDRS[i];
 		this.setAddress(type, "");
-		this._addAddresses(type, addrs[type]);
+		var addrVec = this._expandAddrs(addrs[type]);
+		this._addAddresses(type, addrVec);
 	}
 
 	//I still need this here since REMOVING stuff with the picker does not call removeBubble in the ZmAddresInputField.
@@ -3363,6 +3397,28 @@ function(addrs) {
 	this._contactPicker.removePopdownListener(this._controller._dialogPopdownListener);
 	this._contactPicker.popdown();
 	this.reEnableDesignMode();
+};
+
+// Expands any addresses that are groups
+ZmComposeView.prototype._expandAddrs =
+function(addrs) {
+	var addrsNew = [];
+	var addrsArray = (addrs instanceof AjxVector) ? addrs.getArray() : addrs;
+	if (addrsArray && addrsArray.length) {
+		for (var i = 0; i < addrsArray.length; i++) {
+			var addr = addrsArray[i];
+			if (addr) {
+				if (addr.isGroup) {
+					var members = AjxEmailAddress.split(addr.address);
+					addrsNew = addrsNew.concat(members);
+				}
+				else {
+					addrsNew.push(addr);
+				}
+			}
+		}
+	}
+	return AjxVector.fromArray(addrsNew);
 };
 
 ZmComposeView.prototype._contactPickerCancelCallback =
@@ -3686,3 +3742,9 @@ function(type, value) {
 	}
 };
 
+ZmComposeView.prototype._handleEditorEvent = function(ev){
+    if( ev.type === "paste" ){
+        this._controller._pasteHandler(ev);
+    }
+    return true;
+};

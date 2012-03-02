@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -54,9 +54,10 @@ public class OfflineAutoComplete extends AutoComplete {
         String typeStr = request.getAttribute(MailConstants.A_TYPE, "account");
         Provisioning.GalSearchType stype = Provisioning.GalSearchType.fromString(typeStr);
         int limit = account.getContactAutoCompleteMaxResults();
-        AutoCompleteResult result = query(request, zsc, account, true, name, limit, stype, octxt);
-        
+        AutoCompleteResult result = query(request, zsc, account, true, name, limit, stype, true, octxt);
+
         ContactAutoComplete ac = new ContactAutoComplete(account, octxt);
+        ac.setNeedCanExpand(true);
         if (galAC && result.entries.size() < limit) {
             int galLimit = limit - result.entries.size();
 
@@ -110,7 +111,7 @@ public class OfflineAutoComplete extends AutoComplete {
                 continue;
             }
 
-            AutoCompleteResult res = query(request, ctxt, account, true, name, lmt, stype, octxt);
+            AutoCompleteResult res = query(request, ctxt, account, true, name, lmt, stype, true, octxt);
             if (res != null)
                 result.appendEntries(res);
 

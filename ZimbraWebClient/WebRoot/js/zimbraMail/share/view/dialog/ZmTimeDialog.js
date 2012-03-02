@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@
  * 
  */
 ZmTimeDialog = function(params) {
+	params.id = Dwt.getNextId("ZmTimeDialog_");
 	ZmDialog.call(this, params);
 	var html = AjxTemplate.expand("share.Dialogs#ZmTimeDialog", {id: this._htmlElId, description: ZmMsg.sendLaterDescription, label: ZmMsg.time});
 	this.setContent(html);
@@ -116,7 +117,7 @@ function() {
 
 	this._dateField = Dwt.byId(this._htmlElId + "_date");
 
-	this._tzoneSelect = new DwtSelect({parent:this, parentElement: (this._htmlElId + "_tzSelect"), layout:DwtMenu.LAYOUT_SCROLL, maxRows: 7});
+	this._tzoneSelect = new DwtSelect({parent:this, parentElement: (this._htmlElId + "_tzSelect"), layout:DwtMenu.LAYOUT_SCROLL, maxRows: 7, id: Dwt.getNextId("TimeZoneSelect_")});
 };
 
 ZmTimeDialog.prototype.showTimeFields = 

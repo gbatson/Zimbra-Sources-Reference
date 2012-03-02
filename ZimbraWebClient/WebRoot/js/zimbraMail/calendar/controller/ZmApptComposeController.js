@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -134,6 +134,7 @@ function(id){
 
     var sendAppt = document.getElementById(id+"_send");
     var discardAppt = document.getElementById(id+"_discard");
+    this.clearInvalidAttendees();
     delete this._invalidAttendees;
     if (sendAppt.checked) {
         this._sendListener();
@@ -199,10 +200,10 @@ function(attId) {
 			dlg.registerCallback(DwtDialog.YES_BUTTON, this._clearInvalidAttendeesCallback, this, [appt, attId, dlg]);
 			var msg = "";
             if(this._action == ZmCalItemComposeController.SAVE){
-               msg = AjxMessageFormat.format(ZmMsg.compSaveBadAttendees, this._invalidAttendees.join(","));
+               msg = AjxMessageFormat.format(ZmMsg.compSaveBadAttendees, AjxStringUtil.htmlEncode(this._invalidAttendees.join(",")));
             }
             else{
-                msg = AjxMessageFormat.format(ZmMsg.compBadAttendees, this._invalidAttendees.join(","));
+               msg = AjxMessageFormat.format(ZmMsg.compBadAttendees, AjxStringUtil.htmlEncode(this._invalidAttendees.join(",")));
             }
 			dlg.setMessage(msg, DwtMessageDialog.WARNING_STYLE);
 			dlg.popup();
@@ -359,13 +360,13 @@ function(){
      var appt = this._composeView.getApptEditView()._calItem;
      var isExceptionAllowed = appCtxt.get(ZmSetting.CAL_EXCEPTION_ON_SERIES_TIME_CHANGE);
      var isEditingSeries = (this._mode == ZmCalItem.MODE_EDIT_SERIES);
-     var showWarning = appt.isRecurring() && isEditingSeries && appt.getAttendees(ZmCalBaseItem.PERSON) && !isExceptionAllowed && this._checkIsDirty(ZmApptEditView.CHANGES_TIME_RECURRENCE);
+     var showWarning = appt.isRecurring() && appt.hasEx && isEditingSeries && appt.getAttendees(ZmCalBaseItem.PERSON) && !isExceptionAllowed && this._checkIsDirty(ZmApptEditView.CHANGES_TIME_RECURRENCE);
      if(showWarning){
           var dialog = appCtxt.getYesNoCancelMsgDialog();
 		  dialog.setMessage(ZmMsg.recurrenceUpdateWarning, DwtMessageDialog.WARNING_STYLE);
           dialog.registerCallback(DwtDialog.YES_BUTTON, this._sendContinue, this,[dialog]);
           dialog.registerCallback(DwtDialog.NO_BUTTON, this._dontSend,this,[dialog]);
-          dialog.getButton(DwtDialog.CANCEL_BUTTON).setText(ZmMsg.apptSaveDiscard);
+          dialog.getButton(DwtDialog.CANCEL_BUTTON).setText(ZmMsg.discard);
 		  dialog.registerCallback(DwtDialog.CANCEL_BUTTON, this._dontSendAndClose,this,[dialog]);
 		  dialog.popup();
     }
@@ -1128,6 +1129,7 @@ function(view) {
 ZmApptComposeController.prototype._clearInvalidAttendeesCallback =
 function(appt, attId, dlg) {
 	dlg.popdown();
+    this.clearInvalidAttendees();
 	delete this._invalidAttendees;
     if(this._action == ZmCalItemComposeController.SAVE){
 	    this._saveListener();

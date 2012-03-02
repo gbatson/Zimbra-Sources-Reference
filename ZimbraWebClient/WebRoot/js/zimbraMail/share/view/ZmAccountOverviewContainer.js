@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -347,6 +347,10 @@ function(account, updateStatus, updateTooltip) {
 			if (hi._extraCell) {
 				hi._extraCell.innerHTML = (html || "");
 			}
+            if (appCtxt.isOffline && account.status == ZmZimbraAccount.STATUS_AUTHFAIL) {
+                var dialog = appCtxt.getPasswordChangeDialog();
+                dialog.popup(account);
+            }
 		}
 
 		if (updateTooltip || updateStatus) {
@@ -946,5 +950,13 @@ function(folderId, opId) {
 
 ZmAccountOverviewContainer.prototype._handleStatusClick =
 function(account, ev) {
-	account.showErrorMessage();
+
+    if(!account.isError()) {
+        return;
+    } else if (appCtxt.isOffline && (account.status == ZmZimbraAccount.STATUS_AUTHFAIL)) {
+        var dialog = appCtxt.getPasswordChangeDialog();
+        dialog.popup(account);
+    } else {
+        account.showErrorMessage();
+    }
 };

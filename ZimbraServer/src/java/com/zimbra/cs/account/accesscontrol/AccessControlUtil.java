@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,12 +23,16 @@ import com.zimbra.cs.account.Provisioning;
 
 public class AccessControlUtil {
     
+    public static boolean isGlobalAdmin(Account acct) {
+        return isGlobalAdmin(acct, true);
+    }
+    
     public static boolean isGlobalAdmin(Account acct, boolean asAdmin) {
-        return (asAdmin && acct != null && acct.getBooleanAttr(Provisioning.A_zimbraIsAdminAccount, false));
+        return (asAdmin && acct != null && acct.isIsAdminAccount());
     }
     
     static boolean isDelegatedAdmin(Account acct, boolean asAdmin) {
-        return (asAdmin && acct != null && acct.getBooleanAttr(Provisioning.A_zimbraIsDelegatedAdminAccount, false));
+        return (asAdmin && acct != null && acct.isIsDelegatedAdminAccount());
     }
     
     static public Account authTokenToAccount(AuthToken authToken, Right rightNeeded) {
@@ -36,16 +40,19 @@ public class AccessControlUtil {
         try {
             
             if (authToken == null) {
-                if (rightNeeded.isUserRight())
+                if (rightNeeded.isUserRight()) {
                     granteeAcct = GuestAccount.ANONYMOUS_ACCT;
-            } else if (authToken.isZimbraUser())
+                }
+            } else if (authToken.isZimbraUser()) {
                 granteeAcct = authToken.getAccount();
-            else {
-                if (rightNeeded.isUserRight())
+            } else {
+                if (rightNeeded.isUserRight()) {
                     granteeAcct = new GuestAccount(authToken);
+                }
             }
         } catch (ServiceException e) {
-            ZimbraLog.acl.warn("unable to get account from auth token, id=: " + authToken.getAccountId(), e);
+            ZimbraLog.acl.warn("unable to get account from auth token, id=: " + 
+                    authToken.getAccountId(), e);
         }
         
         return granteeAcct;
@@ -54,11 +61,19 @@ public class AccessControlUtil {
     static public Account emailAddrToAccount(String emailAddr, Right rightNeeded) {
         Account granteeAcct = null;
         try {
-            if (emailAddr != null)
+            if (emailAddr != null) {
                 granteeAcct = Provisioning.getInstance().get(Provisioning.AccountBy.name, emailAddr);
+            }
+            
             if (granteeAcct == null) {
-                if (rightNeeded.isUserRight())
-                    granteeAcct = GuestAccount.ANONYMOUS_ACCT;
+                // not an internal user
+                if (rightNeeded.isUserRight()) {
+                    if (emailAddr != null) {
+                        granteeAcct = new GuestAccount(emailAddr, null);
+                    } else {
+                        granteeAcct = GuestAccount.ANONYMOUS_ACCT;
+                    }
+                }
             }
             
         } catch (ServiceException e) {

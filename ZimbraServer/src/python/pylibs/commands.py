@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # Zimbra Collaboration Suite Server
-# Copyright (C) 2010 Zimbra, Inc.
+# Copyright (C) 2010, 2011 VMware, Inc.
 # 
 # The contents of this file are subject to the Zimbra Public License
 # Version 1.3 ("License"); you may not use this file except in
@@ -116,7 +116,10 @@ class Command:
 			if (not output):
 				output = "UNKNOWN OUTPUT"
 			if (not error):
-				error = "UNKNOWN ERROR"
+				if rc == 0:
+					error = "OK"
+				else:
+					error = "UNKNOWN ERROR"
 
 			self.output = output
 			self.error = error

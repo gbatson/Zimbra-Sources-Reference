@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -299,6 +299,8 @@ public class CalendarCollection extends Collection {
             try {
                 ZCalendar.ZVCalendar vcalendar = ZCalendar.ZCalendarBuilder.build(is, MimeConstants.P_CHARSET_UTF8);
                 CalDavUtils.removeAttendeeForOrganizer(vcalendar);  // Apple iCal fixup
+                if (ctxt.isIcalClient()) // Apple iCal fixup for todos
+                    CalDavUtils.adjustPercentCompleteForToDos(vcalendar);
                 invites = Invite.createFromCalendar(account,
                         findSummary(vcalendar), 
                         vcalendar, 
@@ -391,7 +393,7 @@ public class CalendarCollection extends Collection {
                 }
 
                 // For attendee case, update replies list with matching ATTENDEE from the invite.
-                if (!i.isOrganizer()) {
+                if (!i.isOrganizer() && replies != null) {
                     ZAttendee at = i.getMatchingAttendee(account);
                     if (at != null) {
                         AccountAddressMatcher acctMatcher = new AccountAddressMatcher(account);

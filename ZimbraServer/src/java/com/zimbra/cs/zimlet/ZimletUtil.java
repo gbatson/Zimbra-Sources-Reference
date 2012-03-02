@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1747,25 +1747,25 @@ public class ZimletUtil {
 	
 	private static void dispatch(String[] args) {
 		boolean localInstall = false;
-		if (args[argPos].equals("-l")) {
-			localInstall = true;
-			argPos++;
-		}
-		String adminURL = null;
-		String uploadURL = null;
-		if (args[argPos].equals("-a")) {
-			adminURL = args[++argPos];
-			argPos++;
-		}
-        if (args[argPos].equals("-u")) {
-            uploadURL = args[++argPos];
-            argPos++;
-        }		
-        if (argPos >= args.length)
-            usage();
+	    try {
+	        if (args[argPos].equals("-l")) {
+	            localInstall = true;
+	            argPos++;
+	        }
+	        String adminURL = null;
+	        String uploadURL = null;
+	        if (args[argPos].equals("-a")) {
+	            adminURL = args[++argPos];
+	            argPos++;
+	        }
+	        if (args[argPos].equals("-u")) {
+	            uploadURL = args[++argPos];
+	            argPos++;
+	        }		
+	        if (argPos >= args.length)
+	            usage();
 
-		int cmd = lookupCmd(args[argPos++]);
-		try {
+	        int cmd = lookupCmd(args[argPos++]);
 			switch (cmd) {
 			case LIST_ZIMLETS:
 				boolean everything = false;
@@ -1852,6 +1852,8 @@ public class ZimletUtil {
 				usage();
 				break;
 			}
+	    } catch (ArrayIndexOutOfBoundsException ex) {
+	        usage();
 		} catch (Exception e) {
 		    e.printStackTrace();
 			if (sQuietMode)

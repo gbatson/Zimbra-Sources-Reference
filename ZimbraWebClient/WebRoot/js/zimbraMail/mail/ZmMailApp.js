@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -42,6 +42,7 @@ ZmMailApp = function(container, parentController) {
 	this.numEntries				= 0; // offline, initial sync
 	this.globalMailCount		= 0; // offline, new mail count
 
+	this._throttleStats = [];
 	this._addSettingsChangeListeners();
 };
 
@@ -929,14 +930,16 @@ function(notify) {
 	var deletedIds = notify.deleted.id && notify.deleted.id.split(",");
 	var virtConv = {};
 	var newDeletedIds = [];
-	for (var i = 0; i < deletedIds.length; i++) {
-		var id = deletedIds[i];
-		var nId = ZmOrganizer.normalizeId(id);
-		if (nId < 0) {
-			virtConv[nId] = true;
-			virtConvDeleted = true;
-		} else {
-			newDeletedIds.push(id);
+	if (deletedIds && deletedIds.length) {
+		for (var i = 0; i < deletedIds.length; i++) {
+			var id = deletedIds[i];
+			var nId = ZmOrganizer.normalizeId(id);
+			if (nId < 0) {
+				virtConv[nId] = true;
+				virtConvDeleted = true;
+			} else {
+				newDeletedIds.push(id);
+			}
 		}
 	}
 	if (!virtConvDeleted) {
@@ -1305,8 +1308,32 @@ function(creates, type, items, currList, sortBy, convs, last) {
 		}
 	}
 
+	var INTERVAL_LENGTH = 10 * 1000; //10 seconds
+	var INTERVAL_THRESHOLD = 20; //throttle more than 20 messages.
 	for (var i = 0; i < list.length; i++) {
 		var create = list[i];
+
+		// generic throttling mechanism. Do it per folder. reset every 10 seconds. If more than 40 creates arrive in this interval, stop handling them. 
+		// This is used to throttle external accounts syncs but also good in general to prevent the client from hanging in case of a huge burst of updates.
+		var folder = create.l || "conv"; //I bundle all conv creates together (since they don't provide folder) to make it simple. There are NOT a lot of conv creates at this stage. we mostly create them in ZmMailList.prototype.notifyCreate from messages.
+		var now = new Date();
+		var data = this._throttleStats[folder];
+		if (!data || now.getTime() - data.intervalStart.getTime() > INTERVAL_LENGTH) {
+			data = this._throttleStats[folder] = {
+				intervalStart: now,
+				count: 0
+			}
+		}
+		data.count++;
+		if (data.count > INTERVAL_THRESHOLD) {
+			if (data.count == INTERVAL_THRESHOLD + 1) {
+				DBG.println(AjxDebug.DBG1, "folder " + folder + " starting to throttle at  " + now);
+			}
+			result.hasMore = true;
+			continue;
+		}
+
+
 		AjxDebug.println(AjxDebug.NOTIFY, "ZmMailApp: process create notification:");
 		var extra = (type == ZmItem.MSG) ? "|cid=" + create.cid + "|l=" + create.l : "|n=" + create.n;
 		AjxDebug.println(AjxDebug.NOTIFY, type + ": id=" + create.id + "|su='" + create.su + "'|f=" + create.f + "|d=" + create.d + extra);
@@ -1489,7 +1516,7 @@ function() {
 
 ZmMailApp.prototype.launch =
 function(params, callback) {
-
+	this._setLaunchTime(this.toString(), new Date());
 	// set type for initial search
 	this._groupBy = appCtxt.get(ZmSetting.GROUP_MAIL_BY);
 
@@ -1623,7 +1650,7 @@ function(query, callback, response, type) {
 ZmMailApp.prototype.getSearchParams =
 function(params) {
 	params = params || {};
-	if (!appCtxt.inStartup && appCtxt.get(ZmSetting.READING_PANE_ENABLED)) {
+	if (!appCtxt.inStartup && (appCtxt.get(ZmSetting.READING_PANE_LOCATION) != ZmSetting.RP_OFF)) {
 		params.fetch = true;
 	}
 	AjxDispatcher.require("MailCore");
@@ -1647,6 +1674,8 @@ ZmMailApp.prototype._handleLoadShowSearchResults =
 function(results, callback) {
 	var controller = (results.type == ZmItem.MSG) ? this.getTradController() : this.getConvListController();
 	controller.show(results);
+	this._setLoadedTime(this.toString(), new Date());
+	
 	if (this._forceMsgView) {
 		controller.selectFirstItem();
 		this._forceMsgView = false;

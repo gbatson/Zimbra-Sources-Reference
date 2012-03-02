@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -853,7 +853,25 @@ public class DbOfflineDirectory {
             OfflineDbPool.getInstance().quietClose(conn);
         }        
     }
-    
+
+    public static void deleteGranter(String name, String granterId) throws ServiceException {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        try {
+            conn = OfflineDbPool.getInstance().getConnection();
+            stmt = conn.prepareStatement("DELETE FROM directory_granter WHERE granter_name = ? and granter_id = ?");
+            stmt.setString(1, name);
+            stmt.setString(2, granterId);
+            stmt.executeUpdate();
+            conn.commit();
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("deleting granter "+name+ ":"+ granterId + " due to " + e.getMessage(), e);
+        } finally {
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
+        }
+    }
+
     private static String[] deprecatedTriggers = {"fki_dattr_entry_id", "fku_dattr_entry_id", "fkdc_dattr_entry_id",
         "fki_dleaf_entry_id", "fku_dleaf_entry_id", "fkdc_dleaf_entry_id", "fki_dleafattr_entry_id",
         "fku_dleafattr_entry_id","fkdc_dleafattr_entry_id"

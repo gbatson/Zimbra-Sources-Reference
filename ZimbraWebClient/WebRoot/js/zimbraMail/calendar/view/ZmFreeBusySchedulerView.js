@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -1259,26 +1259,28 @@ function(sched, type, svp) {
 
 	if (sched.attType == type) return;
 
-	// reset row
-	var input = sched.inputObj;
-	input.setValue("", true);
-    input.focus();
-	svp._clearColoredCells(sched);
+    var attendee = sched.attendee;
 
 	// if we wiped out an attendee, make sure it's reflected in master list
-	if (sched.attendee) {
+	if (attendee) {
 
-        var email = this.getEmail(sched.attendee);
+        var email = this.getEmail(attendee);
         delete this._emailToIdx[email];
 
 		if(this.isComposeMode) {
-            this._editView.parent.updateAttendees(sched.attendee, sched.attType, ZmApptComposeView.MODE_REMOVE);
+            this._editView.parent.updateAttendees(attendee, sched.attType, ZmApptComposeView.MODE_REMOVE);
             this._editView._setAttendees();
             if(type == ZmCalBaseItem.PERSON) this._editView.updateScheduleAssistant(this._attendees[ZmCalBaseItem.PERSON], ZmCalBaseItem.PERSON);
         }
 		sched.attendee = null;
 	}
 	sched.attType = type;
+
+	// reset row
+	var input = sched.inputObj;
+	input.setValue("", true);
+    input.focus();
+	svp._clearColoredCells(sched);
 
 	// reset autocomplete handler
 	var inputEl = input.getInputElement();

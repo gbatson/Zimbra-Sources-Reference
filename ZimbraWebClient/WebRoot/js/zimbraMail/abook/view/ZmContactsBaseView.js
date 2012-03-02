@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -405,12 +405,30 @@ function() {
 	var alphabet = ZmMsg.alphabet.split(",");
 
 	var subs = {
-		id: 		this._htmlElId,
-		alphabet: 	alphabet,
-		numLetters: alphabet.length
+		id: 			this._htmlElId,
+		alphabet: 		alphabet,
+		numLetters: 	alphabet.length,
+		sortVals:		ZmContactAlphabetBar._parseSortVal(ZmMsg.alphabetSortValue),
+		endSortVals:	ZmContactAlphabetBar._parseSortVal(ZmMsg.alphabetEndSortValue)
 	};
 
 	this.getHtmlElement().innerHTML = AjxTemplate.expand("abook.Contacts#ZmAlphabetBar", subs);
+};
+
+ZmContactAlphabetBar._parseSortVal =
+function(sortVal) {
+	if (!sortVal) {
+		return {};
+	}
+	var sortMap = {};
+	var values = sortVal.split(",");
+	if (values && values.length) {
+		for (var i = 0; i < values.length; i++) {
+			var parts = values[i].split(":");
+			sortMap[parts[0]] = parts[1];
+		}
+	}
+	return sortMap;
 };
 
 /**

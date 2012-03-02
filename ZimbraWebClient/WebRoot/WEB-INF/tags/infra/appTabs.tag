@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -103,7 +103,7 @@
         <c:if test="${mailbox.features.options}">
 	        <td class='TabSpacer'/>
 	        <td class='Tab ${selected=='options' ? 'TabSelected' :'TabNormal'}'>
-                <a id='TAB_OPTIONS' href="<c:url value="/h/options?prev=${selected}"/>">
+                <a id='TAB_OPTIONS' href="<c:url value="/h/options?prev=${zm:cook(selected)}"/>">
 	                <span id='tab_ikon_options'><app:img src="startup/ImgPreferences.png" altkey='ALT_APP_OPTIONS'/></span><span><fmt:message
 	                    key="options"/></span></a>
 	        </td>

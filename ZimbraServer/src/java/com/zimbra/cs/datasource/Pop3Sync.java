@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -253,8 +253,12 @@ public class Pop3Sync extends MailItemImport {
         // bug 47796: Set received date to sent date if available otherwise use current time
             try {
                 Date sentDate = pm.getMimeMessage().getSentDate();
+                if (sentDate == null) {
+                    LOG.warn("null sent date; probably due to parse error. Date header value: [%s]",pm.getMimeMessage().getHeader("Date", null));
+                }
                 pm.setReceivedDate(sentDate != null ? sentDate.getTime() : System.currentTimeMillis());
             } catch (MessagingException e) {
+                LOG.warn("unable to get sent date from parsed message due to exception, must use current time", e);
                 pm.setReceivedDate(System.currentTimeMillis());
             }
             DeliveryContext dc = mc.getDeliveryContext();

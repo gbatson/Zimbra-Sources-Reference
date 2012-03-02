@@ -1,7 +1,7 @@
 #
 # ***** BEGIN LICENSE BLOCK *****
 # Zimbra Collaboration Suite Server
-# Copyright (C) 2010 Zimbra, Inc.
+# Copyright (C) 2010, 2011 VMware, Inc.
 # 
 # The contents of this file are subject to the Zimbra Public License
 # Version 1.3 ("License"); you may not use this file except in
@@ -53,6 +53,17 @@ class GlobalConfig(config.Config):
 			p = re.findall(r'reject_rbl_client\s+(\S+)',self["zimbraMtaRestriction"])
 			self["zimbraMtaRestriction"] = q
 			self["zimbraMtaRestrictionRBLs"] = ' '.join(p)
+
+		if self["zimbraIPMode"] is not None:
+			v = self["zimbraIPMode"]
+			v = str(v)
+			v = v.lower()
+			if v == "ipv4":
+				self["zimbraPostconfProtocol"] = "ipv4"
+			if v == "ipv6":
+				self["zimbraPostconfProtocol"] = "ipv6"
+			if v == "both":
+				self["zimbraPostconfProtocol"] = "all"
 
 		dt = time.clock()-t1
 		Log.logMsg(5,"globalconfig loaded in %.2f seconds" % dt)

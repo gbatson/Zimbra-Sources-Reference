@@ -1,13 +1,13 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -24,7 +24,7 @@
     <%-- NOTE: Currently Japanese only for bug 52823 --%>
     <%-- TODO: Use for all languages? only asian languages? based on COS? pref? etc? --%>
     <c:when test="${locale.language eq 'ja' and not empty base and not empty text}">
-        <ruby><rb>${zm:cook(base)}</rb><rp>(</rp><rt>${zm:cook(base)}</rt><rp>)</rp></ruby>
+        <ruby><rb>${zm:cook(base)}</rb><rp>(</rp><rt>${zm:cook(text)}</rt><rp>)</rp></ruby>
     </c:when>
     <c:when test="${not empty base}">
        ${zm:cook(base)}

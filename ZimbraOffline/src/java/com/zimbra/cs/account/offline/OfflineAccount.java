@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,6 +32,7 @@ public class OfflineAccount extends Account {
     public static class Version {
         private static Version v6 = new Version("6.0.0");
         private static Version v7 = new Version("7.0.0");
+        private static Version v8 = new Version("8.0.0");
 
         private int major;
         private int minor;
@@ -75,6 +76,10 @@ public class OfflineAccount extends Account {
         
         public boolean isAtLeast7xx() {
             return isAtLeast(v7);
+        }
+
+        public boolean isAtLeast8xx() {
+            return isAtLeast(v8);
         }
 
         public String toString() { return "" + major + "." + minor + "." + maintenance; }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -239,7 +239,7 @@ function(value) {
             if(email) {
                 addr = email.getAddress();
             }
-            if(addr) emailList.push(addr);
+            if(addr) emailList.push(AjxStringUtil.htmlEncode(addr));
         }
     }
 	return emailList;
@@ -564,6 +564,7 @@ function(prefsId, list) {
  * validationFunction	function to validate the value
  * errorMessage			message to show if validation fails
  * precondition			pref will not be displayed unless precondition is true
+ * inputId              array of unique ids to be applied to input
  */
 ZmPref.SETUP = {};
 

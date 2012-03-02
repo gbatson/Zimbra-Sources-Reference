@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -412,6 +412,8 @@ function(ex, method, params, restartOnError, obj) {
 			this.popupErrorDialog(ZaMsg.ERROR_INVALID_VOLUME_PATH, ex);
 		} else if(ex.code == ZmCsfeException.NO_SUCH_VOLUME) {
 			this.popupErrorDialog(ZaMsg.ERROR_NO_SUCH_VOLUME, ex);
+		}else if (ex.code == ZmCsfeException.CANNOT_CHANGE_VOLUME) {
+                	this.popupErrorDialog(ZaMsg.ERROR_CANNOT_CHANGE_VOLUME, ex);
 		} else if(ex.code == ZmCsfeException.ALREADY_EXISTS) {
 			this.popupErrorDialog(ZaMsg.ERROR_VOLUME_ALREADY_EXISTS, ex);
 		} else if(ex.code == ZmCsfeException.LICENSE_ERROR) {

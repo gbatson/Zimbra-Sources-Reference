@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -342,9 +342,18 @@ function(normalizedStr, ignoreEncodingArray) {
 com_zimbra_socialTwitter.prototype._postToTweetCallback =
 function(account, response) {
 	if (!response.success) {
-		var msgDialog = appCtxt.getMsgDialog();
-		msgDialog.setMessage(this.zimlet.getMessage("twitterError"), DwtMessageDialog.INFO_STYLE);
-		msgDialog.popup();
+		var text = response.text;
+		try{
+			jsonObj = eval("(" + text + ")");
+		} catch (e) {
+			jsonObj = {error: this.zimlet.getMessage("twitterError")}
+		}
+		if (jsonObj.error != undefined) {
+			var msgDialog = appCtxt.getMsgDialog();
+			var msg = jsonObj.error;
+			msgDialog.setMessage(msg, DwtMessageDialog.WARNING_STYLE);
+			msgDialog.popup();
+		}
 		return;
 	}
 	var jsonObj = eval("(" + response.text + ")");
@@ -463,7 +472,7 @@ function(showAlertObj) {
 	hdr[j++] = "<TABLE width=500px>";
 	hdr[j++] = "<TR><TD align=left>";
 	hdr[j++] = "<label style='font-weight:bold;font-size:13px;color:blue';font-family:'Lucida Grande',sans-serif;>";
-	hdr[j++] = AjxMessageFormat.format(this.zimlet.getMessage("youHaveXUnreadTweets"), totalUnreadCount); 
+	hdr[j++] = AjxMessageFormat.format(this.zimlet.getMessage("youHaveXUnreadTweets"), totalUnreadCount);
 	hdr[j++] = "</label>";
 	hdr[j++] = "</td>";
 	hdr[j++] = "</tr>";
@@ -610,11 +619,12 @@ function() {
 com_zimbra_socialTwitter.prototype._handleOAuthResult =
 function(result) {
 	if (!result.success) {
-		if (result.httpResponse) {
-			this.zimlet.showWarningMsg(result.httpResponse.text);
-		} else {
-			this.zimlet.showWarningMsg(this.zimlet.getMessage("unknownError"));
-		}
+		var errorDialog = appCtxt.getErrorDialog();
+		errorDialog.reset();
+		var msg = result.httpResponse && result.httpResponse.status ? "HTTP ERROR "+ result.httpResponse.status : this.zimlet.getMessage("unknownError");
+		var detailStr = result.httpResponse && result.httpResponse.text ? result.httpResponse.text : this.zimlet.getMessage("unknownError");
+		errorDialog.setMessage(msg, detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
+		errorDialog.popup();
 		return;
 	}
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -257,6 +257,7 @@ function(creates, force) {
 
 ZmTasksApp.prototype.launch =
 function(params, callback) {
+	this._setLaunchTime(this.toString(), new Date());
 	var loadCallback = new AjxCallback(this, this._handleLoadLaunch, callback);
 	AjxDispatcher.require(["TasksCore", "Tasks"], true, loadCallback, null, true);
 };
@@ -285,6 +286,7 @@ ZmTasksApp.prototype._handleLoadShowSearchResults =
 function(results, callback) {
 	var folderId = results && results.search && results.search.singleTerm && results.search.folderId;
 	this.getTaskListController().show(results, folderId);
+	this._setLoadedTime(this.toString(), new Date());
 	if (callback) callback.run();
 };
 

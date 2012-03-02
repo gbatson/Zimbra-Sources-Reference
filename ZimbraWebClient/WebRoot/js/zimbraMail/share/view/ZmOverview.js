@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -229,6 +229,17 @@ function(typeOnly) {
 	}
 	return null;
 };
+
+ZmOverview.prototype.deselectAllTreeViews =
+function() {
+	for (var i = 0; i < this._treeIds.length; i++) {
+		var treeView = this._treeHash[this._treeIds[i]];
+		if (treeView) {
+			treeView.deselectAll();
+		}
+	}
+};
+
 
 /**
  * Selects the item with the given ID within the given tree in this overview.

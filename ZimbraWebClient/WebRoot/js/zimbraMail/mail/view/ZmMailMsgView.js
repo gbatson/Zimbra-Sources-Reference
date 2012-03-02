@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -583,9 +583,11 @@ function(img) {
 
 	var attachments = this._msg.attachments;
 	var csfeMsgFetch = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI);
-	var src = img.getAttribute("src") || img.getAttribute("dfsrc");
-	if (!src) {
-		return;
+	try {
+		var src = img.getAttribute("src") || img.getAttribute("dfsrc");
+	}
+	catch(e) {
+		AjxDebug.println(AjxDebug.DATA_URI, "_checkImgInAttachments: couldn't access attribute src or dfsrc");
 	}
 	var cid;
 	if (/^cid:(.*)/.test(src)) {
@@ -629,8 +631,9 @@ function(msg, idoc) {
 		this.onload = null; // *this* is reference to <img> el.
 	};
 	for (var i = 0; i < images.length; i++) {
-		var external = ZmMailMsgView.__unfangInternalImage(msg, images[i], "src");
+		var external = ZmMailMsgView._isExternalImage(images[i]);
 		if(!external){ //Inline image
+			ZmMailMsgView.__unfangInternalImage(msg, images[i], "src");
 			images[i].onload = onload;
 		}
 		hasExternalImages = external || hasExternalImages;
@@ -650,24 +653,51 @@ function(msg, node) {
 		var child = node.firstChild;
 		while (child) {
 			if (child.nodeType == AjxUtil.ELEMENT_NODE) {
-				hasExternalImages = ZmMailMsgView.__unfangInternalImage(msg, child, "background") || hasExternalImages;
+				hasExternalImages = ZmMailMsgView.__unfangInternalImage(msg, child, "background", true) || hasExternalImages;
 				recurse(child);
 			}
 			child = child.nextSibling;
 		}
 	}
 
-	if(node.innerHTML.indexOf("dfbackground") != -1){
+	if(node.innerHTML.indexOf("dfbackground") != -1) {
 		recurse(node);
+	}
+	else if (node.attributes && node.getAttribute("dfbackground") != -1) {
+		hasExternalImages = ZmMailMsgView.__unfangInternalImage(msg, node, "background", true);	
 	}
 
 	return hasExternalImages;
 };
 
+/**
+ * Determines if an img element references an external image
+ * @param elem {HTMLelement}
+ * @return {Boolean} true if image is external
+ */
+ZmMailMsgView._isExternalImage = 
+function(elem) {
+	if (!elem) {
+		return false;
+	}
+	return Boolean(elem.getAttribute("dfsrc"));
+}
+
+/**
+ * Unfangs images
+ * @param msg {ZmMailMsg} mail message
+ * @param elem  {HTMLElement} element to be checked
+ * @param aname {String} attribute name
+ * @param prependDF  {Boolean} true to prepend "df" to attribute name 
+ */
 ZmMailMsgView.__unfangInternalImage =
-function(msg, elem, aname) {
-	var df_aname = "df"+aname;
-	var avalue = elem.getAttribute(df_aname);
+function(msg, elem, aname, prependDF) {
+	try {
+	  var avalue = elem.getAttribute(prependDF ? "df" + aname : aname);
+	}
+	catch(e) {
+		AjxDebug.println(AjxDebug.DATA_URI, "__unfangInternalImage: couldn't access attribute " + aname);
+	}
 	if (avalue) {
 		if (avalue.substr(0,4) == "cid:") {
 			var cid = "<" + AjxStringUtil.urlComponentDecode(avalue.substr(4)) + ">"; // Parse percent-escaping per bug #52085 (especially %40 to @)
@@ -693,11 +723,14 @@ function(msg, elem, aname) {
 				//elem.setAttribute(df_aname, avalue)
 				return false;
 			}
+		} else if (avalue.substring(0,5) == "data:") {
+			return false;
 		}
 		return true;
 	}
 	return false;
 };
+
 
 ZmMailMsgView.prototype._createDisplayImageClickClosure =
 function(msg, idoc, id, iframe) {
@@ -833,6 +866,12 @@ ZmMailMsgView.prototype._makeIframeProxy =
 function(container, html, isTextMsg, isTruncated) {
 	// bug fix #4943
 	if (html == null) { html = ""; }
+
+	if (!isTextMsg) {
+		//Microsoft silly smilies
+		html = html.replace(/<span style="font-family:Wingdings">J<\/span>/g, "\u263a"); // :)
+		html = html.replace(/<span style="font-family:Wingdings">L<\/span>/g, "\u2639"); // :(
+	}
 
 	var displayImages;
 	if (!isTextMsg &&
@@ -1415,7 +1454,7 @@ function(msg, container, callback) {
 
 	this._setAttachmentLinks();
 	this._expandRows(this._expandHeader);
-
+	Dwt.setLoadedTime("ZmMailItem", new Date());
 	if (callback) { callback.run(); }
 };
 

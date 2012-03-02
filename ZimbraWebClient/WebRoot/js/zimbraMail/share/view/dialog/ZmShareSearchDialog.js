@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,7 +18,8 @@ ZmShareSearchDialog = function(params) {
     params.className = params.className || "ZmShareSearchDialog DwtDialog";
     params.title = ZmMsg.sharedFoldersAddTitle;
     params.standardButtons = [ ZmShareSearchDialog.ADD_BUTTON, DwtDialog.CANCEL_BUTTON ];
-
+	params.id = "ZmShareSearchDialog";
+	
     // setup auto-complete
     // NOTE: This needs to be done before default construction so
     // NOTE: that it is available when we initialize the email
@@ -400,7 +401,7 @@ ZmShareSearchDialog.prototype._appendShareNodes = function(owners) {
                 if (this._getNode(shareId) != null) continue;
 
                  // NOTE: strip the leading slash from folder path
-                var shareName = share.folderPath.substr(1);
+                var shareName = share.folderPath.substr(1).replace(/\//g, " ");
                 var shareNode = this._createOrganizer(parentNode, shareId, shareName);
                 shareNode.shareInfo = share;
 
@@ -411,7 +412,7 @@ ZmShareSearchDialog.prototype._appendShareNodes = function(owners) {
                 share.roleActions = ZmShare.getRoleActions(share.role);
                 share.normalizedOwnerName = share.ownerName || share.ownerEmail;
                 share.normalizedGranteeName = share.granteeDisplayName || share.granteeName;
-                share.normalizedFolderPath = share.folderPath.substr(1).replace("/"," ");
+                share.normalizedFolderPath = shareName;
                 share.defaultMountpointName = ZmShare.getDefaultMountpointName(share.normalizedOwnerName, share.normalizedFolderPath);
 
                 // set tooltip
@@ -523,7 +524,8 @@ ZmShareSearchDialog.prototype._createHtmlFromTemplate = function(templateId, dat
 
                 }
             ]
-        }
+        },
+	    id: "ZmShareSearchView"
     };
     this._form = new DwtForm(params);
     this.setView(this._form);

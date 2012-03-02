@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
 import org.testng.annotations.Test;
@@ -72,10 +88,8 @@ public class SendDocAttachment extends AjaxCommonTest {
 		else
 			mailform = (FormMailNew) app.zPageBriefcase.zToolbarPressPulldown(
 					Button.B_ACTIONS, Button.O_SEND_AS_ATTACHMENT, docItem);
-		
-		// Verify the new mail form is opened
-		ZAssert.assertTrue(mailform.zIsVisible(), "Verify the new form opened");
 
+		// Verify the new mail form has attachment
 		ZAssert.assertTrue(app.zPageBriefcase
 				.sIsElementPresent(FormMailNew.Locators.zAttachmentText
 						+ docName + ")"), "Verify the attachment text");
@@ -91,8 +105,8 @@ public class SendDocAttachment extends AjaxCommonTest {
 		warningDlg.zClickButton(Button.B_NO);
 
 		// Make sure the dialog is dismissed
-		warningDlg.zWaitForClose(); 
-		
+		warningDlg.zWaitForClose();
+
 		// delete document upon test completion
 		app.zPageBriefcase.deleteFileByName(docItem.getName());
 	}
@@ -127,8 +141,8 @@ public class SendDocAttachment extends AjaxCommonTest {
 						+ "</doc>"
 						+ "</SaveDocumentRequest>");
 
-		//SleepUtil.sleepVerySmall();
-		
+		// SleepUtil.sleepVerySmall();
+
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
@@ -138,12 +152,10 @@ public class SendDocAttachment extends AjaxCommonTest {
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
 
 		// Click on Send as attachment using Right Click Context Menu
-		FormMailNew mailform = (FormMailNew) app.zPageBriefcase.zListItem(Action.A_RIGHTCLICK,
-				Button.O_SEND_AS_ATTACHMENT, docItem);
+		FormMailNew mailform = (FormMailNew) app.zPageBriefcase.zListItem(
+				Action.A_RIGHTCLICK, Button.O_SEND_AS_ATTACHMENT, docItem);
 
-		// Verify the new mail form is opened
-		ZAssert.assertTrue(mailform.zIsVisible(), "Verify the new form opened");
-
+		// Verify the new mail form has attachment
 		ZAssert.assertTrue(app.zPageBriefcase
 				.zWaitForElementPresent(FormMailNew.Locators.zAttachmentText
 						+ docName + ")"), "Verify the attachment text");
@@ -159,7 +171,7 @@ public class SendDocAttachment extends AjaxCommonTest {
 		warningDlg.zClickButton(Button.B_NO);
 
 		warningDlg.zWaitForClose(); // Make sure the dialog is dismissed
-		
+
 		// delete document upon test completion
 		app.zPageBriefcase.deleteFileByName(docItem.getName());
 	}

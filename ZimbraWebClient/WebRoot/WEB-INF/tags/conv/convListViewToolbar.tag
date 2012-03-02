@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -158,40 +158,6 @@
 							</c:when>
 						</c:choose>
 					</c:if>
-					<c:if test="${mailbox.features.conversations}">
-					<td><div class='vertSep'></div></td>
-					<td nowrap valign="middle">
-						<fmt:message key="groupMailBy"/>
-						<select name="${keys ? 'viewOp' : ' '}" id="${keys ? 'viewOp' : ' '}" onchange="${keys ? "zclick('SOPSET')" : "setviewOp(this.value)"}">
-							<c:if test="${!empty param.st}">
-								<option value="byConv" ${param.st eq 'conversation' ? 'selected=selected' : ''}><fmt:message key="byConversation"/></option>
-								<option value="byMsg" ${param.st eq 'message' ? 'selected=selected' : ''}><fmt:message key="byMessage"/></option>
-							</c:if>
-							<c:if test="${empty param.st}">
-								<option value="byConv" ${mailbox.prefs.groupByConversation ? 'selected=selected' : ''}><fmt:message key="byConversation"/></option>
-								<option value="byMsg" ${mailbox.prefs.groupByMessage ? 'selected=selected' : ''}><fmt:message key="byMessage"/></option>
-							</c:if>
-                        </select>
-						<app:button id="${keys ? 'OPSET' : ''}" name="viewAction" text="actionGo" />
-					</td>
-					</c:if>
-                    <td><div class='vertSep'></div></td>
-					<td nowrap valign="middle">                     
-						<fmt:message key="viewLabel"/>
-						<select name="${keys ? 'readingPaneOp' : ' '}" id="${keys ? 'readingPaneOp' : ' '}" onchange="${keys ? "zclick('SOPVIEW')" : "setreadingPaneOp(this.value)"}">
-							<c:if test="${!empty param.st}">
-                                <option value="right" ${mailbox.prefs.readingPaneLocation eq 'right' ? 'selected=selected' : ''}><fmt:message key="readingPaneOnRight"/></option>
-                                <option value="bottom" ${mailbox.prefs.readingPaneLocation eq 'bottom' ? 'selected=selected' : ''}><fmt:message key="readingPaneAtBottom"/></option>
-                                <option value="off" ${mailbox.prefs.readingPaneLocation eq 'off' ? 'selected=selected' : ''}><fmt:message key="readingPaneOff"/></option>
-							</c:if>
-							<c:if test="${empty param.st}">
-                                <option value="right" ${mailbox.prefs.readingPaneLocation eq 'right' ? 'selected=selected' : ''}><fmt:message key="readingPaneOnRight"/></option>
-                                <option value="bottom" ${mailbox.prefs.readingPaneLocation eq 'bottom' ? 'selected=selected' : ''}><fmt:message key="readingPaneAtBottom"/></option>
-                                <option value="off" ${mailbox.prefs.readingPaneLocation eq 'off' ? 'selected=selected' : ''}><fmt:message key="readingPaneOff"/></option>
-							</c:if>
-                        </select>
-						<app:button id="${keys ? 'OPVIEW' : ''}" name="readingPaneAction" text="actionGo" />
-					</td>
 				</tr>
 			</table>
 		</td>

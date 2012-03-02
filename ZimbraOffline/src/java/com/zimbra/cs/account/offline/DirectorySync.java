@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -542,7 +542,7 @@ public class DirectorySync {
             // XXX: if the signature has been renamed locally, no need to rename the conflict
             Map<String, Object> resolution = new HashMap<String, Object>(1);
             resolution.put(Provisioning.A_zimbraSignatureName, name + '{' + UUID.randomUUID().toString() + '}');
-            prov.modifySignature(acct, signature.getId(), resolution);
+            prov.modifySignature(acct, signature == null ? conflict.getId() : signature.getId(), resolution);
             OfflineLog.offline.debug("dsync: detected conflict and renamed signature: " + acct.getName() + '/' + conflict.getName());
         }
 

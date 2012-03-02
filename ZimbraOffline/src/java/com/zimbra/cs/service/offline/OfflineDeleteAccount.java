@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,10 +30,10 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.account.offline.OfflineAccount;
-import com.zimbra.cs.im.IMPersona;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.OfflineMailboxManager;
+import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.service.admin.DeleteAccount;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -53,20 +53,23 @@ public class OfflineDeleteAccount extends DeleteAccount {
         if (account == null)
             throw AccountServiceException.NO_SUCH_ACCOUNT(id);
 
+        OfflineLog.offline.debug("delete account request received for acct %s",account.getName());
         checkAccountRight(zsc, account, Admin.R_deleteAccount);        
         if (account instanceof OfflineAccount)
         {
             if (((OfflineAccount)account).isDisabledDueToError()) {
+                OfflineLog.offline.debug("deleting bad mailbox");
                 OfflineMailboxManager omgr = (OfflineMailboxManager) MailboxManager.getInstance();
                 omgr.purgeBadMailboxByAccountId(account.getId());
             } else {
                 Mailbox mbox = Provisioning.onLocalServer(account) ? 
                         MailboxManager.getInstance().getMailboxByAccount(account, false) : null;
-                if (mbox != null)
+                if (mbox != null) {
+                    OfflineLog.offline.debug("deleting mailbox");
                     mbox.deleteMailbox();
+                }
             }
         }
-        IMPersona.deleteIMPersona(account.getName());
         prov.deleteAccount(id);
         ZimbraLog.security.info(ZimbraLog.encodeAttrs(
             new String[] {"cmd", "DeleteAccount","name", account.getName(), "id", account.getId()}));

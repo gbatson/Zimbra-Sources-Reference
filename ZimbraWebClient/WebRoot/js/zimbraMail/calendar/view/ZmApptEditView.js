@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -339,7 +339,7 @@ function(tabGroup) {
         tabGroup.addMember(this._attInputField[ZmCalBaseItem.OPTIONAL_PERSON].getInputElement());
     }    
 	tabGroup.addMember(this._attInputField[ZmCalBaseItem.LOCATION].getInputElement());
-    if(this.GROUP_CALENDAR_ENABLED) {
+    if(this.GROUP_CALENDAR_ENABLED && appCtxt.get(ZmSetting.GAL_ENABLED)) {
 	    tabGroup.addMember(this._attInputField[ZmCalBaseItem.EQUIPMENT].getInputElement());
     }
     tabGroup.addMember(this._startDateField);
@@ -497,7 +497,7 @@ function() {
     var locations = this._attendees[ZmCalBaseItem.LOCATION];
     //non-resource location labels also contributes to empty attendee
     var isLocationResource =(locations && locations.size() > 0);
-	var isAttendeesNotEmpty = AjxStringUtil.trim(this._attendeesInputField.getValue()) || AjxStringUtil.trim(this._optAttendeesInputField.getValue()) || AjxStringUtil.trim(this._resourceInputField.getValue()) || isLocationResource;
+	var isAttendeesNotEmpty = AjxStringUtil.trim(this._attendeesInputField.getValue()) || AjxStringUtil.trim(this._optAttendeesInputField.getValue()) || (this._resourceInputField ? AjxStringUtil.trim(this._resourceInputField.getValue()) : "") || isLocationResource;
     return !isAttendeesNotEmpty;
     
 };
@@ -788,7 +788,7 @@ function(width) {
 		this._attendeesInputField = this._createInputField("_person", ZmCalBaseItem.PERSON, params);
 		this._optAttendeesInputField = this._createInputField("_optional", ZmCalBaseItem.OPTIONAL_PERSON);
         //add Resources Field
-        this._resourceInputField = this._createInputField("_resourcesData", ZmCalBaseItem.EQUIPMENT, {strictMode:false});
+        if(appCtxt.get(ZmSetting.GAL_ENABLED)) this._resourceInputField = this._createInputField("_resourcesData", ZmCalBaseItem.EQUIPMENT, {strictMode:false});
 	}
 
     // add location input field
@@ -897,7 +897,7 @@ function(width) {
     if(this.GROUP_CALENDAR_ENABLED) {
         Dwt.setVisible(this._optionalAttendeesContainer, false);
         Dwt.setVisible(this._optAttendeesInputField.getInputElement(), false);
-        Dwt.setVisible(this._resourceInputField.getInputElement(), false);
+        if(this._resourceInputField) Dwt.setVisible(this._resourceInputField.getInputElement(), false);
     }
 
     this._inviteMsgContainer = document.getElementById(this._htmlElId + "_invitemsg_container");
@@ -1926,15 +1926,17 @@ ZmApptEditView.prototype._setAttendees =
 function() {
 
     for (var t = 0; t < this._attTypes.length; t++) {
-		var type = this._attTypes[t];
+        var type = this._attTypes[t];
 		var attendees = this._attendees[type].getArray();
 		var numAttendees = attendees.length;
 		var addrInput = this._attInputField[type];
 		var curVal = AjxStringUtil.trim(this._attInputField[type].getValue());
 		if (type == ZmCalBaseItem.PERSON) {
 			var reqAttendees = ZmApptViewHelper.filterAttendeesByRole(attendees, ZmCalItem.ROLE_REQUIRED);
-			this._setAddresses(addrInput, reqAttendees, type);
 			var optAttendees = ZmApptViewHelper.filterAttendeesByRole(attendees, ZmCalItem.ROLE_OPTIONAL);
+            //bug: 62008 - always compute all the required/optional arrays before setting them to avoid race condition
+            //_setAddress is a costly operation which will trigger focus listeners and change the state of attendees
+            this._setAddresses(addrInput, reqAttendees, type);
 			this._setAddresses(this._attInputField[ZmCalBaseItem.OPTIONAL_PERSON], optAttendees, type);
 		}
 		else if (type == ZmCalBaseItem.LOCATION) {
@@ -2098,7 +2100,8 @@ function(type, attendees) {
 
     attendees = (attendees instanceof AjxVector) ? attendees.getArray() :
                 (attendees instanceof Array) ? attendees : [attendees];
-    
+
+    if (appCtxt.isOffline && !appCtxt.isZDOnline()) { return; }
     //avoid duplicate freebusy request by updating the view in sequence
     if(type == ZmCalBaseItem.PERSON) {
         this._scheduleView.setUpdateCallback(new AjxCallback(this, this.updateScheduleAssistant, [attendees, type]))

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -815,6 +815,24 @@ function(props) {
 ZmZimletBase.prototype.setBusyIcon =
 function() {
 	this.setIcon("ZimbraIcon DwtWait16Icon");
+};
+
+/**
+ * This Zimlet hook allows Zimlets to set custom headers to outgoing emails.
+ * To set a custom header, they need to push header name and header value to
+ * customMimeHeaders array.
+ *  Example:
+ *  customHeaders.push({name:"header1", _content:"headerValue"});
+ *
+ *  Note: Header name ("header1" in this case) MUST be one of the valid/allowed values of
+ *  zimbraCustomMimeHeaderNameAllowed global-config property (set by admin)
+ * @param {array} customMimeHeaders The array containing all custom headers
+ *
+ */
+ZmZimletBase.prototype.addCustomMimeHeaders =
+function(customMimeHeaders) {
+	//Example:
+	//customMimeHeaders.push({name:"header1", _content:"headerValue"});
 };
 
 /**

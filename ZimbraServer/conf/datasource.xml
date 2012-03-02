@@ -23,12 +23,13 @@
         <folder remotePath="[Gmail]/Sent Mail" localPath="/Sent" sync="true"/>
         <folder remotePath="[Gmail]/Spam" localPath="/Junk" sync="false"/>
         <folder remotePath="[Gmail]/Starred" ignore="true"/>
+        <folder remotePath="[Gmail]/Important" ignore="true"/>
     </service>
 
-    <service name="aol.com" saveToSent="false">
+    <service name="aol.com" saveToSent="true">
         <folder remotePath="INBOX" localPath="/Inbox" sync="true"/>
         <folder remotePath="Spam" localPath="/Junk" sync="true"/>
-        <folder remotePath="Sent Items" localPath="/Sent" sync="true"/>
+        <folder remotePath="Sent" localPath="/Sent" sync="true"/>
     </service>
 
     <service name=".msexchange" saveToSent="true">

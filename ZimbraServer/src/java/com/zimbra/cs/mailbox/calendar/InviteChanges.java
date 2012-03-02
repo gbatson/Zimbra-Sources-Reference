@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -84,6 +84,15 @@ public class InviteChanges {
      */
     public boolean isReplyInvalidatingChange() {
         return changed(LOCATION | TIME | RECURRENCE);
+    }
+
+    /**
+     * Returns true if the change is for a recurrence series and it causes exception instances to be removed.
+     * Includes changes to time or recurrence.
+     * @return
+     */
+    public boolean isExceptionRemovingChange() {
+        return changedTime() || changedRecurrence();
     }
 
     private void diffInvites(Invite inv1, Invite inv2) {

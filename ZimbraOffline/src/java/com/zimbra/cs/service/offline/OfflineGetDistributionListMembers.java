@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -46,7 +46,7 @@ public class OfflineGetDistributionListMembers extends GetDistributionListMember
         
         Element d = request.getElement(AdminConstants.E_DL);
         String dlName = d.getText();
-        Contact con = GalSyncUtil.getGalContact(account, dlName);
+        Contact con = GalSyncUtil.getGalDlistContact(account, dlName);
         ContactDLMembers dlMembers = new ContactDLMembers(con); 
         return processDLMembers(zsc, dlName, account, limit, offset, dlMembers);
     }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -92,6 +92,7 @@ public class DbMailbox {
 
     public static final int CI_SCHEDULED_TASK_MAILBOX_ID = 3;
     public static final int CI_OUT_OF_OFFICE_MAILBOX_ID = 1;
+    public static final int CI_MOBILE_DEVICES_MAILBOX_ID = 1;
 
     static final String DB_PREFIX_MAILBOX_GROUP = "mboxgroup";
     static final String TABLE_MAILBOX       = "mailbox";

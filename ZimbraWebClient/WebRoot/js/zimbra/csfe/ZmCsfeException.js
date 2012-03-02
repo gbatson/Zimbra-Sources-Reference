@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -181,6 +181,7 @@ ZmCsfeException.TOO_MANY_IDENTITIES					= "account.TOO_MANY_IDENTITIES";
 ZmCsfeException.TOO_MANY_SEARCH_RESULTS				= "account.TOO_MANY_SEARCH_RESULTS";
 ZmCsfeException.NO_SUCH_COS 						= "account.NO_SUCH_COS";
 
+ZmCsfeException.CANNOT_CHANGE_VOLUME = "volume.CANNOT_CHANGE_TYPE_OF_CURRVOL";
 ZmCsfeException.NO_SUCH_VOLUME						= "volume.NO_SUCH_VOLUME";
 ZmCsfeException.ALREADY_EXISTS						= "volume.ALREADY_EXISTS";
 ZmCsfeException.VOLUME_NO_SUCH_PATH					= "volume.NO_SUCH_PATH";

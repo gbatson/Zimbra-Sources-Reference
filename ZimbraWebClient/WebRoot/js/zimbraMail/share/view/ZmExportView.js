@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -68,6 +68,7 @@ ZmExportView = function(params) {
 			}
 		]
 	};
+	params.id = "ZmExportView";
 	ZmImportExportBaseView.call(this, params);
 };
 ZmExportView.prototype = new ZmImportExportBaseView;
@@ -126,7 +127,7 @@ ZmExportView.prototype.getParams = function() {
 			"-",
 			AjxDateFormat.format("yyyy-MM-dd-HHmmss", new Date())
 		].join("");
-		params.filename = AjxStringUtil.urlEncode(params.filename);
+		params.filename = params.filename;
 	}
 
 	return params;

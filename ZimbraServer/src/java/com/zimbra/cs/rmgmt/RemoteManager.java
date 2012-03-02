@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -79,6 +79,10 @@ public class RemoteManager {
         mDescription = "{RemoteManager: " + localName + "->" + mUser + "@" + mHost + ":" + mPort + "}";
     }
 
+    public String getPrivateKeyPath() {
+        return mPrivateKey.getAbsolutePath();
+    }
+
     public String toString() {
         return mDescription;
     }
@@ -139,12 +143,6 @@ public class RemoteManager {
             InputStream stderr = new StreamGobbler(s.getStderr());
             result.mStdout = ByteUtil.getContent(stdout, -1);
             result.mStderr = ByteUtil.getContent(stderr, -1);
-            if (false) {
-                System.out.println("#### STDOUT");
-                System.out.println(new String(result.mStdout));
-                System.out.println("#### STDERR");
-                System.out.println(new String(result.mStderr));
-            }
             try {
                 result.mExitStatus = s.getExitStatus();
             } catch (NullPointerException npe) {

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -36,7 +36,7 @@ public class FileStore {
     private static final int FILE_GROUP_BITS = 8;
     private static final int FILE_BITS = 12;
 
-    private static final int CURRENT_VERSION = 4;
+    private static final int CURRENT_VERSION = 5;
     private static final String FN_VERSION = "ver";
     private static final String FN_CALDATA = "calData";
     private static final String FN_MODSEQ = "modSeq";

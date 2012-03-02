@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,7 +32,7 @@
  */
 ZmShareReply = function(parent, className, options) {
 	className = className || "ZmShareReply";
-	DwtComposite.call(this, {parent:parent, className:className});
+	DwtComposite.call(this, {parent:parent, className:className, id: "ZmShareReply"});
 	this._initControl(options);
 };
 
@@ -149,7 +149,7 @@ function(event) {
 
 ZmShareReply.prototype._initControl =
 function(options) {
-	this._replyType = new DwtSelect({parent:this});
+	this._replyType = new DwtSelect({parent:this, id: "ZmShareReplySelect"});
     options = options || ZmShareReply.DEFAULT_OPTIONS;
     this.setReplyOptions(options);
 	this._replyType.addChangeListener(new AjxListener(this, this._handleReplyType));

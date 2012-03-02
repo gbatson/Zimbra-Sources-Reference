@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -62,7 +62,7 @@ ZmImportExportPage.prototype._setupCustom = function(id, setup, value) {
 		return view;
 	}
 	if (id == "EXPORT_BUTTON") {
-		var button = new DwtButton({parent:this});
+		var button = new DwtButton({parent:this, id: id});
 		button.setText(setup.displayName);
 		button.addSelectionListener(new AjxListener(this, this._handleExportButton));
 		this.setFormObject(id, button);
@@ -74,7 +74,7 @@ ZmImportExportPage.prototype._setupCustom = function(id, setup, value) {
 		return view;
 	}
 	if (id == "IMPORT_BUTTON") {
-		var button = new DwtButton({parent:this});
+		var button = new DwtButton({parent:this, id: id});
 		button.setText(setup.displayName);
 		button.addSelectionListener(new AjxListener(this, this._handleImportButton));
 		this.setFormObject(id, button);

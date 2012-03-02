@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -312,12 +312,12 @@ public class FileUploadServlet extends ZimbraServlet {
         }
     }
 
-    public static Upload saveUpload(InputStream is, String filename, String contentType, String accountId) throws ServiceException, IOException {
+    public static Upload saveUpload(InputStream is, String filename, String contentType, String accountId, boolean limitByFileUploadMaxSize) throws ServiceException, IOException {
         FileItem fi = null;
         boolean success = false;
         try {
             // store the fetched file as a normal upload
-            ServletFileUpload upload = getUploader(false);
+            ServletFileUpload upload = getUploader(limitByFileUploadMaxSize);
             fi = upload.getFileItemFactory().createItem("upload", contentType, false, filename);
             long size = ByteUtil.copy(is, true, fi.getOutputStream(), true, upload.getSizeMax() * 3);
             if (size > upload.getSizeMax())
@@ -336,6 +336,10 @@ public class FileUploadServlet extends ZimbraServlet {
                 fi.delete();
             }
         }
+    }
+    
+    public static Upload saveUpload(InputStream is, String filename, String contentType, String accountId) throws ServiceException, IOException {
+        return saveUpload(is, filename, contentType, accountId, false);
     }
     
     static File getStoreLocation(FileItem fi) {

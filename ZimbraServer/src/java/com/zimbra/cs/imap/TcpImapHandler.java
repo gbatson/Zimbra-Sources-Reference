@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -30,9 +30,10 @@ import java.io.OutputStream;
 import java.net.Socket;
 import java.net.SocketException;
 
-class TcpImapHandler extends ImapHandler {
+final class TcpImapHandler extends ImapHandler {
+    private Socket socket;
     private TcpServerInputStream mInputStream;
-    private String mRemoteAddress;
+    private String remoteIp;
     private TcpImapRequest request;
 
     TcpImapHandler(ImapServer server) {
@@ -40,12 +41,18 @@ class TcpImapHandler extends ImapHandler {
     }
 
     @Override
-    protected boolean setupConnection(Socket connection) throws IOException {
-        mRemoteAddress = connection.getInetAddress().getHostAddress();
+    String getRemoteIp() {
+        return remoteIp;
+    }
+
+    @Override
+    protected boolean setupConnection(Socket sock) throws IOException {
+        socket = sock;
+        remoteIp = sock.getInetAddress().getHostAddress();
         INFO("connected");
 
-        mInputStream = new TcpServerInputStream(connection.getInputStream());
-        mOutputStream = new BufferedOutputStream(connection.getOutputStream());
+        mInputStream = new TcpServerInputStream(sock.getInputStream());
+        mOutputStream = new BufferedOutputStream(sock.getOutputStream());
 
         if (!Config.userServicesEnabled()) {
             ZimbraLog.imap.debug("dropping connection because user services are disabled");
@@ -58,12 +65,14 @@ class TcpImapHandler extends ImapHandler {
         return true;
     }
 
-    @Override protected boolean authenticate() {
+    @Override
+    protected boolean authenticate() {
         // we auth with the LOGIN command (and more to come)
         return true;
     }
 
-    @Override protected void setIdle(boolean idle) {
+    @Override
+    protected void setIdle(boolean idle) {
         super.setIdle(idle);
         ImapSession i4selected = mSelectedFolder;
         if (i4selected != null)
@@ -77,7 +86,7 @@ class TcpImapHandler extends ImapHandler {
             clearRequest();
             return STOP_PROCESSING;
         }
-        setUpLogContext(mRemoteAddress);
+        setLoggingContext();
 
         if (request == null) {
             request = new TcpImapRequest(mInputStream, this);
@@ -116,11 +125,20 @@ class TcpImapHandler extends ImapHandler {
                 sendContinuation("send literal data");
             }
             return CONTINUE_PROCESSING;
-        } catch (TcpImapRequest.ImapTerminatedException ite) {
+        } catch (TcpImapRequest.ImapTerminatedException e) {
             return STOP_PROCESSING;
         } catch (ImapParseException e) {
             handleParseException(e);
             return mConsecutiveBAD >= MAXIMUM_CONSECUTIVE_BAD ? STOP_PROCESSING : CONTINUE_PROCESSING;
+        } catch (ImapException e) { // session closed
+            ZimbraLog.imap.debug("stop processing", e);
+            return STOP_PROCESSING;
+        } catch (IOException e) {
+            if (socket.isClosed()) {
+                ZimbraLog.imap.debug("stop processing", e);
+                return STOP_PROCESSING;
+            }
+            throw e;
         } finally {
             if (complete) {
                 clearRequest();
@@ -186,9 +204,9 @@ class TcpImapHandler extends ImapHandler {
         }.start();
 
         if (mCredentials != null && !mGoodbyeSent) {
-            ZimbraLog.imap.info("dropping connection for user " + mCredentials.getUsername() + " (server-initiated)");
+            ZimbraLog.imap.info("dropping connection for user %s (server-initiated)", mCredentials.getUsername());
         }
-        ZimbraLog.addIpToContext(mRemoteAddress);
+        ZimbraLog.addIpToContext(remoteIp);
         try {
             OutputStream os = mOutputStream;
             if (os != null) {
@@ -214,6 +232,28 @@ class TcpImapHandler extends ImapHandler {
             }
         } finally {
             ZimbraLog.clearContext();
+        }
+    }
+
+    /**
+     * Close the IMAP connection immediately without sending an untagged BYE.
+     *
+     * This is necessarily violating RFC 3501 3.4:
+     * <pre>
+     *   A server MUST NOT unilaterally close the connection without
+     *   sending an untagged BYE response that contains the reason for
+     *   having done so.
+     * </pre>
+     * because there is no easy way to interrupt a blocking read from the socket ({@link Socket#shutdownInput()} is
+     * not supported by {@link SSLSocket}) and trying to send an untagged BYE not from this IMAP handler has
+     * concurrency issues.
+     */
+    @Override
+    void close() {
+        try {
+            socket.close(); // blocking read from this socket will throw throw SocketException
+        } catch (IOException e) {
+            ZimbraLog.imap.debug("Failed to close socket", e);
         }
     }
 
@@ -267,6 +307,6 @@ class TcpImapHandler extends ImapHandler {
         int length = 64;
         if (message != null)
             length += message.length();
-        return new StringBuilder(length).append("[").append(mRemoteAddress).append("] ").append(message);
+        return new StringBuilder(length).append("[").append(remoteIp).append("] ").append(message);
     }
 }

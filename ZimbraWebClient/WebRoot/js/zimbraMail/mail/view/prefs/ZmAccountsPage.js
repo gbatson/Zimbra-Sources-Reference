@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -2094,7 +2094,7 @@ function(buffer, i, item, field, col, params) {
 		return i;
 	}
 	if (field == ZmItem.F_EMAIL) {
-		buffer[i++] = "<div style='margin-left: 10px;'>"+ item.getEmail() +"</div>";
+		buffer[i++] = "<div style='margin-left: 10px;'>"+ AjxStringUtil.htmlEncode(item.getEmail()) +"</div>";
 		return i;
 	}
 	if (field == ZmItem.F_TYPE) {

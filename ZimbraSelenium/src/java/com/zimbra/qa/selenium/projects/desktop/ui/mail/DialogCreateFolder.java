@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -52,7 +68,7 @@ public class DialogCreateFolder extends AbsDialog {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		logger.info(myPageName() + " zIsVisible()");
+		logger.info(myPageName() + " zIsActive()");
 
 		String locator = Locators.zNameField;
 		
@@ -65,7 +81,7 @@ public class DialogCreateFolder extends AbsDialog {
 		}
 	
 		// Yes, visible
-		logger.info(myPageName() + " zIsVisible() = true");
+		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
 		
 	}

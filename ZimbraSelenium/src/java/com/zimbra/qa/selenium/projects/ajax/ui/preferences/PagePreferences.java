@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -25,6 +41,7 @@ public class PagePreferences extends AbsTab {
 	
 	public static class Locators {
 		
+		public static final String zPreferencesMainID = "zov__main_Options";
 		// Preferences Toolbar: Save, Cancel
 		public static final String zToolbarSaveID = "zb__PREF__SAVE_title";
 		public static final String zToolbarCancelID = "zb__PREF__CANCEL_title";
@@ -72,7 +89,7 @@ public class PagePreferences extends AbsTab {
 		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
 		   locator = "css=div[id='zov__local@host.local:main_Options']";
 		} else {
-		   locator = "xpath=//div[@id='zov__main_Options']";
+			locator = "css=div#"+ Locators.zPreferencesMainID;
 		}
 		
 		boolean loaded = this.sIsElementPresent(locator);

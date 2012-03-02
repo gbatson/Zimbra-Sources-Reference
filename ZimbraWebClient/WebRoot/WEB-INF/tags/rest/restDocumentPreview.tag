@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -167,7 +167,7 @@
             version: '${zm:cook(version)}',
             versionCont: "version_cont",
             dateContainer: "date_container",
-            dateModified: '<fmt:formatDate value="${doc.modifiedDate}" pattern="M/d/yyyy h:mm a" timeZone="${timeZone}"/>'
+            dateModified: '<fmt:formatDate value="${doc.modifiedDate}" pattern="M/d/yyyy h:mm" timeZone="${timeZone}"/>'
         });
     </script>
     </body>

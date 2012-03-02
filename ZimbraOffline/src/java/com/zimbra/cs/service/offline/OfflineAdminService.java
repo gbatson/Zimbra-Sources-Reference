@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010 Zimbra, Inc.
+ * Copyright (C) 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,7 @@
 package com.zimbra.cs.service.offline;
 
 import com.zimbra.common.soap.AdminConstants;
+import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.service.admin.AdminService;
 import com.zimbra.soap.DocumentDispatcher;
 
@@ -29,6 +30,7 @@ public class OfflineAdminService extends AdminService {
         super.registerHandlers(dispatcher);
         dispatcher.registerHandler(AdminConstants.DELETE_MAILBOX_REQUEST, new OfflineDeleteMailbox());
         dispatcher.registerHandler(AdminConstants.DELETE_ACCOUNT_REQUEST, new OfflineDeleteAccount());
+        dispatcher.registerHandler(OfflineConstants.RESET_GAL_ACCOUNT_REQUEST, new OfflineResetGal());
     }
 
 }

@@ -1,7 +1,7 @@
 <!--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -359,8 +359,7 @@ function onAuth() {
                                                 <c:choose>
                                                     <c:when test="${not zdf:isValid(bean, 'oauthVerifier')}">
 		                                                <div id="message" class="ZError">
-                                                            <fmt:message key='PlsVerifyYahooOauth'/><br/>
-		                                                    <fmt:message key='PlsCorrectInput'/>
+                                                            <fmt:message key='PlsVerifyYahooOauth'/>
 		                                                </div>
                                                     </c:when>
                                                     <c:otherwise>
@@ -760,16 +759,18 @@ function onAuth() {
                                                     <input type="checkbox" id="contactSyncEnabled" name="contactSyncEnabled" ${bean.contactSyncEnabled ? 'checked' : ''} onclick='onAuth()'>
                                                     <label class="ZCheckboxLabel" for="contactSyncEnabled"><fmt:message key='SyncContactsInfo'/></label>
                                                     <br>
+                                                    <c:if test="${accountFlavor eq 'YMP'}">
                                                     <input type="hidden" name="ycontactTokenSaved" value="${bean.ycontactTokenSaved}">
                                                     <div id="oauthDiv">
                                                         <label class="ZFieldLabel" for="contactSyncEnabled"><fmt:message key="YContactURL" />:</label>
-                                                        <a href="<c:out value="${bean.oauthURL}" escapeXml="true" />" target="_blank">Click To Verify</a>
+                                                        <a href="<c:out value="${bean.oauthURL}" escapeXml="true" />" target="_blank"><fmt:message key="YContactClickToVerify" /></a>
                                                         <br>
                                                         <label class="${zdf:isValid(bean, 'oauthVerifier') ? 'ZFieldLabel' : 'ZFieldError'}" for="contactSyncEnabled"><fmt:message key="YContactVerify" />:</label>
                                                         <input class="ZField" type="text" size="6" id="oauthVerifier" name="oauthVerifier" value="${bean.oauthVerifier}" />
                                                         <input type="hidden" name="oauthURL" value="${bean.oauthURL}" />
                                                         <input type="hidden" name="oauthTmpId" value="${bean.oauthTmpId}" />
                                                     </div>
+                                                    </c:if>
                                                 </td>
                                             </tr>
                                         </c:if>

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,7 @@ import com.zimbra.cs.zclient.ZFilterRule;
 import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.cs.zclient.ZFilterRules;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.StringUtil;
 
 import javax.servlet.jsp.JspException;
 import javax.servlet.jsp.JspTagException;
@@ -46,8 +47,8 @@ public class ModifyFilterRuleTag extends ZimbraSimpleTag {
             boolean origFound = false;
 
             for (ZFilterRule rule: rules.getRules()) {
-
-                if (rule.getName().equalsIgnoreCase(mOriginalName)) {
+                String ruleName = StringUtil.escapeHtml(rule.getName());
+                if (ruleName.equalsIgnoreCase(mOriginalName)) {
                     newRules.add(mRule);
                     origFound = true;
                 } else if (rule.getName().equalsIgnoreCase(mRule.getName())) {
@@ -57,7 +58,7 @@ public class ModifyFilterRuleTag extends ZimbraSimpleTag {
                 }
             }
             if (!origFound) {
-                throw ZTagLibException.NO_SUCH_FILTER_EXISTS("filter with name "+mRule.getName()+" doesn't exist", null);                
+                throw ZTagLibException.NO_SUCH_FILTER_EXISTS("filter with name "+mRule.getName()+" doesn't exist", null);
             }
             mbox.saveIncomingFilterRules(new ZFilterRules(newRules));
         } catch (ServiceException e) {

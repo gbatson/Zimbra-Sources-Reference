@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -145,7 +145,7 @@ public class CalSummaryCache {
                     calItem.getFlagString(), calItem.getTagString(),
                     calItem.getModifiedSequence(), calItem.getSavedSequence(),
                     calItem.getDate(), calItem.getChangeDate(), calItem.getSize(),
-                    defaultInvite.getUid(), defaultInvite.isRecurrence(), calItem.isPublic(),
+                    defaultInvite.getUid(), defaultInvite.isRecurrence(), calItem.hasExceptions(), calItem.isPublic(),
                     alarm, defaultData);
 
             long actualRangeStart = 0;

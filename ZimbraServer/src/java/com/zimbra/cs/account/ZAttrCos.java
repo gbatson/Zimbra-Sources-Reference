@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -40,7 +40,7 @@ public class ZAttrCos extends NamedEntry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 administrator 20110708-2131 */
+    /* build: 7.0.0_BETA1_1111 administrator 20110826-1045 */
 
     /**
      * RFC2256: common name(s) for which the entity is known by
@@ -14781,6 +14781,78 @@ public class ZAttrCos extends NamedEntry {
     }
 
     /**
+     * regex of allowed punctuation characters in password
+     *
+     * @return zimbraPasswordAllowedPunctuationChars, or null if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1256)
+    public String getPasswordAllowedPunctuationChars() {
+        return getAttr(Provisioning.A_zimbraPasswordAllowedPunctuationChars, null);
+    }
+
+    /**
+     * regex of allowed punctuation characters in password
+     *
+     * @param zimbraPasswordAllowedPunctuationChars new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1256)
+    public void setPasswordAllowedPunctuationChars(String zimbraPasswordAllowedPunctuationChars) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedPunctuationChars, zimbraPasswordAllowedPunctuationChars);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex of allowed punctuation characters in password
+     *
+     * @param zimbraPasswordAllowedPunctuationChars new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1256)
+    public Map<String,Object> setPasswordAllowedPunctuationChars(String zimbraPasswordAllowedPunctuationChars, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedPunctuationChars, zimbraPasswordAllowedPunctuationChars);
+        return attrs;
+    }
+
+    /**
+     * regex of allowed punctuation characters in password
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1256)
+    public void unsetPasswordAllowedPunctuationChars() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedPunctuationChars, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * regex of allowed punctuation characters in password
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1256)
+    public Map<String,Object> unsetPasswordAllowedPunctuationChars(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordAllowedPunctuationChars, "");
+        return attrs;
+    }
+
+    /**
      * whether or not to enforce password history. Number of unique passwords
      * a user must have before being allowed to re-use an old one. A value of
      * 0 means no password history.
@@ -15504,6 +15576,83 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetPasswordMinAlphaChars(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraPasswordMinAlphaChars, "");
+        return attrs;
+    }
+
+    /**
+     * minimum number of numeric or ascii punctuation characters required in
+     * a password
+     *
+     * @return zimbraPasswordMinDigitsOrPuncs, or 0 if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1255)
+    public int getPasswordMinDigitsOrPuncs() {
+        return getIntAttr(Provisioning.A_zimbraPasswordMinDigitsOrPuncs, 0);
+    }
+
+    /**
+     * minimum number of numeric or ascii punctuation characters required in
+     * a password
+     *
+     * @param zimbraPasswordMinDigitsOrPuncs new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1255)
+    public void setPasswordMinDigitsOrPuncs(int zimbraPasswordMinDigitsOrPuncs) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinDigitsOrPuncs, Integer.toString(zimbraPasswordMinDigitsOrPuncs));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * minimum number of numeric or ascii punctuation characters required in
+     * a password
+     *
+     * @param zimbraPasswordMinDigitsOrPuncs new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1255)
+    public Map<String,Object> setPasswordMinDigitsOrPuncs(int zimbraPasswordMinDigitsOrPuncs, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinDigitsOrPuncs, Integer.toString(zimbraPasswordMinDigitsOrPuncs));
+        return attrs;
+    }
+
+    /**
+     * minimum number of numeric or ascii punctuation characters required in
+     * a password
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1255)
+    public void unsetPasswordMinDigitsOrPuncs() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinDigitsOrPuncs, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * minimum number of numeric or ascii punctuation characters required in
+     * a password
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1255)
+    public Map<String,Object> unsetPasswordMinDigitsOrPuncs(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPasswordMinDigitsOrPuncs, "");
         return attrs;
     }
 
@@ -18016,13 +18165,13 @@ public class ZAttrCos extends NamedEntry {
      * used. Orig desc: whether or not email reminders for appointments and
      * tasks are enabled
      *
-     * @return zimbraPrefCalendarReminderSendEmail, or true if unset
+     * @return zimbraPrefCalendarReminderSendEmail, or false if unset
      *
      * @since ZCS 5.0.0
      */
     @ZAttr(id=576)
     public boolean isPrefCalendarReminderSendEmail() {
-        return getBooleanAttr(Provisioning.A_zimbraPrefCalendarReminderSendEmail, true);
+        return getBooleanAttr(Provisioning.A_zimbraPrefCalendarReminderSendEmail, false);
     }
 
     /**
@@ -28015,6 +28164,226 @@ public class ZAttrCos extends NamedEntry {
     public Map<String,Object> unsetSpamApplyUserFilters(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraSpamApplyUserFilters, "");
+        return attrs;
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @return zimbraStandardClientCustomPrefTab, or empty array if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public String[] getStandardClientCustomPrefTab() {
+        return getMultiAttr(Provisioning.A_zimbraStandardClientCustomPrefTab);
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param zimbraStandardClientCustomPrefTab new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public void setStandardClientCustomPrefTab(String[] zimbraStandardClientCustomPrefTab) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTab, zimbraStandardClientCustomPrefTab);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param zimbraStandardClientCustomPrefTab new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public Map<String,Object> setStandardClientCustomPrefTab(String[] zimbraStandardClientCustomPrefTab, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTab, zimbraStandardClientCustomPrefTab);
+        return attrs;
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param zimbraStandardClientCustomPrefTab new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public void addStandardClientCustomPrefTab(String zimbraStandardClientCustomPrefTab) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraStandardClientCustomPrefTab, zimbraStandardClientCustomPrefTab);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param zimbraStandardClientCustomPrefTab new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public Map<String,Object> addStandardClientCustomPrefTab(String zimbraStandardClientCustomPrefTab, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraStandardClientCustomPrefTab, zimbraStandardClientCustomPrefTab);
+        return attrs;
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param zimbraStandardClientCustomPrefTab existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public void removeStandardClientCustomPrefTab(String zimbraStandardClientCustomPrefTab) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraStandardClientCustomPrefTab, zimbraStandardClientCustomPrefTab);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param zimbraStandardClientCustomPrefTab existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public Map<String,Object> removeStandardClientCustomPrefTab(String zimbraStandardClientCustomPrefTab, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraStandardClientCustomPrefTab, zimbraStandardClientCustomPrefTab);
+        return attrs;
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public void unsetStandardClientCustomPrefTab() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTab, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * description of the custom tab in the Preferences page in HTML client
+     * in the format {tab-name},{associated-URL}
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1267)
+    public Map<String,Object> unsetStandardClientCustomPrefTab(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTab, "");
+        return attrs;
+    }
+
+    /**
+     * whether extra custom tabs in the Preferences page in HTML client are
+     * enabled
+     *
+     * @return zimbraStandardClientCustomPrefTabsEnabled, or false if unset
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1266)
+    public boolean isStandardClientCustomPrefTabsEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraStandardClientCustomPrefTabsEnabled, false);
+    }
+
+    /**
+     * whether extra custom tabs in the Preferences page in HTML client are
+     * enabled
+     *
+     * @param zimbraStandardClientCustomPrefTabsEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1266)
+    public void setStandardClientCustomPrefTabsEnabled(boolean zimbraStandardClientCustomPrefTabsEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTabsEnabled, zimbraStandardClientCustomPrefTabsEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether extra custom tabs in the Preferences page in HTML client are
+     * enabled
+     *
+     * @param zimbraStandardClientCustomPrefTabsEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1266)
+    public Map<String,Object> setStandardClientCustomPrefTabsEnabled(boolean zimbraStandardClientCustomPrefTabsEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTabsEnabled, zimbraStandardClientCustomPrefTabsEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether extra custom tabs in the Preferences page in HTML client are
+     * enabled
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1266)
+    public void unsetStandardClientCustomPrefTabsEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTabsEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether extra custom tabs in the Preferences page in HTML client are
+     * enabled
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.3
+     */
+    @ZAttr(id=1266)
+    public Map<String,Object> unsetStandardClientCustomPrefTabsEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraStandardClientCustomPrefTabsEnabled, "");
         return attrs;
     }
 

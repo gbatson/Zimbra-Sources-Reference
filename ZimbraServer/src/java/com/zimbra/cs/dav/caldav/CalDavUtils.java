@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 Zimbra, Inc.
+ * Copyright (C) 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -55,6 +55,35 @@ public class CalDavUtils {
     public static void removeAttendeeForOrganizer(ZVCalendar cal) {
         for (Iterator<ZComponent> compIter = cal.getComponentIterator(); compIter.hasNext(); ) {
             removeAttendeeForOrganizer(compIter.next());
+        }
+    }
+    
+    public static void adjustPercentCompleteForToDos(ZVCalendar cal) {
+        for (Iterator<ZComponent> compIter = cal.getComponentIterator(); compIter.hasNext(); ) {
+            ZComponent comp = compIter.next();
+            if (ICalTok.VTODO.equals(comp.getTok()))
+                adjustPercentCompleteForTodo(comp);
+        }
+    }
+    
+    private static void adjustPercentCompleteForTodo(ZComponent comp) {
+        boolean isCompleted = false;
+        if (comp.getProperty(ICalTok.COMPLETED) != null)
+            isCompleted = true;
+        else {
+            ZProperty status = comp.getProperty(ICalTok.STATUS);
+            if (status != null && status.getValue().equals(ICalTok.COMPLETED.toString()))
+                isCompleted = true;
+        }
+        if (!isCompleted) {
+            // iCal5 doesn't have a percent-complete field in the UI, but it preserves that
+            // attribute when present. When the todo is made incomplete in iCal it unsets the
+            // COMPLETED datetime but preserves the percent-complete which can be 100.
+            // Reset percentcomplete if it is 100, so that todo does not get treated as 
+            // completed down the line.
+            ZProperty percentComplete = comp.getProperty(ICalTok.PERCENT_COMPLETE);
+            if (percentComplete != null && percentComplete.getIntValue() == 100)
+                percentComplete.setValue(Integer.toString(0));            
         }
     }
 }

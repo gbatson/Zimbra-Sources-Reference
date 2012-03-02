@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -189,12 +205,8 @@ public class TreeTasks extends AbsTree {
 
 		} else if (action == Action.A_RIGHTCLICK) {
 
-		   if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-		      actionLocator = "css=[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
-		            ":main_Tasks__'][id$=':" + t.getId() + "_textCell']";
-		   } else {
-		      actionLocator = "zti__main_Tasks__" + t.getId() + "_textCell";
-		   }
+		   actionLocator = "css=[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
+		         ":main_Tasks__'] td:contains('" + t.getName() + "')";
 
 		   GeneralUtility.waitForElementPresent(this, actionLocator);
 		   // actionLocator= Locators.zTagsHeader;

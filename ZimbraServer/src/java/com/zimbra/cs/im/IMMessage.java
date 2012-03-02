@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,8 +21,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.html.BrowserDefang;
+import com.zimbra.cs.html.DefangFactory;
 import com.zimbra.cs.html.HtmlDefang;
 
 /**
@@ -195,7 +198,8 @@ public class IMMessage {
                 try {
                     if (mBody.hasXHTML()) {
                         e.addAttribute("html", true);
-                        e.setText(HtmlDefang.defang(mBody.getXHTMLAsString(), true));
+                        BrowserDefang defanger = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML);
+                        e.setText(defanger.defang(mBody.getXHTMLAsString(), true));
                     } else {
                         e.addAttribute("html", false);
                         e.setText(mBody.getPlainText());

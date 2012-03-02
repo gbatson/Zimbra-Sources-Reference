@@ -541,8 +541,8 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>zimbraAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(gn=%s*)(zimbraPhoneticFirstName=%s*)(zimbraPhoneticLastName=%s*)(mail=%s*)(zimbraMailDeliveryAddress=%s*)(zimbraMailAlias=%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))</globalConfigValue>
   <globalConfigValue>zimbraSearch:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(gn=*%s*)(zimbraPhoneticFirstName=*%s*)(zimbraPhoneticLastName=*%s*)(mail=*%s*)(zimbraMailDeliveryAddress=*%s*)(zimbraMailAlias=*%s*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList)))</globalConfigValue>
   <globalConfigValue>zimbraSync:(&amp;(|(displayName=*)(cn=*)(sn=*)(gn=*)(mail=*)(zimbraMailDeliveryAddress=*)(zimbraMailAlias=*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE)))</globalConfigValue>
-  <globalConfigValue>ad:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(givenName=*%s*)(mail=*%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
-  <globalConfigValue>adAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(givenName=%s*)(mail=%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
+  <globalConfigValue>ad:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(givenName=*%s*)(mail=*%s*))(!(msExchHideFromAddressLists=TRUE))(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
+  <globalConfigValue>adAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(givenName=%s*)(mail=%s*))(!(msExchHideFromAddressLists=TRUE))(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
   <globalConfigValue>externalLdapAutoComplete:(|(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*))</globalConfigValue>
   <globalConfigValue>email_has:(mail=*%s*)</globalConfigValue>
   <globalConfigValue>email2_has:(mail=*%s*)</globalConfigValue>
@@ -2964,9 +2964,9 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="576" name="zimbraPrefCalendarReminderSendEmail" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.0" deprecatedSince="6.0.0_BETA1">
-  <defaultCOSValue>TRUE</defaultCOSValue>
+  <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>whether or not email reminders for appointments and tasks are enabled</desc>
-   <deprecateDesc>was added for Yahoo calendar, no longer used</deprecateDesc>
+  <deprecateDesc>was added for Yahoo calendar, no longer used</deprecateDesc>
 </attr>
 
 <attr id="577" name="zimbraPrefCalendarReminderMobile" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.0" deprecatedSince="6.0.0_BETA1">
@@ -5558,7 +5558,7 @@ TODO: delete them permerntly from here
 </attr>
 
 <attr id="1212" name="zimbraMailSSLProxyClientCertPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="nginxproxy" since="7.1.1">
-  <globalConfigValue>0</globalConfigValue>
+  <globalConfigValue>3443</globalConfigValue>
   <desc>SSL client certificate port for HTTP proxy</desc>
 </attr>
 
@@ -5622,6 +5622,50 @@ TODO: delete them permerntly from here
 
 <attr id="1241" name="zimbraMailAddressValidationRegex" type="string" max="512" cardinality="multi" optionalIn="domain,globalConfig" flags="domainInherited,accountInfo" since="7.1.2">
   <desc>optional regex used by web client to validate email address</desc>
+</attr>
+
+<attr id="1254" name="zimbraGlobalConfigExtraObjectClass" type="string" max="256" cardinality="multi" optionalIn="globalConfig" since="7.1.3">
+  <desc>
+    Object classes added on the global config entry.  Unlike other zimbra***ExtraObjectClass attributes, object classes specified
+    in this attributes will not be automatically added to the global config entry.  Extra object class on the global config entry 
+    must be added using "zmprov mcf +objectClass {object class}", then recorded in this attributes.  
+  </desc>
+</attr>
+
+<attr id="1255" name="zimbraPasswordMinDigitsOrPuncs" type="integer" min="0" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="7.1.3">
+  <defaultCOSValue>0</defaultCOSValue>
+  <desc>minimum number of numeric or ascii punctuation characters required in a password</desc>
+</attr>
+
+<attr id="1256" name="zimbraPasswordAllowedPunctuationChars" type="cstring" max="64" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="7.1.3">
+  <desc>regex of allowed punctuation characters in password</desc>
+</attr>
+
+<attr id="1257" name="zimbraSpamWhitelistHeader" type="string" cardinality="single" optionalIn="globalConfig" since="7.1.3">
+  <desc>Mail header name for flagging a message as not spam. If set, this takes precedence over zimbraSpamHeader.</desc>
+</attr>
+
+<attr id="1258" name="zimbraSpamWhitelistHeaderValue" type="string" cardinality="single" optionalIn="globalConfig" since="7.1.3">
+  <desc>regular expression for matching the value of zimbraSpamWhitelistHeader for flagging a message as not spam</desc>
+</attr>
+
+
+<attr id="1265" name="zimbraCustomMimeHeaderNameAllowed" type="string" cardinality="multi" optionalIn="globalConfig" since="7.1.3">
+  <desc>Custom RFC822 header names (case-sensitive) allowed to specify in SendMsgRequest</desc>
+</attr>
+
+<attr id="1266" name="zimbraStandardClientCustomPrefTabsEnabled" type="boolean" cardinality="single" optionalIn="account,cos,domain" flags="accountInfo,accountCosDomainInherited" since="7.1.3">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>whether extra custom tabs in the Preferences page in HTML client are enabled</desc>
+</attr>
+
+<attr id="1267" name="zimbraStandardClientCustomPrefTab" type="string" max="256" cardinality="multi" optionalIn="account,cos,domain" flags="accountInfo,accountCosDomainInherited" since="7.1.3">
+  <desc>description of the custom tab in the Preferences page in HTML client in the format {tab-name},{associated-URL}</desc>
+</attr>
+
+<attr id="1269" name="zimbraZimletDataSensitiveInMixedModeDisabled" type="boolean" cardinality="single" optionalIn="domain,globalConfig" flags="domainInfo,domainInherited" since="7.1.3">
+  <globalConfigValue>TRUE</globalConfigValue>
+  <desc>whether zimlets that send sensitive data are disabled in "mixed" zimbraMailMode</desc>
 </attr>
 
 </attrs>

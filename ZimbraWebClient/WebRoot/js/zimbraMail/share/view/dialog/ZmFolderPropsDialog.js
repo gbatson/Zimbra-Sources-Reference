@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -206,6 +206,13 @@ function(event) {
 	if (!organizer.isSystem() && !organizer.isDataSource()) {
 		var name = this._nameInputEl.value;
 		if (organizer.name != name) {
+			var error = ZmOrganizer.checkName(name);
+			if (error) {
+				var dialog = appCtxt.getMsgDialog();
+				dialog.setMessage(error, DwtMessageDialog.WARNING_STYLE);
+				dialog.popup();
+				return;
+			}
 			organizer.rename(name, callback, this._handleRenameErrorCallback);
 			return;
 		}
@@ -260,15 +267,20 @@ function(response) {
 ZmFolderPropsDialog.prototype._handleRenameError =
 function(response) {
 	var value = this._nameInputEl.value;
-	var msg, detail;
+	var msg;
+	var noDetails = false;
 	if (response.code == ZmCsfeException.MAIL_ALREADY_EXISTS) {
 		msg = AjxMessageFormat.format(ZmMsg.errorAlreadyExists, [value]);
 	} else if (response.code == ZmCsfeException.MAIL_IMMUTABLE) {
 		msg = AjxMessageFormat.format(ZmMsg.errorCannotRename, [value]);
 	} else if (response.code == ZmCsfeException.SVC_INVALID_REQUEST) { 
 		msg = response.msg; // triggered on an empty name
+	} else if (response.code == ZmCsfeException.MAIL_INVALID_NAME) {
+		//I add this here despite checking upfront using ZmOrganizer.checkName, since there might be more restrictions for different types of organizers. so just in case the server still returns an error in the name.
+		msg = AjxMessageFormat.format(ZmMsg.invalidName, [AjxStringUtil.htmlEncode(value)]);
+		noDetails = true;
 	}
-	appCtxt.getAppController().popupErrorDialog(msg, response.msg, null, true);
+	appCtxt.getAppController().popupErrorDialog(msg, noDetails ? null : response.msg, null, true);
 	return true;
 };
 

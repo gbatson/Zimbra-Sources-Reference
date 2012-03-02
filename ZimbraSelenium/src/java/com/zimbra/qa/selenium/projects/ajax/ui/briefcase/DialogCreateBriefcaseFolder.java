@@ -1,3 +1,19 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * 
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 VMware, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * 
+ * ***** END LICENSE BLOCK *****
+ */
 /**
  * 
  */
@@ -21,20 +37,22 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 
 		public static final String zDialogContentId = "ChooseFolderDialog_content";
 
-		// TODO: Tree
-		public static final String zDialogInputId = "ChooseFolderDialog_inputDivId";
-		public static final String zDialogInputLocator = "css=div[id='"
-				+ zDialogId + "'] div[id='" + zDialogInputId
-				+ "'] > div > input";
-
+		public static final String zTitle = "css=td[id^=CreateNewFolderDialog__]:contains(Create New Briefcase Folder)";
+		
+		// Textfields
+		public static final String zNameField = "css=div[id^=CreateNewFolderDialog]:contains(Create New Briefcase Folder) td>input.Field";
+		// Buttons
 		public static final String zDialogButtonsId = "ChooseFolderDialog_buttons";
+		public static final String zOkButton = "css=td[id^=OK] td[id^=CreateNewFolderDialog]:contains(OK)";									
+		public static final String zCancelButton = "css=td[id^=Cancel] td[id^=CreateNewFolderDialog]:contains(Cancel)";
 
 	}
 
 	public DialogCreateBriefcaseFolder(AbsApplication application, AbsTab tab) {
 		super(application, tab);
-		
-		logger.info("new " + DialogCreateBriefcaseFolder.class.getCanonicalName());
+
+		logger.info("new "
+				+ DialogCreateBriefcaseFolder.class.getCanonicalName());
 
 	}
 
@@ -50,10 +68,10 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		logger.info(myPageName() + " zIsVisible()");
+		logger.info(myPageName() + " zIsActive()");
 
-		String locator = "id=" + Locators.zDialogId;
-
+		String locator = Locators.zNameField;
+	
 		if (!this.sIsElementPresent(locator)) {
 			return (false); // Not even present
 		}
@@ -63,7 +81,7 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 		}
 
 		// Yes, visible
-		logger.info(myPageName() + " zIsVisible() = true");
+		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
 
 	}
@@ -72,22 +90,18 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		logger.info(myPageName() + " zClickButton(" + button + ")");
 
-		tracer.trace("Click dialog button "+ button);
+		tracer.trace("Click dialog button " + button);
 
 		AbsPage page = null;
 		String locator = null;
 
 		if (button == Button.B_OK) {
 
-			// TODO: L10N this
-			locator = "//div[@id='" + Locators.zDialogId + "']//div[@id='"
-					+ Locators.zDialogButtonsId + "']//td[text()='OK']";
+			locator = Locators.zOkButton;
 
 		} else if (button == Button.B_CANCEL) {
 
-			// TODO: L10N this
-			locator = "//div[@id='" + Locators.zDialogId + "']//div[@id='"
-					+ Locators.zDialogButtonsId + "']//td[text()='Cancel']";
+			locator = Locators.zCancelButton;
 
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
@@ -100,17 +114,21 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 		if (locator == null) {
 			throw new HarnessException("Button " + button + " not implemented");
 		}
-
+		
 		// Make sure the locator exists
 		if (!this.sIsElementPresent(locator)) {
 			throw new HarnessException("Button " + button + " locator "
 					+ locator + " not present!");
 		}
 
-		this.zClickAt(locator,"0,0");
-
+		this.zClickAt(locator, "0,0");
+		
 		this.zWaitForBusyOverlay();
 
+		//Check the message queue
+		//Stafpostqueue sp = new Stafpostqueue();
+		//sp.waitForPostqueue();
+		
 		return (page);
 	}
 
@@ -133,20 +151,20 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	public void zClickTreeFolder(FolderItem folder) throws HarnessException {
 		logger.info(myPageName() + " zClickTreeFolder(" + folder + ")");
 
-		tracer.trace("Click on tree briefcase with name "+ folder.getName());
+		tracer.trace("Click on tree briefcase with name " + folder.getName());
 
 		if (folder == null)
 			throw new HarnessException("folder must not be null");
 
 		String locator = "css=div[id='" + Locators.zDialogId
-				+ "'] td[id='zti__ZmChooseFolderDialog_Mail__" + folder.getId()
+				+ "'] td[id='zti__ZmChooseFolderDialog_Briefcase__" + folder.getId()
 				+ "_textCell']";
 
 		if (!this.sIsElementPresent(locator))
 			throw new HarnessException("unable to find folder in tree "
 					+ locator);
 
-		this.zClickAt(locator,"0,0");
+		this.zClickAt(locator, "0,0");
 
 		this.zWaitForBusyOverlay();
 
@@ -160,24 +178,23 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	public void zEnterFolderName(String folder) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderName(" + folder + ")");
 
-		tracer.trace("Enter briefcase name in text box "+ folder);
+		tracer.trace("Enter briefcase name in text box " + folder);
 
 		if (folder == null)
 			throw new HarnessException("folder must not be null");
 
-		String locator = Locators.zDialogInputLocator;
-
+		String locator = Locators.zNameField;
+		
 		if (!this.sIsElementPresent(locator))
 			throw new HarnessException("unable to find folder name field "
 					+ locator);
 
 		// For some reason, the text doesn't get entered on the first try
 		this.sFocus(locator);
-		this.zClickAt(locator,"0,0");
+		this.zClickAt(locator, "0,0");
 		this.sType(locator, folder);
-	
-		this.zWaitForBusyOverlay();
 
+		this.zWaitForBusyOverlay();
 	}
 
 	public enum FolderColor {
@@ -192,7 +209,7 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	public void zEnterFolderColor(FolderColor color) throws HarnessException {
 		logger.info(myPageName() + " zEnterFolderColor(" + color + ")");
 
-		tracer.trace("Enter color "+ color);
+		tracer.trace("Enter color " + color);
 
 		if (color == null)
 			throw new HarnessException("folder must not be null");

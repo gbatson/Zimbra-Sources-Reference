@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -298,6 +298,7 @@ public final class MailConstants {
     public static final String E_NOTE = "note";
     public static final String E_TAG = "tag";
     public static final String E_CONTACT = "cn";
+    public static final String E_CONTACT_GROUP_MEMBER = "m";
     public static final String E_FOLDER = "folder";
     public static final String E_SEARCH = "search";
     public static final String E_MOUNT = "link";
@@ -364,6 +365,7 @@ public final class MailConstants {
     public static final String A_INDEX = "index";
     public static final String A_TIME = "time";
     public static final String A_MAX_BODY_SIZE = "maxBodySize";
+    public static final String A_ORIG_HEADERS = "origHeaders";
 
     // grants and shares
     public static final String E_ACL = "acl";
@@ -402,6 +404,7 @@ public final class MailConstants {
     public static final String A_DESC_ENABLED = "descEnabled";
     public static final String A_PATH = "path";
     public static final String A_NAME = "name";
+    public static final String A_FULLNAME = "fullName";
     public static final String A_VALUE = "value";
     public static final String A_DATE = "d";
     public static final String A_SENT_DATE = "sd";
@@ -451,7 +454,13 @@ public final class MailConstants {
     public static final String A_CSVSEPARATOR = "csvsep";
     public static final String A_NEED_GRANTEE_NAME = "needGranteeName";
     public static final String A_INVALID = "invalid";
+    public static final String A_RETURN_HIDDEN_ATTRS = "returnHiddenAttrs";
 
+    //contact groups
+    public static final String A_DEREF_CONTACT_GROUP_MEMBER = "derefGroupMember";
+    public static final String GROUP_MEMBER_TYPE_CONTACT_REF = "C";
+    public static final String GROUP_MEMBER_TYPE_GAL_REF = "G";
+    public static final String GROUP_MEMBER_TYPE_INLINE = "I";
 
     // messages
     public static final String E_MIMEPART = "mp";
@@ -482,6 +491,7 @@ public final class MailConstants {
 
     // send/save draft
     public static final String E_ATTACH = "attach";
+    public static final String E_HEADER = A_HEADER;
     public static final String A_ATTACHMENT_ID = "aid";
     public static final String A_OPTIONAL = "optional";
     public static final String A_ORIG_ID = "origid";
@@ -678,6 +688,7 @@ public final class MailConstants {
     public static final String A_CAL_OTHER_ATTENDEES = "otherAtt";
     public static final String A_CAL_ALARM = "alarm";
     public static final String A_CAL_RECUR = "recur";
+    public static final String A_CAL_HAS_EXCEPTIONS = "hasEx";
     public static final String A_CAL_UPDATE_ORGANIZER = "updateOrganizer";
     public static final String A_CAL_THIS_AND_FUTURE = "thisAndFuture";
     public static final String A_CAL_TIMEZONE= "tz";

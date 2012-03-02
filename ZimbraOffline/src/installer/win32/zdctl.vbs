@@ -1,6 +1,6 @@
 ' * ***** BEGIN LICENSE BLOCK *****
 ' * Zimbra Collaboration Suite Server
-' * Copyright (C) 2009, 2010 Zimbra, Inc.
+' * Copyright (C) 2009, 2010, 2011 VMware, Inc.
 ' * 
 ' * The contents of this file are subject to the Zimbra Public License
 ' * Version 1.3 ("License"); you may not use this file except in
@@ -18,12 +18,16 @@
 Dim sAppRoot, sScriptPath, sScriptDir, sZdLogFile, sZdOutFile, sZdAnchorFile, sZdCtlErrFile, oWMI, oShell, oFso, sCurrUser, iLogLevel
 
 Sub Usage()
-    WScript.StdOut.WriteLine("Usage: zdctl.vbs <start|stop|shutdown>")
+    If (InStr(Wscript.FullName,"cscript") > 0) Then
+        WScript.StdOut.WriteLine("Usage: zdctl.vbs <start|stop|shutdown>")
+    End If
     WScript.Quit
 End Sub
 
 Sub LogMsg(sMsg, iLevel)
-    WScript.StdOut.WriteLine(sMsg)
+    If (InStr(Wscript.FullName,"cscript") > 0) Then
+        WScript.StdOut.WriteLine(sMsg)
+    End If
     If iLevel <= iLogLevel Then
         oShell.LogEvent iLevel, "Zimbra Desktop: " & sMsg
     End If

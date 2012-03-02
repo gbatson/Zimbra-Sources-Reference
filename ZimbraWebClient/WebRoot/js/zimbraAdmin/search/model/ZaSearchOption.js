@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -281,8 +281,12 @@ function (optionId, height){
 			onChange: ZaSearchBuilderController.handleOptions
 		 } **/
 	] ;
-	
-	
+
+	var domainFilterLabelWidth = 50;
+
+	if(ZaZimbraAdmin.isLanguage("ja")){ /* bug 49524 */
+		domainFilterLabelWidth = 100;
+	}
 	
 	var domainItems = [
 	/*
@@ -294,7 +298,7 @@ function (optionId, height){
 		 },
 		{ type: _SEPARATOR_ , width: 150 },*/
 		{ type: _TEXTFIELD_, ref:  ZaSearchOption.A_domainFilter,
-			label: ZaMsg.search_option_filter, align: _LEFT_, width: ZaSearchOptionView.WIDTH - 50, 
+			label: ZaMsg.search_option_filter, align: _LEFT_, width: ZaSearchOptionView.WIDTH - domainFilterLabelWidth, 
 			inputHelp: ZaMsg.search_option_filter_input_help_domain,
 		  	toolTipContent: ZaMsg.tt_domain_search_option_filter,
 			onChange: ZaSearchBuilderController.filterDomains,

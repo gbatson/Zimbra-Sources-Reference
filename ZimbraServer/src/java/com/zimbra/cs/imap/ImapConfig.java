@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
- *
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- *
+ * 
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -28,7 +28,7 @@ import com.zimbra.cs.util.Config;
 
 import java.util.Arrays;
 
-public class ImapConfig extends ServerConfig {
+public final class ImapConfig extends ServerConfig {
     private static final String PROTOCOL = "IMAP4rev1";
     private static final int DEFAULT_MAX_MESSAGE_SIZE = 100 * 1024 * 1024;
 
@@ -62,17 +62,17 @@ public class ImapConfig extends ServerConfig {
 
     @Override
     public int getNioMaxScheduledWriteBytes() {
-        return LC.nio_imap_max_scheduled_write_bytes.intValue();
+        return -1;
     }
 
     @Override
     public int getNioWriteTimeout() {
-        return LC.nio_imap_write_timeout.intValue();
+        return -1;
     }
 
     @Override
     public int getNioWriteChunkSize() {
-        return LC.nio_imap_write_chunk_size.intValue();
+        return -1;
     }
 
     @Override
@@ -102,12 +102,12 @@ public class ImapConfig extends ServerConfig {
 
     @Override
     public int getNioMinThreads() {
-        return LC.nio_imap_min_threads.intValue();
+        return -1;
     }
 
     @Override
     public int getNioThreadKeepAliveTime() {
-        return LC.nio_imap_thread_keep_alive_time.intValue();
+        return -1;
     }
 
     public int getAuthenticatedMaxIdleSeconds() {

@@ -281,7 +281,6 @@ ZmComposeController.prototype.popShield =
 function() {
 	var dirty = this._composeView.isDirty();
 	if (!dirty && (this._draftType != ZmComposeController.DRAFT_TYPE_AUTO)) {
-		this._cancelAuthTimedSave(); //cancel the timer
 		return true;
 	}
 
@@ -321,12 +320,21 @@ function() {
 ZmComposeController.prototype._preHideCallback =
 function(view, force) {
 
-	if (force && this._autoSaveTimer) {
-		this._autoSaveTimer.kill();
+	if (this._autoSaveTimer) {
+		clearInterval(this._autoSaveTimer);
+		this._autoSaveTimer = null;
 
-		// auto-save if we leave this compose tab and the message has not yet been sent
-		if (!this._msgSent) {
-			this._autoSaveCallback(true);
+		//the following is a bit suspicous to me. I assume maybe this method might be called with force == true
+		//in a way that is not after the popShield was activated? That would be the only explanation to have this.
+		//I wonder if that's the case that leaves orphan drafts
+		if (force) {
+			// auto-save if we leave this compose tab and the message has not yet been sent
+			//note that _msgSent is true after message was saved as draft.
+			if (!this._msgSent) {
+				//note that it will not save if !this._composeView.isDirty(), which is the case after the
+				//user said "no" to keeping the draft.
+				this._autoSaveCallback(true);
+			}
 		}
 	}
 	return force ? true : this.popShield();
@@ -442,6 +450,7 @@ function(attId, docIds, draftType, callback, contactId) {
 	var isTimed = Boolean(this._sendTime);
 	draftType = draftType || (isTimed ? ZmComposeController.DRAFT_TYPE_DELAYSEND : ZmComposeController.DRAFT_TYPE_NONE);
 	var isDraft = draftType != ZmComposeController.DRAFT_TYPE_NONE;
+
 	// bug fix #38408 - briefcase attachments need to be set *before* calling
 	// getMsg() but we cannot do that without having a ZmMailMsg to store it in.
 	// File this one under WTF.
@@ -452,7 +461,15 @@ function(attId, docIds, draftType, callback, contactId) {
 	}
 	var msg = this._composeView.getMsg(attId, isDraft, tempMsg, isTimed, contactId);
 
-	if (!msg) { return; }
+	if (!msg) {
+		return;
+	}
+
+	if (!isDraft && this._autoSaveTimer) {
+		//kill the timer so draft is not saved while message is sent.
+		clearInterval(this._autoSaveTimer);
+		this._autoSaveTimer = null;
+	}
 
 	var origMsg = msg._origMsg;
 	var isCancel = (msg.inviteMode == ZmOperation.REPLY_CANCEL);
@@ -546,11 +563,7 @@ function(draftType, msg, callback, result) {
         this.sendMsgCallback.run(result);
     }
 
-	if (draftType && draftType == ZmComposeController.DRAFT_TYPE_NONE) {
-		this._cancelAuthTimedSave(); //message sent; cancel auth token timer
-	}
-
-	appCtxt.notifyZimlets("onSendMsgSuccess", [this, msg]);//notify Zimlets on success	
+	appCtxt.notifyZimlets("onSendMsgSuccess", [this, msg]);//notify Zimlets on success
 };
 
 ZmComposeController.prototype._handleResponseCancelOrModifyAppt =
@@ -565,6 +578,10 @@ ZmComposeController.prototype._handleErrorSendMsg =
 function(msg, ex) {
 	this.resetToolbarOperations();
 	this._composeView.enableInputs(true);
+
+	if (!this._autoSaveTimer) { //I assume in all the different exit points from this method, the user stays on the compose view so we need the timer (it was canceled when send was called)
+		this._initAutoSave();
+	}
 
 	appCtxt.notifyZimlets("onSendMsgFailure", [this, ex, msg]);//notify Zimlets on failure
 	if (!(ex && ex.code)) { return false; }
@@ -859,7 +876,8 @@ ZmComposeController.prototype._setView =
 function(params) {
 
 	if (this._autoSaveTimer) {
-		this._autoSaveTimer.kill();
+		window.clearInterval(this._autoSaveTimer);
+		this._autoSaveTimer = null;
 	}
 
 	// save args in case we need to re-display (eg go from Reply to Reply All)
@@ -1045,26 +1063,10 @@ function() {
 	var autoSaveInterval = appCtxt.get(ZmSetting.AUTO_SAVE_DRAFT_INTERVAL);
 	if (autoSaveInterval) {
 		if (!this._autoSaveTimer) {
-			this._autoSaveTimer = new DwtIdleTimer(autoSaveInterval * 1000, new AjxCallback(this, this._autoSaveCallback));
-		} else {
-			this._autoSaveTimer.resurrect(autoSaveInterval * 1000);
+			this._autoSaveTimer = window.setInterval(AjxCallback.simpleClosure(this._autoSaveCallback, this, true), autoSaveInterval * 1000);
 		}
 	}
 
-	var authTokenEndTime = appCtxt.get(ZmSetting.TOKEN_ENDTIME);  //get time for auth token expiration
-	if (authTokenEndTime) {
-		var now = new Date();
-		var interval = authTokenEndTime - now.getTime() - 10000; //set timer for auth token expire time - 10 seconds
-		DBG.println(AjxDebug.DBG1, "ZmComposeController: setting auth token timer interval to " + interval);
-		DBG.println(AjxDebug.DBG1, "ZmComposeController: auth token timer callback scheduled for " + new Date(now.getTime() + interval).toLocaleString());
-		//check to see if we need to reschedule  -- auth token may have expired or timer was canceled
-		if (authTokenEndTime != this._authTokenEndTime || !this._authTimedAction) {
-			this._authTokenEndTime = authTokenEndTime;
-			this._authTimedAction = new AjxTimedAction(this, this._authSaveCallback)
-			AjxTimedAction.scheduleAction(this._authTimedAction, interval);
-		}
-
-	}
 };
 
 ZmComposeController.prototype._setAddSignatureVisibility =
@@ -1239,10 +1241,10 @@ function(msg, identity) {
 
 	// depending on COS/user preference set compose format
 	var composeMode = DwtHtmlEditor.TEXT;
-
-	if (appCtxt.get(ZmSetting.HTML_COMPOSE_ENABLED)) {
+    var ac = window.parentAppCtxt || window.appCtxt;
+	if (ac.get(ZmSetting.HTML_COMPOSE_ENABLED)) {
         if (this._action == ZmOperation.NEW_MESSAGE) {
-            if (appCtxt.get(ZmSetting.COMPOSE_AS_FORMAT) == ZmSetting.COMPOSE_HTML) {
+            if (ac.get(ZmSetting.COMPOSE_AS_FORMAT) == ZmSetting.COMPOSE_HTML) {
                 composeMode = DwtHtmlEditor.HTML;
             }
         } 
@@ -1252,8 +1254,8 @@ function(msg, identity) {
 			}
 		}
 		else if (identity) {
-			var sameFormat = appCtxt.get(ZmSetting.COMPOSE_SAME_FORMAT);
-			var asFormat = appCtxt.get(ZmSetting.COMPOSE_AS_FORMAT);
+			var sameFormat = ac.get(ZmSetting.COMPOSE_SAME_FORMAT);
+			var asFormat = ac.get(ZmSetting.COMPOSE_AS_FORMAT);
 			if ((!sameFormat && asFormat == ZmSetting.COMPOSE_HTML) ||  (sameFormat && msg && msg.isHtmlMail())) {
 				composeMode = DwtHtmlEditor.HTML;
 			}
@@ -1390,35 +1392,24 @@ function(draftType, msg, resp) {
 			}
 		}
 	} else {
+		if (draftType != ZmComposeController.DRAFT_TYPE_AUTO) {
+			var transitions = [ ZmToast.FADE_IN, ZmToast.IDLE, ZmToast.PAUSE, ZmToast.FADE_OUT ];
+			appCtxt.setStatusMsg(ZmMsg.draftSaved, ZmStatusView.LEVEL_INFO, null, transitions);
+		}
+		this._composeView.processMsgDraft(msg);
 		// TODO - disable save draft button indicating a draft was saved
+
+		var listController = this._listController; // non child window case
 		if (appCtxt.isChildWindow) {
-			appCtxt.setStatusMsg(ZmMsg.draftSaved);
-			this._composeView.processMsgDraft(msg);
 			//Check if Mail App view has been created and then update the MailListController
-			var pAppCtxt = window.parentAppCtxt;
-			if(pAppCtxt.getAppViewMgr().getAppView(ZmApp.MAIL)) {
-				var listController = pAppCtxt.getApp(ZmApp.MAIL).getMailListController();
-				if (listController && listController._draftSaved) {
-					//Pass the mail response to the parent window such that the ZmMailMsg obj is created in the parent window.
-					listController._draftSaved(null, resp.m[0]);
-				}
+			if (window.parentAppCtxt.getAppViewMgr().getAppView(ZmApp.MAIL)) {
+				listController = window.parentAppCtxt.getApp(ZmApp.MAIL).getMailListController();
 			}
-		} else {
-			var message;
-			var transitions;
-			if (draftType == ZmComposeController.DRAFT_TYPE_AUTO) {
-				var time = AjxDateUtil.computeTimeString(new Date());
-				this._autoSaveFormat = this._autoSaveFormat || new AjxMessageFormat(ZmMsg.draftSavedAuto);
-				message = this._autoSaveFormat.format(time);
-				transitions = [ ZmToast.FADE_IN, ZmToast.IDLE, ZmToast.PAUSE, ZmToast.FADE_OUT ];
-			} else {
-				message = ZmMsg.draftSaved;
-			}
-			appCtxt.setStatusMsg(message, ZmStatusView.LEVEL_INFO, null, transitions);
-			this._composeView.processMsgDraft(msg);
-			if (this._listController && this._listController._draftSaved) {
-				this._listController._draftSaved(msg);
-			}
+		}
+		if (listController && listController._draftSaved) {
+			var savedMsg = appCtxt.isChildWindow ? null : msg;
+			var savedResp = appCtxt.isChildWindow ? resp.m[0] : null; //Pass the mail response to the parent window such that the ZmMailMsg obj is created in the parent window.
+			listController._draftSaved(savedMsg, savedResp);
 		}
 	}
 
@@ -1612,19 +1603,28 @@ function(idle) {
 	}
 };
 
-ZmComposeController.prototype._authSaveCallback =
-function() {
-	DBG.println(AjxDebug.DBG1, "ZmComposeController: authSaveCallback -- now = " + new Date().toLocaleString());
-	DBG.println(AjxDebug.DBG1, "ZmComposeController: auth token to expire, auto saving draft");
-	this._autoSaveCallback(true);
-};
 
 ZmComposeController.prototype.saveDraft =
 function(draftType, attId, docIds, callback, contactId) {
 
 	if (!this._canSaveDraft()) { return; }
-
 	draftType = draftType || ZmComposeController.DRAFT_TYPE_MANUAL;
+	
+	var addrs = this._composeView._collectAddrs();
+	if (addrs && addrs._bad_addrs_ && addrs._bad_addrs_.size()) {
+		if (draftType == ZmComposeController.DRAFT_TYPE_MANUAL) {
+			var dlg = appCtxt.getMsgDialog();
+			dlg.reset();
+			var badAddrs = [];
+			for (var i=0; i<addrs._bad_addrs_.size(); i++) {
+				badAddrs.push(AjxStringUtil.htmlEncode(addrs._bad_addrs_.get(i)));	
+			}
+			dlg.setMessage(AjxMessageFormat.format(ZmMsg.errorSavingDraftInvalidEmails, [badAddrs.join("<br/>")]));
+			dlg.popup();
+		}
+		return;
+	}
+
 	var respCallback = new AjxCallback(this, this._handleResponseSaveDraftListener, [draftType, callback]);
 	this._resetDelayTime();
 	if (!docIds) {
@@ -1693,7 +1693,7 @@ function() {
 	var time = this._delayDialog.getValue(); //Returns {date: Date, timezone: String (see AjxTimezone)}
 
 	var date = time.date;
-	var dateOffset = AjxTimezone.getOffset(AjxTimezone.getRule(AjxTimezone.getClientId(time.timezone)), date);
+	var dateOffset = AjxTimezone.getOffset(AjxTimezone.getClientId(time.timezone), date);
 	var utcDate = new Date(date.getTime() - dateOffset*60*1000);
 
 	var now = new Date();
@@ -1794,7 +1794,6 @@ function(mailtoParams) {
 ZmComposeController.prototype._popShieldYesDraftSaved =
 function() {
 	appCtxt.getAppViewMgr().showPendingView(true);
-	this._cancelAuthTimedSave();
 };
 
 // Called as: No, don't save as draft
@@ -1811,7 +1810,6 @@ function(mailtoParams) {
 
 		AjxDebug.println(AjxDebug.REPLY, "Reset compose view: _popShieldNoCallback");
         this._composeView.reset(false);
-		this._cancelAuthTimedSave();
 
 		if (!mailtoParams) {
 			appCtxt.getAppViewMgr().showPendingView(true);
@@ -1840,6 +1838,8 @@ function() {
 	this._popShield.removePopdownListener(this._dialogPopdownListener);
 	this._popShield.popdown();
 	this._cancelViewPop();
+	this._initAutoSave(); //re-init autosave since it was killed in preHide
+
 };
 
 ZmComposeController.prototype._switchIncludeOkCallback =
@@ -1997,11 +1997,3 @@ function(){
 };
 
 
-ZmComposeController.prototype._cancelAuthTimedSave =
-function() {
-	if (this._authTimedAction && this._authTimedAction._id) {
-		AjxTimedAction.cancelAction(this._authTimedAction._id);
-		DBG.println(AjxDebug.DBG1, "ZmComposeController: auth time save canceled. Action ID = " + this._authTimedAction._id);
-		this._authTimedAction = null;
-	}
-};

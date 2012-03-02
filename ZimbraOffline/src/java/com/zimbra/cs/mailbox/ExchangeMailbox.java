@@ -26,6 +26,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.offline.OfflineDataSource;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -241,10 +242,18 @@ public class ExchangeMailbox extends ChangeTrackingMailbox {
         if (!isXsyncEnabled())
             return;
         
-        if (!OfflineSyncManager.getInstance().isServiceActive()) {
-            if (isOnRequest)
-                OfflineLog.offline.debug("offline sync request ignored");
+        if (!OfflineSyncManager.getInstance().isServiceActive(isOnRequest)) {
+            
         } else if (lockMailboxToSync()) {
+            try {
+                getAccount();
+            } catch (AccountServiceException ase) {
+                if (ase.getCode().equals(AccountServiceException.NO_SUCH_ACCOUNT)) {
+                    OfflineLog.offline.debug("cancelCurrentTask as there is no such account " + getAccountName());
+                    cancelCurrentTask();
+                    return;
+                }
+            }
             synchronized (syncLock) {
                 if (isOnRequest && isDebugTraceOn) {
                     OfflineLog.offline.debug("============================== SYNC DEBUG TRACE START ==============================");
@@ -266,7 +275,7 @@ public class ExchangeMailbox extends ChangeTrackingMailbox {
                     }
                     syncDataSource(count > 0, isOnRequest);
                 } catch (Exception x) {
-                    if (!OfflineSyncManager.getInstance().isServiceActive())
+                    if (!OfflineSyncManager.getInstance().isServiceActive(isOnRequest))
                         return;
                     else if (isDeleting())
                         OfflineLog.offline.info("Mailbox \"%s\" is being deleted", getAccountName());

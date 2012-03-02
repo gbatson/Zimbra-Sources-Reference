@@ -239,7 +239,7 @@ function(value) {
             if(email) {
                 addr = email.getAddress();
             }
-            if(addr) emailList.push(AjxStringUtil.htmlEncode(addr));
+            if(addr) emailList.push(addr);
         }
     }
 	return emailList;

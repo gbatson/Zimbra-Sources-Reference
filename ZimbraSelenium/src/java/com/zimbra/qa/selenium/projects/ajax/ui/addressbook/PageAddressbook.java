@@ -1,5 +1,6 @@
 package  com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
+import java.awt.Robot;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,6 +10,7 @@ import org.apache.log4j.LogManager;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
 
 import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
@@ -121,7 +123,7 @@ public class PageAddressbook extends AbsTab {
 
 		
 		// Click on Addressbook icon
-		zClick(PageMain.Locators.zAppbarContact);
+		zClickAt(PageMain.Locators.zAppbarContact,"0,0");
 
 		zWaitForActive();
 
@@ -137,21 +139,21 @@ public class PageAddressbook extends AbsTab {
 			throw new HarnessException("Contact List is not present "+ "id='zv__CNS'");
 
 		//Get the number of contacts (String) 
-		int count = this.sGetCssCount("css=div#zv__CNS div[id^=zli__CNS__]");
+		int count = this.sGetCssCount("css=div[id='zv__CNS']>div[id^=zli__CNS__]");
 		
-		logger.debug(myPageName() + " zListGetContacts: number of contacts: "+ count);
+		logger.info(myPageName() + " zListGetContacts: number of contacts: "+ count);
 
 		// Get each contact's data from the table list
 		for (int i = 1; i <= count; i++) {
-			String commonLocator = "css=div[id='zv__CNS'] div:nth-child("+ i +")";
+			String commonLocator = "css=div[id='zv__CNS']>div:nth-child("+ i +")";
 
 			String contactType = getContactType(commonLocator);
 		    
 			ContactItem ci=null;
-			String contactDisplayedLocator = commonLocator + " table tbody tr td:nth-child(3)";
+			String contactDisplayedLocator = commonLocator + ">table>tbody>tr>td:nth-child(3)";
 			String fileAs = ClientSessionFactory.session().selenium().getText(contactDisplayedLocator);
-			
-			//check if it is a contactgroup or a contactgroup item
+			logger.info(" Found " + fileAs);
+			//check if it is a contact or a contactgroup item
 			if ( contactType.equals(ContactGroupItem.IMAGE_CLASS)) {
                 ci=new ContactGroupItem(fileAs);
 			}
@@ -255,9 +257,9 @@ public class PageAddressbook extends AbsTab {
        	   //page = ???
 	    }
 
-       zWaitForBusyOverlay();
+      
 
-	   if ( locator == null )
+	    if ( locator == null )
 			throw new HarnessException("locator was null for button "+ button);
 
 		// Default behavior, process the locator by clicking on it
@@ -268,14 +270,62 @@ public class PageAddressbook extends AbsTab {
 			throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
 
 		// Click it
-		this.zClick(locator);
+		zClickAt(locator,"0,0");
 		
 		if (isAlphabetButton(button)) {
  		  //for addressbook alphabet button only
-		  this.sClick(locator);
+		  sClick(locator);
 		}
 		zWaitForBusyOverlay();
 	
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		return (page);
+	}
+
+	
+	public AbsPage zKeyboardKeyEvent(int keyEvent) throws HarnessException {
+		logger.info(myPageName() + " zKeyboardKeyEvent("+ keyEvent +")");
+
+		tracer.trace("Click the shortcut "+ keyEvent );
+		
+		// Default behavior variables
+		AbsPage page = null;	// If set, this page will be returned
+
+		// Click it
+		this.zKeyboard.zTypeKeyEvent(keyEvent);		
+		zWaitForBusyOverlay();
+	
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		return (page);
+	}
+
+	public AbsPage zKeyboardShortcut(Shortcut shortcut) throws HarnessException {
+		logger.info(myPageName() + " zKeyboardShortcut("+ shortcut.getKeys() +")");
+
+		tracer.trace("Click the shortcut "+ shortcut.getKeys() );
+		
+
+		// Default behavior variables
+		AbsPage page = null;	// If set, this page will be returned
+		
+		if ( (shortcut == Shortcut.S_NEWTAG) ){
+			page = new DialogTag(MyApplication,((AppAjaxClient) MyApplication).zPageAddressbook);	
+		}
+		else if ( (shortcut == Shortcut.S_MOVE) ){
+			page = new DialogMove(MyApplication, this);	
+			
+		} 
+		// Click it
+		zKeyboardTypeString(shortcut.getKeys());	
+		
+		zWaitForBusyOverlay();
+		
 		
 		if ( page != null ) {
 			page.zWaitForActive();
@@ -356,28 +406,40 @@ public class PageAddressbook extends AbsTab {
 	      }
 
 	   } else if ( pulldown == Button.B_NEW ) {
+		   //the following locator fails to be clicked in IE on wdc machine zqa-089, 
+		   //probably due to complicated css??
+		   //pulldownLocator = "css=div#zb__CNS__NEW_MENU td#zb__CNS__NEW_MENU_dropdown";
+           		   
+		   pulldownLocator = "css=td#zb__CNS__NEW_MENU_dropdown";
 		   if ( option == Button.O_NEW_CONTACT ) {
-			    pulldownLocator = "css=div[id='zb__CNS__NEW_MENU'] td[id='zb__CNS__NEW_MENU_dropdown']";
 
 			    // TODO: Bug 58365 for Desktop
 			    if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
                    optionLocator="css=div[class='ActionMenu ZHasIcon'] div[class*='ZMenuItem ZWidget ZHasLeftIcon ZHasText'] table[class*='ZWidgetTable ZMenuItemTable']:contains('Contact')";                
 			    } else {
-                  optionLocator="css=tr[id='POPUP_NEW_CONTACT']";
+                  optionLocator="css=tr#POPUP_NEW_CONTACT";
                 }
 			    page = new FormContactNew(this.MyApplication);
 		   }
-		   if ( option == Button.O_NEW_CONTACTGROUP) {
-			    pulldownLocator = "css=div[id='zb__CNS__NEW_MENU'] td[id='zb__CNS__NEW_MENU_dropdown']";
-
+		   else if ( option == Button.O_NEW_CONTACTGROUP) {
+			   
 			    // TODO: Bug 58365 for Desktop
 			    if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
 			       optionLocator="css=div[class='ActionMenu ZHasIcon'] div[class*='ZMenuItem ZWidget ZHasLeftIcon ZHasText'] table[class*='ZWidgetTable ZMenuItemTable']:contains('Contact Group')";
 			    } else {
-			       optionLocator="css=tr[id='POPUP_NEW_GROUP']";
+			       optionLocator="css=tr#POPUP_NEW_GROUP";
 			    }
 				page = new FormContactGroupNew(this.MyApplication);		   
 		   }
+		   else if ( option == Button.O_NEW_TAG ) {
+			   
+		        optionLocator = "css=tr#POPUP_NEW_TAG";
+		        page = new DialogTag(this.MyApplication, this);
+		   } else {
+			   //option not suppored
+			   pulldownLocator=null;
+		   }
+		   
 	   }
 	// Default behavior
 		if ( pulldownLocator != null ) {
@@ -386,15 +448,20 @@ public class PageAddressbook extends AbsTab {
 			if ( !sIsElementPresent(pulldownLocator) ) {
 				throw new HarnessException("Button "+ pulldown +" option "+ option +" pulldownLocator "+ pulldownLocator +" not present!");
 			}
-			
-			if (ClientSessionFactory.session().isBrowserIE9())
-			{ 
-			  sClick(pulldownLocator);
+
+			//central coordinate "x,y" 
+			String center= sGetElementWidth(pulldownLocator)/2 + "," + sGetElementHeight(pulldownLocator)/2;
+			if (ClientSessionFactory.session().currentBrowserName().contains("MSIE")) {
+				//IE							
+				sClickAt(pulldownLocator,center);
 			}
 			else {
-			  zClick(pulldownLocator);
+			    //others
+			    zClickAt(pulldownLocator,center);
 			}
+			
 			zWaitForBusyOverlay();
+
 			
 			if ( optionLocator != null ) {
                 
@@ -418,7 +485,7 @@ public class PageAddressbook extends AbsTab {
 
 	// return the type of a contact
 	private String getContactType(String locator) {
-		String imageLocator = locator +" table tbody tr td:nth-child(2) center div[class*=";
+		String imageLocator = locator +" div[class*=";
         
 	    
 		if (sIsElementPresent(imageLocator + ContactGroupItem.IMAGE_CLASS + "]"))
@@ -429,15 +496,17 @@ public class PageAddressbook extends AbsTab {
 		{
 			return ContactItem.IMAGE_CLASS;		
 		}
-		
+		logger.info("contact type for " + locator + " is not a contact or contactgroup");
 		return null;
 	}
 	
     // return the xpath locator of a contact
 	private String getContactLocator(String contact) throws HarnessException {
-		String listLocator = "div#zv__CNS";				
+		String listLocator = "div[id='zv__CNS']";
+		
 		String rowLocator = "div[id^='zli__CNS__']";
 	    
+		
 
 		String contactLocator = null;
 		
@@ -448,7 +517,9 @@ public class PageAddressbook extends AbsTab {
 			throw new HarnessException("List does not contain any items "+ rowLocator);
 
 		//Get the number of contacts (String) 
-	    int count = this.sGetCssCount("css=" + listLocator + " " + rowLocator);
+	    int count = this.sGetCssCount("css=" + listLocator + ">" + rowLocator);
+		//int count = this.sGetXpathCount("xpath=//div[@id=zv__CNS]/div[contains(@id,zli__CNS__)]");
+		//int count = this.sGetXpathCount("//div[@id='zv__CNS']//div[contains(@id, 'zli__CNS__')]");
 	    logger.debug(myPageName() + " zListItem: number of contacts: "+ count);
 
 		if ( count == 0 )
@@ -488,7 +559,6 @@ public class PageAddressbook extends AbsTab {
 		String listLocator = "div#zv__CNS";				
 		String rowLocator = "div[id^='zli__CNS__']";
 		
-		
 	    ArrayList<String> arrayList = new ArrayList<String>();
 		
 		if ( !sIsElementPresent("css=" + listLocator) )
@@ -498,7 +568,8 @@ public class PageAddressbook extends AbsTab {
 		    return arrayList; //an empty arraylist
 			
 		//Get the number of contacts (String) 
-		int count = sGetCssCount("css=" + listLocator + " " + rowLocator);
+		int count = sGetCssCount("css=" + listLocator + ">" + rowLocator);
+
 		logger.debug(myPageName() + " getSelectedContactLocator: number of contacts: "+ count);
 
 		if ( count == 0 )
@@ -540,7 +611,7 @@ public class PageAddressbook extends AbsTab {
 		    ContextMenuItem sub_cmi = null;
 		    zClick(contactLocator);
 		    //zKeyboard.zTypeCharacters(Shortcut.S_RIGHTCLICK.getKeys());
-			zRightClick(contactLocator);
+			zRightClickAt(contactLocator,"0,0");
 			
 			
 			if (option == Button.B_TAG) {
@@ -550,13 +621,39 @@ public class PageAddressbook extends AbsTab {
 				if (subOption == Button.O_TAG_NEWTAG) {
 					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_NEW_TAG;
 					page = new DialogTag(this.MyApplication, this);
+					
 				}
 				
 				else if (subOption == Button.O_TAG_REMOVETAG) {
 					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_REMOVE_TAG;
 					page = null;	
 				}
+		
+				this.sMouseMove(cmi.locator);
+				SleepUtil.sleepMedium();
 				
+				this.sMouseMoveAt(cmi.locator, "0,0");
+				SleepUtil.sleepMedium();
+				
+				this.sFireEvent(cmi.locator, "onblur");
+				this.sFireEvent(cmi.locator, "onclick");
+				try {
+				Robot robot = new Robot();
+                robot.mouseMove(this.sGetElementPositionTop(cmi.locator) + 5,
+                		this.sGetElementPositionLeft(cmi.locator) + 5);
+                robot.keyPress(KeyEvent.VK_DOWN);
+                robot.keyRelease(KeyEvent.VK_DOWN);
+                robot.keyPress(KeyEvent.VK_DOWN);
+                robot.keyRelease(KeyEvent.VK_DOWN);
+                robot.keyPress(KeyEvent.VK_DOWN);
+                robot.keyRelease(KeyEvent.VK_DOWN);
+                robot.keyPress(KeyEvent.VK_DOWN);
+                robot.keyRelease(KeyEvent.VK_DOWN);
+                
+				}
+				catch (Exception e) {
+					 logger.info(e.getMessage());
+				}
 				//For Chrome and Safari only
 				// as an alternative for sMouseOver(locator) 
 				zKeyboard.zTypeKeyEvent(KeyEvent.VK_DOWN);
@@ -604,6 +701,7 @@ public class PageAddressbook extends AbsTab {
 			// Mouse over the option
 			sFocus(locator);
 			sMouseOver(locator);
+			zWaitForBusyOverlay();
 	
 			id = sub_cmi.locator;
 			locator = "id="+ id;
@@ -619,7 +717,8 @@ public class PageAddressbook extends AbsTab {
 			
         
 		// Click option
-		zClick(locator);
+        zClickAt(locator,"0,0");
+		
 		zWaitForBusyOverlay();
 		
 		
@@ -642,8 +741,7 @@ public class PageAddressbook extends AbsTab {
 
 		if ( action == Action.A_RIGHTCLICK ) {
 			ContextMenuItem cmi=null;
-								
-		    zRightClick(contactLocator);
+					
 		
 			if (option == Button.B_DELETE){
                 cmi=CONTEXT_MENU.CONTACT_DELETE;				
@@ -655,7 +753,9 @@ public class PageAddressbook extends AbsTab {
             
 			else if (option == Button.B_EDIT) {
 				cmi=CONTEXT_MENU.CONTACT_EDIT;				 
-				page = newFormSelected();	
+				page = newFormSelected();
+				//click to select the only item 
+				zClickAt(contactLocator,"0,0");			    
 			}
 
 			else if (option == Button.B_NEW) {
@@ -678,7 +778,9 @@ public class PageAddressbook extends AbsTab {
 			else {
 				throw new HarnessException("option " + option + " not supported");
 			}
-			
+
+		    zRightClickAt(contactLocator,"0,0");
+
 			id = cmi.locator;
 			locator = "id="+ id;
 
@@ -693,8 +795,9 @@ public class PageAddressbook extends AbsTab {
 		}
 		
 				
-		// Click option
-		zClick(locator);
+		// Click option		
+		zClickAt(locator,"0,0");
+		
 		zWaitForBusyOverlay();
 		
 		
@@ -759,7 +862,7 @@ public class PageAddressbook extends AbsTab {
 		}
 		else if (action == Action.A_RIGHTCLICK ) {
 			
-            this.zRightClick(contactLocator); 
+            zRightClickAt(contactLocator,"0,0"); 
             //zWaitForBusyOverlay();
     		return (new ContextMenu(MyApplication));			
 		}
@@ -768,10 +871,12 @@ public class PageAddressbook extends AbsTab {
 		throw new HarnessException("action not supported ");
 	
 	}
+	
+	
 
 	private AbsPage newFormSelected() throws HarnessException {
 	    AbsPage page = null;
-		ArrayList<String> selectedContactArrayList=getSelectedContactLocator();
+		ArrayList<String> selectedContactArrayList = getSelectedContactLocator();
 	
 	    if (selectedContactArrayList.size() == 0) {
 		  throw new HarnessException("No selected contact/contact group ");				

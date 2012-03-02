@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.TimerTask;
 
+import com.google.common.base.Function;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapProtocol;
@@ -331,16 +332,22 @@ final class ImapSessionManager {
                 //   FIXME: may want to prefer loaded folders over paged-out folders
                 synchronized (i4listener) {
                     try {
+                        ImapFolder i4selected = i4listener.getImapFolder();
+                        if (i4selected == null) {
+                            return null;
+                        }
                         // found a matching session, so just copy its contents!
                         ZimbraLog.imap.debug("copying message data from existing session: %s", i4listener.getPath());
-
-                        ImapFolder i4selected = i4listener.getImapFolder();
-                        List<ImapMessage> i4list = new ArrayList<ImapMessage>(i4selected.getSize());
-                        for (ImapMessage i4msg : i4selected) {
-                            if (!i4msg.isExpunged()) {
-                                i4list.add(new ImapMessage(i4msg));
+                        final List<ImapMessage> i4list = new ArrayList<ImapMessage>(i4selected.getSize());
+                        i4selected.traverse(new Function<ImapMessage, Void>() {
+                            @Override
+                            public Void apply(ImapMessage i4msg) {
+                                if (!i4msg.isExpunged()) {
+                                    i4list.add(new ImapMessage(i4msg));
+                                }
+                                return null;
                             }
-                        }
+                        });
 
                         // if we're duplicating an inactive session, nuke that other session
                         // XXX: watch out for deadlock between this and the SessionCache
@@ -349,8 +356,9 @@ final class ImapSessionManager {
                         }
 
                         return i4list;
-                    } catch (IOException ioe) {
-                        ZimbraLog.imap.warn("skipping error while trying to page in for copy (" + i4listener.getPath() + ")", ioe);
+                    } catch (IOException e) {
+                        ZimbraLog.imap.warn("skipping error while trying to page in for copy (%s)",
+                                i4listener.getPath(), e);
                     }
                 }
             }
@@ -367,12 +375,16 @@ final class ImapSessionManager {
 
             ZimbraLog.imap.debug("copying message data from serialized session: %s", folder.getPath());
 
-            List<ImapMessage> i4list = new ArrayList<ImapMessage>(i4folder.getSize());
-            for (ImapMessage i4msg : i4folder) {
-                if (!i4msg.isExpunged()) {
-                    i4list.add(i4msg.reset());
+            final List<ImapMessage> i4list = new ArrayList<ImapMessage>(i4folder.getSize());
+            i4folder.traverse(new Function<ImapMessage, Void>() {
+                @Override
+                public Void apply(ImapMessage i4msg) {
+                    if (!i4msg.isExpunged()) {
+                        i4list.add(i4msg.reset());
+                    }
+                    return null;
                 }
-            }
+            });
             return i4list;
         } catch (IOException ioe) {
             if (!(ioe instanceof FileNotFoundException))
@@ -580,7 +592,9 @@ final class ImapSessionManager {
             ObjectOutputStream oos = null;
             try {
                 oos = new ObjectOutputStream(fos = new FileOutputStream(pagefile));
-                oos.writeObject(i4folder);
+                synchronized (i4folder) {
+                    oos.writeObject(i4folder);
+                }
             } catch (IOException ioe) {
                 ByteUtil.closeStream(oos);  oos = null;
                 ByteUtil.closeStream(fos);  fos = null;

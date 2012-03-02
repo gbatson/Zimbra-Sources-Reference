@@ -6,6 +6,7 @@ import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
@@ -46,9 +47,7 @@ public class CreateContact extends AjaxCommonTest  {
         formContactNew.zSubmit();
 		
         //verify toasted message 'contact created'  
-        Toaster toast = app.zPageMain.zGetToaster();
-        String toastMsg = toast.zGetToastMessage();
-        ZAssert.assertStringContains(toastMsg, "Contact Created", "Verify toast message 'Contact Created'");
+        ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(), "Contact Created", "Verify toast message 'Contact Created'");
 
         //verify contact "file as" is displayed
 		List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
@@ -61,6 +60,9 @@ public class CreateContact extends AjaxCommonTest  {
 		}
 		
         ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") existed ");
+
+	    //verify location is System folder "Contacts"
+		ZAssert.assertEquals(app.zPageAddressbook.sGetText("css=td.companyFolder"), SystemFolder.Contacts.getName(), "Verify location (folder) is " + SystemFolder.Contacts.getName());
 
 		return contactItem;
 	}
@@ -181,6 +183,43 @@ public class CreateContact extends AjaxCommonTest  {
         ZAssert.assertEquals(app.zPageAddressbook.sGetValue(FormContactNew.Locators.zLastEditField),contactItem.lastName, "Verify contact lastname (" + contactItem.lastName + ") not changed ");
 
 
+	}
+
+	@Test(	description = "create a contact item with full attribute",
+			groups = { "smoke" })
+	public void CreateContactWithAllAttributes() throws HarnessException {		
+		FormContactNew formContactNew = (FormContactNew)app.zPageAddressbook.zToolbarPressButton(Button.B_NEW);
+		
+		// Create a contact Item
+		ContactItem contactItem = ContactItem.generateContactItem(GenerateItemType.AllAttributes);
+	
+		 // or form contact new page is displayed
+		ZAssert.assertTrue(formContactNew.zIsActive(),"Verify new contact form is displayed");
+		
+		// show all hidden field for names:
+		formContactNew.zDisplayHiddenName();
+		
+		// fill items
+		formContactNew.zFill(contactItem);
+		
+		// Save the contact
+        formContactNew.zSubmit();
+		
+        //verify toasted message 'contact created'  
+        ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(), "Contact Created", "Verify toast message 'Contact Created'");
+
+        
+		//verify contact "file as" is displayed
+		List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
+		boolean isFileAsEqual=false;
+		for (ContactItem ci : contacts) {
+			if (ci.fileAs.equals(contactItem.fileAs)) {
+	            isFileAsEqual = true;	
+				break;
+			}
+		}
+		
+        ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") existed ");
 	}
 
 }

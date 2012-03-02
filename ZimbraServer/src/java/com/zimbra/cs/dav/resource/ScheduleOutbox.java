@@ -61,6 +61,7 @@ import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 
 public class ScheduleOutbox extends Collection {
 	public ScheduleOutbox(DavContext ctxt, Folder f) throws DavException, ServiceException {
@@ -120,16 +121,16 @@ public class ScheduleOutbox extends Collection {
 
         // Keep originator address consistent with the address used in ORGANIZER/ATTENDEE.
         // Apple iCal is very inconsistent about the user's identity when the account has aliases.
-        if (isVEventOrVTodo && originator != null) {
+        if (isVEventOrVTodo && originator != null && ctxt.getAuthAccount() != null) {
+            AccountAddressMatcher acctMatcher = new AccountAddressMatcher(ctxt.getAuthAccount());
             String originatorEmail = stripMailto(originator);
-            Account authAcct = ctxt.getAuthAccount();
-            if (AccountUtil.addressMatchesAccount(authAcct, originatorEmail)) {
+            if (acctMatcher.matches(originatorEmail)) {
                 boolean changed = false;
                 if (isOrganizerMethod) {
                     if (organizer != null) {
                         String organizerEmail = stripMailto(organizer);
                         if (!organizerEmail.equalsIgnoreCase(originatorEmail) &&
-                            AccountUtil.addressMatchesAccount(authAcct, organizerEmail)) {
+                            acctMatcher.matches(organizerEmail)) {
                             originator = organizer;
                             changed = true;
                         }
@@ -139,7 +140,7 @@ public class ScheduleOutbox extends Collection {
                         String atEmail = stripMailto(at);
                         if (originatorEmail.equalsIgnoreCase(atEmail)) {
                             break;
-                        } else if (AccountUtil.addressMatchesAccount(authAcct, atEmail)) {
+                        } else if (acctMatcher.matches(atEmail)) {
                             originator = at;
                             changed = true;
                             break;
@@ -301,7 +302,7 @@ public class ScheduleOutbox extends Collection {
             resp.addElement(DavElements.E_REQUEST_STATUS).setText("3.7;"+rcpt);
             return;
         }
-        String subject, uid, desc, descHtml, status, method;
+        String subject = "", uid, desc, descHtml, status, method;
 
         status = req.getPropVal(ICalTok.STATUS, "");
         method = cal.getPropVal(ICalTok.METHOD, "REQUEST");
@@ -314,7 +315,6 @@ public class ScheduleOutbox extends Collection {
                 	ZimbraLog.dav.debug("scheduling appointment on behalf of %s", organizerStr);
                 }
             }
-            subject = "Meeting Request: ";
         } else if (method.equals("REPLY")) {
             ZProperty attendeeProp = req.getProperty(ICalTok.ATTENDEE);
             if (attendeeProp == null)
@@ -322,20 +322,16 @@ public class ScheduleOutbox extends Collection {
             ZAttendee attendee = new ZAttendee(attendeeProp);
             String partStat = attendee.getPartStat();
             if (partStat.equals(IcalXmlStrMap.PARTSTAT_ACCEPTED)) {
-                subject = "Accepted: ";
+                subject = "Accept: ";
             } else if (partStat.equals(IcalXmlStrMap.PARTSTAT_TENTATIVE)) {
                 subject = "Tentative: ";
             } else if (partStat.equals(IcalXmlStrMap.PARTSTAT_DECLINED)) {
-                subject = "Declined: ";
-            } else {
-                subject = "Meeting Reply: ";
+                subject = "Decline: ";
             }
-        } else {
-            subject = "Meeting: ";
         }
         
         if (status.equals("CANCELLED"))
-            subject = "Meeting Cancelled: ";
+            subject = "Cancelled: ";
         subject += req.getPropVal(ICalTok.SUMMARY, "");
         uid = req.getPropVal(ICalTok.UID, null);
         if (uid == null) {

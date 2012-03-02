@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010 Zimbra, Inc.
- * 
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -167,7 +167,7 @@ function searchWordHighlighter_arrayHasEl(array, val) {
  */
 SearchHighlighterZimlet.prototype._setRegExps =
 function() {
-	this._currentSearchQuery = this._searchController.currentSearch.query;
+	this._currentSearchQuery = (this._searchController.currentSearch) ? this._searchController.currentSearch.query : null;
 	if (!this._oldSearchQuery || this._currentSearchQuery != this._oldSearchQuery) {
 		var words = this._getSearchWords(this._currentSearchQuery);
 		this._regexps = [];
@@ -231,11 +231,21 @@ SearchHighlighterZimlet.prototype.addMenuButton = function(controller, menu) {
  */
 SearchHighlighterZimlet.prototype._clearSearchWordHighlights = function(controller) {
 	var msgBody;
-	var bodyEl = appCtxt.getAppViewMgr().getCurrentView().getMsgView().getHtmlBodyElement();
+	var currentView = appCtxt.getAppViewMgr().getCurrentView();
+	var view;
+	if(currentView.getItemView) {
+		view = currentView.getItemView();
+	} else if(currentView.getMsgView) {
+		view = currentView.getMsgView();
+	}
+	if(!view) {
+		return;
+	}
+	var bodyEl = view.getHtmlBodyElement();
 	if (bodyEl) {
 		msgBody = bodyEl.ownerDocument;
 	} else {
-		var elId = appCtxt.getAppViewMgr().getCurrentView().getMsgView().getHTMLElId();
+		var elId = view.getHTMLElId();
 		if (elId) {
 			var doc = document.getElementById(elId + "_body__iframe");
 			if (!AjxEnv.isIE) {
@@ -255,11 +265,11 @@ SearchHighlighterZimlet.prototype._clearSearchWordHighlights = function(controll
 		if (msgBody != undefined || msgBody != null) {
 			bodyObj = msgBody.getElementById(this._spanIds[i]);
 		}
-		if ((obj != undefined) && (obj.style != undefined)) {
-			obj.style.backgroundColor = "";
+		if ((obj != undefined) && (obj.className != undefined)) {
+			obj.className = "";
 		}
-		if ((bodyObj != undefined) && (bodyObj.style != undefined)) {
-			bodyObj.style.backgroundColor = "";
+		if ((bodyObj != undefined) && (bodyObj.className != undefined)) {
+			bodyObj.className = "";
 		}
 	}
 	this._spanIds = [];//reset

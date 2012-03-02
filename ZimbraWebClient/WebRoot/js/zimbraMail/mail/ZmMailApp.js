@@ -73,7 +73,7 @@ ZmApp.UPSELL_SETTING[ZmApp.MAIL]			= ZmSetting.MAIL_UPSELL_ENABLED;
 ZmApp.LOAD_SORT[ZmApp.MAIL]					= 20;
 ZmApp.QS_ARG[ZmApp.MAIL]					= "mail";
 
-ZmMailApp.DEFAULT_AUTO_SAVE_DRAFT_INTERVAL	= 30;
+ZmMailApp.DEFAULT_AUTO_SAVE_DRAFT_INTERVAL	= 15;
 ZmMailApp.DEFAULT_MAX_MESSAGE_SIZE			= 250000;
 
 ZmMailApp.POP_DOWNLOAD_SINCE_ALL			= 0;
@@ -161,6 +161,7 @@ function(settings) {
 	settings.registerSetting("FORWARD_USE_PREFIX",				{type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	settings.registerSetting("GET_MAIL_ACTION",					{name:"zimbraPrefGetMailAction", type:ZmSetting.T_PREF, defaultValue:ZmSetting.GETMAIL_ACTION_DEFAULT, isGlobal:true});
 	settings.registerSetting("GROUP_MAIL_BY",					{name:"zimbraPrefGroupMailBy", type:ZmSetting.T_PREF, defaultValue:ZmSetting.GROUP_BY_MESSAGE, isImplicit:true, isGlobal:true});
+	settings.registerSetting("HIGHLIGHT_OBJECTS",               {name:"zimbraMailHighlightObjectsMaxSize", type:ZmSetting.T_COS, dataType:ZmSetting.D_INT, defaultValue:70});
 	settings.registerSetting("HTML_SIGNATURE_ENABLED",			{type:ZmSetting.T_PREF,dataType:ZmSetting.D_BOOLEAN,defaultValue:true});
 	settings.registerSetting("IDENTITIES_ENABLED",				{name:"zimbraFeatureIdentitiesEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	settings.registerSetting("INITIAL_SEARCH",					{name:"zimbraPrefMailInitialSearch", type:ZmSetting.T_PREF, defaultValue:"in:inbox"});

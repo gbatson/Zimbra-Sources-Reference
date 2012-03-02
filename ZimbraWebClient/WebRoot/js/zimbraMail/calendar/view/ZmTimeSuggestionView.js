@@ -341,12 +341,16 @@ function() {
     this._searchAllLink = document.getElementById(this._searchAllId);
     if(this._searchAllLink) {
         this._searchAllLink._viewId = AjxCore.assignId(this);
-        Dwt.setHandler(this._searchAllLink, DwtEvent.ONCLICK, ZmTimeSuggestionView._onClick);
+        Dwt.setHandler(this._searchAllLink, DwtEvent.ONCLICK, AjxCallback.simpleClosure(ZmTimeSuggestionView._onClick, this, this._searchAllLink));
     }
 };
 
 ZmTimeSuggestionView.prototype.setShowSuggestionsHTML =
 function(date) {
+    if(this._date && this._date == date) {
+        return;
+    }
+    this._date = date;
     this.removeAll();
 	var	div = document.createElement("div");
     var params = [
@@ -366,7 +370,7 @@ function(date) {
     this._suggestLink = document.getElementById(this._suggestId);
     if(this._suggestLink) {
         this._suggestLink._viewId = AjxCore.assignId(this);
-        Dwt.setHandler(this._suggestLink, DwtEvent.ONCLICK, ZmTimeSuggestionView._onClick);
+        Dwt.setHandler(this._suggestLink, DwtEvent.ONCLICK, AjxCallback.simpleClosure(ZmTimeSuggestionView._onClick, this, this._suggestLink));
     }
 };
 
@@ -464,9 +468,7 @@ function(list, noResultsOk, doAdd) {
 
 
 ZmTimeSuggestionView._onClick =
-function(ev) {
-	ev = ev || window.event;
-	var el = DwtUiEvent.getTarget(ev);
+function(el, ev) {
 	var edv = AjxCore.objectWithId(el._viewId);
 	if (edv) {
 		edv._handleOnClick(el);

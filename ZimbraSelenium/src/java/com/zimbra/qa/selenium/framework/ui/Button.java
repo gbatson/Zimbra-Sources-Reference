@@ -39,6 +39,7 @@ public class Button {
 	public static final Button B_RENAME = new Button("B_RENAME");
 	public static final Button B_SHARE = new Button("B_SHARE");
 	public static final Button B_CLOSE = new Button("B_CLOSE");
+	public static final Button B_ACTIONS = new Button("B_ACTIONS");
 	
 	public static final Button O_NEW_MESSAGE = new Button("O_NEW_MESSAGE");
 	public static final Button O_NEW_CONTACT = new Button("O_NEW_CONTACT");
@@ -62,6 +63,9 @@ public class Button {
 	public static final Button B_CANCEL = new Button("B_CANCEL");
 	public static final Button B_OK = new Button("B_OK");
 	public static final Button O_EDIT_LINK = new Button("O_EDIT_LINK");
+
+	// Zimbra Desktop's Accounts page
+	public static final Button B_VALIDATE_AND_SAVE = new Button("B_VALIDATE_AND_SAVE");
 
 	// MailPage buttons and pulldown options
 	public static final Button B_GETMAIL = new Button("B_GETMAIL");
@@ -110,6 +114,7 @@ public class Button {
 
 	public static final Button O_SEND_SEND_LATER = new Button("O_SEND_SEND_LATER");
 	public static final Button O_SIGNATURE_DO_NOT_ADD_SIGNATURE = new Button("O_SIGNATURE_DO_NOT_ADD_SIGNATURE");
+	public static final Button O_ADD_SIGNATURE = new Button("O_ADD_SIGNATURE");
 	public static final Button O_OPTION_FORMAT_AS_HTML = new Button("O_OPTION_FORMAT_AS_HTML");
 	public static final Button O_OPTION_FORMAT_AS_TEXT = new Button("O_OPTION_FORMAT_AS_TEXT");
 	public static final Button O_OPTION_REQUEST_READ_RECEIPT = new Button("O_OPTION_REQUEST_READ_RECEIPT");
@@ -137,6 +142,7 @@ public class Button {
 	public static final Button B_UPLOAD_FILE = new Button("B_UPLOAD_FILE");
 	public static final Button B_EDIT_FILE = new Button("B_EDIT_FILE");
 	public static final Button B_OPEN_IN_SEPARATE_WINDOW = new Button("B_OPEN_IN_SEPARATE_WINDOW");
+	public static final Button B_LAUNCH_IN_SEPARATE_WINDOW = new Button("B_LAUNCH_IN_SEPARATE_WINDOW");
 	public static final Button O_SEND_AS_ATTACHMENT = new Button("O_SEND_AS_ATTACHMENT");
 	public static final Button O_SEND_LINK = new Button("O_SEND_LINK");
 	public static final Button O_EDIT = new Button("O_EDIT");
@@ -212,14 +218,31 @@ public class Button {
 	public static final Button B_VIEW_ENTIRE_MESSAGE = new Button("B_VIEW_ENTIRE_MESSAGE");
 	public static final Button B_HIGHLIGHT_OBJECTS = new Button("B_HIGHLIGHT_OBJECTS");
 	
+	// Calendar Buttons
+	public static final Button B_REFRESH = new Button("B_REFRESH");
 	
+    // Calendar	Views
+	public static final Button O_LISTVIEW_DAY = new Button("POPUP_DAY_VIEW");
+	public static final Button O_LISTVIEW_WORKWEEK = new Button("POPUP_WORK_WEEK_VIEW");
+	public static final Button O_LISTVIEW_WEEK = new Button("POPUP_WEEK_VIEW");
+	public static final Button O_LISTVIEW_MONTH = new Button("POPUP_MONTH_VIEW");
+	public static final Button O_LISTVIEW_LIST = new Button("POPUP_CAL_LIST_VIEW");
+	public static final Button O_LISTVIEW_SCHEDULE = new Button("POPUP_SCHEDULE_VIEW");
+
 	//// Admin Console
 	
 	// Accounts buttons
 	public static final Button O_ACCOUNTS_ACCOUNT = new Button("O_ACCOUNTS_ACCOUNT");
+
+	// Distribution List  buttons
 	public static final Button O_DISTRIBUTIUONLISTS_DISTRIBUTIONLIST=new Button("O_DISTRIBUTIUONLISTS_DISTRIBUTIONLIST");
+	
 	// Aliases buttons
 	public static final Button O_ALIASES_ALIAS = new Button("O_ALIASES_ALIAS");
+	
+	// Resources button
+	public static final Button O_RESOURCES_RESOURCE = new Button("O_RESOURCES_RESOURCE");
+	
 
 	
 	// Button properties

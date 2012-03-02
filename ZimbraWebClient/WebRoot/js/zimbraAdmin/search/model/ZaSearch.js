@@ -349,6 +349,7 @@ ZaSearch.prototype.dynSelectSearchDomains = function (callArgs) {
 		var value = callArgs["value"];
 		var event = callArgs["event"];
 		var callback = callArgs["callback"];
+		var applyConfig = callArgs["applyConfig"];
 		var busyId = Dwt.getNextId();
 				
 		var params = new Object();
@@ -372,9 +373,10 @@ ZaSearch.prototype.dynSelectSearchDomains = function (callArgs) {
 		params.controller = ZaApp.getInstance().getCurrentController();
 		params.showBusy = true;
 		params.busyId = busyId;
+		params.applyConfig = applyConfig;
 		params.busyMsg = ZaMsg.BUSY_SEARCHING_DOMAINS;
 		params.skipCallbackIfCancelled = false;
-        params.attrs = [ZaDomain.A_domainName,ZaDomain.A_zimbraDomainStatus,ZaItem.A_zimbraId, ZaDomain.A_domainType];
+        params.attrs = [ZaDomain.A_domainName,ZaDomain.A_zimbraDomainStatus,ZaItem.A_zimbraId, ZaDomain.A_domainType, ZaDomain.A_zimbraMailAddressValidationRegex];
 		ZaSearch.searchDirectory(params);
 	} catch (ex) {
 		ZaApp.getInstance().getCurrentController()._handleException(ex, "ZaSearch.prototype.dynSelectSearchDomains");		
@@ -421,6 +423,16 @@ ZaSearch.prototype.dynSelectSearchCoses = function (callArgs) {
 		params.types = [ZaSearch.COSES];
 		params.callback = dataCallback;
 		params.sortBy = ZaCos.A_name;
+                params.query = "";
+                if(!ZaZimbraAdmin.isGlobalAdmin()) {
+                        var cosNameList = ZaApp.getInstance()._cosNameList;
+                        if(cosNameList && (cosNameList instanceof Array) && cosNameList.length == 0) {
+                            for(var i = 0; i < cosNameList.length; i++)
+                                query += "(" + ZaCos.A_name + "=" + cosNameList[i] + ")";
+                            if(cosNameList.length > 1)
+                                query = "(|" + query + ")";
+                        } else params.query = ZaSearch.getSearchCosByNameQuery(value);
+                } else
 		params.query = ZaSearch.getSearchCosByNameQuery(value);
 		params.controller = ZaApp.getInstance().getCurrentController();
 		params.showBusy = true;

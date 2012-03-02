@@ -112,7 +112,6 @@ ZaCos.A_zimbraPrefMailSoundsEnabled = "zimbraPrefMailSoundsEnabled" ;
 ZaCos.A_zimbraPrefMailToasterEnabled = "zimbraPrefMailToasterEnabled";
 ZaCos.A_zimbraPrefUseKeyboardShortcuts = "zimbraPrefUseKeyboardShortcuts";
 ZaCos.A_zimbraPrefSaveToSent = "zimbraPrefSaveToSent";
-ZaCos.A_zimbraPrefContactsPerPage="zimbraPrefContactsPerPage";
 ZaCos.A_zimbraPrefComposeInNewWindow = "zimbraPrefComposeInNewWindow";
 ZaCos.A_zimbraPrefForwardReplyInOriginalFormat = "zimbraPrefForwardReplyInOriginalFormat";
 ZaCos.A_zimbraPrefAutoAddAddressEnabled = "zimbraPrefAutoAddAddressEnabled";
@@ -141,7 +140,8 @@ ZaCos.A_zimbraPrefMailSendReadReceipts = "zimbraPrefMailSendReadReceipts";
 ZaCos.A_zimbraPrefAdminConsoleWarnOnExit = "zimbraPrefAdminConsoleWarnOnExit" ;
 
 //features
-ZaCos.A_zimbraFeatureImportExportFolderEnabled = "zimbraFeatureImportExportFolderEnabled";
+ZaCos.A_zimbraFeatureExportFolderEnabled = "zimbraFeatureExportFolderEnabled";
+ZaCos.A_zimbraFeatureImportFolderEnabled = "zimbraFeatureImportFolderEnabled";
 ZaCos.A_zimbraDumpsterEnabled = "zimbraDumpsterEnabled";
 ZaCos.A_zimbraPrefCalendarFirstDayOfWeek = "zimbraPrefCalendarFirstDayOfWeek"; 
 ZaCos.A_zimbraFeatureReadReceiptsEnabled = "zimbraFeatureReadReceiptsEnabled";
@@ -611,7 +611,6 @@ ZaCos.myXModel = {
         {id:ZaCos.A_zimbraPrefUseKeyboardShortcuts, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefUseKeyboardShortcuts, type:_ENUM_},
         {id:ZaCos.A_zimbraAllowAnyFromAddress, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraAllowAnyFromAddress, type:_ENUM_},
         {id:ZaCos.A_zimbraPrefSaveToSent, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefSaveToSent, type:_ENUM_},
-        {id:ZaCos.A_zimbraPrefContactsPerPage, type:_NUMBER_, ref:"attrs/"+ZaCos.A_zimbraPrefContactsPerPage, choices:[10,25,50,100]},
         {id:ZaCos.A_zimbraMaxMailItemsPerPage, type:_NUMBER_, ref:"attrs/"+ZaCos.A_zimbraMaxMailItemsPerPage,maxInclusive:2147483647, minInclusive:0},
         {id:ZaCos.A_zimbraPrefMailItemsPerPage, type:_NUMBER_, ref:"attrs/"+ZaCos.A_zimbraPrefMailItemsPerPage, choices:[10,25,50,100]},
         {id:ZaCos.A_zimbraPrefHtmlEditorDefaultFontFamily, choices:ZaModel.FONT_FAMILY_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefHtmlEditorDefaultFontFamily, type:_ENUM_},
@@ -659,7 +658,8 @@ ZaCos.myXModel = {
         {id:ZaCos.A_zimbraJunkMessagesIndexingEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraJunkMessagesIndexingEnabled, type:_ENUM_},
 		{id:ZaCos.A_zimbraPrefMailSendReadReceipts, choices:ZaModel.SEND_READ_RECEPIT_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefMailSendReadReceipts, type:_ENUM_},
 //features
-		{id:ZaCos.A_zimbraFeatureImportExportFolderEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureImportExportFolderEnabled, type:_ENUM_},
+		{id:ZaCos.A_zimbraFeatureExportFolderEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureExportFolderEnabled, type:_ENUM_},
+		{id:ZaCos.A_zimbraFeatureImportFolderEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureImportFolderEnabled, type:_ENUM_},
 		{id:ZaCos.A_zimbraDumpsterEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraDumpsterEnabled, type:_ENUM_},
 		{id:ZaCos.A_zimbraPrefCalendarSendInviteDeniedAutoReply, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefCalendarSendInviteDeniedAutoReply, type:_ENUM_},
 		{id:ZaCos.A_zimbraFeatureReadReceiptsEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraFeatureReadReceiptsEnabled, type:_ENUM_},
@@ -759,4 +759,41 @@ function () {
 	
 }
 
+ZaCos.getEffectiveCosList = function(adminId) {
 
+    var soapDoc = AjxSoapDoc.create("GetAllEffectiveRightsRequest", ZaZimbraAdmin.URN, null);
+    var elGrantee = soapDoc.set("grantee", adminId);
+    elGrantee.setAttribute("type", "usr");
+    elGrantee.setAttribute("by", "id");
+
+    var params = {};
+    params.soapDoc = soapDoc;
+    params.asyncMode = false;
+    var reqMgrParams = {
+        controller : ZaApp.getInstance().getCurrentController(),
+        busyMsg : ZaMsg.BUSY_GET_EFFICIENT_COS_LIST
+    }
+
+    var cosNameList = [];
+    try {
+        var resp = ZaRequestMgr.invoke(params, reqMgrParams);
+        if(!resp || resp.Body.GetAllEffectiveRightsResponse.Fault)
+            return cosNameList;
+        var targets = resp.Body.GetAllEffectiveRightsResponse.target;
+        for(var i = 0; i < targets.length; i++) {
+            if(targets[i].type != ZaItem.COS)
+                continue;
+            if(!targets[i].entries) continue;
+            for(var j = 0; j < targets[i].entries.length; j++) {
+                var entry = targets[i].entries[j].entry;
+                for(var k = 0; k < entry.length; k++)
+                    cosNameList.push(entry[k].name);
+            }
+            break;
+        }
+        return cosNameList;
+    } catch(ex) {
+        return cosNameList;
+    }
+
+}

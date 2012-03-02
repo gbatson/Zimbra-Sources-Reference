@@ -2,11 +2,11 @@ package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import com.zimbra.qa.selenium.framework.util.HtmlElement;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
@@ -15,8 +15,10 @@ import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.ui.Shortcut;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseNew;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseOpen;
@@ -76,8 +78,16 @@ public class CreateDocument extends AjaxCommonTest {
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
 
 		// Click on open in a separate window icon in toolbar
-		DocumentBriefcaseOpen documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
-				.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW, docItem);
+		DocumentBriefcaseOpen documentBriefcaseOpen;
+
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+					.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW,
+							docItem);
+		else
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+					.zToolbarPressPulldown(Button.B_ACTIONS,
+							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem);
 
 		app.zPageBriefcase.isOpenDocLoaded(docItem);
 
@@ -119,9 +129,16 @@ public class CreateDocument extends AjaxCommonTest {
 		String docName = document.getName();
 		String docText = document.getDocText();
 
-		// Create new document page using Pulldown menu
+		// refresh briefcase page before creating a new document
+		app.zTreeBriefcase
+				.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, false);
+
+		SleepUtil.sleepVerySmall();
+
+		// Create a new document using New pull down menu
 		DocumentBriefcaseNew documentBriefcaseNew = (DocumentBriefcaseNew) app.zPageBriefcase
-				.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_DOCUMENT);
+				.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_DOCUMENT,
+						document);
 
 		try {
 			app.zPageBriefcase.zSelectWindow(DocumentBriefcaseNew.pageTitle);
@@ -141,7 +158,7 @@ public class CreateDocument extends AjaxCommonTest {
 		}
 
 		app.zPageBriefcase.zWaitForWindowClosed(DocumentBriefcaseNew.pageTitle);
-		
+
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
@@ -219,7 +236,7 @@ public class CreateDocument extends AjaxCommonTest {
 
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
-		
+
 		// Display file through RestUtil
 		EnumMap<PageBriefcase.Response.ResponsePart, String> response = app.zPageBriefcase
 				.displayFile(docName, new HashMap<String, String>() {
@@ -256,10 +273,10 @@ public class CreateDocument extends AjaxCommonTest {
 		logger.info("Checking for the opened window ...");
 
 		// Check if the window is still open
-		String[] windows = ClientSessionFactory.session().selenium()
-				.getAllWindowNames();
+		List<String> windows = app.zPageBriefcase.sGetAllWindowNames();
 		for (String window : windows) {
-			if (!window.isEmpty() && !window.contains("null") && !window.contains(PageBriefcase.pageTitle)
+			if (!window.isEmpty() && !window.contains("null")
+					&& !window.contains(PageBriefcase.pageTitle)
 					&& !window.contains("main_app_window")
 					&& !window.contains("undefined")) {
 				logger.warn(window + " window was still active. Closing ...");

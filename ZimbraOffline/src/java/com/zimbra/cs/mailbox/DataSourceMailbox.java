@@ -42,6 +42,7 @@ import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.Provisioning;
@@ -456,10 +457,18 @@ public class DataSourceMailbox extends SyncMailbox {
     }
 
     public void sync(boolean isOnRequest, boolean isDebugTraceOn) throws ServiceException {
-        if (!OfflineSyncManager.getInstance().isServiceActive()) {
-            if (isOnRequest)
-                OfflineLog.offline.debug("offline sync request ignored");
+        if (!OfflineSyncManager.getInstance().isServiceActive(isOnRequest)) {
+            //ignore background sync
         } else if (lockMailboxToSync()) {
+            try {
+                getAccount();
+            } catch (AccountServiceException ase) {
+                if (ase.getCode().equals(AccountServiceException.NO_SUCH_ACCOUNT)) {
+                    OfflineLog.offline.debug("cancelCurrentTask as there is no such account " + getAccountName());
+                    cancelCurrentTask();
+                    return;
+                }
+            }
             synchronized (syncLock) {
                 if (isOnRequest && isDebugTraceOn) {
                     OfflineLog.offline.debug(
@@ -470,7 +479,7 @@ public class DataSourceMailbox extends SyncMailbox {
                     int count = sendPendingMessages(isOnRequest);
                     syncAllLocalDataSources(count > 0, isOnRequest);
                 } catch (Exception x) {
-                    if (!OfflineSyncManager.getInstance().isServiceActive())
+                    if (!OfflineSyncManager.getInstance().isServiceActive(isOnRequest))
                         return;
                     else if (isDeleting())
                         OfflineLog.offline.info("Mailbox \"%s\" is being deleted",

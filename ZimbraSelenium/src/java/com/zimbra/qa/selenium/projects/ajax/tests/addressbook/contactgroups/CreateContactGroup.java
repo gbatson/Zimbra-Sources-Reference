@@ -7,6 +7,7 @@ import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
@@ -47,13 +48,14 @@ public class CreateContactGroup extends AjaxCommonTest  {
 	
 		ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + group.fileAs + ") existed ");
 
-	    //TODO verify group members are displayed		
+	    //verify location is System folder "Contacts"
+		ZAssert.assertEquals(app.zPageAddressbook.sGetText("css=td.companyFolder"), SystemFolder.Contacts.getName(), "Verify location (folder) is " + SystemFolder.Contacts.getName());
 	}
 	
 	
 	@Test(	description = "Create a basic contact group",
 			groups = { "sanity" })
-	public void CreateContactGroup_01() throws HarnessException {			
+	public void GroupOfNewEmail() throws HarnessException {			
 
 	    //Create random contact group data 
 		ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
@@ -74,7 +76,7 @@ public class CreateContactGroup extends AjaxCommonTest  {
 	
 	@Test(	description = "Create a contact group with GAL",
 			groups = { "functional" })
-	public void CreateContactGroup_02() throws HarnessException {			
+	public void GroupOfGAL() throws HarnessException {			
 	    //Create random contact group data 
 		ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
 	
@@ -108,7 +110,7 @@ public class CreateContactGroup extends AjaxCommonTest  {
 
 	@Test(	description = "Create a contact group with existing contacts",
 			groups = { "functional" })
-	public void CreateContactGroup_03() throws HarnessException {			
+	public void GroupOfExistingContact() throws HarnessException {			
 		//Create random contact group data 
 		ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
 	
@@ -148,7 +150,7 @@ public class CreateContactGroup extends AjaxCommonTest  {
 
 	@Test(	description = "Create a contact group with GAL + existing contacts + new emails",
 			groups = { "functional" })
-	public void CreateContactGroup_04() throws HarnessException {			
+	public void GroupOfGAL_ExistingContact_sNewEmail() throws HarnessException {			
 		//Create random contact group data 
 		ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
 	
@@ -203,7 +205,7 @@ public class CreateContactGroup extends AjaxCommonTest  {
 
 	@Test(	description = "Check disabled buttons in contact group's new form",
 			groups = { "functional" })
-	public void CreateContactGroup_05() throws HarnessException {			
+	public void VerifyButtonsDisable() throws HarnessException {			
 		//open contact group form
 		FormContactGroupNew formGroup = (FormContactGroupNew)app.zPageAddressbook.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_CONTACTGROUP);
         

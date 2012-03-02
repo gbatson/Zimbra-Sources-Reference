@@ -362,6 +362,8 @@ function(params) {
 			case ZmId.SEARCH_ANY:
 				params.query = "is:anywhere";
 				break;
+			case ZmItem.APPT:
+				break;
 			default:
 				// Get the app of the item type being searched
 				appName = ZmItem.APP[params.searchFor];
@@ -373,7 +375,7 @@ function(params) {
 			var defaultFolder = organizerName && ZmOrganizer.DEFAULT_FOLDER[organizerName];
 			var folder = defaultFolder && appCtxt.getById(defaultFolder);
 			if (folder) {
-				params.query = "in:" + folder.name;
+				params.query = "in:" + folder._systemName;
 			}
 		}
 		if (params.query) {
@@ -696,7 +698,7 @@ function(params, noRender, callback, errorCallback) {
 ZmSearchController.prototype._handleResponseDoSearch =
 function(search, noRender, isMixed, callback, noUpdateOverview, noClear, result) {
 
-	var results = result.getResponse();
+	var results = result && result.getResponse();
 	if (!results) { return; }
 
 	if (!results.type) {

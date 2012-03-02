@@ -66,6 +66,7 @@ ZmZimbraMail = function(params) {
     this._createSettings(params);
     this._createEnabledApps();
     this._initializeSettings(params);
+	this._postInitializeSettings();
 
     // set internal state
 	this._shell = appCtxt.getShell();
@@ -323,9 +324,6 @@ function(params) {
 				if (appCtxt.get(ZmSetting.CALENDAR_ENABLED, null, account)) {
 					this.handleCalendarComponents();
 				}
-                if (appCtxt.get(ZmSetting.TASKS_ENABLED, null, account)) {
-					this.handleTaskComponents();
-				}
 				var sc = appCtxt.getSearchController();
 				sc.getSearchToolbar().initAutocomplete();
 				if (!appCtxt.isChildWindow) {
@@ -354,9 +352,15 @@ ZmZimbraMail.prototype._createSettings = function(params) {
         var batchResponse = params.batchInfoResponse.Body.BatchResponse;
 
         // always assume there's a get info response
+		var infoResponse = batchResponse.GetInfoResponse[0];
+		if(!infoResponse) {
+			infoResponse ={}
+		}
+		//store per-domain settings in infoResponse obj so we can access it like other settings
+		infoResponse.domainSettings = params.settings;
         params.getInfoResponse = {
             Header: params.batchInfoResponse.Header,
-            Body: { GetInfoResponse: batchResponse.GetInfoResponse[0] }
+            Body: { GetInfoResponse: infoResponse}
         };
         var session = AjxUtil.get(params.getInfoResponse, "Header", "context", "session");
         if (session) {
@@ -450,6 +454,35 @@ ZmZimbraMail.prototype._initializeSettings = function(params) {
     if (!appCtxt.get(ZmSetting.SPAM_ENABLED)) {
         ZmFolder.HIDE_ID[ZmFolder.ID_SPAM] = true;
     }
+};
+
+/**
+ * Perform any additional operation after initializing settings
+ * @private
+ */
+ZmZimbraMail.prototype._postInitializeSettings =
+function() {
+	this._setCustomInvalidEmailPats();
+};
+
+/**
+ * Set an array of invalid Email patterns(values of zimbraMailAddressValidationRegex in ldap) to
+ * AjxEmailAddress.customInvalidEmailPats
+ * @private
+ */
+ZmZimbraMail.prototype._setCustomInvalidEmailPats =
+function() {
+ 	var customPatSetting = appCtxt.getSettings().getSetting(ZmSetting.EMAIL_VALIDATION_REGEX);
+	var cPatList = [];
+	if(customPatSetting) {
+		cPatList = customPatSetting.value;
+	}
+	for(var i = 0; i< cPatList.length; i++) {
+		var pat = cPatList[i];
+		if(pat && pat != "") {
+			  AjxEmailAddress.customInvalidEmailPats.push(new RegExp(pat))
+		}
+	}
 };
 
 /**
@@ -626,27 +659,6 @@ function(params, result) {
 	{
 		this.handleCalendarComponents();
 	}
-    if (appCtxt.get(ZmSetting.TASKS_ENABLED, null, account) &&
-		!this._doingPostRenderStartup &&
-		(params.startApp != ZmApp.TASKS))
-	{
-		this.handleTaskComponents();
-	}
-};
-
-/**
- * Creates & show Task Reminders on delay
- *
- * @private
- */
-ZmZimbraMail.prototype.handleTaskComponents =
-function() {
-    // reminder controlled by calendar preferences setting
-	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
-		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
-		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
-		AjxTimedAction.scheduleAction(reminderAction, delay);
-	}
 };
 
 /**
@@ -668,7 +680,14 @@ function() {
 		var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
 		AjxTimedAction.scheduleAction(reminderAction, delay);
 	}
-
+	
+	// reminder controlled by calendar preferences setting
+	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
+		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
+		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
+		AjxTimedAction.scheduleAction(reminderAction, delay);
+	}
+	
 };
 
 /**
@@ -2102,7 +2121,7 @@ ZmZimbraMail.prototype._getQueryParams =
 function() {
 
 	var appName = appCtxt.getCurrentAppName().toLowerCase();
-	var prod = appCtxt.isDesktop ? "zd" : "zcs";
+	var prod = appCtxt.isOffline ? "zd" : "zcs";
 	return ["utm_source=", appName, "&utm_medium=", prod, "&utm_content=", this._getVersion(), "&utm_campaign=help"].join("");
 };
 
@@ -2127,8 +2146,8 @@ function(ev) {
 	dialog.reset();
 	var version = this._getVersion();
 	var release = appCtxt.get(ZmSetting.CLIENT_RELEASE);
-	
-	dialog.setMessage(AjxMessageFormat.format(ZmMsg.aboutMessage, [version, release]), DwtMessageDialog.INFO_STYLE, "About");
+	var aboutMsg = appCtxt.isOffline ? ZmMsg.aboutMessageZD : ZmMsg.aboutMessage;
+	dialog.setMessage(AjxMessageFormat.format(aboutMsg, [version, release]), DwtMessageDialog.INFO_STYLE, ZmMsg.about);
 	dialog.popup();
 
 };
@@ -2182,12 +2201,7 @@ function() {
 ZmZimbraMail.prototype.setQuotaInfo =
 function(login, username) {
     var quota = appCtxt.get(ZmSetting.QUOTA);
-    if(!quota) {
-        return;
-    }
-	// quota
 	var usedQuota = (appCtxt.get(ZmSetting.QUOTA_USED)) || 0;
-
 	var data = {
 		id: this._usedQuotaField._htmlElId,
 		login: login,
@@ -2204,12 +2218,11 @@ function(login, username) {
 		data.percent = Math.min(Math.round((data.usedQuota / data.quota) * 100), 100);
 		data.desc = AjxMessageFormat.format(ZmMsg.quotaDescLimited, [data.percent+'%', data.limit]);
 	}
-	else {
+    else {
 		data.desc = AjxMessageFormat.format(ZmMsg.quotaDescUnlimited, [data.size]);
 		quotaTemplateId = 'UsedUnlimited';
 	}
-	this._usedQuotaField.getHtmlElement().innerHTML = AjxTemplate.expand('share.Quota#'+quotaTemplateId, data);
-
+    this._usedQuotaField.getHtmlElement().innerHTML = AjxTemplate.expand('share.Quota#'+quotaTemplateId, data);
 	// tooltip for username/quota fields
 	var html = AjxTemplate.expand('share.Quota#Tooltip', data);
 	this._components[ZmAppViewMgr.C_USER_INFO].setToolTipContent(html);
@@ -2481,7 +2494,7 @@ function() {
 	var appCtlr = window._zimbraMail;
 	if (!appCtlr) { return true; }
 	var okToExit = appCtlr._appViewMgr.isOkToUnload() && ZmZimbraMail._childWindowsOkToUnload();
-	if (okToExit && appCtlr._pollRequest) {
+	if (okToExit && !AjxEnv.isPrism && appCtlr._pollRequest) {
 		appCtlr._requestMgr.cancelRequest(appCtlr._pollRequest);
 	}
 	return okToExit;
@@ -2998,15 +3011,16 @@ function(ev) {
  */
 ZmZimbraMail._endSession =
 function() {
-
-	// Let the server know that the session is ending.
-	var errorCallback = new AjxCallback(null, function() { return true; } ); // Ignores any error.
-	var args = {
-		jsonObj: { EndSessionRequest: { _jsns: "urn:zimbraAccount" } },
-		asyncMode: true,
-		errorCallback: errorCallback
-	};
-	appCtxt.getAppController().sendRequest(args);
+	if (!AjxEnv.isPrism) {
+		// Let the server know that the session is ending.
+		var errorCallback = new AjxCallback(null, function() { return true; } ); // Ignores any error.
+		var args = {
+			jsonObj: { EndSessionRequest: { _jsns: "urn:zimbraAccount" } },
+			asyncMode: true,
+			errorCallback: errorCallback
+		};
+		appCtxt.getAppController().sendRequest(args);
+	}
 };
 
 // YUCK:

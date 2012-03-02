@@ -45,6 +45,11 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		private SystemFolder(String foldername) {
 			name = foldername;
 		}
+	
+		public String getName() {
+			return name;
+		}
+		
 		@Override
 		public int hashCode() {
 			final int prime = 31;
@@ -157,6 +162,8 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 	 * @throws HarnessException
 	 */
 	public static FolderItem importFromSOAP(Element response) throws HarnessException {
+		if ( response == null )
+			throw new HarnessException("Element cannot be null");
 
 		// TODO: can the ZimbraSOAP methods be used to convert this response to item?
 		

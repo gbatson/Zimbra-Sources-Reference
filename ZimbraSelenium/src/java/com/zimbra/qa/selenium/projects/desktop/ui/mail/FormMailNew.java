@@ -149,15 +149,8 @@ public class FormMailNew extends AbsForm {
 			this.zWaitForBusyOverlay();
 			
 			// Wait for the message to be delivered
-			try {
-			
-				// Check the message queue
-				Stafpostqueue sp = new Stafpostqueue();
-				sp.waitForPostqueue();
-			
-			} catch (Exception e) {
-				throw new HarnessException("Unable to wait for message queue", e);
-			}
+			Stafpostqueue sp = new Stafpostqueue();
+			sp.waitForPostqueue();
 			
 			return (page);
 		
@@ -287,21 +280,25 @@ public class FormMailNew extends AbsForm {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "css=[class='ImgPriorityHigh']";
+
+				// Have to use xpath because there is no unique identifier to select the text "High" and by using xpath, it selects the text "high" through the sibling relationship.
+				// When using the css to point to the icon, it clicks on the outside of the drop down menu
+				// , therefore it ends up closing and selecting nothing
+				optionLocator = "//div[@class='ImgPriorityHigh_list']/../../td[@class='ZWidgetTitle']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "css=[class='ImgPriorityNormal']";
+				optionLocator = "css=[class='ImgPriorityNormal_list']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_LOW ) {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "css=[class='ImgPriorityLow']";
+				optionLocator = "css=[class='ImgPriorityLow_list']";
 				page = this;
 
 			} else {
@@ -330,7 +327,7 @@ public class FormMailNew extends AbsForm {
 				if ( !this.sIsElementPresent(optionLocator) ) {
 					throw new HarnessException("Button "+ pulldown +" option "+ option +" optionLocator "+ optionLocator +" not present!");
 				}
-				
+
 				this.zClick(optionLocator);
 
 				this.zWaitForBusyOverlay();
@@ -407,9 +404,9 @@ public class FormMailNew extends AbsForm {
 
 				
 				this.sFocus(locator);
-				this.zClick(locator);
+				this.zClickAt(locator, "0,0");
 				this.zWaitForBusyOverlay();
-				this.sType(locator, value);
+				this.zType(locator, value);
 				
 				return;
 				
@@ -428,8 +425,8 @@ public class FormMailNew extends AbsForm {
 						throw new HarnessException("Unable to locate compose body");
 
 					this.sFocus(locator);
-					this.zClick(locator);
-					this.sType(locator, value);
+					this.zClickAt(locator, "0,0");
+					this.zType(locator, value);
 					
 				} finally {
 					// Make sure to go back to the original iframe

@@ -7,6 +7,8 @@ import java.util.*;
 import net.sf.json.*;
 
 import org.apache.log4j.*;
+import org.dom4j.*;
+import org.dom4j.io.*;
 
 import com.ibm.staf.STAFResult;
 import com.zimbra.qa.selenium.framework.core.*;
@@ -41,6 +43,125 @@ public class CodeCoverage {
 		CODE_COVERAGE_DIRECTORY_PATH = path;
 	}
 	
+	/**
+	 * Write coverage.xml to the output folder
+	 */
+	public void writeXml() {
+		logger.info("writeXml()");
+		
+		if ( !Enabled ) {
+			logger.info("writeXml(): Code Coverage reporting is disabled");
+			return;
+		}
+		
+		if ( cumulativeCoverage == null ) {
+			logger.info("writeXml(): cumulativeCoverage was null");
+			return;
+		}
+
+		/**
+		 * Report should look like:
+		 * 
+	<?xml version="1.0" encoding="UTF-8"?>
+	<report>
+   		<stats>
+     		<packages value="158"/>
+     		<classes value="4740"/>
+     		<methods value="38102"/>
+     		<srcfiles value="3104"/>
+     		<srclines value="202617"/>
+   		</stats>
+   		<data>
+     		<all name="all classes">
+       			<coverage type="class, %" value="56%  (2642/4740)"/>
+       			<coverage type="method, %" value="43%  (16433/38102)"/>
+       			<coverage type="block, %" value="43%  (425121/979752)"/>
+       			<coverage type="line, %" value="44%  (89560/202617)"/>
+			</all>
+		</data>
+	</report>
+
+		 * 
+		 */
+
+		int countFiles = 0;
+		int countTotalLines = 0;
+		int countTotalCovered = 0;
+		int percent = 0;
+
+		Iterator<?> iterator = cumulativeCoverage.keys();
+		while (iterator.hasNext()) {
+			String key = (String)iterator.next();
+
+			// Add 1 to the file count
+			countFiles++;
+
+			JSONArray coverage = cumulativeCoverage.getJSONObject(key).getJSONArray("coverage");
+			for (int i = 0; i < coverage.size(); i++) {
+				
+				String sValue = coverage.getString(i);
+				if ( !sValue.equalsIgnoreCase("null") ) {
+					
+					countTotalLines++;
+
+					Integer iValue = Integer.parseInt(sValue);
+					if ( iValue > 0 ) {
+
+						// Add 1 to the line count
+						countTotalCovered++;
+
+					}
+				}
+				
+			}
+
+		}
+
+		if ( countTotalLines > 0 ) {
+			percent = Math.round(((float)countTotalCovered * 100)/((float)countTotalLines));
+		}
+
+		Document doc = DocumentHelper.createDocument();
+		Element report = doc.addElement( "report" );
+		
+		Element stats = report.addElement( "stats" );
+		Element srcfiles = stats.addElement( "srcfiles" );
+		srcfiles.addAttribute("value", ""+ countFiles);
+		Element srclines = stats.addElement( "srclines" );
+		srclines.addAttribute("value", "" + countTotalLines);
+		
+		Element data = report.addElement( "data" );
+		Element all = data.addElement( "all" );
+		all.addAttribute( "name", "all classes" );
+		Element coverage = all.addElement( "coverage" );
+		coverage.addAttribute("type", "line, %");
+		coverage.addAttribute("value", String.format("%d%%  (%d/%d)", percent, countTotalCovered, countTotalLines));
+		
+		XMLWriter writer = null;
+		OutputFormat format = OutputFormat.createPrettyPrint();
+		
+		try  {
+
+			try {
+
+				writer = new XMLWriter(new FileWriter(CODE_COVERAGE_DIRECTORY_PATH + "/../coverage.xml", false), format);
+				writer.write(doc);
+
+			} finally {
+				if ( writer != null ) {
+					writer.close();
+					writer = null;
+				}
+			}
+
+		} catch (IOException e) {
+			logger.error("Unable to write coverage.xml", e);
+		}
+
+
+	}
+
+
 	/**
 	 * Write coverage.json to the output folder
 	 */
@@ -104,8 +225,9 @@ public class CodeCoverage {
 
 	/**
 	 * Update the coverage data
+	 * @throws HarnessException 
 	 */
-	public void calculateCoverage() {
+	public void calculateCoverage() throws HarnessException {
 		logger.info("calculateCoverage()");
 
 		if ( !Enabled ) {
@@ -126,7 +248,11 @@ public class CodeCoverage {
 
 				// First time in, just initialize the object
 				logger.debug("initalizing coverage object");
-				cumulativeCoverage = (JSONObject) JSONSerializer.toJSON(ClientSessionFactory.session().selenium().getEval(COVERAGE_SCRIPT));
+				try {
+					cumulativeCoverage = (JSONObject) JSONSerializer.toJSON(ClientSessionFactory.session().selenium().getEval(COVERAGE_SCRIPT));
+				} catch (net.sf.json.JSONException e) {
+					throw new HarnessException("JSON = ("+ ClientSessionFactory.session().selenium().getEval(COVERAGE_SCRIPT) +")", e);
+				}
 				
 				// Log coverage statistics
 				traceCoverage(null, cumulativeCoverage);
@@ -187,6 +313,8 @@ public class CodeCoverage {
 	// For logging, report how many new files were touched and how many new lines were touched
 	//
 	private void traceCoverage(JSONObject oldJSON, JSONObject newJSON) {
+		logger.info("CodeCoverage: URL="+ ClientSessionFactory.session().selenium().getLocation());
+		
 		
 		int countFiles = 0;			// # of new files touched
 		int countLines = 0;			// # of new lines touched
@@ -428,8 +556,9 @@ public class CodeCoverage {
     private String COVERAGE_SCRIPT = "";
 
 	private static final String WebappsZimbra = "/opt/zimbra/jetty/webapps/zimbra";
-	private String WebappsZimbraOriginal = null;
-	private String WebappsZimbraInstrumented = null;
+	private static final String WebappsZimbraAdmin = "/opt/zimbra/jetty/webapps/zimbraAdmin";
+	private String WebappsOriginal = null;
+	private String WebappsInstrumented = null;
 	
 	/**
 	 * Check if jscoverage is available on the server
@@ -471,36 +600,64 @@ public class CodeCoverage {
 		Date start = new Date();
 
 		try {
-
+			
 			if ( !InstrumentServer ) {
 				logger.info("instrumentServer(): InstrumentServer=false ... skipping ");
 				return;
 			}
 
-			// Check that JScoverage is installed correctly
-			instrumentServerCheck();
-
-			WebappsZimbraOriginal		= "/opt/zimbra/jetty/webapps/zimbra" + ZimbraSeleniumProperties.getUniqueString();
-			WebappsZimbraInstrumented	= "/opt/zimbra/jetty/webapps/instrumented" + ZimbraSeleniumProperties.getUniqueString();
-
-			try {
-				StafServicePROCESS staf = new StafServicePROCESS();
-				staf.execute("zmmailboxdctl stop");
-				staf.execute(Tool +" --no-instrument=help/ "+ WebappsZimbra +" "+ WebappsZimbraInstrumented);
-				staf.execute("mv "+ WebappsZimbra +" "+ WebappsZimbraOriginal);
-				staf.execute("mv "+ WebappsZimbraInstrumented +" "+ WebappsZimbra);
-				staf.execute("zmmailboxdctl start");
-				staf.execute("zmcontrol status");
-			} catch (HarnessException e) {
-				logger.error("Unable to instrument code.  Disabling code coverage.", e);
+			
+			if ( ZimbraSeleniumProperties.getAppType().equals(AppType.AJAX) ) {
+				instrumentServer(WebappsZimbra);
+			} else if ( ZimbraSeleniumProperties.getAppType().equals(AppType.ADMIN) ) {
+				instrumentServer(WebappsZimbraAdmin);
 			}
-
+		
 		} finally {
 			
 			// Update the total duration value
 			durationTotalUpdate(start, new Date());
 			
 		}
+	
+	}
+	
+	private void instrumentServer(String appfolder) throws HarnessException {
+		
+		// Check that JScoverage is installed correctly
+		instrumentServerCheck();
+
+		WebappsOriginal		= appfolder + ZimbraSeleniumProperties.getUniqueString();
+		WebappsInstrumented	= "/opt/zimbra/jetty/webapps/instrumented" + ZimbraSeleniumProperties.getUniqueString();
+
+		try {
+			StafServicePROCESS staf = new StafServicePROCESS();
+			
+			// Stop the server
+			staf.execute("zmmailboxdctl stop");
+			
+			// Instrument the code
+			// Instrumentation could take some time, so increase the timeout
+			staf.setTimeout(120000);
+			staf.execute(Tool +" --no-instrument=help/ "+ appfolder +" "+ WebappsInstrumented);
+			staf.resetTimeout();
+			
+			// Move the zimbra folder out of the way
+			staf.execute("mv "+ appfolder +" "+ WebappsOriginal);
+			
+			// Move the instrumented code into place
+			staf.execute("mv "+ WebappsInstrumented +" "+ appfolder);
+			
+			// Start the server
+			staf.execute("zmmailboxdctl start");
+			
+			// Log the current status
+			staf.execute("zmcontrol status");
+			
+		} catch (HarnessException e) {
+			logger.error("Unable to instrument code.  Disabling code coverage.", e);
+		}
+
 	}
 	
 	/**
@@ -525,22 +682,10 @@ public class CodeCoverage {
 				return;
 			}
 
-			WebappsZimbraInstrumented	= "/opt/zimbra/jetty/webapps/instrumented" + ZimbraSeleniumProperties.getUniqueString();
-
-			try {
-
-				StafServicePROCESS staf = new StafServicePROCESS();
-				staf.execute("zmmailboxdctl stop");
-				staf.execute("rm -rf "+ WebappsZimbra); // Delete the instrumented code
-				staf.execute("mv "+ WebappsZimbraOriginal +" "+ WebappsZimbra);
-				staf.execute("zmmailboxdctl start");
-				staf.execute("zmcontrol status");
-
-			} catch (HarnessException e) {
-				logger.error("Unable to instrument code (undo).  Disabling code coverage.", e);
-			} finally {
-				WebappsZimbraOriginal = null;
-				WebappsZimbraInstrumented = null;
+			if ( ZimbraSeleniumProperties.getAppType().equals(AppType.AJAX) ) {
+				instrumentServerUndo(WebappsZimbra);
+			} else if ( ZimbraSeleniumProperties.getAppType().equals(AppType.ADMIN) ) {
+				instrumentServerUndo(WebappsZimbraAdmin);
 			}
 
 		} finally {
@@ -550,6 +695,28 @@ public class CodeCoverage {
 
 		}
 		
+	}
+
+	private void instrumentServerUndo(String appfolder) throws HarnessException {
+
+		WebappsInstrumented	= "/opt/zimbra/jetty/webapps/instrumented" + ZimbraSeleniumProperties.getUniqueString();
+
+		try {
+
+			StafServicePROCESS staf = new StafServicePROCESS();
+			staf.execute("zmmailboxdctl stop");
+			staf.execute("rm -rf "+ appfolder); // Delete the instrumented code
+			staf.execute("mv "+ WebappsOriginal +" "+ appfolder);
+			staf.execute("zmmailboxdctl start");
+			staf.execute("zmcontrol status");
+
+		} catch (HarnessException e) {
+			logger.error("Unable to instrument code (undo).  Disabling code coverage.", e);
+		} finally {
+			WebappsOriginal = null;
+			WebappsInstrumented = null;
+		}
+
 	}
 
 	// Time data (in seconds)
@@ -577,7 +744,17 @@ public class CodeCoverage {
 	public Map<String, String> getQueryMap() {
 		Map<String, String> map = new HashMap<String, String>();
 		
+		// Use the app property, if specified
+		// i.e. "coverage.query.AJAX"
+		// But, if not specified, default to the non-specific property
+		// i.e. "coverage.query"
+		//
 		String property = ZimbraSeleniumProperties.getStringProperty("coverage.query", "");
+		String appPoperty = ZimbraSeleniumProperties.getStringProperty(
+				"coverage.query."+ ZimbraSeleniumProperties.getAppType(), null );
+		if ( appPoperty != null ) {
+			property = appPoperty; // Override the default
+		}
 		
 		for (String p : property.split("&")) {
 			if ( p.contains("=") ) {
@@ -759,6 +936,7 @@ public class CodeCoverage {
 		}
 
 	}
+
 
 
  }

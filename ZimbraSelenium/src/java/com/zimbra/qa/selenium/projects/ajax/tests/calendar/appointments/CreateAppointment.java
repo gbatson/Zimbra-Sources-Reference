@@ -8,7 +8,6 @@ import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.FormApptNew;
 
-
 public class CreateAppointment extends AjaxCommonTest {
 
 
@@ -24,10 +23,12 @@ public class CreateAppointment extends AjaxCommonTest {
 
 	}
 
+	
 	@Test(	description = "Create a basic appointment",
-			groups = { "sanity" })
-			public void CreateAppointment_01() throws HarnessException {
-
+			groups = { "sanity" }
+	)
+	public void CreateAppointment_01() throws HarnessException {
+		
 		// Create the message data to be sent
 		AppointmentItem appt = new AppointmentItem();
 		appt.setSubject("appointment" + ZimbraSeleniumProperties.getUniqueString());
@@ -45,16 +46,16 @@ public class CreateAppointment extends AjaxCommonTest {
 
 		// Send the message
 		apptForm.zSubmit();
-
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-
+			
+    
+		// Verify the new appointment exists on the server
 		AppointmentItem actual = AppointmentItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ appt.getSubject() +")", appt.getStartTime().addDays(-7), appt.getEndTime().addDays(7));
 		ZAssert.assertNotNull(actual, "Verify the new appointment is created");
 
 		ZAssert.assertEquals(actual.getSubject(), appt.getSubject(), "Subject: Verify the appointment data");
-		
+
 	}
 
-
+	
 
 }

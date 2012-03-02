@@ -14,7 +14,7 @@ public class CosItem implements IItem {
 
 	protected static String Id;
 
-	protected String cosName;
+	protected static String cosName;
 
 	public CosItem() {
 		super();

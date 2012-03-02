@@ -199,14 +199,19 @@ public final class SmtpConnection extends MailConnection {
 
     @Override
     protected void processGreeting() throws IOException {
-        // Server greeting.
-        Reply reply = Reply.parse(mailIn.readLine());
-        mailIn.trace();
-        if (reply == null) {
-            throw new MailException("Did not receive greeting from server");
-        }
-        if (reply.code != 220) {
-            throw new IOException("Expected greeting, but got: " + reply);
+        // Server greeting, can be multiline.
+        while (true) {
+            Reply reply = Reply.parse(mailIn.readLine());
+            mailIn.trace();
+            if (reply == null) {
+                throw new MailException("Did not receive greeting from server");
+            }
+            if (reply.code != 220) {
+                throw new IOException("Expected greeting, but got: " + reply);
+            }
+            if (reply.last) {
+                break;
+            }
         }
 
         // Send hello, read extensions and auth mechanisms.
@@ -480,7 +485,7 @@ public final class SmtpConnection extends MailConnection {
         try {
             sendInternal(sender, rcpts, msg, null);
         } finally {
-            close();
+            quit();
         }
     }
 
@@ -500,7 +505,7 @@ public final class SmtpConnection extends MailConnection {
         try {
             sendInternal(sender, rcpts, null, msg);
         } finally {
-            close();
+            quit();
         }
     }
 
@@ -519,10 +524,18 @@ public final class SmtpConnection extends MailConnection {
         }
 
         SmtpDataOutputStream smtpData = new SmtpDataOutputStream(mailOut);
-        if (javaMailMessage != null) {
-            javaMailMessage.writeTo(smtpData, IGNORE_HEADERS);
-        } else {
-            smtpData.write(messageString.getBytes());
+        try {
+            if (javaMailMessage != null) {
+                javaMailMessage.writeTo(smtpData, IGNORE_HEADERS);
+            } else {
+                smtpData.write(messageString.getBytes());
+            }
+        } catch (MessagingException e) { // close without QUIT
+            close();
+            throw e;
+        } catch (IOException e) { // close without QUIT
+            close();
+            throw e;
         }
         smtpData.end();
         mailOut.flush();
@@ -535,8 +548,6 @@ public final class SmtpConnection extends MailConnection {
         if (!reply.isPositive()) {
             throw new CommandFailedException(DATA, reply.toString());
         }
-        quit();
-        close();
     }
 
     /**
@@ -629,10 +640,15 @@ public final class SmtpConnection extends MailConnection {
     }
 
     private void quit() throws IOException {
+        if (isClosed()) {
+            return;
+        }
         try {
             sendCommand(QUIT, null);
         } catch (CommandFailedException e) { // no reason to make it an error
             getLogger().warn(e.getMessage());
+        } finally {
+            close();
         }
     }
 

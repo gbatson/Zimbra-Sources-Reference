@@ -301,9 +301,6 @@ function() {
 	} else {
 		query = this.getSearchFieldValue(ZmGroupView.SEARCH_BASIC);
 	}
-	if (!query.length) {
-		query = this._defaultQuery;
-	}
 
 	if (this._searchInSelect) {
 		var searchFor = this._searchInSelect.getValue();
@@ -324,6 +321,17 @@ function() {
 			queryHint.push("is:local");
 		}
 	}
+
+
+    if (!query.length && this._contactSource == ZmId.SEARCH_GAL) {
+		query = this._defaultQuery;
+	}
+
+    if (this._contactSource == ZmItem.CONTACT) {
+        query = query.replace(/\"/g, '\\"');
+        query = "\"" + query + "\"";
+    }
+
 	var params = {
 		obj: this,
 		ascending: true,
@@ -590,7 +598,7 @@ function() {
 	var members = this._contact.getGroupMembers().all.getArray();
 	var membersList = [];
 	for (var i = 0; i < members.length; i++) {
-		membersList[i] = members[i].toString();
+		membersList[i] = members[i].toString(false, true);
 	}
 	this._setGroupMembersListView(membersList, false);
 };

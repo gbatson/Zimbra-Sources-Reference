@@ -267,6 +267,10 @@ public class GeneralUtility {
     */
    public static void doHttpPost(String Url) throws HarnessException {
       try {
+
+         // Replace all the white space with "%20"
+         Url = Url.replaceAll(" ", "%20");
+
          URL url = new URL(Url);
          URLConnection conn = url.openConnection();
          
@@ -274,6 +278,7 @@ public class GeneralUtility {
          BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
          StringBuffer sb = new StringBuffer();
          String line;
+
          while ((line = rd.readLine()) != null)
          {
             sb.append(line);
@@ -302,14 +307,9 @@ public class GeneralUtility {
                SOAP_DESTINATION_HOST_TYPE.CLIENT,
                account.EmailAddress);
 
-         try {
-            // Check the message queue
-            Stafpostqueue sp = new Stafpostqueue();
-            sp.waitForPostqueue();
-         } catch (Exception e) {
-            throw new HarnessException("Error while Staf Post Queue" +
-                  " after synching the ZD to ZCS");
-         }
+         Stafpostqueue sp = new Stafpostqueue();
+         sp.waitForPostqueue();
+
       }
    }
 

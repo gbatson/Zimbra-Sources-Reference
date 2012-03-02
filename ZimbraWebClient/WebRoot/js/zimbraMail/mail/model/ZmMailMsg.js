@@ -1296,6 +1296,11 @@ function(request, isDraft, accountName, requestReadReceipt, sendTime) {
 	// if origId is given, means we're saving a draft or sending a msg that was
 	// originally a reply/forward
 	if (this.origId) {
+         // always Qualify ID when forwarding mail using a child account
+        if (appCtxt.isOffline) {
+            var origAccount = this._origMsg && this._origMsg.getAccount();
+            doQualifyIds = ac.multiAccounts  && origAccount.id == mainAccount.id;
+        }
 		var id = this.origId;
 		if(doQualifyIds) {
 			id = ZmOrganizer.getSystemId(this.origId, mainAccount, true);
@@ -1462,7 +1467,10 @@ function(request, isDraft, accountName, requestReadReceipt, sendTime) {
 			var docs = attachNode.doc = [];
 			for (var i = 0; i < this._docAtts.length; i++) {
                 var d = this._docAtts[i];
-                var props = {id: d.id};
+                // qualify doc id
+                var docId = (d.id.indexOf(":") == -1)
+                        ? ([mainAccount.id, d.id].join(":")) : d.id;
+                var props = {id: docId};
                 if(d.ver) props.ver = d.ver;
 				docs.push(props);
 			}
@@ -2065,10 +2073,14 @@ function(addrNodes, type, isDraft) {
 	var addrs = this._addrs[type];
 	var num = addrs.size();
 	if (num) {
-		var contactsApp = appCtxt.get(ZmSetting.CONTACTS_ENABLED) && appCtxt.getApp(ZmApp.CONTACTS);
-		if (contactsApp && !contactsApp.isContactListLoaded()) {
-			contactsApp = null;
-		}
+	 if (appCtxt.isOffline) {
+            contactsApp = appCtxt.getApp(ZmApp.CONTACTS)
+        } else {
+		    contactsApp = appCtxt.get(ZmSetting.CONTACTS_ENABLED) && appCtxt.getApp(ZmApp.CONTACTS);
+        }
+        if (contactsApp && !contactsApp.isContactListLoaded()) {
+            contactsApp = null;
+        }
 		for (var i = 0; i < num; i++) {
 			var addr = addrs.get(i);
 			var email = addr.getAddress();

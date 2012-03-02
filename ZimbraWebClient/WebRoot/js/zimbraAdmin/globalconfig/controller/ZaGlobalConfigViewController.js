@@ -36,6 +36,7 @@ ZaGlobalConfigViewController.prototype.constructor = ZaGlobalConfigViewControlle
 ZaController.initToolbarMethods["ZaGlobalConfigViewController"] = new Array();
 ZaController.setViewMethods["ZaGlobalConfigViewController"] = [];
 ZaController.changeActionsStateMethods["ZaGlobalConfigViewController"] = [];
+ZaXFormViewController.preSaveValidationMethods["ZaGlobalConfigViewController"] = new Array();
 //qin
 ZaController.saveChangeCheckMethods["ZaGlobalConfigViewController"] = new Array();
 
@@ -229,6 +230,32 @@ function () {
 		}
 	}
 
+	// check validation expression, which should be email-like pattern
+        if(tmpObj.attrs[ZaGlobalConfig.A_zimbraMailAddressValidationRegex]) {
+                var regList = tmpObj.attrs[ZaGlobalConfig.A_zimbraMailAddressValidationRegex];
+                var islegal = true;
+                var regval = null;
+                if(regList && regList instanceof Array) {
+                        for(var i = 0; i < regList.length && islegal; i++) {
+                                if (regList[i].indexOf("@") == -1) {
+                                        islegal = false;
+                                        regval = regList[i];
+                                }
+                        }
+                } else if(regList) {
+                        if (regList.indexOf("@") == -1) {
+                                islegal = false;
+                                regval = regList;
+                        }
+                }
+                if(!islegal) {
+                        this._errorDialog.setMessage(AjxMessageFormat.format(ZaMsg.ERROR_MSG_EmailValidReg, regval),
+                                null, DwtMessageDialog.CRITICAL_STYLE, ZaMsg.zimbraAdminTitle);
+                        this._errorDialog.popup();
+                        return islegal;
+                }
+        }
+
         //transfer the fields from the tmpObj to the _currentObject, since _currentObject is an instance of ZaDomain
         var mods = new Object();
 
@@ -321,6 +348,8 @@ function () {
 	return true;
 }
 
+ZaGlobalConfigViewController.prototype.validateMyNetworks = ZaServerController.prototype.validateMyNetworks;
+ZaXFormViewController.preSaveValidationMethods["ZaGlobalConfigViewController"].push(ZaGlobalConfigViewController.prototype.validateMyNetworks);
 
 ZaGlobalConfigViewController.prototype.openFlushCacheDlg =
 function (serverList) {

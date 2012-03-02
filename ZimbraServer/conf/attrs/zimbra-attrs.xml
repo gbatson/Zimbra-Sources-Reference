@@ -1157,7 +1157,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Value for postconf disable_dns_lookups (note enable v. disable)</desc>
 </attr>
 
-<attr id="198" name="zimbraMtaMaxMessageSize" type="integer" min="0" cardinality="single" optionalIn="globalConfig" flags="accountInfo" requiresRestart="mta">
+<attr id="198" name="zimbraMtaMaxMessageSize" type="long" min="0" cardinality="single" optionalIn="globalConfig" flags="accountInfo" requiresRestart="mta">
   <globalConfigValue>10240000</globalConfigValue>
   <desc>Value for postconf message_size_limit</desc>
 </attr>
@@ -5560,6 +5560,68 @@ TODO: delete them permerntly from here
 <attr id="1212" name="zimbraMailSSLProxyClientCertPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="nginxproxy" since="7.1.1">
   <globalConfigValue>0</globalConfigValue>
   <desc>SSL client certificate port for HTTP proxy</desc>
+</attr>
+
+<attr id="1213" name="zimbraMailHighlightObjectsMaxSize" type="integer" min="0" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited" since="7.1.2">
+  <defaultCOSValue>70</defaultCOSValue>
+  <desc>max size in KB of text emails that will automatically highlight objects</desc>
+</attr>
+
+<attr id="1215" name="zimbraMailSSLClientCertPrincipalMap" type="string" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited" since="7.1.2">
+  <globalConfigValue>SUBJECT_EMAILADDRESS=name</globalConfigValue>
+  <desc>
+    Map from a certificate field to a Zimbra account key that can uniquely identify a Zimbra account for client certificate authentication.
+    Value is a comma-separated  list of mapping rules, each mapping maps a certificate field to a Zimbra account key.
+    Each is attempted in sequence untill a unique account can be resolved.  
+    
+    e.g. a value can be: 
+         SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+    
+    value:
+        comma-separated mapping-rule
+    
+    mapping-rule:
+        {cert-field-to-zimbra-key-map} | {LDAP-filter}
+        
+    cert-field-to-zimbra-key-map:     
+        {certificate-field}={Zimbra-account-key}
+    
+    certificate-field:
+        SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of Subject
+        SUBJECT_DN:                   entire DN of Subject
+        SUBJECTALTNAME_OTHERNAME_UPN: UPN(aka Principal Name) in otherName in subjectAltName extension 
+        SUBJECTALTNAME_RFC822NAME:    rfc822Name in subjectAltName extension 
+    
+    Zimbra-account-key:
+        name:                   primary name or any of the aliases of an account
+        zimbraId:               zimbraId of an account
+        zimbraForeignPrincipal: zimbraForeignPrincipal of an account.  
+                                The matching value on the zimbraForeignPrincipal must be prefixed with "cert {supported-certificate-filed}:"
+                                e.g. cert SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain
+                                
+    LDAP-filter: An LDAP filter template with placeholders to be substituted by certificate field values.  
+                 (objectClass=zimbraAccount) is internally ANDed with the supplied filter. 
+                 e.g. (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME}))
+                 
+    Note: it is recommended not to use LDAP-filter rule, as it will trigger an LDAP search for each cert auth request.
+          LDAP-filter is disabled by default.  To enable it globally, set zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled 
+          on global config to TRUE.  If LDAP-filter is not enabled, all client certificate authentication will fail on domains 
+          configured with LDAP-filter.
+  </desc>
+</attr>
+  
+<attr id="1216" name="zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled" type="boolean" cardinality="single" optionalIn="globalConfig" since="7.1.2">
+  <globalConfigValue>FALSE</globalConfigValue>
+  <desc>whether to enable LDAP-filter in zimbraMailSSLClientCertPrincipalMap</desc>
+</attr>
+
+<attr id="1240" name="zimbraCalendarKeepExceptionsOnSeriesTimeChange" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInfo,accountInherited,domainAdminModifiable" since="7.1.2">
+  <defaultCOSValue>FALSE</defaultCOSValue>
+  <desc>whether to retain exception instances when the recurrence series is changed to new time; set to FALSE for Exchange compatibility</desc>
+</attr>
+
+<attr id="1241" name="zimbraMailAddressValidationRegex" type="string" max="512" cardinality="multi" optionalIn="domain,globalConfig" flags="domainInherited,accountInfo" since="7.1.2">
+  <desc>optional regex used by web client to validate email address</desc>
 </attr>
 
 </attrs>

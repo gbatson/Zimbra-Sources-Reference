@@ -3,23 +3,16 @@
  */
 package com.zimbra.qa.selenium.projects.desktop.ui.briefcase;
 
-import java.util.EnumMap;
-import java.util.Map;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
-import com.zimbra.qa.selenium.framework.items.DocumentItem;
-import com.zimbra.qa.selenium.framework.items.FileItem;
-import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.items.IItem;
+import java.util.*;
+
+import org.apache.commons.httpclient.HttpStatus;
+
+import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.desktop.ui.*;
 import com.zimbra.qa.selenium.projects.desktop.ui.mail.FormMailNew;
-import com.zimbra.qa.selenium.framework.util.RestUtil;
-import org.apache.commons.httpclient.HttpStatus;
 
 /**
  * @author
@@ -321,7 +314,7 @@ public class PageBriefcase extends AbsTab {
 					+ locator + " button=" + button);
 
 		// Click it
-		this.zClick(locator);
+		this.zClickAt(locator, "0,0");
 
 		// If the app is busy, wait for it to become active
 		zWaitForBusyOverlay();
@@ -447,7 +440,7 @@ public class PageBriefcase extends AbsTab {
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
 
-			this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator, "0,0");
 
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
@@ -461,7 +454,7 @@ public class PageBriefcase extends AbsTab {
 							+ optionLocator + " not present!");
 				}
 
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator, "0,0");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
@@ -1001,7 +994,7 @@ public class PageBriefcase extends AbsTab {
 	public void closeWindow() {
 		tracer.trace("Close the separate window");
 
-		ClientSessionFactory.session().selenium().close();
+		this.sClose();		
 	}
 
 	@Override

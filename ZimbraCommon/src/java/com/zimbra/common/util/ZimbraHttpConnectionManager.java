@@ -39,139 +39,222 @@ import com.zimbra.common.util.LogFactory;
  */
 public class ZimbraHttpConnectionManager {
     
-    // one instance of connection manager params for all our connection managers for now
-    private static HttpConnectionManagerParams sConnMgrParams; 
-    
-    // the idle reaper thread instance
-    private static IdleConnectionTimeoutThread sReaperThread;
-    
     // connection manager for Zimbra internal connections
-    private static ZimbraHttpConnectionManager sInternalConnMgr;
+    private static final ZimbraHttpConnectionManager INTERNAL_CONN_MGR = 
+        new ZimbraHttpConnectionManager("Internal http client connection manager", new InternalConnMgrParams());
     
     // connection manager for all external connections
-    private static ZimbraHttpConnectionManager sExternalConnMgr;
+    private static final ZimbraHttpConnectionManager EXTERNAL_CONN_MGR =
+        new ZimbraHttpConnectionManager("External http client connection manager", new ExternalConnMgrParams());
     
-    // our logger
+    // logger
     private static final Log sLog = LogFactory.getLog(ZimbraHttpConnectionManager.class);
     
+    private static abstract class ZimbraConnMgrParams {
+        
+        // HttpConnectionManagerParams
+        HttpConnectionManagerParams connMgrParams = new HttpConnectionManagerParams();
+        
+        
+        private HttpConnectionManagerParams getConnMgrParams() {
+            return connMgrParams;
+        }
+        
+        abstract long getHttpClientConnectionTimeout();
+        abstract boolean getKeepAlive();
+        abstract long getReaperSleepInterval();
+        abstract long getReaperConnectionTimeout();
+    }
     
-    private HttpConnectionManager mHttpConnMgr;
-    private HttpClient mDefaultHttpClient;
+    private static class InternalConnMgrParams extends ZimbraConnMgrParams {
+        
+        private InternalConnMgrParams() {
+
+            /* ------------------------------------------------------------------------
+             * HttpConnectionManagerParams(subclass of HttpConnectionParams)
+             * ------------------------------------------------------------------------
+             */ 
+            
+            /*
+             * Defines the maximum number of connections allowed per host configuration.
+             * 
+             * HttpConnectionManagerParams.MAX_HOST_CONNECTIONS 
+             */
+            connMgrParams.setDefaultMaxConnectionsPerHost(LC.httpclient_internal_connmgr_max_host_connections.intValue());
+            
+            /*
+             * Defines the maximum number of connections allowed overall.
+             *
+             * HttpConnectionManagerParams.MAX_TOTAL_CONNECTIONS 
+             */
+            connMgrParams.setMaxTotalConnections(LC.httpclient_internal_connmgr_max_total_connections.intValue());
+            
+            
+            /* -------------------------------
+             * HttpConnectionParams params 
+             * -------------------------------
+             */
+            
+            /*
+             * Determines the timeout until a connection is established. A value of zero means the timeout is not used.
+             *
+             * HttpConnectionParams.CONNECTION_TIMEOUT
+             */
+            connMgrParams.setConnectionTimeout(LC.httpclient_internal_connmgr_connection_timeout.intValue());
+
+            
+            //
+            // Determines the specified linger time in seconds
+            //
+            // HttpConnectionParams.SO_LINGER
+            //
+            // use default and do not expose in LC
+            //
+            
+            //
+            // Determines a hint the size of the underlying buffers used by the platform for outgoing network I/O.
+            //
+            // HttpConnectionParams.SO_RCVBUF
+            //
+            // use default and do not expose in LC
+            //
+
+            //
+            // Determines a hint the size of the underlying buffers used by the platform for outgoing network I/O.
+            //
+            // HttpConnectionParams.SO_SNDBUF
+            //
+            // use default and do not expose in LC
+            //
+
+            /*
+             * Defines the default socket timeout (SO_TIMEOUT) in milliseconds which is the timeout for waiting for data.
+             * A timeout value of zero is interpreted as an infinite timeout. This value is used when no socket timeout 
+             * is set in the HTTP method parameters. 
+             * 
+             * HttpConnectionParams.SO_TIMEOUT
+             */
+            connMgrParams.setSoTimeout(LC.httpclient_internal_connmgr_so_timeout.intValue());
+             
+            //
+            // Determines whether stale connection check is to be used.
+            //
+            // HttpConnectionParams.STALE_CONNECTION_CHECK
+            //
+            connMgrParams.setStaleCheckingEnabled(LC.httpclient_internal_connmgr_keepalive_connections.booleanValue());
+            
+            //
+            // Determines whether Nagle's algorithm is to be used.
+            //
+            // HttpConnectionParams.TCP_NODELAY
+            //
+            connMgrParams.setTcpNoDelay(LC.httpclient_internal_connmgr_tcp_nodelay.booleanValue());
+        }
+
+        @Override
+        public long getHttpClientConnectionTimeout() {
+            return LC.httpclient_internal_client_connection_timeout.longValue();
+        }
+
+        @Override
+        boolean getKeepAlive() {
+            return LC.httpclient_internal_connmgr_keepalive_connections.booleanValue();
+        }
+        
+        @Override
+        long getReaperSleepInterval() {
+            return LC.httpclient_internal_connmgr_idle_reaper_sleep_interval.longValue();
+        }
+        
+        @Override
+        long getReaperConnectionTimeout() {
+            return LC.httpclient_internal_connmgr_idle_reaper_connection_timeout.longValue();
+        }
+    }    
+        
+    private static class ExternalConnMgrParams extends ZimbraConnMgrParams {
+        
+        private ExternalConnMgrParams() {
+            /* ------------------------------------------------------------------------
+             * HttpConnectionManagerParams(subclass of HttpConnectionParams)
+             * ------------------------------------------------------------------------
+             */ 
+            connMgrParams.setDefaultMaxConnectionsPerHost(LC.httpclient_external_connmgr_max_host_connections.intValue());
+            connMgrParams.setMaxTotalConnections(LC.httpclient_external_connmgr_max_total_connections.intValue());
+            connMgrParams.setConnectionTimeout(LC.httpclient_external_connmgr_connection_timeout.intValue());
+            connMgrParams.setSoTimeout(LC.httpclient_external_connmgr_so_timeout.intValue());
+            connMgrParams.setStaleCheckingEnabled(LC.httpclient_external_connmgr_keepalive_connections.booleanValue());
+            connMgrParams.setTcpNoDelay(LC.httpclient_external_connmgr_tcp_nodelay.booleanValue());
+        }
+
+        @Override
+        public long getHttpClientConnectionTimeout() {
+            return LC.httpclient_external_client_connection_timeout.longValue();
+        }
+
+        @Override
+        boolean getKeepAlive() {
+            return LC.httpclient_external_connmgr_keepalive_connections.booleanValue();
+        }
+        
+        @Override
+        long getReaperSleepInterval() {
+            return LC.httpclient_external_connmgr_idle_reaper_sleep_interval.longValue();
+        }
+        
+        @Override
+        long getReaperConnectionTimeout() {
+            return LC.httpclient_external_connmgr_idle_reaper_connection_timeout.longValue();
+        }
+    }
+
+    public static synchronized void startReaperThread() {
+        INTERNAL_CONN_MGR.idleReaper.startReaperThread();
+        EXTERNAL_CONN_MGR.idleReaper.startReaperThread();
+    }
     
-    static {
-        sConnMgrParams = new HttpConnectionManagerParams();
-
-        /* ------------------------------------------------------------------------
-         * HttpConnectionManagerParams(subclass of HttpConnectionParams)
-         * ------------------------------------------------------------------------
-         */ 
-        
-        /*
-         * Defines the maximum number of connections allowed per host configuration.
-         * 
-         * HttpConnectionManagerParams.MAX_HOST_CONNECTIONS 
-         */
-        sConnMgrParams.setDefaultMaxConnectionsPerHost(LC.httpclient_connmgr_max_host_connections.intValue());
-        
-        /*
-         * Defines the maximum number of connections allowed overall.
-         *
-         * HttpConnectionManagerParams.MAX_TOTAL_CONNECTIONS 
-         */
-        sConnMgrParams.setMaxTotalConnections(LC.httpclient_connmgr_max_total_connections.intValue());
-        
-        
-        /* -------------------------------
-         * HttpConnectionParams params 
-         * -------------------------------
-         */
-        
-        /*
-         * Determines the timeout until a connection is established. A value of zero means the timeout is not used.
-         *
-         * HttpConnectionParams.CONNECTION_TIMEOUT
-         */
-         sConnMgrParams.setConnectionTimeout(LC.httpclient_connmgr_connection_timeout.intValue());
-
-        
-        //
-        // Determines the specified linger time in seconds
-        //
-        // HttpConnectionParams.SO_LINGER
-        //
-        // use default and do not expose in LC
-        //
-        
-        //
-        // Determines a hint the size of the underlying buffers used by the platform for outgoing network I/O.
-        //
-        // HttpConnectionParams.SO_RCVBUF
-        //
-        // use default and do not expose in LC
-        //
-
-        //
-        // Determines a hint the size of the underlying buffers used by the platform for outgoing network I/O.
-        //
-        // HttpConnectionParams.SO_SNDBUF
-        //
-        // use default and do not expose in LC
-        //
-
-        /*
-         * Defines the default socket timeout (SO_TIMEOUT) in milliseconds which is the timeout for waiting for data.
-         * A timeout value of zero is interpreted as an infinite timeout. This value is used when no socket timeout 
-         * is set in the HTTP method parameters. 
-         * 
-         * HttpConnectionParams.SO_TIMEOUT
-         */
-         sConnMgrParams.setSoTimeout(LC.httpclient_connmgr_so_timeout.intValue());
-         
-        //
-        // Determines whether stale connection check is to be used.
-        //
-        // HttpConnectionParams.STALE_CONNECTION_CHECK
-        //
-         sConnMgrParams.setStaleCheckingEnabled(LC.httpclient_connmgr_keepalive_connections.booleanValue());
-        
-        //
-        // Determines whether Nagle's algorithm is to be used.
-        //
-        // HttpConnectionParams.TCP_NODELAY
-        //
-        sConnMgrParams.setTcpNoDelay(LC.httpclient_connmgr_tcp_nodelay.booleanValue());
-
-         
-        /* ------------------------------------------------------------------------
-         * HttpClientParams
-         * ------------------------------------------------------------------------
-         */ 
-        // see createHttpClientParams()
-        
-        /* ================================
-         * Our connection manager instances
-         * ================================
-         */
-        sInternalConnMgr = new ZimbraHttpConnectionManager();
-        sExternalConnMgr = new ZimbraHttpConnectionManager();
+    public static synchronized void shutdownReaperThread() {
+        INTERNAL_CONN_MGR.idleReaper.shutdownReaperThread();
+        EXTERNAL_CONN_MGR.idleReaper.shutdownReaperThread();
     }
     
     public static ZimbraHttpConnectionManager getInternalHttpConnMgr() {
-        return sInternalConnMgr;
+        return INTERNAL_CONN_MGR;
     }
     
     public static ZimbraHttpConnectionManager getExternalHttpConnMgr() {
-        return sExternalConnMgr;
+        return EXTERNAL_CONN_MGR;
     }
     
     // ================
-    // instance methods
+    // instance fields and methods
     // ================
+    private String name;
+    private ZimbraConnMgrParams zimbraConnMgrParams;
+    private IdleReaper idleReaper;
+    private HttpConnectionManager httpConnMgr;
+    private HttpClient defaultHttpClient;
     
-    private ZimbraHttpConnectionManager() {
-        mHttpConnMgr = new MultiThreadedHttpConnectionManager();
-        mHttpConnMgr.setParams(sConnMgrParams);
-        mDefaultHttpClient = createHttpClient();
+    private ZimbraHttpConnectionManager(String name, ZimbraConnMgrParams zimbraConnMgrParams) {
+        this.name = name;
+        this.zimbraConnMgrParams = zimbraConnMgrParams;
+        
+        this.httpConnMgr = new MultiThreadedHttpConnectionManager();
+        this.httpConnMgr.setParams(this.zimbraConnMgrParams.getConnMgrParams());
+        this.defaultHttpClient = createHttpClient();
+        
+        // Instantiate the reaper object.  
+        // Note: Reaper thread is not started until ZimbraHttpConnectionManager.startReaperThread 
+        // is called.
+        this.idleReaper = new IdleReaper(this);
+    }
+    
+    private String getName() {
+        return name;
+    }
+    
+    private ZimbraConnMgrParams getParams() {
+        return zimbraConnMgrParams;
     }
     
     private HttpClientParams createHttpClientParams() {
@@ -182,21 +265,21 @@ public class ZimbraHttpConnectionManager {
         //
         // HttpClientParams.CONNECTION_MANAGER_TIMEOUT
         //
-        clientParams.setConnectionManagerTimeout(LC.httpclient_client_connection_timeout.longValue());
+        clientParams.setConnectionManagerTimeout(getParams().getHttpClientConnectionTimeout());
         
         return clientParams;
     }
     
     private HttpClient createHttpClient() {
-        return new HttpClient(createHttpClientParams(), mHttpConnMgr);
+        return new HttpClient(createHttpClientParams(), httpConnMgr);
     }
     
     private HttpConnectionManager getConnMgr() {
-        return mHttpConnMgr;
+        return httpConnMgr;
     }
     
     public boolean getKeepAlive() {
-        return LC.httpclient_connmgr_keepalive_connections.booleanValue();
+        return getParams().getKeepAlive();
     }
     
     /**
@@ -276,7 +359,7 @@ public class ZimbraHttpConnectionManager {
      * @return the default HttpClient instance associated with this connection manager
      */
     public HttpClient getDefaultHttpClient() {
-        return mDefaultHttpClient;
+        return defaultHttpClient;
     }
 
     /**
@@ -305,11 +388,15 @@ public class ZimbraHttpConnectionManager {
     
     
     /*
+     * =====================
+     *  Idle Reaper
+     * =====================
+     *
      * HttpMethod.releaseConnection() doesn't actually close the socket unless 
      * "Connection: close" was sent back from server or if commons client wasn't 
      * explicitly asked to act like HTTP/1.0.   HttpMethod.releaseConnection() 
-     * just release the connection back to the connection manager that fabricated 
-     * it, so it can be reused by others.  Sockets opened by htpclient will 
+     * just release the connection back to the connection manager that created  
+     * it, so it can be reused by others.  Sockets opened by httpclient will 
      * have to be closed by finalizers, which is bad, as we don't have control 
      * over it.   This will cause lots of CLOSE_WAIT on the server from which 
      * http requests are sent via httpclient.
@@ -317,73 +404,78 @@ public class ZimbraHttpConnectionManager {
      * To get around that, we run a reaper thread to close idle connections 
      * owned by our connection manager.
      */
-    
-    /*
-     * reaper thread methods
-     */
-    public static synchronized void startReaperThread() {
-        Reaper.start();
-    }
-    
-    public static synchronized void shutdownReaperThread() {
-        Reaper.shutdown();
-    }
-    
-    private static class Reaper {
-        private static synchronized void start() {
+    private static class IdleReaper {
+        // the ZimbraHttpConnectionManager instance this IdleReaper is for.
+        private ZimbraHttpConnectionManager connMgr;
+        
+        private IdleConnectionTimeoutThread reaperThread;
+        
+        private IdleReaper(ZimbraHttpConnectionManager connMgr) {
+            this.connMgr = connMgr;
+        }
+        
+        private void startReaperThread() {
+            // sanity check
             if (isReaperThreadRunning()) {
                 sLog.warn("Cannot start a second http client idle connection reaper thread while another one is running.");
                 return;
             }
             
             if (!reaperEnabled()) {
-                sLog.info("Not starting http client idle connection reaper thread because it is disabled");
+                sLog.info("Not starting http client idle connection reaper thread for " + connMgr.getName() + " because it is disabled");
                 return;
             }
-    
-             sLog.info("Starting http client idle connection reaper thread with sleep interval %s.", getReaperSleepInterval());
-    
-            // Start thread
-            sReaperThread = new IdleConnectionTimeoutThread();
             
-            sReaperThread.addConnectionManager(sInternalConnMgr.getConnMgr());
-            sReaperThread.addConnectionManager(sExternalConnMgr.getConnMgr());
+            sLog.info("Starting http client idle connection reaper thread for " + connMgr.getName() + 
+                    " - reaper sleep interval=%d, reaper connection timeout=%d", 
+                    getReaperSleepInterval(), getReaperConnectionTimeout());
             
-            sReaperThread.setConnectionTimeout(getReaperConnectionTimeout());
-            sReaperThread.setTimeoutInterval(getReaperSleepInterval());
-            sReaperThread.start();
+            if (sLog.isDebugEnabled()) {
+                sLog.debug(dumpParams(connMgr.getName(), connMgr.getParams().getConnMgrParams(),
+                        connMgr.getDefaultHttpClient().getParams()).toString());
+            }
+    
+            // create and start thread
+            reaperThread = new IdleConnectionTimeoutThread();
+            reaperThread.setName("IdleConnectionTimeoutThread" + " for " + connMgr.getName());
+            
+            reaperThread.addConnectionManager(connMgr.getConnMgr());
+                        
+            reaperThread.setConnectionTimeout(getReaperConnectionTimeout());
+            reaperThread.setTimeoutInterval(getReaperSleepInterval());
+            reaperThread.start();
         }
         
-        private static synchronized void shutdown() {
+        private void shutdownReaperThread() {
             if (!isReaperThreadRunning()) {
                 sLog.warn("shutting down http client idle connection reaper thread requested but the reaper thread is not running");
                 return;
             }
             
-            sLog.warn("shutting down http client idle connection reaper thread");
+            sLog.info("shutting down http client idle connection reaper thread");
             
-            sReaperThread.shutdown();
-            sReaperThread = null;
+            reaperThread.shutdown();
+            reaperThread = null;
         }
         
-        private static synchronized boolean isReaperThreadRunning() {
-            return (sReaperThread != null);
+        private boolean isReaperThreadRunning() {
+            return (reaperThread != null);
         }
         
-        private static long getReaperSleepInterval() {
-            return LC.httpclient_connmgr_idle_reaper_sleep_interval.longValue();
-        }
-        
-        private static boolean reaperEnabled() {
+        private boolean reaperEnabled() {
             return getReaperSleepInterval() != 0;
         }
         
-        private static long getReaperConnectionTimeout() {
-            return LC.httpclient_connmgr_idle_reaper_connection_timeout.longValue();
+        private long getReaperSleepInterval() {
+            return connMgr.getParams().getReaperSleepInterval();
+        }
+        
+        private long getReaperConnectionTimeout() {
+            return LC.httpclient_internal_connmgr_idle_reaper_connection_timeout.longValue();
         }
     }
     
-    private static String dumpParams(HttpConnectionManagerParams connMgrParams, HttpClientParams clientParams) {
+    private static String dumpParams(String notes, HttpConnectionManagerParams connMgrParams, HttpClientParams clientParams) {
         // dump httpclient package defaults if params is null
         if (connMgrParams == null)
             connMgrParams = new HttpConnectionManagerParams();
@@ -392,6 +484,7 @@ public class ZimbraHttpConnectionManager {
      
         StringBuilder sb = new StringBuilder();
         
+        sb.append("======== " + notes + "========\n");
         
         sb.append("HttpConnectionManagerParams DefaultMaxConnectionsPerHost  : " + connMgrParams.getDefaultMaxConnectionsPerHost() + "\n");
         sb.append("HttpConnectionManagerParams MaxTotalConnections           : " + connMgrParams.getMaxTotalConnections() + "\n");
@@ -416,9 +509,14 @@ public class ZimbraHttpConnectionManager {
     
     public static void main(String[] args) {
         // dump httpclient package defaults
-        System.out.println(dumpParams(new HttpConnectionManagerParams(), new HttpClientParams()));
-        System.out.println(dumpParams(sConnMgrParams, 
+        System.out.println(dumpParams("httpclient package defaults", new HttpConnectionManagerParams(), new HttpClientParams()));
+        
+        System.out.println(dumpParams("Internal ZimbraHttpConnectionManager", ZimbraHttpConnectionManager.getInternalHttpConnMgr().getParams().getConnMgrParams(),
                 ZimbraHttpConnectionManager.getInternalHttpConnMgr().getDefaultHttpClient().getParams()));
+        
+        System.out.println(dumpParams("External ZimbraHttpConnectionManager", ZimbraHttpConnectionManager.getExternalHttpConnMgr().getParams().getConnMgrParams(),
+                ZimbraHttpConnectionManager.getExternalHttpConnMgr().getDefaultHttpClient().getParams()));
+        
         
         HttpClient httpClient = ZimbraHttpConnectionManager.getInternalHttpConnMgr().getDefaultHttpClient();
         String connMgrName = httpClient.getHttpConnectionManager().getClass().getSimpleName();

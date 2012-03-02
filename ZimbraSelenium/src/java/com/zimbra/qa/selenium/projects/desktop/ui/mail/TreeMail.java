@@ -50,8 +50,10 @@ public class TreeMail extends AbsTree {
 		append(stringToReplace).append("_textCell").toString();
 		public static final String zNewTagIcon = "//td[contains(@class,'overviewHeader-Text FakeAnchor')]/div[contains(@class,'ImgNewTag')]";
 
-		// TODO: Implement for Desktop after bug 56273 is fixed
-		public static final String treeExpandCollapseButton = "css=div[id='ztih__main_Mail__FOLDER_div'] div[class^='ImgNode']";
+		// For mail folders tree
+		public static final String treeExpandCollapseButton = "css=div[id='zovc__main_Mail'] div[id^='DWT'][class='DwtTreeItem'] [class^='ImgNode']";
+		public static final String multipleTrees = "css=div[id='zovc__main_Mail'] div[id^='DWT'][class^='DwtComposite ZmOverview']:nth-of-type(<NUM>)";
+		public static final String multipleTreesExpandCollapseButton = multipleTrees + " div[id^='DWT'] [class^='ImgNode']";
 
 		public static final String zDeleteTreeMenuItem = "//div[contains(@class,'ZMenuItem')]//tbody//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgDelete')]";
 		public static final String zRenameTreeMenuItem = "//div[contains(@class,'ZMenuItem')]//tbody//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgRename')]";
@@ -152,7 +154,62 @@ public class TreeMail extends AbsTree {
 	}
 
 	protected AbsPage zTreeItem(Action action, Button option, SavedSearchFolderItem savedSearchFolder) throws HarnessException {
-		throw new HarnessException("implement me!");
+	   if ( (action == null) || (option == null) || (savedSearchFolder == null) ) {
+         throw new HarnessException("Must define an action, option, and addressbook");
+      }
+      AbsPage page = null;
+      String actionLocator = null;
+      String optionLocator = null;
+      SavedSearchFolderItem f= (SavedSearchFolderItem) savedSearchFolder;
+      tracer.trace("processing " + f.getName());
+
+      if (action == Action.A_LEFTCLICK) {
+
+         actionLocator = "implement me";
+
+      } else if (action == Action.A_RIGHTCLICK) {
+         actionLocator = "css=td[id^='zti__" +
+               ((AppAjaxClient)MyApplication).zGetActiveAccount().EmailAddress +
+               ":main_Mail__'][id$='" + savedSearchFolder.getId() + "_textCell']";
+
+         GeneralUtility.waitForElementPresent(this, actionLocator);
+
+         this.zRightClick(actionLocator);
+      }
+      if (option == Button.B_DELETE) {
+
+         optionLocator= "id=POPUP_DELETE";
+         page= null;
+
+      }  else if (option == Button.B_MOVE) {
+
+         optionLocator= "id=POPUP_MOVE";
+         page = new DialogMove(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+
+      } else if (option == Button.B_RENAME) {
+
+         optionLocator= "id=POPUP_RENAME_SEARCH";
+         page = new DialogRenameFolder(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+
+      }
+
+      if (actionLocator == null)
+         throw new HarnessException("locator is null for action " + action);
+      if (optionLocator == null)
+         throw new HarnessException("locator is null for option " + option);
+
+      // Default behavior. Click the locator
+      zClick(optionLocator);
+
+      // If there is a busy overlay, wait for that to finish
+      this.zWaitForBusyOverlay();
+
+      if (page != null) {
+
+         // Wait for the page to become active, if it was specified
+         page.zWaitForActive();
+      }
+      return page;
 	}
 
 	protected AbsPage zTreeItem(Action action, Button option, ZimletItem zimlet) throws HarnessException {
@@ -275,30 +332,30 @@ public class TreeMail extends AbsTree {
 
 		} else if ( action == Action.A_TREE_EXPAND ) {
 
-			locator = "css=[id='zti__main_Mail__"+ folder.getId() +"_nodeCell'] div[class='ImgNodeCollapsed']";
-			if ( !this.sIsElementPresent(locator) ) {
+			locator = Locators.treeExpandCollapseButton;
+			if (!isCollapsed()) {
 				logger.warn("Trying to expand a folder that probably has no subfolders or is already expanded");
-				return (page);
+			} else {
+			   this.sMouseDown(locator);
+
+			   this.zWaitForBusyOverlay();
 			}
-
-			this.sMouseDown(locator);
-
-			this.zWaitForBusyOverlay();
 
 			// No page to return
 			return (null);
 
 		} else if ( action == Action.A_TREE_COLLAPSE ) {
 
-			locator = "css=[id='zti__main_Mail__"+ folder.getId() +"_nodeCell'] div[class='ImgNodeExpanded']";
-			if ( !this.sIsElementPresent(locator) ) {
+			locator = Locators.treeExpandCollapseButton;
+			if (isCollapsed()) {
 				logger.warn("Trying to collapse a folder that probably has no subfolders or is already collapsed");
-				return (page);
+
+			} else {
+			   this.sMouseDown(locator);
+
+			   this.zWaitForBusyOverlay();
+
 			}
-
-			this.sMouseDown(locator);
-
-			this.zWaitForBusyOverlay();
 
 			// No page to return
 			return (null);
@@ -333,12 +390,56 @@ public class TreeMail extends AbsTree {
 	 * @return true if tree is collapsed, otherwise false
 	 */
 	public boolean isCollapsed() {
-		if (sIsElementPresent(Locators.treeExpandCollapseButton.replace(
-				"ImgNode", "ImgNodeCollapsed"))) {
-			return true;
-		} else {
-			return false;
-		}
+	   // Browse all inventory in case of multiple accounts situation
+	   int i = 1;
+	   String locator = null;
+	   String expandCollapseLocator = null;
+	   boolean isCollapsed = true;
+	   for (i = 1; i < 100; i++) {
+	      locator = Locators.multipleTrees.replace("<NUM>",
+	            Integer.toString(i));
+	      if (!sIsElementPresent(locator)) {
+	         break;
+	      } else {
+	         expandCollapseLocator = Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+	               Integer.toString(i));
+	         expandCollapseLocator = expandCollapseLocator.replace(
+	               "ImgNode", "ImgNodeCollapsed");
+	         isCollapsed = isCollapsed && sIsElementPresent(expandCollapseLocator);
+
+	         if (!isCollapsed) {
+	            break;
+	         }
+	      }
+	   }
+
+	   return isCollapsed;
+	}
+
+	public boolean zExpandAll() throws HarnessException {
+	     // Browse all inventory in case of multiple accounts situation
+      int i = 1;
+      String locator = null;
+      String expandCollapseLocator = null;
+      boolean isCollapsed = true;
+      for (i = 1; i < 100; i++) {
+         locator = Locators.multipleTrees.replace("<NUM>",
+               Integer.toString(i));
+         if (!sIsElementPresent(locator)) {
+            break;
+         } else {
+            expandCollapseLocator = Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocator = expandCollapseLocator.replace(
+                  "ImgNode", "ImgNodeCollapsed");
+            if (sIsElementPresent(expandCollapseLocator)) {
+               zClickAt(Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+                     Integer.toString(i)), "0,0");
+            }
+         }
+      }
+
+      return isCollapsed;
 	}
 
 	protected AbsPage zTreeItem(Action action, SavedSearchFolderItem savedSearch) throws HarnessException {

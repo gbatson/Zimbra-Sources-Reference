@@ -44,10 +44,13 @@ public class OfflineService implements DocumentService {
         dispatcher.registerHandler(MailConstants.SAVE_WIKI_REQUEST, new OfflineDocumentHandlers.SaveWiki());
         dispatcher.registerHandler(MailConstants.WIKI_ACTION_REQUEST, new OfflineDocumentHandlers.WikiAction());
         
+        dispatcher.registerHandler(MailConstants.SEARCH_REQUEST, new OfflineSearch());
+        dispatcher.registerHandler(MailConstants.GET_MINI_CAL_REQUEST, new OfflineGetMiniCal());
         dispatcher.registerHandler(MailConstants.AUTO_COMPLETE_REQUEST, new OfflineAutoComplete());        
         dispatcher.registerHandler(AccountConstants.SEARCH_GAL_REQUEST, new OfflineSearchGal());
         dispatcher.registerHandler(MailConstants.GET_FREE_BUSY_REQUEST, new OfflineGetFreeBusy());
-        dispatcher.registerHandler(AccountConstants.SEARCH_CALENDAR_RESOURCES_REQUEST, OfflineServiceProxy.SearchCalendarResources());
+        dispatcher.registerHandler(AccountConstants.SEARCH_CALENDAR_RESOURCES_REQUEST, new OfflineSearchCalendarResources());
+        dispatcher.registerHandler(MailConstants.CHECK_RECUR_CONFLICTS_REQUEST, OfflineServiceProxy.CheckRecurConflictsRequest());
         dispatcher.registerHandler(MailConstants.CREATE_APPOINTMENT_REQUEST, new OfflineCreateAppointment());
         dispatcher.registerHandler(MailConstants.MODIFY_APPOINTMENT_REQUEST, new OfflineModifyAppointment());
         dispatcher.registerHandler(MailConstants.CREATE_TASK_REQUEST, new OfflineCreateTask());

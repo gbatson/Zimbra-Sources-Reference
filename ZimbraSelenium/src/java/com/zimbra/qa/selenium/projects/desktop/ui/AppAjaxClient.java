@@ -10,6 +10,7 @@ import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraDesktopProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.desktop.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.desktop.ui.accounts.PageAddNewAccount;
 import com.zimbra.qa.selenium.projects.desktop.ui.addressbook.PageAddressbook;
 import com.zimbra.qa.selenium.projects.desktop.ui.addressbook.TreeContacts;
 import com.zimbra.qa.selenium.projects.desktop.ui.briefcase.PageBriefcase;
@@ -65,6 +66,7 @@ public class AppAjaxClient extends AbsApplication {
 	public PageTasks					zPageTasks = null;
 	public PagePreferences				zPagePreferences = null;
 	public PageSignature				zPageSignature = null;
+	public PageAddNewAccount            zPageAddNewAccount = null;
 	
 	public TreeMail						zTreeMail = null;
 	public TreeContacts					zTreeContacts = null;
@@ -131,10 +133,14 @@ public class AppAjaxClient extends AbsApplication {
 
 		zTreePreferences = new TreePreferences(this);
 		trees.put(zTreePreferences.myPageName(), zTreePreferences);
+
 		// signature Preferences page
 		zPageSignature = new PageSignature(this);
 		pages.put(zPageSignature.myPageName(),zPageSignature);
-		
+
+		// Add New Account page
+		zPageAddNewAccount = new PageAddNewAccount(this);
+		pages.put(zPageAddNewAccount.myPageName(), zPageAddNewAccount);
 
 		// Configure the localization strings
 		getL10N().zAddBundlename(I18N.Catalog.I18nMsg);
@@ -169,9 +175,11 @@ public class AppAjaxClient extends AbsApplication {
 
 	/* (non-Javadoc)
 	 * @see projects.admin.ui.AbsApplication#myApplicationName()
+	 * Set to public instead of protected only for desktop project to allow multiple account switching
+	 * in the middle of the tests
 	 */
 	@Override
-	protected ZimbraAccount zSetActiveAcount(ZimbraAccount account) throws HarnessException {
+	public ZimbraAccount zSetActiveAcount(ZimbraAccount account) throws HarnessException {
 		return (super.zSetActiveAcount(account));
 	}
 
@@ -211,7 +219,7 @@ public class AppAjaxClient extends AbsApplication {
             .append(accountId).append("&verb=del&accountFlavor=")
             .append(accountFlavor).append("&accountName=")
             .append(accountName).append("&accountType=")
-            .append(accountType).toString();
+            .append(accountType).toString();//append("&dev=1&scripterrors=1").toString();
 
       logger.info("accountDeleteUrl: " + accountDeleteUrl);
       GeneralUtility.doHttpPost(accountDeleteUrl);

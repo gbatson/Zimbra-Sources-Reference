@@ -277,7 +277,7 @@
 	String allPackages = "Startup1_1,Startup1_2";
     if (extraPackages != null) {
     	if (extraPackages.equals("dev")) {
-    		extraPackages = "Leaks,Startup2,CalendarCore,Calendar,CalendarAppt,ContactsCore,Contacts,IMCore,IM,MailCore,Mail,Mixed,NotebookCore,Notebook,BriefcaseCore,Briefcase,PreferencesCore,Preferences,TasksCore,Tasks,Voicemail,Assistant,Browse,Extras,Share,Zimlet,ZimletApp,Portal,Alert,ImportExport,BrowserPlus";
+            extraPackages = "Startup2,CalendarCore,Calendar,CalendarAppt,ContactsCore,Contacts,MailCore,Mail,Mixed,BriefcaseCore,Briefcase,PreferencesCore,Preferences,TasksCore,Tasks,Assistant,Browse,Extras,Share,Zimlet,ZimletApp,Alert,ImportExport,BrowserPlus";
     	}
     	allPackages += "," + extraPackages;
     }
@@ -388,7 +388,19 @@ for (var pkg in window.AjxTemplateMsg) {
 			"dummy":1
 			<c:if test="${not empty domainInfo}">
 			<c:forEach var="info" items="${domainInfo.attrs}">,
-			"${info.key}":"${zm:jsEncode(info.value)}"</c:forEach>
+			"${info.key}":
+                    <c:choose>
+                    <c:when test="${not zm:isCollection(info.value)}">
+                        <%--Single value domain attribute--%>
+                        "${zm:jsEncode(info.value)}"
+                    </c:when>
+                    <c:otherwise>
+                        <%--Multi value domain attribute--%>
+                        <c:set var="infoArray" value="${fn:join(info.value, '\", \"')}"/>
+                        ["${infoArray}"]
+                    </c:otherwise>
+                    </c:choose>
+            </c:forEach>
 			</c:if>
 		};
 

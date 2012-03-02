@@ -148,15 +148,9 @@ public class FormMailNew extends AbsForm {
 			this.zWaitForBusyOverlay();
 			
 			// Wait for the message to be delivered
-			try {
-			
-				// Check the message queue
-				Stafpostqueue sp = new Stafpostqueue();
-				sp.waitForPostqueue();
-			
-			} catch (Exception e) {
-				throw new HarnessException("Unable to wait for message queue", e);
-			}
+			Stafpostqueue sp = new Stafpostqueue();
+			sp.waitForPostqueue();
+		
 			
 			return (page);
 		
@@ -286,7 +280,11 @@ public class FormMailNew extends AbsForm {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "css=[class='ImgPriorityHigh_list']";
+
+            // Have to use xpath because there is no unique identifier to select the text "High" and by using xpath, it selects the text "high" through the sibling relationship.
+            // When using the css to point to the icon, it clicks on the outside of the drop down menu
+            // , therefore it ends up closing and selecting nothing
+            optionLocator = "//div[@class='ImgPriorityHigh_list']/../../td[@class='ZWidgetTitle']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
@@ -390,6 +388,13 @@ public class FormMailNew extends AbsForm {
 			// FALL THROUGH
 			
 		} else if ( field == Field.Body ) {
+
+			// For some reason, the client expects a bit of a delay here.
+			// A cancel compose will not register unless this delay is here
+			// projects.ajax.tests.mail.compose.CancelComposeHtml.CancelComposeHtml_01
+			// http://zqa-004.eng.vmware.com/testlogs/UBUNTU10_64/HELIX/20110621210101_FOSS/SelNG-projects-ajax-tests/130872172760061/zqa-442.eng.vmware.com/AJAX/firefox_3.6.12/en_US/debug/projects/ajax/tests/mail/compose/CancelComposeHtml/CancelComposeHtml_01.txt
+			//
+			SleepUtil.sleepLong();
 
 			int frames = this.sGetXpathCount("//iframe");
 			logger.debug("Body: # of frames: "+ frames);
@@ -517,6 +522,11 @@ public class FormMailNew extends AbsForm {
 		if ( mail.dBodyText != null ) {
 			
 			zFillField(Field.Body, mail.dBodyText);
+			
+		}
+		if ( mail.dBodyHtml != null ) {
+			
+			zFillField(Field.Body, mail.dBodyHtml);
 			
 		}
 		

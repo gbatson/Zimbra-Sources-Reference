@@ -49,19 +49,21 @@ public class PageBriefcase extends AbsTab {
 		public static final Locators zNewMenuLeftIconBtn = new Locators(
 				"css=td[id=zb__BDLV__NEW_MENU_left_icon]");
 		public static final Locators zNewMenuArrowBtn = new Locators(
-				"css=td[id=zb__BDLV__NEW_MENU_dropdown] div[class^=ImgSelectPullDownArrow]");
+				"css=div[id=zb__BDLV__NEW_MENU] div[class^=ImgSelectPullDownArrow]");
 		public static final Locators zUploadFileIconBtn = new Locators(
 				"id=zb__BDLV__NEW_FILE_left_icon");
 		public static final Locators zEditFileIconBtn = new Locators(
 				"id=zb__BDLV__EDIT_FILE_left_icon");
+		public static final Locators zEditFileBtn = new Locators(
+				"css=div[id=zb__BDLV__EDIT_FILE]");
 		public static final Locators zEditFileMenuItem = new Locators(
-				"id=zmi__Briefcase__EDIT_FILE_left_icon");
+				"css=div[id=zmi__Briefcase__EDIT_FILE]");
 		public static final Locators zOpenFileInSeparateWindowIconBtn = new Locators(
 				"id=zb__BDLV__NEW_BRIEFCASE_WIN_left_icon");
 		public static final Locators zDeleteIconBtn = new Locators(
 				"id=zb__BDLV__DELETE_left_icon");
 		public static final Locators zDeleteBtn = new Locators(
-				"id=zb__BDLV__DELETE");
+				"css=div[id=zb__BDLV__DELETE]");
 		public static final Locators zMoveIconBtn = new Locators(
 				"id=zb__BDLV__MOVE_left_icon");
 		public static final Locators zMoveBtn = new Locators(
@@ -192,7 +194,7 @@ public class PageBriefcase extends AbsTab {
 			zWaitForElementPresent(locator);
 		}
 		// Click on Briefcase icon
-		zClick(PageMain.Locators.zAppbarBriefcase);
+		zClickAt(PageMain.Locators.zAppbarBriefcase, "0,0");
 
 		zWaitForBusyOverlay();
 
@@ -225,7 +227,7 @@ public class PageBriefcase extends AbsTab {
 			locator = Locators.zNewMenuLeftIconBtn.locator;
 
 			// Click on New Document icon
-			this.zClick(locator);
+			this.zClickAt(locator, "0,0");
 
 			zWaitForBusyOverlay();
 
@@ -248,25 +250,29 @@ public class PageBriefcase extends AbsTab {
 
 			page = null;
 		} else if (button == Button.B_EDIT_FILE) {
-			// Check if the button is disabled
-			locator = Locators.zEditFileIconBtn.locator;
 
-			String attrs = sGetAttribute("css=td[" + locator + "]>div@class");
+			locator = Locators.zEditFileBtn.locator;
 
-			if (attrs.contains("ZDisabledImage")) {
-				throw new HarnessException(button + " is disabled " + attrs);
-			}
+			/*
+			 * //Check if the button is disabled String attrs =
+			 * sGetAttribute(locator + "@class");
+			 * 
+			 * if (attrs.contains("ZDisabled")) { throw new
+			 * HarnessException(button + " is disabled " + attrs); }
+			 */
 
 			page = new DocumentBriefcaseEdit(MyApplication, (DocumentItem) item);
 		} else if (button == Button.B_DELETE) {
+
+			locator = Locators.zDeleteBtn.locator;
+
 			// Check if the button is disabled
-			locator = Locators.zDeleteIconBtn.locator;
+			String attrs = sGetAttribute(locator + "@class");
 
-			String attrs = sGetAttribute("css=td[" + locator + "]>div@class");
-
-			if (attrs.contains("ZDisabledImage")) {
+			if (attrs.contains("ZDisabled")) {
 				throw new HarnessException(button + " is disabled " + attrs);
 			}
+
 			page = new DialogConfirm(DialogConfirm.Confirmation.DELETE,
 					MyApplication, this);
 		} else if (button == Button.B_OPEN_IN_SEPARATE_WINDOW) {
@@ -280,6 +286,7 @@ public class PageBriefcase extends AbsTab {
 			}
 
 			page = new DocumentBriefcaseOpen(this.MyApplication);
+
 		} else if (button == Button.B_MOVE) {
 			// Check if the button is disabled
 			locator = Locators.zMoveIconBtn.locator;
@@ -318,7 +325,7 @@ public class PageBriefcase extends AbsTab {
 					+ locator + " button=" + button);
 
 		// Click it
-		this.zClick(locator);
+		this.zClickAt(locator, "0,0");
 
 		// If the app is busy, wait for it to become active
 		zWaitForBusyOverlay();
@@ -326,9 +333,8 @@ public class PageBriefcase extends AbsTab {
 		return (page);
 	}
 
-	@Override
-	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
-			throws HarnessException {
+	public AbsPage zToolbarPressPulldown(Button pulldown, Button option,
+			IItem item) throws HarnessException {
 		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("
 				+ pulldown + ", " + option + ")");
 
@@ -350,21 +356,27 @@ public class PageBriefcase extends AbsTab {
 		//
 
 		if (pulldown == Button.B_NEW) {
+			pulldownLocator = Locators.zNewMenuArrowBtn.locator;
 			if (option == Button.O_NEW_BRIEFCASE) {
 				throw new HarnessException("implement me!");
 			} else if (option == Button.O_NEW_DOCUMENT) {
-				pulldownLocator = Locators.zNewMenuArrowBtn.locator;
-
-				optionLocator = "css=tr[id=POPUP_NEW_DOC]>td[id$=_title]:contains(Document)";
+				if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+						"7.1."))
+					optionLocator = "css=tr[id=POPUP_NEW_DOC]";
+				else
+					optionLocator = "css=div#zb__BDLV__NEW_MENU_NEW_DOC";
 
 				page = new DocumentBriefcaseNew(this.MyApplication);
+
 				// FALL THROUGH
 			} else if (option == Button.O_NEW_FOLDER) {
 				throw new HarnessException("implement me!");
 			} else if (option == Button.O_NEW_TAG) {
-				pulldownLocator = Locators.zNewMenuArrowBtn.locator;
-
-				optionLocator = "css=td[id$=_title][class=ZWidgetTitle]:contains(Tag)";
+				if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+						"7.1."))
+					optionLocator = "css=tr[id=POPUP_NEW_TAG]>td[id$=_title]:contains(Tag)";
+				else
+					optionLocator = "css=div#zb__BDLV__NEW_MENU_NEW_TAG";
 
 				page = new DialogTag(this.MyApplication, this);
 
@@ -424,6 +436,36 @@ public class PageBriefcase extends AbsTab {
 						"no logic defined for pulldown/option " + pulldown
 								+ "/" + option);
 			}
+		} else if (pulldown == Button.B_ACTIONS) {
+
+			pulldownLocator = "css=td[id=zb__BDLV__ACTIONS_MENU_dropdown]>div[class='ImgSelectPullDownArrow']";
+
+			if (option == Button.B_LAUNCH_IN_SEPARATE_WINDOW) {
+
+				optionLocator = "css=td[id=zmi__BDLV__NEW_BRIEFCASE_WIN_title]:contains('Launch in a separate window')";
+
+				page = new DocumentBriefcaseOpen(this.MyApplication, item);
+
+			} else if (option == Button.O_SEND_AS_ATTACHMENT) {
+
+				optionLocator = "css=td[id$='_title']:contains('Send as attachment')";
+
+				page = new FormMailNew(this.MyApplication);
+
+				// FALL THROUGH
+			} else if (option == Button.O_SEND_LINK) {
+
+				optionLocator = "css=td[id$='_title']:contains('Send link')";
+
+				page = new DialogConfirm(DialogConfirm.Confirmation.SENDLINK,
+						this.MyApplication, this);
+
+				// FALL THROUGH
+			} else {
+				throw new HarnessException(
+						"no logic defined for pulldown/option " + pulldown
+								+ "/" + option);
+			}
 		} else {
 			throw new HarnessException("no logic defined for pulldown "
 					+ pulldown);
@@ -439,13 +481,29 @@ public class PageBriefcase extends AbsTab {
 						+ " not present!");
 			}
 
-			this.sMouseOver(pulldownLocator);
-			this.sFocus(pulldownLocator);
-			this.zRightClick(pulldownLocator);
-			ClientSessionFactory.session().selenium().mouseDownRight(
-					pulldownLocator);
-			ClientSessionFactory.session().selenium().mouseUpRight(
-					pulldownLocator);
+			// this.sMouseOver(pulldownLocator);
+			// this.sFocus(pulldownLocator);
+			// this.zRightClickAt(pulldownLocator, "0,0");
+			// sMouseDownRight(pulldownLocator);
+			// sMouseUpRight(pulldownLocator);
+
+			if ( zIsBrowserMatch(BrowserMasks.BrowserMaskIE) ) {
+				if (pulldown == Button.B_NEW) {
+					sGetEval("if(document.createEventObject()){var evObj = document.createEventObject(); "
+							+ "var x = selenium.browserbot.findElementOrNull('"
+							+ pulldownLocator
+							+ "');"
+							+ "x.focus();x.blur();x.fireEvent('onmouseup');}"
+							+ "else{var evObj = document.createEvent('MouseEvents');"
+							+ "evObj.initMouseEvent( 'mouseup', true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);"
+							+ "var x = selenium.browserbot.findElementOrNull('"
+							+ pulldownLocator
+							+ "');"
+							+ "x.focus();x.blur();x.dispatchEvent(evObj);}");
+				} else
+					zClick(pulldownLocator);
+			} else
+				zClickAt(pulldownLocator, "0,0");
 
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
@@ -460,18 +518,18 @@ public class PageBriefcase extends AbsTab {
 				}
 
 				// work around for bug 59722
-				if (optionLocator.contains("Document")) {
-					for(int i = 0; i < 6; i++){
-						typeKey(optionLocator, "40", "keydown");
-						}
-					typeKey(optionLocator, "13", "keydown");
-				} else if(optionLocator.contains("Tag")){
-					for(int i = 0; i < 8; i++){
-					typeKey(optionLocator, "40", "keydown");
+				if (optionLocator.contains("Dc")) {
+					for (int i = 0; i < 6; i++) {
+						zKeyEvent(optionLocator, "40", "keydown");
 					}
-					typeKey(optionLocator, "13", "keydown");
-				}else
-					this.zClick(optionLocator);
+					zKeyEvent(optionLocator, "13", "keydown");
+				} else if (optionLocator.contains("Tg")) {
+					for (int i = 0; i < 8; i++) {
+						zKeyEvent(optionLocator, "40", "keydown");
+					}
+					zKeyEvent(optionLocator, "13", "keydown");
+				} else
+					this.zClickAt(optionLocator, "0,0");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
@@ -540,7 +598,7 @@ public class PageBriefcase extends AbsTab {
 						+ " not present!");
 			}
 
-			this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator, "0,0");
 
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
@@ -554,7 +612,7 @@ public class PageBriefcase extends AbsTab {
 							+ optionLocator + " not present!");
 				}
 
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator, "0,0");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
@@ -588,7 +646,7 @@ public class PageBriefcase extends AbsTab {
 			locator = Locators.zHeaderCheckBox.locator;
 
 			// Left-Click on the header
-			this.zClick(locator);
+			this.zClickAt(locator, "0,0");
 		} else {
 			throw new HarnessException("implement me!  action = " + action);
 		}
@@ -651,7 +709,12 @@ public class PageBriefcase extends AbsTab {
 			zWaitForElementPresent(itemNameLocator);
 
 			// Left-Click on the item
-			this.zClick(itemNameLocator);
+			// temporary workaround for FOSS
+			if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+					"FOSS"))
+				zListItem(Action.A_BRIEFCASE_CHECKBOX, item);
+			else
+				this.zClickAt(itemNameLocator, "0,0");
 
 			// page = new DocumentPreview(MyApplication);
 
@@ -667,6 +730,8 @@ public class PageBriefcase extends AbsTab {
 			} else
 				page = null;
 		} else if (action == Action.A_BRIEFCASE_CHECKBOX) {
+			zWaitForElementPresent(itemNameLocator);
+
 			String checkBoxLocator = "";
 
 			int count = sGetCssCount(itemLocator);
@@ -691,7 +756,7 @@ public class PageBriefcase extends AbsTab {
 						"Trying to check box, but it was already enabled");
 
 			// Left-Click on the Check box field
-			this.zClick(checkBoxLocator);
+			this.zClickAt(checkBoxLocator, "0,0");
 
 			// No page to return
 			page = null;
@@ -702,7 +767,7 @@ public class PageBriefcase extends AbsTab {
 			zWaitForElementPresent(itemNameLocator);
 
 			// Right-Click on the item
-			this.zRightClick(itemNameLocator);
+			this.zRightClickAt(itemNameLocator, "0,0");
 
 			// Now the ContextMenu is opened
 			// Click on the specified option
@@ -753,7 +818,7 @@ public class PageBriefcase extends AbsTab {
 			zWaitForElementPresent(itemlocator);
 
 			// Right-Click on the item
-			this.zRightClick(itemlocator);
+			this.zRightClickAt(itemlocator, "0,0");
 
 			// Now the ContextMenu is opened
 			// Click on the specified option
@@ -816,7 +881,7 @@ public class PageBriefcase extends AbsTab {
 			}
 
 			// click on the option
-			this.zClick(optionLocator);
+			this.zClickAt(optionLocator, "0,0");
 
 			this.zWaitForBusyOverlay();
 
@@ -871,7 +936,7 @@ public class PageBriefcase extends AbsTab {
 			zWaitForElementPresent(itemlocator);
 
 			// Right-Click on the item
-			this.zRightClick(itemlocator);
+			this.zRightClickAt(itemlocator, "0,0");
 
 			// Now the ContextMenu is opened
 			// Click on the specified option
@@ -880,7 +945,7 @@ public class PageBriefcase extends AbsTab {
 
 			if (option == Button.O_TAG_FILE) {
 
-				optionLocator = "css=td#zmi__Briefcase__TAG_MENU_dropdown";
+				optionLocator = "css=td#zmi__Briefcase__TAG_MENU_dropdown>div[class=ImgCascade]";
 
 			} else {
 				throw new HarnessException("implement action: " + action
@@ -888,7 +953,7 @@ public class PageBriefcase extends AbsTab {
 			}
 
 			// click on the option
-			this.zClick(optionLocator);
+			this.zClickAt(optionLocator, "0,0");
 
 			// Now the ContextMenu option is opened
 			// Click on the specified sub option
@@ -897,7 +962,7 @@ public class PageBriefcase extends AbsTab {
 					+ subOption + ")";
 
 			// click on the sub option
-			this.zClick(subOptionLocator);
+			this.zClickAt(subOptionLocator, "0,0");
 
 			this.zWaitForBusyOverlay();
 
@@ -969,31 +1034,31 @@ public class PageBriefcase extends AbsTab {
 
 		// zKeyboard.zTypeCharacters(shortcut.getKeys());
 
-		for (String kc : keyCode.split(",")) {
-			/*
-			 * vare=document.createEvent('KeyboardEvent');
-			 * if(typeof(e.initKeyboardEvent)!='undefined'){e.initEvent()}
-			 * else{e.initKeyEvent()}
-			 */
+		zKeyDown(keyCode);
 
-			sGetEval("if(document.createEventObject){var body_locator=\"css=html>body\"; "
-					+ "var body=selenium.browserbot.findElement(body_locator);"
-					+ "var evObj = body.document.createEventObject();"
-					+ "evObj.keyCode="
-					+ kc
-					+ ";evObj.repeat = false;"
-					+ "body.focus(); body.fireEvent(\"onkeydown\",evObj);}"
-					+ "else{if(window.KeyEvent){var evObj = document.createEvent('KeyEvents');"
-					+ "evObj.initKeyEvent( 'keydown', true, true, window, false, false, false, false,"
-					+ kc
-					+ ", 0 );}else {var evObj = document.createEvent('HTMLEvents');"
-					+ "evObj.initEvent( 'keydown', true, true, window, 1 );"
-					+ "evObj.keyCode = "
-					+ kc
-					+ ";}var x = selenium.browserbot.findElementOrNull('"
-					+ "css=html>body"
-					+ "');x.focus(); x.dispatchEvent(evObj);}");
-		}
+		/*
+		 * for (String kc : keyCode.split(",")) {
+		 * 
+		 * //vare=document.createEvent('KeyboardEvent');
+		 * //if(typeof(e.initKeyboardEvent)!='undefined'){e.initEvent()}
+		 * //else{e.initKeyEvent()}
+		 * 
+		 * 
+		 * sGetEval(
+		 * "if(document.createEventObject){var body_locator=\"css=html>body\"; "
+		 * + "var body=selenium.browserbot.findElement(body_locator);" +
+		 * "var evObj = body.document.createEventObject();" + "evObj.keyCode=" +
+		 * kc + ";evObj.repeat = false;" +
+		 * "body.focus(); body.fireEvent(\"onkeydown\",evObj);}" +
+		 * "else{if(window.KeyEvent){var evObj = document.createEvent('KeyEvents');"
+		 * +
+		 * "evObj.initKeyEvent( 'keydown', true, true, window, false, false, false, false,"
+		 * + kc + ", 0 );}else {var evObj = document.createEvent('HTMLEvents');"
+		 * + "evObj.initEvent( 'keydown', true, true, window, 1 );" +
+		 * "evObj.keyCode = " + kc +
+		 * ";}var x = selenium.browserbot.findElementOrNull('" + "css=html>body"
+		 * + "');x.focus(); x.dispatchEvent(evObj);}"); }
+		 */
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
@@ -1015,10 +1080,11 @@ public class PageBriefcase extends AbsTab {
 
 		sType(Locators.zRenameInput.locator, text);
 
-		typeKey(Locators.zRenameInput.locator, "13", "keyup");
+		zKeyEvent(Locators.zRenameInput.locator, "13", "keyup");
 	}
-	
-	public void typeKey(String locator, String keycode, String event) throws HarnessException {
+
+	public void typeKey(String locator, String keycode, String event)
+			throws HarnessException {
 		sFocus(locator);
 		// hit <Enter> key
 		// sKeyPressNative(Integer.toString(KeyEvent.VK_ENTER));
@@ -1026,17 +1092,24 @@ public class PageBriefcase extends AbsTab {
 		sGetEval("if(document.createEventObject){var x=selenium.browserbot.findElementOrNull('"
 				+ locator
 				+ "');var evObj = x.document.createEventObject();"
-				+ "evObj.keyCode=" + keycode + "; evObj.repeat = false;"
-				+ "x.focus(); x.fireEvent(\"on" + event + "\",evObj);}"
+				+ "evObj.keyCode="
+				+ keycode
+				+ "; evObj.repeat = false; x.focus(); x.fireEvent(\"on"
+				+ event
+				+ "\",evObj);}"
 				+ "else{if(window.KeyEvent){var evObj = document.createEvent('KeyEvents');"
-				+ "evObj.initKeyEvent( '" + event + "', true, true, window, false, false, false, false," + keycode + ", 0 );} "
+				+ "evObj.initKeyEvent( '"
+				+ event
+				+ "', true, true, window, false, false, false, false,"
+				+ keycode
+				+ ", 0 );} "
 				+ "else {var evObj = document.createEvent('HTMLEvents');"
-				+ "evObj.initEvent( '" + event + "', true, true, window, 1 );"
-				+ "evObj.keyCode=" + keycode + ";}"
-				+ "var x = selenium.browserbot.findElementOrNull('"
-				+ locator
-				+ "'); "
-				+ "x.blur(); x.focus(); x.dispatchEvent(evObj);}");
+				+ "evObj.initEvent( '"
+				+ event
+				+ "', true, true, window, 1 ); evObj.keyCode="
+				+ keycode
+				+ ";} var x = selenium.browserbot.findElementOrNull('"
+				+ locator + "'); x.blur(); x.focus(); x.dispatchEvent(evObj);}");
 	}
 
 	public void fireEvent(String locator, String eventName)
@@ -1084,8 +1157,7 @@ public class PageBriefcase extends AbsTab {
 	}
 
 	public boolean isOptionDisabled(Locators name) throws HarnessException {
-		return sIsElementPresent("css=td[" + name.locator
-				+ "]>div[class*=ZDisabledImage]");
+		return sIsElementPresent(name.locator + "[class*=ZDisabled]");
 	}
 
 	public boolean waitForDeletedFromListView(String itemName)
@@ -1168,7 +1240,18 @@ public class PageBriefcase extends AbsTab {
 		};
 	}
 
-	public String openUrl(String page, Map<String, String> params)
+	public String openUrl(String url) throws HarnessException {
+
+		this.sOpen(url);
+
+		return url;
+	}
+
+	public String getLocation() {
+		return ClientSessionFactory.session().selenium().getLocation();
+	}
+
+	public String openUrl(String path, Map<String, String> params)
 			throws HarnessException {
 		ZimbraAccount account = MyApplication.zGetActiveAccount();
 
@@ -1176,8 +1259,8 @@ public class PageBriefcase extends AbsTab {
 
 		util.setAuthentication(account);
 
-		if (null != page && !page.isEmpty())
-			util.setPath("/" + page + "/");
+		if (null != path && !path.isEmpty())
+			util.setPath("/" + path + "/");
 		else
 			util.setPath("/");
 
@@ -1195,7 +1278,7 @@ public class PageBriefcase extends AbsTab {
 		if (url.endsWith("?"))
 			url = url.substring(0, url.length() - 1);
 
-		ClientSessionFactory.session().selenium().open(url);
+		this.sOpen(url);
 
 		return url;
 	}
@@ -1203,7 +1286,7 @@ public class PageBriefcase extends AbsTab {
 	public void closeWindow() {
 		tracer.trace("Close the separate window");
 
-		ClientSessionFactory.session().selenium().close();
+		this.sClose();
 	}
 
 	@Override
@@ -1265,5 +1348,12 @@ public class PageBriefcase extends AbsTab {
 			String item) throws HarnessException {
 		throw new HarnessException("implement me! : action=" + action
 				+ " subOption=" + subOption + "item=" + item);
+	}
+
+	@Override
+	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
+			throws HarnessException {
+		throw new HarnessException("implement me! : pulldown=" + pulldown
+				+ " option=" + option);
 	}
 }

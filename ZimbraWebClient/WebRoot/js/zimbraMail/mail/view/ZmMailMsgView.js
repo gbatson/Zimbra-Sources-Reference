@@ -88,8 +88,6 @@ ZmMailMsgView._inited 				= false;
 ZmMailMsgView._TAG_CLICK 			= "ZmMailMsgView._TAG_CLICK";
 ZmMailMsgView._TAG_ANCHOR 			= "TA";
 ZmMailMsgView._TAG_IMG 				= "TI";
-ZmMailMsgView.OBJ_SIZE_TEXT 		= 70; // max. size of text emails that will automatically highlight objects
-ZmMailMsgView.OBJ_SIZE_HTML 		= 100; // similar for HTML emails.
 ZmMailMsgView.SHARE_EVENT 			= "share";
 ZmMailMsgView.IMG_FIX_RE			= new RegExp("(<img\\s+.*dfsrc\\s*=\\s*)[\"']http[^'\"]+part=([\\d\\.]+)[\"']([^>]*>)", "gi");
 ZmMailMsgView.FILENAME_INV_CHARS_RE = /[\./?*:;{}'\\]/g; // Chars we do not allow in a filename
@@ -586,6 +584,9 @@ function(img) {
 	var attachments = this._msg.attachments;
 	var csfeMsgFetch = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI);
 	var src = img.getAttribute("src") || img.getAttribute("dfsrc");
+	if (!src) {
+		return;
+	}
 	var cid;
 	if (/^cid:(.*)/.test(src)) {
 		cid = "<" + RegExp.$1 + ">";
@@ -599,7 +600,7 @@ function(img) {
 		if (cid && att.ci == cid) {
 			att.foundInMsgBody = true;
 			break;
-		} else if (src && src.indexOf(csfeMsgFetch) == 0) {
+		} else if (src.indexOf(csfeMsgFetch) == 0) {
 			var mpId = src.substring(src.lastIndexOf("=") + 1);
 			if (mpId == att.part) {
 				att.foundInMsgBody = true;
@@ -862,9 +863,10 @@ function(container, html, isTextMsg, isTruncated) {
 
 	var callback;
 	var msgSize = (html.length / 1024);
+	var maxHighlightSize = appCtxt.get(ZmSetting.HIGHLIGHT_OBJECTS);
 	if (isTextMsg) {
 		if (this._objectManager) {
-			if (msgSize <= ZmMailMsgView.OBJ_SIZE_TEXT) {
+			if (msgSize <= maxHighlightSize) {
 				//Using callback to lazily find objects instead of doing it on a run.
 				callback = new AjxCallback(this, this.lazyFindMailMsgObjects, [500]);
 				html = AjxStringUtil.convertToHtml(html);
@@ -884,7 +886,7 @@ function(container, html, isTextMsg, isTruncated) {
 		html = this._stripHtmlComments(html);
 		if (this._objectManager) {
 			// this callback will post-process the HTML after the IFRAME is created
-			if (msgSize <= ZmMailMsgView.OBJ_SIZE_HTML) {
+			if (msgSize <= maxHighlightSize) {
 				callback = new AjxCallback(this, this._processHtmlDoc);
 			} else {
 				this._makeHighlightObjectsDiv();
@@ -2170,34 +2172,44 @@ function(msgId, partIds) {
 	var searchParams = {
 		jsonObj: jsonObj,
 		asyncMode: true,
-		callback: (new AjxCallback(null, ZmMailMsgView._handleRemoveAttachment)),
+		callback: (new AjxCallback(null, ZmMailMsgView._handleRemoveAttachment, [msgId])),
 		noBusyOverlay: true
 	};
 	return appCtxt.getAppController().sendRequest(searchParams);
 };
 
 ZmMailMsgView._handleRemoveAttachment =
-function(result) {
+function(oldMsgId, result) {
 	var ac = window.parentAppCtxt || window.appCtxt;
-
 	// cache this actioned ID so we can reset selection to it once the CREATE
 	// notifications have been processed.
 	var msgNode = result.getResponse().RemoveAttachmentsResponse.m[0];
-	ac.getApp(ZmApp.MAIL).getMailListController().actionedMsgId = msgNode.id;
-    var list = ac.getApp(ZmApp.MAIL).getMailListController().getList();
-    var currView = appCtxt.getAppController().getAppViewMgr().getCurrentView();
-	var msgView = appCtxt.isChildWindow || currView instanceof ZmMailMsgView
-		? currView : (currView.getMsgView && currView.getMsgView());
+	var mailListCtlr = ac.getApp(ZmApp.MAIL).getMailListController();
+	mailListCtlr.actionedMsgId = msgNode.id;
+	var list = mailListCtlr.getList();
 
-    if (currView && Dwt.instanceOf(currView, "ZmConvView")) {
-        ZmConvView._handleRemoveAttachment(result);
-    }
-	else if (msgView) {
-        var msg = new ZmMailMsg(msgNode.id, list, true);
-        msg._loadFromDom(msgNode);
-        msgView._msg = null;
-        msgView.set(msg);
-    }
+	var avm = appCtxt.getAppViewMgr();
+	var views = avm._views;
+	var msg = new ZmMailMsg(msgNode.id, list, true);
+	msg._loadFromDom(msgNode);
+
+	for (var viewId in views) {
+		var viewObj = views[viewId];
+		var view = viewObj && (viewObj[ZmAppViewMgr.C_APP_CONTENT] || viewObj[ZmAppViewMgr.C_APP_CONTENT_FULL]);
+		if (view) {
+			if (AjxUtil.isFunction(view.handleRemoveAttachment)) {
+				view.handleRemoveAttachment(oldMsgId, msg);
+			}
+		}
+	}
+};
+
+ZmMailMsgView.prototype.handleRemoveAttachment =
+function(oldMsgId, newMsg) {
+	if (!this._msg || this._msg.id == oldMsgId) {
+		this._msg = null;
+		this.set(newMsg);
+	}
 };
 
 ZmMailMsgView._buildZipUrl =

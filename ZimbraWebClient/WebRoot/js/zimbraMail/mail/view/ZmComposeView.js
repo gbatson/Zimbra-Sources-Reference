@@ -957,16 +957,12 @@ function(composeMode, switchPreface) {
 				}
 			}
 
-			if (this._action == ZmOperation.DRAFT) { //see below why this is only in case of draft
-				baseContent = baseContent.replace(/\n/g,"<br/>");
-			}
+			baseContent = baseContent.replace(/\n/g,"<br/>");
 
 			// Do the mode switch
 			this._htmlEditor.setMode(composeMode, true);
 			
 			if (this._action != ZmOperation.DRAFT) {
-				baseContent = AjxStringUtil.convertToHtml(baseContent, true);
-				baseContent = baseContent.replace(/\n/g,"<br/>");
 				// Re-set the whole body, with optional replied/forwarded msg and signature automatically added. baseContent is the text that the user may have written before switching
 				this._setBody(this._action, this._msg || null, baseContent || "\n", null, true);
 			}

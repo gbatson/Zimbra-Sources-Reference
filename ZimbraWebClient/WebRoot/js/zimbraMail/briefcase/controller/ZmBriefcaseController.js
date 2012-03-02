@@ -557,7 +557,7 @@ function(ev) {
             return;
         }
 
-		var restUrl = item.getRestUrl();
+		var restUrl = item.getRestUrl(false, false, true); //get it with the version number even if clicked on the base item (see ZmBriefcaseBaseItem.prototype.getRestUrl in ZmBriefcaseItem.js)
         //added for bug: 45150
         restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
         if (item.isWebDoc()) {
@@ -818,7 +818,7 @@ function(items){
     items = AjxUtil.toArray(items);
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
-        var restUrl = item.getRestUrl();
+        var restUrl = item.getRestUrl(false, false, true); //get the URL with version number so even on IE9 it would always be the latest.
         if (restUrl) {
 
             if (item.isWebDoc()) {
@@ -855,7 +855,7 @@ function(items){
     items = AjxUtil.toArray(items);
 	for (var i = 0; i < items.length; i++) {
 		var item = items[i];
-		var restUrl = item.getRestUrl();
+		var restUrl = item.getRestUrl(false, false, true);
 		if (!restUrl) {
 			continue;
 		}
@@ -912,12 +912,12 @@ function(items){
     var restUrl, length= items.length;
     if(length > 1){
         var params = [];
+        var organizer = appCtxt.getById(items[0].folderId);
         for(var i=0; i< length; i++){
             var item = items[i];
-            params.push((item.isRevision ? item.parent.id : item.id)+"."+item.version);
+            params.push((item.isRevision ? item.parent.id : item.getNormalizedItemId())+"."+item.version);
         }
-        var organizer = appCtxt.getById(items[0].folderId);
-        restUrl = [ organizer.getRestUrl(), "?fmt=zip&list=", params.join(',')].join('');
+        restUrl = [ (organizer.isShared()?organizer.getOwnerRestUrl():organizer.getRestUrl()), "?fmt=zip&list=", params.join(',')].join('');
     }else{
        var item = AjxUtil.isArray(items) ? items[0] : items;
        restUrl = item.getRestUrl();

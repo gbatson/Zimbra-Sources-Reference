@@ -13,6 +13,7 @@ import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.OperatingSystem;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraDesktopProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.BuildUtility.ARCH;
@@ -147,7 +148,60 @@ public class DesktopInstallUtil {
                   logger.info("Server Process String: " + serverProcessString);
                   serverProcess = Integer.parseInt(serverProcessString);
                }
-               
+            }
+
+            if (serverProcess == 0 && clientProcess != 0) {
+               // retry
+               int retry = 0;
+               int maxRetry = 60;
+               while (serverProcess == 0 && retry < maxRetry) {
+                  SleepUtil.sleep(1000);
+                  maxRetry ++;
+
+                  output = CommandLine.cmdExecWithOutput("ps -ef").split("\n");
+                  logger.info("output's length is: " + output.length);
+
+                  for (int i = 0; i < output.length; i++) {
+                     logger.info("Process " + i + ": " + output[i]);
+                     if (output[i].contains("/linux/jre")) {
+                        String serverProcessString = output[i].replace(username, "").trim().split(" ")[0];
+                        logger.info("Server Process String: " + serverProcessString);
+                        serverProcess = Integer.parseInt(serverProcessString);
+                     }
+                  }
+               }
+            }
+
+            break;
+         case MAC:
+            username = ZimbraDesktopProperties.getInstance().getUserName();
+            logger.info("user name is: " + username);
+            output = CommandLine.cmdExecWithOutput("ps -ef").split("\n");
+            logger.info("output's length is: " + output.length);
+
+            for (int i = 0; i < output.length; i++) {
+               logger.info("Process " + i + ": " + output[i]);
+               if (output[i].contains("/MacOS/prism") && !output[i].contains("sh ")) {
+                  int j;
+                  for (j = 1; j < 20; j++) {
+                     if (!output[i].trim().split(" ")[j].equals("")){
+                        break;
+                     }
+                  }
+                  String clientProcessString = output[i].trim().split(" ")[j];
+                  logger.info("Client Process String: " + clientProcessString);
+                  clientProcess = Integer.parseInt(clientProcessString);
+               } else if (output[i].contains("Desktop/bin/zdesktop start -w")) {
+                  int j;
+                  for (j = 1; j < 20; j++) {
+                     if (!output[i].trim().split(" ")[j].equals("")){
+                        break;
+                     }
+                  }
+                  String serverProcessString = output[i].trim().split(" ")[j];
+                  logger.info("Server Process String: " + serverProcessString);
+                  serverProcess = Integer.parseInt(serverProcessString);
+               }
             }
 
             if (serverProcess == 0 && clientProcess != 0) {
@@ -197,7 +251,7 @@ public class DesktopInstallUtil {
          isRunning = (GeneralUtility.findWindowsRunningTask("zdesktop.exe") ||
                GeneralUtility.findWindowsRunningTask("zdclient.exe"));
          break;
-      case LINUX:
+      case LINUX: case MAC:
          isRunning = (getZDProcess() == null ? false : true);
          break;
       default:
@@ -217,18 +271,16 @@ public class DesktopInstallUtil {
                CommandLine.CmdExec("TASKKILL /F /IM zdclient.exe");
                CommandLine.CmdExec("TASKKILL /F /IM zdesktop.exe");
                break;
-            case LINUX:
+            case LINUX: case MAC:
                if (zdProcess.desktopClientPid != 0) {
                   CommandLine.CmdExec("kill -9 " + zdProcess.desktopClientPid);
                }
                CommandLine.CmdExec("kill -9 " + zdProcess.desktopServerPid);
                _resetZdProcess();
                break;
-               
             default:
                throw new HarnessException("Implement me!");
             }
-            
          } else {
             logger.info("None of the desktop process is running");
          }
@@ -239,6 +291,8 @@ public class DesktopInstallUtil {
       } catch (InterruptedException ie) {
          ie.printStackTrace();
          throw new HarnessException("Getting Interrupted Exception");
+      } finally {
+         ZimbraAccount.AccountZWC().resetClientAuthentication();
       }
    }
 
@@ -293,12 +347,12 @@ public class DesktopInstallUtil {
             }
             break;
          case LINUX:
-            CommandLine.CmdExec("rm -rf /opt/zimbra/zdesktop");
-            CommandLine.CmdExec("rm -rf /home/" +
-                  ZimbraDesktopProperties.getInstance().getUserName() + "/zdesktop");
+            File mainDir = new File("/opt/zimbra/zdesktop");
+            GeneralUtility.deleteDirectory(mainDir);
             break;
          case MAC:
-            //TODO: Impelements MAC uninstallation method here
+            mainDir = new File("/Applications/Zimbra Desktop/");
+            GeneralUtility.deleteDirectory(mainDir);
             break;
          }
       } else {
@@ -414,9 +468,25 @@ public class DesktopInstallUtil {
                killDesktopProcess();
                break;
             case MAC:
-               // TODO: Implements installation methods for Linux and Mac
-               break;
+               logger.info(CommandLine.cmdExecWithOutput(
+                     "hdiutil mount " + installFileBinaryLocation));
+               String [] command = {"cp", "-R", "/Volumes/Zimbra Desktop Installer", "/Applications"};
+               logger.info(CommandLine.cmdExecWithOutput(command, null));
 
+               command = new String[] {"installer", "-package", "/Applications/Zimbra Desktop Installer/Zimbra Desktop.mpkg", "-target", "/Volumes/Server HD"};
+               logger.info(CommandLine.cmdExecWithOutput(command, null));
+
+               command = new String[] {"hdiutil", "unmount", "/Volumes/Zimbra Desktop Installer/"};
+               logger.info(CommandLine.cmdExecWithOutput(command, null));
+
+               GeneralUtility.waitFor("com.zimbra.qa.selenium.projects.desktop.core.DesktopInstallUtil", null,
+                     true, "isDesktopAppRunning", null, WAIT_FOR_OPERAND.EQ, true, 60000, 1000);
+               GeneralUtility.waitFor(null, ZimbraAccount.AccountZWC(), false,
+                     "authenticateToMailClientHost", null, WAIT_FOR_OPERAND.NEQ, null, 60000, 3000);
+               // The reason for killing the current process because desktop app is started by
+               // the installer script and this will block selenium test browser window
+               killDesktopProcess();
+               break;
             }
          }
       }
@@ -457,7 +527,10 @@ public class DesktopInstallUtil {
          }
          break;
       case MAC:
-         //TODO:
+         installDir = new File("/Applications/Zimbra Desktop/Zimbra Desktop.app/Contents/MacOS/zdrun");
+         if (installDir.exists()) {
+            isDesktopInstalled = true;
+         }
          break;
       }
 

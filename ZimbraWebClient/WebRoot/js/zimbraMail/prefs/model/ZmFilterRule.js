@@ -437,6 +437,14 @@ ZmFilterRule.A_NAME_TAG							= "actionTag";
  * Defines the "forward" action name.
  */
 ZmFilterRule.A_NAME_FORWARD						= "actionRedirect";
+/**
+ * Defines the "reply" action name.
+ */
+ZmFilterRule.A_REPLY                            = "actionReply";
+/**
+ * Defines the "notify" action name.
+ */
+ZmFilterRule.A_NOTIFY                           = "actionNotify";
 
 ZmFilterRule.A_VALUE = {};
 ZmFilterRule.A_VALUE[ZmFilterRule.A_KEEP]		= ZmFilterRule.A_NAME_KEEP;
@@ -447,6 +455,8 @@ ZmFilterRule.A_VALUE[ZmFilterRule.A_STOP]		= ZmFilterRule.A_NAME_STOP;
 ZmFilterRule.A_VALUE[ZmFilterRule.A_FLAG]		= ZmFilterRule.A_NAME_FLAG;
 ZmFilterRule.A_VALUE[ZmFilterRule.A_TAG]		= ZmFilterRule.A_NAME_TAG;
 ZmFilterRule.A_VALUE[ZmFilterRule.A_FORWARD]	= ZmFilterRule.A_NAME_FORWARD;
+ZmFilterRule.A_VALUE[ZmFilterRule.A_REPLY]      = ZmFilterRule.A_REPLY;
+ZmFilterRule.A_VALUE[ZmFilterRule.A_NOTIFY]     = ZmFilterRule.A_NOTIFY;
 
 ZmFilterRule.A_VALUE_MAP = {};
 for (var i in ZmFilterRule.A_VALUE) {
@@ -503,6 +513,7 @@ ZmFilterRule.ACTIONS[ZmFilterRule.A_FORWARD] = {
 	errorMessage:		ZmMsg.errorInvalidEmail
 };
 
+
 ZmFilterRule.ACTIONS_LIST = [
 	ZmFilterRule.A_KEEP,
 	ZmFilterRule.A_DISCARD,
@@ -556,12 +567,12 @@ function(groupOp) {
 };
 
 ZmFilterRule.prototype.addCondition =
-function(testType, comparator, value, subjectMod) {
+function(testType, comparator, value, subjectMod, caseSensitive) {
 	if (!this.conditions[testType]) {
 		this.conditions[testType] = [];
 	}
 
-	var cdata = ZmFilterRule.getConditionData(testType, comparator, value, subjectMod);
+	var cdata = ZmFilterRule.getConditionData(testType, comparator, value, subjectMod, caseSensitive);
 	this.conditions[testType].push(cdata);
 };
 
@@ -622,7 +633,7 @@ function() {
 // Static methods
 
 ZmFilterRule.getConditionData =
-function(testType, comparator, value, subjectMod) {
+function(testType, comparator, value, subjectMod, caseSensitive) {
 	var conditionData = {};
 
 	// add subject modifier
@@ -672,6 +683,9 @@ function(testType, comparator, value, subjectMod) {
 
 	if (testType == ZmFilterRule.TEST_INVITE) {
 	    conditionData.method = [{_content:ZmFilterRule.OP_VALUE[negativeOp || comparator]}];
+	}
+	if (caseSensitive != null) {
+		conditionData.caseSensitive = caseSensitive;
 	}
 
 	return conditionData;

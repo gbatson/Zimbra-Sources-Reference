@@ -111,7 +111,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
     }
 
     boolean lockMailboxToSync() {
-        if (isDeleting() || !OfflineSyncManager.getInstance().isServiceActive())
+        if (isDeleting() || !OfflineSyncManager.getInstance().isServiceActive(false))
             return false;
         if (!mSyncRunning) {
             synchronized (this) {
@@ -139,10 +139,6 @@ public abstract class SyncMailbox extends DesktopMailbox {
 
     @Override
     public void deleteMailbox() throws ServiceException {
-        deleteMailbox(deleteAsync);
-    }
-
-    public void deleteMailbox(boolean async) throws ServiceException {
         synchronized (this) {
             if (isDeleting)
                 return;
@@ -159,34 +155,14 @@ public abstract class SyncMailbox extends DesktopMailbox {
             if (!x.getCode().equals(AccountServiceException.NO_SUCH_ACCOUNT))
                 OfflineLog.offline.warn(x);
         }
-        if (async) {
-            class DeleteThread extends Thread {
-                SyncMailbox mbox;
-                
-                DeleteThread(SyncMailbox mbox) {
-                    super("mailbox-reaper:" + mbox.getAccountId());
-                    this.mbox = mbox;
-                }
-                public void run() {
-                    try {
-                        mbox.deleteThisMailbox(true);
-                    } catch (Exception e) {
-                        OfflineLog.offline.warn("unable to delete mailbox id " +
-                            getId(), e);
-                    }
-                }
-            }
             
-            MailboxManager mm = MailboxManager.getInstance();
-            
-            synchronized (mm) {
-                unhookMailboxForDeletion();
-                mm.markMailboxDeleted(this); // to remove from cache
-            }
-            new DeleteThread(this).start();
-        } else {
-            deleteThisMailbox(false);
+        MailboxManager mm = MailboxManager.getInstance();
+        
+        synchronized (mm) {
+            unhookMailboxForDeletion();
+            mm.markMailboxDeleted(this); // to remove from cache
         }
+      deleteThisMailbox();
     }
 
     private synchronized String unhookMailboxForDeletion()
@@ -207,43 +183,46 @@ public abstract class SyncMailbox extends DesktopMailbox {
         }
     }
 
-    void deleteThisMailbox(boolean async) throws ServiceException {
-        OfflineLog.offline.info("deleting mailbox %s (%s)", getAccountId(), getAccountName());
-        if (async) {
-            DeleteMailbox redoRecorder = new DeleteMailbox(getId());
-            boolean success = false;
-            
-            synchronized(this) {
+    void deleteThisMailbox() throws ServiceException {
+        OfflineLog.offline.info("deleting mailbox %s %s (%s)", getId(), getAccountId(), getAccountName());
+        DeleteMailbox redoRecorder = new DeleteMailbox(getId());
+        boolean success = false;
+        
+        synchronized(this) {
+            try {
+                beginTransaction("deleteMailbox", null, redoRecorder);
+                redoRecorder.log();
+
+                Connection conn = getOperationConnection();
+                
+                synchronized(MailboxManager.getInstance()) {
+                    DbMailbox.deleteMailbox(conn, this);
+                }
+                DbMailbox.clearMailboxContent(conn, this);
+                
+                success = true;
+            } catch (Exception e) {
+                ZimbraLog.store.warn("Unable to delete mailbox data", e);
+            } finally {
                 try {
-                    beginTransaction("deleteMailbox", null, redoRecorder);
-                    redoRecorder.log();
-    
-                    Connection conn = getOperationConnection();
-                    
-                    DbMailbox.clearMailboxContent(this);
-                    synchronized(MailboxManager.getInstance()) {
-                        DbMailbox.deleteMailbox(conn, this);
-                    }
-                    success = true;
-                } catch (Exception e) {
-                    ZimbraLog.store.warn("Unable to delete mailbox data", e);
-                } finally {
                     endTransaction(success);
-                }
-                try {
-                    if (mIndexHelper != null)
-                        mIndexHelper.deleteIndex();
-                } catch (Exception e) {
-                    ZimbraLog.store.warn("Unable to delete index data", e);
-                }
-                try {
-                    StoreManager.getInstance().deleteStore(this);
-                } catch (IOException e) {
-                    ZimbraLog.store.warn("Unable to delete message data", e);
+                } catch (ServiceException se) {
+                    //snapshotCounts() can try to operate on deleted db, which is bad 
+                    //this can leave spurious ":deleted" rows in directory but otherwise harmless
+                    ZimbraLog.store.warn("ServiceException ending mbox delete transation",se);
                 }
             }
-        } else {
-            super.deleteMailbox();
+            try {
+                if (mIndexHelper != null)
+                    mIndexHelper.deleteIndex();
+            } catch (Exception e) {
+                ZimbraLog.store.warn("Unable to delete index data", e);
+            }
+            try {
+                StoreManager.getInstance().deleteStore(this);
+            } catch (IOException e) {
+                ZimbraLog.store.warn("Unable to delete message data", e);
+            }
         }
         OfflineLog.offline.info("mailbox %s (%s) deleted", getAccountId(), getAccountName());
     }
@@ -287,7 +266,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
                 } catch (Throwable e) { // don't let exceptions kill the timer
                     if (e instanceof OutOfMemoryError)
                         Zimbra.halt("caught out of memory error", e);
-                    else if (OfflineSyncManager.getInstance().isServiceActive())
+                    else if (OfflineSyncManager.getInstance().isServiceActive(false))
                         OfflineLog.offline.warn("caught exception in timer ", e);
                 }
                 synchronized (lastGC) {

@@ -33,7 +33,8 @@ public class PageManageAccounts extends AbsTab {
 
 		// ** Menus
 		public static final String zb__ACLV__NEW_MENU_title = "xpath=//*[@id='zb__ACLV__NEW_MENU_title']";// New Button
-		public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown div.ImgSelectPullDownArrow";
+		//public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown div.ImgSelectPullDownArrow";
+		public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown.ZDropDown";	
 		public static final String zb__ACLV__EDIT_title = "xpath=//*[@id='zb__ACLV__EDIT_title']";
 		public static final String zb__ACLV__DELETE_title = "xpath=//*[@id='zb__ACLV__DELETE_title']";
 		public static final String zb__ACLV__CHNG_PWD_title = "xpath=//*[@id='zb__ACLV__CHNG_PWD_title']";
@@ -111,7 +112,7 @@ public class PageManageAccounts extends AbsTab {
 		}
 
 		// Click on Addresses -> Accounts
-		zClick(Locators.zti__ACCOUNTS);
+		zClickAt(Locators.zti__ACCOUNTS,"");
 
 		zWaitForActive();
 
@@ -176,7 +177,7 @@ public class PageManageAccounts extends AbsTab {
 
 		// Default behavior, process the locator by clicking on it
 		//
-		this.zClick(locator);
+		this.zClickAt(locator,"");
 		
 		
 
@@ -237,7 +238,7 @@ public class PageManageAccounts extends AbsTab {
 				throw new HarnessException("Button " + pulldown + " option " + option + " pulldownLocator " + pulldownLocator + " not present!");
 			}
 
-			this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator,"");
 
 			// If the app is busy, wait for it to become active
 			//zWaitForBusyOverlay();
@@ -249,7 +250,7 @@ public class PageManageAccounts extends AbsTab {
 					throw new HarnessException("Button " + pulldown + " option " + option + " optionLocator " + optionLocator + " not present!");
 				}
 
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator,"");
 
 				// If the app is busy, wait for it to become active
 				//zWaitForBusyOverlay();

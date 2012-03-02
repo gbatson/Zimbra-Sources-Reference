@@ -210,7 +210,9 @@ public class MailItem implements IItem {
 	}
 
 	public static MailItem importFromSOAP(Element GetMsgResponse) throws HarnessException {
-		
+		if ( GetMsgResponse == null )
+			throw new HarnessException("Element cannot be null");
+
 		MailItem mail = null;
 		
 		try {
@@ -263,12 +265,16 @@ public class MailItem implements IItem {
 			} 
 			
 			Element contentTextPlain = ZimbraAccount.SoapClient.selectNode(m, "//mail:mp[@ct='text/plain']//mail:content");
+			Element contentBodyHtml = ZimbraAccount.SoapClient.selectNode(m, "//mail:mp[@ct='text/html']//mail:content");
 			if ( contentTextPlain != null ) {
 				mail.dBodyText = contentTextPlain.getText().trim();
 			}
-			
+			else if ( contentBodyHtml != null ) {
+				mail.dBodyHtml= contentBodyHtml.getText().trim();
+			}
+
 			return (mail);
-			
+
 		} catch (Exception e) {
 			throw new HarnessException("Could not parse GetMsgResponse: "+ GetMsgResponse.prettyPrint(), e);
 		} finally {

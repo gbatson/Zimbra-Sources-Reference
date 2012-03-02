@@ -445,7 +445,6 @@ ZaDLXFormView.addFreeFormAddressToMembers = function (event) {
 ZaDLXFormView.prototype.setObject = 
 function (entry) {
     this._containedObject = {attrs:{}};
-
 	this._containedObject[ZaDistributionList.A2_memberList] = new Array();
 	this._containedObject[ZaDistributionList.A2_memberList]._version = 1;
 	if(entry[ZaDistributionList.A2_memberList]) {
@@ -524,7 +523,7 @@ function (entry) {
 			this._containedObject.attrs[ZaDistributionList.A_mailStatus] = "enabled";
 		}
 	}
-	this.modifyContainedObject () ;	
+        this.modifyContainedObject () ;
 	this._localXForm.setInstance(this._containedObject);	
 	
 	this.updateTab();
@@ -1408,7 +1407,7 @@ ZaDLXFormView.myXFormModifier = function(xFormObject, entry) {
 							forceUpdate: true, preserveSelection:false, multiselect:true,cssClass: "DLSource", 
 							headerList:null,onSelection:ZaDLXFormView.aliasSelectionListener
 						},
- 				{type:_GROUP_, numCols:6, colSizes:["60px","10px","60px","10px","60px","auto"],
+ 				{type:_GROUP_, numCols:6, colSizes:["100px","10px","100px","10px","100px","auto"],
                                               cssStyle:"margin-bottom:10px;padding-bottom:0px;margin-top:10px;pxmargin-left:10px;margin-right:10px;",
 							items: [
 								deleteAliasButton,

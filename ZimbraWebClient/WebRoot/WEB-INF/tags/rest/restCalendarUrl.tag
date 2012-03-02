@@ -101,4 +101,8 @@
             <c:param name='${a.key}' value='${a.value}'/>
         </c:if>
     </c:forEach>
+    <%--Retain the fmt param only in case of freebusy link--%>
+    <c:if test="${not empty param.fmt and param.fmt eq 'freebusy'}">
+        <c:param name="fmt" value="${param.fmt}"/>
+    </c:if>
 </c:url>

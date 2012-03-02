@@ -60,13 +60,17 @@ function(dontIncludeThisName) {
  * 
  * @param	{Boolean}	dontIncludeThisName		if <code>true</code>, do not include this item name in the path
  * @param	{Boolean}	ignoreCustomDocs		if <code>true</code>, ignore custom docs
+ * @param   {Boolean}   includeVersion			if <code>true</code> include the version if exists (it's latest for the base item)
  * @return	{String}	the REST URL
  */
 ZmBriefcaseBaseItem.prototype.getRestUrl =
-function(dontIncludeThisName, ignoreCustomDocs) {
+function(dontIncludeThisName, ignoreCustomDocs, includeVersion) {
 	var url = ZmItem.prototype.getRestUrl.call(this);
 	if (dontIncludeThisName) {
 		url = url.replace(/[^\/]+$/,"");
+	}
+	if (includeVersion && this.version){
+		url = url + (url.match(/\?/) ? '&' : '?' ) + "ver=" + this.version;
 	}
 
 	return url;
@@ -545,6 +549,17 @@ function(data) {
 ZmBriefcaseItem.prototype.getNotes =
 function(){
     return AjxMessageFormat.format(ZmMsg.revisionNotes, [this.version, (this.notes || "")]);
+};
+
+/**
+ * Gets the normalized item id by splitting it from a/c id if any associated
+ *
+ * @return	{Int}	normalized item id
+ */
+ZmBriefcaseItem.prototype.getNormalizedItemId =
+function(){
+    if(!this.getBriefcaseFolder().isShared()){return this.id;}
+    return AjxStringUtil.split(this.id,':')[1];
 };
 
 ZmBriefcaseFolderItem = function(folder) {

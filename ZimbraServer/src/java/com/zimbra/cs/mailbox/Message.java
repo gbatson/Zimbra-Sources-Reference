@@ -54,6 +54,7 @@ import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteChanges;
+import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
@@ -74,6 +75,7 @@ import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StagedBlob;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 
 public class Message extends MailItem {
 
@@ -87,6 +89,9 @@ public class Message extends MailItem {
         // zero value implies a normal draft, i.e. no auto-send intended
         long autoSendTime;
 
+        private DraftInfo() {
+        }
+        
         public DraftInfo(String rt, String id, String ident, String account, long autoSendTime) {
             replyType = rt;
             origId = id;
@@ -274,6 +279,13 @@ public class Message extends MailItem {
     public String getDraftOrigId() {
         return (mDraftInfo == null || mDraftInfo.origId == null ? "" : mDraftInfo.origId);
     }
+    
+    void setDraftOrigId(String origId) {
+        if (mDraftInfo == null) {
+            mDraftInfo = new DraftInfo();
+        }
+        mDraftInfo.origId = origId;
+    }
 
     /** Returns the "reply type" for a draft message.
      *
@@ -287,6 +299,13 @@ public class Message extends MailItem {
     public String getDraftReplyType() {
         return (mDraftInfo == null || mDraftInfo.replyType == null ? "" : mDraftInfo.replyType);
     }
+    
+    void setDraftReplyType(String replyType) {
+        if (mDraftInfo == null) {
+            mDraftInfo = new DraftInfo();
+        }
+        mDraftInfo.replyType = replyType;
+    }
 
 
     /** Returns the ID of the account that was used to compose this draft message.
@@ -298,6 +317,13 @@ public class Message extends MailItem {
     public String getDraftAccountId() {
         return (mDraftInfo == null || mDraftInfo.accountId == null ? "" : mDraftInfo.accountId);
     }
+    
+    void setDraftAccountId(String accountId) {
+        if (mDraftInfo == null) {
+            mDraftInfo = new DraftInfo();
+        }
+        mDraftInfo.accountId = accountId;
+    }
 
     /** Returns the ID of the {@link com.zimbra.cs.account.Identity} that was
      *  used to compose this draft message.
@@ -308,6 +334,13 @@ public class Message extends MailItem {
      * @see #getDraftOrigId() */
     public String getDraftIdentityId() {
         return (mDraftInfo == null || mDraftInfo.identityId == null ? "" : mDraftInfo.identityId);
+    }
+    
+    void setDraftIdentityId(String identityId) {
+        if (mDraftInfo == null) {
+            mDraftInfo = new DraftInfo();
+        }
+        mDraftInfo.identityId = identityId;
     }
 
     /** Returns the time (millis since epoch) at which the draft message is
@@ -328,7 +361,7 @@ public class Message extends MailItem {
             saveMetadata();
         }
     }
-
+    
     /** Returns whether the Message has a vCal attachment. */
     public boolean isInvite() {
         return (mData.flags & Flag.BITMASK_INVITE) != 0;
@@ -523,6 +556,7 @@ public class Message extends MailItem {
             throw ServiceException.INVALID_REQUEST("null ParsedMessage while processing invite in message " + mId, null);
 
         Account acct = getAccount();
+        AccountAddressMatcher acctMatcher = new AccountAddressMatcher(acct);
         OperationContext octxt = getMailbox().getOperationContext();
 
         // Is this invite intended for me?  If not, we don't want to auto-apply it.
@@ -534,7 +568,7 @@ public class Message extends MailItem {
             if (headerVal != null && headerVal.length() > 0) {
                 isForwardedInvite = true;
                 intendedForAddress = headerVal;
-                intendedForMe = AccountUtil.addressMatchesAccount(acct, headerVal);
+                intendedForMe = acctMatcher.matches(headerVal);
                 if (!intendedForMe)
                     mCalendarIntendedFor = headerVal;
             }
@@ -635,31 +669,55 @@ public class Message extends MailItem {
         // organizer/attendee from series, but that's wrong.  Fix the data by duplicating the missing
         // properties.
         if (invites.size() > 1) {
+            boolean hasSeries = false;
             ZOrganizer seriesOrganizer = null;
             boolean seriesIsOrganizer = false;
             List<ZAttendee> seriesAttendees = null;
+            ParsedDateTime seriesDtStart = null;
             // Get organizer and attendees from series VEVENT.
             for (Invite inv : invites) {
                 if (!inv.hasRecurId()) {
+                    hasSeries = true;
                     seriesOrganizer = inv.getOrganizer();
                     seriesIsOrganizer = inv.isOrganizer();
                     seriesAttendees = inv.getAttendees();
+                    seriesDtStart = inv.getStartTime();
                     break;
                 }
             }
-            if (seriesOrganizer != null) {
+            if (hasSeries) {
                 for (Invite inv : invites) {
-                    if (inv.hasRecurId() && !inv.hasOrganizer()) {
-                        inv.setOrganizer(seriesOrganizer);
-                        inv.setIsOrganizer(seriesIsOrganizer);
-                        // Inherit attendees from series, iff no attendee is listed and also no organizer
-                        // is given.  If organizer is specified, we will assume they really meant for this
-                        // exception instance to have no attendee.
-                        if (!inv.hasOtherAttendees() && seriesAttendees != null) {
-                            for (ZAttendee at : seriesAttendees) {
-                                inv.addAttendee(at);
+                    RecurId rid = inv.getRecurId();
+                    if (rid != null) {
+                        if (seriesOrganizer != null && !inv.hasOrganizer()) {
+                            inv.setOrganizer(seriesOrganizer);
+                            inv.setIsOrganizer(seriesIsOrganizer);
+                            // Inherit attendees from series, iff no attendee is listed and also no organizer
+                            // is given.  If organizer is specified, we will assume they really meant for this
+                            // exception instance to have no attendee.
+                            if (!inv.hasOtherAttendees() && seriesAttendees != null) {
+                                for (ZAttendee at : seriesAttendees) {
+                                    inv.addAttendee(at);
+                                }
                             }
                         }
+                        if (!inv.isAllDayEvent() && seriesDtStart != null) {
+                            // Exchange can send invalid RECURRENCE-ID with HHMMSS set to 000000.  Detect it and fix it up
+                            // by copying the time from series DTSTART.
+                            ParsedDateTime ridDt = rid.getDt();
+                            if (ridDt != null && ridDt.hasZeroTime() &&
+                                !seriesDtStart.hasZeroTime() && ridDt.sameTimeZone(seriesDtStart)) {
+                                ParsedDateTime fixedDt = seriesDtStart.cloneWithNewDate(ridDt);
+                                RecurId fixedRid = new RecurId(fixedDt, rid.getRange());
+                                ZimbraLog.calendar.debug("Fixed up invalid RECURRENCE-ID with zero time; before=[%s], after=[%s]",
+                                        rid, fixedRid);
+                                inv.setRecurId(fixedRid);
+                            }
+                        }
+                        // Exception instance invites shouldn't point to the same MIME part in the appointment blob
+                        // as the series invite.  If they do, we will lose the series attachment when a new exception
+                        // instance update is received.
+                        inv.setMailItemId(0);
                     }
                 }
             }
@@ -690,7 +748,7 @@ public class Message extends MailItem {
                             cur.clearAttendees();
                             dangerousSender = true;
                         }
-                    } else if (AccountUtil.addressMatchesAccount(acct, fromEmail)) {
+                    } else if (acctMatcher.matches(fromEmail)) {
                         ZimbraLog.calendar.info(
                                 "Got malformed invite without organizer.  Clearing attendees to prevent inadvertent cancels.");
                         cur.clearAttendees();
@@ -819,7 +877,7 @@ public class Message extends MailItem {
                             if (defInv != null && defInv.isOrganizer()) {
                                 ZOrganizer org = cur.getOrganizer();
                                 String orgAddress = org != null ? org.getAddress() : null;
-                                if (AccountUtil.addressMatchesAccount(acct, orgAddress))
+                                if (acctMatcher.matches(orgAddress))
                                     ignore = !acct.getBooleanAttr(
                                             Provisioning.A_zimbraPrefCalendarAllowCancelEmailToSelf, false);
                             }
@@ -838,7 +896,7 @@ public class Message extends MailItem {
                                 // use default calendar folder and discard all existing invites.
                                 boolean discardExistingInvites = false;
                                 int calFolderId = calItem.getFolderId();
-                                if (!cur.isCancel() && calFolderId == Mailbox.ID_FOLDER_TRASH) {
+                                if (!cur.isCancel() && calItem.inTrash()) {
                                     discardExistingInvites = true;
                                     if (calItem.getType() == MailItem.TYPE_TASK)
                                         calFolderId = Mailbox.ID_FOLDER_TASKS;
@@ -956,7 +1014,7 @@ public class Message extends MailItem {
                             continue;
                         }
                         // Prevent forwarding to self.
-                        if (AccountUtil.addressMatchesAccount(acct, fwd))
+                        if (acctMatcher.matches(fwd))
                             continue;
                         // Don't forward back to the sender.  It's redundant and confusing.
                         Account rcptAcct = Provisioning.getInstance().get(AccountBy.name, fwd);

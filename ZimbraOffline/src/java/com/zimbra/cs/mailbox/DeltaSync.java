@@ -120,6 +120,7 @@ public class DeltaSync {
                               contacts = null, appts = null, tasks = null;
         List<Integer> documents = null;
         for (Element change : response.listElements()) {
+            OfflineSyncManager.getInstance().continueOK();
             int id = (int) change.getAttributeLong(MailConstants.A_ID);
             String type = change.getName();
             
@@ -397,7 +398,9 @@ public class DeltaSync {
     }
 
     void syncSearchFolder(Element elt, int id) throws ServiceException {
+        String rgb = elt.getAttribute(MailConstants.A_RGB, null);
         byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+        MailItem.Color itemColor = rgb != null ? new MailItem.Color(rgb) : new MailItem.Color(color);
         int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null));
 
         int date = (int) (elt.getAttributeLong(MailConstants.A_DATE, -1000) / 1000);
@@ -432,7 +435,7 @@ public class DeltaSync {
             ombx.rename(sContext, id, MailItem.TYPE_SEARCHFOLDER, name, parentId);
             if ((change_mask & Change.MODIFIED_QUERY) == 0)
                 ombx.modifySearchFolder(sContext, id, query, searchTypes, sort);
-            ombx.syncMetadata(sContext, id, MailItem.TYPE_SEARCHFOLDER, parentId, flags, 0, color);
+            ombx.syncMetadata(sContext, id, MailItem.TYPE_SEARCHFOLDER, parentId, flags, 0, itemColor);
             ombx.syncDate(sContext, id, MailItem.TYPE_SEARCHFOLDER, date);
 
             if (elt.getAttributeBool(InitialSync.A_RELOCATED, false))
@@ -441,10 +444,12 @@ public class DeltaSync {
             OfflineLog.offline.debug("delta: updated search folder (" + id + "): " + name);
         }
     }
-   
+
     void syncFolder(Element elt, int id, String type) throws ServiceException {
         int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null)) & ~Flag.BITMASK_UNREAD;
+        String rgb = elt.getAttribute(MailConstants.A_RGB, null);
         byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+        MailItem.Color itemColor = rgb != null ? new MailItem.Color(rgb) : new MailItem.Color(color);
         String url = elt.getAttribute(MailConstants.A_URL, null);
         byte itemType = type.equals(MailConstants.E_FOLDER) ? MailItem.TYPE_FOLDER : MailItem.TYPE_MOUNTPOINT;
 
@@ -482,10 +487,10 @@ public class DeltaSync {
                 ombx.setPermissions(sContext, id, acl);
             if ((change_mask & Change.MODIFIED_URL) == 0)
                 ombx.setFolderUrl(sContext, id, url);
-            
+
             if (itemType == MailItem.TYPE_FOLDER) {
                 // don't care about current feed syncpoint; sync can't be done offline
-                ombx.syncMetadata(sContext, id, MailItem.TYPE_FOLDER, parentId, flags, 0, color);
+                ombx.syncMetadata(sContext, id, MailItem.TYPE_FOLDER, parentId, flags, 0, itemColor);
                 ombx.syncDate(sContext, id, MailItem.TYPE_FOLDER, date);
             }
 
@@ -592,7 +597,9 @@ public class DeltaSync {
     void syncTag(Element elt) throws ServiceException {
         int id = (int) elt.getAttributeLong(MailConstants.A_ID);
         String name = elt.getAttribute(MailConstants.A_NAME);
+        String rgb = elt.getAttribute(MailConstants.A_RGB, null);
         byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+        MailItem.Color itemColor = rgb != null ? new MailItem.Color(rgb) : new MailItem.Color(color);
 
         int date = (int) (elt.getAttributeLong(MailConstants.A_DATE) / 1000);
 
@@ -633,7 +640,7 @@ public class DeltaSync {
             if ((change_mask & Change.MODIFIED_NAME) == 0)
                 ombx.rename(sContext, id, MailItem.TYPE_TAG, name);
             if ((change_mask & Change.MODIFIED_COLOR) == 0)
-                ombx.setColor(sContext, id, MailItem.TYPE_TAG, color);
+                ombx.setColor(sContext, new int[] { id }, MailItem.TYPE_TAG, itemColor);
             ombx.syncDate(sContext, id, MailItem.TYPE_TAG, date);
 
             if (elt.getAttributeBool(InitialSync.A_RELOCATED, false))
@@ -744,7 +751,9 @@ public class DeltaSync {
             return;
         }
 
+        String rgb = elt.getAttribute(MailConstants.A_RGB, null);
         byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+        MailItem.Color itemColor = rgb != null ? new MailItem.Color(rgb) : new MailItem.Color(color);
         int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null));
         long tags = Tag.tagsToBitmask(elt.getAttribute(MailConstants.A_TAGS, null));
 
@@ -777,7 +786,7 @@ public class DeltaSync {
             int change_mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_CONTACT);
             if ((change_mask & Change.MODIFIED_CONTENT) == 0 && pc != null)
                 ombx.modifyContact(sContext, id, pc);
-            ombx.syncMetadata(sContext, id, MailItem.TYPE_CONTACT, folderId, flags, tags, color);
+            ombx.syncMetadata(sContext, id, MailItem.TYPE_CONTACT, folderId, flags, tags, itemColor);
             ombx.syncDate(sContext, id, MailItem.TYPE_CONTACT, date);
         }
         OfflineLog.offline.debug("delta: updated contact (" + id + "): " + cn.getFileAsString());
@@ -798,16 +807,18 @@ public class DeltaSync {
                 return;
             }
 
+            String rgb = elt.getAttribute(MailConstants.A_RGB, null);
             byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+            MailItem.Color itemColor = rgb != null ? new MailItem.Color(rgb) : new MailItem.Color(color);
             int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null));
             long tags = Tag.tagsToBitmask(elt.getAttribute(MailConstants.A_TAGS, null));
             int convId = (int) elt.getAttributeLong(MailConstants.A_CONV_ID);
-        
+
             int date = (int) (elt.getAttributeLong(MailConstants.A_DATE) / 1000);
             synchronized (ombx) {
                 try {
                     ombx.setConversationId(sContext, id, convId <= 0 ? -id : convId);
-                    ombx.syncMetadata(sContext, id, type, folderId, flags, tags, color);
+                    ombx.syncMetadata(sContext, id, type, folderId, flags, tags, itemColor);
                     ombx.syncDate(sContext, id, type, date);
                 } catch (MailServiceException.NoSuchItemException nsie) {
                     OfflineLog.offline.warn("NoSuchItemException in delta sync. Item ["+id+"] must have been deleted while sync was in progress");

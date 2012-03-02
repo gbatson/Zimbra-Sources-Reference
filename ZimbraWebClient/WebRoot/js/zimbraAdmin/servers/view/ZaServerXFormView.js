@@ -160,6 +160,7 @@ function (entry) {
 		}
 	}
 	this._containedObject.newVolID=-1;			
+
 	this._localXForm.setInstance(this._containedObject);	
 	
 	this.formDirtyLsnr = new AjxListener(ZaApp.getInstance().getCurrentController(), ZaXFormViewController.prototype.handleXFormChange);

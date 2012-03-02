@@ -60,13 +60,13 @@ import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.NamedEntry;
+import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.NamedEntryCache;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Signature;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
-import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.datasource.SyncErrorManager;
@@ -82,6 +82,7 @@ import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.OfflineMailboxManager;
 import com.zimbra.cs.mailbox.OfflineServiceException;
 import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mailbox.YContactSync;
 import com.zimbra.cs.mailbox.ZcsMailbox;
 import com.zimbra.cs.mailclient.smtp.SmtpTransport;
 import com.zimbra.cs.mime.MimeTypeInfo;
@@ -93,6 +94,7 @@ import com.zimbra.cs.offline.ab.gab.GDataServiceException;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.offline.util.OfflineUtil;
 import com.zimbra.cs.offline.util.OfflineYAuth;
+import com.zimbra.cs.offline.util.yc.oauth.OAuthManager;
 import com.zimbra.cs.util.yauth.AuthenticationException;
 import com.zimbra.cs.util.yauth.MetadataTokenStore;
 import com.zimbra.cs.wiki.WikiUtil;
@@ -128,6 +130,14 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public static final String A_zimbraPrefOfflineSocksProxyPort = "zimbraPrefOfflineSocksProxyPort";
     public static final String A_zimbraPrefOfflineSocksProxyUsername = "zimbraPrefOfflineSocksProxyUsername";
     public static final String A_zimbraPrefOfflineSocksProxyPassword = "zimbraPrefOfflineSocksProxyPassword";
+
+    public static final String A_offlineYContactTmpID = "offlineYahooContactTmpId";
+    public static final String A_offlineYContactToken = "offlineYahooContactToken";
+    public static final String A_offlineYContactTokenSecret = "offlineYahooContactTokenSecret";
+    public static final String A_offlineYContactTokenTimestamp = "offlineYahooContactTokenTimestamp";
+    public static final String A_offlineYContactTokenSessionHandle = "offlineYahooContactTokenSessionHandle";
+    public static final String A_offlineYContactGuid = "offlineYahooContactGuid";
+    public static final String A_offlineYContactVerifier = "offlineYahooContactVerifier";
 
     public enum EntryType {
         ACCOUNT("acct"), DATASOURCE("dsrc", true), IDENTITY("idnt", true), SIGNATURE("sig", true), COS("cos"), CONFIG("conf"), ZIMLET("zmlt");
@@ -767,6 +777,21 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             MetadataTokenStore.copyTokens(mbox, dsm.getMailbox(ds));
             MetadataTokenStore.clearTokens(mbox);
             OfflineYAuth.deleteRawAuthManager(mbox);
+            // for yahoo contact API (address book)
+            OfflineLog.offline.info("sync contacts enabled: " + attrs.get(A_zimbraFeatureContactsEnabled));
+            if (Boolean.parseBoolean((String) (attrs.get(A_zimbraFeatureContactsEnabled)))) {
+                OAuthManager.persistCredential(account.getId(), (String) dsAttrs.get(A_offlineYContactToken),
+                        (String) dsAttrs.get(A_offlineYContactTokenSecret),
+                        (String) dsAttrs.get(A_offlineYContactTokenSessionHandle),
+                        (String) dsAttrs.get(A_offlineYContactGuid),
+                        (String) dsAttrs.get(A_offlineYContactTokenTimestamp),
+                        (String) dsAttrs.get(A_offlineYContactVerifier));
+                //create mailbox from scratch, don't need migration
+                if (OAuthManager.hasOAuthToken(account.getId())) {
+                    setDataSourceAttribute(ds, OfflineConstants.A_offlineYContactTokenReady, TRUE);
+                    YContactSync.skipMigration(mbox);
+                }
+            }
         }
         return account;
     }
@@ -2292,6 +2317,26 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (!isLocalAccount(account) && isDataSourceAccount(account)) {
             setAccountAttribute(account, A_zimbraFeatureCalendarEnabled, ds.getBooleanAttr(A_zimbraDataSourceCalendarSyncEnabled, false) ? TRUE : FALSE);
             setAccountAttribute(account, A_zimbraFeatureContactsEnabled, ds.getBooleanAttr(A_zimbraDataSourceContactSyncEnabled, false) ? TRUE : FALSE);
+        }
+        //for yahoo contact sync (address book)
+        if (ds.getBooleanAttr(A_zimbraDataSourceContactSyncEnabled, false)) {
+            if (ds instanceof OfflineDataSource && ((OfflineDataSource)ds).isYahoo()) {
+                if (!OAuthManager.hasOAuthToken(account.getId())) {
+                    if (ds.getAttr(A_offlineYContactVerifier) == null) {
+                        throw ServiceException.FAILURE("Need Yahoo OAuth verification. Please visit account setup page", null);
+                    }
+                    OAuthManager.persistCredential(account.getId(), ds.getAttr(A_offlineYContactToken),
+                            ds.getAttr(A_offlineYContactTokenSecret),
+                            ds.getAttr(A_offlineYContactTokenSessionHandle),
+                            ds.getAttr(A_offlineYContactGuid),
+                            ds.getAttr(A_offlineYContactTokenTimestamp),
+                            ds.getAttr(A_offlineYContactVerifier));
+                    if (OAuthManager.hasOAuthToken(account.getId())) {
+                        setDataSourceAttribute(ds, OfflineConstants.A_offlineYContactTokenReady, TRUE);
+                        YContactSync.migrateExistingContacts(((OfflineDataSource)ds).getContactSyncDataSource());
+                    }
+                }
+            }
         }
     }
 

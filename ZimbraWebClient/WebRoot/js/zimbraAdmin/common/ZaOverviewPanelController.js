@@ -406,6 +406,15 @@ function() {
         }
     }
 
+        if(!ZaZimbraAdmin.isGlobalAdmin()) {
+               var domainNamelist = ZaDomain.getEffectiveDomainList(ZaZimbraAdmin.currentAdminAccount.id);
+               ZaApp.getInstance()._domainNameList = domainNamelist;
+
+               var cosNamelist = ZaCos.getEffectiveCosList(ZaZimbraAdmin.currentAdminAccount.id);
+               ZaApp.getInstance()._cosNameList = cosNamelist;
+
+        }
+
 	//TODO:  ZaSettings.DOMAIN_AUTH_WIZ_ENABLED - LDAPAuthWizard enabled for the domain admin	
 	if(showConfig ) {	
 		this._configTi = new DwtTreeItem({parent:tree,className:"overviewHeader",id:ZaId.getTreeItemId(ZaId.PANEL_APP,ZaId.PANEL_CONFIGURATION, true)});
@@ -450,10 +459,6 @@ function() {
 	
 			try {
 			//add domain nodes
-                                if(!ZaZimbraAdmin.isGlobalAdmin()) {
-                                    var domainNamelist = ZaDomain.getEffectiveDomainList(ZaZimbraAdmin.currentAdminAccount.id);
-                                    ZaApp.getInstance()._domainNameList = domainNamelist;
-                                }
 				this.searchDomains();
 			} catch (ex) {
 				this._handleException(ex, "ZaOverviewPanelController.prototype._buildFolderTree", null, false);

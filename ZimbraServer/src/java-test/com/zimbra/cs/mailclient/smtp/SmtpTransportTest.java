@@ -14,9 +14,8 @@
  */
 package com.zimbra.cs.mailclient.smtp;
 
-import static com.google.common.base.Charsets.ISO_8859_1;
-
 import java.io.ByteArrayInputStream;
+import java.io.OutputStream;
 import java.util.Properties;
 
 import javax.mail.Address;
@@ -60,20 +59,20 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void send() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -95,24 +94,24 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void sendPartially() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO 1
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO 2
-        .sendLine("550 not found")
-        .recvLine() // RCPT TO 3
-        .sendLine("550 not found")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO 1
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO 2
+            .sendLine("550 not found")
+            .recvLine() // RCPT TO 3
+            .sendLine("550 not found")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         session.getProperties().setProperty("mail.smtp.sendpartial", "true");
@@ -145,12 +144,13 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void mailFromError() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("451 error")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("451 error")
+            .recvLine() // QUIT
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -172,26 +172,27 @@ public final class SmtpTransportTest {
         server.shutdown(1000);
         Assert.assertEquals("EHLO localhost\r\n", server.replay());
         Assert.assertEquals("MAIL FROM:<sender@zimbra.com>\r\n", server.replay());
+        Assert.assertEquals("QUIT\r\n", server.replay());
         Assert.assertNull(server.replay());
     }
 
     @Test(timeout = 3000)
     public void mailSmtpFrom() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         session.getProperties().setProperty("mail.smtp.from", "from@zimbra.com");
@@ -214,27 +215,27 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void bracketsInMailAndRcpt() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         session.getProperties().setProperty("mail.smtp.from", "<>");
         Transport transport = session.getTransport("smtp");
         transport.connect("localhost", PORT, null, null);
         String raw = "From: sender@zimbra.com\nTo: rcpt@zimbra.com\nSubject: test\n\ntest";
-        MimeMessage msg = new JavaMailMimeMessage(session, new ByteArrayInputStream(raw.getBytes(ISO_8859_1)));
+        MimeMessage msg = new JavaMailMimeMessage(session, new ByteArrayInputStream(raw.getBytes(Charsets.ISO_8859_1)));
         transport.sendMessage(msg, new Address[] { new InternetAddress("<rcpt@zimbra.com>") });
         transport.close();
 
@@ -250,27 +251,27 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void authLogin() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250-smtp.zimbra.com")
-        .sendLine("250 AUTH LOGIN")
-        .recvLine() // AUTH LOGIN
-        .sendLine("334 OK")
-        .recvLine() // USER
-        .sendLine("334")
-        .recvLine() // PASSWORD
-        .sendLine("235 Authentication successful")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250-smtp.zimbra.com")
+            .sendLine("250 AUTH LOGIN")
+            .recvLine() // AUTH LOGIN
+            .sendLine("334 OK")
+            .recvLine() // USER
+            .sendLine("334")
+            .recvLine() // PASSWORD
+            .sendLine("235 Authentication successful")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -295,23 +296,23 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void authPlain() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250-smtp.zimbra.com")
-        .sendLine("250 AUTH PLAIN")
-        .recvLine() // AUTH PLAIN initial-response
-        .sendLine("235 Authentication successful")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250-smtp.zimbra.com")
+            .sendLine("250 AUTH PLAIN")
+            .recvLine() // AUTH PLAIN initial-response
+            .sendLine("235 Authentication successful")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -334,10 +335,10 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void noAuth() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -353,11 +354,11 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void noAuthMechansims() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250-OK")
-        .sendLine("250 AUTH NTLM")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250-OK")
+            .sendLine("250 AUTH NTLM")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -377,14 +378,15 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void rcptToError() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("550 error")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("550 error")
+            .recvLine() // QUIT
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         session.getProperties().setProperty("mail.smtp.sendpartial", "true");
@@ -407,26 +409,27 @@ public final class SmtpTransportTest {
         Assert.assertEquals("EHLO localhost\r\n", server.replay());
         Assert.assertEquals("MAIL FROM:<sender@zimbra.com>\r\n", server.replay());
         Assert.assertEquals("RCPT TO:<rcpt@zimbra.com>\r\n", server.replay());
+        Assert.assertEquals("QUIT\r\n", server.replay());
         Assert.assertNull(server.replay());
     }
 
     @Test(timeout = 3000)
     public void endOfData() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .recvUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .sendLine("221 bye")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .recvUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -457,16 +460,17 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void dataError() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("451 error")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("451 error")
+            .recvLine() // QUIT
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");
@@ -489,20 +493,63 @@ public final class SmtpTransportTest {
         Assert.assertEquals("MAIL FROM:<sender@zimbra.com>\r\n", server.replay());
         Assert.assertEquals("RCPT TO:<rcpt@zimbra.com>\r\n", server.replay());
         Assert.assertEquals("DATA\r\n", server.replay());
+        Assert.assertEquals("QUIT\r\n", server.replay());
+        Assert.assertNull(server.replay());
+    }
+
+    @Test(timeout = 3000)
+    public void dataException() throws Exception {
+        server = MockTcpServer.scenario()
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .build().start(PORT);
+
+        Session session = JMSession.getSession();
+        Transport transport = session.getTransport("smtp");
+        transport.connect("localhost", PORT, null, null);
+        String raw = "From: sender@zimbra.com\nTo: rcpt@zimbra.com\nSubject: test\n\ntest";
+        MimeMessage msg = new JavaMailMimeMessage(session,
+                new ByteArrayInputStream(raw.getBytes(Charsets.ISO_8859_1))) {
+            @Override
+            public void writeTo(OutputStream os, String[] ignoreList) throws MessagingException {
+                throw new MessagingException(); // exception while encoding
+            }
+        };
+        try {
+            transport.sendMessage(msg, msg.getAllRecipients());
+            Assert.fail();
+        } catch (SendFailedException expected) {
+        } finally {
+            transport.close();
+        }
+
+        server.shutdown(1000);
+        Assert.assertEquals("EHLO localhost\r\n", server.replay());
+        Assert.assertEquals("MAIL FROM:<sender@zimbra.com>\r\n", server.replay());
+        Assert.assertEquals("RCPT TO:<rcpt@zimbra.com>\r\n", server.replay());
+        Assert.assertEquals("DATA\r\n", server.replay());
         Assert.assertNull(server.replay());
     }
 
     @Test(timeout = 3000)
     public void rset() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RSET
-        .sendLine("250 OK")
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RSET
+            .sendLine("250 OK")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         SmtpTransport transport = (SmtpTransport) session.getTransport("smtp");
@@ -524,19 +571,55 @@ public final class SmtpTransportTest {
     @Test(timeout = 3000)
     public void quitNoResponse() throws Exception {
         server = MockTcpServer.scenario()
-        .sendLine("220 test ready")
-        .recvLine() // EHLO
-        .sendLine("250 OK")
-        .recvLine() // MAIL FROM
-        .sendLine("250 OK")
-        .recvLine() // RCPT TO
-        .sendLine("250 OK")
-        .recvLine() // DATA
-        .sendLine("354 OK")
-        .swallowUntil("\r\n.\r\n")
-        .sendLine("250 OK")
-        .recvLine() // QUIT
-        .build().start(PORT);
+            .sendLine("220 test ready")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .build().start(PORT);
+
+        Session session = JMSession.getSession();
+        Transport transport = session.getTransport("smtp");
+        transport.connect("localhost", PORT, null, null);
+        String raw = "From: sender@zimbra.com\nTo: rcpt@zimbra.com\nSubject: test\n\ntest";
+        MimeMessage msg = new JavaMailMimeMessage(session, new ByteArrayInputStream(raw.getBytes(Charsets.ISO_8859_1)));
+        transport.sendMessage(msg, msg.getAllRecipients());
+        transport.close();
+
+        server.shutdown(1000);
+        Assert.assertEquals("EHLO localhost\r\n", server.replay());
+        Assert.assertEquals("MAIL FROM:<sender@zimbra.com>\r\n", server.replay());
+        Assert.assertEquals("RCPT TO:<rcpt@zimbra.com>\r\n", server.replay());
+        Assert.assertEquals("DATA\r\n", server.replay());
+        Assert.assertEquals("QUIT\r\n", server.replay());
+        Assert.assertNull(server.replay());
+    }
+
+    @Test(timeout = 3000)
+    public void multilineGreeting() throws Exception {
+        server = MockTcpServer.scenario()
+            .sendLine("220-first line")
+            .sendLine("220 second line")
+            .recvLine() // EHLO
+            .sendLine("250 OK")
+            .recvLine() // MAIL FROM
+            .sendLine("250 OK")
+            .recvLine() // RCPT TO
+            .sendLine("250 OK")
+            .recvLine() // DATA
+            .sendLine("354 OK")
+            .swallowUntil("\r\n.\r\n")
+            .sendLine("250 OK")
+            .recvLine() // QUIT
+            .sendLine("221 bye")
+            .build().start(PORT);
 
         Session session = JMSession.getSession();
         Transport transport = session.getTransport("smtp");

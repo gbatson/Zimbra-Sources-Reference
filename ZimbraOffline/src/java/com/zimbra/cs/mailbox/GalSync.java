@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,7 @@
 package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,9 +29,9 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapProtocol;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.util.Constants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
@@ -54,7 +55,9 @@ public class GalSync {
     private boolean isDisabled = false;
     private boolean isRunning = false;
     private OfflineProvisioning prov;
-    
+
+    private List<String> retryContactIds = new ArrayList<String>();
+
     public static GalSync getInstance() {
         return instance;
     }
@@ -66,9 +69,9 @@ public class GalSync {
             isDisabled = true;
             return;
         }
-        
+
         prov = (OfflineProvisioning)Provisioning.getInstance();
-        
+
         timer.schedule(currentTask = new TimerTask() {
             @Override public void run() {
                 if (ZimbraApplication.getInstance().isShutdown()) {
@@ -80,7 +83,7 @@ public class GalSync {
                 } catch (Throwable e) { //don't let exceptions kill the timer
                     if (e instanceof OutOfMemoryError)
                         Zimbra.halt("caught out of memory error", e);
-                    else if (OfflineSyncManager.getInstance().isServiceActive())
+                    else if (OfflineSyncManager.getInstance().isServiceActive(false))
                         OfflineLog.offline.warn("caught exception in timer ", e);
                 }
             }
@@ -107,13 +110,14 @@ public class GalSync {
             }
         }
         
-        try {    
+        try {
             for (Account acct : prov.getAllZcsAccounts()) {
                 OfflineAccount account = (OfflineAccount) acct;
                 if (targetAccount != null && !account.getId().equals(targetAccount.getId())) {
                     continue;
                 }
                 ZcsMailbox ombx = (ZcsMailbox) OfflineMailboxManager.getInstance().getMailboxByAccount(account);
+                //TODO 1. There is only one GAL account at zcs server, so we only need to sync it once for every zcs account.
                 sync(ombx, isOnRequest);
                 if (targetAccount != null) {
                     break;
@@ -125,7 +129,7 @@ public class GalSync {
             isRunning = false;
         }
     }
-    
+
     private void sync(ZcsMailbox ombx, boolean isOnRequest) throws ServiceException {        
         OfflineAccount account = (OfflineAccount)ombx.getAccount();
         if (!account.getBooleanAttr(Provisioning.A_zimbraFeatureGalEnabled , false) ||
@@ -139,27 +143,40 @@ public class GalSync {
         if (syncMan.getSyncStatus(galAccount) == SyncStatus.running)
             return;
 
+        String user = ombx.getRemoteUser();
+        boolean traceOn = account.isDebugTraceEnabled();
+        Mailbox galMbox = MailboxManager.getInstance().getMailboxByAccountId(galAccount.getId(), false);
+        
         if (!isOnRequest) {
+            if (account.isGalSyncRetryOn()) {
+                OfflineLog.offline.info("Offline GAL sync retry for " + user);
+                try {
+                    GalSyncRetry.retry(ombx, galMbox, this.retryContactIds);
+                } catch (IOException e) {
+                    syncMan.processSyncException(galAccount, "", e, traceOn);
+                }
+            }
+
             if (!syncMan.retryOK(galAccount))
                 return;
             long interval = OfflineLC.zdesktop_gal_sync_interval_secs.longValue();
             long last = syncMan.getLastSyncTime(galAccount);
-            if (last > 0 && (System.currentTimeMillis() - last) / 1000 < interval)
+            if (last > 0 && (System.currentTimeMillis() - last) / 1000 < interval) {
                 return;
+            }
         }
 
         syncMan.syncStart(galAccount);
-        String user = ombx.getRemoteUser();
-        boolean traceOn = account.isDebugTraceEnabled();
+
         try {
             OfflineLog.offline.info("Offline GAL sync started for " + user);
-            syncGal(ombx, account, galAccount, traceOn, isOnRequest);
+            syncGal(ombx, galMbox, account, galAccount, traceOn, isOnRequest);
             syncMan.syncComplete(galAccount);
-            OfflineLog.offline.info("Offline GAL sync completed successfully for " + user);
+            GalSyncCheckpointUtil.removeCheckpoint(galMbox);
         } catch (Exception e) {
             syncMan.processSyncException(galAccount, "", e, traceOn);
             OfflineLog.offline.info("Offline GAL sync failed for " + user + ": " + e.getMessage());
-        }         
+        }
     }
 
     private void ensureGalAccountNotExists(OfflineAccount account) throws ServiceException {
@@ -182,52 +199,51 @@ public class GalSync {
                     long fs = galAcct.getLongAttr(OfflineConstants.A_offlineGalAccountLastFullSync, 0);
                     prov.setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountLastRefresh, Long.toString(fs));
                 }
-            }            
+            }
         }
         return galAcct;
     }
 
-    private void syncGal(ZcsMailbox mbox, OfflineAccount account, OfflineAccount galAccount, boolean traceEnabled, boolean isOnRequest)
+    private void syncGal(ZcsMailbox mbox, Mailbox galMbox, OfflineAccount account, OfflineAccount galAccount, boolean traceEnabled, boolean isOnRequest)
         throws ServiceException, IOException {
-        String syncToken = account.getAttr(OfflineConstants.A_offlineGalAccountSyncToken, false);        
+        String syncToken = account.getAttr(OfflineConstants.A_offlineGalAccountSyncToken, false);
         boolean fullSync = (syncToken == null || syncToken.length() == 0);
-        
+
         GalSyncSAXHandler handler =  new GalSyncSAXHandler(mbox, galAccount, fullSync, traceEnabled);
-        if (!isOnRequest && !fullSync) { // don't run the potentially lengthy maintenance if it's manual or full
-            handler.runMaintenance();
-        }
-
-        XMLElement req = new XMLElement(AccountConstants.SYNC_GAL_REQUEST);
-        req.addAttribute(AccountConstants.A_ID_ONLY, "true");
-        if (!fullSync)
-            req.addAttribute(AdminConstants.A_TOKEN, syncToken);
-        
-        HashMap<String, ElementHandler> handlers = new HashMap<String, ElementHandler>();
-        handlers.put(GalSyncSAXHandler.PATH_RESPONSE, handler);
-        handlers.put(GalSyncSAXHandler.PATH_CN, handler);
-        handlers.put(GalSyncSAXHandler.PATH_DELETED, handler);
-        
-        mbox.sendRequest(req, true, true, OfflineLC.zdesktop_gal_sync_request_timeout.intValue(), SoapProtocol.Soap12, handlers);
-
-        Exception e = handler.getException();
-        String token;
-        if (e != null) {
-            if (e instanceof ServiceException)
-                throw (ServiceException) e;
-            else
-                throw (IOException) e;
-        } else if ((token = handler.getToken()) == null) {
-            throw ServiceException.FAILURE("unable to search GAL", null);
-        }
-
-        while (handler.getGroupCount() > 0) {
-            handler.fetchContacts();
-            if (handler.getGroupCount() > 0) {
-                try {
-                    Thread.sleep(OfflineLC.zdesktop_gal_sync_group_interval.longValue());
-                } catch (InterruptedException ie) {}
+        String token = "";
+        if (fullSync && GalSyncCheckpointUtil.hasCheckpoint(galMbox)) {
+            handler.loadCheckpointingInfo(galMbox);
+            token = handler.getToken();
+        } else {
+            if (!isOnRequest && !fullSync) { // don't run the potentially lengthy maintenance if it's manual or full
+                handler.runMaintenance();
             }
+
+            XMLElement req = new XMLElement(AccountConstants.SYNC_GAL_REQUEST);
+            req.addAttribute(AccountConstants.A_ID_ONLY, "true");
+            if (!fullSync)
+                req.addAttribute(AdminConstants.A_TOKEN, syncToken);
+
+            HashMap<String, ElementHandler> handlers = new HashMap<String, ElementHandler>();
+            handlers.put(GalSyncSAXHandler.PATH_RESPONSE, handler);
+            handlers.put(GalSyncSAXHandler.PATH_CN, handler);
+            handlers.put(GalSyncSAXHandler.PATH_DELETED, handler);
+
+            mbox.sendRequest(req, true, true, OfflineLC.zdesktop_gal_sync_request_timeout.intValue(), SoapProtocol.Soap12, handlers);
+
+            Exception e = handler.getException();
+            if (e != null) {
+                if (e instanceof ServiceException)
+                    throw (ServiceException) e;
+                else
+                    throw (IOException) e;
+            } else if ((token = handler.getToken()) == null) {
+                throw ServiceException.FAILURE("unable to search GAL", null);
+            }
+            GalSyncCheckpointUtil.persistItemIds(galMbox, handler.getItemIds());
         }
+
+        handler.fetchContacts(fullSync, retryContactIds);
 
         if (fullSync) { // after a full sync, reset maintenance timer
             prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountLastRefresh,
@@ -236,12 +252,20 @@ public class GalSync {
             if (mbox.getRemoteServerVersion().isAtLeast7xx()) {
                 prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.TRUE);
             }
+            if (account.isGalSyncRetryOn()) {
+                GalSyncRetry.checkpoint(mbox, galMbox, this.retryContactIds);
+            }
         } else if (!galAccount.getBooleanAttr(OfflineConstants.A_offlineGalGroupMembersPopulated, false) && mbox.getRemoteServerVersion().isAtLeast7xx()) {
             //existing groups have incorrect type=account and don't have member list
             populateGroupMembers(mbox, galAccount);
             prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.TRUE);
         }
         prov.setAccountAttribute(account, OfflineConstants.A_offlineGalAccountSyncToken, token);
+        if (fullSync) {
+            OfflineLog.offline.info("Offline GAL full sync completed successfully, token persisted: " + token);
+        } else {
+            OfflineLog.offline.info("Offline GAL delta sync completed, token persisted: " + token); 
+        }
     }
 
     private void populateGroupMembers(ZcsMailbox mbox, OfflineAccount galAccount) throws ServiceException {
@@ -269,7 +293,7 @@ public class GalSync {
                         //group probably added after galsync completed. will be added on next sync.
                         OfflineLog.offline.debug("contact ["+id+"] does not exist in local gal; assuming it will be synced on next pass");
                         continue;
-                    } 
+                    }
                     Contact contact = galMbox.getContactById(ctxt, contactId);
                     String listName = contact.getEmailAddresses().size() > 0 ? contact.getEmailAddresses().get(0) : contact.getFileAsString();
                     String dlJson = GalSyncUtil.fetchDlMembers(listName, mbox);

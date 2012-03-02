@@ -27,7 +27,8 @@ public class PageManageDistributionLists extends AbsTab {
 		// ** "Manage Distribution Lists" Tab Title
 		public static final String ztab_MANAGE_DISTRIBUTION_LIST_ICON = "css=tr#ztab__MAIN_TAB_row div.ImgDistributionList";
 		public static final String zb_NEW = "xpath=//*[@id='zb__ACLV__NEW_MENU_title']";		// New Button
-		public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown div.ImgSelectPullDownArrow";
+		public static final String zdd_NEW_MENU="css=td.ZDropDown div.ImgSelectPullDownArrow";
+		//public static final String zdd_NEW_MENU= "//td[contains(@id,'zb__ACLV__NEW_MENU_dropdown')]/div";	
 
 		// NEW Menu
 		// TODO: define these locators
@@ -86,7 +87,7 @@ public class PageManageDistributionLists extends AbsTab {
 		}
 
 		// Click on Addresses -> DL
-		zClick(Locators.zti_DISTRIBUTION_LIST);
+		zClickAt(Locators.zti_DISTRIBUTION_LIST,"");
 
 		zWaitForActive();
 
@@ -152,7 +153,7 @@ public class PageManageDistributionLists extends AbsTab {
 
 		// Default behavior, process the locator by clicking on it
 		//
-		this.zClick(locator);
+		this.zClickAt(locator,"");
 
 		// If page was specified, make sure it is active
 		if ( form != null ) {
@@ -210,7 +211,7 @@ public class PageManageDistributionLists extends AbsTab {
 				throw new HarnessException("Button " + pulldown + " option " + option + " pulldownLocator " + pulldownLocator + " not present!");
 			}
 
-			this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator,"0,0");
 
 			// If the app is busy, wait for it to become active
 			//zWaitForBusyOverlay();
@@ -222,7 +223,7 @@ public class PageManageDistributionLists extends AbsTab {
 					throw new HarnessException("Button " + pulldown + " option " + option + " optionLocator " + optionLocator + " not present!");
 				}
 
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator,"0,0");
 				SleepUtil.sleepMedium();
 
 				// If the app is busy, wait for it to become active

@@ -31,7 +31,7 @@ DynSelectDomainPart_XFormItem.prototype.handleKeyPressDelay = function (event,va
 		return;
 		
 	var callback = new AjxCallback(this, this.changeDomainChoicesCallback);
-	this.dataFetcherMethod.call(this.dataFetcherObject, {value:value, event:event, callback:callback});
+	this.dataFetcherMethod.call(this.dataFetcherObject, {value:value, event:event, callback:callback, applyConfig:1});
 	var val = "";
 	if(this.getParentItem()._namePart) {
 		val = this.getParentItem()._namePart;
@@ -47,10 +47,12 @@ DynSelectDomainPart_XFormItem.prototype.changeDomainChoicesCallback =
 function(data, more, total) {
 	// filter the domain alias
 	var withoutAlias = [];
+	AjxEmailAddress.customEmailValidateEegex = {};
 	for(var i = 0; data && i < data.length; i++) {
 		//var targetObj = ZaDomain.getTargetDomainByName(data[i]) ;
 		if (data[i] && data[i].attrs [ZaDomain.A_domainType] == ZaDomain.domainTypes.local){
 			withoutAlias.push(data[i]);
+			AjxEmailAddress.customEmailValidateEegex[data[i].name] = data[i].attrs[ZaDomain.A_zimbraMailAddressValidationRegex];
 		}
 	}
 	// call the default callback
@@ -79,17 +81,11 @@ function () {
 	if (this._inputWidth == null) this._inputWidth = 200;
 	this.items[0].width = this._inputWidth;
 
-	this._nameContainerCss = this.getInheritedProperty("nameContainerCss");
-	if (this._nameContainerCss)
-            this.items[0].containerCssStyle = this._nameContainerCss; 
+	this.items[0].containerCssStyle = this.getInheritedProperty("nameContainerCss"); 
 	
-	this._inputDomainpartWidth =  this.getInheritedProperty("domainPartWidth");
-	if (this._inputDomainpartWidth)
-             this.items[2].inputWidth = this._inputDomainpartWidth; 
+	this.items[2].inputWidth =  this.getInheritedProperty("domainPartWidth");
 
-	this._domainContainerWidth =  this.getInheritedProperty("domainContainerWidth");
-	if (this._domainContainerWidth)
-	    this.items[2].width = this._domainContainerWidth;
+	this.items[2].width  =  this.getInheritedProperty("domainContainerWidth");
 
 	Composite_XFormItem.prototype.initializeItems.call(this);
 	try {
@@ -208,6 +204,13 @@ EmailAddr_XFormItem.prototype.items = [
 			}else this.getParentItem()._inputDomainPart = domainPart;
             //bug: 14250, change the instance value here also even if the whole email address is invalid
 			//this.getParentItem().setInstanceValue (val) ;
+			// set the email validation regex according domain
+			var regList = AjxEmailAddress.customEmailValidateEegex[domainPart];
+			if(regList && regList instanceof Array)
+				AjxEmailAddress.customInvalidEmailPats = regList;
+			else if(regList) 
+				AjxEmailAddress.customInvalidEmailPats = [regList];
+			else AjxEmailAddress.customInvalidEmailPats = [];
 			this.getForm().itemChanged(this.getParentItem(), val, event);
 		}	
 	}

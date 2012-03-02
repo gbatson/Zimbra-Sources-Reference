@@ -394,6 +394,9 @@ public final class LC {
 
     @Supported
     public static final KnownKey ldap_starttls_required = KnownKey.newKey(true);
+    
+    @Supported
+    public static final KnownKey zimbra_directory_max_search_result = KnownKey.newKey(5000);
 
     public static final KnownKey ldap_common_loglevel = KnownKey.newKey(49152);
     public static final KnownKey ldap_common_require_tls = KnownKey.newKey(0);
@@ -761,7 +764,7 @@ public final class LC {
     @Supported
     public static final KnownKey zimbra_mtareport_max_hosts = KnownKey.newKey(50);
 
-    public static final KnownKey zmmtaconfig_enable_config_restarts = KnownKey.newKey("TRUE");
+    public static final KnownKey zmmtaconfig_enable_config_restarts = KnownKey.newKey("true");
     public static final KnownKey zmmtaconfig_interval = KnownKey.newKey(60);
     public static final KnownKey zmmtaconfig_log_level = KnownKey.newKey(3);
     public static final KnownKey zmmtaconfig_listen_port = KnownKey.newKey(7171);
@@ -872,27 +875,36 @@ public final class LC {
     public static final KnownKey tombstone_max_age_ms = KnownKey.newKey(3 * Constants.MILLIS_PER_MONTH);
 
 
+    @Supported
+    public static final KnownKey httpclient_internal_connmgr_max_host_connections = KnownKey.newKey(100);
+    @Supported
+    public static final KnownKey httpclient_external_connmgr_max_host_connections = KnownKey.newKey(100);
 
     @Supported
-    public static final KnownKey httpclient_connmgr_max_host_connections = KnownKey.newKey(100);
-
+    public static final KnownKey httpclient_internal_connmgr_max_total_connections = KnownKey.newKey(300);
     @Supported
-    public static final KnownKey httpclient_connmgr_max_total_connections = KnownKey.newKey(300);
+    public static final KnownKey httpclient_external_connmgr_max_total_connections = KnownKey.newKey(300);
 
-    @Supported
-    public static final KnownKey httpclient_connmgr_keepalive_connections = KnownKey.newKey(true);
+    public static final KnownKey httpclient_internal_connmgr_keepalive_connections = KnownKey.newKey(true);
+    public static final KnownKey httpclient_external_connmgr_keepalive_connections = KnownKey.newKey(true);
+    
+    public static final KnownKey httpclient_internal_connmgr_tcp_nodelay = KnownKey.newKey(false);
+    public static final KnownKey httpclient_external_connmgr_tcp_nodelay = KnownKey.newKey(false);
 
-    public static final KnownKey httpclient_connmgr_tcp_nodelay = KnownKey.newKey(false);
+    public static final KnownKey httpclient_internal_connmgr_connection_timeout = KnownKey.newKey(25 * Constants.MILLIS_PER_SECOND);
+    public static final KnownKey httpclient_external_connmgr_connection_timeout = KnownKey.newKey(25 * Constants.MILLIS_PER_SECOND);
 
-    public static final KnownKey httpclient_connmgr_connection_timeout = KnownKey.newKey(25 * Constants.MILLIS_PER_SECOND);
+    public static final KnownKey httpclient_internal_connmgr_so_timeout = KnownKey.newKey(60 * Constants.MILLIS_PER_SECOND);
+    public static final KnownKey httpclient_external_connmgr_so_timeout = KnownKey.newKey(60 * Constants.MILLIS_PER_SECOND);
 
-    public static final KnownKey httpclient_connmgr_so_timeout = KnownKey.newKey(60 * Constants.MILLIS_PER_SECOND);
+    public static final KnownKey httpclient_internal_client_connection_timeout = KnownKey.newKey(30 * Constants.MILLIS_PER_SECOND);
+    public static final KnownKey httpclient_external_client_connection_timeout = KnownKey.newKey(30 * Constants.MILLIS_PER_SECOND);
 
-    public static final KnownKey httpclient_client_connection_timeout = KnownKey.newKey(30 * Constants.MILLIS_PER_SECOND);
-
-    public static final KnownKey httpclient_connmgr_idle_reaper_sleep_interval = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
-
-    public static final KnownKey httpclient_connmgr_idle_reaper_connection_timeout = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
+    public static final KnownKey httpclient_internal_connmgr_idle_reaper_sleep_interval = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
+    public static final KnownKey httpclient_external_connmgr_idle_reaper_sleep_interval = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
+    
+    public static final KnownKey httpclient_internal_connmgr_idle_reaper_connection_timeout = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
+    public static final KnownKey httpclient_external_connmgr_idle_reaper_connection_timeout = KnownKey.newKey(5 * Constants.MILLIS_PER_MINUTE);
 
     public static final KnownKey httpclient_soaphttptransport_retry_count = KnownKey.newKey(2);
 

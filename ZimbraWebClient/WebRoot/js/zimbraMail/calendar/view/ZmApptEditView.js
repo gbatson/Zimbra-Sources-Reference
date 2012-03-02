@@ -366,6 +366,7 @@ function() {
     this._apptFormValue[ZmApptEditView.CHANGES_SIGNIFICANT]      = this._getFormValue(ZmApptEditView.CHANGES_SIGNIFICANT);
     this._apptFormValue[ZmApptEditView.CHANGES_INSIGNIFICANT]    = this._getFormValue(ZmApptEditView.CHANGES_INSIGNIFICANT);
     this._apptFormValue[ZmApptEditView.CHANGES_LOCAL]            = this._getFormValue(ZmApptEditView.CHANGES_LOCAL);
+    this._apptFormValue[ZmApptEditView.CHANGES_TIME_RECURRENCE]  = this._getFormValue(ZmApptEditView.CHANGES_TIME_RECURRENCE);
 
     var newMode = (this._mode == ZmCalItem.MODE_NEW);        
 
@@ -786,13 +787,12 @@ function(width) {
         };
 		this._attendeesInputField = this._createInputField("_person", ZmCalBaseItem.PERSON, params);
 		this._optAttendeesInputField = this._createInputField("_optional", ZmCalBaseItem.OPTIONAL_PERSON);
+        //add Resources Field
+        this._resourceInputField = this._createInputField("_resourcesData", ZmCalBaseItem.EQUIPMENT, {strictMode:false});
 	}
 
-	// add location input field
+    // add location input field
 	this._locationInputField = this._createInputField("_location", ZmCalBaseItem.LOCATION, {strictMode:false});
-
-    //add Resources Field
-    this._resourceInputField = this._createInputField("_resourcesData", ZmCalBaseItem.EQUIPMENT, {strictMode:false});
 
     var edvId = AjxCore.assignId(this);
     this._schButtonId = this._htmlElId + "_scheduleButton";
@@ -1267,8 +1267,9 @@ function(addrInput, addrs, type, shortForm) {
 					else if (addr instanceof ZmContact) {
 						email = addr.getEmail(true);
                         //bug: 57858 - give preference to lookup email address if its present
-						addrStr = addr.getLookupEmail() || ZmApptViewHelper.getAttendeesText(addr, type);
-						match = {isDL: addr.isGroup && addr.canExpand, email: addrStr};
+                        //bug:60427 to show display name format the lookupemail
+						addrStr = addr.getLookupEmail() ? (new AjxEmailAddress(addr.getLookupEmail(),null,addr.getFullNameForDisplay())).toString() : ZmApptViewHelper.getAttendeesText(addr, type);
+                        match = {isDL: addr.isGroup && addr.canExpand, email: addrStr};
 					}
 					addrInput.addBubble({address:addrStr, match:match, skipNotify:true});
 				}
@@ -1537,7 +1538,7 @@ function() {
 		this._setAutocompleteHandler(aclv, ZmCalBaseItem.LOCATION);
 	}
 
-    if (appCtxt.get(ZmSetting.GAL_ENABLED)) {
+    if (appCtxt.get(ZmSetting.GAL_ENABLED) && this.GROUP_CALENDAR_ENABLED) {
 		// autocomplete for locations
 		var app = appCtxt.getApp(ZmApp.CALENDAR);
         params.keyUpCallback = new AjxCallback(this, this._handleResourceChange);
@@ -1727,6 +1728,7 @@ function(show) {
 ZmApptEditView.CHANGES_LOCAL            = 1;
 ZmApptEditView.CHANGES_SIGNIFICANT      = 2;
 ZmApptEditView.CHANGES_INSIGNIFICANT    = 3;
+ZmApptEditView.CHANGES_TIME_RECURRENCE  = 4;
 
 
 ZmApptEditView.prototype._getFormValue =
@@ -1748,19 +1750,9 @@ function(type, attribs){
             break;
 
        case ZmApptEditView.CHANGES_SIGNIFICANT:
-           var startDate = AjxDateUtil.simpleParseDateStr(this._startDateField.value);
-           var endDate = AjxDateUtil.simpleParseDateStr(this._endDateField.value);
-           startDate = this._startTimeSelect.getValue(startDate);
-           endDate = this._endTimeSelect.getValue(endDate);
-           vals.push(
-                   AjxDateUtil.getServerDateTime(startDate),       // Start DateTime
-                   AjxDateUtil.getServerDateTime(endDate)          // End DateTime
-                   );
-           if (Dwt.getDisplay(this._tzoneSelectStart.getHtmlElement()) != Dwt.DISPLAY_NONE) {
-               vals.push(this._tzoneSelectStart.getValue());    // Start timezone
-               vals.push(this._tzoneSelectEnd.getValue());      // End timezone
-           }
-           vals.push("" + this._allDayCheckbox.checked);       // All Day Appt.
+
+           vals = this._getTimeAndRecurrenceChanges();
+
            if (!attribs.excludeAttendees) {                    //Attendees
                vals.push(ZmApptViewHelper.getAttendeesString(this._attendees[ZmCalBaseItem.PERSON].getArray(), ZmCalBaseItem.PERSON, false, true));
            }
@@ -1773,8 +1765,6 @@ function(type, attribs){
                vals.push(ZmApptViewHelper.getAttendeesString(this._attendees[ZmCalBaseItem.EQUIPMENT].getArray(), ZmCalBaseItem.EQUIPMENT, false, true));
            }
 
-           //TODO: Detailed Recurrence, Repeat support
-           vals.push(this._repeatSelect.getValue());        //Recurrence    
            if(this._isForward && !attribs.excludeAttendees) {
                vals.push(this._forwardToField.getValue()); //ForwardTo
            }
@@ -1789,12 +1779,37 @@ function(type, attribs){
            vals.push(this._privateCheckbox.checked ? ZmApptEditView.PRIVACY_OPTION_PRIVATE : ZmApptEditView.PRIVACY_OPTION_PUBLIC);
            //TODO: Attachments, Priority    
            break;
+
+       case ZmApptEditView.CHANGES_TIME_RECURRENCE:
+           vals = this._getTimeAndRecurrenceChanges();
+           break;
    }
 
    vals = vals.join("|").replace(/\|+/, "|");
 
    return vals;
 };
+
+ZmApptEditView.prototype._getTimeAndRecurrenceChanges = function(){
+           var vals = [];
+           var startDate = AjxDateUtil.simpleParseDateStr(this._startDateField.value);
+           var endDate = AjxDateUtil.simpleParseDateStr(this._endDateField.value);
+           startDate = this._startTimeSelect.getValue(startDate);
+           endDate = this._endTimeSelect.getValue(endDate);
+           vals.push(
+                   AjxDateUtil.getServerDateTime(startDate),       // Start DateTime
+                   AjxDateUtil.getServerDateTime(endDate)          // End DateTime
+                   );
+           if (Dwt.getDisplay(this._tzoneSelectStart.getHtmlElement()) != Dwt.DISPLAY_NONE) {
+               vals.push(this._tzoneSelectStart.getValue());    // Start timezone
+               vals.push(this._tzoneSelectEnd.getValue());      // End timezone
+           }
+           vals.push("" + this._allDayCheckbox.checked);       // All Day Appt.
+           //TODO: Detailed Recurrence, Repeat support
+           vals.push(this._repeatSelect.getValue());        //Recurrence
+
+           return vals;
+}
 
 // Returns a string representing the form content
 ZmApptEditView.prototype._formValue =
@@ -2358,10 +2373,12 @@ function(ev) {
 	// forward recipient is not an attendee
 
     var key = DwtKeyEvent.getCharCode(ev);
+    var _nodeName = el.nodeName;
+    if (_nodeName && _nodeName.toLowerCase() === "textarea") {
         this._adjustAddrHeight(el);
-    if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) &&
-                    this.GROUP_CALENDAR_ENABLED) {
-                ZmAutocompleteListView.onKeyUp(ev);
+    }
+    if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) ){
+        ZmAutocompleteListView.onKeyUp(ev);
     }
     if (key == 32 || key == 59 || key == 186) {
         this.handleAttendeeChange();

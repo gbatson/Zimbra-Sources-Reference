@@ -244,6 +244,7 @@ public class ContactAutoComplete {
     private ZimbraSoapContext mZsc;
     private Account mAuthedAcct;
     private Account mRequestedAcct;
+    private OperationContext octxt;
     
 
     private static final String[] DEFAULT_EMAIL_KEYS = {
@@ -251,12 +252,13 @@ public class ContactAutoComplete {
     };
 
 
-    public ContactAutoComplete(Account acct) {
-        this (acct, null);
+    public ContactAutoComplete(Account acct, OperationContext octxt) {
+        this (acct, null, octxt);
     }
 
-    public ContactAutoComplete(Account acct, ZimbraSoapContext zsc) {
+    public ContactAutoComplete(Account acct, ZimbraSoapContext zsc, OperationContext octxt) {
         mZsc = zsc;
+        this.octxt = octxt;
         try {
             mRequestedAcct = acct;
             mIncludeSharedFolders = mRequestedAcct.getBooleanAttr(Provisioning.A_zimbraPrefSharedAddrBookAutoCompleteEnabled, false);
@@ -456,18 +458,31 @@ public class ContactAutoComplete {
             return text.toLowerCase().startsWith(query.toLowerCase());
     }
 
+    private String getFieldAsString(Map<String,? extends Object> attrs, String fieldName) {
+        Object value = attrs.get(fieldName);
+        if (value instanceof String) {
+            return (String) value;
+        } else if (value instanceof String[]) {
+            String[] values = (String[]) value;
+            if (values.length > 0) {
+                return values[0];
+            }
+        }
+        return null;
+    }
+    
     public void addMatchedContacts(String query, Map<String,? extends Object> attrs, int folderId, ItemId id, AutoCompleteResult result) {
         if (!result.canBeCached) {
             return;
         }
 
-        String firstName = (String) attrs.get(ContactConstants.A_firstName);
-        String phoneticFirstName = (String) attrs.get(ContactConstants.A_phoneticFirstName);
-        String lastName = (String) attrs.get(ContactConstants.A_lastName);
-        String phoneticLastName = (String) attrs.get(ContactConstants.A_phoneticLastName);
-        String middleName = (String) attrs.get(ContactConstants.A_middleName);
-        String fullName = (String) attrs.get(ContactConstants.A_fullName);
-        String nickname = (String) attrs.get(ContactConstants.A_nickname);
+        String firstName = getFieldAsString(attrs, ContactConstants.A_firstName);
+        String phoneticFirstName = getFieldAsString(attrs, ContactConstants.A_phoneticFirstName);
+        String lastName = getFieldAsString(attrs, ContactConstants.A_lastName);
+        String phoneticLastName = getFieldAsString(attrs, ContactConstants.A_phoneticLastName);
+        String middleName = getFieldAsString(attrs, ContactConstants.A_middleName);
+        String fullName = getFieldAsString(attrs, ContactConstants.A_fullName);
+        String nickname = getFieldAsString(attrs, ContactConstants.A_nickname);
         String firstLastName = ((firstName == null) ? "" : firstName + " ") + lastName;
         if (fullName == null) {
             fullName = ((firstName == null) ? "" : firstName + " ") +
@@ -495,7 +510,7 @@ public class ContactAutoComplete {
             // just one email address.
 
             for (String emailKey : mEmailKeys) {
-                String email = (String) attrs.get(emailKey);
+                String email = getFieldAsString(attrs, emailKey);
                 if (email != null && (nameMatches || matches(query, email))) {
                     ContactEntry entry = new ContactEntry();
                     entry.mEmail = email;
@@ -544,9 +559,6 @@ public class ContactAutoComplete {
         ZimbraQueryResults qres = null;
         try {
             Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(getRequestedAcctId());
-            OperationContext octxt = (mZsc == null) ?
-                    new OperationContext(mbox) :
-                    new OperationContext(mZsc.getAuthtokenAccountId());
             List<Folder> folders = new ArrayList<Folder>();
             Map<ItemId, Mountpoint> mountpoints = new HashMap<ItemId, Mountpoint>();
             if (folderIDs == null) {

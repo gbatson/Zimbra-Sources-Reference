@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20110524-1711 */
+    /* build: 7.0.0_BETA1_1111 administrator 20110708-2131 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -1984,6 +1984,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=243)
     public static final String A_zimbraCalendarCompatibilityMode = "zimbraCalendarCompatibilityMode";
+
+    /**
+     * whether to retain exception instances when the recurrence series is
+     * changed to new time; set to FALSE for Exchange compatibility
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1240)
+    public static final String A_zimbraCalendarKeepExceptionsOnSeriesTimeChange = "zimbraCalendarKeepExceptionsOnSeriesTimeChange";
 
     /**
      * maximum number of revisions to keep for calendar items (appointments
@@ -4582,6 +4591,14 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMailAddress = "zimbraMailAddress";
 
     /**
+     * optional regex used by web client to validate email address
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public static final String A_zimbraMailAddressValidationRegex = "zimbraMailAddressValidationRegex";
+
+    /**
      * RFC822 email address of this recipient for accepting mail
      */
     @ZAttr(id=20)
@@ -4778,6 +4795,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1040)
     public static final String A_zimbraMailForwardingAddressMaxNumAddrs = "zimbraMailForwardingAddressMaxNumAddrs";
+
+    /**
+     * max size in KB of text emails that will automatically highlight
+     * objects
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1213)
+    public static final String A_zimbraMailHighlightObjectsMaxSize = "zimbraMailHighlightObjectsMaxSize";
 
     /**
      * the server hosting the account&#039;s mailbox
@@ -4989,6 +5015,50 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=1199)
     public static final String A_zimbraMailSSLClientCertPort = "zimbraMailSSLClientCertPort";
+
+    /**
+     * Map from a certificate field to a Zimbra account key that can uniquely
+     * identify a Zimbra account for client certificate authentication. Value
+     * is a comma-separated list of mapping rules, each mapping maps a
+     * certificate field to a Zimbra account key. Each is attempted in
+     * sequence untill a unique account can be resolved. e.g. a value can be:
+     * SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+     * value: comma-separated mapping-rule mapping-rule:
+     * {cert-field-to-zimbra-key-map} | {LDAP-filter}
+     * cert-field-to-zimbra-key-map: {certificate-field}={Zimbra-account-key}
+     * certificate-field: SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of
+     * Subject SUBJECT_DN: entire DN of Subject SUBJECTALTNAME_OTHERNAME_UPN:
+     * UPN(aka Principal Name) in otherName in subjectAltName extension
+     * SUBJECTALTNAME_RFC822NAME: rfc822Name in subjectAltName extension
+     * Zimbra-account-key: name: primary name or any of the aliases of an
+     * account zimbraId: zimbraId of an account zimbraForeignPrincipal:
+     * zimbraForeignPrincipal of an account. The matching value on the
+     * zimbraForeignPrincipal must be prefixed with &quot;cert
+     * {supported-certificate-filed}:&quot; e.g. cert
+     * SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain LDAP-filter: An LDAP
+     * filter template with placeholders to be substituted by certificate
+     * field values. (objectClass=zimbraAccount) is internally ANDed with the
+     * supplied filter. e.g.
+     * (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME})) Note: it is
+     * recommended not to use LDAP-filter rule, as it will trigger an LDAP
+     * search for each cert auth request. LDAP-filter is disabled by default.
+     * To enable it globally, set
+     * zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled on global config
+     * to TRUE. If LDAP-filter is not enabled, all client certificate
+     * authentication will fail on domains configured with LDAP-filter.
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1215)
+    public static final String A_zimbraMailSSLClientCertPrincipalMap = "zimbraMailSSLClientCertPrincipalMap";
+
+    /**
+     * whether to enable LDAP-filter in zimbraMailSSLClientCertPrincipalMap
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1216)
+    public static final String A_zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled = "zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled";
 
     /**
      * SSL port for end-user UI

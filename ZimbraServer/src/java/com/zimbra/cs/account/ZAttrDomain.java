@@ -41,7 +41,7 @@ public class ZAttrDomain extends NamedEntry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20110524-1711 */
+    /* build: 7.0.0_BETA1_1111 administrator 20110708-2131 */
 
     /**
      * RFC2256: descriptive information
@@ -8888,6 +8888,352 @@ public class ZAttrDomain extends NamedEntry {
     public Map<String,Object> unsetLocale(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraLocale, "");
+        return attrs;
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @return zimbraMailAddressValidationRegex, or empty array if unset
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public String[] getMailAddressValidationRegex() {
+        return getMultiAttr(Provisioning.A_zimbraMailAddressValidationRegex);
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param zimbraMailAddressValidationRegex new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public void setMailAddressValidationRegex(String[] zimbraMailAddressValidationRegex) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailAddressValidationRegex, zimbraMailAddressValidationRegex);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param zimbraMailAddressValidationRegex new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public Map<String,Object> setMailAddressValidationRegex(String[] zimbraMailAddressValidationRegex, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailAddressValidationRegex, zimbraMailAddressValidationRegex);
+        return attrs;
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param zimbraMailAddressValidationRegex new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public void addMailAddressValidationRegex(String zimbraMailAddressValidationRegex) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraMailAddressValidationRegex, zimbraMailAddressValidationRegex);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param zimbraMailAddressValidationRegex new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public Map<String,Object> addMailAddressValidationRegex(String zimbraMailAddressValidationRegex, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraMailAddressValidationRegex, zimbraMailAddressValidationRegex);
+        return attrs;
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param zimbraMailAddressValidationRegex existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public void removeMailAddressValidationRegex(String zimbraMailAddressValidationRegex) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraMailAddressValidationRegex, zimbraMailAddressValidationRegex);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param zimbraMailAddressValidationRegex existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public Map<String,Object> removeMailAddressValidationRegex(String zimbraMailAddressValidationRegex, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraMailAddressValidationRegex, zimbraMailAddressValidationRegex);
+        return attrs;
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public void unsetMailAddressValidationRegex() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailAddressValidationRegex, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * optional regex used by web client to validate email address
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1241)
+    public Map<String,Object> unsetMailAddressValidationRegex(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailAddressValidationRegex, "");
+        return attrs;
+    }
+
+    /**
+     * Map from a certificate field to a Zimbra account key that can uniquely
+     * identify a Zimbra account for client certificate authentication. Value
+     * is a comma-separated list of mapping rules, each mapping maps a
+     * certificate field to a Zimbra account key. Each is attempted in
+     * sequence untill a unique account can be resolved. e.g. a value can be:
+     * SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+     * value: comma-separated mapping-rule mapping-rule:
+     * {cert-field-to-zimbra-key-map} | {LDAP-filter}
+     * cert-field-to-zimbra-key-map: {certificate-field}={Zimbra-account-key}
+     * certificate-field: SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of
+     * Subject SUBJECT_DN: entire DN of Subject SUBJECTALTNAME_OTHERNAME_UPN:
+     * UPN(aka Principal Name) in otherName in subjectAltName extension
+     * SUBJECTALTNAME_RFC822NAME: rfc822Name in subjectAltName extension
+     * Zimbra-account-key: name: primary name or any of the aliases of an
+     * account zimbraId: zimbraId of an account zimbraForeignPrincipal:
+     * zimbraForeignPrincipal of an account. The matching value on the
+     * zimbraForeignPrincipal must be prefixed with &quot;cert
+     * {supported-certificate-filed}:&quot; e.g. cert
+     * SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain LDAP-filter: An LDAP
+     * filter template with placeholders to be substituted by certificate
+     * field values. (objectClass=zimbraAccount) is internally ANDed with the
+     * supplied filter. e.g.
+     * (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME})) Note: it is
+     * recommended not to use LDAP-filter rule, as it will trigger an LDAP
+     * search for each cert auth request. LDAP-filter is disabled by default.
+     * To enable it globally, set
+     * zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled on global config
+     * to TRUE. If LDAP-filter is not enabled, all client certificate
+     * authentication will fail on domains configured with LDAP-filter.
+     *
+     * @return zimbraMailSSLClientCertPrincipalMap, or "SUBJECT_EMAILADDRESS=name" if unset
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1215)
+    public String getMailSSLClientCertPrincipalMap() {
+        return getAttr(Provisioning.A_zimbraMailSSLClientCertPrincipalMap, "SUBJECT_EMAILADDRESS=name");
+    }
+
+    /**
+     * Map from a certificate field to a Zimbra account key that can uniquely
+     * identify a Zimbra account for client certificate authentication. Value
+     * is a comma-separated list of mapping rules, each mapping maps a
+     * certificate field to a Zimbra account key. Each is attempted in
+     * sequence untill a unique account can be resolved. e.g. a value can be:
+     * SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+     * value: comma-separated mapping-rule mapping-rule:
+     * {cert-field-to-zimbra-key-map} | {LDAP-filter}
+     * cert-field-to-zimbra-key-map: {certificate-field}={Zimbra-account-key}
+     * certificate-field: SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of
+     * Subject SUBJECT_DN: entire DN of Subject SUBJECTALTNAME_OTHERNAME_UPN:
+     * UPN(aka Principal Name) in otherName in subjectAltName extension
+     * SUBJECTALTNAME_RFC822NAME: rfc822Name in subjectAltName extension
+     * Zimbra-account-key: name: primary name or any of the aliases of an
+     * account zimbraId: zimbraId of an account zimbraForeignPrincipal:
+     * zimbraForeignPrincipal of an account. The matching value on the
+     * zimbraForeignPrincipal must be prefixed with &quot;cert
+     * {supported-certificate-filed}:&quot; e.g. cert
+     * SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain LDAP-filter: An LDAP
+     * filter template with placeholders to be substituted by certificate
+     * field values. (objectClass=zimbraAccount) is internally ANDed with the
+     * supplied filter. e.g.
+     * (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME})) Note: it is
+     * recommended not to use LDAP-filter rule, as it will trigger an LDAP
+     * search for each cert auth request. LDAP-filter is disabled by default.
+     * To enable it globally, set
+     * zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled on global config
+     * to TRUE. If LDAP-filter is not enabled, all client certificate
+     * authentication will fail on domains configured with LDAP-filter.
+     *
+     * @param zimbraMailSSLClientCertPrincipalMap new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1215)
+    public void setMailSSLClientCertPrincipalMap(String zimbraMailSSLClientCertPrincipalMap) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPrincipalMap, zimbraMailSSLClientCertPrincipalMap);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Map from a certificate field to a Zimbra account key that can uniquely
+     * identify a Zimbra account for client certificate authentication. Value
+     * is a comma-separated list of mapping rules, each mapping maps a
+     * certificate field to a Zimbra account key. Each is attempted in
+     * sequence untill a unique account can be resolved. e.g. a value can be:
+     * SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+     * value: comma-separated mapping-rule mapping-rule:
+     * {cert-field-to-zimbra-key-map} | {LDAP-filter}
+     * cert-field-to-zimbra-key-map: {certificate-field}={Zimbra-account-key}
+     * certificate-field: SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of
+     * Subject SUBJECT_DN: entire DN of Subject SUBJECTALTNAME_OTHERNAME_UPN:
+     * UPN(aka Principal Name) in otherName in subjectAltName extension
+     * SUBJECTALTNAME_RFC822NAME: rfc822Name in subjectAltName extension
+     * Zimbra-account-key: name: primary name or any of the aliases of an
+     * account zimbraId: zimbraId of an account zimbraForeignPrincipal:
+     * zimbraForeignPrincipal of an account. The matching value on the
+     * zimbraForeignPrincipal must be prefixed with &quot;cert
+     * {supported-certificate-filed}:&quot; e.g. cert
+     * SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain LDAP-filter: An LDAP
+     * filter template with placeholders to be substituted by certificate
+     * field values. (objectClass=zimbraAccount) is internally ANDed with the
+     * supplied filter. e.g.
+     * (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME})) Note: it is
+     * recommended not to use LDAP-filter rule, as it will trigger an LDAP
+     * search for each cert auth request. LDAP-filter is disabled by default.
+     * To enable it globally, set
+     * zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled on global config
+     * to TRUE. If LDAP-filter is not enabled, all client certificate
+     * authentication will fail on domains configured with LDAP-filter.
+     *
+     * @param zimbraMailSSLClientCertPrincipalMap new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1215)
+    public Map<String,Object> setMailSSLClientCertPrincipalMap(String zimbraMailSSLClientCertPrincipalMap, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPrincipalMap, zimbraMailSSLClientCertPrincipalMap);
+        return attrs;
+    }
+
+    /**
+     * Map from a certificate field to a Zimbra account key that can uniquely
+     * identify a Zimbra account for client certificate authentication. Value
+     * is a comma-separated list of mapping rules, each mapping maps a
+     * certificate field to a Zimbra account key. Each is attempted in
+     * sequence untill a unique account can be resolved. e.g. a value can be:
+     * SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+     * value: comma-separated mapping-rule mapping-rule:
+     * {cert-field-to-zimbra-key-map} | {LDAP-filter}
+     * cert-field-to-zimbra-key-map: {certificate-field}={Zimbra-account-key}
+     * certificate-field: SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of
+     * Subject SUBJECT_DN: entire DN of Subject SUBJECTALTNAME_OTHERNAME_UPN:
+     * UPN(aka Principal Name) in otherName in subjectAltName extension
+     * SUBJECTALTNAME_RFC822NAME: rfc822Name in subjectAltName extension
+     * Zimbra-account-key: name: primary name or any of the aliases of an
+     * account zimbraId: zimbraId of an account zimbraForeignPrincipal:
+     * zimbraForeignPrincipal of an account. The matching value on the
+     * zimbraForeignPrincipal must be prefixed with &quot;cert
+     * {supported-certificate-filed}:&quot; e.g. cert
+     * SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain LDAP-filter: An LDAP
+     * filter template with placeholders to be substituted by certificate
+     * field values. (objectClass=zimbraAccount) is internally ANDed with the
+     * supplied filter. e.g.
+     * (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME})) Note: it is
+     * recommended not to use LDAP-filter rule, as it will trigger an LDAP
+     * search for each cert auth request. LDAP-filter is disabled by default.
+     * To enable it globally, set
+     * zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled on global config
+     * to TRUE. If LDAP-filter is not enabled, all client certificate
+     * authentication will fail on domains configured with LDAP-filter.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1215)
+    public void unsetMailSSLClientCertPrincipalMap() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPrincipalMap, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Map from a certificate field to a Zimbra account key that can uniquely
+     * identify a Zimbra account for client certificate authentication. Value
+     * is a comma-separated list of mapping rules, each mapping maps a
+     * certificate field to a Zimbra account key. Each is attempted in
+     * sequence untill a unique account can be resolved. e.g. a value can be:
+     * SUBJECTALTNAME_OTHERNAME_UPN=zimbraForeignPrincipal,(uid=%{SUBJECT_CN})
+     * value: comma-separated mapping-rule mapping-rule:
+     * {cert-field-to-zimbra-key-map} | {LDAP-filter}
+     * cert-field-to-zimbra-key-map: {certificate-field}={Zimbra-account-key}
+     * certificate-field: SUBJECT_{an RDN attr, e.g. CN}: a RND in DN of
+     * Subject SUBJECT_DN: entire DN of Subject SUBJECTALTNAME_OTHERNAME_UPN:
+     * UPN(aka Principal Name) in otherName in subjectAltName extension
+     * SUBJECTALTNAME_RFC822NAME: rfc822Name in subjectAltName extension
+     * Zimbra-account-key: name: primary name or any of the aliases of an
+     * account zimbraId: zimbraId of an account zimbraForeignPrincipal:
+     * zimbraForeignPrincipal of an account. The matching value on the
+     * zimbraForeignPrincipal must be prefixed with &quot;cert
+     * {supported-certificate-filed}:&quot; e.g. cert
+     * SUBJECTALTNAME_OTHERNAME_UPN:123456@mydomain LDAP-filter: An LDAP
+     * filter template with placeholders to be substituted by certificate
+     * field values. (objectClass=zimbraAccount) is internally ANDed with the
+     * supplied filter. e.g.
+     * (|(uid=%{SUBJECT_CN})(mail=%{SUBJECTALTNAME_RFC822NAME})) Note: it is
+     * recommended not to use LDAP-filter rule, as it will trigger an LDAP
+     * search for each cert auth request. LDAP-filter is disabled by default.
+     * To enable it globally, set
+     * zimbraMailSSLClientCertPrincipalMapLdapFilterEnabled on global config
+     * to TRUE. If LDAP-filter is not enabled, all client certificate
+     * authentication will fail on domains configured with LDAP-filter.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.2
+     */
+    @ZAttr(id=1215)
+    public Map<String,Object> unsetMailSSLClientCertPrincipalMap(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMailSSLClientCertPrincipalMap, "");
         return attrs;
     }
 

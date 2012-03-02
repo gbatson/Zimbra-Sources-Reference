@@ -47,6 +47,7 @@ ZmCalItem = function(type, list, id, folderId) {
 	this.alarmActions = new AjxVector();
 	this.alarmActions.add(ZmCalItem.ALARM_DISPLAY);
 	this._useAbsoluteReminder = false;
+    this._ignoreVersion=false; //to ignore revision related attributes(ms & rev) during version conflict
 };
 
 ZmCalItem.prototype = new ZmCalBaseItem;
@@ -419,7 +420,7 @@ function(endDate, keepCache) {
  */
 ZmCalItem.prototype.setStartDate =
 function(startDate, keepCache) {
-	if (this._origStartDate == null && this.startDate != null) {
+	if (this._origStartDate == null && this.startDate != null && this.startDate != "") {
 		this._origStartDate = new Date(this.startDate.getTime());
 	}
 	this.startDate = new Date(startDate instanceof Date ? startDate.getTime() : startDate);
@@ -561,6 +562,21 @@ function() {
 
 	return (!this.isOrganizer() || (folder.link && folder.isReadOnly()));
 };
+
+/*
+*   To check whether version has been ignored
+* */
+ZmCalItem.prototype.isVersionIgnored=function(){
+    return this._ignoreVersion;
+}
+
+/*
+*   Method to set _ignoreVersion as true when conflict arises and false otherwise.
+*   If true, the next soap request wont be sent with revision related attributes like ms&rev.
+* */
+ZmCalItem.prototype.setIgnoreVersion=function(isIgnorable){
+    this._ignoreVersion=isIgnorable;
+}
 
 /**
  * Resets the repeat weekly days.
@@ -1919,9 +1935,10 @@ function(d) {
  */
 ZmCalItem.prototype._addInviteAndCompNum =
 function(soapDoc) {
-    if(this.message){
+    if(this.message && !this.isVersionIgnored()){
         soapDoc.setMethodAttribute("ms", this.message.ms);
         soapDoc.setMethodAttribute("rev", this.message.rev);
+
     }
 	if (this.viewMode == ZmCalItem.MODE_EDIT_SERIES || this.viewMode == ZmCalItem.MODE_DELETE_SERIES) {
 		if (this.recurring && this.seriesInvId != null) {
@@ -2322,7 +2339,7 @@ function(soapDoc, m, cancel) {
 
 			var content;
 			if (pct == ZmMimeTable.TEXT_HTML) {
-				content = "<html><body>" + (this._includeEditReply ? part.getContent() : AjxBuffer.concat(hprefix, part.getContent())) + "</body></html>";
+				content = "<html><body id='htmlmode'>" + (this._includeEditReply ? part.getContent() : AjxBuffer.concat(hprefix, part.getContent())) + "</body></html>";
 			} else {
 				content = this._includeEditReply ? part.getContent() : AjxBuffer.concat(tprefix, part.getContent());
 			}
@@ -2459,7 +2476,8 @@ function(callback) {
 
 ZmCalItem.prototype.handlePostSaveCallbacks =
 function() {
-    if(this._proposedTimeCallback) this._proposedTimeCallback.run(this);     
+    if(this._proposedTimeCallback) this._proposedTimeCallback.run(this);
+    this.setIgnoreVersion(false);
 };
 
 // Static methods

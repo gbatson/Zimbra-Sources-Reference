@@ -16,7 +16,7 @@ import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
-import com.zimbra.qa.selenium.projects.desktop.ui.mail.PageMail.PageMailView;
+
 
 
 
@@ -501,18 +501,28 @@ public class PageMail extends AbsTab {
 						"no logic defined for pulldown/option " + pulldown
 								+ "/" + option);
 			}
-		} else if ((pulldown == Button.B_NEW) && (option == Button.O_NEW_TAG)) {
-
+		} else if (pulldown == Button.B_NEW) {
+			
 			pulldownLocator = "css=td[id$='__NEW_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
-			optionLocator = "//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgNewTag')]";
+			
+			if (option == Button.O_NEW_TAG) {
+				
+				optionLocator = "css=td[id$='__NEW_MENU_NEW_TAG_left_icon']>div[class='ImgNewTag']";
+				page = new DialogTag(this.MyApplication, this);
+				
+			} else if (option == Button.O_NEW_FOLDER) {
+				
+				optionLocator = "css=td[id$='__NEW_MENU_NEW_FOLDER_left_icon']>div[class='ImgNewFolder']";
+				page = new DialogCreateFolder(this.MyApplication, this);
 
-			page = new DialogTag(this.MyApplication, this);
-		} else if ((pulldown == Button.B_NEW)&& (option == Button.O_NEW_FOLDER)) {
+			}
+			
+		} else if ((pulldown == Button.B_SIGNATURE)&& (option == Button.O_ADD_SIGNATURE)) {
 
-			pulldownLocator = "css=td[id$='__NEW_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
-			optionLocator = "//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgNewFolder')]";
-
-			page = new DialogCreateFolder(this.MyApplication, this);
+			pulldownLocator = "css=td[id$='_ADD_SIGNATURE_dropdown']>div[class='ImgSelectPullDownArrow']";
+			//optionLocator = "//td[contains(@id,'_title') and contains (text(),'sigName')]";
+			//app.zPageMail.zClick("css=td[id*='_title']td:contains('"+ this.sigName + "')");
+			page = null;
 
 		} else {
 			throw new HarnessException("no logic defined for pulldown/option "
@@ -529,7 +539,9 @@ public class PageMail extends AbsTab {
 						+ " not present!");
 			}
 
-			this.zClick(pulldownLocator);
+			// 8.0 change ... need zClickAt()
+			// this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator, "0,0");
 
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
@@ -543,7 +555,9 @@ public class PageMail extends AbsTab {
 							+ optionLocator + " not present!");
 				}
 
-				this.zClick(optionLocator);
+				// 8.0 change ... need zClickAt()
+				// this.zClick(optionLocator);
+				this.zClickAt(optionLocator, "0,0");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
@@ -1243,6 +1257,90 @@ public class PageMail extends AbsTab {
 			page.zWaitForActive();	// This method throws a HarnessException if never active
 		}
 		return (page);
+	}
+
+	public AbsPage zToolbarPressPulldown(Button pulldown, Button option,String dynamic) throws HarnessException {
+		//logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (option == null)
+			throw new HarnessException("Option cannot be null!");
+		if (dynamic == null)
+			throw new HarnessException("dynamic string cannot be null!");
+		// Default behavior variables
+
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+
+		if ((pulldown == Button.B_SIGNATURE)&& (option == Button.O_ADD_SIGNATURE)) {
+			String name = (String)dynamic;
+			logger.info(name);
+			pulldownLocator = "css=td[id$='_ADD_SIGNATURE_dropdown']>div[class='ImgSelectPullDownArrow']";
+			dynamic ="css=td[id*='_title']td:contains('"+ name + "')";
+			page = null;
+
+		} else {
+			throw new HarnessException("no logic defined for pulldown/option "
+					+ pulldown + "/" + option);
+		}
+
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown + " option "
+						+ option + " pulldownLocator " + pulldownLocator
+						+ " not present!");
+			}
+
+			this.zClick(pulldownLocator);
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException("Button " + pulldown
+							+ " option " + option + " optionLocator "
+							+ optionLocator + " not present!");
+				}
+
+				this.zClick(optionLocator);
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+			}
+			if (dynamic != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(dynamic)) {
+					throw new HarnessException("Button " + pulldown
+							+ " option " + option + " optionLocator "
+							+ dynamic + " not present!");
+				}
+
+				this.zClick(dynamic);
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+			}
+
+			// If we click on pulldown/option and the page is specified, then
+			// wait for the page to go active
+			if (page != null) {
+				page.zWaitForActive();
+			}
+		}
+		// Return the specified page, or null if not set
+		return (page);
+
+
 	}
 
 

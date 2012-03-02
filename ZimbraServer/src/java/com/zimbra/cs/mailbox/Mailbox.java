@@ -57,6 +57,7 @@ import com.zimbra.common.util.CopyInputStream;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.SetUtil;
 import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.SystemUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
@@ -105,6 +106,7 @@ import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
+import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
 import com.zimbra.cs.mailbox.calendar.ZCalendar;
@@ -147,6 +149,7 @@ import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.JMSession;
 import com.zimbra.cs.util.Zimbra;
+import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.cs.zclient.ZMailbox.Options;
 
@@ -3461,6 +3464,7 @@ public class Mailbox {
             boolean useOutlookCompatMode, boolean ignoreErrors, boolean allowPrivateAccess)
     throws ServiceException {
         ZVCalendar cal = new ZVCalendar();
+        cal.addVersionAndProdId();
 
         // REPLY
         cal.addProperty(new ZProperty(ICalTok.METHOD, ICalTok.PUBLISH.toString()));
@@ -4490,6 +4494,18 @@ public class Mailbox {
 
     private void processICalReplies(OperationContext octxt, ZVCalendar cal)
     throws ServiceException {
+        // Reply from Outlook will usually have PRODID set to the following:
+        //
+        // Outlook2007+ZCO: PRODID:-//Microsoft Corporation//Outlook 12.0 MIMEDIR//EN
+        // Outlook2010+ZCO: PRODID:-//Microsoft Corporation//Outlook 14.0 MIMEDIR//EN
+        // Outlook20xx+Exchange: PRODID:Microsoft Exchange Server 2007
+        //   (if Exchange is Exchange 2007; Exchange 2010 probably works similarly)
+        //
+        // Lowest common denominator is "Microsoft" substring.
+        String prodId = cal.getPropVal(ICalTok.PRODID, null);
+        boolean fromOutlook = prodId != null && prodId.toLowerCase().contains("microsoft");
+
+        AccountAddressMatcher acctMatcher = new AccountAddressMatcher(getAccount());
         List<Invite> components = Invite.createFromCalendar(getAccount(), null, cal, false);
         for (Invite inv : components) {
             String orgAddress;
@@ -4500,7 +4516,31 @@ public class Mailbox {
                 ZimbraLog.calendar.warn("No ORGANIZER found in REPLY.  Assuming current mailbox.");
                 orgAddress = getAccount().getName();
             }
-            if (AccountUtil.addressMatchesAccount(getAccount(), orgAddress)) {
+            if (acctMatcher.matches(orgAddress)) {
+                // bug 62042: Fixup bad RECURRENCE-ID sent by Outlook when replying to an orphan instance.
+                // Date is correct relative to the organizer's time zone, but time is set to 000000 and
+                // the time zone is set to the attendee's time zone.  Fix it up by taking the series DTSTART
+                // in the organizer's appointment and replacing the date part with the value from supplied
+                // RECURRENCE-ID.
+                if (fromOutlook && !inv.isAllDayEvent() && inv.hasRecurId()) {
+                    RecurId rid = inv.getRecurId();
+                    if (rid.getDt() != null && rid.getDt().hasZeroTime()) {
+                        CalendarItem calItem = getCalendarItemByUid(octxt, inv.getUid());
+                        if (calItem != null) {
+                            Invite seriesInv = calItem.getDefaultInviteOrNull();
+                            if (seriesInv != null) {
+                                ParsedDateTime seriesDtStart = seriesInv.getStartTime();
+                                if (seriesDtStart != null) {
+                                    ParsedDateTime fixedDt = seriesDtStart.cloneWithNewDate(rid.getDt());
+                                    RecurId fixedRid = new RecurId(fixedDt, rid.getRange());
+                                    ZimbraLog.calendar.debug("Fixed up invalid RECURRENCE-ID with zero time; before=[%s], after=[%s]",
+                                            rid, fixedRid);
+                                    inv.setRecurId(fixedRid);
+                                }
+                            }
+                        }
+                    }
+                }
                 processICalReply(octxt, inv);
             } else {
                 Account orgAccount = inv.getOrganizerAccount();
@@ -4631,7 +4671,7 @@ public class Mailbox {
         return addMessage(octxt, pm, folderId, noICal, flags, tagStr, conversationId, rcptEmail, null, customData, dctxt);
     }
 
-    private Message addMessage(OperationContext octxt, ParsedMessage pm, int folderId, boolean noICal,
+    public Message addMessage(OperationContext octxt, ParsedMessage pm, int folderId, boolean noICal,
                               int flags, String tagStr, int conversationId, String rcptEmail,
                               Message.DraftInfo dinfo, CustomMetadata customData, DeliveryContext dctxt)
     throws IOException, ServiceException {
@@ -5085,8 +5125,7 @@ public class Mailbox {
                              String origId, String replyType, String identityId, String accountId, long autoSendTime)
     throws IOException, ServiceException {
         Message.DraftInfo dinfo = null;
-        if ((replyType != null && origId != null) || !StringUtil.isNullOrEmpty(identityId) ||
-            !StringUtil.isNullOrEmpty(accountId) || autoSendTime != 0)
+        if ((replyType != null && origId != null) || identityId != null || accountId != null || autoSendTime != 0)
             dinfo = new Message.DraftInfo(replyType, origId, identityId, accountId, autoSendTime);
         if (id == ID_AUTO_INCREMENT) {
             // special-case saving a new draft
@@ -5137,6 +5176,24 @@ public class Mailbox {
 
                 msg.setDraftAutoSendTime(autoSendTime);
 
+                if (dinfo != null) {
+                    if (replyType != null) {
+                        msg.setDraftReplyType(replyType);
+                    }
+                    if (origId != null) {
+                        msg.setDraftOrigId(origId);
+                    }
+                    if (identityId != null) {
+                        msg.setDraftIdentityId(identityId);
+                    }
+                    if (accountId != null) {
+                        msg.setDraftAccountId(accountId);
+                    }
+                    if (autoSendTime != 0) {
+                        msg.setDraftAutoSendTime(autoSendTime);
+                    }
+                }
+                
                 // update the content and increment the revision number
                 msg.setContent(staged, pm);
 
@@ -7487,7 +7544,7 @@ public class Mailbox {
         }
     }
 
-    private boolean needRedo(OperationContext octxt) {
+    protected boolean needRedo(OperationContext octxt) {
         // Don't generate redo data for changes made during mailbox version migrations.
         if (!open)
             return false;

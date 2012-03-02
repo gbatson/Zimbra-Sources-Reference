@@ -9,6 +9,7 @@ import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
@@ -58,12 +59,19 @@ public class SendFileLink extends AjaxCommonTest {
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
-		// Click on created document
+		SleepUtil.sleepVerySmall();
+		
+		// Click on uploaded file
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 
 		// Click on Send Link
-		DialogConfirm confDlg = (DialogConfirm) app.zPageBriefcase
-				.zToolbarPressPulldown(Button.B_SEND, Button.O_SEND_LINK);
+		DialogConfirm confDlg;
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			confDlg = (DialogConfirm) app.zPageBriefcase
+			.zToolbarPressPulldown(Button.B_SEND, Button.O_SEND_LINK, fileItem);
+		else
+			confDlg = (DialogConfirm) app.zPageBriefcase.zToolbarPressPulldown(
+					Button.B_ACTIONS, Button.O_SEND_LINK, fileItem);
 
 		// Click Yes on confirmation dialog
 		FormMailNew mailform = (FormMailNew) confDlg.zClickButton(Button.B_YES);
@@ -118,9 +126,13 @@ public class SendFileLink extends AjaxCommonTest {
 				+ "<doc l='" + briefcaseFolder.getId() + "'><upload id='"
 				+ attachmentId + "'/></doc></SaveDocumentRequest>");
 
+		//SleepUtil.sleepVerySmall();
+		
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
+		SleepUtil.sleepVerySmall();
+		
 		// Click on uploaded file
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 

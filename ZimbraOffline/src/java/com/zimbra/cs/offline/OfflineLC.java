@@ -37,6 +37,7 @@ public class OfflineLC {
     public static final KnownKey zdesktop_retry_limit;
     public static final KnownKey zdesktop_gal_sync_timer_frequency;
     public static final KnownKey zdesktop_gal_sync_interval_secs;
+    public static final KnownKey zdesktop_gal_sync_retry_interval_secs;
     public static final KnownKey zdesktop_gal_sync_request_timeout;
     public static final KnownKey zdesktop_gal_sync_trace_enabled;
     public static final KnownKey zdesktop_gal_sync_group_size;
@@ -77,7 +78,14 @@ public class OfflineLC {
     public static final KnownKey zdesktop_ybizmail_smtp_host;
     public static final KnownKey zdesktop_ybizmail_smtp_port;
     public static final KnownKey zdesktop_ybizmail_smtp_ssl;
-
+    public static final KnownKey zdesktop_yoauth_consumer_key;
+    public static final KnownKey zdesktop_yoauth_consumer_secret;
+    public static final KnownKey zdesktop_yoauth_get_req_token_url;
+    public static final KnownKey zdesktop_yoauth_get_token_url;
+    public static final KnownKey zdesktop_yoauth_get_contacts_url;
+    public static final KnownKey zdesktop_yoauth_put_contacts_url;
+    public static final KnownKey zdesktop_yoauth_token_expire_period;
+    
     public static final KnownKey zdesktop_support_email;
     
     public static final KnownKey zdesktop_min_zcs_version_sync_tgz;
@@ -115,6 +123,7 @@ public class OfflineLC {
 
     public static final KnownKey zdesktop_backup_dir;
     public static final KnownKey zdesktop_sync_io_exception_limit;
+    public static final KnownKey zdesktop_sync_item_io_exception_limit;
     public static final KnownKey zdesktop_sync_io_exception_rate;
     
     static void init() {
@@ -189,6 +198,10 @@ public class OfflineLC {
         // How often offline GAL is delta-sync'ed. Default every 12 hours.
         zdesktop_gal_sync_interval_secs = new KnownKey("zdesktop_gal_sync_interval_seconds");
         zdesktop_gal_sync_interval_secs.setDefault("43200");
+        
+        // How often offline GAL retry for failed items. Default every 1 hours.
+        zdesktop_gal_sync_retry_interval_secs = new KnownKey("zdesktop_gal_sync_retry_interval_seconds");
+        zdesktop_gal_sync_retry_interval_secs.setDefault("3600");
         
         // How often offline GAL timer fires. Default every 5 minutes.
         zdesktop_gal_sync_timer_frequency = new KnownKey("zdesktop_gal_sync_timer_frequency");
@@ -301,7 +314,37 @@ public class OfflineLC {
         // base uri for ymail
         zdesktop_ymail_baseuri = new KnownKey("zdesktop_ymail_baseuri");
         zdesktop_ymail_baseuri.setDefault("http://mail.yahooapis.com/ws/mail/v1.1/soap");
+        
+        //yahoo oauth consumer key
+        zdesktop_yoauth_consumer_key = new KnownKey("zdesktop_yoauth_consumer_key");
+//        zdesktop_yoauth_consumer_key.setDefault("dj0yJmk9TWsybDA5aWNsSTVxJmQ9WVdrOWVsbGhjMmhMTmpRbWNHbzlNVEEwTWpJek9EYzJNZy0tJnM9Y29uc3VtZXJzZWNyZXQmeD1iMA--");
+        zdesktop_yoauth_consumer_key.setDefault("dj0yJmk9U1FZQXpQalFNb3BNJmQ9WVdrOWMxRXlZbkpoTlRnbWNHbzlNVFE1TURJME5qWXkmcz1jb25zdW1lcnNlY3JldCZ4PWQ2");
 
+        //yahoo oauth consumer secret
+        zdesktop_yoauth_consumer_secret = new KnownKey("zdesktop_yoauth_consumer_secret");
+//        zdesktop_yoauth_consumer_secret.setDefault("5c593062703d28de06085806c6016e4edce729b4");
+        zdesktop_yoauth_consumer_secret.setDefault("4008a88d1ef86a9f90a058bdc9d16789dfa57c25");
+        
+        //yahoo oauth get request token url
+        zdesktop_yoauth_get_req_token_url = new KnownKey("zdesktop_yoauth_get_req_token_url");
+        zdesktop_yoauth_get_req_token_url.setDefault("https://api.login.yahoo.com/oauth/v2/get_request_token");
+        
+        //yahoo oauth get (access) token url
+        zdesktop_yoauth_get_token_url = new KnownKey("zdesktop_yoauth_get_token_url");
+        zdesktop_yoauth_get_token_url.setDefault("https://api.login.yahoo.com/oauth/v2/get_token");
+        
+        //yahoo oauth get contacts url
+        zdesktop_yoauth_get_contacts_url = new KnownKey("zdesktop_yoauth_get_contacts_url");
+        zdesktop_yoauth_get_contacts_url.setDefault("http://social.yahooapis.com/v1/user/%s/contacts?view=sync&rev=%s");
+        
+        //yahoo oauth put contact url
+        zdesktop_yoauth_put_contacts_url = new KnownKey("zdesktop_yoauth_put_contacts_url");
+        zdesktop_yoauth_put_contacts_url.setDefault("http://social.yahooapis.com/v1/user/%s/contacts");
+        
+        //yahoo oauth token expire period (1 hour)
+        zdesktop_yoauth_token_expire_period = new KnownKey("zdesktop_yoauth_token_expire_period");
+        zdesktop_yoauth_token_expire_period.setDefault(3600*1000);
+        
         //Max number of minutes between full sync of IMAP
         zdesktop_imap_fullsync_interval = new KnownKey("zdesktop_imap_fullsync_interval");
         zdesktop_imap_fullsync_interval.setDefault("60"); // 1 hour
@@ -366,6 +409,8 @@ public class OfflineLC {
         
         //number of io exceptions in a single sync which triggers abort
         zdesktop_sync_io_exception_limit = new KnownKey("zdesktop_sync_io_exception_limit", "10");
+        //number of io exceptions for a given item before it is considered 'bad' and skipped
+        zdesktop_sync_item_io_exception_limit = new KnownKey("zdesktop_sync_item_io_exception_limit", "3");
         //percentage of io exceptions/total items synced which triggers abort
         zdesktop_sync_io_exception_rate = new KnownKey("zdesktop_sync_io_exception_rate", "50");
     }

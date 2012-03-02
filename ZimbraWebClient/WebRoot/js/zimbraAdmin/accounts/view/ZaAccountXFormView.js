@@ -232,7 +232,6 @@ function(entry) {
 		}
 	}
 
-
     this.modifyContainedObject () ;
 
     this._localXForm.setInstance(this._containedObject);
@@ -955,7 +954,8 @@ ZaAccountXFormView.FEATURE_TAB_ATTRS = [ZaAccount.A_zimbraFeatureManageZimlets,
   ZaAccount.A_zimbraFeatureAdvancedSearchEnabled,
 	ZaAccount.A_zimbraFeatureSavedSearchesEnabled,
 	ZaAccount.A_zimbraFeatureInitialSearchPreferenceEnabled,
-	ZaAccount.A_zimbraFeatureImportExportFolderEnabled,
+	ZaAccount.A_zimbraFeatureImportFolderEnabled,
+    ZaAccount.A_zimbraFeatureExportFolderEnabled,
 	ZaAccount.A_zimbraDumpsterEnabled,
 	ZaAccount.A_zimbraFeatureSMIMEEnabled,
 	ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled
@@ -970,7 +970,6 @@ ZaAccountXFormView.PREFERENCES_TAB_ATTRS = [
 	ZaAccount.A_zimbraPrefCalendarAlwaysShowMiniCal,
 	ZaAccount.A_zimbraPrefCalendarApptReminderWarningTime,
 	ZaAccount.A_zimbraPrefTimeZoneId,
-	ZaAccount.A_zimbraPrefContactsPerPage,
 	ZaAccount.A_zimbraPrefGalAutoCompleteEnabled,
 	ZaAccount.A_zimbraPrefAutoAddAddressEnabled,
 	ZaAccount.A_zimbraPrefMailSignature,
@@ -1844,7 +1843,8 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							 ZaAccount.A_zimbraFeatureMAPIConnectorEnabled,
 							 ZaAccount.A_zimbraFeatureBriefcasesEnabled,
 							 ZaAccount.A_zimbraFeatureGalAutoCompleteEnabled,
-							 ZaAccount.A_zimbraFeatureImportExportFolderEnabled,
+							 ZaAccount.A_zimbraFeatureImportFolderEnabled,
+                             ZaAccount.A_zimbraFeatureExportFolderEnabled,
 							 ZaAccount.A_zimbraDumpsterEnabled
 							 ]]
 						],
@@ -1863,7 +1863,8 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							{ref:ZaAccount.A_zimbraFeatureGalEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureGalEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureGalEnabled, trueValue:"TRUE", falseValue:"FALSE"},
 							{ref:ZaAccount.A_zimbraFeatureMAPIConnectorEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureMAPIConnectorEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureMAPIConnectorEnabled, trueValue:"TRUE", falseValue:"FALSE"},
 							{ref:ZaAccount.A_zimbraFeatureGalAutoCompleteEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureGalAutoCompleteEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureGalAutoCompleteEnabled,  trueValue:"TRUE", falseValue:"FALSE"},
-							{ref:ZaAccount.A_zimbraFeatureImportExportFolderEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureImportExportFolderEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureImportExportFolderEnabled,  trueValue:"TRUE", falseValue:"FALSE"},
+							{ref:ZaAccount.A_zimbraFeatureImportFolderEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureImportFolderEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureImportFolderEnabled,  trueValue:"TRUE", falseValue:"FALSE"},
+                            {ref:ZaAccount.A_zimbraFeatureExportFolderEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraFeatureExportFolderEnabled,checkBoxLabel:ZaMsg.LBL_zimbraFeatureExportFolderEnabled,  trueValue:"TRUE", falseValue:"FALSE"},
 							{ref:ZaAccount.A_zimbraDumpsterEnabled, type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraDumpsterEnabled, checkBoxLabel:ZaMsg.LBL_zimbraDumpsterEnabled,  trueValue:"TRUE", falseValue:"FALSE"}
 
 						]
@@ -2425,8 +2426,7 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,
                         		[
 									ZaAccount.A_zimbraPrefAutoAddAddressEnabled,
-									ZaAccount.A_zimbraPrefGalAutoCompleteEnabled,
-									ZaAccount.A_zimbraPrefContactsPerPage
+									ZaAccount.A_zimbraPrefGalAutoCompleteEnabled
                         		]]
                         	],						
 							items: [
@@ -2434,7 +2434,7 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 							],
 							cssStyle:"padding-top:5px; padding-bottom:5px"
 						},				
-						{type:_ZA_PLAIN_GROUPER_, id:"account_prefs_contacts_general",colSizes:["195px","auto"],
+						{type:_ZA_PLAIN_GROUPER_, id:"account_prefs_contacts_general",colSizes:["195px","auto"], width:"100%",
 							//label:ZaMsg.NAD_ContactsOptions,
 							items :[
 								{ref:ZaAccount.A_zimbraPrefAutoAddAddressEnabled, type:_SUPER_CHECKBOX_, 
@@ -2446,10 +2446,7 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 								},							
 								{ref:ZaAccount.A_zimbraPrefGalAutoCompleteEnabled,colSpan:2,
 									colSizes:["195px","375px","190px"], 
-									type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraPrefGalAutoCompleteEnabled,checkBoxLabel:ZaMsg.LBL_zimbraPrefGalAutoCompleteEnabled, trueValue:"TRUE", falseValue:"FALSE"},	
-								{ref:ZaAccount.A_zimbraPrefContactsPerPage, type:_SUPER_SELECT1_,
-									labelCssStyle:"width:195px", colSizes:["375px","190px"],
-									msgName:ZaMsg.MSG_zimbraPrefContactsPerPage,label:ZaMsg.LBL_zimbraPrefContactsPerPage, labelLocation:_LEFT_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, valueLabel:null}		
+									type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToCOS, msgName:ZaMsg.LBL_zimbraPrefGalAutoCompleteEnabled,checkBoxLabel:ZaMsg.LBL_zimbraPrefGalAutoCompleteEnabled, trueValue:"TRUE", falseValue:"FALSE"}	
 							]
 						},
 

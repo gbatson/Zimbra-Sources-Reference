@@ -112,9 +112,17 @@ public class ExecuteHarnessMain {
 		String browser = ZimbraSeleniumProperties.getStringProperty(
 				ZimbraSeleniumProperties.getLocalHost() + ".browser",
 				ZimbraSeleniumProperties.getStringProperty("browser"));
-		if(browser.charAt(0) == '*')
-			browser = browser.substring(1).split(" ")[0];		
-		
+		if (browser.charAt(0) == '*') {
+			browser = browser.substring(1);
+			if ((browser.indexOf(" ")) > 0) {
+				String str = browser.split(" ")[0];
+				int i;
+				if ((i = browser.lastIndexOf("\\")) > 0) {
+					str += "_" + browser.substring(i+1);
+				}
+				browser = str;
+			}
+		}
 		// Append the app, browser, locale
 		path += "/"
 			+ ZimbraSeleniumProperties.getAppType()
@@ -386,6 +394,7 @@ public class ExecuteHarnessMain {
 				
 			} finally {
 				
+				CodeCoverage.getInstance().writeXml();
 				CodeCoverage.getInstance().instrumentServerUndo();
 				
 			}
@@ -567,7 +576,11 @@ public class ExecuteHarnessMain {
 		public void afterInvocation(IInvokedMethod method, ITestResult result) {
 			if ( method.isTestMethod() ) {
 				
-				CodeCoverage.getInstance().calculateCoverage();
+				try {
+					CodeCoverage.getInstance().calculateCoverage();
+				} catch (HarnessException e) {
+					logger.error("Skip logging calculation", e);
+				}
 
 				logger.info("MethodListener: FINISH: "+ getTestCaseID(method.getTestMethod().getMethod()));
 				
@@ -681,7 +694,7 @@ public class ExecuteHarnessMain {
 		public void onTestFailure(ITestResult result) {
 			testsFailed++;
 			String fullname = result.getMethod().getMethod().getDeclaringClass().getName() +"."+ result.getMethod().getMethod().getName();
-			failedTests.add(fullname.replace("com.zimbra.qa.selenium.projects.", "..."));
+			failedTests.add(fullname.replace("com.zimbra.qa.selenium.projects.", "HELIX.projects."));
 			this.getScreenCapture(result);
 		}
 
@@ -691,7 +704,8 @@ public class ExecuteHarnessMain {
 		@Override
 		public void onTestSkipped(ITestResult result) {
 			testsSkipped++;	
-			skippedTests.add(result.getName());
+			String fullname = result.getMethod().getMethod().getDeclaringClass().getName() +"."+ result.getMethod().getMethod().getName();
+			skippedTests.add(fullname.replace("com.zimbra.qa.selenium.projects.", "main.projects."));
 		}
 
 		/**

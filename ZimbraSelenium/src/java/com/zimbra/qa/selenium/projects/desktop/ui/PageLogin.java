@@ -33,6 +33,8 @@ public class PageLogin extends AbsTab {
 		public static final String zDisplayedremember = "xpath=//td[@class='zLoginCheckboxLabelContainer']//label[@for='remember']";
 		public static final String zDisplayedwhatsthis = "xpath=//*[@id='ZLoginWhatsThisAnchor']";
 		public static final String zDisplayedcopyright = "xpath=//div[@class='copyright']";
+		public static final String zDisplayedMessage = "css=div[id='message']";
+		public static final String zWelcomeMessage = "css=p[class='ZWelcome']:nth-of-type(NUMBER)";
 
 	}
 	
@@ -89,19 +91,22 @@ public class PageLogin extends AbsTab {
 		if ( zIsActive() ) {
 			// This page is already active.
 			return;
+
+		} else {
+
+   		// Logout
+   		if ( ((AppAjaxClient)MyApplication).zPageMain.zIsActive() ) {
+   			((AppAjaxClient)MyApplication).zPageMain.zLogout();
+   		} 
+   		// Add Account page
+   		else if (sIsElementPresent(Locators.zMyAccountsTab)) {
+   		   sClick(Locators.zMyAccountsTab);
+   		}
+
+   		zWaitForActive();
+
 		}
-		
-		
-		// Logout
-		if ( ((AppAjaxClient)MyApplication).zPageMain.zIsActive() ) {
-			((AppAjaxClient)MyApplication).zPageMain.zLogout();
-		}
-		
-		zWaitForActive();
-		
 	}
-
-
 	
 	/**
 	 * Login as the specified account
@@ -159,9 +164,11 @@ public class PageLogin extends AbsTab {
 	 * @throws HarnessException
 	 */
 	public void zRemoveAccount() throws HarnessException {
+
+	   GeneralUtility.waitForElementPresent(this, Locators.zDeleteButton);
 	   String attribute = sGetAttribute(Locators.zDeleteButton + "@href");
 	   ((AppAjaxClient)MyApplication).zDeleteDesktopAccount(attribute.split("'")[3], attribute.split("'")[1],
-      "Zimbra", "Zimbra", true);
+	         attribute.split("'")[7], attribute.split("'")[7], true);
 
 	   Object[] params = {Locators.zDeleteButton};
       GeneralUtility.waitFor(null, this, false, "sIsElementPresent",
@@ -169,6 +176,24 @@ public class PageLogin extends AbsTab {
 	}
 
 	/**
+    * Removing account from login page
+    * @throws HarnessException
+    * @return The confirmation message content
+    */
+   public String zRemoveAccountThroughClick() throws HarnessException {
+      sClick(Locators.zDeleteButton);
+
+      String confirmationMessage = this.sGetConfirmation();
+      logger.debug("Selenium Confirmation: " + confirmationMessage);
+
+      Object[] params = {Locators.zDeleteButton};
+      GeneralUtility.waitFor(null, this, false, "sIsElementPresent",
+            params, WAIT_FOR_OPERAND.NEQ, true, 30000, 1000);
+
+      return confirmationMessage;
+   }
+
+   /**
 	 * Add the specified name to the login name field
 	 * @param name
 	 * @throws HarnessException
@@ -232,6 +257,44 @@ public class PageLogin extends AbsTab {
 		throw new HarnessException("No shortcuts supported in the login page");
 	}
 
+	public String zGetMessage() throws HarnessException {
+	   return zGetMessage(false);
+	}
 
+   public String zGetMessage(boolean negativeTest) throws HarnessException {
+      if (negativeTest) {
+         GeneralUtility.waitForElementPresent(this, Locators.zDisplayedMessage, 60000);
+      } else {
+         GeneralUtility.waitForElementPresent(this, Locators.zDisplayedMessage);
+      }
 
+      return sGetText(Locators.zDisplayedMessage);
+	}
+
+   /**
+	 * Compiling the welcome message lines into a String
+	 * @return welcome message in 1 String
+	 * @throws HarnessException
+	 */
+	public String zGetWelcomeMessage() throws HarnessException {
+	   int i = 1;
+	   boolean end = false;
+	   StringBuilder output = new StringBuilder();
+	   while (!end) {
+	      String locator = Locators.zWelcomeMessage.replaceAll("NUMBER", Integer.toString(i));
+	      if (i == 1) {
+	         GeneralUtility.waitForElementPresent(this, locator);
+	      }
+
+	      if (!sIsElementPresent(locator)) {
+	         end = true;
+	         break;
+	      }
+
+	      output.append(sGetText(locator));
+	      i++;
+	   }
+
+	   return output.toString();
+	}
 }

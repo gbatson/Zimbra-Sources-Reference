@@ -1,5 +1,6 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 
+import java.util.List;
 import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.IItem;
@@ -28,13 +29,14 @@ public class DocumentBriefcaseOpen extends AbsDisplay {
 		super(application);
 		logger.info("new " + DocumentBriefcaseOpen.class.getCanonicalName());
 	}
-	
-	public DocumentBriefcaseOpen(AbsApplication application, DocumentItem document) {
+
+	public DocumentBriefcaseOpen(AbsApplication application, IItem item) {
 		super(application);
-		pageTitle = document.getName();
+		pageTitle = item.getName();
 		
-		pageText = document.getDocText();
-		
+		if (item instanceof DocumentItem)
+			pageText = ((DocumentItem) item).getDocText();
+
 		logger.info("new " + DocumentBriefcaseOpen.class.getCanonicalName());
 	}
 
@@ -42,21 +44,21 @@ public class DocumentBriefcaseOpen extends AbsDisplay {
 	public String myPageName() {
 		return this.getClass().getName();
 	}
-	
+
 	public String retriveFileText() throws HarnessException {
 		String text = sGetText(Locators.zFileBodyField);
-	
+
 		return text;
 	}
 
 	public String retriveDocumentText() throws HarnessException {
 		// ClientSessionFactory.session().selenium().selectFrame(Locators.zFrame);
 		String text = sGetText(Locators.zDocumentBodyField);
-		//if (zIsVisiblePerPosition(Locators.zDocumentBodyField, 0, 0)) {
-			// text = zGetHtml(Locators.zBodyField);
-			// text = sGetText(Locators.zBodyField);
-			//text = sGetText(Locators.zDocumentBodyField);
-		//}
+		// if (zIsVisiblePerPosition(Locators.zDocumentBodyField, 0, 0)) {
+		// text = zGetHtml(Locators.zBodyField);
+		// text = sGetText(Locators.zBodyField);
+		// text = sGetText(Locators.zDocumentBodyField);
+		// }
 		return text;
 	}
 
@@ -79,11 +81,18 @@ public class DocumentBriefcaseOpen extends AbsDisplay {
 	public boolean zIsActive() throws HarnessException {
 		zWaitForWindow(pageTitle);
 
+		List<String> windows = sGetAllWindowNames();
+		for (String window : windows) {
+			if(window.indexOf(pageTitle.split("\\.")[0])!=-1){
+				pageTitle = window;
+			}
+		}
 		zSelectWindow(pageTitle);
 
+		if (pageText != null)
 		zWaitForElementPresent("css=td[class='ZhAppContent'] div:contains('"
 				+ pageText + "')");
-		
+
 		return true;
 	}
 

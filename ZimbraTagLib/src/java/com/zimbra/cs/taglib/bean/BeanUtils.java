@@ -21,6 +21,7 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.soap.VoiceConstants;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.taglib.ZJspSession;
 import com.zimbra.cs.zclient.ZFilterAction.ZDiscardAction;
 import com.zimbra.cs.zclient.ZFilterAction.ZFileIntoAction;
@@ -298,6 +299,11 @@ public class BeanUtils {
     public static String stripHtmlComments(String html) {
         String REGEX = "<(?:!(?:--[\\s\\S]*?--\\s*)?(>)\\s*|(?:script|style|SCRIPT|STYLE)[\\s\\S]*?<\\/(?:script|style|SCRIPT|STYLE)>)";
         Pattern p = Pattern.compile(REGEX);
+
+        // Use quoteReplacement() to escape the replacement text so that '$' and '/', if present
+        // in the replacement text, does not hold any special meaning.
+        html = Matcher.quoteReplacement(html);
+        
         Matcher m = p.matcher(html); // get a matcher object
         StringBuffer sb = new StringBuffer();
         while(m.find()) {
@@ -658,6 +664,22 @@ public class BeanUtils {
         ZMailbox mbox = ZJspSession.getZMailbox(pc);
         if (id == null) return null;
         ZFolder f = mbox.getFolderById(id);
+        if (f == null) {
+            try {
+                ZGetInfoResult acctInfo = mbox.getAccountInfo(false);
+                String acctId = acctInfo.getId();
+                ItemId itemId = new ItemId(id, acctId);
+                if (!itemId.belongsTo(acctId)) {
+                    mbox = ZJspSession.getRestMailbox(pc, ZJspSession.getAuthToken(pc), itemId.getAccountId());
+                    if (mbox != null) {
+                        f = mbox.getFolderById(id);
+                    }
+                }
+            } catch (ServiceException se) {
+                //it's for some other acct, not a child we have permission for
+                f = null;
+            }
+        }        
         return f == null ? null : new ZFolderBean(f);
     }
 
@@ -774,6 +796,13 @@ public class BeanUtils {
 
     public static ZAttachmentExistsCondition getAttachmentExists(ZFilterCondition condition) {
         return isAttachmentExists(condition) ? (ZAttachmentExistsCondition) condition : null;
+    }
+
+    /**
+     * Returns true if the specified object is an array or Collection.
+	 */
+    public static boolean isCollection(Object obj) {
+        return ((obj instanceof Object[]) || (obj instanceof Collection));
     }
 
     public static boolean isKeep(ZFilterAction action) {
@@ -1466,6 +1495,19 @@ public class BeanUtils {
             m = pattern.matcher(ua.getUserAgent());
             if (m.find())
                 return true;
+        }
+        return false;
+    }
+
+    /**
+     * Checks whether email features and tabs are enabled for a user or for a delegated admin access.
+     * Returns true if mail feature is enabled for a user or if zimbraFeatureAdminMailEnabled is set to
+     * true in case of delegated admin login, false otherwise.
+     */
+    public static boolean isMailEnabled(com.zimbra.cs.taglib.bean.ZMailboxBean mailbox) throws ServiceException{
+        ZFeatures features = mailbox.getFeatures();
+        if (features.getMail() && (!mailbox.getAdminDelegated() || (mailbox.getAdminDelegated() && features.getAdminMail()))) {
+            return true;
         }
         return false;
     }

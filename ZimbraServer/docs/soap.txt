@@ -606,7 +606,7 @@ effect if called in a <nosession> context.
    <attr name="{name}">{value}</a>+
    <soapURL>{mail-url}</soapURL>+
    <publicURL>{account-base-public-url}</publicURL>
-</GetInfoResponse>
+</GetAccountInfoResponse>
 
   {account-name} = email address (user@domain)
 
@@ -772,6 +772,9 @@ import and export of addressbook.
   id attribute without all the contact fields populated.  The sync client
   then should make batch request to the server to fetch the contact fields
   with <GetContactsRequest/>.
+  Note: idOnly only works when GAL sync account is configured/enabled.  
+  If idOnly is specified and GAL sync account is not enabled, idOnly will 
+  be ignored.
 
 ----------------------------
 
@@ -2192,13 +2195,16 @@ needCalendarSentByFixup - Add SENT-BY parameter to ORGANIZER and/or ATTENDEE
    FileUploadServlet, and submit it through our server:
 
 <SaveDraftRequest>
-  <m aid="{uploaded-MIME-body-ID}" [id="{existing-draft-id}"] [origid="..." rt="r|w"] [l="{folder}"] [f="{flags}"] [t="{tag-id-list}"] [color="{color}"] [autoSendTime="{millis-since-epoch}"]/>
+  <m aid="{uploaded-MIME-body-ID}" [id="{existing-draft-id}"]
+    [origid="..." rt="r|w"] [l="{folder}"] [f="{flags}"] [t="{tag-id-list}"] [color="{color}"] [autoSendTime="{millis-since-epoch}"]/>
 </SaveDraftRequest>
 
 
 # The id of the saved draft is returned
 <SaveDraftResponse>
-  <m id="{message-id}" f="{flags}" t="{tags}" s="{size}" [d="{received-date}"] sd="{date-header}" l="{folder}" (cid="{conv}") [autoSendTime="{millis-since-epoch}"]>
+  <m id="{message-id}" f="{flags}" t="{tags}" s="{size}" [d="{received-date}"]
+    sd="{date-header}" l="{folder}" (cid="{conv}") [autoSendTime="{millis-since-epoch}"]
+    [idnt="{identity-id}"]>
     <e .../>*
     <su>{subject}</su>
     <irt>{Message-ID header for message being replied to}</irt>
@@ -2208,6 +2214,9 @@ needCalendarSentByFixup - Add SENT-BY parameter to ORGANIZER and/or ATTENDEE
     [<content (url="...")>...</content>]
   </m>
 </SaveDraftResponse>
+
+The identity referenced by {identity-id} specifies the folder where the sent message
+is saved.
 
 ----------------------------
 
@@ -2732,7 +2741,7 @@ Actions:
   </actionReply>
   <actionNotify a="email-address" [su="subject-template"] [maxBodySize="{num-bytes}"]>
     <content>{body-template}</content> ?
-  </actionReply>
+  </actionNotify>
 
 Each action has an optional "index" attribute which specifies a guaranteed order
 for the action elements.

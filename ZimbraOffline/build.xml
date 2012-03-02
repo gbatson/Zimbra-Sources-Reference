@@ -35,6 +35,9 @@
   <property name="jetty.dir" location="${dist.dir}/jetty" />
   <property name="zimlet.dir" location="../Zimlet/build/dist" />
 
+  <property name="test.src.dir" location="${src.dir}/java-test"/>
+  <property name="test.classes.dir" location="${build.dir}/test-classes"/>
+
   <property name="server.config.dir" value="../ZimbraServer/conf" />
   <property name="server.src.dir" location="../ZimbraServer/src" />
   <property name="server.build.dir" location="../ZimbraServer/build" />
@@ -233,6 +236,15 @@
     </javac>
   </target>
 
+  <target name="offline-test-compile" depends="offline-compile">
+	<mkdir dir="${test.classes.dir}"/>
+	<javac srcdir="${test.src.dir}" destdir="${test.classes.dir}"
+		  debug="true" classpathref="offline.class.path" target="1.6"/>
+	<copy todir="${test.classes.dir}">
+	  <fileset dir="${test.src.dir}" excludes="**/*.java"/>
+	</copy>
+  </target>
+
   <target name="offline-ext-jars">
     <ant dir="${zsync.common.dir}" target="jar" inheritAll="false" />
     <ant dir="${zsync.client.dir}" target="jar" inheritAll="false" />
@@ -276,7 +288,10 @@
   </target>
 
   <target name="offline-zimbra-war">
-    <ant dir="../ZimbraWebClient" target="war" inheritAll="false" />
+    <ant dir="../ZimbraWebClient" target="war" inheritAll="false" >
+      <property name="zimbra.buildinfo.version" value="${offline.version}"/>
+      <property name="zimbra.buildinfo.release" value="${offline.buildid}"/>
+  	</ant>
     <unzip src="${zimbra.warfile}" dest="${dist.dir}/jetty/webapps/zimbra" overwrite="true"/>
     <delete dir="${dist.dir}/jetty/webapps/zimbra/help"/>
     <tstamp><format property="build.simpleDate" pattern="yyMMddHHmmss" /></tstamp>
@@ -299,6 +314,10 @@
     <!--<move file="${dist.dir}/jetty/webapps/zimbra/WebHelp" tofile="${dist.dir}/jetty/webapps/zimbra/help" />-->
     <copy file="src/installer/resources/launcher_16x16.ico" tofile="${dist.dir}/jetty/webapps/zimbra/favicon.ico"/>
     <copy file="${dist.dir}/jetty/webapps/zimbra/favicon.ico" tofile="${dist.dir}/jetty/webapps/zimbra/img/logo/favicon.ico"/>
+
+    <replace file="${dist.dir}/jetty/webapps/zimbra/js/zimbraMail/share/model/ZmSettings.js" token="@buildVersion@" value="${offline.version}"/>
+    <replace file="${dist.dir}/jetty/webapps/zimbra/js/zimbraMail/share/model/ZmSettings.js" token="@buildRelease@" value="${offline.buildid}"/>
+    <replace file="${dist.dir}/jetty/webapps/zimbra/js/zimbraMail/share/model/ZmSettings.js" token="@buildDateTime@" value="${DSTAMP}-${TSTAMP}"/>
 
     <replace file="${dist.dir}/jetty/webapps/zimbra/skins/_base/base2/splash.html" token="&lt;div id='ZLoginAppName'&gt;&lt;script&gt;document.write(ZmMsg.splashScreenAppName)&lt;/script&gt;&lt;/div&gt;" value="&lt;div id='ZLoginAppName'&gt;&lt;script&gt;document.write(ZmMsg.splashScreenOfflineName)&lt;/script&gt;&lt;/div&gt;"/>
     <replace file="${dist.dir}/jetty/webapps/zimbra/skins/_base/base2/splash.html" token="&lt;td id='ZLoginSwitchMsg'&gt;&lt;script&gt;document.write(ZmMsg.splashScreenSwitch)&lt;/script&gt;&lt;/td&gt;" value=""/>
@@ -469,6 +488,9 @@
     <copy todir="${dist.dir}/conf" file="${server.config.dir}/magic" overwrite="true" />
     <copy todir="${dist.dir}/conf" file="${config.dir}/cacerts" overwrite="true" />
     <copy todir="${dist.dir}/conf" file="${config.dir}/keystore.base" overwrite="true" />
+    <if><equals arg1="${param.development}" arg2="true"/>
+      <then><copy tofile="${dist.dir}/conf/keystore" file="${dist.dir}/conf/keystore.base" overwrite="true" /></then>
+    </if>
 
     <copy todir="${dist.dir}/jetty/etc" file="${config.dir}/jetty-6.1/start.config" overwrite="true" />
     <copy todir="${dist.dir}/jetty/etc" file="${config.dir}/webdefault.xml" overwrite="true"/>
@@ -1189,7 +1211,7 @@
     <fileset dir="${soap.build.dir}" includes="zimbrasoap.jar"/>
     <fileset dir="${server.build.dir}" includes="zimbrastore.jar"/>
     <fileset dir="${taglib.build.dir}" includes="zimbrataglib.jar"/>
-    <fileset dir="${webclient.jars.dir}" includes="standard.jar,servlet-api.jar"/>
+    <fileset dir="${webclient.jars.dir}" includes="servlet-api.jar"/>
     <fileset dir="${webclient.jars.dir}/jsp-2.1" includes="*.jar"/>
     <fileset dir="${jspc.src.dir}/WEB-INF/lib" includes="*.jar"/>
   </path>

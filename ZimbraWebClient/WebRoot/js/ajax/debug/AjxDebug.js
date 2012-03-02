@@ -96,6 +96,7 @@ AjxDebug.REPLY			= "reply";		// bug 56308
 AjxDebug.SCROLL			= "scroll"; 	// bug 55775
 AjxDebug.BAD_JSON		= "bad_json"; 	// bug 57066
 AjxDebug.FILTER         = "filter";     // bug 59158
+AjxDebug.REMINDER       = "reminder";   // bug 60692
 
 AjxDebug.BUFFER_MAX[AjxDebug.DEFAULT_TYPE]	= 0;	// this one can get big due to object dumps
 AjxDebug.BUFFER_MAX[AjxDebug.RPC]			= 200;
@@ -106,6 +107,7 @@ AjxDebug.BUFFER_MAX[AjxDebug.REPLY]			= 100;
 AjxDebug.BUFFER_MAX[AjxDebug.SCROLL]		= 100;
 AjxDebug.BUFFER_MAX[AjxDebug.BAD_JSON]		= 200;
 AjxDebug.BUFFER_MAX[AjxDebug.FILTER]        = 100;
+AjxDebug.BUFFER_MAX[AjxDebug.REMINDER]      = 200;
 
 AjxDebug.MAX_OUT = 25000; // max length capable of outputting an XML msg
 
@@ -462,7 +464,7 @@ function(args) {
 	var origLen = argsArray.length;
 	if (argsArray.length > 1) {
 		var lastArg = argsArray[argsArray.length - 1];
-		if (lastArg && lastArg.indexOf && ((lastArg.indexOf(" ") == -1) && (/Request|Response$/.test(lastArg)))) {
+		if (lastArg && lastArg.indexOf && (lastArg.indexOf("DebugWarn") != -1 || ((lastArg.indexOf(" ") == -1) && (/Request|Response$/.test(lastArg))))) {
 			result.linkName = lastArg;
 			argsArray.pop();
 		}
@@ -518,6 +520,7 @@ function(force) {
 											"'font-size:11px;}',",
 									"'.Content {display:block;margin:0.25em 0em;}',",
 									"'.Link {cursor: pointer;color:blue;text-decoration:underline;white-space:nowrap;width:100%;}',",
+									"'.DebugWarn {color:red;font-weight:bold;}',",
 									"'.Run {color:black; background-color:red;width:100%;font-size:18px;font-weight:bold;}',",
 									"'.RunLink {display:block;color:black;background-color:red;font-weight:bold;white-space:nowrap;width:100%;}',",
 								"'</style></head><body></body></html>'].join(\"\");}",
@@ -967,7 +970,12 @@ function(params) {
 		AjxDebug.println(type, msg);
 	}
 	if (window.DBG) {
-		window.DBG.println(window.DBG._level, msg, params.methodNameStr);
+        // Link is written here:
+        var linkName = params.methodNameStr;
+        if (!params.asyncMode) {
+            linkName = "<span class='DebugWarn'>SYNCHRONOUS </span>" + linkName;
+        }
+        window.DBG.println(window.DBG._level, msg, linkName);
 	}
 };
 

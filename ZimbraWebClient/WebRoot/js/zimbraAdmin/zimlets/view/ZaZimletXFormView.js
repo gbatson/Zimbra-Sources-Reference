@@ -35,7 +35,6 @@ ZaZimletXFormView.prototype = new ZaTabView();
 ZaZimletXFormView.prototype.constructor = ZaZimletXFormView;
 ZaTabView.XFormModifiers["ZaZimletXFormView"] = new Array();
 
-
 /**
 * Sets the object contained in the view
 * @param entry - {ZaZimlet} object to display

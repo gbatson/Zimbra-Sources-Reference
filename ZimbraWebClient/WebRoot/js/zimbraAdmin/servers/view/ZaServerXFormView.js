@@ -399,7 +399,7 @@ ZaServerXFormView.prototype.doAddVolume = function(obj) {
 ZaServerXFormView.addVolume  = function () {
 	if(this.parent.addVolumeDlg) {
 		var obj = this.parent.addVolumeDlg.getObject();
-		ZaApp.getInstance().dialogs["confirmMessageDialog"] = new ZaMsgDialog(ZaApp.getInstance().getAppCtxt().getShell(), null, [DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON]);
+		ZaApp.getInstance().dialogs["confirmMessageDialog"] = new ZaMsgDialog(ZaApp.getInstance().getAppCtxt().getShell(), null, [DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON], null, ZaId.VIEW_STATUS + "_confirmMessage");
 		ZaApp.getInstance().dialogs["confirmMessageDialog"].setMessage(AjxMessageFormat.format(ZaMsg.Q_CREATE_VOLUME,[obj[ZaServer.A_VolumeRootPath]]),DwtMessageDialog.INFO_STYLE );
 		ZaApp.getInstance().dialogs["confirmMessageDialog"].registerCallback(DwtDialog.YES_BUTTON, ZaServerXFormView.prototype.doAddVolume, this.parent, [obj]);
 		ZaApp.getInstance().dialogs["confirmMessageDialog"].popup();		
@@ -519,7 +519,7 @@ ZaServerXFormView.deleteButtonListener = function () {
 	}
 	var selArr = this.getInstanceValue(ZaServer.A2_volume_selection_cache);
 	
-	ZaApp.getInstance().dialogs["confirmMessageDialog"] = new ZaMsgDialog(ZaApp.getInstance().getAppCtxt().getShell(), null, [DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON]);
+	ZaApp.getInstance().dialogs["confirmMessageDialog"] = new ZaMsgDialog(ZaApp.getInstance().getAppCtxt().getShell(), null, [DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON], null, ZaId.VIEW_STATUS + "_confirmMessage");
 	ZaApp.getInstance().dialogs["confirmMessageDialog"].setMessage(ZaMsg.Q_DELETE_VOLUMES,  DwtMessageDialog.WARNING_STYLE);
 	ZaApp.getInstance().dialogs["confirmMessageDialog"].registerCallback(DwtDialog.YES_BUTTON, ZaServerXFormView.doDeleteVolume, this, [selArr,[]]);
 	ZaApp.getInstance().dialogs["confirmMessageDialog"].popup();		
@@ -679,7 +679,7 @@ ZaServerXFormView.myXFormModifier = function(xFormObject, entry) {
         type:_ZATABCASE_, colSizes:["auto"],numCols:1, caseKey:_tab1,
             id:"server_general_tab",
             items:[
-                {type:_ZA_PLAIN_GROUPER_/*_ZAGROUP_*/, items:[
+                {type:_ZA_PLAIN_GROUPER_, cssStyle:"padding-left:0px; padding-right:0px", width:"100%", items:[
                     {ref:ZaServer.A_name, type:_OUTPUT_, label:ZaMsg.NAD_DisplayName, labelLocation:_LEFT_},
                     ZaItem.descriptionXFormItem,
                     { ref: ZaServer.A_ServiceHostname, type:_OUTPUT_,
@@ -704,15 +704,18 @@ ZaServerXFormView.myXFormModifier = function(xFormObject, entry) {
                             resetToSuperLabel:ZaMsg.NAD_ResetToGlobal,
                             msgName:ZaMsg.MSG_zimbraMailPurgeSleepInterval,
                             txtBoxLabel:ZaMsg.LBL_zimbraMailPurgeSleepInterval,
+			    colSpan: 2, colSizes: ["275px","80px","195px","*"],
                             onChange:ZaServerXFormView.onFormFieldChanged
                     },
                     {ref:ZaServer.A_zimbraReverseProxyLookupTarget,
                         type:_SUPER_CHECKBOX_, resetToSuperLabel:ZaMsg.NAD_ResetToGlobal,
                         msgName:ZaMsg.NAD_zimbraReverseProxyLookupTarget,
                         checkBoxLabel:ZaMsg.NAD_zimbraReverseProxyLookupTarget,
+			colSpan: 2, colSizes: ["275px","275px","*"],
                         trueValue:"TRUE", falseValue:"FALSE", onChange:ZaServerXFormView.onReverseLookupTargetFieldChanged},
                     { ref: ZaServer.A_notes, type:_TEXTAREA_,
-                      label: ZaMsg.NAD_Notes, labelCssStyle: "vertical-align:top", width: "30em",
+                      label: ZaMsg.NAD_Notes, labelCssStyle: "vertical-align:top", 
+		      width: "30em", 
                       onChange:ZaServerXFormView.onFormFieldChanged
                     }
                 ]}
@@ -816,11 +819,11 @@ ZaServerXFormView.myXFormModifier = function(xFormObject, entry) {
 					      	    }
 				      	    ]
 						},
-				      {type:_ZA_TOP_GROUPER_, colSizes:["275px","490"], numCols:2,label:ZaMsg.Global_MTA_NetworkGrp,
+				      {type:_ZA_TOP_GROUPER_, colSizes:["275", "*"], numCols:2,label:ZaMsg.Global_MTA_NetworkGrp,
 					      items: [
 					      	{type:_SUPER_REPEAT_, ref:ZaServer.A_zimbraSmtpHostname, 
 					      		label:ZaMsg.LBL_zimbraSmtpHostname,
-					      colSizes:["305px"],
+					            colSizes:["305px"],
 								resetToSuperLabel:ZaMsg.NAD_ResetToGlobal,
 								repeatInstance:"", 
 								showAddButton:true, 
@@ -844,42 +847,40 @@ ZaServerXFormView.myXFormModifier = function(xFormObject, entry) {
 								  }
 								}]
 					      	},
-							{type:_GROUP_,numCols:3,colSpan:3,colSizes:["275px","275px","150px"],
-						  		items:[
-									{ref:ZaServer.A_SmtpPort, type:_OUTPUT_, label:ZaMsg.NAD_MTA_WebMailPort, width:"4em"},
-								  	{type:_SPACER_}
-								]
-						  	},
-							{ 								
+
+							{ref:ZaServer.A_SmtpPort, type:_OUTPUT_, label:ZaMsg.NAD_MTA_WebMailPort, width:"4em"},
+
+							{
 								ref:ZaServer.A_zimbraMtaRelayHost, type:_SUPER_HOSTPORT_,
 								label:ZaMsg.NAD_MTA_RelayMTA,
+                                colSpan: 1,
 							    onClick: "ZaController.showTooltip",
 								toolTipContent: ZaMsg.tt_MTA_RelayMTA,resetToSuperLabel:ZaMsg.NAD_ResetToGlobal,
 							    bmolsnr:true,
 							    elementChanged: function(elementValue,instanceValue, event) {
 									this.getForm().itemChanged(this, elementValue, event);
-										this.getForm().itemChanged(this.getParentItem(), elementValue, event);
+									this.getForm().itemChanged(this.getParentItem(), elementValue, event);
 						  		}
 				      		},
-							{type:_GROUP_,numCols:3,colSpan:3,colSizes:["275px","275px","150px"],
-						  		items:[
-									{ref:ZaServer.A_SmtpTimeout, type:_TEXTFIELD_,
-									  label:ZaMsg.NAD_MTA_WebMailTimeout, width: "4em",
-									  onChange: ZaServerXFormView.onFormFieldChanged
-									},
-								  	{type:_SPACER_},
-									{ref:ZaServer.A_zimbraMtaMyNetworks,
-										txtBoxLabel:ZaMsg.NAD_MTA_MyNetworks,
-										msgName:ZaMsg.NAD_MTA_MyNetworks,
-										type:_SUPER_TEXTAREA_,
-										resetToSuperLabel:ZaMsg.NAD_ResetToGlobal,
-										onChange: ZaServerXFormView.onFormFieldChanged,
-										textAreaWidth:"250px"
-									},
-							  		{type:_SPACER_}
-								]
-						  	},
-					        { ref: ZaServer.A_zimbraMtaDnsLookupsEnabled, type:_SUPER_CHECKBOX_,
+
+                            {ref:ZaServer.A_SmtpTimeout, type:_TEXTFIELD_,
+                              label:ZaMsg.NAD_MTA_WebMailTimeout, width: "4em",
+                              onChange: ZaServerXFormView.onFormFieldChanged
+                            },
+
+                           {ref:ZaServer.A_zimbraMtaMyNetworks,
+                                txtBoxLabel:ZaMsg.NAD_MTA_MyNetworks,
+                                msgName:ZaMsg.NAD_MTA_MyNetworks,
+                                type:_SUPER_TEXTAREA_,
+                                colSpan: 2,
+                                resetToSuperLabel:ZaMsg.NAD_ResetToGlobal,
+                                onChange: ZaServerXFormView.onFormFieldChanged,
+                                textAreaWidth:"250px"
+                            },
+
+					        { ref: ZaServer.A_zimbraMtaDnsLookupsEnabled,
+                              type:_SUPER_CHECKBOX_,
+                              colSpan: 2,
 					      	  checkBoxLabel:ZaMsg.NAD_MTA_DnsLookups,
 					      	  trueValue: "TRUE", falseValue: "FALSE",
 					      	  onChange: ZaServerXFormView.onFormFieldChanged,

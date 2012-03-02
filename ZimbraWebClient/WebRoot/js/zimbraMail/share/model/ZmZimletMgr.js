@@ -344,20 +344,26 @@ function(name) {
  * @param	{Object}	event	the event
  * @param	{Object}	args	the arguments
  * 
+ * @return true if any zimlet handled the notification
+ * 
  * @private
  */
 ZmZimletMgr.prototype.notifyZimlets =
 function(event, args) {
-	if (args && (!(args instanceof Array))) { args = [args]; }
+	
+	args = AjxUtil.toArray(args);
 
+	var handled = false;
 	for (var i = 0; i < this._ZIMLETS.length; ++i) {
 		var z = this._ZIMLETS[i].handlerObject;
-		if (z && (z instanceof ZmZimletBase) && z.getEnabled() &&
-		    (typeof z[event] == "function"))
-		{
-			z[event].apply(z, args);
+		if (z && (z instanceof ZmZimletBase) && z.getEnabled() && (typeof z[event] == "function")) {
+			if (z[event].apply(z, args)) {
+				handled = true;
+			}
 		}
 	}
+	
+	return handled;
 };
 
 /**
@@ -564,12 +570,17 @@ function(zimletArray, zimletNames, isJS) {
 
 	// add link to aggregated files
 	if (!window.appDevMode) {
+		var cosId = null;
+		if (appCtxt.getSettings() && appCtxt.getSettings().getInfoResponse && appCtxt.getSettings().getInfoResponse.cos) {
+			cosId = appCtxt.getSettings().getInfoResponse.cos.id;
+		}
 		var extension = (!AjxEnv.isIE || (!AjxEnv.isIE6 && AjxEnv.isIE6up)) ? appExtension : "";
 		includes.unshift([
 			"/service/zimlet/res/Zimlets-nodev_all",
 			(isJS ? (".js" + extension) : ".css"),
 			(languageId ? "?language=" + languageId : ""),
-			(countryId ? "&country=" + countryId : "")
+			(countryId ? "&country=" + countryId : ""),
+			(cosId ? "&cosId=" + cosId : "")  // For an explanation of why we add cosId here, please see bug #58979
 		].join(""));
 	}
 

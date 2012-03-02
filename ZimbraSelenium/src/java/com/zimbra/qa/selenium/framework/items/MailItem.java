@@ -68,7 +68,8 @@ public class MailItem implements IItem {
 	public List<RecipientItem> dCcRecipients = new ArrayList<RecipientItem>();
 	public List<RecipientItem> dBccRecipients = new ArrayList<RecipientItem>();
 	public RecipientItem dFromRecipient;
-	
+	public RecipientItem dSenderRecipient;
+	public RecipientItem dReplyToRecipient;
 	
 	
 	/**
@@ -251,6 +252,10 @@ public class MailItem implements IItem {
 					mail.dBccRecipients.add(r);
 				} else if ( r.dType == RecipientItem.RecipientType.From ) {
 					mail.dFromRecipient = r;
+				} else if ( r.dType == RecipientItem.RecipientType.Sender ) {
+					mail.dSenderRecipient = r;
+				} else if ( r.dType == RecipientItem.RecipientType.ReplyTo ) {
+					mail.dReplyToRecipient = r;
 				} else {
 					throw new HarnessException("Unable to parse recipient element "+ eElement.prettyPrint());
 				}

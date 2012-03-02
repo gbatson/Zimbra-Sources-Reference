@@ -1,12 +1,19 @@
 package com.zimbra.qa.selenium.framework.ui;
 
-import org.apache.log4j.*;
+import java.util.Arrays;
+import java.util.List;
 
-import com.thoughtworks.selenium.*;
-import com.zimbra.qa.selenium.framework.core.*;
-import com.zimbra.qa.selenium.framework.util.*;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 
+import com.thoughtworks.selenium.DefaultSelenium;
+import com.thoughtworks.selenium.SeleniumException;
+import com.zimbra.qa.selenium.framework.core.ClientSession;
+import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
+import com.zimbra.qa.selenium.framework.core.ExecuteHarnessMain;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 
 /**
  * The <code>AbsSeleniumObject</code> class is a base class that all "GUI"
@@ -33,16 +40,20 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
  * 
  */
 public abstract class AbsSeleniumObject {
-	protected static final int LoadDelay  = 30000; // wait 30 seconds for objects to load
+	protected static final int LoadDelay = 30000; // wait 30 seconds for objects
+													// to load
 	protected static Logger logger = LogManager
 			.getLogger(AbsSeleniumObject.class);
 
-	protected static final Logger tracer = LogManager.getLogger(ExecuteHarnessMain.TraceLoggerName);
-	
+	protected static final Logger tracer = LogManager
+			.getLogger(ExecuteHarnessMain.TraceLoggerName);
+
 	public AbsSeleniumObject() {
-		logger.info("new "+ AbsSeleniumObject.class.getCanonicalName());
+		logger.info("new " + AbsSeleniumObject.class.getCanonicalName());
 	}
 
+	
+	
 	/**
 	 * Zimbra: return if the specified element is visible per style coordinates
 	 * 
@@ -50,29 +61,27 @@ public abstract class AbsSeleniumObject {
 	 * @param leftLimit
 	 * @param topLimit
 	 * @return
+	 * @throws HarnessException 
 	 */
-	public boolean zIsVisiblePerPosition(String locator, int leftLimit,
-			int topLimit) {
+	public boolean zIsVisiblePerPosition(String locator, int leftLimit, int topLimit) throws HarnessException {
 
 		// Check if the locator is present
 		if (!sIsElementPresent(locator)) {
-			logger.info("isVisiblePerPosition(" + locator
-					+ ") element is not present");
+			logger.info("isVisiblePerPosition(" + locator + ") element is not present");
 			return (false);
 		}
 
 		// Find the current position
-		Number left = ClientSessionFactory.session().selenium()
-				.getElementPositionLeft(locator);
-		Number top = ClientSessionFactory.session().selenium()
-				.getElementPositionTop(locator);
-
+		int left = sGetElementPositionLeft(locator);
+		int top = sGetElementPositionTop(locator);
+		
 		// If the position is less than the limits, then it is hidden
-		boolean hidden = ((left.intValue() < leftLimit) && (top.intValue() < topLimit));
-		logger.info("isVisiblePerPosition(" + locator + ") - (left, top) = ("
-				+ left.intValue() + ", " + top.intValue()
-				+ ") (limit, limit) = (" + leftLimit + ", " + topLimit + ") "
-				+ (!hidden));
+		boolean hidden = ((left < leftLimit) && (top < topLimit));
+		logger.info("isVisiblePerPosition(" + locator + ") - " +
+				"(left, top) = (" + left + ", " + top + ")" +
+				"(limit, limit) = (" + leftLimit + ", " + topLimit + ")  = " +
+				(!hidden));
+		
 		return (!hidden);
 	}
 
@@ -84,12 +93,15 @@ public abstract class AbsSeleniumObject {
 	 * @throws HarnessException
 	 */
 	public void zClick(String locator) throws HarnessException {
+		
+		// Check if the locator is present
 		// Check if the locator is present
 		if (!sIsElementPresent(locator)) {
 			logger.info("zClick(" + locator + ") element is not present");
-			throw new HarnessException("zClick(" + locator
-					+ ") element is not present");
+			throw new HarnessException("zClick(" + locator + ") element is not present");
+
 		}
+
 
 		ClientSessionFactory.session().selenium().mouseDownAt(locator, "0,0");
 		ClientSessionFactory.session().selenium().mouseUpAt(locator, "0,0");
@@ -104,15 +116,17 @@ public abstract class AbsSeleniumObject {
 	 * @throws HarnessException
 	 */
 	public void zRightClick(String locator) throws HarnessException {
+		
 		// Check if the locator is present
 		if (!sIsElementPresent(locator)) {
 			logger.info("zRightClick(" + locator + ") element is not present");
-			throw new HarnessException("zRightClick(" + locator
-					+ ") element is not present");
+			throw new HarnessException("zRightClick(" + locator + ") element is not present");
 		}
 
-		ClientSessionFactory.session().selenium().mouseDownRightAt(locator,"0,0");
-		ClientSessionFactory.session().selenium().mouseUpRightAt(locator,"0,0");
+		ClientSessionFactory.session().selenium().mouseDownRightAt(locator,
+				"0,0");
+		ClientSessionFactory.session().selenium()
+				.mouseUpRightAt(locator, "0,0");
 		logger.info("zRightClick(" + locator + ")");
 	}
 
@@ -148,22 +162,43 @@ public abstract class AbsSeleniumObject {
 
 	}
 
+	/**
+	 * The method writes in dialog box's input fields.
+	 * @param locator
+	 * @param value
+	 * @throws HarnessException
+	 */
+	@SuppressWarnings("deprecation")
+	public void zType(String locator, String value) throws HarnessException {
+		// Check if the locator is present
+		if (!sIsElementPresent(locator)) {
+			logger.info("zType(" + locator + ") element is not present");
+			throw new HarnessException("zType(" + locator + ") element is not present");
+		}	
+		
+		ClientSessionFactory.session().selenium().focus(locator);
+		ClientSessionFactory.session().selenium().clickAt(locator, "0,0");
+		ClientSessionFactory.session().selenium().type(locator, value); 
+	
+		logger.info("zType(" + locator + ","  + value + ")");	
+	}
+	
+	
 	// // ***
 	// Start: Selenium methods
 	// // ***
 
-	
 	/**
 	 * DefaultSelenium.getEval()
 	 * 
 	 * @param script
 	 */
 	public String sGetEval(String script) throws HarnessException {
-		String value = ClientSessionFactory.session().selenium().getEval(script);
-		logger.info("getEval("+ script +") = "+ value);
+		String value = ClientSessionFactory.session().selenium()
+				.getEval(script);
+		logger.info("getEval(" + script + ") = " + value);
 		return (value);
 	}
-
 
 	/**
 	 * DefaultSelenium.getHtmlSource()
@@ -178,21 +213,49 @@ public abstract class AbsSeleniumObject {
 	}
 
 	/**
+	 * DefaultSelenium.getElementPositionLeft()
+	 * 
+	 * @param locator
+	 */
+	public int sGetElementPositionLeft(String locator) throws HarnessException {
+		try {
+			int n = ClientSessionFactory.session().selenium().getElementPositionLeft(locator).intValue();
+			logger.info("getElementPositionLeft("+ locator +") = "+ n);
+			return (n);
+		} catch (SeleniumException e) {
+			throw new HarnessException(e);
+		}
+	}
+	
+	/**
+	 * DefaultSelenium.getElementPositionTop()
+	 * 
+	 * @param locator
+	 */
+	public int sGetElementPositionTop(String locator) throws HarnessException {
+		try {
+			int n = ClientSessionFactory.session().selenium().getElementPositionTop(locator).intValue();
+			logger.info("getElementPositionTop("+ locator +") = "+ n);
+			return (n);
+		} catch (SeleniumException e) {
+			throw new HarnessException(e);
+		}
+	}
+	
+
+	/**
 	 * getNextSiblingId()
 	 * 
-	 * @param 
+	 * @param
 	 */
 	public String sGetNextSiblingId(String id) {
-		String sibLingid = ClientSessionFactory
-				.session()
-				.selenium()
-				.getEval(
-		"this.browserbot.getUserWindow().document.getElementById('" + id + "')" + ".nextSibling.id" );
+		String sibLingid = ClientSessionFactory.session().selenium().getEval(
+				"this.browserbot.getUserWindow().document.getElementById('"
+						+ id + "')" + ".nextSibling.id");
 		logger.info("sGetNextSiblingId( " + id + ") = " + sibLingid);
 		return (sibLingid);
 	}
 
-	
 	/**
 	 * DefaultSelenium.getSelectedId()
 	 * 
@@ -211,21 +274,45 @@ public abstract class AbsSeleniumObject {
 	public void sClick(String locator) {
 		// Cast to DefaultSelenium ... Workaround until ZimbraSelnium is removed
 		((DefaultSelenium) ClientSessionFactory.session().selenium())
-				.click(locator);
+				.mouseOver(locator);
+		((DefaultSelenium) ClientSessionFactory.session().selenium()).clickAt(
+				locator, "");
 		logger.info("click(" + locator + ")");
+	}
+
+	/**
+	 * DefaultSelenium.close()
+	 */
+	public void sClose() {
+		ClientSessionFactory.session().selenium().close();
+		logger.info("close()");
+	}
+
+	/**
+	 * DefaultSelenium.doubleClick()
+	 */
+	public void sDoubleClick(String locator) {
+		// Cast to DefaultSelenium ... Workaround until ZimbraSelnium is removed
+		((DefaultSelenium) ClientSessionFactory.session().selenium())
+				.doubleClick(locator);
+		logger.info("doubleClick(" + locator + ")");
 	}
 
 	/**
 	 * DefaultSelenium.waitForPageToLoad()
 	 */
 	public void sWaitForPageToLoad() {
+		String timeout = ZimbraSeleniumProperties.getStringProperty(
+				"selenium.maxpageload.msec", "10000");
+
 		try {
-			String timeout = "10000";
+
 			// Cast to DefaultSelenium ... Workaround until ZimbraSelnium is
 			// removed
+			logger.info("waitForPageToLoad(" + timeout + ")");
 			((DefaultSelenium) ClientSessionFactory.session().selenium())
 					.waitForPageToLoad(timeout);
-			logger.info("waitForPageToLoad(" + timeout + ")");
+
 		} catch (Exception ex) {
 			logger.warn("sWaitForPageToLoad() error", ex);
 		}
@@ -238,6 +325,10 @@ public abstract class AbsSeleniumObject {
 		ClientSessionFactory.session().selenium().mouseDown(locator);
 		logger.info("mouseDown(" + locator + ")");
 	}
+	public void sMouseDownAt(String locator, String coordString) {
+		ClientSessionFactory.session().selenium().mouseDownAt(locator, coordString);
+		logger.info("mouseDownAt(" + locator + ",'" + coordString + "')");
+	}
 
 	/**
 	 * DefaultSelenium.mouseOver()
@@ -248,11 +339,46 @@ public abstract class AbsSeleniumObject {
 	}
 
 	/**
+	 * DefaultSelenium.mouseOver()
+	 */
+	public void sMouseOut(String locator) {
+		ClientSessionFactory.session().selenium().mouseOut(locator);
+		logger.info("mouseOver(" + locator + ")");
+	}
+
+	/**
+	 * DefaultSelenium.refresh()
+	 */
+	public void sRefresh() {
+	   ClientSessionFactory.session().selenium().refresh();
+	   logger.info("refresh the browser");
+	}
+
+	/**
 	 * DefaultSelenium.mouseUp()
 	 */
 	public void sMouseUp(String locator) {
 		ClientSessionFactory.session().selenium().mouseUp(locator);
 		logger.info("mouseUp(" + locator + ")");
+	}
+
+	/**
+	 * DefaultSelenium.mouseMoveAt()
+	 */
+	public void sMouseMoveAt(String locator, String coordString) {
+		ClientSessionFactory.session().selenium().mouseMoveAt(locator, coordString);
+		logger.info("mouseMoveAt(" + locator + ",'" + coordString + "')");
+	}
+	public void sMouseMove(String locator) {
+		ClientSessionFactory.session().selenium().mouseMove(locator);
+		logger.info("mouseMoveAt(" + locator + ")");
+	}
+	/**
+	 * DefaultSelenium.mouseUpAt()
+	 */
+	public void sMouseUpAt(String locator, String coordString) {
+		ClientSessionFactory.session().selenium().mouseUpAt(locator, coordString);
+		logger.info("mouseUpAt(" + locator + ",'" + coordString +")'");
 	}
 
 	/**
@@ -268,9 +394,20 @@ public abstract class AbsSeleniumObject {
 	 */
 	public boolean sIsElementPresent(String locator) {
 		// Cast to DefaultSelenium ... Workaround until ZimbraSelnium is removed
+		if (locator.startsWith("//") || locator.startsWith("xpath")) {
+			logger.warn("FIXME: the locator " + locator + " is a xpath - should change to css");		   
+		}		
+		
+		long startTime= System.currentTimeMillis();		
 		boolean present = ((DefaultSelenium) ClientSessionFactory.session()
 				.selenium()).isElementPresent(locator);
+		long runTime= System.currentTimeMillis() - startTime;
+		// if run time > 2 sec, the locator is probably xpath; should change to css		
+		if (runTime > 2000) {
+			logger.warn("FIXME: Run time = " +  runTime +" sec for sIsElementPresent(" + locator + ")");		   
+		}
 		logger.info("isElementPresent(" + locator + ") = " + present);
+					
 		return (present);
 	}
 
@@ -288,31 +425,49 @@ public abstract class AbsSeleniumObject {
 	 * DefaultSelenium.getCssCount()
 	 */
 	public int sGetCssCount(String css) {
-		int count = ClientSessionFactory.session().selenium().getCssCount(css).intValue();
+		int count = ClientSessionFactory.session().selenium().getCssCount(css)
+				.intValue();
 		logger.info("getCssCount(" + css + ") = " + count);
 		return (count);
 	}
-	
+
+	/**
+	 * DefaultSelenium.getAllWindowTitles()
+	 */
+	public List<String> sGetAllWindowTitles() {
+		logger.info("getAllWindowNames()");
+		String[] windows = ClientSessionFactory.session().selenium()
+				.getAllWindowTitles();
+		return (Arrays.asList(windows));
+	}
+
 	/**
 	 * DefaultSelenium.getAttribute()
+	 * Use this method if you need the value of the attribute.  If you are
+	 * checking whether an attribute contains a value, use this instead:<p>
+	 * sIsElementPresent("css=div[id='divid'][class*=ZSelected]");
+	 * 
 	 * @throws SeleniumException
 	 */
 	public String sGetAttribute(String locator) throws SeleniumException {
-		
+
 		// How can we determine whether the attribute exists or not?
 		// Default selenium doesn't seem to have a way.
-		// Tasks requires the SeleniumException to be thrown, then caught ... so, can't convert to HarnessException
+		// Tasks requires the SeleniumException to be thrown, then caught ...
+		// so, can't convert to HarnessException
 		//
-		
+
 		try {
-		
+
 			logger.info("getAttribute(" + locator + ")");
-			String attrs = ClientSessionFactory.session().selenium().getAttribute(locator);
+			String attrs = ClientSessionFactory.session().selenium()
+					.getAttribute(locator);
 			logger.info("getAttribute(" + locator + ") = " + attrs);
 			return (attrs);
-			
+
 		} catch (SeleniumException e) {
-			logger.error(e.getMessage(), e); // SeleniumExceptions don't use logger, so log it here
+			logger.error(e.getMessage(), e); // SeleniumExceptions don't use
+												// logger, so log it here
 			throw e;
 		}
 	}
@@ -363,7 +518,7 @@ public abstract class AbsSeleniumObject {
 		logger.info("zWaitForBusyOverlayHTML()");
 		SleepUtil.sleepLong();
 	}
-	
+
 	/**
 	 * DefaultSelenium.waitForCondition() Runs the specified JavaScript snippet
 	 * repeatedly until it evaluates to true
@@ -371,13 +526,16 @@ public abstract class AbsSeleniumObject {
 	 * @param locator
 	 * @throws HarnessException
 	 */
-	private void sWaitForCondition(String condition) throws HarnessException {
-		logger.info("sWaitForCondition("+ condition +"), timeout="+ LoadDelay);
+	private boolean sWaitForCondition(String condition) throws HarnessException {
+		logger.info("sWaitForCondition(" + condition + "), timeout="
+				+ LoadDelay);
 		try {
 			ClientSessionFactory.session().selenium().waitForCondition(
 					condition, "" + LoadDelay);
+			return true;
 		} catch (Exception ex) {
-			throw new HarnessException(condition + " never become true: ", ex);
+			logger.info(condition + " never become true: ");		
+			return false;
 		}
 	}
 
@@ -388,14 +546,10 @@ public abstract class AbsSeleniumObject {
 	 * @param locator
 	 * @throws HarnessException
 	 */
-	public void zWaitForElementPresent(String locator) throws HarnessException {
-		logger.info("zWaitForElementPresent("+ locator +")");
+	public boolean zWaitForElementPresent(String locator) throws HarnessException {
+		logger.info("zWaitForElementPresent(" + locator + ")");
 
-		try {
-			sWaitForCondition("selenium.isElementPresent(\"" + locator + "\")");
-		} catch (Exception ex) {
-			throw new HarnessException(locator + " never appeared : ", ex);
-		}
+		return	sWaitForCondition("selenium.isElementPresent(\"" + locator + "\")");		
 	}
 
 	/**
@@ -406,7 +560,7 @@ public abstract class AbsSeleniumObject {
 	 * @throws HarnessException
 	 */
 	public void zWaitForElementDeleted(String locator) throws HarnessException {
-		logger.info("zWaitForElementDeleted("+ locator +")");
+		logger.info("zWaitForElementDeleted(" + locator + ")");
 		try {
 			sWaitForCondition("!selenium.isElementPresent(\"" + locator + "\")");
 		} catch (Exception ex) {
@@ -415,56 +569,66 @@ public abstract class AbsSeleniumObject {
 	}
 
 	/**
-	 * zWaitForElementEnabled(String id) Wait until the element (id) becomes enabled 
+	 * zWaitForElementEnabled(String id) Wait until the element (id) becomes
+	 * enabled
 	 * 
 	 * @param id
 	 * @throws HarnessException
 	 */
-	public void zWaitForElementEnabled(String id) throws HarnessException {		
-		logger.info("zWaitForElementEnabled("+ id +")");
+	public void zWaitForElementEnabled(String id) throws HarnessException {
+		logger.info("zWaitForElementEnabled(" + id + ")");
+
+		// not applicable for the element
+		if (!sIsElementPresent(id)) {
+			return;
+		}
 
 		for (int i = 0; i < 15; i++) {
-			  String attrs = sGetAttribute("xpath=(//div[@id='"+ id +"'])@class");			
-              if ( !attrs.contains("ZDisabled") )
-                    return;
-              SleepUtil.sleepSmall();
-        }
-		throw new HarnessException("Element with id="+ id +" never become enabled: ");
-		
+			String locator = "css=div[id='"+ id +"'][class*=ZDisabled]";
+			if ( !sIsElementPresent(locator) ) {
+				return;
+			}
+			SleepUtil.sleepSmall();
+		}
+		throw new HarnessException("Element with id=" + id + " never become enabled: ");
+
 	}
 
 	/**
-	 * zWaitForElementVisible(String id) Wait until the element (id) becomes visible
+	 * zWaitForElementVisible(String id) Wait until the element (id) becomes
+	 * visible
 	 * 
 	 * @param id
 	 * @throws HarnessException
 	 */
-	public void zWaitForElementVisible(String locator) throws HarnessException {		
-		logger.info("zWaitForElementVisible("+ locator +")");
+	public void zWaitForElementVisible(String locator) throws HarnessException {
+		logger.info("zWaitForElementVisible(" + locator + ")");
 		for (int i = 0; i < 15; i++) {
-		    if (zIsVisiblePerPosition(locator,0,0)) {		    
-			  return;
-		    }
-            SleepUtil.sleepSmall();
-         }		
-		throw new HarnessException(locator + "never visibled!");		
+			if (zIsVisiblePerPosition(locator, 0, 0)) {
+				return;
+			}
+			SleepUtil.sleepSmall();
+		}
+		throw new HarnessException(locator + "never visibled!");
 	}
 
 	/**
-	 * zWaitForElementInvisible(String id) Wait until the element (id) becomes invisible
+	 * zWaitForElementInvisible(String id) Wait until the element (id) becomes
+	 * invisible
 	 * 
 	 * @param id
 	 * @throws HarnessException
 	 */
-	public void zWaitForElementInvisible(String locator) throws HarnessException {		
-		logger.info("zWaitForElementInvisible("+ locator +")");
+	public void zWaitForElementInvisible(String locator)
+			throws HarnessException {
+		logger.info("zWaitForElementInvisible(" + locator + ")");
 		for (int i = 0; i < 15; i++) {
-		    if (!zIsVisiblePerPosition(locator,0,0)) {		   
-			  return;
-		    }
-            SleepUtil.sleepSmall();
-         }		
-		throw new HarnessException(locator + "never invisible!");		
+			if (!zIsVisiblePerPosition(locator, 0, 0)) {
+				return;
+			}
+			SleepUtil.sleepSmall();
+		}
+		throw new HarnessException(locator + "never invisible!");
 	}
 
 	/**
@@ -475,17 +639,17 @@ public abstract class AbsSeleniumObject {
 	 * @throws HarnessException
 	 */
 	public void zWaitForWindow(String name) throws HarnessException {
-		logger.info("zWaitForWindow("+ name +")");
+		logger.info("zWaitForWindow(" + name + ")");
 
 		try {
-			sWaitForCondition("{var x; for(var windowName in selenium.browserbot.openedWindows ){"
-					+ "var targetWindow = selenium.browserbot.openedWindows[windowName];"
-					+ "if((!selenium.browserbot._windowClosed(targetWindow))&&"
-					+ "(targetWindow.name == '"
-					+ name
-					+ "' || targetWindow.document.title == '"
-					+ name
-					+ "')){x=windowName;" + "}}}; x!=null;");
+			sWaitForCondition("var x; for(var windowName in selenium.browserbot.openedWindows)"
+					+ "{var targetWindow = selenium.browserbot.openedWindows[windowName];"
+					+ "if(!selenium.browserbot._windowClosed(targetWindow)&&"
+					+ "(targetWindow.name.indexOf('"
+					+ name.split("\\.")[0]
+					+ "')!=-1||targetWindow.document.title.indexOf('"
+					+ name.split("\\.")[0]
+					+ "')!=-1)){x=windowName;}};x!=null;");
 		} catch (Exception ex) {
 			throw new HarnessException(name + " never opened : ", ex);
 		}
@@ -501,7 +665,7 @@ public abstract class AbsSeleniumObject {
 	 */
 	public boolean zWaitForIframeText(String iframe, String text)
 			throws HarnessException {
-		logger.info("zWaitForIframeText("+ iframe +", "+ text +")");
+		logger.info("zWaitForIframeText(" + iframe + ", " + text + ")");
 
 		try {
 			sWaitForCondition("var x = selenium.browserbot.findElementOrNull(\""
@@ -520,14 +684,35 @@ public abstract class AbsSeleniumObject {
 	}
 
 	/**
-	 * zIsWindowClosed() Waits for condition when window with a given name is
-	 * closed
+	 * zIsWindowOpen() Checks if window with a given name is open
 	 * 
 	 * @param name
 	 * @throws HarnessException
 	 */
-	public boolean zIsWindowClosed(String name) throws HarnessException {
-		logger.info("zIsWindowClosed("+ name +")");
+	public boolean zIsWindowOpen(String name) throws HarnessException {
+		logger.info("zIsWindowOpen(" + name + ")");
+
+		String result = sGetEval("{var x; for(var windowName in selenium.browserbot.openedWindows ){"
+				+ "var targetWindow = selenium.browserbot.openedWindows[windowName];"
+				+ "if((!selenium.browserbot._windowClosed(targetWindow))&&"
+				+ "(targetWindow.name == '"
+				+ name
+				+ "' || targetWindow.document.title == '"
+				+ name
+				+ "')){x=windowName;" + "}}}; x!=null;");
+		logger.info("zIsWindowOpen(" + name + ") = " + result);
+		return (result.contains("true"));
+	}
+
+	/**
+	 * zWaitForWindowClosed() Waits for condition when window with a given name
+	 * is closed
+	 * 
+	 * @param name
+	 * @throws HarnessException
+	 */
+	public boolean zWaitForWindowClosed(String name) throws HarnessException {
+		logger.info("zWaitForWindowClosed(" + name + ")");
 
 		try {
 			String condition = "{var x; for(var windowName in selenium.browserbot.openedWindows ){"
@@ -545,6 +730,14 @@ public abstract class AbsSeleniumObject {
 			logger.info("Error: win not opened " + name, ex.fillInStackTrace());
 			return false;
 		}
+	}
+
+	/**
+	 * DefaultSelenium.check()
+	 */
+	public void sCheck(String locator) {
+		ClientSessionFactory.session().selenium().check(locator);
+		logger.info("check(" + locator + ")");
 	}
 
 	/**
@@ -583,6 +776,18 @@ public abstract class AbsSeleniumObject {
 		logger.info("DefaultSelenium.getValue(" + locator + ") = " + text);
 		return (text);
 	}
+
+	/**
+	 * DefaultSelenium.getBodyText()
+	 * 
+	 * @return
+	 */
+	public String sGetBodyText() {
+		String text = ClientSessionFactory.session().selenium().getBodyText();
+		return text;
+
+	}
+	
 
 	/**
 	 * DefaultSelenium.type()
@@ -624,6 +829,20 @@ public abstract class AbsSeleniumObject {
 		logger.info("sSelectWindow(" + windowID + ")");
 	}
 
+	/**
+	 * DefaultSelenium.openWindow()
+	 * @param url
+	 * @param windowID
+	 */
+	public void sOpenWindow(String url,String windowID) {
+		ClientSessionFactory.session().selenium().openWindow(url, windowID);
+		logger.info("sOpenWindow(" + windowID + ")");
+	}
+	
+	public void sWaitForPopUp(String windowID,String timeout ) {
+		ClientSessionFactory.session().selenium().waitForPopUp(windowID, timeout);
+		logger.info("sWaitForPopUp(" + windowID + ")");
+	}
 	/**
 	 * DefaultSelenium.windowFocus()
 	 */

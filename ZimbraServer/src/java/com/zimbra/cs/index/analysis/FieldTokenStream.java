@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.tokenattributes.TermAttribute;
 import org.apache.lucene.util.NumericUtils;
 
 import com.google.common.base.Strings;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.index.LuceneFields;
 
 /**
@@ -40,12 +41,13 @@ import com.zimbra.cs.index.LuceneFields;
  * @author ysasaki
  */
 public final class FieldTokenStream extends TokenStream {
-
+    private static final int MAX_TOKEN_LEN = 100;
+    private static final int MAX_TOKEN_COUNT = 1000;
     private static final Pattern NUMERIC_VALUE_REGEX = Pattern.compile("-?\\d+");
 
-    private List<String> tokens = new LinkedList<String>();
+    private final List<String> tokens = new LinkedList<String>();
     private Iterator<String> iterator;
-    private TermAttribute termAttr = addAttribute(TermAttribute.class);
+    private final TermAttribute termAttr = addAttribute(TermAttribute.class);
 
     public FieldTokenStream() {
     }
@@ -63,9 +65,14 @@ public final class FieldTokenStream extends TokenStream {
 
         if (NUMERIC_VALUE_REGEX.matcher(value).matches()) {
             try {
-                tokens.add(name + "#:" + NumericUtils.intToPrefixCoded(Integer.parseInt(value)));
+                add(name + "#:" + NumericUtils.intToPrefixCoded(Integer.parseInt(value)));
             } catch (NumberFormatException ignore) { // pass through
             }
+        }
+
+        if (value.equals("*")) { // wildcard alone
+            add(name + ":*");
+            return;
         }
 
         StringBuilder word = new StringBuilder();
@@ -74,7 +81,7 @@ public final class FieldTokenStream extends TokenStream {
             // treat '-' as whitespace UNLESS it is at the beginning of a word
             if (isWhitespace(c) || (c == '-' && word.length() > 0)) {
                 if (word.length() > 0) {
-                    tokens.add(name + ':' + word.toString());
+                    add(name + ':' + word.toString());
                     word.setLength(0);
                 }
             } else if (!Character.isISOControl(c)) {
@@ -83,7 +90,15 @@ public final class FieldTokenStream extends TokenStream {
         }
 
         if (word.length() > 0) {
-            tokens.add(name + ':' + word.toString());
+            add(name + ':' + word.toString());
+        }
+    }
+
+    private void add(String token) {
+        if (token.length() <= MAX_TOKEN_LEN && tokens.size() < MAX_TOKEN_COUNT) {
+            tokens.add(token);
+        } else {
+            ZimbraLog.index.warn("Unable to index: %.30s", token);
         }
     }
 

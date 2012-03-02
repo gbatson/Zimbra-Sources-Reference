@@ -176,7 +176,12 @@ public class DebugConfig {
     
 	// For QA only. bug 57279
     public static boolean allowModifyingDeprecatedAttributes;
-	
+
+    public static boolean enableRdate;
+    public static boolean enableThisAndFuture;
+
+    public static boolean caldavAllowAttendeeForOrganizer;
+
     static {
         calendarAllowProcedureAlarms = booleanValue("debug_calendar_allow_procedure_alarms", false);
         calendarConvertNonDisplayAlarm = booleanValue("debug_calendar_convert_non_display_alarms", true);
@@ -244,10 +249,15 @@ public class DebugConfig {
         imapNoninteractiveSessionLimit = intValue("debug_imap_noninteractive_session_limit", Integer.MAX_VALUE);
         imapTerminateSessionOnClose = booleanValue("imap_terminate_session_on_close", false);
         imapSerializeSessionOnClose = booleanValue("imap_serialize_session_on_close", true);
-        
-        disableCalendarReminderEmail = booleanValue("debug_disable_calendar_reminder_email", false);  
-		
-		allowModifyingDeprecatedAttributes = booleanValue("allow_modifying_deprecated_attributes", true);
+
+        disableCalendarReminderEmail = booleanValue("debug_disable_calendar_reminder_email", false);
+
+        allowModifyingDeprecatedAttributes = booleanValue("allow_modifying_deprecated_attributes", true);
+
+        enableRdate = booleanValue("debug_enable_calendar_rdate", false);
+        enableThisAndFuture = booleanValue("debug_enable_calendar_thisandfuture", false);
+
+        caldavAllowAttendeeForOrganizer = booleanValue("debug_caldav_allow_attendee_for_organizer", false);
     }
 
     protected static boolean booleanValue(String key, boolean defaultValue) {

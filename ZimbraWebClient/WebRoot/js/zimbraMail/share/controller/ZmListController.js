@@ -566,7 +566,7 @@ function(ev) {
 		var lv = this._listView[this._currentView];
 
 		if (appCtxt.get(ZmSetting.SHOW_SELECTION_CHECKBOX)) {
-			if (!ev.ctrlKey) {
+			if (!ev.ctrlKey && lv.setSelectionHdrCbox) {
 				lv.setSelectionHdrCbox(false);
 			}
 		}
@@ -748,7 +748,7 @@ function(dlg) {
 		overviewId:		dlg.getOverviewId(this._app._name),
 		data:			this._pendingActionData,
 		treeIds:		[org],
-		title:			this._getMoveDialogTitle(this._pendingActionData.length),
+		title:			AjxStringUtil.htmlEncode(this._getMoveDialogTitle(this._pendingActionData.length)),
 		description:	ZmMsg.targetFolder,
 		treeStyle:		DwtTree.SINGLE_STYLE,
 		appName:		this._app._name
@@ -875,7 +875,8 @@ function() {
 	var cc = AjxDispatcher.run("GetContactController");
 	if (this._actionEv.contact) {
 		if (this._actionEv.contact.isLoaded) {
-			cc.show(this._actionEv.contact, true);
+			var isDirty = this._actionEv.contact.isGal;
+			cc.show(this._actionEv.contact, isDirty);
 		} else {
 			var callback = new AjxCallback(this, this._loadContactCallback);
 			this._actionEv.contact.load(callback);
@@ -939,7 +940,7 @@ function(ev) {
         // Bug: 44488 - Don't allow dropping tag of one account to other account's item
         if (appCtxt.multiAccounts) {
            var listAcctId = item ? item.getAccount().id : null;
-           var tagAcctId = data[0].account.id;
+           var tagAcctId = (data.account && data.account.id) || data[0].account.id;
            if (listAcctId != tagAcctId) {
                ev.doIt = false;
            }
@@ -1081,7 +1082,11 @@ function(items, hardDelete, attrs) {
 	items = AjxUtil.toArray(items);
 	if (!items.length) { return; }
 
-	var params = {items:items, hardDelete:hardDelete, attrs:attrs, childWin:appCtxt.isChildWindow && window};
+	var params = {items: items,
+					hardDelete: hardDelete,
+					attrs: attrs,
+					childWin: appCtxt.isChildWindow && window,
+					closeChildWin: appCtxt.isChildWindow};
 	var allDoneCallback = new AjxCallback(this, this._checkItemCount);
 	var list = this._setupContinuation(this._doDelete, [hardDelete, attrs], params, allDoneCallback);
 
@@ -1475,6 +1480,9 @@ function(view, forward, loadIndex, limit) {
 	var needMore = false;
 	var lv = this._listView[view];
 	var offset, max;
+
+    limit = limit || lv.getLimit(offset);
+
 	if (lv._isPageless) {
 		offset = this._list.size();
 		needMore = true;
@@ -1484,7 +1492,6 @@ function(view, forward, loadIndex, limit) {
 		this.currentPage = this.currentPage + (forward ? 1 : -1);
 		this.maxPage = Math.max(this.maxPage, this.currentPage);
 	}
-	limit = limit || lv.getLimit(offset);
 
 	// see if we're out of items and the server has more
 	if (needMore && this._list.hasMore()) {
@@ -2039,7 +2046,7 @@ function(params, actionParams) {
 			params.allDoneCallback.run();
 		}
 
-		ZmList.killProgressDialog(actionParams.actionSummary, actionParams.actionLogItem);
+		ZmList.killProgressDialog(actionParams.actionSummary, actionParams.actionLogItem, actionParams.closeChildWin);
 	}
 };
 

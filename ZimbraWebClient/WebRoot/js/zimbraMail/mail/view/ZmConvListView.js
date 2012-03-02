@@ -475,7 +475,7 @@ function(conv, fieldId) {
 			html[idx++] = "<span style='white-space: nowrap' id='";
 			html[idx++] = spanId;
 			html[idx++] = "'>";
-			html[idx++] = (part2 && part2[j]) ? part2[j].name : "";
+			html[idx++] = (part2 && part2[j]) ? AjxStringUtil.htmlEncode(part2[j].name) : "";
 			html[idx++] = "</span>";
 		}
 	} else {
@@ -497,14 +497,18 @@ ZmConvListView.prototype._getToolTip =
 function(params) {
 	if (!params.item) { return; }
 
-	if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) &&
-		(params.field == ZmItem.F_PARTICIPANT || params.field == ZmItem.F_FROM))
-	{
-		var addr = params.item.participants && params.item.participants.get(params.match.participant || 0);
+	if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) && (params.field == ZmItem.F_PARTICIPANT || params.field == ZmItem.F_FROM)) { 
+		var parts = params.item.participants;
+		var matchedPart = params.match && params.match.participant;
+		var addr = parts && parts.get(matchedPart || 0);
 		if (!addr) { return ""; }
-		//Let a Zimlet[Email Zimlet] handle creating and displaying tooltip.
-		appCtxt.notifyZimlets("onHoverOverEmailInList", [addr, params.ev]);
-		return;//return null as Zimlet takes care of showing the tooltip
+
+		var ttParams = {address:addr, ev:params.ev};
+		var ttCallback = new AjxCallback(this,
+			function(callback) {
+				appCtxt.getToolTipMgr().getToolTip(ZmToolTipMgr.PERSON, ttParams, callback);
+			});
+		return {callback:ttCallback};
 	} else {
 		return ZmMailListView.prototype._getToolTip.apply(this, arguments);
 	}
@@ -821,12 +825,17 @@ function(ev) {
 		var items = ev.batchMode ? this._getItemsFromBatchEvent(ev) : [item];
 		for (var i = 0, len = items.length; i < len; i++) {
 			var conv = items[i];
-			if (this._itemToSelect && this._itemToSelect.cid == conv.id) {
-				var a = conv.msgs.getArray();
+			if (this._itemToSelect && (this._itemToSelect.cid == conv.id  //the item to select is in this conv.
+										|| this._itemToSelect.id == conv.id)) { //the item to select IS this conv
 				var omit = {};
-				for (var j = 0, len1 = a.length; j < len1; j++) {
-					omit[a[j].id] = true;
+				if (conv.msgs) { //for some reason, msgs might not be set for the conv.
+					var a = conv.msgs.getArray();
+					for (var j = 0, len1 = a.length; j < len1; j++) {
+						omit[a[j].id] = true;
+					}
 				}
+				//omit the conv too, since if we have ZmSetting.DELETE_SELECT_PREV, going up will get back to this conv, but the conv is gone
+				omit[conv.id] = true;
 				this._itemToSelect = this._controller._getNextItemToSelect(omit);
 			}
 			this._removeMsgRows(conv.id);	// conv move: remove msg rows

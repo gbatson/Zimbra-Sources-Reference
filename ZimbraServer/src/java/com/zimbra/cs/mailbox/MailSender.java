@@ -759,7 +759,7 @@ public class MailSender {
             // if the call doesn't require a Sender but the caller supplied one, pass it through if it's acceptable
             Address addr = mm.getSender();
             if (addr != null && addr instanceof InternetAddress) {
-                if (AccountUtil.addressMatchesAccount(authuser, ((InternetAddress) addr).getAddress()))
+                if (AccountUtil.addressMatchesAccountOrSendAs(authuser, ((InternetAddress) addr).getAddress()))
                     sender = (InternetAddress) addr;
             }
         }
@@ -856,6 +856,10 @@ public class MailSender {
                 }
             }
         } catch (SendFailedException e) {
+            //skip roll backs for partial send failure cases!
+            if (isSendPartial())
+                throw new SafeSendFailedException(e);
+            
             for (RollbackData rdata : rollbacks)
                 if (rdata != null)
                     rdata.rollback();

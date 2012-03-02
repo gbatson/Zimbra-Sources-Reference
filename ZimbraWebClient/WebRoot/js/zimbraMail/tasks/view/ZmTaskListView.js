@@ -35,7 +35,7 @@ ZmTaskListView = function(parent, controller, dropTgt) {
     
 	var headerList = this._getHeaderList(parent);
 
-    var params = {parent:parent, posStyle:Dwt.ABSOLUTE_STYLE, view:ZmId.VIEW_TASKLIST, pageless:true,
+    var params = {parent:parent, posStyle:Dwt.ABSOLUTE_STYLE, view:ZmId.VIEW_TASKLIST, pageless:false,
 				  type:ZmItem.TASK, controller:controller, headerList:headerList, dropTgt:dropTgt}
 
 	ZmListView.call(this, params);
@@ -258,7 +258,7 @@ function(list, noResultsOk, doAdd) {
                taskStatusClass += " ZmOverduetask";
             }
 
-			var div = this._createItemHtml(item, {now:now,divClass:taskStatusClass}, !doAdd, i);
+			var div = this._createItemHtml(item, {now:now,divClass:taskStatusClass}, true, i);
             if (div) {
 				if (div instanceof Array) {
 					for (var j = 0; j < div.length; j++){
@@ -628,6 +628,16 @@ function(htmlArr, idx, headerCol, i, numCols, id, defaultColumnSort) {
 
 
 // Listeners
+// this method simply appends the given list to this current one
+ZmTaskListView.prototype.replenish =
+function(list) {
+	this._list.addList(list);
+	this._renderList(this.getList(),true,false);
+};
+
+ZmTaskListView.prototype.checkTaskReplenishListView = function() {
+    this._controller._app._checkReplenishListView = this;
+};
 
 ZmTaskListView.prototype._changeListener =
 function(ev) {
@@ -646,7 +656,7 @@ function(ev) {
 			if (appCtxt.getById(folderId) &&
 				appCtxt.getById(folderId).isRemote())
 			{
-				folderId = appCtxt.getById(folderId)._remoteId; //getRemoteId();
+				folderId = appCtxt.getById(folderId).getRemoteId();
 			}
 
 			if (appCtxt.isOffline) {
@@ -668,10 +678,6 @@ function(ev) {
 			}
 
 			this._list.add(item, idx);
-
-            if(appCtxt.getCurrentApp().getName() == ZmApp.TASKS){
-			    appCtxt.getSearchController().redoSearch(appCtxt.getCurrentSearch());
-            }
             this._renderList(this.getList(),true,false);
             if(this._list && this._list.size() == 1) { this.setSelection(this._list.get(0)); }
 		}
@@ -686,17 +692,33 @@ function(ev) {
                 task.message = null;
 			    task.getDetails(ZmCalItem.MODE_EDIT, new AjxCallback(this._controller, this._controller._showTaskReadOnlyView, task));
 		    }
-            //bug:53715 refreshed the listview after modification
-            if(appCtxt.getCurrentApp().getName() == ZmApp.TASKS){
-                appCtxt.getSearchController().redoSearch(appCtxt.getCurrentSearch());
-            }
-            this._renderList(this.getList(),true,false);
+            this.checkTaskReplenishListView();
 		}
 	} else if (ev.event == ZmEvent.E_DELETE || ev.event == ZmEvent.E_MOVE) {
-        for (var i = 0; i < items.length; i++) {
-			this.removeItem(items[i], true);
+        var needsSort = false;
+        for (var i = 0, len = items.length; i < len; i++) {
+			var item = items[i];
+            var movedHere = item.type == ZmId.ITEM_CONV ? item.folders[this._folderId] : item.folderId == this._folderId;
+			if (movedHere && ev.event == ZmEvent.E_MOVE) {
+				// We've moved the item into this folder
+				if (this._getRowIndex(item) === null) { // Not already here
+					this.addItem(item);
+					needsSort = true;
+				}
+			} else {
+				this.removeItem(item, true, ev.batchMode);
+				// if we've removed it from the view, we should remove it from the reference
+				// list as well so it doesn't get resurrected via replenishment *unless*
+				// we're dealing with a canonical list (i.e. contacts)
+				var itemList = this.getItemList();
+				if (ev.event != ZmEvent.E_MOVE || !itemList.isCanonical) {
+					itemList.remove(item);
+				}
+			}
 		}
-		this._controller._app._checkReplenishListView = this;
+        if(needsSort) {
+            this.checkTaskReplenishListView();
+        }
 		this._controller._resetToolbarOperations();
 		if(this._controller.isReadingPaneOn()) {
 			this._controller.getTaskMultiView().getTaskView().reset();

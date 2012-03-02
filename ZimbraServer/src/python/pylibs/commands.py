@@ -54,7 +54,7 @@ exe = {
 	}
 
 class Command:
-	P = LdapProvisioning()
+	P = Provisioning.getInstance()
 
 	@classmethod
 	def resetProvisioning(cls, type):
@@ -63,7 +63,7 @@ class Command:
 		else:
 			try:
 				cls.P.flushCache(Provisioning.CacheEntryType.fromString(type), None)
-			except Exception, e:
+			except:
 				pass  # mailboxd is down, or not running here, either way we don't care.
 
 	def __init__(self, desc, name, cmd=None, func=None, args=None, base="/opt/zimbra"):
@@ -113,6 +113,11 @@ class Command:
 			Log.logMsg(2, self.error)
 			raise Exception, self.error
 		else:
+			if (not output):
+				output = "UNKNOWN OUTPUT"
+			if (not error):
+				error = "UNKNOWN ERROR"
+
 			self.output = output
 			self.error = error
 			if rc:
@@ -155,12 +160,11 @@ def gamau(sArgs=None, aArgs=None):
 			if server.getBooleanAttr(Provisioning.A_zimbraMtaAuthTarget, False):
 				o.append(URLUtil.getAdminURL(server))
 
-		# output = " ".join(o)
 		output = o
 
-	except Exception, e:
+	except:
 		rc = 1
-		error = str(e)
+		error = str(sys.exc_info()[1])
 	return (rc, output, error)
 
 def garpu(sArgs=None, aArgs=None):
@@ -178,11 +182,10 @@ def garpu(sArgs=None, aArgs=None):
 				o.append("%s%s:%d%s" % (REVERSE_PROXY_PROTO, server.getAttr(Provisioning.A_zimbraServiceHostname, ""),REVERSE_PROXY_PORT,REVERSE_PROXY_PATH))
 
 		output = o
-		# output = " ".join(o)
 
-	except Exception, e:
+	except:
 		rc = 1
-		error = str(e)
+		error = str(sys.exc_info()[1])
 	return (rc, output, error)
 
 def garpb(sArgs=None, aArgs=None):
@@ -212,11 +215,10 @@ def garpb(sArgs=None, aArgs=None):
 		output = o
 		if not len(o):
 			output = ["    server localhost:8080;"]
-			# output = "\n".join(o)
 
-	except Exception, e:
+	except:
 		rc = 1
-		error = str(e)
+		error = str(sys.exc_info()[1])
 
 	return (rc, output, error)
 
@@ -232,12 +234,11 @@ def gamcs(sArgs=None, aArgs=None):
 		for server in P.getAllServers(Provisioning.SERVICE_MEMCACHED):
 			o.append("%s:%s" % (server.getAttr(Provisioning.A_zimbraServiceHostname, ""),server.getAttr(Provisioning.A_zimbraMemcachedBindPort, "")))
 
-		# output = "\n".join(o)
 		output = o
 
-	except Exception, e:
+	except:
 		rc = 1
-		error = str(e)
+		error = str(sys.exc_info()[1])
 	return (rc, output, error)
 
 def getserver(sArgs=None, aArgs=None):
@@ -250,9 +251,9 @@ def getserver(sArgs=None, aArgs=None):
 		P = Command.P
 		output = P.getLocalServer().getAttrs(True).entrySet()
 
-	except Exception, e:
+	except:
 		rc = 1
-		error = str(e)
+		error = str(sys.exc_info()[1])
 	return (rc, output, error)
 
 def getglobal(sArgs=None, aArgs=None):
@@ -265,9 +266,9 @@ def getglobal(sArgs=None, aArgs=None):
 		P = Command.P
 		output = P.getConfig().getAttrs(True).entrySet()
 
-	except Exception, e:
+	except:
 		rc = 1
-		error = str(e)
+		error = str(sys.exc_info()[1])
 	return (rc, output, error)
 
 def getlocal(sArgs=None, rArgs=None):

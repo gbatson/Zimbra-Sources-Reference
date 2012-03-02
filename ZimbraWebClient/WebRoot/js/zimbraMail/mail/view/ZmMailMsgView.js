@@ -62,6 +62,7 @@ ZmMailMsgView = function(params) {
 	}
 
 	this.noTab = true;
+    this._attachmentLinkIdToFileNameMap = null;
 };
 
 ZmMailMsgView.prototype = new DwtComposite;
@@ -144,6 +145,12 @@ function() {
 	}
 	this.setScrollWithIframe(this._scrollWithIframe);
 };
+
+ZmMailMsgView.prototype.getInviteMsgView =
+function() {
+	return this._inviteMsgView;
+};
+
 
 ZmMailMsgView.prototype.preventSelection =
 function() {
@@ -344,7 +351,16 @@ function(visible) {
 
 ZmMailMsgView.prototype._getShareToolbar =
 function() {
-	if (this._shareToolbar) { return this._shareToolbar; }
+	if (this._shareToolbar) {
+		if (AjxEnv.isIE) {
+			//reparenting on IE does not work. So recreating in this case. (similar to bug 52412 for the invite toolbar)
+			this._shareToolbar.dispose();
+			this._shareToolbar = null;
+		}
+		else {
+			return this._shareToolbar;
+		}
+	}
 
 	var buttonIds = [ZmOperation.SHARE_ACCEPT, ZmOperation.SHARE_DECLINE];
 	var params = {
@@ -373,16 +389,25 @@ function() {
 	return this._shareToolbar;
 };
 
+ZmMailMsgView.prototype._notifyZimletsNewMsg =
+function(msg, oldMsg) {
+	// notify zimlets that a new message has been opened
+	appCtxt.notifyZimlets("onMsgView", [msg, oldMsg, this]);
+};
+
+
 ZmMailMsgView.prototype._handleResponseSet =
 function(msg, oldMsg) {
 
+	var notifyZimletsInShowMore = false;
 	if (this._inviteMsgView) {
 		// always show F/B view if in stand-alone message view otherwise, check
 		// if reading pane is on
 		if (this._inviteMsgView.isActive() &&
 			(this._controller.isReadingPaneOn() || (this._controller instanceof ZmMsgController)))
 		{
-			this._inviteMsgView.showMoreInfo();
+			notifyZimletsInShowMore = true;
+			this._inviteMsgView.showMoreInfo(new AjxCallback(this, this._notifyZimletsNewMsg, [msg, oldMsg]));
 		}
 		else {
 			// resize the message view without F/B view
@@ -419,8 +444,9 @@ function(msg, oldMsg) {
 
 	}
 
-	// notify zimlets that a new message has been opened
-	appCtxt.notifyZimlets("onMsgView", [msg, oldMsg, this]);
+	if (!notifyZimletsInShowMore) {
+		this._notifyZimletsNewMsg(msg, oldMsg);
+	}
 
 	if (!msg.isDraft && msg.readReceiptRequested) {
 		this._controller.sendReadReceipt(msg);
@@ -710,8 +736,9 @@ function(msg, idoc, id, iframe) {
         }
         //Create a modifyprefs req and add the addr to modify
         if(addrToAdd) {
-            self.getTrustedSendersList().add(addrToAdd, null, true);
-            self._controller.addTrustedAddr(self.getTrustedSendersList().join(","), new AjxCallback(self, self._addTrustedAddrCallback, [addrToAdd]), new AjxCallback(self, self._addTrustedAddrErrorCallback, [addrToAdd]));
+            var trustedList = self.getTrustedSendersList();
+            trustedList.add(addrToAdd, null, true);
+            self._controller.addTrustedAddr(trustedList.getArray(), new AjxCallback(self, self._addTrustedAddrCallback, [addrToAdd]), new AjxCallback(self, self._addTrustedAddrErrorCallback, [addrToAdd]));
         }
 
 		var images = idoc.getElementsByTagName("img");
@@ -972,7 +999,7 @@ function(container, html, isTextMsg, isTruncated) {
 ZmMailMsgView.prototype._addTrustedAddrCallback =
 function(addr) {
     this.getTrustedSendersList().add(addr, null, true);
-    appCtxt.set(ZmSetting.TRUSTED_ADDR_LIST, [this.getTrustedSendersList().getArray().join(",")]);
+    appCtxt.set(ZmSetting.TRUSTED_ADDR_LIST, this.getTrustedSendersList().getArray());
     var prefApp = appCtxt.getApp(ZmApp.PREFERENCES);
     var func = prefApp && prefApp["refresh"];
     if (func && (typeof(func) == "function")) {
@@ -1019,6 +1046,69 @@ function(elementId, type) {
 };
 
 
+/**
+ *
+ * formats the array of addresses as HTML with possible "show more" expand link if more than a certain number of addresses are in the field.
+ *
+ * @param addrs array of addresses
+ * @param options
+ * @param type some type identifier (one per page)
+ * @param om {ZmObjectManager}
+ * @param htmlElId - unique view id so it works with multiple views open.
+ *
+ * returns {String} the html
+ */
+ZmMailMsgView.getAddressesFieldHtmlHelper =
+function(addrs, options, type, om, htmlElId) {
+	var idx = 0;
+	var parts = [];
+	var showMoreLink = false;
+	for (var i = 0; i < addrs.length; i++) {
+		if (i > 0) {
+			// no need for semicolon if we're showing addr bubbles
+			parts[idx++] = options.addrBubbles ? " " : AjxStringUtil.htmlEncode(AjxEmailAddress.SEPARATOR);
+		}
+
+		if (i == ZmMailMsgView.MAX_ADDRESSES_IN_FIELD) {
+			showMoreLink = true;
+			var showMoreId = ZmMailMsgView._getShowMoreId(htmlElId, type);
+			var moreId = ZmMailMsgView._getMoreId(htmlElId, type);
+			parts[idx++] = "<span id='" + showMoreId + "'>&nbsp;<a href='' onclick='ZmMailMsgView.showMore(\"" + htmlElId + "\", \"" + type + "\"); return false;'>";
+			parts[idx++] = ZmMsg.showMore;
+			parts[idx++] = "</a></span><span style='display:none;' id='" + moreId + "'>";
+		}
+		var email = addrs[i];
+		if (email.address) {
+			parts[idx++] = om
+				? (om.findObjects(email, true, ZmObjectManager.EMAIL, false, options))
+				: AjxStringUtil.htmlEncode(email.address);
+		}
+		else {
+			parts[idx++] = AjxStringUtil.htmlEncode(email.name);
+		}
+	}
+	if (showMoreLink) {
+		parts[idx++] = "</span>";
+	}
+	return parts.join("");
+};
+
+
+/**
+ *
+ * formats the array of addresses as HTML with possible "show more" expand link if more than a certain number of addresses are in the field.
+ *
+ * @param addrs array of addresses
+ * @param options
+ * @param type some type identifier (one per page)
+ *
+ * returns {String} the html
+ */
+ZmMailMsgView.prototype.getAddressesFieldHtml =
+function(addrs, options, type) {
+	return ZmMailMsgView.getAddressesFieldHtmlHelper(addrs, options, type, this._objectManager, this._htmlElId);
+};
+
 ZmMailMsgView.prototype._renderMessage =
 function(msg, container, callback) {
 	var acctId = appCtxt.getActiveAccount().id;
@@ -1042,6 +1132,7 @@ function(msg, container, callback) {
     }
 	var sentByIcon = cl	? (cl.getContactByEmail((sentBy && sentBy.address ) ? sentBy.address : sentByAddr ) ? "Contact" : "NewContact")	: null;
 	var obo = sender ? addr : null;
+	var oboAddr = obo && obo != ZmMsg.unknown ? obo.getAddress() : null;
 	var additionalHdrs = [];
 	var invite = msg.invite;
 	var autoSendTime = AjxUtil.isDate(msg.autoSendTime) ? AjxDateFormat.getDateTimeInstance(AjxDateFormat.FULL, AjxDateFormat.MEDIUM).format(msg.autoSendTime) : null;
@@ -1110,37 +1201,8 @@ function(msg, container, callback) {
 
 		var addrs = msg.getAddresses(type).getArray();
 		if (addrs.length > 0) {
-			var idx = 0;
-			var parts = [];
-			var showMoreLink = false;
-			for (var j = 0; j < addrs.length; j++) {
-				if (j > 0) {
-					// no need for semicolon if we're showing addr bubbles
-					parts[idx++] = options.addrBubbles ? " " : AjxStringUtil.htmlEncode(AjxEmailAddress.SEPARATOR);
-				}
-
-				if (j == ZmMailMsgView.MAX_ADDRESSES_IN_FIELD) {
-					showMoreLink = true;
-					var showMoreId = ZmMailMsgView._getShowMoreId(this._htmlElId, type);
-					var moreId = ZmMailMsgView._getMoreId(this._htmlElId, type);
-					parts[idx++] = "<span id='" + showMoreId + "'>&nbsp;<a href='' onclick='ZmMailMsgView.showMore(\"" + this._htmlElId + "\", \"" + type + "\"); return false;'>";
-					parts[idx++] = ZmMsg.showMore;
-					parts[idx++] = "</a></span><span style='display:none;' id='" + moreId + "'>";
-				}
-				var email = addrs[j];
-				if (email.address) {
-					parts[idx++] = this._objectManager
-						? (this._objectManager.findObjects(email, true, ZmObjectManager.EMAIL, false, options))
-						: AjxStringUtil.htmlEncode(email.address);
-				} else {
-					parts[idx++] = AjxStringUtil.htmlEncode(email.name);
-				}
-			}
-			if (showMoreLink) {
-				parts[idx++] = "</span>";
-			}
 			var prefix = AjxStringUtil.htmlEncode(ZmMsg[AjxEmailAddress.TYPE_STRING[type]]);
-			var partStr = parts.join("");
+			var partStr = this.getAddressesFieldHtml(addrs, options, type);
 			participants.push({ prefix: prefix, partStr: partStr });
 		}
 	}
@@ -1185,7 +1247,9 @@ function(msg, container, callback) {
 		subs.sentBy = sentBy;
 		subs.sentByNormal = sentByAddr;
 		subs.sentByIcon = sentByIcon;
+		subs.sentByAddr = sentByAddr;
 		subs.obo = obo;
+		subs.oboAddr = oboAddr;
 		subs.participants = participants;
 		subs.reportBtnCellId = reportBtnCellId;
 		subs.isSyncFailureMsg = isSyncFailureMsg;
@@ -1487,7 +1551,7 @@ function(msg) {
 
 ZmMailMsgView.prototype._setAttachmentLinks =
 function() {
-
+    this._attachmentLinkIdToFileNameMap = null;
 	var isTextView = !appCtxt.get(ZmSetting.VIEW_AS_HTML);
 	var attLinks = this._msg.getAttachmentLinks(true, isTextView, true);
 	var el = document.getElementById(this._attLinksId + "_container");
@@ -1533,10 +1597,18 @@ function() {
 		} else {
 			var linkArr = [];
 			var j = 0;
-			linkArr[j++] = att.isHit ? "<span class='AttName-matched'>" : "";
-			linkArr[j++] = att.link;
-			linkArr[j++] = AjxStringUtil.htmlEncode( AjxStringUtil.clipFile(att.label, 30) );
-			linkArr[j++] = att.isHit ? "</a></span>" : "</a>";
+            var lnk = att.link;
+            var displayFileName = AjxStringUtil.clipFile(att.label, 30);
+            if (displayFileName != att.label) {
+                if (!this._attachmentLinkIdToFileNameMap) {this._attachmentLinkIdToFileNameMap = {}};
+                this._attachmentLinkIdToFileNameMap[att.attachmentLinkId] = att.label;
+            }
+
+            linkArr[j++] = att.isHit ? "<span class='AttName-matched'>" : "";
+            linkArr[j++] = lnk;
+            linkArr[j++] = AjxStringUtil.htmlEncode(displayFileName);
+            linkArr[j++] = att.isHit ? "</a></span>" : "</a>";
+
 			var link = linkArr.join("");
 			// objectify if this attachment is an image
 			if (att.objectify && this._objectManager) {
@@ -1637,6 +1709,23 @@ function() {
 
 	var attLinksDiv = document.getElementById(this._attLinksId);
 	attLinksDiv.innerHTML = htmlArr.join("");
+};
+
+ZmMailMsgView.prototype.getToolTipContent =
+function(evt) {
+    if (!this._attachmentLinkIdToFileNameMap) {return null};
+
+    var tgt = DwtUiEvent.getTarget(evt, false);
+    if (tgt && tgt.nodeName.toLowerCase() == "a") {
+        var id = tgt.getAttribute("id");
+        if (id) {
+            var fileName = this._attachmentLinkIdToFileNameMap[id];
+            if (fileName) {
+                return AjxStringUtil.htmlEncode(fileName);
+            }
+        }
+    }
+    return null;
 };
 
 // AttachmentLink Handlers
@@ -2095,19 +2184,20 @@ function(result) {
 	// notifications have been processed.
 	var msgNode = result.getResponse().RemoveAttachmentsResponse.m[0];
 	ac.getApp(ZmApp.MAIL).getMailListController().actionedMsgId = msgNode.id;
-
-	var currView = appCtxt.getAppController().getAppViewMgr().getCurrentView();
-	var msgView = appCtxt.isChildWindow 
+    var list = ac.getApp(ZmApp.MAIL).getMailListController().getList();
+    var currView = appCtxt.getAppController().getAppViewMgr().getCurrentView();
+	var msgView = appCtxt.isChildWindow || currView instanceof ZmMailMsgView
 		? currView : (currView.getMsgView && currView.getMsgView());
 
-	if (msgView) {
-		var msg = msgView._msg;
-		msg.attachments.length = 0;
-		msg._bodyParts = [];
-		msg._loadFromDom(msgNode);
-		msgView._msg = null;
-		msgView.set(msg);
-	}
+    if (currView && Dwt.instanceOf(currView, "ZmConvView")) {
+        ZmConvView._handleRemoveAttachment(result);
+    }
+	else if (msgView) {
+        var msg = new ZmMailMsg(msgNode.id, list, true);
+        msg._loadFromDom(msgNode);
+        msgView._msg = null;
+        msgView.set(msg);
+    }
 };
 
 ZmMailMsgView._buildZipUrl =

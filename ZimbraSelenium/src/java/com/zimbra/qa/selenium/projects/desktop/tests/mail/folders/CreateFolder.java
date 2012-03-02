@@ -1,86 +1,167 @@
 package com.zimbra.qa.selenium.projects.desktop.tests.mail.folders;
 
-import org.testng.annotations.AfterMethod;
-import org.testng.annotations.Test;
+import org.testng.annotations.*;
 
 import com.zimbra.qa.selenium.framework.items.FolderItem;
-import com.zimbra.qa.selenium.framework.items.ContextMenuItem.CONTEXT_MENU_ITEM_NAME;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
-import com.zimbra.qa.selenium.projects.desktop.core.DesktopCommonTest;
-import com.zimbra.qa.selenium.projects.desktop.ui.ContextMenu;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.desktop.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.desktop.ui.mail.DialogCreateFolder;
-import com.zimbra.qa.selenium.projects.desktop.ui.mail.TreeMail;
 
-public class CreateFolder extends DesktopCommonTest{
+public class CreateFolder extends AjaxCommonTest {
 
-   private boolean _folderIsCreated = false;
-   private String _folderName = null;
+	private boolean _folderIsCreated = false;
+	private String _folderName = null;
+	private SOAP_DESTINATION_HOST_TYPE _soapDestination = null;
 
-   public CreateFolder() throws HarnessException {
-      logger.info("New " + CreateFolder.class.getCanonicalName());
+	public CreateFolder() {
+		logger.info("New " + CreateFolder.class.getCanonicalName());
 
-      super.startingPage = app.zPageMail;
-      super.startingAccountPreferences = null;
-   }
+		// All tests start at the login page
+		super.startingPage = app.zPageMail;
+		super.startingAccountPreferences = null;
+	}
 
-   @Test(description = "Create a new folder",
-         groups = {"sanity"})
-   public void CreateFolder_01() throws HarnessException {
-      _folderName = "folder" + ZimbraSeleniumProperties.getUniqueString();
-      String locator = "css=td[id*='" + startingAccount.EmailAddress + "'][id*='2_textCell']";
+	@BeforeMethod(alwaysRun = true)
+	public void setParameters() {
+		_soapDestination = ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP ? SOAP_DESTINATION_HOST_TYPE.CLIENT
+				: SOAP_DESTINATION_HOST_TYPE.SERVER;
+	}
 
-      logger.debug("ID is: " + locator);
-      GeneralUtility.waitForElementPresent(app.zPageMail, locator);
+	@Test(description = "Create a new folder using keyboard shortcuts", groups = { "functional" })
+	public void CreateFolder_02() throws HarnessException {
 
-      String treeItemLocator = TreeMail.Locators.zTreeItems.replace(TreeMail.stringToReplace, defaultAccountName);
-      ContextMenu contextMenu = (ContextMenu)app.zTreeMail.zTreeItem(Action.A_RIGHTCLICK, treeItemLocator);
+		Shortcut shortcut = Shortcut.S_NEWFOLDER;
 
-      DialogCreateFolder createFolderDialog = (DialogCreateFolder)contextMenu.zSelect(CONTEXT_MENU_ITEM_NAME.NEW_FOLDER);
-      createFolderDialog.zEnterFolderName(_folderName);
-      createFolderDialog.zClick(DialogCreateFolder.Locators.zOkButton);
-      _folderIsCreated = true;
+		// Set the new folder name
+		_folderName = "folder" + ZimbraSeleniumProperties.getUniqueString();
 
+		DialogCreateFolder dialog = (DialogCreateFolder) app.zPageMail
+				.zKeyboardShortcut(shortcut);
+		ZAssert.assertNotNull(dialog, "Verify the new dialog opened");
+
+		// Fill out the form with the basic details
+		// TODO: does a folder in the tree need to be selected?
+		dialog.zEnterFolderName(_folderName);
+		dialog.zClickButton(Button.B_OK);
+
+	   // Force-sync
+      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+      
       // Make sure the folder was created on the Desktop Server
-      Object[] params = {startingAccount, _folderName, SOAP_DESTINATION_HOST_TYPE.CLIENT, startingAccount.EmailAddress};
-      FolderItem desktopFolder = (FolderItem)GeneralUtility.waitFor("com.zimbra.qa.selenium.framework.items.FolderItem",
-            null, true, "importFromSOAP", params, WAIT_FOR_OPERAND.NEQ, null, 30000, 1000);
-      ZAssert.assertNotNull(desktopFolder, "Verify the new form opened");
-      ZAssert.assertEquals(desktopFolder.getName(), _folderName, "Verify the server and client folder names match");
+      FolderItem desktopFolder = FolderItem.importFromSOAP(app
+            .zGetActiveAccount(), _folderName,
+            SOAP_DESTINATION_HOST_TYPE.CLIENT,
+            app.zGetActiveAccount().EmailAddress);
 
-      // Force-sync
-      app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+      ZAssert.assertNotNull(desktopFolder, "Verify the new form opened");
+      ZAssert.assertEquals(desktopFolder.getName(), _folderName,
+      "Verify the server and client folder names match");
 
       // Make sure the folder was created on the ZCS server
-      params = new Object[] {startingAccount, _folderName};
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(),
+		      _folderName);
+		ZAssert.assertNotNull(folder, "Verify the new folder was created");
 
-      // Anticipate for slow performance client to ZCS server connection, thus putting 30 seconds
-      FolderItem folder = (FolderItem)GeneralUtility.waitFor("com.zimbra.qa.selenium.framework.items.FolderItem",
-            null, true, "importFromSOAP", params, WAIT_FOR_OPERAND.NEQ, null, 30000, 1000);
-      ZAssert.assertNotNull(folder, "Verify the new form opened");
-      ZAssert.assertEquals(folder.getName(), _folderName, "Verify the server and client folder names match");
-   }
+		ZAssert.assertEquals(folder.getName(), _folderName,
+				"Verify the server and client folder names match");
+	}
 
-   @AfterMethod(groups = {"always"})
-   public void createFolderTestCleanup() {
-      if (_folderIsCreated) {
-         try {
-            app.zPageMail.zNavigateTo();
-            // Delete it from Email Server
-            FolderItem.deleteUsingSOAP(startingAccount, _folderName);
-         } catch (Exception e) {
-            logger.info("Failed while removing the folder.");
-            e.printStackTrace();
-         } finally {
-            _folderName = null;
-            _folderIsCreated = false;            
-         }
-      }
-   }
+	@Test(description = "Create a new folder using context menu from root folder", groups = { "functional" })
+	public void CreateFolder_03() throws HarnessException {
+		_folderName = "folder" + ZimbraSeleniumProperties.getUniqueString();
+
+		FolderItem folderItem = FolderItem.importFromSOAP(app
+				.zGetActiveAccount(), FolderItem.SystemFolder.UserRoot,
+				_soapDestination, app.zGetActiveAccount().EmailAddress);
+		DialogCreateFolder createFolderDialog = (DialogCreateFolder) app.zPageMail
+				.zListItem(Action.A_RIGHTCLICK, Button.B_TREE_NEWFOLDER,
+						folderItem);
+
+		createFolderDialog.zEnterFolderName(_folderName);
+		createFolderDialog.zClickButton(Button.B_OK);
+
+		_folderIsCreated = true;
+
+		// Force-sync
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		
+		// Make sure the folder was created on the Desktop Server
+		FolderItem desktopFolder = FolderItem.importFromSOAP(app
+		      .zGetActiveAccount(), _folderName,
+		      SOAP_DESTINATION_HOST_TYPE.CLIENT,
+		      app.zGetActiveAccount().EmailAddress);
+		
+		ZAssert.assertNotNull(desktopFolder, "Verify the new form opened");
+		ZAssert.assertEquals(desktopFolder.getName(), _folderName,
+		"Verify the server and client folder names match");
+
+		// Make sure the folder was created on the ZCS server
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(),
+				_folderName);
+		ZAssert.assertNotNull(folder, "Verify the new form opened");
+		ZAssert.assertEquals(folder.getName(), _folderName,
+				"Verify the server and client folder names match");
+	}
+
+	@Test(description = "Create a new folder using mail app New -> New Folder", groups = { "sanity" })
+	public void CreateFolder_04() throws HarnessException {
+
+		// Set the new folder name
+	   _folderName = "folder" + ZimbraSeleniumProperties.getUniqueString();
+
+		// Create a new folder in the inbox
+		// using the context menu + New Folder
+		DialogCreateFolder dialog = (DialogCreateFolder) app.zPageMail.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_FOLDER);
+		ZAssert.assertNotNull(dialog, "Verify the new dialog opened");
+
+		// Fill out the form with the basic details
+		// TODO: does a folder in the tree need to be selected?
+		dialog.zEnterFolderName(_folderName);
+		dialog.zClickButton(Button.B_OK);
+
+		_folderIsCreated = true;
+
+      // Force-sync
+      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+      
+      // Make sure the folder was created on the Desktop Server
+      FolderItem desktopFolder = FolderItem.importFromSOAP(app
+            .zGetActiveAccount(), _folderName,
+            SOAP_DESTINATION_HOST_TYPE.CLIENT,
+            app.zGetActiveAccount().EmailAddress);
+      
+      ZAssert.assertNotNull(desktopFolder, "Verify the new form opened");
+      ZAssert.assertEquals(desktopFolder.getName(), _folderName,
+      "Verify the server and client folder names match");
+
+      // Make sure the folder was created on the server
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(),_folderName);
+		ZAssert.assertNotNull(folder, "Verify the new folder was created");
+
+		ZAssert.assertEquals(folder.getName(), _folderName,
+				"Verify the server and client folder names match");
+
+	}
+
+	@AfterMethod(groups = { "always" })
+	public void createFolderTestCleanup() {
+		if (_folderIsCreated) {
+			try {
+				app.zPageMail.zNavigateTo();
+				// Delete it from Email Server
+				FolderItem
+						.deleteUsingSOAP(app.zGetActiveAccount(), _folderName);
+			} catch (Exception e) {
+				logger.info("Failed while removing the folder.");
+				e.printStackTrace();
+			} finally {
+				_folderName = null;
+				_folderIsCreated = false;
+			}
+		}
+	}
+
 }

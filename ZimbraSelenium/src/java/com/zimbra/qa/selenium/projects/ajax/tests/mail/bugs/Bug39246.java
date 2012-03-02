@@ -26,7 +26,8 @@ public class Bug39246 extends AjaxCommonTest {
 	@Test(	description = "Verify bug 39246",
 			groups = { "functional" })
 	public void Bug39246_01() throws HarnessException  {
-		
+					
+			
 		final String subject = "Bug39246";
 		final String mime = ZimbraSeleniumProperties.getBaseDirectory() + "/data/private/mime/viewEntireMessage_Bug39246.txt";
 		
@@ -41,10 +42,23 @@ public class Bug39246 extends AjaxCommonTest {
 		DisplayMail display = (DisplayMail) app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
 
 		// In the preview pane, click "View Entire Message"
-		display.zClickViewEntireMessage();
-		
-		throw new HarnessException("Convert remaining code from LmtpInject.viewEntireMessage_Bug39246()");
+		display.zPressButton(Button.B_VIEW_ENTIRE_MESSAGE);
 
+		String windowTitle = "Zimbra: "+ subject;
+
+		try {
+			
+			// Focus on the separate window
+			app.zPageMail.zSeparateWindowFocus(windowTitle);
+			
+			// TODO: add all other verification from bug 39246 test case
+			
+		} finally {
+			
+			app.zPageMail.zSeparateWindowClose(windowTitle);
+						
+		}			
+			
 		
 	}
 

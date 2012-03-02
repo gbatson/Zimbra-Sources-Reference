@@ -52,6 +52,7 @@ import com.zimbra.common.util.tar.TarInputStream;
 import com.zimbra.common.util.zip.ZipShort;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.ZAttrProvisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.account.offline.OfflineAccount.Version;
@@ -68,6 +69,7 @@ import com.zimbra.cs.offline.Offline;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.OfflineSyncManager;
+import com.zimbra.cs.offline.ab.SyncException;
 import com.zimbra.cs.redolog.op.CreateChat;
 import com.zimbra.cs.redolog.op.CreateContact;
 import com.zimbra.cs.redolog.op.CreateFolder;
@@ -956,6 +958,9 @@ public class InitialSync {
     }
 
     private void syncMessagesAsTgz(List<Integer> ids, byte type) throws ServiceException {
+        if (isAttachmentDownloadBlocked()) {
+            handleAttachmentDownloadBlocking(ombx.getOfflineAccount());
+        }
         OfflineAccount acct = ombx.getOfflineAccount();
         UserServlet.HttpInputStream in = null;
         Pair<Header[], UserServlet.HttpInputStream> response;
@@ -1022,7 +1027,7 @@ public class InitialSync {
                 }
             } catch (IOException x) {
                 boolean empty = false;          // workaround bug in tar formatter
-                
+
                 for (Header hdr : response.getFirst()) {
                     if (hdr.getName().equalsIgnoreCase("Content-Length"))
                         if (hdr.getValue().equals("0"))
@@ -1040,6 +1045,21 @@ public class InitialSync {
         }
     }
     
+    private boolean isAttachmentDownloadBlocked() throws ServiceException {
+        return (ombx.getRemoteServerVersion().getMajor() < 7) && (Boolean.valueOf(ombx.getOfflineAccount().getAttr(ZAttrProvisioning.A_zimbraAttachmentsBlocked)));
+    }
+    
+    /**
+     * GNR server sends blocking msg back if zimbraAttachmentsBlocked is set to TRUE. There is no way zd can sync with server. Generates a SyncException and user get an error report.
+     * @param account account whose zimbraAttachmentBlocked attribute is set to TRUE
+     * @throws ServiceException
+     */
+    private void handleAttachmentDownloadBlocking(OfflineAccount account) throws ServiceException {
+        String errorMsg = "Attachment downloading is disabled. Please contact your administrator";
+        SyncExceptionHandler.saveFailureReport(ombx, 0, errorMsg, null);
+        throw new SyncException(errorMsg);
+    }
+
     private void syncMessagesAsZip(List<Integer> ids, byte type) throws ServiceException {
         UserServlet.HttpInputStream in = null;
         String zlv = OfflineLC.zdesktop_sync_zip_level.value();
@@ -1348,6 +1368,9 @@ public class InitialSync {
     
     // tar formatter
     void syncDocument(String query) throws ServiceException {
+        if (isAttachmentDownloadBlocked()) {
+            handleAttachmentDownloadBlocking(ombx.getOfflineAccount());
+        }
         OfflineSyncManager.getInstance().continueOK();
         
         OfflineAccount acct = ombx.getOfflineAccount();

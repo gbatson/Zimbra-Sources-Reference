@@ -1,12 +1,12 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 
+import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
 import com.zimbra.qa.selenium.framework.ui.AbsForm;
-import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseNew.Field;
 
 public class DocumentBriefcaseEdit extends AbsForm {
 
@@ -17,10 +17,18 @@ public class DocumentBriefcaseEdit extends AbsForm {
 		public static final String zNameField = "css=[class=DwtInputField] input";
 	}
 
-	public static String pageTitle;
+	private DocumentItem docItem;
 
-	public DocumentBriefcaseEdit(AbsApplication application) {
+	public DocumentItem getDocItem() {
+		return docItem;
+	}
+
+	public DocumentBriefcaseEdit(AbsApplication application,
+			DocumentItem document) {
 		super(application);
+
+		docItem = document;
+
 		logger.info("new " + DocumentBriefcaseEdit.class.getCanonicalName());
 	}
 
@@ -48,6 +56,7 @@ public class DocumentBriefcaseEdit extends AbsForm {
 	}
 
 	public void typeDocumentName(String text) throws HarnessException {
+		zSelectWindow(docItem.getName());
 		sType(Locators.zNameField, text);
 	}
 
@@ -55,8 +64,58 @@ public class DocumentBriefcaseEdit extends AbsForm {
 	public void zFill(IItem item) throws HarnessException {
 	}
 
+	public void zFillField(Field field, String value) throws HarnessException {
+
+		if (field == Field.Name) {
+
+			String nameFieldLocator = Locators.zNameField;
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(nameFieldLocator))
+				throw new HarnessException("Locator is not present: "
+						+ nameFieldLocator);
+
+			this.sMouseOver(nameFieldLocator);
+			this.sFocus(nameFieldLocator);
+			this.zClick(nameFieldLocator);
+			this.sType(nameFieldLocator, value);
+			logger.info("typed: " + value);
+
+		} else if (field == Field.Body) {
+
+			String iframeLocator = Locators.zFrame;
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(iframeLocator))
+				throw new HarnessException("Locator is not present: "
+						+ iframeLocator);
+
+			this.sMouseOver(iframeLocator);
+			this.sFocus(iframeLocator);
+			this.zClick(iframeLocator);
+			
+			this
+					.sGetEval("var bodytext=\""
+							+ value
+							+ "\";"
+							+ "var iframe_locator=\""
+							+ iframeLocator
+							+ "\";"
+							+ "var iframe_body=selenium.browserbot.findElement(iframe_locator).contentWindow.document.body;"
+							+ "if (browserVersion.isFirefox || browserVersion.isChrome){iframe_body.textContent=bodytext;}"
+							+ "else if(browserVersion.isIE){iframe_body.innerText=bodytext;}"
+							+ "else {iframe_body.innerText=bodytext;}");
+		} else {
+			throw new HarnessException("Not implemented field: " + field);
+		}
+
+		this.zWaitForBusyOverlay();
+	}
+	
 	@Override
 	public void zSubmit() throws HarnessException {
+		zSelectWindow(docItem.getName());
+
 		logger.info("DocumentBriefcaseEdit.SaveAndClose()");
 
 		// Look for "Save & Close"
@@ -74,21 +133,36 @@ public class DocumentBriefcaseEdit extends AbsForm {
 		// this.sMouseDown(Locators.zSaveAndCloseIconBtn);
 		// this.sMouseUp(Locators.zSaveAndCloseIconBtn);
 
-		// Add Document version notes in the popped up dialog
+		// add version notes
 		DialogAddVersionNotes dlgAddNotes = new DialogAddVersionNotes(
 				MyApplication, ((AppAjaxClient) MyApplication).zPageBriefcase);
 
-		if (dlgAddNotes.zIsActive()) {
-			dlgAddNotes.zEnterVersionNotes("notes"
-					+ ZimbraSeleniumProperties.getUniqueString());
-
-			dlgAddNotes.zClickButton(Button.B_OK);
-		}
+		dlgAddNotes.zDismissAddVersionNotesDlg(docItem.getName());
 	}
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		// TODO Auto-generated method stub
-		return false;
+		logger.info("DocumentBriefcaseEdit.zIsActive()");
+		if (docItem != null) {
+
+			zWaitForWindow(docItem.getName());
+
+			zSelectWindow(docItem.getName());
+
+			zWaitForElementPresent("css=div[class='ZDToolBar ZWidget']");
+
+			zWaitForElementPresent("css=iframe[id*='DWT'][class='ZDEditor']");
+
+			zWaitForIframeText("css=iframe[id*='DWT'][class='ZDEditor']",
+					docItem.getDocText());
+
+			logger.info("DocumentBriefcaseEdit is Active()");
+
+			return true;
+		} else {
+			logger.info("DocumentBriefcaseEdit.docItem is null");
+
+			return false;
+		}
 	}
 }

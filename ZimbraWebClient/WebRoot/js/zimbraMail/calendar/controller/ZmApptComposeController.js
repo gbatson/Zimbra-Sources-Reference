@@ -146,6 +146,14 @@ function(id){
 ZmApptComposeController.prototype.saveCalItem =
 function(attId) {
 	var appt = this._composeView.getAppt(attId);
+
+
+    if(!appt.isValidDuration()){
+        this._composeView.showInvalidDurationMsg();
+        this.enableToolbar(true);
+        return false;
+    }
+
 	if (appt) {
 
         if (appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED)) {
@@ -191,10 +199,10 @@ function(attId) {
 			dlg.registerCallback(DwtDialog.YES_BUTTON, this._clearInvalidAttendeesCallback, this, [appt, attId, dlg]);
 			var msg = "";
             if(this._action == ZmCalItemComposeController.SAVE){
-               msg = AjxMessageFormat.format(ZmMsg.compSaveBadAttendees, this._invalidAttendees.join(","));
+               msg = AjxMessageFormat.format(ZmMsg.compSaveBadAttendees, AjxStringUtil.htmlEncode(this._invalidAttendees.join(",")));
             }
             else{
-                msg = AjxMessageFormat.format(ZmMsg.compBadAttendees, this._invalidAttendees.join(","));
+               msg = AjxMessageFormat.format(ZmMsg.compBadAttendees, AjxStringUtil.htmlEncode(this._invalidAttendees.join(",")));
             }
 			dlg.setMessage(msg, DwtMessageDialog.WARNING_STYLE);
 			dlg.popup();
@@ -253,8 +261,9 @@ function(attId) {
 								   (resources && resources.length > 0) ||
 								   (locations && locations.length > 0);
 
-		var needsConflictCheck = (resources && resources.length > 0) ||
-								 (locations && locations.length > 0);
+		var needsConflictCheck = !appt.isForward &&
+                                 ((resources && resources.length > 0) ||
+								 (locations && locations.length > 0));
 
 		if (needsConflictCheck) {
 			this.checkConflicts(appt, attId, notifyList);
@@ -284,8 +293,6 @@ function(mode, appt) {
         sendButton.setVisible(false);
 
         this._requestResponses.setEnabled(false);
-        this.setRequestResponses(false);
-
     }else {
         sendButton.setVisible(true);
         saveButton.setVisible(true);
@@ -298,8 +305,6 @@ function(mode, appt) {
 		cancelButton.setImage("Close");
 
         this._requestResponses.setEnabled(true);
-        this.setRequestResponses(appt && appt.hasAttendees() ? appt.shouldRsvp() : true);
-
     }
 
     if((this._mode == ZmCalItem.MODE_PROPOSE_TIME) || ZmCalItem.FORWARD_MAPPING[this._mode]) {
@@ -625,6 +630,14 @@ function(appt, callback, recurInfo) {
 	var comp = soapDoc.set("comp", null, soapDoc.getMethod());
 
 	appt._addDateTimeToSoap(soapDoc, soapDoc.getMethod(), comp);
+
+    //preserve the EXDATE (exclude recur) information
+    if(recurInfo) {
+        var recurrence = appt.getRecurrence();
+        var recur = (recurInfo && recurInfo.comp) ? recurInfo.comp[0].recur : null;
+        recurrence.parseExcludeInfo(recur);
+    }
+
 	if(mode != ZmCalItem.MODE_EDIT_SINGLE_INSTANCE) appt._recurrence.setSoap(soapDoc, comp);
 
 	this.setExceptFromRecurInfo(soapDoc, recurInfo);
@@ -1029,6 +1042,7 @@ function(calItem, result) {
         calItem.setFromSavedResponse(result);
         if(this._action == ZmCalItemComposeController.SAVE){
             calItem.isDraft = this._draftFlag;
+            calItem.draftUpdated = true;
         }
         this._composeView.set(calItem, viewMode);        
     }

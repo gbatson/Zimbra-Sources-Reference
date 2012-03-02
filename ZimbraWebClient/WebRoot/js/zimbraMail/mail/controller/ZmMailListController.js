@@ -527,6 +527,7 @@ function(view) {
 	}
 	this._setupCheckMailButton(this._toolbar[view]);
 
+    this._setupPrintButton(this._toolbar[view]);
 	// reset new button properties
 	this._setNewButtonProps(view, ZmMsg.compose, "NewMessage", "NewMessageDis", ZmOperation.NEW_MESSAGE);
 };
@@ -860,7 +861,7 @@ function(params) {
 	if (action == ZmOperation.DRAFT || action == ZmOperation.FORWARD_INLINE ||
             action == ZmOperation.REPLY || action == ZmOperation.REPLY_ALL) {
 		var bp = msg.getBodyPart();
-		if (bp && bp.truncated) {
+		if ((bp && bp.truncated) || !msg._loaded) {
 			params.noTruncate = true;
 			params.forceLoad = true;
 		}
@@ -880,11 +881,20 @@ function(params, msg) {
 
 	params.inNewWindow = (!appCtxt.isChildWindow && this._app._inNewWindow(params.ev));
 
+    if (msg.list && msg.isUnread && !appCtxt.getById(msg.folderId).isReadOnly()) {
+        msg.list.markRead({items:[msg], value:true});
+    }
+
 	// special handling for multiple forward action
 	var action = params.action;
 	if (action == ZmOperation.FORWARD_ATT || action == ZmOperation.FORWARD_INLINE) {
+		var cview = this._listView[this._currentView];
+		if (cview) {
+			var selection = cview.getSelection();
+			var selCount = selection.length;
+		}
 		// bug 43428 - invitation should be forwarded using apt forward view
-		if (msg.forwardAsInvite()) {
+		if (selCount == 1 && msg.forwardAsInvite()) {
 			var ac = window.parentAppCtxt || window.appCtxt;
 			var controller = ac.getApp(ZmApp.CALENDAR).getCalController();
 			controller.forwardInvite(msg);
@@ -895,16 +905,8 @@ function(params, msg) {
 		}
 
 		// reset the action if user is forwarding multiple mail items inline
-		var cview = this._listView[this._currentView];
-		var selection, selCount;
-		if (cview) {
-			selection = cview.getSelection();
-			selCount = selection.length;
-			if (cview && (action == ZmOperation.FORWARD_INLINE) && (selCount > 1)) {
-				action = params.action = ZmOperation.FORWARD_ATT;
-			}
-		}
-		if (action == ZmOperation.FORWARD_ATT && selCount > 1) {
+		if (selCount > 1) {
+			action = params.action = ZmOperation.FORWARD_ATT;
 			// get msg Id's for each conversation selected
 			var batchCmd = new ZmBatchCommand();
 			var callback = new AjxCallback(this, this._handleLoadMsgs, [params, selection]);
@@ -977,7 +979,12 @@ function(items, markAsSpam, folder) {
 	this._listView[this._currentView]._itemToSelect = this._getNextItemToSelect();
 	items = AjxUtil.toArray(items);
 
-	var params = {items:items, markAsSpam:markAsSpam, folder:folder, childWin:appCtxt.isChildWindow && window};
+	var params = {items:items,
+					markAsSpam:markAsSpam,
+					folder:folder,
+					childWin:appCtxt.isChildWindow && window,
+					closeChildWin: appCtxt.isChildWindow};
+
 	var allDoneCallback = new AjxCallback(this, this._checkItemCount);
 	var list = this._setupContinuation(this._doSpam, [markAsSpam, folder], params, allDoneCallback);
 	list.spamItems(params);
@@ -1011,13 +1018,24 @@ function(ev) {
 		this._editInviteReply(ZmMailListController.INVITE_REPLY_MAP[type], ev._inviteComponentId, null, null, ev._inviteReplyFolderId);
 	}
 	else {
+		var callback = new AjxCallback(this, this._handleInviteReplySent);
 		var accountName = ac.multiAccounts && ac.accountList.mainAccount.name;
-		var resp = this._sendInviteReply(type, ev._inviteComponentId, null, accountName, null, ev._msg, ev._inviteReplyFolderId);
+		var resp = this._sendInviteReply(type, ev._inviteComponentId, null, accountName, null, ev._msg, ev._inviteReplyFolderId, callback);
 		if (resp && appCtxt.isChildWindow) {
 			window.close();
 		}
 	}
 	return false;
+};
+
+ZmMailListController.prototype._handleInviteReplySent =
+function(result, newPtst) {
+	var inviteMsgView = this.getReferenceView().getInviteMsgView();
+	if (!inviteMsgView || !newPtst) {
+		return;
+	}
+	inviteMsgView.enableToolbarButtons(newPtst);
+	inviteMsgView.updatePtstMsg(newPtst);
 };
 
 ZmMailListController.prototype._shareHandler =
@@ -1170,6 +1188,18 @@ function(parent) {
 	}
 };
 
+// set tooltip for print button
+ZmMailListController.prototype._setupPrintButton =
+function(parent) {
+    if (!parent) { return; }
+
+    var item = parent.getOp(ZmOperation.PRINT);
+    if (item) {
+        item.setToolTipContent(ZmMsg.printMultiTooltip);
+
+    }
+};
+
 ZmMailListController.prototype._setupEditButton =
 function(parent) {
 	if (!parent) { return; }
@@ -1243,7 +1273,7 @@ function(params, callback) {
 	if (!msg) {
 		callback.run();
 	}
-	if (msg._loaded) {
+	if (msg._loaded && !params.forceLoad) {
 		callback.run(msg);
 	} else {
 		if (msg.id == this._pendingMsg) { return; }
@@ -1251,7 +1281,7 @@ function(params, callback) {
 		this._pendingMsg = msg.id;
 		// use prototype in callback because these functions are overridden by ZmConvListController
 		var respCallback = new AjxCallback(this, ZmMailListController.prototype._handleResponseGetLoadedMsg, [callback, msg]);
-		msg.load({getHtml:params.getHtml, markRead:params.markRead, callback:respCallback, noBusyOverlay:false});
+		msg.load({getHtml:params.getHtml, markRead:params.markRead, callback:respCallback, noBusyOverlay:false, forceLoad: params.forceLoad, noTruncate: params.noTruncate});
 	}
 };
 
@@ -1624,15 +1654,16 @@ function(parent, num) {
 					item = sel[0];
 				}
 			}
+			var itemFolder = item && item.folderId && appCtxt.getById(item.folderId); // We may be looking at a search result, so the items in the list may not all be in the same folder
 			var isDrafts = (item && item.isDraft) || (folderId == ZmFolder.ID_DRAFTS);
-			var isFeed = (folder && folder.isFeed());
+			var isFeed = (itemFolder && itemFolder.isFeed());
 			parent.enable([ZmOperation.REPLY, ZmOperation.REPLY_ALL], (!isDrafts && !isFeed && num == 1));
 			parent.enable(ZmOperation.DETACH, (appCtxt.get(ZmSetting.DETACH_MAILVIEW_ENABLED) && !isDrafts && num == 1));
 			parent.enable([ZmOperation.SPAM, ZmOperation.MOVE, ZmOperation.FORWARD], (!isDrafts && num > 0));
 			parent.enable([ZmOperation.CHECK_MAIL, ZmOperation.VIEW_MENU], true);
 			var editButton = parent.getOp(ZmOperation.EDIT);
 			if (editButton) {
-				editButton.setVisible(isDrafts);
+				editButton.setVisible(isDrafts && (!itemFolder || !itemFolder.isReadOnly()));
 			}
 		}
 	} else {
@@ -1647,7 +1678,7 @@ function(parent, num) {
 		var editMenu = this._draftsActionMenu.getOp(ZmOperation.EDIT);
 		if (editMenu) {
 			// Enable|disable 'edit' context menu item based on selection count
-			editMenu.setEnabled(num == 1);
+			editMenu.setEnabled(num == 1 && !folder.isReadOnly());
 		}
 	}
 
@@ -1682,10 +1713,13 @@ function(menu, hasUnread, hasRead) {
 * @private
 */
 ZmMailListController.prototype.pageItemSilently =
-function(currentItem, forward) {
+function(currentItem, forward, msgController) {
 
 	var newItem = this._getNextItem(currentItem, forward);
 	if (newItem) {
+		if (msgController) {
+			msgController.inactive = true; //make it inactive so it can be reused instead of creating a new one for each item paged.
+		}
 		var lv = this._listView[this._currentView];
 		lv.emulateDblClick(newItem);
 	}
@@ -1704,6 +1738,15 @@ function(currentItem, forward) {
 	if (i == len) { return; }
 
 	var itemIdx = forward ? i + 1 : i - 1;
+
+	if (itemIdx >= len) {
+		//we are looking for the next item after the current list, not yet loaded
+		if (!this._list.hasMore()) {
+			return;
+		}
+		this._paginate(this._currentView, true, itemIdx);
+		return;
+	}
 	return list[itemIdx];
 };
 
@@ -1804,17 +1847,22 @@ function(which, type, noBump) {
 ZmMailListController.prototype._getNextItemToSelect = function() {};
 
 ZmMailListController.prototype.addTrustedAddr =
-function(addr, callback, errorCallback) {
-   var soapDoc = AjxSoapDoc.create("ModifyPrefsRequest", "urn:zimbraAccount");
-   var node = soapDoc.set("pref", addr);
-   node.setAttribute("name", "zimbraPrefMailTrustedSenderList");
+function(value, callback, errorCallback) {
+    var soapDoc = AjxSoapDoc.create("ModifyPrefsRequest", "urn:zimbraAccount"),
+        node,
+        i;
 
-   return appCtxt.getAppController().sendRequest({
+    for(i=0; i<value.length;i++) {
+        node = soapDoc.set("pref", AjxStringUtil.trim(value[i]));
+        node.setAttribute("name", "zimbraPrefMailTrustedSenderList");
+    }
+
+    return appCtxt.getAppController().sendRequest({
        soapDoc: soapDoc,
        asyncMode: true,
        callback: callback,
        errorCallback: errorCallback
-   });
+    });
 };
 
 /**

@@ -18,7 +18,33 @@
  */
 package com.zimbra.cs.service.mail;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.io.Writer;
+import java.util.Collection;
+import java.util.Date;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.ContentDisposition;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import javax.mail.internet.MimePart;
+import javax.mail.internet.MimeUtility;
+
+import org.json.JSONException;
+
 import com.zimbra.common.mailbox.ContactConstants;
+import com.zimbra.common.mime.ContentType;
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.MimeDetect;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.HeaderConstants;
@@ -31,9 +57,6 @@ import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.TruncatingWriter;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.mime.ContentType;
-import com.zimbra.common.mime.MimeConstants;
-import com.zimbra.common.mime.MimeDetect;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
@@ -51,19 +74,34 @@ import com.zimbra.cs.index.SearchParams;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.SearchParams.ExpandResults;
 import com.zimbra.cs.localconfig.DebugConfig;
-import com.zimbra.cs.mailbox.*;
+import com.zimbra.cs.mailbox.ACL;
+import com.zimbra.cs.mailbox.Appointment;
+import com.zimbra.cs.mailbox.CalendarItem;
+import com.zimbra.cs.mailbox.Chat;
+import com.zimbra.cs.mailbox.Contact;
+import com.zimbra.cs.mailbox.Conversation;
+import com.zimbra.cs.mailbox.Document;
+import com.zimbra.cs.mailbox.Flag;
+import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailServiceException;
+import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.Message;
+import com.zimbra.cs.mailbox.Mountpoint;
+import com.zimbra.cs.mailbox.Note;
+import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mailbox.OperationContextData;
+import com.zimbra.cs.mailbox.SearchFolder;
+import com.zimbra.cs.mailbox.SenderList;
+import com.zimbra.cs.mailbox.Tag;
+import com.zimbra.cs.mailbox.WikiItem;
 import com.zimbra.cs.mailbox.CalendarItem.AlarmData;
 import com.zimbra.cs.mailbox.CalendarItem.Instance;
-import com.zimbra.cs.mailbox.MailItem.CustomMetadata;
 import com.zimbra.cs.mailbox.Contact.Attachment;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone.SimpleOnset;
-import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
+import com.zimbra.cs.mailbox.MailItem.CustomMetadata;
 import com.zimbra.cs.mailbox.calendar.Alarm;
 import com.zimbra.cs.mailbox.calendar.Geo;
+import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteChanges;
@@ -74,6 +112,11 @@ import com.zimbra.cs.mailbox.calendar.Recurrence;
 import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
+import com.zimbra.cs.mailbox.calendar.ICalTimeZone.SimpleOnset;
+import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
+import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
+import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
+import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedAddress;
@@ -82,24 +125,6 @@ import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.session.PendingModifications.Change;
-
-import javax.mail.MessagingException;
-import javax.mail.internet.ContentDisposition;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
-import javax.mail.internet.MimePart;
-import javax.mail.internet.MimeUtility;
-
-import java.io.*;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.json.JSONException;
 
 /**
  * Class containing static methods for encoding various MailItem-derived
@@ -170,7 +195,7 @@ public class ToXML {
         if (folder instanceof SearchFolder)
             return encodeSearchFolder(parent, ifmt, (SearchFolder) folder, fields);
         else if (folder instanceof Mountpoint)
-            return encodeMountpoint(parent, ifmt, (Mountpoint) folder, fields);
+            return encodeMountpoint(parent, ifmt, octxt, (Mountpoint) folder, fields);
 
         Element elem = parent.addElement(MailConstants.E_FOLDER);
         encodeFolderCommon(elem, ifmt, folder, fields);
@@ -186,12 +211,19 @@ public class ToXML {
 
         if (needToOutput(fields, Change.MODIFIED_URL)) {
             String url = folder.getUrl();
-            if (!url.equals("") || fields != NOTIFY_FIELDS)
+            if (!url.equals("") || fields != NOTIFY_FIELDS){
+                // Note: in this case, a url on a folder object
+                // is not a url to the folder, but the url to another item that's
+                // external of the mail system. In most cases this is a 'synced' folder
+                // that is either RSS or a remote calendar object
                 elem.addAttribute(MailConstants.A_URL, HttpUtil.sanitizeURL(url));
+            }
+                
         }
 
         Mailbox mbox = folder.getMailbox();
         boolean remote = octxt != null && octxt.isDelegatedRequest(mbox);
+        
         boolean canAdminister = !remote;
         if (remote) {
             // return effective permissions only for remote folders
@@ -365,12 +397,33 @@ public class ToXML {
         return elem;
     }
 
-    public static Element encodeMountpoint(Element parent, ItemIdFormatter ifmt, Mountpoint mpt) {
-        return encodeMountpoint(parent, ifmt, mpt, NOTIFY_FIELDS);
+    public static Element encodeMountpoint(Element parent, ItemIdFormatter ifmt, OperationContext octx, Mountpoint mpt) {
+        return encodeMountpoint(parent, ifmt, octx, mpt, NOTIFY_FIELDS);
     }
 
-    public static Element encodeMountpoint(Element parent, ItemIdFormatter ifmt, Mountpoint mpt, int fields) {
+    public static Element encodeMountpoint(Element parent, ItemIdFormatter ifmt, OperationContext octx, Mountpoint mpt, int fields) {
+        
         Element elem = parent.addElement(MailConstants.E_MOUNT);
+        // check to see if this is a delegate request (like bes) 
+        boolean remote = octx != null && octx.isDelegatedRequest(mpt.getMailbox());
+
+        try {
+            // only construct the external url if this isn't a remote request.
+            // remote/delegate requests have managed to ping pong back and forth between
+            // servers and tie things up.
+            if(!remote){
+                String remoteUrl = UserServlet.getExternalRestUrl(octx.getAuthToken(), mpt);
+                if(remoteUrl != null) {
+                    elem.addAttribute(MailConstants.A_REST_URL, remoteUrl);
+                }
+            }
+        }
+            
+         catch (ServiceException e) {
+            ZimbraLog.soap.warn("unable to create rest url for remote mountpoint", e);
+        }
+         
+
         encodeFolderCommon(elem, ifmt, mpt, fields);
         if (needToOutput(fields, Change.MODIFIED_CONTENT)) {
             elem.addAttribute(MailConstants.A_ZIMBRA_ID, mpt.getOwnerId());
@@ -1045,20 +1098,22 @@ public class ToXML {
     }
 
     private static void encodeCalendarReplies(Element parent, CalendarItem calItem, List<CalendarItem.ReplyInfo> replies) {
-        Element repliesElt = parent.addElement(MailConstants.E_CAL_REPLIES);
-        for (CalendarItem.ReplyInfo repInfo : replies) {
-            Element curElt = repliesElt.addElement(MailConstants.E_CAL_REPLY);
-            curElt.addAttribute(MailConstants.A_SEQ, repInfo.getSeq()); //zdsync
-            curElt.addAttribute(MailConstants.A_DATE, repInfo.getDtStamp());
-            ZAttendee attendee = repInfo.getAttendee();
-            curElt.addAttribute(MailConstants.A_CAL_ATTENDEE, attendee.getAddress());
-            if (attendee.hasSentBy())
-                curElt.addAttribute(MailConstants.A_CAL_SENTBY, attendee.getSentBy());
-            if (attendee.hasPartStat())
-                curElt.addAttribute(MailConstants.A_CAL_PARTSTAT, attendee.getPartStat());
-            RecurId rid = repInfo.getRecurId();
-            if (rid != null)
-                rid.toXml(curElt);
+        if (!replies.isEmpty()) {
+            Element repliesElt = parent.addElement(MailConstants.E_CAL_REPLIES);
+            for (CalendarItem.ReplyInfo repInfo : replies) {
+                Element curElt = repliesElt.addElement(MailConstants.E_CAL_REPLY);
+                curElt.addAttribute(MailConstants.A_SEQ, repInfo.getSeq()); //zdsync
+                curElt.addAttribute(MailConstants.A_DATE, repInfo.getDtStamp());
+                ZAttendee attendee = repInfo.getAttendee();
+                curElt.addAttribute(MailConstants.A_CAL_ATTENDEE, attendee.getAddress());
+                if (attendee.hasSentBy())
+                    curElt.addAttribute(MailConstants.A_CAL_SENTBY, attendee.getSentBy());
+                if (attendee.hasPartStat())
+                    curElt.addAttribute(MailConstants.A_CAL_PARTSTAT, attendee.getPartStat());
+                RecurId rid = repInfo.getRecurId();
+                if (rid != null)
+                    rid.toXml(curElt);
+            }
         }
     }
 
@@ -1510,6 +1565,8 @@ public class ToXML {
                 e.addAttribute(MailConstants.A_CAL_ID, itemId);
                 if (invite.isEvent())
                     e.addAttribute(MailConstants.A_APPT_ID_DEPRECATE_ME, itemId);  // for backward compat
+                ItemId ciFolderId = new ItemId(calItem.getMailbox(), calItem.getFolderId());
+                e.addAttribute(MailConstants.A_CAL_ITEM_FOLDER, ifmt.formatItemId(ciFolderId));
             }
 
             Recurrence.IRecurrence recur = invite.getRecurrence();
@@ -1689,6 +1746,13 @@ public class ToXML {
                         Element comp = ie.getOptionalElement(MailConstants.E_INVITE_COMPONENT);
                         if (comp != null)
                             comp.addAttribute(MailConstants.A_CAL_CHANGES, invChanges.toString());
+                    }
+                    if (calItem != null) {
+                        boolean showAll = invite.isPublic() || allowPrivateAccess(octxt, calItem);
+                        if (showAll) {
+                            RecurId rid = invite.getRecurId();
+                            encodeCalendarReplies(ie, calItem, invite, rid != null ? rid.getDtZ() : null);
+                        }
                     }
                 }
             }
@@ -2366,23 +2430,7 @@ public class ToXML {
     
     private static void encodeAddrsWithGroupInfo(Provisioning prov, Element eParent,
             String emailElem, Account requestedAcct, Account authedAcct) {
-        for (Element eEmail : eParent.listElements(emailElem)) {
-            String addr = eEmail.getAttribute(MailConstants.A_ADDRESS, null);
-            if (addr != null) {
-                // shortcut the check if the email address is the authed or requested account - it cannot be a group
-                if (addr.equalsIgnoreCase(requestedAcct.getName()) || addr.equalsIgnoreCase(authedAcct.getName()))
-                    continue;
-
-                GroupInfo groupInfo = GalGroupInfoProvider.getInstance().getGroupInfo(addr, true, requestedAcct, authedAcct);
-                if (GroupInfo.IS_GROUP == groupInfo) {
-                    eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
-                    eEmail.addAttribute(MailConstants.A_EXP, false);
-                } else if (GroupInfo.CAN_EXPAND == groupInfo) {
-                    eEmail.addAttribute(MailConstants.A_IS_GROUP, true);
-                    eEmail.addAttribute(MailConstants.A_EXP, true);
-                }
-            }
-        }
+        GalGroupInfoProvider.getInstance().encodeAddrsWithGroupInfo(prov, eParent, emailElem, requestedAcct, authedAcct);
     }
 
     public static void encodeMsgAddrsWithGroupInfo(Element response, Account requestedAcct, Account authedAcct) {

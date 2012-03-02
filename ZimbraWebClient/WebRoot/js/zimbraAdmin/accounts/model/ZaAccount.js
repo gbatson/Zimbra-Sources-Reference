@@ -492,8 +492,8 @@ function(tmpObj) {
 		}
 	}	
         if(ZaItem.hasWritePermission(ZaAccount.A_zimbraDataSourceMinPollingInterval,tmpObj)) {
-                var p_dataInterval = tmpObj.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval] ;
-                if( p_dataInterval != "" && p_dataInterval !=null && !AjxUtil.isLifeTime(p_dataInterval)) {
+                var min_dataInterval = tmpObj.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval] ;
+                if( min_dataInterval != "" && min_dataInterval !=null && !AjxUtil.isLifeTime(min_dataInterval)) {
                         ZaApp.getInstance().getCurrentController().popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_INVALID_VALUE_FOR, [ZaMsg.MSG_zimbraDataSourceMinPollingInterval])) ;
                         return false;
                 }
@@ -504,12 +504,30 @@ function(tmpObj) {
                         ZaApp.getInstance().getCurrentController().popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_INVALID_VALUE_FOR, [ZaMsg.MSG_zimbraDataSourcePop3PollingInterval])) ;
                         return false;
                 }
+                if (min_dataInterval == "" || min_dataInterval == null){
+                        min_dataInterval = tmpObj._defaultValues.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval];
+                }
+                if(p_dataInterval != null && min_dataInterval != null) {
+                        if (ZaUtil.getLifeTimeInSeconds(p_dataInterval) < ZaUtil.getLifeTimeInSeconds(min_dataInterval)){
+                                ZaApp.getInstance().getCurrentController().popupErrorDialog (ZaMsg.tt_mailPollingIntervalError + min_dataInterval) ;
+                                return false ;
+                        }
+                }
         }
         if(ZaItem.hasWritePermission(ZaAccount.A_zimbraDataSourceImapPollingInterval,tmpObj)) {
                 var p_dataInterval = tmpObj.attrs[ZaAccount.A_zimbraDataSourceImapPollingInterval] ;
                 if( p_dataInterval != "" && p_dataInterval !=null && !AjxUtil.isLifeTime(p_dataInterval)) {
                         ZaApp.getInstance().getCurrentController().popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_INVALID_VALUE_FOR, [ZaMsg.MSG_zimbraDataSourceImapPollingInterval])) ;
                         return false;
+                }
+                if (min_dataInterval == "" || min_dataInterval == null){
+                	min_dataInterval = tmpObj._defaultValues.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval];
+                }
+                if(p_dataInterval != null && min_dataInterval != null) {
+                        if (ZaUtil.getLifeTimeInSeconds(p_dataInterval) < ZaUtil.getLifeTimeInSeconds(min_dataInterval)){
+                                ZaApp.getInstance().getCurrentController().popupErrorDialog (ZaMsg.tt_mailPollingIntervalError + min_dataInterval) ;
+                                return false ;
+                        }
                 }
         }
         if(ZaItem.hasWritePermission(ZaAccount.A_zimbraDataSourceCalendarPollingInterval,tmpObj)) {
@@ -518,6 +536,15 @@ function(tmpObj) {
                         ZaApp.getInstance().getCurrentController().popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_INVALID_VALUE_FOR, [ZaMsg.MSG_zimbraDataSourceCalendarPollingInterval])) ;
                         return false;
                 }
+                if (min_dataInterval == "" || min_dataInterval == null){
+                	min_dataInterval = tmpObj._defaultValues.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval];
+                }
+                if(p_dataInterval != null && min_dataInterval != null) {
+                        if (ZaUtil.getLifeTimeInSeconds(p_dataInterval) < ZaUtil.getLifeTimeInSeconds(min_dataInterval)){
+                                ZaApp.getInstance().getCurrentController().popupErrorDialog (ZaMsg.tt_mailPollingIntervalError + min_dataInterval) ;
+                                return false ;
+                        }
+                }
         }
         if(ZaItem.hasWritePermission(ZaAccount.A_zimbraDataSourceRssPollingInterval,tmpObj)) {
                 var p_dataInterval = tmpObj.attrs[ZaAccount.A_zimbraDataSourceRssPollingInterval] ;
@@ -525,12 +552,30 @@ function(tmpObj) {
                         ZaApp.getInstance().getCurrentController().popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_INVALID_VALUE_FOR, [ZaMsg.MSG_zimbraDataSourceRssPollingInterval])) ;
                         return false;
                 }
+                if (min_dataInterval == "" || min_dataInterval == null){
+                	min_dataInterval = tmpObj._defaultValues.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval];
+                }
+                if(p_dataInterval != null && min_dataInterval != null) {
+                        if (ZaUtil.getLifeTimeInSeconds(p_dataInterval) < ZaUtil.getLifeTimeInSeconds(min_dataInterval)){
+                                ZaApp.getInstance().getCurrentController().popupErrorDialog (ZaMsg.tt_mailPollingIntervalError + min_dataInterval) ;
+                                return false ;
+                        }
+                }
         }
         if(ZaItem.hasWritePermission(ZaAccount.A_zimbraDataSourceCaldavPollingInterval,tmpObj)) {
                 var p_dataInterval = tmpObj.attrs[ZaAccount.A_zimbraDataSourceCaldavPollingInterval] ;
                 if( p_dataInterval != "" && p_dataInterval !=null && !AjxUtil.isLifeTime(p_dataInterval)) {
                         ZaApp.getInstance().getCurrentController().popupErrorDialog(AjxMessageFormat.format(ZaMsg.ERROR_INVALID_VALUE_FOR, [ZaMsg.MSG_zimbraDataSourceCaldavPollingInterval])) ;
                         return false;
+                }
+                if (min_dataInterval == "" || min_dataInterval == null){
+                	min_dataInterval = tmpObj._defaultValues.attrs[ZaAccount.A_zimbraDataSourceMinPollingInterval]; 
+                }
+                if(p_dataInterval != null && min_dataInterval != null) {
+                        if (ZaUtil.getLifeTimeInSeconds(p_dataInterval) < ZaUtil.getLifeTimeInSeconds(min_dataInterval)){
+                                ZaApp.getInstance().getCurrentController().popupErrorDialog (ZaMsg.tt_mailPollingIntervalError + min_dataInterval) ;
+                                return false ;
+                        }
                 }
         }
 
@@ -1324,7 +1369,6 @@ function() {
 		  html[idx++] = "</td>";
                 html[idx++] = "</table></div></td></tr>";
                 html[idx++] = "<tr></tr>";
-                idx = this._addRow(ZaMsg.NAD_ZimbraID, this.id, html, idx);
 
                 if(this.isExternal) {
                         idx = this._addRow(ZaMsg.NAD_MailServer, this.attrs[ZaAccount.A_zimbraMailTransport], html, idx);
@@ -1335,6 +1379,7 @@ function() {
                 } else {
                         idx = this._addRow(ZaMsg.NAD_MailServer, this.attrs[ZaAccount.A_mailHost], html, idx);
                 }
+                idx = this._addAttrRow(ZaItem.A_zimbraId, html, idx);
                 html[idx++] = "</table>";
                 this._toolTip = html.join("");
 		
@@ -1615,6 +1660,11 @@ ZaAccount.myXModel = {
         	constraints: {type:"method", value:
 			   function (value, form, formItem, instance) {				   
 				   if (value){
+                                                var index = value.indexOf("@");
+                                                var namePart = value.substring(0, index);
+                                                var domainPart = value.substring(index+1);
+                                                domainPart = AjxStringUtil.trim(domainPart);
+                                                value = namePart + "@" + domainPart;
 					  	if(AjxEmailAddress.isValid(value)) {
 						   return value;
 					   } else {
@@ -1741,6 +1791,7 @@ ZaAccount.myXModel = {
         {id:ZaAccount.A_zimbraPrefMailFlashTitle, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaAccount.A_zimbraPrefMailFlashTitle, type:_COS_ENUM_},
         {id:ZaAccount.A_zimbraPrefMailSoundsEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaAccount.A_zimbraPrefMailSoundsEnabled, type:_COS_ENUM_},
         {id:ZaAccount.A_zimbraPrefOutOfOfficeReply, type:_STRING_, ref:"attrs/"+ZaAccount.A_zimbraPrefOutOfOfficeReply},
+	{id:ZaAccount.A_zimbraPrefOutOfOfficeReplyEnabled, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaAccount.A_zimbraPrefOutOfOfficeReplyEnabled, type:_COS_ENUM_},
 
         {id:ZaAccount.A_zimbraPrefReplyToAddress, type:_STRING_, ref:"attrs/"+ZaAccount.A_zimbraPrefReplyToAddress},
         {id:ZaAccount.A_zimbraPrefUseKeyboardShortcuts, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraPrefUseKeyboardShortcuts, choices:ZaModel.BOOLEAN_CHOICES},

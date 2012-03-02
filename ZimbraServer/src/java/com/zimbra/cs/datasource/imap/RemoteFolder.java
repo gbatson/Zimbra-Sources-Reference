@@ -32,6 +32,7 @@ import com.zimbra.cs.mailclient.imap.ResponseText;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 final class RemoteFolder {
@@ -143,6 +144,15 @@ final class RemoteFolder {
         if (endUid <= 0 && uids.size() == 1 && uids.get(0) < startUid) {
             return Collections.emptyList();
         }
+        //Yahoo sometimes returns out-of-range UIDs; bug 59773
+        Iterator<Long> it = uids.iterator();
+        while (it.hasNext()) {
+            Long uid = it.next();
+            if (uid < startUid || (endUid > 0 && uid > endUid)) {
+                LOG.warn("UID FETCH %d:%d returned UID out of range: %d", startUid, endUid, uid);
+                it.remove();
+            }
+        }
         // Sort UIDs in reverse order so we download latest messages first
         Collections.sort(uids, Collections.reverseOrder());
         return uids;
@@ -190,17 +200,25 @@ final class RemoteFolder {
         if (mi.getUidValidity() <= 0) {
             mi.setUidValidity(1);
         }
+        if (mi.getExists() == -1) {
+            debug("Server did not provide EXISTS");
+            mi.setExists(1);
+        }
         return mi;
     }
 
     public MailboxInfo status() throws IOException {
-        MailboxInfo mi = connection.status(path, "UIDVALIDITY", "UIDNEXT");
+        MailboxInfo mi = connection.status(path, "UIDVALIDITY", "UIDNEXT", "MESSAGES");
         // Bug 35554: If server does not provide UIDVALIDITY, then assume a value of 1
         if (mi.getUidValidity() <= 0) {
             mi.setUidValidity(1);
         }
         if (!path.equals(mi.getName())) {
             path = mi.getName();
+        }
+        if (mi.getExists() == -1) {
+            debug("Server did not provide MESSAGES");
+            mi.setExists(1);
         }
         return mi;
     }

@@ -197,7 +197,10 @@ public class AccountConstants {
     public static final String A_VISIBLE = "visible";
     public static final String A_PERM_DENIED = "pd";
     public static final String A_EMAIL = "email";
+    public static final String A_FIELD = "field";
     public static final String A_STORE = "store";
+    public static final String A_SMIME_STORE_LOOKUP_OPT = "storeLookupOpt";
+    public static final String A_SMIME_SOURCE_LOOKUP_OPT = "sourceLookupOpt";
     
     // gal
     public static final String A_IS_GROUP = "isGroup";
@@ -206,6 +209,8 @@ public class AccountConstants {
     public static final String A_NEED_SMIME_CERTS = "needSMIMECerts";
     public static final String A_GAL_ACCOUNT_ID = "galAcctId";
     public static final String A_PAGINATION_SUPPORTED = "paginationSupported";
+    public static final String A_OFFSET_INTERNAL = "_offset"; // for server internal use only 
+    public static final String A_LIMIT_INTERNAL = "_limit";   // for serer internal use only 
     
     // share info
     public static final String A_FOLDER_ID = "folderId";

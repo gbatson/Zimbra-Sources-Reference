@@ -212,7 +212,7 @@ function() {
 
 ZmScheduleAssistantView.prototype._miniCalSelectionListener =
 function(ev) {
-	if (ev.item instanceof DwtCalendar) {
+	if (ev.item instanceof ZmMiniCalendar) {
         var date = ev.detail;
         this.reset(date, this._attendees, true);
         //set edit view start/end date
@@ -228,6 +228,7 @@ function(clearSelection, forceRefresh) {
     var tf = this._getTimeFrame();
     this._miniCalendar.setDate(tf.start, true);
     this.reset(tf.start, this._attendees, forceRefresh);
+    appCtxt.notifyZimlets("onEditAppt_updateTime", [this._editView, tf]);//notify Zimlets
 };
 
 //shows a link which triggers on demand suggestions
@@ -608,7 +609,7 @@ function() {
 ZmScheduleAssistantView.prototype.isSuggestionsEnabled =
 function() {
     if(!appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED) || !appCtxt.get(ZmSetting.GAL_ENABLED)) return false;
-    return this._manualOverrideFlag || (this._prefDialog ? (this._prefDialog.getPreference(ZmTimeSuggestionPrefDialog.DISABLE_SUGGESTIONS_FIELD) != 'true') : true);
+    return this._manualOverrideFlag || (this._prefDialog ? (this._prefDialog.getPreference(ZmTimeSuggestionPrefDialog.MANUAL_SUGGESTIONS_FIELD) != 'true') : true);
 };
 
 ZmScheduleAssistantView.prototype.overrideManualSuggestion =

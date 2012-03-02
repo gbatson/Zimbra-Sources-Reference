@@ -46,7 +46,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
     static final long OPTIMIZE_INTERVAL = 48 * Constants.MILLIS_PER_HOUR;
 
     private String accountName;
-    private boolean isDeleting;
+    private volatile boolean isDeleting;
 
     private Timer timer;
     private TimerTask currentTask;
@@ -208,7 +208,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
     }
 
     void deleteThisMailbox(boolean async) throws ServiceException {
-        OfflineLog.offline.info("deleting mailbox %s", getAccountId());
+        OfflineLog.offline.info("deleting mailbox %s (%s)", getAccountId(), getAccountName());
         if (async) {
             DeleteMailbox redoRecorder = new DeleteMailbox(getId());
             boolean success = false;
@@ -245,7 +245,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
         } else {
             super.deleteMailbox();
         }
-        OfflineLog.offline.info("mailbox %s deleted", getAccountId());
+        OfflineLog.offline.info("mailbox %s (%s) deleted", getAccountId(), getAccountName());
     }
 
     void resetSyncStatus() throws ServiceException {

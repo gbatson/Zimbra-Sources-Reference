@@ -5,6 +5,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogMove.Locators;
 
 
 /**
@@ -16,8 +17,10 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
 public class DialogRenameTag extends AbsDialog {
 
 	public static class Locators {
-	
-
+		//see https://bugzilla.zimbra.com/show_bug.cgi?id=57458
+		public static final String zRenameTagDialogId	= "RenameTagDialog";
+		public static final String zNewTagNameFieldId	= "RenameTagDialog_name";
+		public static final String zButtonsId 		= "RenameTagDialog_buttons";
 	}
 	
 	
@@ -30,15 +33,13 @@ public class DialogRenameTag extends AbsDialog {
 	public void zSetNewName(String name) throws HarnessException {
 		logger.info(myPageName() + " zSetNewName("+ name +")");
 
-		String locator = "implement me";
+		String locator = "//input[@id='"+ Locators.zNewTagNameFieldId +"']";
 		
 		// Make sure the locator exists
 		if ( !this.sIsElementPresent(locator) ) {
 			throw new HarnessException("Rename locator "+ locator +" is not present");
-		}
-		
-		this.sType(locator, name);
-		
+		}		
+		this.sType(locator, name);		
 	}
 	
 	
@@ -50,8 +51,8 @@ public class DialogRenameTag extends AbsDialog {
 		
 		if ( button == Button.B_OK ) {
 			
-			locator =  "implement me";
-			
+			locator =  "//div[@id='"+ Locators.zRenameTagDialogId +"']//div[@id='"+ Locators.zButtonsId +"']//td[text()='OK']";
+					
 		} else if ( button == Button.B_CANCEL ) {
 			
 			locator =  "implement me";
@@ -102,8 +103,21 @@ public class DialogRenameTag extends AbsDialog {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		String locator = "implement me";
-		return ( this.sIsElementPresent(locator) );
+		logger.info(myPageName() + " zIsActive()");
+
+		String locator = "id="+ Locators.zRenameTagDialogId;
+		
+		if ( !this.sIsElementPresent(locator) ) {
+			return (false); // Not even present
+		}
+		
+		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
+			return (false);	// Not visible per position
+		}
+	
+		// Yes, visible
+		logger.info(myPageName() + " zIsVisible() = true");
+		return (true);
 	}
 
 

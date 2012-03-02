@@ -128,7 +128,9 @@ function(node) {
 	} else {
 		var addr = new AjxEmailAddress(node.a, type, node.p, node.d);
 		addr.isGroup = node.isGroup;
-		addr.canExpand = node.exp;
+		addr.canExpand = node.isGroup && node.exp;
+		var ac = window.parentAppCtxt || window.appCtxt;
+		ac.setIsExpandableDL(node.a, addr.canExpand);
 		this.participants.add(addr);
 	}
 };

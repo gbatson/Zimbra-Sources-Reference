@@ -6,6 +6,7 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.RecipientItem.RecipientType;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 
@@ -38,6 +39,8 @@ public class FormMailNew extends AbsForm {
 		public static final String zBccField			= "css=[id^=zv__COMPOSE][id$=_bcc_control]";
 		public static final String zSubjectField		= "css=div[id^=zv__COMPOSE] input[id$=_subject_control]";
 		public static final String zAttachmentField     = "css=div[id$=_attachments_div]";
+		public static final String zAttachmentImage     = "css=div[id$=_attachments_div] div[class='ImgAttachment']";
+		public static final String zAttachmentCheckbox  = "css=div[id$=_attachments_div] input[name='ZmComposeView_forAttName1']";			
 		public static final String zAttachmentText      = "css=div[id$=_attachments_div] a[class='AttLink']:contains(";
 		public static final String zLinkText 			= "css=iframe[id*='DWT'][class*='Editor']";
 		
@@ -89,7 +92,7 @@ public class FormMailNew extends AbsForm {
 
 	}
 
-	public boolean zIsVisible() {
+	public boolean zIsVisible() throws HarnessException {
 		String locator = "//div[contains(@id,'ztb__COMPOSE')]";
 		
 		if ( !this.sIsElementPresent(locator) )
@@ -283,21 +286,21 @@ public class FormMailNew extends AbsForm {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "TODO";
+				optionLocator = "css=[class='ImgPriorityHigh_list']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_NORMAL ) {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "TODO";
+				optionLocator = "css=[class='ImgPriorityNormal_list']";
 				page = this;
 
 			} else if ( option == Button.O_PRIORITY_LOW ) {
 				
 				// TODO
 				pulldownLocator = Locators.zPriorityPulldown;
-				optionLocator = "TODO";
+				optionLocator = "css=[class='ImgPriorityLow_list']";
 				page = this;
 
 			} else {
@@ -458,6 +461,12 @@ public class FormMailNew extends AbsForm {
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("Field is not present field="+ field +" locator="+ locator);
 		
+		// Seems that the client can't handle filling out the new mail form too quickly
+		// Click in the "To" fields, etc, to make sure the client is ready
+		this.sFocus(locator);
+		this.zClick(locator);
+		this.zWaitForBusyOverlay();
+
 		// Enter text
 		this.sType(locator, value);
 		
@@ -472,15 +481,14 @@ public class FormMailNew extends AbsForm {
 		// <tr id='zv__COMPOSEX_bcc_row' style='display: table_row' x-display='table-row' ...
 		// <tr id='zv__COMPOSEX_bcc_row' style='display: none'  x-display='table-row' ...
 		
-		String xpath = "//div[contains(@id,'zv__COMPOSE')]//tr[contains(@id,'_bcc_row')]";
-		if ( !sIsElementPresent(xpath) )
-			throw new HarnessException("Unable to locate the BCC field "+ xpath);
+		String locator;
 		
-		String locator = "xpath=("+ xpath +")@style";
-		String style = this.sGetAttribute(locator);
+		locator = "css=div[id^='zv__COMPOSE'] tr[id$='_bcc_row']";
+		if ( !sIsElementPresent(locator) )
+			throw new HarnessException("Unable to locate the BCC field "+ locator);
 		
-		logger.info(myPageName() + ".zBccIsActive() ... style="+ style);
-		return (!style.contains("none"));
+		locator = locator + "[style*=none]";
+		return (!sIsElementPresent(locator));
 	}
 
 	@Override
@@ -597,6 +605,15 @@ public class FormMailNew extends AbsForm {
 		
 		logger.info(myPageName() + " zIsActive() = true");
 		return (true);
+	}
+	
+	public boolean zHasAttachment(String name)  throws HarnessException {
+	    
+	    //verify clipper image existed, checkbox is checked, and  attachment file name
+	    
+	    return  sIsElementPresent(Locators.zAttachmentImage) &&
+	            sIsChecked(Locators.zAttachmentCheckbox) &&
+	            sIsElementPresent(Locators.zAttachmentText + "'" + name + "'" + ")");	    		   
 	}
 
 }

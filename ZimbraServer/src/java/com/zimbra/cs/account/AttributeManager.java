@@ -134,7 +134,40 @@ public class AttributeManager {
 
     private static Map<Integer,String> mOCGroupMap = new HashMap<Integer,String>();
     
+    // attrs declared as type="binary" in zimbra-attrs.xml 
     private static Set<String> mBinaryAttrs = new HashSet<String>();
+    
+    // attrs that require ";binary" appended explicitly when transferred.
+    // The only such syntax we support for now is:
+    // 1.3.6.1.4.1.1466.115.121.1.8 - Certificate syntax
+    private static Set<String> mBinaryTransferAttrs = new HashSet<String>();
+    
+    /*
+     * Notes on certificate attributes
+     * 
+     * attribute                       origin               cardinality   has EQUALITY rule       SYNTAX                          require     require JNDI 
+     *                                                                    (i.e. can add/delete                                    ";binary"   "java.naming.ldap.attributes.binary" 
+     *                                                                     individual values)                                     transfer    environment property
+     * ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+     * userCertificate                 RFC2256              multi         yes                     1.3.6.1.4.1.1466.115.121.1.8    yes         no
+           # contains DER format certificate
+     * 
+     * userSMIMECertificate            RFC2798              multi         no                      1.3.6.1.4.1.1466.115.121.1.5    no          yes
+           # A PKCS#7 [RFC2315] SignedData, where the content that is signed is
+           # ignored by consumers of userSMIMECertificate values.  It is
+           # recommended that values have a `contentType' of data with an absent
+           # `content' field.  Values of this attribute contain a person's entire
+           # certificate chain and an smimeCapabilities field [RFC2633] that at a
+           # minimum describes their SMIME algorithm capabilities.  Values for
+           # this attribute are to be stored and requested in binary form, as
+           # 'userSMIMECertificate;binary'.  If available, this attribute is
+           # preferred over the userCertificate attribute for S/MIME applications.
+           ## OpenLDAP note: ";binary" transfer should NOT be used as syntax is binary
+     *
+     * 
+     * zimbraPrefMailSMIMECertificate  Zimbra(deprecated)   multi         yes                     1.3.6.1.4.1.1466.115.121.1.40   no          yes
+     * 
+     */
 
     // do not keep comments and descriptions when running in a server
     private static boolean mMinimize = false;
@@ -268,6 +301,8 @@ public class AttributeManager {
             error(null, file, "root tag is not " + E_ATTRS);
             return;
         }
+        
+        Map<Integer, String> idsSeen = new HashMap<Integer, String>();
 
         String group = root.attributeValue(A_GROUP);
         String groupIdStr = root.attributeValue(A_GROUP_ID);
@@ -316,7 +351,7 @@ public class AttributeManager {
             Set<AttributeClass> requiredIn = null;
             Set<AttributeClass> optionalIn = null;
             Set<AttributeFlag> flags = null;
-
+            
             String canonicalName = null;
             String name = eattr.attributeValue(A_NAME);
             if (name == null) {
@@ -468,10 +503,19 @@ public class AttributeManager {
                 error(name, file, "cardinality not specified");
             }
 
-            // Check that if id is specified, then atleast one object class is
-            // defined
+            // Check that if id is specified, then at least one object class is defined
             if (id > 0 && (optionalIn != null && optionalIn.isEmpty()) && (requiredIn != null && requiredIn.isEmpty())) {
                 error(name, file, "atleast one of " + A_REQUIRED_IN + " or " + A_OPTIONAL_IN + " must be specified");
+            }
+            
+            // Check that if id is specified, it must be unique
+            if (id > 0) {
+                String idForAttr = idsSeen.get(Integer.valueOf(id));
+                if (idForAttr != null) {
+                    error(name, file, "duplicate id: " + id + " is already used for " + idForAttr);
+                } else {
+                    idsSeen.put(Integer.valueOf(id), name);
+                }
             }
 
             // Check that if it is COS inheritable it is in account and COS classes
@@ -531,9 +575,12 @@ public class AttributeManager {
                 }
             }
             
-            if (type == AttributeType.TYPE_BINARY) {
+            if (isBinaryType(type)) {
                 mBinaryAttrs.add(canonicalName);
+            } else if (isBinaryTransferType(type)) {
+                mBinaryTransferAttrs.add(canonicalName);
             }
+            
         }
     }
 
@@ -972,6 +1019,22 @@ public class AttributeManager {
         return IDNType.none;
     }
 
+    /**
+     * returns whether attr is in the specified version.
+     * 
+     * An attr is considered in a version if it is introduced prior to version 
+     * or on the same version.
+     * 
+     * e.g. 
+     *   - if attr is introduced on 7.1.0, it is in 7.1.1
+     *   - if attr is introduced on 7.1.1, it is in 7.1.1
+     *   - if attr is introduced on 7.1.2, it is not in 7.1.1
+     * 
+     * @param attr
+     * @param version
+     * @return
+     * @throws ServiceException
+     */
     public boolean inVersion(String attr, String version) throws ServiceException {
         AttributeInfo ai = mAttrs.get(attr.toLowerCase());
         if (ai != null) {
@@ -980,6 +1043,31 @@ public class AttributeManager {
                 return true;
             else
                 return since.compare(version) <= 0;
+        } else
+            throw AccountServiceException.INVALID_ATTR_NAME("unknown attribute: " + attr, null);
+    }
+    
+    /**
+     * returns whether attr is introduced before the specified version.
+     * 
+     * e.g. 
+     *   - if attr is introduced on 7.1.0, it is before 7.1.1
+     *   - if attr is introduced on 7.1.1, it is *NOT* before 7.1.1
+     *   - if attr is introduced on 7.1.2, it is not before 7.1.1
+     * 
+     * @param attr
+     * @param version
+     * @return
+     * @throws ServiceException
+     */
+    public boolean beforeVersion(String attr, String version) throws ServiceException {
+        AttributeInfo ai = mAttrs.get(attr.toLowerCase());
+        if (ai != null) {
+            Version since = ai.getSince();
+            if (since == null)
+                return true;
+            else
+                return since.compare(version) < 0;
         } else
             throw AccountServiceException.INVALID_ATTR_NAME("unknown attribute: " + attr, null);
     }
@@ -992,12 +1080,33 @@ public class AttributeManager {
             throw AccountServiceException.INVALID_ATTR_NAME("unknown attribute: " + attr, null);
     }
     
-    public boolean isBinary(String attr) {
-        return mBinaryAttrs.contains(attr.toLowerCase());
+    // types need to be set in JNDI "java.naming.ldap.attributes.binary" environment property
+    // when making a connection
+    public static boolean isBinaryType(AttributeType type) {
+        return type == AttributeType.TYPE_BINARY;
+    }
+    
+    // types need the ";binary" treatment to/from the LDAP server
+    // for now the only supported binary transfer type is certificate
+    public static boolean isBinaryTransferType(AttributeType type) {
+        return type == AttributeType.TYPE_CERTIFICATE;
+    }
+    
+    public boolean containsBinaryData(String attr) {
+        return mBinaryAttrs.contains(attr.toLowerCase()) ||
+               mBinaryTransferAttrs.contains(attr.toLowerCase());
+    }
+    
+    public boolean isBinaryTransfer(String attr) {
+        return mBinaryTransferAttrs.contains(attr.toLowerCase());
     }
     
     public Set<String> getBinaryAttrs() {
         return mBinaryAttrs;
+    }
+    
+    public Set<String> getBinaryTransferAttrs() {
+        return mBinaryTransferAttrs;
     }
 
     boolean hasFlag(AttributeFlag flag, String attr) {

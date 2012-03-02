@@ -160,6 +160,8 @@ public class LdapProvisioning extends Provisioning {
     };
 
     private static final String[] sMinimalDlAttrs = {
+    	    Provisioning.A_displayName,
+    	    Provisioning.A_zimbraShareInfo,
             Provisioning.A_zimbraMailAlias,
             Provisioning.A_zimbraId,
             Provisioning.A_uid,
@@ -765,15 +767,22 @@ public class LdapProvisioning extends Provisioning {
         return emailAddress;
     }
 
-    private Account getAccountByName(String emailAddress, boolean loadFromMaster) throws ServiceException {
+    Account getAccountByName(String emailAddress, boolean loadFromMaster) throws ServiceException {
+
+        return getAccountByName(emailAddress, loadFromMaster, true);
+    }
+    
+    Account getAccountByName(String emailAddress, boolean loadFromMaster, boolean checkAliasDomain) throws ServiceException {
 
         Account account = getAccountByNameInternal(emailAddress, loadFromMaster);
 
         // if not found, see if the domain is an alias domain and if so try to get account by the alias domain target
         if (account == null) {
-            String addrByDomainAlias = getEmailAddrByDomainAlias(emailAddress);
-            if (addrByDomainAlias != null)
-                account = getAccountByNameInternal(addrByDomainAlias, loadFromMaster);
+            if (checkAliasDomain) {
+                String addrByDomainAlias = getEmailAddrByDomainAlias(emailAddress);
+                if (addrByDomainAlias != null)
+                    account = getAccountByNameInternal(addrByDomainAlias, loadFromMaster);
+            }
         }
 
         return account;
@@ -899,11 +908,13 @@ public class LdapProvisioning extends Provisioning {
             zlc = new ZimbraLdapContext(true);
 
             Domain d = getDomainByAsciiName(domain, zlc);
-            if (d == null)
+            if (d == null) {
                 throw AccountServiceException.NO_SUCH_DOMAIN(domain);
-            String domainType = d.getAttr(Provisioning.A_zimbraDomainType, Provisioning.DOMAIN_TYPE_LOCAL);
-            if (!domainType.equals(Provisioning.DOMAIN_TYPE_LOCAL))
+            }
+            
+            if (!d.isLocal()) {
                 throw ServiceException.INVALID_REQUEST("domain type must be local", null);
+            }
 
             Attributes attrs = new BasicAttributes(true);
             LdapUtil.mapToAttrs(acctAttrs, attrs);
@@ -2371,11 +2382,16 @@ public class LdapProvisioning extends Provisioning {
             if (domain == null)
                 throw AccountServiceException.NO_SUCH_DOMAIN(newDomain);
             
-            domainChanged = !oldDomain.equals(newDomain);
+            domainChanged = !newDomain.equals(oldDomain);
             
             if (domainChanged) {
                 validate(ProvisioningValidator.RENAME_ACCOUNT, newName, acct.getMultiAttr(Provisioning.A_objectClass, false), acct.getAttrs(false));
                 validate(ProvisioningValidator.RENAME_ACCOUNT_CHECK_DOMAIN_COS_AND_FEATURE, newName, acct.getAttrs(false));
+                
+                // make sure the new domain is a local domain
+                if (!domain.isLocal()) {
+                    throw ServiceException.INVALID_REQUEST("domain type must be local", null);
+                }
             }
             
             String newDn = mDIT.accountDNRename(oldDn, newLocal, domain.getName());
@@ -2887,9 +2903,10 @@ public class LdapProvisioning extends Provisioning {
             Domain d = getDomainByAsciiName(domain, zlc);
             if (d == null)
                 throw AccountServiceException.NO_SUCH_DOMAIN(domain);
-            String domainType = d.getAttr(Provisioning.A_zimbraDomainType, Provisioning.DOMAIN_TYPE_LOCAL);
-            if (!domainType.equals(Provisioning.DOMAIN_TYPE_LOCAL))
+            
+            if (!d.isLocal()) {
                 throw ServiceException.INVALID_REQUEST("domain type must be local", null);
+            }
 
             Attributes attrs = new BasicAttributes(true);
             LdapUtil.mapToAttrs(listAttrs, attrs);
@@ -2919,8 +2936,14 @@ public class LdapProvisioning extends Provisioning {
             zlc.createEntry(dn, attrs, "createDistributionList");
 
             DistributionList dlist = getDistributionListById(zimbraIdStr, zlc);
-            AttributeManager.getInstance().postModify(listAttrs, dlist, attrManagerContext, true);
-            mAllDLs.addGroup(dlist);
+            
+            if (dlist != null) {
+	            AttributeManager.getInstance().postModify(listAttrs, dlist, attrManagerContext, true);
+	            mAllDLs.addGroup(dlist);
+            } else {
+            	throw ServiceException.FAILURE("unable to get distribution list after creating LDAP entry: "+
+            			listAddress, null);
+            }
             return dlist;
 
         } catch (NameAlreadyBoundException nabe) {
@@ -2953,8 +2976,10 @@ public class LdapProvisioning extends Provisioning {
                 return makeDistributionList(sr.getNameInNamespace(), sr.getAttributes());
             }
         } catch (NameNotFoundException e) {
+        	ZimbraLog.account.warn("unable to lookup distribution list via query: "+query+ " message: "+e.getMessage(), e);
             return null;
         } catch (InvalidNameException e) {
+        	ZimbraLog.account.warn("unable to lookup distribution list via query: "+query+ " message: "+e.getMessage(), e);
             return null;
         } catch (NamingException e) {
             throw ServiceException.FAILURE("unable to lookup distribution list via query: "+query+ " message: "+e.getMessage(), e);
@@ -2992,8 +3017,16 @@ public class LdapProvisioning extends Provisioning {
             domainChanged = !oldDomain.equals(newDomain);
 
             Domain domain = getDomainByAsciiName(newDomain, zlc);
-            if (domain == null)
+            if (domain == null) {
                 throw AccountServiceException.NO_SUCH_DOMAIN(newDomain);
+            }
+            
+            if (domainChanged) {
+                // make sure the new domain is a local domain
+                if (!domain.isLocal()) {
+                    throw ServiceException.INVALID_REQUEST("domain type must be local", null);
+                }
+            }
 
             Map<String, Object> attrs = new HashMap<String, Object>();
 
@@ -3409,12 +3442,14 @@ public class LdapProvisioning extends Provisioning {
     }
 
     @Override
-    public void preAuthAccount(Account acct, String acctValue, String acctBy, long timestamp, long expires, String preAuth, Map<String, Object> authCtxt) throws ServiceException {
+    public void preAuthAccount(Account acct, String acctValue, String acctBy, long timestamp, long expires, 
+            String preAuth, Map<String, Object> authCtxt) throws ServiceException {
         preAuthAccount(acct, acctValue, acctBy, timestamp, expires, preAuth, false, authCtxt);
     }
 
     @Override
-    public void preAuthAccount(Account acct, String acctValue, String acctBy, long timestamp, long expires, String preAuth, boolean admin, Map<String, Object> authCtxt) throws ServiceException {
+    public void preAuthAccount(Account acct, String acctValue, String acctBy, long timestamp, long expires, 
+            String preAuth, boolean admin, Map<String, Object> authCtxt) throws ServiceException {
         try {
             preAuth(acct, acctValue, acctBy, timestamp, expires, preAuth, admin, authCtxt);
             ZimbraLog.security.info(ZimbraLog.encodeAttrs(
@@ -3562,18 +3597,37 @@ public class LdapProvisioning extends Provisioning {
     @Override
     public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) throws ServiceException {
         try {
-            checkAccountStatus(acct, authCtxt);
+            ssoAuth(acct, authCtxt);
             ZimbraLog.security.info(ZimbraLog.encodeAttrs(
-                    new String[] {"cmd", "Auth","account", acct.getName(), "protocol", proto.toString()}));
+                    new String[] {"cmd", "SSOAuth","account", acct.getName(), "protocol", proto.toString()}));
         } catch (AuthFailedServiceException e) {
             ZimbraLog.security.warn(ZimbraLog.encodeAttrs(
-                    new String[] {"cmd", "Auth","account", acct.getName(), "protocol", proto.toString(), "error", e.getMessage() + e.getReason(", %s")}));
+                    new String[] {"cmd", "SSOAuth","account", acct.getName(), "protocol", proto.toString(), "error", e.getMessage() + e.getReason(", %s")}));
             throw e;
         } catch (ServiceException e) {
             ZimbraLog.security.warn(ZimbraLog.encodeAttrs(
-                    new String[] {"cmd", "Auth","account", acct.getName(), "protocol", proto.toString(), "error", e.getMessage()}));
+                    new String[] {"cmd", "SSOAuth","account", acct.getName(), "protocol", proto.toString(), "error", e.getMessage()}));
             throw e;
         }
+    }
+
+    private void ssoAuth(Account acct, Map<String, Object> authCtxt) throws ServiceException {
+        
+        checkAccountStatus(acct, authCtxt);
+        
+        LdapLockoutPolicy lockoutPolicy = new LdapLockoutPolicy(this, acct);
+        try {
+            if (lockoutPolicy.isLockedOut())
+                throw AuthFailedServiceException.AUTH_FAILED(acct.getName(), AuthMechanism.namePassedIn(authCtxt), "account lockout");
+
+            // yes, SSO can unlock the acount
+            lockoutPolicy.successfulLogin();
+        } catch (AccountServiceException e) {
+            lockoutPolicy.failedLogin();
+            throw e;
+        }
+
+        updateLastLogon(acct);
     }
 
     private void updateLastLogon(Account acct) throws ServiceException {
@@ -4625,8 +4679,8 @@ public class LdapProvisioning extends Provisioning {
     //     - cached
     //     - entry returned only contains minimal DL attrs
     //
-    // TODO: generalize it to be a Provisioning method
-    private DistributionList getGroup(DistributionListBy keyType, String key) throws ServiceException {
+    @Override
+    public DistributionList getGroup(DistributionListBy keyType, String key) throws ServiceException {
         switch(keyType) {
         case id:
             return getGroupById(key);
@@ -6403,6 +6457,21 @@ public class LdapProvisioning extends Provisioning {
     public void flushCache(CacheEntryType type, CacheEntry[] entries) throws ServiceException {
 
         switch (type) {
+        case all:
+            if (entries != null) {
+                throw ServiceException.INVALID_REQUEST("cannot specify entry for flushing all", null);
+            }
+            ZimbraLog.account.info("Flushing all LDAP entry caches");
+            flushCache(CacheEntryType.account, null);
+            flushCache(CacheEntryType.group, null);
+            flushCache(CacheEntryType.config, null);
+            flushCache(CacheEntryType.globalgrant, null);
+            flushCache(CacheEntryType.cos, null);
+            flushCache(CacheEntryType.domain, null);
+            flushCache(CacheEntryType.mime, null);
+            flushCache(CacheEntryType.server, null);
+            flushCache(CacheEntryType.zimlet, null);
+            break;
         case account:
             if (entries != null) {
                 for (CacheEntry entry : entries) {
@@ -6431,8 +6500,9 @@ public class LdapProvisioning extends Provisioning {
                     if (account != null)
                         removeFromCache(account);
                 }
-            } else
+            } else {
                 sAccountCache.clear();
+            }
             return;
         case group:
             if (entries != null) {
@@ -6446,10 +6516,18 @@ public class LdapProvisioning extends Provisioning {
             }
             return;
         case config:
-            if (entries != null)
+            if (entries != null) {
                 throw ServiceException.INVALID_REQUEST("cannot specify entry for flushing global config", null);
+            }
             Config config = getConfig();
             reload(config, false);
+            return;
+        case globalgrant:
+            if (entries != null) {
+                throw ServiceException.INVALID_REQUEST("cannot specify entry for flushing global grant", null);
+            }
+            GlobalGrant globalGrant = getGlobalGrant();
+            reload(globalGrant, false);
             return;
         case cos:
             if (entries != null) {

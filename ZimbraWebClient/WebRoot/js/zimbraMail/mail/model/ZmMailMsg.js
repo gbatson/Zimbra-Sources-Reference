@@ -841,7 +841,7 @@ function() {
 	if (bodyPart && (bodyPart.ct == ZmMimeTable.TEXT_PLAIN || bodyPart.body && ZmMimeTable.isTextType(bodyPart.ct))) {
 		return bodyPart.content;
 	}
-    else if (bodyPart.ct == ZmMimeTable.TEXT_CAL) {
+    else if (bodyPart && bodyPart.ct == ZmMimeTable.TEXT_CAL) {
         // NOTE: IE doesn't match multi-line regex, even when explicitly
         // specifying the "m" attribute.
         var lines = bodyPart.content.split(/\r\n/);
@@ -990,6 +990,7 @@ function(edited, componentId, callback, errorCallback, instanceDate, accountName
 
 	var verb = "ACCEPT";
 	var needsRsvp = true;
+	var newPtst;
 
 	var toastMessage; //message to display after action is done.
 	
@@ -999,6 +1000,7 @@ function(edited, componentId, callback, errorCallback, instanceDate, accountName
 		case ZmOperation.REPLY_ACCEPT_NOTIFY:               //falls-through on purpose
 		case ZmOperation.REPLY_ACCEPT:
 			verb = "ACCEPT";
+			newPtst = ZmCalBaseItem.PSTATUS_ACCEPT;
 			toastMessage = ZmMsg.inviteAccepted;
 			break;
 		case ZmOperation.REPLY_DECLINE_IGNORE:				//falls-through on purpose
@@ -1006,6 +1008,7 @@ function(edited, componentId, callback, errorCallback, instanceDate, accountName
 		case ZmOperation.REPLY_DECLINE_NOTIFY:              //falls-through on purpose
 		case ZmOperation.REPLY_DECLINE:
 			verb = "DECLINE";
+			newPtst = ZmCalBaseItem.PSTATUS_DECLINED;
 			toastMessage = ZmMsg.inviteDeclined;
 			break;
 		case ZmOperation.REPLY_TENTATIVE_IGNORE:            //falls-through on purpose
@@ -1013,6 +1016,7 @@ function(edited, componentId, callback, errorCallback, instanceDate, accountName
 		case ZmOperation.REPLY_TENTATIVE_NOTIFY:            //falls-through on purpose
 		case ZmOperation.REPLY_TENTATIVE:
 			verb = "TENTATIVE";
+			newPtst = ZmCalBaseItem.PSTATUS_TENTATIVE;
 			toastMessage = ZmMsg.inviteAcceptedTentatively;
 			break;
 		case ZmOperation.REPLY_NEW_TIME:
@@ -1021,6 +1025,15 @@ function(edited, componentId, callback, errorCallback, instanceDate, accountName
 	request.verb = verb;
 
 	var inv = this._origMsg.invite;
+	//update the ptst to new one (we currently don't use the rest of the info in "replies" so it's ok to remove it for now)
+	//note - this updated value is used later in _handleResponseSendInviteReply, and also in the list view when re-displaying the message (not reloaded from server)
+	if (newPtst) {
+		inv.replies = [{
+			reply: [{
+				ptst: newPtst
+			}]
+		}];
+	}
 	if (this.getAddress(AjxEmailAddress.TO) == null && !inv.isOrganizer()) {
 		var to = inv.getOrganizerEmail() || inv.getSentBy();
 		if (to == null) {
@@ -1088,7 +1101,8 @@ function(jsonObj, updateOrganizer, edited, callback, errorCallback, instanceDate
 								isDraft:false,
 								callback:respCallback,
 								errorCallback:errorCallback,
-								accountName:accountName });
+								accountName:accountName,
+								toastMessage: toastMessage}); //send it since in the child window, syncronious case, we dont' call the respCallback. Don't want to call it since I'm not sure of implications.
 
 	if (window.parentController) {
 		window.close();
@@ -1123,12 +1137,33 @@ function(callback, toastMessage, result) {
 	}
 
 	if (toastMessage) {
-		appCtxt.setStatusMsg(toastMessage);
+		//note - currently this is not called from child window, but just in case it will in the future.
+		var ctxt = window.parentAppCtxt || window.appCtxt; //show on parent window if this is a child window, since we close this child window on accept/decline/etc
+		ctxt.setStatusMsg(toastMessage);
 	}
 
 	if (callback) {
-		callback.run(result);
+		callback.run(result, this._origMsg.getPtst()); // the ptst was updated in _sendInviteReply
 	}
+};
+
+/**
+ * returns this user's reply to this invite.
+ */
+ZmMailMsg.prototype.getPtst =
+function() {
+	return this.invite && this.invite.replies && this.invite.replies[0].reply[0].ptst;
+};
+
+ZmMailMsg.APPT_TRASH_FOLDER = 3;
+
+ZmMailMsg.prototype.isInviteCanceled =
+function() {
+	var invite = this.invite;
+	if (!invite) {
+		return false;
+	}
+	return invite.components[0].ciFolder == ZmMailMsg.APPT_TRASH_FOLDER;
 };
 
 ZmMailMsg.prototype.moveApptItem =
@@ -1509,6 +1544,9 @@ function(params) {
 		};
 		var resp = appCtxt.getAppController().sendRequest(newParams);
 		if (!resp) { return; } // bug fix #9154
+		if (params.toastMessage) {
+			parentAppCtxt.setStatusMsg(params.toastMessage); //show on parent window since this is a child window, since we close this child window on accept/decline/etc
+		}
 
 		if (resp.SendInviteReplyResponse) {
 			return resp.SendInviteReplyResponse;
@@ -1527,7 +1565,9 @@ function(params) {
 												noBusyOverlay:params.isDraft,
 												callback:respCallback,
 												errorCallback:params.errorCallback,
-												accountName:params.accountName });
+												accountName:params.accountName,
+                                                timeout: ( ( params.isDraft && this.attId ) ? 0 : null )
+                                                });
 	}
 };
 
@@ -1722,7 +1762,10 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 					url = url.substring(0,insertIdx) + fn + url.substring(insertIdx);
 				}
 
-				props.link = "<a target='_blank' class='AttLink' href='" + url + "'>";
+                props.attachmentLinkId = Dwt.getNextId();
+				props.link = "<a target='_blank' class='AttLink'" +
+                        AjxStringUtil.buildAttribute("href", url) +
+                        AjxStringUtil.buildAttribute("id", props.attachmentLinkId) + ">";
 				if (!useCL) {
 					props.download = [
 						"<a style='text-decoration:underline' class='AttLink' href='",

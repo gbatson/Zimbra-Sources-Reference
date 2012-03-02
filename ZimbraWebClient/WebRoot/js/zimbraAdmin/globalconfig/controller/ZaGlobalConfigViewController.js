@@ -203,6 +203,17 @@ function () {
 				}
 			}
 		}
+		
+		//check policy service
+		var numPolicyService = tmpObj.attrs[ZaGlobalConfig.A_zimbraMtaPolicyService].length;
+                if( (numPolicyService !=  this._currentObject.attrs[ZaGlobalConfig.A_zimbraMtaPolicyService].length) || 
+                       (tmpObj.attrs[ZaGlobalConfig.A_zimbraMtaPolicyService].join("") != this._currentObject.attrs[ZaGlobalConfig.A_zimbraMtaPolicyService].join(""))) {
+                        dirty = true;
+                }
+                for(var ix=0;ix<numPolicyService;ix++) {
+                        restrictions.push("check_policy_service "+tmpObj.attrs[ZaGlobalConfig.A_zimbraMtaPolicyService][ix]);
+                }
+
 		//check RBLs
 		var numRBLs = tmpObj.attrs[ZaGlobalConfig.A_zimbraMtaRejectRblClient].length;
 		if( (numRBLs !=  this._currentObject.attrs[ZaGlobalConfig.A_zimbraMtaRejectRblClient].length) ||
@@ -274,8 +285,54 @@ function () {
 	//save the model
 	//var changeDetails = new Object();
 	this._currentObject.modify(mods,tmpObj);
-	
+
+    // skin modification needs to restart server
+    if(mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinForegroundColor)
+            ||  mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinBackgroundColor)
+            ||  mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinSecondaryColor)
+            ||  mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinSelectionColor)
+            ||  mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinLogoURL)
+            ||  mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinLogoLoginBanner)
+            ||  mods.hasOwnProperty(ZaGlobalConfig.A_zimbraSkinLogoAppBanner)
+            ) {
+            	try {
+            		var mbxSrvrs = ZaApp.getInstance().getMailServers();
+            		var serverList = [];
+            		var cnt = mbxSrvrs.length;
+            		for(var i=0; i<cnt; i++) {
+            			if(ZaItem.hasRight(ZaServer.FLUSH_CACHE_RIGHT,mbxSrvrs[i])) {
+            				serverList.push(mbxSrvrs[i]);
+            			}
+            		}
+
+            		if(serverList.length > 0) {
+						ZaApp.getInstance().dialogs["confirmMessageDialog2"].setMessage(ZaMsg.Domain_flush_cache_q, DwtMessageDialog.INFO_STYLE);
+						ZaApp.getInstance().dialogs["confirmMessageDialog2"].registerCallback(DwtDialog.YES_BUTTON, this.openFlushCacheDlg, this, [serverList]);
+						ZaApp.getInstance().dialogs["confirmMessageDialog2"].registerCallback(DwtDialog.NO_BUTTON, this.closeCnfrmDelDlg, this, null);
+						ZaApp.getInstance().dialogs["confirmMessageDialog2"].popup();
+            		}
+
+            	} catch (ex) {
+                    this._handleException(ex, "ZaGlobalConfigViewController.prototype._saveChange", null, false);
+                    return false;
+            	}
+
+    }
 	return true;
 }
 
 
+ZaGlobalConfigViewController.prototype.openFlushCacheDlg =
+function (serverList) {
+	ZaApp.getInstance().dialogs["confirmMessageDialog2"].popdown();
+	if(!ZaApp.getInstance().dialogs["flushCacheDialog"]) {
+		ZaApp.getInstance().dialogs["flushCacheDialog"] = new ZaFlushCacheXDialog(this._container);
+	}
+	serverList._version = 1;
+	for(var i=0;i<serverList.length;i++) {
+		serverList[i]["status"] = 0;
+	}
+	obj = {statusMessage:null,flushZimlet:false,flushSkin:true,flushLocale:false,serverList:serverList,status:0};
+	ZaApp.getInstance().dialogs["flushCacheDialog"].setObject(obj);
+	ZaApp.getInstance().dialogs["flushCacheDialog"].popup();
+}

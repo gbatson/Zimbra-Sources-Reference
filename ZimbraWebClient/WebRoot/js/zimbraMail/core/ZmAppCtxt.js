@@ -48,6 +48,7 @@ ZmAppCtxt = function() {
 	this._itemCache			= {};
 	this._itemCacheDeferred	= {};
 	this._acCache			= {};	// autocomplete
+	this._isExpandableDL	= {};	// distribution lists
 };
 
 ZmAppCtxt._ZIMLETS_EVENT = 'ZIMLETS';
@@ -378,7 +379,7 @@ function() {
 ZmAppCtxt.prototype.getOkCancelMsgDialog =
 function() {
 	if (!this._okCancelMsgDialog) {
-		this._okCancelMsgDialog = new DwtMessageDialog({parent:this._shell, buttons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON]});
+		this._okCancelMsgDialog = new DwtMessageDialog({parent:this._shell, buttons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON], id:"OkCancel"});
 	}	
 	return this._okCancelMsgDialog;
 };
@@ -1203,9 +1204,10 @@ function() {
  * @param	{Boolean}	fullView		<code>true</code> to include the full version
  * @param	{int}		width			the width
  * @param	{int}		height			the height
+ * @param   {String}    name            window name
  */
 ZmAppCtxt.prototype.getNewWindow = 
-function(fullVersion, width, height) {
+function(fullVersion, width, height, name) {
 	// build url
 	var url = [];
 	var i = 0;
@@ -1227,7 +1229,7 @@ function(fullVersion, width, height) {
     if (window.appCoverageMode) {
         url[i++] = "&coverage=1";
     }
-
+     name = name || "_blank";
 
 	width = width || 705;
 	height = height || 465;
@@ -1235,7 +1237,7 @@ function(fullVersion, width, height) {
 	if (window.appDevMode) {
 		args = ["height=", height, ",width=", width, ",location=yes,menubar=yes,resizable=yes,scrollbars=no,status=yes,toolbar=yes"].join("");
 	}
-	var newWin = window.open(url.join(""), "_blank", args);
+	var newWin = window.open(url.join(""), name, args);
 	this.handlePopupBlocker(newWin);
 	if(newWin) {
 		// add this new window to global list so parent can keep track of child windows!
@@ -1454,7 +1456,7 @@ function(event, args, options) {
 		return;
 	}
 
-	this.getZimletMgr().notifyZimlets(event, args);
+	return this.getZimletMgr().notifyZimlets(event, args);
 };
 
 /**
@@ -1728,4 +1730,35 @@ function() {
 	} else {
 		return "UTF-8";
 	}
+};
+
+/**
+ * Returns true if an address is an expandable DL.
+ *  
+ * @param {string}	addr	email address
+ */
+ZmAppCtxt.prototype.isExpandableDL =
+function(addr) {
+	return addr && this._isExpandableDL[addr] && this.get("EXPAND_DL_ENABLED");
+};
+
+/**
+ * Cache whether an address is an expandable DL.
+ * 
+ * @param {string}	addr			email address
+ * @param {boolean}	isExpandableDL	if true, address is expandable DL
+ * 
+ * TODO: consider caching AjxEmailAddress objects by addr so we also save display name
+ */
+ZmAppCtxt.prototype.setIsExpandableDL =
+function(addr, isExpandableDL) {
+	this._isExpandableDL[addr] = isExpandableDL;
+};
+
+ZmAppCtxt.prototype.getToolTipMgr =
+function() {
+	if (!this._toolTipMgr) {
+		this._toolTipMgr = new ZmToolTipMgr();
+	}
+	return this._toolTipMgr;
 };

@@ -1,18 +1,25 @@
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.zip.GZIPInputStream;
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
+import com.zimbra.common.util.tar.TarEntry;
+import com.zimbra.common.util.tar.TarInputStream;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 
 /**
  * This class contains general utilities methods that can be used across the framework
@@ -216,8 +223,9 @@ public class GeneralUtility {
     * @return true, if the task is running, otherwise, false
     * @throws IOException
     * @throws InterruptedException
+    * @throws HarnessException 
     */
-   public static boolean findWindowsRunningTask(String taskName) throws IOException, InterruptedException {
+   public static boolean findWindowsRunningTask(String taskName) throws IOException, InterruptedException, HarnessException {
       String output = CommandLine.cmdExecWithOutput("TASKLIST /FI \"IMAGENAME EQ " + taskName + "\"");
       logger.debug("output: " + output);
       if (output.contains(taskName)) {
@@ -303,5 +311,128 @@ public class GeneralUtility {
                   " after synching the ZD to ZCS");
          }
       }
+   }
+
+   /**
+    * Un-tar the TGZ file
+    * @param tarFile
+    * @param dest
+    * @throws HarnessException
+    * @throws InterruptedException 
+    */
+   public static void untarBaseUpgradeFile(File tarFile, File dest) throws HarnessException, InterruptedException {  
+      if (dest == null) {
+         throw new HarnessException("dest cannot be null!");
+      }
+
+      if (!dest.exists()) {
+         createDirectory(dest);
+      }
+
+      try {
+         logger.info("tar file is: " + tarFile.getCanonicalPath());
+         logger.info("dest path is: " + dest.getCanonicalPath());
+         logger.debug("Initializing tarFileInputStream");
+         FileInputStream tarFileInputStream = new FileInputStream(tarFile);
+         
+         logger.debug("Initializing gzipInputStream");
+         GZIPInputStream gzipInputStream = new GZIPInputStream(tarFileInputStream);
+
+         logger.debug("Initializing tarInputStream");
+         TarInputStream tin = new TarInputStream(gzipInputStream);
+
+         logger.debug("Getting the entries...");
+         TarEntry tarEntry = tin.getNextEntry();  
+         logger.debug("First tarEntry is: " + tarEntry.getName());
+         while (tarEntry != null) {  
+            File destPath = new File(dest.toString().trim() + File.separatorChar +
+                  tarEntry.getName());  
+            logger.info("destPath is: " + destPath);
+
+            if (tarEntry.isDirectory()) {
+               createDirectory(destPath);
+
+            } else {
+               FileOutputStream fout = new FileOutputStream(destPath);
+               tin.copyEntryContents(fout);  
+               fout.close();
+
+            }  
+
+            tarEntry = tin.getNextEntry();  
+
+         }
+
+         tin.close();
+         tin = null;
+
+      } catch (IOException ie) {
+         String message = "Getting IO Exception while untarring the file from: " +
+               tarFile + " to: " + dest;
+         logger.info(message);
+         logger.info(ie.getMessage());
+         throw new HarnessException(message);
+      }
+   }
+
+   /**
+    * Creating a directory recursively depending on the existence of the parents
+    * @param dir
+    * @return
+    * @throws HarnessException
+    */
+   public static boolean createDirectory(File dir) throws HarnessException {
+      if (dir == null) {
+         throw new HarnessException("dir cannot be null");
+      }
+
+      String [] dirNames = dir.toString().split(Character.toString(File.separatorChar));
+
+      StringBuilder currentPath = new StringBuilder("");
+      for (int i = 0; i < dirNames.length; i++) {
+         currentPath.append(File.separatorChar).append(dirNames[i].trim());
+         File currentDir = new File(currentPath.toString());
+         boolean currentDirExists = currentDir.exists();
+
+         if (!currentDirExists) {
+            boolean result = currentDir.mkdir();
+            if (!result) {
+               return false;
+            }
+         }
+      }
+
+      return true;
+   }
+
+   /**
+    * Delete the non-empty directory
+    * @param path
+    * @return
+    */
+   public static boolean deleteDirectory(File path) {
+      if( path.exists() ) {
+         File[] files = path.listFiles();
+         logger.debug("Number of files to be deleted: " + files.length);
+         try {
+            for(int i = 0; i < files.length; i++) {
+               if(files[i].isDirectory()) {
+                  deleteDirectory(files[i]);
+               }
+               else {
+                  logger.debug("Deleting: " + files[i].getCanonicalPath());
+                  files[i].delete();
+               }
+            }
+            
+         } catch (IOException ie) {
+            logger.debug("Ignoring IO Exception while deleting the file");
+         }
+       } else {
+          logger.debug("path doesn't exist");
+       }
+
+       logger.debug("Now removing the top directory...");
+       return( path.delete() );
    }
 }

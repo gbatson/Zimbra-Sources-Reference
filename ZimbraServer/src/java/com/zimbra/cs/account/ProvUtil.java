@@ -156,6 +156,8 @@ public class ProvUtil implements HttpDebugListener {
     private BufferedReader mReader;
     private boolean mOutputBinaryToFile;
 
+    private boolean errorOccursDuringInteraction = false; // bug 58554
+
     public void setDebug(SoapDebugLevel debug) { mDebug = debug; }
 
     public void setVerbose(boolean verbose) { mVerbose = verbose; }
@@ -510,7 +512,7 @@ public class ProvUtil implements HttpDebugListener {
         GET_MAILBOX_INFO("getMailboxInfo", "gmi", "{account}", Category.MAILBOX, 1, 1),
         GET_PUBLISHED_DISTRIBUTION_LIST_SHARE_INFO("getPublishedDistributionListShareInfo", "gpdlsi", "{dl-name|dl-id} [{owner-name|owner-id}]", Category.SHARE, 1, 2),
         GET_QUOTA_USAGE("getQuotaUsage", "gqu", "{server}", Category.MAILBOX, 1, 1),
-        GET_RIGHT("getRight", "gr", "{right}", Category.RIGHT, 1, 1),
+        GET_RIGHT("getRight", "gr", "{right} [-e]", Category.RIGHT, 1, 2),
         GET_RIGHTS_DOC("getRightsDoc", "grd", "[java packages]", Category.RIGHT, 0, Integer.MAX_VALUE),
         GET_SERVER("getServer", "gs", "[-e] {name|id} [attr1 [attr2...]]", Category.SERVER, 1, Integer.MAX_VALUE),
         GET_SHARE_INFO("getShareInfo", "gsi", "{owner-name|owner-id}", Category.SHARE, 1, 1),
@@ -817,7 +819,7 @@ public class ProvUtil implements HttpDebugListener {
             doDescribe(args);
             break;
         case EXIT:
-            System.exit(0);
+            System.exit(errorOccursDuringInteraction?2:0);
             break;
         case FLUSH_CACHE:
             doFlushCache(args);
@@ -908,7 +910,7 @@ public class ProvUtil implements HttpDebugListener {
             doGetFreeBusyQueueInfo(args);
             break;
         case GET_RIGHT:
-            dumpRight(lookupRight(args[1]));
+            doGetRight(args);
             break;
         case GET_RIGHTS_DOC:
             doGetRightsDoc(args);
@@ -2127,6 +2129,19 @@ public class ProvUtil implements HttpDebugListener {
         dumpAttrs(attrs, null);
     }
 
+    private void doGetRight(String[] args) throws ServiceException, ArgException  {
+        boolean expandComboRight = false;
+        String right = args[1];
+        if (args.length > 2) {
+            if (args[2].equals("-e")) {
+                expandComboRight = true;
+            } else {
+                throw new ArgException("invalid arguments");
+            }
+        }
+        dumpRight(lookupRight(right), expandComboRight);
+    }
+    
     private void doGetAllRights(String[] args) throws ServiceException, ArgException  {
         boolean verbose = false;
         String targetType = null;
@@ -2161,10 +2176,15 @@ public class ProvUtil implements HttpDebugListener {
                 console.println(right.getName());
         }
     }
-
+    
     private void dumpRight(Right right) {
-        String indent = "    ";
-        String indent2 = "        ";
+        dumpRight(right, true);
+    }
+    
+    private void dumpRight(Right right, boolean expandComboRight) {
+        String tab = "    ";
+        String indent = tab;
+        String indent2 = indent + indent;
 
         console.println();
         console.println("------------------------------");
@@ -2176,7 +2196,7 @@ public class ProvUtil implements HttpDebugListener {
         String targetType = right.getTargetTypeStr();
         console.println(indent + "target type(s): " + (targetType==null?"":targetType));
 
-        console.println(indent + "    right class: " + right.getRightClass().name());
+        console.println(indent + "   right class: " + right.getRightClass().name());
         
         if (right.isAttrRight()) {
             AttrRight attrRight = (AttrRight)right;
@@ -2192,13 +2212,35 @@ public class ProvUtil implements HttpDebugListener {
             ComboRight comboRight = (ComboRight)right;
             console.println();
             console.println(indent + "rights:");
-            for (Right r : comboRight.getRights()) {
-                String tt = r.getTargetTypeStr();
-                tt = tt==null?"": " (" + tt + ")";
-                console.format("%s%10.10s: %s %s\n", indent2, r.getRightType().name(), r.getName(), tt);
-            }
+            dumpComboRight(comboRight, expandComboRight, indent, new HashSet<String>());
         }
         console.println();
+    }
+    
+    private void dumpComboRight(ComboRight comboRight, boolean expandComboRight, String indent, Set<String> seen) {
+        // safety check, should not happen, 
+        // detect circular combo rights
+        if (seen.contains(comboRight.getName())) {
+            console.println("Circular combo right: " + comboRight.getName() + " !!");
+            return;
+        }
+        
+        String indent2 = indent + indent;
+        
+        for (Right r : comboRight.getRights()) {
+            String tt = r.getTargetTypeStr();
+            tt = tt==null?"": " (" + tt + ")";
+            // console.format("%s%10.10s: %s %s\n", indent2, r.getRightType().name(), r.getName(), tt);
+            console.format("%s %s: %s %s\n", indent2, r.getRightType().name(), r.getName(), tt);
+            
+            seen.add(comboRight.getName());
+            
+            if (r.isComboRight() && expandComboRight) {
+                dumpComboRight((ComboRight)r, expandComboRight, indent2, seen);
+            }
+            
+            seen.clear();
+        }
     }
 
     private void doGetRightsDoc(String[] args) throws ServiceException {
@@ -2405,7 +2447,7 @@ public class ProvUtil implements HttpDebugListener {
         for (Map.Entry<String, Object> entry : attrs.entrySet()) {
             String name = entry.getKey();
 
-            boolean isBinary = attrMgr.isBinary(name);
+            boolean isBinary = needsBinaryIO(attrMgr, name);
                 
             Set<String> specificValues = null;
             if (specificAttrValues != null)
@@ -2881,10 +2923,14 @@ public class ProvUtil implements HttpDebugListener {
             console.println();
         }
     }
-    
-    /*
-     * get map and check/warn deprecated attrs
-     */
+
+	private static boolean needsBinaryIO(AttributeManager attrMgr, String attr) {
+	    return attrMgr.containsBinaryData(attr);
+	}
+
+	/**
+	 * get map and check/warn deprecated attrs.
+	 */
     private Map<String, Object> getMapAndCheck(String[] args, int offset) throws ArgException, ServiceException {
         Map<String, Object> attrs = getAttrMap(args, offset);
         checkDeprecatedAttrs(attrs);
@@ -2921,7 +2967,7 @@ public class ProvUtil implements HttpDebugListener {
             if (n.charAt(0) == '+' || n.charAt(0) == '-') {
                 attrName = attrName.substring(1);
             }
-            if (attrMgr.isBinary(attrName) && v.length() > 0) {
+            if (needsBinaryIO(attrMgr, attrName) && v.length() > 0) {
                 File file = new File(v);
                 byte[] bytes = ByteUtil.getContent(file);
                 v = ByteUtil.encodeLDAPBase64(bytes);
@@ -2978,6 +3024,7 @@ public class ProvUtil implements HttpDebugListener {
                     console.println("Unknown command. Type: 'help commands' for a list");
                 }
             } catch (ServiceException e) {
+                errorOccursDuringInteraction = true;
                 Throwable cause = e.getCause();
                 String errText = "ERROR: " + e.getCode() + " (" + e.getMessage() + ")" +
                         (cause == null ? "" : " (cause: " + cause.getClass().getName() + " " + cause.getMessage() + ")");
@@ -4487,7 +4534,7 @@ public class ProvUtil implements HttpDebugListener {
     private void doPushFreeBusyForDomain(String[] args) throws ServiceException, IOException {
         lookupDomain(args[1]);
         FbCli fbcli = new FbCli();
-        for (Server server : mProv.getAllServers()) {
+        for (Server server : mProv.getAllServers(Provisioning.SERVICE_MAILBOX)) {
             console.println("pushing to server " + server.getName());
             fbcli.setServer(server.getName());
             fbcli.pushFreeBusyForDomain(args[1]);

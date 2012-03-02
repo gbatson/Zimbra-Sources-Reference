@@ -634,6 +634,29 @@ function(startTime, endTime) {
 };
 
 /**
+ * Checks whether the duration of this item is valid.
+ *
+ * @return	{Boolean}	<code>true</code> if the item possess valid duration.
+ */
+ZmCalItem.prototype.isValidDuration =
+function(){
+
+    var startTime = this.getStartTime();
+    var endTime = this.getEndTime();
+
+    if(this.endTimezone && this.endTimezone!=this.timezone){
+      var startOffset = AjxTimezone.getRule(this.timezone).standard.offset;
+      var endOffset = AjxTimezone.getRule(this.endTimezone).standard.offset;
+
+      startTime = startTime - (startOffset*60000);
+      endTime = endTime - (endOffset*60000);
+    }
+
+    return (startTime<=endTime);
+
+}
+
+/**
  * @private
  */
 ZmCalItem.prototype.parseAlarmData =
@@ -1583,7 +1606,8 @@ function(callback){
  */
 ZmCalItem.prototype._doCancel =
 function(mode, callback, msg, batchCmd, result) {
-	if(this.folderId == ZmOrganizer.ID_TRASH) {
+    var folderId = this.getFolder().nId;
+	if(folderId == ZmOrganizer.ID_TRASH) {
 		mode = ZmCalItem.MODE_PURGE;
 		var soapDoc = AjxSoapDoc.create(this._getSoapForMode(mode), "urn:zimbraMail");
 		var action = soapDoc.set("action");

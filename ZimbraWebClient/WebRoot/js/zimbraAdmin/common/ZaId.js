@@ -107,7 +107,6 @@ ZaId.WIDGET_DLG_VIEW                    = "zdlgv";               // dialog view
  */
 ZaId.WIDGET_DLG_BUTTON			= "zdlgb";		//  dialog button
 
-
 /**
  * Defines the "search panel view" widget type prefix.
  */
@@ -508,6 +507,7 @@ ZaId.VIEW_SCHLIST		= "SCHLV";
 
 ZaId.VIEW_MTALIST		= "MTALV";
 
+ZaId.VIEW_MEMLIST		= "MEMLV";  // memberOf list view
 
 /* View */
 ZaId.VIEW_ACCT              	= "ACCTV";
@@ -585,6 +585,7 @@ ZaId.TAB_SEARCH_MANAGE          = "SEARCH_MANAGE";
 ZaId.TAB_SEARCH_EDIT            = "SEARCH_EDIT";
 ZaId.TAB_GSET_EDIT              = "GSET_EDIT";
 
+ZaId.TAB_DOWNLOADS		= "DOWNLOADS";
 
 ZaId.TAB_UNDEF			= "UNDEFINE";
 
@@ -616,5 +617,20 @@ ZaId.DLG_NEW_DOMAIN             = "NEW_DOMAIN";
 ZaId.DLG_ZIM_DEPLOY             = "ZIM_DEPLOY";
 ZaId.DLG_AUTH_CONFIG            = "AUTH_CONFIG";
 
+ZaId.DLG_MSG			= "MSG";
+ZaId.DLG_ERR			= "ERR";
+
 
 ZaId.DLG_UNDEF			= "UNDEFINE";
+
+/* controller */
+
+ZaId.CTR_GLOBAL			= "GLOBAL_"
+ZaId.CTR_PREFIX			= "CTR_";
+
+// ZaId.CTR_PREFIX should be used like the follows:
+// e.g.
+// ZaId.CTR_VIEW_ACCT = ZaId.CTR_PREFIX + ZaId.VIEW_ACCT
+// ZaId.CTR_VIEW_ACCTLIST = ZaId.CTR_PREFIX + ZaId.VIEW_ACCTLIST 
+
+ZaId.CTR_UNDEF			= "CTR_UNDEFINE";

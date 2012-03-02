@@ -57,9 +57,30 @@ public class VCard {
     }
 
 
-    private static final Set<String> PROPERTY_NAMES = new HashSet<String>(Arrays.asList(new String[] {
-            "BEGIN", "FN", "N", "NICKNAME", "PHOTO", "BDAY", "ADR", "TEL", "EMAIL", "URL", "ORG", "TITLE", "NOTE", "AGENT", "END", "UID"
-    }));
+    private static final Set<String> PROPERTY_NAMES =
+            new HashSet<String>(Arrays.asList(
+                    "BEGIN",
+                    "FN",
+                    "N",
+                    "NICKNAME",
+                    "PHOTO",
+                    "BDAY",
+                    "ADR",
+                    "TEL",
+                    "EMAIL",
+                    "URL",
+                    "ORG",
+                    "TITLE",
+                    "NOTE",
+                    "AGENT",
+                    "END",
+                    "UID",
+                    "X-ZIMBRA-IMADDRESS1",
+                    "X-ZIMBRA-IMADDRESS2",
+                    "X-ZIMBRA-IMADDRESS3",
+                    "X-ZIMBRA-ANNIVERSARY",
+                    "X-ZIMBRA-MAIDENNAME"
+    ));
 
     static final Map<String, String> PARAM_ABBREVIATIONS = new HashMap<String, String>();
         static {
@@ -73,7 +94,7 @@ public class VCard {
             PARAM_ABBREVIATIONS.put("CAR",    "TYPE=CAR");
         }
 
-    private enum Encoding { NONE, B, Q };
+    private enum Encoding { NONE, B, Q }
 
     private static class VCardProperty {
         private String group;
@@ -169,7 +190,7 @@ public class VCard {
                     value = new QuotedPrintableCodec(charset).decode(value);
                 }
                 encoding = Encoding.NONE;
-            } catch (Exception e) { }
+            } catch (Exception ignored) { }
             return value;
         }
 
@@ -179,7 +200,7 @@ public class VCard {
                 if (encoding == Encoding.B && Base64.isArrayByteBase64(encoded))
                     encoded = Base64.decodeBase64(encoded);
                 encoding = Encoding.NONE;
-            } catch (Exception e) { }
+            } catch (Exception ignored) { }
             return encoded;
         }
     }
@@ -195,9 +216,9 @@ public class VCard {
         int depth = 0;
         int cardstart = 0; 
         String uid = null;
-        for (int start = 0, pos = 0, lines = 0, limit = vcard.length(); pos < limit; lines++) {
+        for (int start, pos = 0, limit = vcard.length(); pos < limit;) {
             // unfold the next line in the vcard
-            String line = "", name = null, value = null;
+            String line = "", name = null, value;
             int linestart = pos;
             boolean folded = true;
             do {
@@ -222,7 +243,7 @@ public class VCard {
 
             if (name.equals("")) {
                 throw ServiceException.PARSE_ERROR("missing property name in line " + line, null);
-            } else if (name.startsWith("X-")) {
+            } else if (name.startsWith("X-") && !name.startsWith("X-ZIMBRA-")) {
                 String decodedValue = vcfDecode(vcprop.getValue());
                 // handle multiple occurrences of xprops with the same key
                 String group = vcprop.getGroup();
@@ -266,8 +287,8 @@ public class VCard {
                                 @SuppressWarnings("unchecked")
                                 ArrayList<String> valArray = (ArrayList) v;
                                 try {
-                                    val = Contact.encodeMultiValueAttr(valArray.toArray(new String[0]));
-                                } catch (JSONException e) {
+                                    val = Contact.encodeMultiValueAttr(valArray.toArray(new String[valArray.size()]));
+                                } catch (JSONException ignored) {
                                 }
                                 if (val == null)
                                     val = v.toString();
@@ -322,6 +343,11 @@ public class VCard {
             else if (name.equals("TITLE"))     addField(ContactConstants.A_jobTitle, vcfDecode(value), "altJobTitle", 2, fields);
             else if (name.equals("NOTE"))      addField(ContactConstants.A_notes, vcfDecode(value), null, 2, fields);
             else if (name.equals("EMAIL"))     addField(ContactConstants.A_email, vcfDecode(value), null, 2, fields);
+            else if (name.equals("X-ZIMBRA-IMADDRESS1"))    fields.put(ContactConstants.A_imAddress1, value);
+            else if (name.equals("X-ZIMBRA-IMADDRESS2"))    fields.put(ContactConstants.A_imAddress2, value);
+            else if (name.equals("X-ZIMBRA-IMADDRESS3"))    fields.put(ContactConstants.A_imAddress3, value);
+            else if (name.equals("X-ZIMBRA-ANNIVERSARY"))   fields.put(ContactConstants.A_anniversary, value);
+            else if (name.equals("X-ZIMBRA-MAIDENNAME"))    fields.put(ContactConstants.A_maidenName, value);
             else if (name.equals("UID")) uid = value;
         }
 
@@ -405,7 +431,7 @@ public class VCard {
         // suffix "2" and so on.
         String suffix = "";
         int suffixInt = 1;
-        boolean keyAvailable = false;
+        boolean keyAvailable;
         do {
             keyAvailable = true;
             for (String key : keys) {
@@ -579,7 +605,7 @@ public class VCard {
                         sbtags.append(sbtags.length() == 0 ? "" : ",").append(vcfEncode(tag.getName()));
                     sb.append("CATEGORIES:").append(sbtags).append("\r\n");
                 }
-            } catch (ServiceException e) { }
+            } catch (ServiceException ignored) { }
         }
 
         String uid = getUid(con);
@@ -588,6 +614,31 @@ public class VCard {
         if (vcattrs == null || vcattrs.contains("UID"))
             sb.append("UID:").append(uid).append("\r\n");
         // sb.append("MAILER:Zimbra ").append(BuildInfo.VERSION).append("\r\n");
+        if ((vcattrs == null || vcattrs.contains("X-ZIMBRA-IMADDRESS1"))) {
+            String imAddr1 = con.get(ContactConstants.A_imAddress1);
+            if (imAddr1 != null)
+                sb.append("X-ZIMBRA-IMADDRESS1:").append(imAddr1).append("\r\n");
+        }
+        if ((vcattrs == null || vcattrs.contains("X-ZIMBRA-IMADDRESS2"))) {
+            String imAddr2 = con.get(ContactConstants.A_imAddress2);
+            if (imAddr2 != null)
+                sb.append("X-ZIMBRA-IMADDRESS2:").append(imAddr2).append("\r\n");
+        }
+        if ((vcattrs == null || vcattrs.contains("X-ZIMBRA-IMADDRESS3"))) {
+            String imAddr3 = con.get(ContactConstants.A_imAddress3);
+            if (imAddr3 != null)
+                sb.append("X-ZIMBRA-IMADDRESS3:").append(imAddr3).append("\r\n");
+        }
+        if ((vcattrs == null || vcattrs.contains("X-ZIMBRA-ANNIVERSARY"))) {
+            String anniversary = con.get(ContactConstants.A_anniversary);
+            if (anniversary != null)
+                sb.append("X-ZIMBRA-ANNIVERSARY:").append(anniversary).append("\r\n");
+        }
+        if ((vcattrs == null || vcattrs.contains("X-ZIMBRA-MAIDENNAME"))) {
+            String maidenName = con.get(ContactConstants.A_maidenName);
+            if (maidenName != null)
+                sb.append("X-ZIMBRA-MAIDENNAME:").append(maidenName).append("\r\n");
+        }
         if (includeXProps) {
             Map<String,String> xprops = con.getXProps();
             for (String key : xprops.keySet()) {

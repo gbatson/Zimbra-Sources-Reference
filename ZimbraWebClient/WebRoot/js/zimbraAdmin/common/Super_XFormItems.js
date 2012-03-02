@@ -325,7 +325,7 @@ Super_AnchorHelper_XFormItem.prototype.constructWidget = function () {
 	var widget = this.widget = new DwtButton(this.getForm(), this.getCssClass());
 	var height = this.getHeight();
 	var width = this.getWidth();
-	if(!width) width = "120px";
+	if(!width) width = "100%";
 	var el = null;
 	if (width != null || height != null){
 		el = widget.getHtmlElement();
@@ -503,7 +503,7 @@ SuperWiz_Checkbox_XFormItem.prototype.enableDisableChecks = [ZaItem.hasWritePerm
 Super_Checkbox_XFormItem.prototype.useParentTable = false;
 Super_Checkbox_XFormItem.prototype.numCols = 3;
 Super_Checkbox_XFormItem.prototype.colSizes = ["275px","275px","150px"];
-
+Super_Checkbox_XFormItem.prototype.labelWrap = true;
 
 Super_Checkbox_XFormItem.prototype.initializeItems = function() {
 	var anchorCssStyle = this.getInheritedProperty("anchorCssStyle");
@@ -1066,7 +1066,7 @@ SuperWiz_Select1_XFormItem = function () {}
 XFormItemFactory.createItemType("_SUPERWIZ_SELECT1_", "superwiz_select1", SuperWiz_Select1_XFormItem, Super_Select1_XFormItem);
 SuperWiz_Select1_XFormItem.prototype.labelCssClass = "xform_label_left ZaWizLabel";
 SuperWiz_Select1_XFormItem.prototype.labelCssStyle = "width:200px" ;
-SuperWiz_Select1_XFormItem.prototype.colSizes=["250px","150px"];
+SuperWiz_Select1_XFormItem.prototype.colSizes=["250px","*"];
 SuperWiz_Select1_XFormItem.prototype.nowrap = false;
 SuperWiz_Select1_XFormItem.prototype.labelWrap = true;
 SuperWiz_Select1_XFormItem.prototype.visibilityChecks = [ZaItem.hasWritePermission];
@@ -1620,7 +1620,14 @@ ZATabCase_XFormItem.prototype.getCustomHeight = function () {
 		if(formHeaders) {
 			var formHeader = formHeaders[0];		
 			if(formHeader) {
-				headerHeight = formHeader.getElement().clientHeight ? formHeader.getElement().clientHeight : formHeader.getElement().offsetHeight;				
+				if(formHeader.getContainer()) {
+					formHeader = formHeader.getContainer();
+				}
+				else {
+					formHeader = formHeader.getElement();
+				}
+
+				headerHeight = formHeader.clientHeight ? formHeader.clientHeight : formHeader.offsetHeight;				
 			}
 		}
 		var formTabBars = form.getItemsById("xform_tabbar");
@@ -1628,7 +1635,14 @@ ZATabCase_XFormItem.prototype.getCustomHeight = function () {
 		if(formTabBars) {
 			var formTabBar = formTabBars[0];		
 			if(formTabBar) {
-				tabBarHeight = formTabBar.getElement().clientHeight ? formTabBar.getElement().clientHeight : formTabBar.getElement().offsetHeight;				
+				if(formTabBar.getContainer()) {
+                                        formTabBar = formTabBar.getContainer();
+                                }
+				else {
+					formTabBar =  formTabBar.getElement();
+				}
+
+				tabBarHeight = formTabBar.clientHeight ? formTabBar.clientHeight : formTabBar.offsetHeight;				
 			}
 		}
         var totalHeaderHeight = headerHeight * headerLevel ;

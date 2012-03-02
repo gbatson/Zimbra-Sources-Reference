@@ -157,6 +157,9 @@ DwtHtmlEditor.INIT_HTML = [ "<html><head><title>ZWC</title></head><body><p>",
                             AjxEnv.isGeckoBased ? "<br type='_moz' />" : "",
                             "</p></body></html>" ].join("");
 
+
+DwtHtmlEditor.TAB = "<span style='white-space:pre'>\t</span>";
+
 DwtHtmlEditor.prototype.focus =
 function(tryCount) {
 	DBG.println(AjxDebug.DBG1, "DwtHtmlEditor.prototype.focus");
@@ -632,7 +635,7 @@ DwtHtmlEditor.prototype.applyCellProperties = function(table, cells, props) {
 };
 
 DwtHtmlEditor.prototype._insertHTML =
-function(html) {
+function(html, moveCursorAfterInsertedNode) {
 	var sel = this._getSelection();
 	var range = this._createRange(sel);
 	if (AjxEnv.isIE) {
@@ -649,7 +652,7 @@ function(html) {
 		while (div.firstChild) {
 			fragment.appendChild(div.firstChild);
 		}
-		this._insertNodeAtSelection(fragment);
+		this._insertNodeAtSelection(fragment, null, null, moveCursorAfterInsertedNode);
 	}
 };
 
@@ -673,16 +676,30 @@ function(selection) {
 }
 
 DwtHtmlEditor.prototype._insertNodeAtSelection =
-function(node, select, returnSelectionHtml) {
+function(node, select, returnSelectionHtml, moveCursorAfterInsertedNode) {
 	this.focus();
 	if (!AjxEnv.isIE) {
 		var range = this._getRange();
-                var sel = this._getIframeWin().getSelection();
-		sel.removeAllRanges();
+		if (!moveCursorAfterInsertedNode) {
+			//not sure what this is for, but it moves my cursor to the beginning of the editable div and screws everything up, so for my case I don't need it.
+        	var sel = this._getIframeWin().getSelection();
+			sel.removeAllRanges();
+		}
 		try {
 			range.deleteContents();
+			if (moveCursorAfterInsertedNode) {
+				//since at least in this case the node is a DocumentFragment, we need to save the first child since insertNode moves it from the node.
+				var contentChild = node.firstChild;
+			}
 			range.insertNode(node);
-			range.selectNode(node);
+			if (moveCursorAfterInsertedNode && contentChild.nextSibling) {
+				//select the next sibling of the content node, and collapse it to the left so all we do is move the cursor to after the inserted node.
+				range.selectNode(contentChild.nextSibling);
+				range.collapse(true);
+			}
+			else {
+				range.selectNode(node);
+			}
                         if (select) {
                                 sel.addRange(range);
                         }
@@ -830,7 +847,9 @@ DwtHtmlEditor.prototype.TEXTAREA_CLASSNAME = "DwtHtmlEditorTextArea";
 DwtHtmlEditor.prototype._initTextMode =
 function(ignorePendingContent) {
 	var htmlEl = this.getHtmlElement();
-	this._textAreaId = "textarea_" + Dwt.getNextId();
+    if (!this._textAreaId) {
+	    this._textAreaId = "textarea_" + Dwt.getNextId();
+    }
 	var textArea = document.createElement("textarea");
 	textArea.className = this.TEXTAREA_CLASSNAME;
 	textArea.id = this._textAreaId;
@@ -866,6 +885,10 @@ function(content) {
 	var cont = AjxCallback.simpleClosure(this._finishHtmlModeInit, this);
 	setTimeout(cont, DwtHtmlEditor._INITDELAY);
 
+	// The onload event was originally used to continue init, but we went to setTimeout for bug 10619. That bug doesn't
+	// occur if we go back to using onload, so maybe something got fixed in FF.
+	// iFrame.onload = cont;
+
 	iFrame.src = this._blankIframeSrc || "";
 	htmlEl.appendChild(iFrame);
 
@@ -884,7 +907,7 @@ function() {
 			doc.close();
 		}
 	} catch (ex) {
-		DBG.println("XXX: Error initializing HTML mode :XXX");
+		DBG.println(AjxDebug.DBG1, "XXX: Error initializing HTML mode :XXX");
 		return;
 	}
 
@@ -903,7 +926,7 @@ function() {
 	};
 
     // most browsers need time out here
-	setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY);
+	setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY * 4);
 
 };
 
@@ -1010,7 +1033,7 @@ function() {
 	var row = null;
 	if (!AjxEnv.isIE) {
 		try {
-			for (i = 0; range = sel.getRangeAt(i) && i < limit; i++) {
+			for (i = 0; (range = sel.getRangeAt(i)) && i < limit; i++) {
 				var td = range.startContainer.childNodes[range.startOffset];
 				if (td) {
 					if (td.parentNode != row) {
@@ -1383,13 +1406,24 @@ function(ev) {
 	var ctrlA = false;
 	
 	if (ev.type == "keydown") {
-		if (ev.keyCode == 9) {
+		if (AjxEnv.isFirefox && (ev.metaKey || ev.altKey) && (ev.keyCode == 37 || ev.keyCode == 39)) { //disable CMD+right/left arrows since it does back/forward history on FF
+			DwtUiEvent.setDhtmlBehaviour(ev, true, false);
+			retVal = false;
+		}
+		else if (ev.keyCode == 9 && !ev.shiftKey) { //let shift-tab do what the browser does naturally - get back to the previous field
 			if (AjxEnv.isIE) {
 				this._handleIETabKey(!ev.shiftKey);
 				ke._stopPropagation = true;
 				ke._returnValue = false;
 				ke.setToDhtmlEvent(ev);
 				retVal = false;
+			}
+			else if (AjxEnv.isFirefox) { //Chrome/Safari/WebKit naturally does the tabs correctly
+				if (!ev.shiftKey) {
+					this._insertHTML(DwtHtmlEditor.TAB, true);
+					DwtUiEvent.setDhtmlBehaviour(ev, true, false);
+					retVal = false;
+				}
 			}
 		} else if (DwtKeyboardMgr.isPossibleInputShortcut(ev)) {
 			// pass to keyboard mgr for kb nav
@@ -1608,8 +1642,12 @@ function(defaultFontSize) {
 		if (AjxEnv.isIE) {
 			// For some reason, IE returns a number, so we transform it into
 			// a color specifier that we can actually use
-			ev.backgroundColor = "#" + DwtButtonColorPicker.toHex(ev.backgroundColor, 6).replace(/(..)(..)(..)/, "$3$2$1");
-			ev.color = "#" + DwtButtonColorPicker.toHex(ev.color, 6).replace(/(..)(..)(..)/, "$3$2$1");
+			if (AjxUtil.isNumber(ev.backgroundColor)) { // Recent versions of IE have it right; make sure we only apply the conversion when we got a number
+				ev.backgroundColor = "#" + DwtButtonColorPicker.toHex(ev.backgroundColor, 6).replace(/(..)(..)(..)/, "$3$2$1");
+			}
+			if (AjxUtil.isNumber(ev.color)) {
+				ev.color = "#" + DwtButtonColorPicker.toHex(ev.color, 6).replace(/(..)(..)(..)/, "$3$2$1");
+			}
 		}
 		ev.justification = null;
 		ev.direction = null;
@@ -2197,4 +2235,12 @@ function(parentNode, regex, replaceString, mode, hits) {
 	}
 
 	return hits;
+};
+
+/*
+ * set textareaId
+ */
+DwtHtmlEditor.prototype.setTextAreaId =
+function(textAreaId) {
+    this._textAreaId = textAreaId;
 };

@@ -65,6 +65,17 @@ public class DisplayTask extends AbsDisplay {
 	}
 
 	@Override
+	public AbsPage zPressButton(Button button) throws HarnessException {
+		logger.info(myPageName() + " zDisplayPressButton("+ button +")");
+		
+		tracer.trace("Click "+ button);
+
+		throw new HarnessException("no logic defined for button: "+ button);
+		
+	}
+	
+
+	@Override
 	public boolean zIsActive() throws HarnessException {
 		String locator = Locators.IsActive;
 		return (sIsElementPresent(locator));
@@ -86,27 +97,31 @@ public class DisplayTask extends AbsDisplay {
 			
 		} else if ( field == Field.Location ) {
 
-			locator = "implement me";
+			locator = "//tr[contains(@id,'__lo')]/td[2]";
 
 		} else if ( field == Field.Priority ) {
 
-			locator = "implement me";
+			locator = "//tr[contains(@id,'__pr')]/td[2]";
 
 		} else if ( field == Field.Status ) {
 
-			locator = "implement me";
+			locator = "//tr[contains(@id,'__st')]/td[2]";
 
 		} else if ( field == Field.Percentage ) {
 
-			locator = "implement me";
+			locator = "//tr[contains(@id,'__pc')]/td[2]";
 
 		} else if ( field == Field.StartDate ) {
 
-			locator = "implement me";
+			locator = "//tr[contains(@id,'__sd')]/td[2]";
 
 		} else if ( field == Field.DueDate ) {
 
-			locator = "implement me";
+			locator = "//tr[contains(@id,'__ed')]/td[2]/span";
+
+		} else if ( field == Field.Reminder ) {
+
+			locator = "//tr[contains(@id,'__al')]/td[2]";
 
 		} else if ( field == Field.Body ) {
 

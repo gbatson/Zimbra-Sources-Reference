@@ -37,7 +37,7 @@
 DwtMessageDialog = function(params) {
 	if (arguments.length == 0) { return; }
 	params = Dwt.getParams(arguments, DwtMessageDialog.PARAMS);
-	this._msgCellId = Dwt.getNextId();
+	this._msgCellId = Dwt.getNextId("MessageDialog_");
 	params.standardButtons = params.buttons || [DwtDialog.OK_BUTTON];
 	DwtDialog.call(this, params);
 	
@@ -46,7 +46,7 @@ DwtMessageDialog = function(params) {
 	this.addEnterListener(new AjxListener(this, this._enterListener));
 };
 
-DwtMessageDialog.PARAMS = ["parent", "className", "buttons", "extraButtons"];
+DwtMessageDialog.PARAMS = ["parent", "className", "buttons", "extraButtons", "id"];
 
 DwtMessageDialog.prototype = new DwtDialog;
 DwtMessageDialog.prototype.constructor = DwtMessageDialog;
@@ -103,8 +103,8 @@ function(msgStr, style, title) {
         var html = [];
 		var i = 0;
 		html[i++] = "<table cellspacing=0 cellpadding=0 border=0 width=100% height=100%><tr><td valign='top'>";
-		html[i++] =  AjxImg.getImageHtml(DwtMessageDialog.ICON[style], null, "id='" + this._msgCellId + "_Image'");
-		html[i++] = "</td><td class='DwtMsgArea' id='" + this._msgCellId +"_Msg'>";
+		html[i++] =  AjxImg.getImageHtml(DwtMessageDialog.ICON[style], null, "id='" +  this._msgCellId + "_Image'");
+		html[i++] = "</td><td class='DwtMsgArea' id='" +  this._msgCellId +"_Msg'>";
 		html[i++] = msgStr;
 		html[i++] = "</td></tr></table>";
 		this._msgCell.innerHTML = html.join("");
@@ -142,19 +142,7 @@ function() {
  */
 DwtMessageDialog.prototype.handleKeyAction =
 function(actionCode, ev) {
-	// If no cancel button is present, treat ESC key as ENTER.
-	if ((actionCode == DwtKeyMap.CANCEL) && !this._button[DwtDialog.CANCEL_BUTTON]) {
-		actionCode = DwtKeyMap.ENTER;
-	}
-	switch (actionCode) {
-		case DwtKeyMap.CANCEL:
-			this._runCallbackForButtonId(DwtDialog.CANCEL_BUTTON);
-			break;
-		default:
-			DwtDialog.prototype.handleKeyAction.call(this, actionCode, ev);
-			break;
-	}
-	return true;
+	return DwtDialog.prototype.handleKeyAction.call(this, actionCode, ev);
 };
 
 // Private methods

@@ -9,22 +9,18 @@
 			progressClassName = "quotaCritical";
 		}
 	$>
-	<table class='BannerBar' cellspacing=0 cellpadding=0>
-		<tr>
-			<td width='50%'><div></div></td>
-			<td><div class='quotabar'>
-					<div style='width:${percent}' class='<$= progressClassName $>'></div>
-				</div>
-			</td>
-			<td width='50%'><div></div></td>
-		</tr>
-	</table>
+	<div class='BannerBar'>
+	 	<div class='quotabar'>
+			<div style='width:${percent}%' class='<$= progressClassName $>'></div>
+	 	</div>
+    </div>	
+	
 </template>
 
 
 <!-- Show amount used with no quota -->
 <template id='share.Quota#UsedUnlimited'>
-    <div class='BannerTextQuota'>${desc}</div>
+    <div class='BannerTextQuota' style='display:none;'>${desc}</div>
 </template>
 
 

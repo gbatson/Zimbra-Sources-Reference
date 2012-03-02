@@ -18,7 +18,7 @@ public class PageMain extends AbsTab {
 	public static class Locators {
 		public static final String zSkinContainerLogo		= "xpath=//*[@id='skin_container_logo']";
 		public static final String zSkinContainerUsername	= "xpath=//*[@id='skin_container_username']";
-		public static final String zSkinContainerLogoff		= "css=table[class=skin_table] span[onclick=ZaZimbraAdmin.logOff();]"; 
+		public static final String zSkinContainerLogoff		= "css=table[class='skin_table'] span[onclick='ZaZimbraAdmin.logOff();']"; 
 		public static final String zSkinContainerHelp		= "xpath=//*[@id='skin_container_help']";
 		public static final String zSkinContainerDW			= "xpath=//*[@id='skin_container_dw']";
 	}
@@ -44,7 +44,7 @@ public class PageMain extends AbsTab {
 			throw new HarnessException("Admin Console application is not active!");
 		
 
-		// Look for the Logo 
+		// Look for the Refresh Button
 		boolean present = sIsElementPresent(Locators.zSkinContainerLogoff);
 		if ( !present ) {
 			logger.debug("isActive() present = "+ present);
@@ -52,7 +52,7 @@ public class PageMain extends AbsTab {
 		}
 		
 
-		// Look for the Logout button. 
+		// Look for the Refresh Button. 
 		boolean visible = zIsVisiblePerPosition(Locators.zSkinContainerLogoff, 0, 0);
 		if ( !visible ) {
 			logger.debug("isActive() visible = "+ visible);
@@ -79,8 +79,7 @@ public class PageMain extends AbsTab {
 		}
 		((AppAdminConsole)MyApplication).zPageLogin.login();
 
-		zWaitForActive();
-		
+		this.zWaitForActive();
 	}
 
 	/**
@@ -93,11 +92,11 @@ public class PageMain extends AbsTab {
 		zNavigateTo();
 
 		if ( !sIsElementPresent(Locators.zSkinContainerLogoff) ) {
-			throw new HarnessException("The logoff button is not present " + Locators.zSkinContainerLogoff);
+			throw new HarnessException("The refresh button is not present " + Locators.zSkinContainerLogoff);
 		}
 		
 		if ( !zIsVisiblePerPosition(Locators.zSkinContainerLogoff, 10, 10) ) {
-			throw new HarnessException("The logoff button is not visible " + Locators.zSkinContainerLogoff);
+			throw new HarnessException("The refresh button is not visible " + Locators.zSkinContainerLogoff);
 		}
 		
 		// Click on logout

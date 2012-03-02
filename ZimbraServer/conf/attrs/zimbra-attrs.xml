@@ -317,8 +317,16 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
     <desc>RFC1274: user identifier</desc>
 </attr>
 
+<attr name="userCertificate" type="certificate" cardinality="multi" optionalIn="account">
+    <desc>RFC2256: X.509 user certificate</desc>
+</attr>
+
 <attr name="userPassword" type="string" optionalIn="account">
     <desc>RFC2256/2307: password of user. Stored encoded as SSHA (salted-SHA1)</desc>
+</attr>
+
+<attr name="userSMIMECertificate" type="binary" cardinality="multi" optionalIn="account">
+    <desc>RFC2798: PKCS#7 SignedData used to support S/MIME</desc>
 </attr>
 
 <attr name="x121Address" type="string" optionalIn="account" flags="domainAdminModifiable">
@@ -536,6 +544,10 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>ad:(&amp;(|(displayName=*%s*)(cn=*%s*)(sn=*%s*)(givenName=*%s*)(mail=*%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
   <globalConfigValue>adAutoComplete:(&amp;(|(displayName=%s*)(cn=%s*)(sn=%s*)(givenName=%s*)(mail=%s*))(!(msExchHideFromAddressLists=TRUE))(mailnickname=*)(|(&amp;(objectCategory=person)(objectClass=user)(!(homeMDB=*))(!(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=user)(|(homeMDB=*)(msExchHomeServerName=*)))(&amp;(objectCategory=person)(objectClass=contact))(objectCategory=group)(objectCategory=publicFolder)(objectCategory=msExchDynamicDistributionList)))</globalConfigValue>
   <globalConfigValue>externalLdapAutoComplete:(|(cn=%s*)(sn=%s*)(gn=%s*)(mail=%s*))</globalConfigValue>
+  <globalConfigValue>email_has:(mail=*%s*)</globalConfigValue>
+  <globalConfigValue>email2_has:(mail=*%s*)</globalConfigValue>
+  <globalConfigValue>email3_has:(mail=*%s*)</globalConfigValue>
+  <globalConfigValue>department_has:(ou=*%s*)</globalConfigValue>
   <desc>LDAP search filter definitions for GAL queries</desc>
 </attr>
 
@@ -913,7 +925,8 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>zimbraCalResSite=zimbraCalResSite</globalConfigValue>
   <globalConfigValue>zimbraCalResContactEmail=zimbraCalResContactEmail</globalConfigValue>
   <globalConfigValue>msExchResourceSearchProperties=zimbraAccountCalendarUserType</globalConfigValue>
-  <globalConfigValue>binary zimbraPrefMailSMIMECertificate,userCertificate,userSMIMECertificate=SMIMECertificate</globalConfigValue>
+  <globalConfigValue>(certificate) userCertificate=userCertificate</globalConfigValue>
+  <globalConfigValue>(binary) userSMIMECertificate=userSMIMECertificate</globalConfigValue>
   <desc>LDAP Gal attribute to contact attr mapping</desc>
 </attr>
 
@@ -3311,7 +3324,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <globalConfigValue>SSL_RSA_EXPORT_WITH_DES40_CBC_SHA</globalConfigValue> 
   <globalConfigValue>SSL_DHE_RSA_EXPORT_WITH_DES40_CBC_SHA</globalConfigValue> 
   <globalConfigValue>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</globalConfigValue>
-  <desc>space separated list of excluded cipher suites</desc>
+  <desc>excluded cipher suites</desc>
 </attr>
 
 <attr id="640" name="zimbraReverseProxySSLCiphers" type="string" cardinality="single" optionalIn="globalConfig" requiresRestart="nginxproxy" since="5.0.5">
@@ -4916,7 +4929,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1086" name="zimbraContactHiddenAttributes" type="string" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.6">
-  <globalConfigValue>dn,vcardUID,vcardURL,vcardXProps,member,SMIMECertificate</globalConfigValue>
+  <globalConfigValue>dn,vcardUID,vcardURL,vcardXProps,member</globalConfigValue>
   <desc>Comma separated list of Contact attributes that should be hidden from clients and export of contacts.</desc>
 </attr>
 
@@ -4986,8 +4999,12 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="1097" name="zimbraMailEmptyFolderBatchSize" type="integer" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="6.0.8">
-  <globalConfigValue>100000</globalConfigValue>
-  <desc>Maximum number of messages to delete during a single transaction when emptying a folder.  If the limit is exceeded, the folder is emptied in multiple transactions.  Each transaction deletes this number of messages.</desc>
+  <globalConfigValue>1000</globalConfigValue>
+  <desc>
+    Maximum number of messages to delete during a single transaction when emptying a large folder. 
+    When a folder is emptied and it contains more than zimbraMailEmptyFolderBatchThreshold messages, 
+    the operation is performed in multiple transactions.
+  </desc>
 </attr>
 
 <attr id="1098" name="zimbraBasicAuthRealm"  type="string" max="256" cardinality="single" optionalIn="globalConfig,domain" flags="domainInherited" since="7.0.0">
@@ -5283,7 +5300,7 @@ TODO: delete them permerntly from here
 </attr>
 
 <attr id="1159" name="zimbraFilterSleepInterval" type="duration" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="7.0.0">
-  <defaultCOSValue>100ms</defaultCOSValue>
+  <defaultCOSValue>1ms</defaultCOSValue>
   <desc>
     The amount of time to sleep between every two messages during ApplyFilterRules.
     Increasing this value will even out server load at the expense of slowing down
@@ -5333,8 +5350,9 @@ TODO: delete them permerntly from here
   <desc>supported IP mode</desc>
 </attr>
 
-<attr id="1172" name="zimbraPrefMailSMIMECertificate" type="binary" cardinality="multi" optionalIn="account" since="7.1.0">
+<attr id="1172" name="zimbraPrefMailSMIMECertificate" type="binary" cardinality="multi" optionalIn="account" since="7.1.0" deprecatedSince="7.1.1">
   <desc>user's S/MIME public keys (certificates)</desc>
+  <deprecateDesc>deprecated in favor of userCertificate and userSMIMECertificate</deprecateDesc>
 </attr>
 
 <attr id="1173" name="zimbraPrefShortEmailAddress" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since ="7.0.1">
@@ -5486,9 +5504,62 @@ TODO: delete them permerntly from here
   <desc>allowed OpenID Provider Endpoint URLs for authentication</desc>
 </attr>
 
-<attr id="1999" name="zimbraMailSSLClientCertPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="mailbox" since="7.1.0">
+<attr id="1199" name="zimbraMailSSLClientCertPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="mailbox" since="7.1.0">
   <globalConfigValue>0</globalConfigValue>
   <desc>SSL port requesting client certificate for end-user UI</desc>
+</attr>
+
+<attr id="1200" name="zimbraReverseProxyClientCertMode" type="enum" value="on,off,optional" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited,domainInherited" since="7.1.1">
+  <globalConfigValue>off</globalConfigValue>
+  <desc>enable authentication via X.509 Client Certificate in nginx proxy (https only)</desc>
+</attr>
+
+<attr id="1201" name="zimbraReverseProxyClientCertCA" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited,domainInherited" since="7.1.1">
+  <desc>CA certificate for authenticating client certificates in nginx proxy (https only)</desc>
+</attr>
+
+<attr id="1208" name="zimbraMailEmptyFolderBatchThreshold" type="integer" cardinality="single" min="0" optionalIn="globalConfig,server" flags="serverInherited,domainAdminModifiable" since="6.0.13">
+  <globalConfigValue>100000</globalConfigValue>
+  <desc>
+    Folders that contain more than this many messages will be emptied in batches of size zimbraMailEmptyFolderBatchSize.
+  </desc>
+</attr>
+
+<attr id="1209" name="zimbraSMIMELdapDiscoverSearchBaseEnabled"  type="string" max="32" cardinality="multi" optionalIn="domain,globalConfig" immutable="1" since="7.1.1">
+  <desc>
+    Whether or not to discover search base DNs if zimbraSMIMELdapSearchBase is not set. Allowed values are TRUE or FALSE.
+    If zimbraSMIMELdapSearchBase is set for a config, this attribute is ignored for the config.
+    If not set, default for the config is FALSE.  In that case, if zimbraSMIMELdapSearchBase is not set,
+    the search will default to the rootDSE.
+    
+    If multiple DNs are discovered, the ldap search will use them one by one until a hit is returned. 
+  
+    All SMIME attributes are in the format of {config-name}:{value}.  A 'SMIME config' is a set of SMIME attribute values with the same {config-name}.
+    Multiple SMIME configs can be configured on a domain or on globalconfig.  Note: SMIME attributes on domains do not inherited values from globalconfig, 
+    they are not domain-inherited attributes.  During SMIME public key lookup, if there are any SMIME config on the domain of the account, they are used. 
+    SMIME configs on globalconfig will be used only when there is no SMIME config on the domain.
+    SMIME attributes cannot be modified directly with zmprov md/mcf commands.  Use zmprov gcsc/gdsc/mcsc/mdsc/rcsc/rdsc command instead.
+  </desc>
+</attr>
+
+<attr id="1210" name="zimbraDefaultFolderFlags" type="string" cardinality="single" min="0" max="32" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="7.1.1">
+  <desc>
+    Default flags on folder. These are set when a new folder is created, has no effect on existing folders.
+    Possible values are:
+     * - \Subscribed
+     b - \ExcludeFB
+     # - \Checked
+     i - \NoInherit
+     y - \SyncFolder
+     ~ - \Sync
+     o - \Noinferiors
+     g - \Global
+  </desc>
+</attr>
+
+<attr id="1212" name="zimbraMailSSLProxyClientCertPort" type="port" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" callback="CheckPortConflict" requiresRestart="nginxproxy" since="7.1.1">
+  <globalConfigValue>0</globalConfigValue>
+  <desc>SSL client certificate port for HTTP proxy</desc>
 </attr>
 
 </attrs>

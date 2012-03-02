@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.mime;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -58,17 +59,13 @@ import com.zimbra.cs.object.ObjectHandlerException;
 import com.zimbra.cs.util.JMSession;
 
 public class ParsedContact {
-    private Map<String, String> mFields;
-    private List<Attachment> mAttachments;
 
-    // Used when parsing existing blobs.
-    private InputStream mSharedStream;
-
-    // Used when assembling a contact from attachments.
-    private MimeMessage mMimeMessage;
-
-    private String mDigest;
-    private long mSize;
+    private Map<String, String> contactFields;
+    private List<Attachment> contactAttachments;
+    private InputStream sharedStream; // Used when parsing existing blobs.
+    private MimeMessage mimeMessage; // Used when assembling a contact from attachments.
+    private String digest;
+    private long size;
 
     private List<IndexDocument> mZDocuments;
 
@@ -93,8 +90,7 @@ public class ParsedContact {
     /**
      * @param fields maps field names to either a <tt>String</tt> or <tt>String[]</tt> value.
      */
-    public ParsedContact(Map<String, String> fields, InputStream in)
-    throws ServiceException {
+    public ParsedContact(Map<String, String> fields, InputStream in) throws ServiceException {
         init(fields, in);
     }
 
@@ -106,14 +102,16 @@ public class ParsedContact {
 
         if (attachments != null && !attachments.isEmpty()) {
             try {
-                mAttachments = attachments;
-                mMimeMessage = generateMimeMessage(attachments);
-                mDigest = ByteUtil.getSHA1Digest(Mime.getInputStream(mMimeMessage), true);
+                contactAttachments = attachments;
+                mimeMessage = generateMimeMessage(attachments);
+                digest = ByteUtil.getSHA1Digest(Mime.getInputStream(mimeMessage), true);
 
-                for (Attachment attach : mAttachments)
-                    mFields.remove(attach.getName());
-                if (fields.isEmpty())
+                for (Attachment attach : contactAttachments) {
+                    contactFields.remove(attach.getName());
+                }
+                if (contactFields.isEmpty()) {
                     throw ServiceException.INVALID_REQUEST("contact must have fields", null);
+                }
                 initializeSizeAndDigest(); // This didn't happen in init() because there was no stream.
             } catch (MessagingException me) {
                 throw MailServiceException.MESSAGE_PARSE_ERROR(me);
@@ -123,73 +121,67 @@ public class ParsedContact {
         }
     }
 
-    /**
-     *
-     * @param con
-     * @param getAllFields
-     *          if true, all fields are passed to the ParsedContact
-     *          if false, only non-hidden fields are passed to the ParsedContact
-     * @throws ServiceException
-     */
     public ParsedContact(Contact con) throws ServiceException {
         init(con.getAllFields(), con.getContentStream());
     }
 
-    private void init(Map<String, ? extends Object> fields, InputStream in)
-    throws ServiceException {
+    private void init(Map<String, ? extends Object> fields, InputStream in) throws ServiceException {
+        if (fields == null) {
+            throw ServiceException.INVALID_REQUEST("contact must have fields", null);
+        }
         // Initialized shared stream.
         try {
             if (in instanceof SharedInputStream) {
-                mSharedStream = in;
+                sharedStream = in;
             } else if (in != null) {
                 byte[] content = ByteUtil.getContent(in, 1024);
-                mSharedStream = new SharedByteArrayInputStream(content);
+                sharedStream = new SharedByteArrayInputStream(content);
             }
         } catch (IOException e) {
             throw MailServiceException.MESSAGE_PARSE_ERROR(e);
         }
 
         // Initialize fields.
-        Map<String,String> strMap = new HashMap<String,String>();
-        if (fields == null)
-            throw ServiceException.INVALID_REQUEST("contact must have fields", null);
-
-        for (String key : fields.keySet()) {
-            Object value = fields.get(key);
-            String strValue = null;
-            key = StringUtil.stripControlCharacters(key);
-            // encode multi value attributes as JSONObject
-            if (value instanceof String[]) {
+        Map<String, String> map = new HashMap<String, String>();
+        for (Map.Entry<String, ? extends Object> entry : fields.entrySet()) {
+            String key = StringUtil.stripControlCharacters(entry.getKey());
+            String value = null;
+            if (entry.getValue() instanceof String[]) {
+                // encode multi value attributes as JSONObject
                 try {
-                    strValue = Contact.encodeMultiValueAttr((String[])value);
+                    value = Contact.encodeMultiValueAttr((String[]) entry.getValue());
                 } catch (JSONException e) {
                     ZimbraLog.index.warn("Error encoding multi valued attribute " + key, e);
                 }
-            } else if (value instanceof String) {
-                strValue = StringUtil.stripControlCharacters((String)value);
+            } else if (entry.getValue() instanceof String) {
+                value = StringUtil.stripControlCharacters((String) entry.getValue());
             }
-
-            if (key != null && !key.trim().equals("") && strValue != null && !strValue.equals(""))
-                strMap.put(key, strValue);
+            if (key != null && !key.trim().isEmpty() && !Strings.isNullOrEmpty(value)) {
+                if (key.length() > ContactConstants.MAX_FIELD_NAME_LENGTH) {
+                    throw ServiceException.INVALID_REQUEST("too big filed name", null);
+                } else if (value.length() > ContactConstants.MAX_FIELD_VALUE_LENGTH) {
+                    throw MailServiceException.CONTACT_TOO_BIG(ContactConstants.MAX_FIELD_VALUE_LENGTH, value.length());
+                }
+                map.put(key, value);
+            }
         }
-
-        if (strMap.isEmpty())
+        if (map.isEmpty()) {
             throw ServiceException.INVALID_REQUEST("contact must have fields", null);
-
-        mFields = strMap;
+        } else if (map.size() > ContactConstants.MAX_FIELD_COUNT) {
+            throw ServiceException.INVALID_REQUEST("too many fields", null);
+        }
+        contactFields = map;
 
         // Initialize attachments.
-        InputStream contentStream = null;
-        if (mSharedStream != null) {
+        if (sharedStream != null) {
+            InputStream contentStream = null;
             try {
                 // Parse attachments.
                 contentStream = getContentStream();
-                mAttachments = parseBlob(contentStream);
-                for (Attachment attach : mAttachments)
-                    mFields.remove(attach.getName());
-                if (fields.isEmpty())
-                    throw ServiceException.INVALID_REQUEST("contact must have fields", null);
-
+                contactAttachments = parseBlob(contentStream);
+                for (Attachment attach : contactAttachments) {
+                    contactFields.remove(attach.getName());
+                }
                 initializeSizeAndDigest();
             } catch (MessagingException me) {
                 throw MailServiceException.MESSAGE_PARSE_ERROR(me);
@@ -201,11 +193,10 @@ public class ParsedContact {
         }
     }
 
-    private void initializeSizeAndDigest()
-    throws IOException {
+    private void initializeSizeAndDigest() throws IOException {
         CalculatorStream calc = new CalculatorStream(getContentStream());
-        mSize = ByteUtil.getDataLength(calc);
-        mDigest = calc.getDigest();
+        size = ByteUtil.getDataLength(calc);
+        digest = calc.getDigest();
     }
 
     private static MimeMessage generateMimeMessage(List<Attachment> attachments)
@@ -254,83 +245,235 @@ public class ParsedContact {
     }
 
     public Map<String, String> getFields() {
-        return mFields;
+        return contactFields;
     }
 
     public boolean hasAttachment() {
-        return mAttachments != null && !mAttachments.isEmpty();
+        return contactAttachments != null && !contactAttachments.isEmpty();
     }
 
     public List<Attachment> getAttachments() {
-        return mAttachments;
+        return contactAttachments;
     }
 
     /**
-     * Returns the stream to this contact's blob, or <tt>null</tt> if
-     * it has no attachments.
+     * Returns the stream to this contact's blob, or <tt>null</tt> if it has no attachments.
      */
-    public InputStream getContentStream()
-    throws IOException {
-        if (mSharedStream != null) {
-            return ((SharedInputStream) mSharedStream).newStream(0, -1);
+    public InputStream getContentStream() throws IOException {
+        if (sharedStream != null) {
+            return ((SharedInputStream) sharedStream).newStream(0, -1);
         }
-        if (mMimeMessage != null) {
-            return Mime.getInputStream(mMimeMessage);
+        if (mimeMessage != null) {
+            return Mime.getInputStream(mimeMessage);
         }
         return null;
     }
 
     public long getSize() {
-        return mSize;
+        return size;
     }
 
     public String getDigest() {
-        return mDigest;
+        return digest;
     }
 
-
-    public ParsedContact modify(Map<String, String> fieldDelta, List<Attachment> attachDelta) throws ServiceException {
+    
+    
+    private static class FieldDelta {
+        private String name;
+        private String value;
+        private Op op;
+        
+        enum Op {
+            ADD,
+            REMOVE;
+            
+            private static Op fromString(String opStr) throws ServiceException {
+                if ("+".equals(opStr)) {
+                    return ADD;
+                } else if ("-".equals(opStr)) {
+                    return REMOVE;
+                }
+                throw ServiceException.INVALID_REQUEST("unknown op: " + opStr, null);
+            }
+        }
+        
+        private FieldDelta(String name, String value, Op op) {
+            this.name = name;
+            this.value = value;
+            this.op = op;
+        }
+        
+        private String getName() {
+            return name;
+        }
+        
+        private String getValue() {
+            return value;
+        }
+        
+        private Op getOp() {
+            return op;
+        }
+    }
+    
+    public static class FieldDeltaList {
+        private List<FieldDelta> deltaList;
+        
+        public FieldDeltaList() {
+            deltaList = new ArrayList<FieldDelta>();
+        }
+        
+        public void addDelta(String name, String value, String opStr) throws ServiceException {
+            // name cannot be null or empty
+            if (name == null || name.trim().equals("")) {
+                return;
+            }
+            
+            FieldDelta.Op op = (opStr == null)? null : FieldDelta.Op.fromString(opStr);
+            deltaList.add(new FieldDelta(name, value, op));
+        }
+        
+        private List<FieldDelta> getDeltaList() {
+            return deltaList;
+        }
+        
+        private void removeAllDeltaByName(String name) {
+            for (Iterator<FieldDelta> iter = deltaList.iterator(); iter.hasNext();) {
+                FieldDelta delta = iter.next();
+                if (delta.getName().equals(name)) {
+                    iter.remove();
+                }
+            }
+        }
+    }
+    
+    // convert legacy API to the new API
+    public ParsedContact modify(Map<String, String> fieldDelta, List<Attachment> attachDelta) 
+    throws ServiceException {
+        FieldDeltaList fieldDeltaList = new FieldDeltaList();
+        
+        for (Map.Entry<String, String> entry : fieldDelta.entrySet()) {
+            fieldDeltaList.addDelta(entry.getKey(), entry.getValue(), null);
+        }
+        
+        return modify(fieldDeltaList, attachDelta);
+    }
+    
+    public ParsedContact modify(FieldDeltaList fieldDeltaList, List<Attachment> attachDelta) 
+    throws ServiceException {
         if (attachDelta != null && !attachDelta.isEmpty()) {
             for (Attachment attach : attachDelta) {
                 // make sure we don't have anything referenced in both fieldDelta and attachDelta
-                fieldDelta.remove(attach.getName());
+                fieldDeltaList.removeAllDeltaByName(attach.getName());
 
                 // add the new attachments to the contact
                 removeAttachment(attach.getName());
-                if (mAttachments == null)
-                    mAttachments = new ArrayList<Attachment>(attachDelta.size());
-                mAttachments.add(attach);
+                if (contactAttachments == null) {
+                    contactAttachments = new ArrayList<Attachment>(attachDelta.size());
+                }
+                contactAttachments.add(attach);
             }
         }
 
-        for (Map.Entry<String, String> entry : fieldDelta.entrySet()) {
-            String name  = StringUtil.stripControlCharacters(entry.getKey());
-            String value = StringUtil.stripControlCharacters(entry.getValue());
-            if (name != null && !name.trim().equals("")) {
-                // kill any attachment with that field name
-                removeAttachment(name);
+        for (FieldDelta delta : fieldDeltaList.getDeltaList()) {
+            String name  = StringUtil.stripControlCharacters(delta.getName());
+            if (name == null || name.trim().equals("")) {
+                continue;
+            }
+            // kill any attachment with that field name
+            removeAttachment(name);
 
-                // and replace the field appropriately
-                if (value == null || value.equals(""))
-                    mFields.remove(name);
+            String newValue = StringUtil.stripControlCharacters(delta.getValue());
+            FieldDelta.Op op = delta.getOp();
+            
+            if (op == null) {
+                // legacy behavior before bug 59738
+                if (newValue == null || newValue.equals(""))
+                    contactFields.remove(name);
                 else
-                    mFields.put(name, value);
+                    contactFields.put(name, newValue);
+                
+                continue;
+            }
+            
+            // do not allow adding or removing an empty string
+            if (newValue == null || newValue.equals("")) {
+                throw ServiceException.INVALID_REQUEST("adding or removing empty value is not allowed", null);
+            }
+            
+            String curValue = contactFields.get(name);
+            
+            if (curValue == null) {
+                if (op == FieldDelta.Op.REMOVE) {
+                    // do nothing
+                } else {
+                    contactFields.put(name, newValue);
+                }
+                
+            } else {
+                List<String> curValuesList = null;
+                try {
+                    curValuesList = new ArrayList<String>(Arrays.asList(Contact.parseMultiValueAttr(curValue)));
+                } catch (JSONException e) {
+                    // log a warning and continue
+                    ZimbraLog.misc.warn("unable to modify contact for: " +
+                            "field=" + name + ", value=" + newValue + ", op=" + op.name() +
+                            ".  delta entry ignored", e);
+                    continue;
+                }
+                
+                if (op == FieldDelta.Op.REMOVE) {
+                    // remove all occurrences of the value
+                    for (Iterator<String> iter = curValuesList.iterator(); iter.hasNext();) {
+                        if (newValue.equals(iter.next())) {
+                            iter.remove();
+                        }
+                    }
+                } else {
+                    // add the value only if it does not already exist
+                    if (curValuesList.contains(newValue)) {
+                        continue;
+                    } else {
+                        curValuesList.add(newValue);
+                    }
+                }
+                
+                if (curValuesList.size() > 0) {
+                    // convert updated list to a new json array value
+                    String[] newValues = curValuesList.toArray(new String[curValuesList.size()]);
+                    String newMultiValues = null;
+                    try {
+                        newMultiValues = Contact.encodeMultiValueAttr(newValues);
+                    } catch (JSONException e) {
+                        // log a warning and continue
+                        ZimbraLog.misc.warn("unable to modify contact for: " +
+                                "field=" + name + ", value=" + newValue + ", op=" + op.name() +
+                                ".  delta entry ignored", e);
+                        continue;
+                    }
+                    
+                    // finally, put the new value back
+                    contactFields.put(name, newMultiValues);
+                } else {
+                    contactFields.remove(name);
+                }
             }
         }
 
-        if (mFields.isEmpty())
+        if (contactFields.isEmpty())
             throw ServiceException.INVALID_REQUEST("contact must have fields", null);
 
-        mDigest = null;
+        digest = null;
         mZDocuments = null;
 
-        if (mAttachments != null) {
+        if (contactAttachments != null) {
             try {
-                mMimeMessage = generateMimeMessage(mAttachments);
+                mimeMessage = generateMimeMessage(contactAttachments);
 
                 // Original stream is now stale.
-                ByteUtil.closeStream(mSharedStream);
-                mSharedStream = null;
+                ByteUtil.closeStream(sharedStream);
+                sharedStream = null;
 
                 initializeSizeAndDigest();
             } catch (MessagingException me) {
@@ -340,27 +483,28 @@ public class ParsedContact {
             }
         } else {
             // No attachments.  Wipe out any previous reference to a blob.
-            ByteUtil.closeStream(mSharedStream);
-            mSharedStream = null;
-            mMimeMessage = null;
-            mSize = 0;
-            mDigest = null;
+            ByteUtil.closeStream(sharedStream);
+            sharedStream = null;
+            mimeMessage = null;
+            size = 0;
+            digest = null;
         }
 
         return this;
     }
 
     private void removeAttachment(String name) {
-        if (mAttachments == null)
+        if (contactAttachments == null) {
             return;
-
-        for (Iterator<Attachment> it = mAttachments.iterator(); it.hasNext(); ) {
-            if (it.next().getName().equals(name))
-                it.remove();
         }
-
-        if (mAttachments.isEmpty())
-            mAttachments = null;
+        for (Iterator<Attachment> it = contactAttachments.iterator(); it.hasNext(); ) {
+            if (it.next().getName().equals(name)) {
+                it.remove();
+            }
+        }
+        if (contactAttachments.isEmpty()) {
+            contactAttachments = null;
+        }
     }
 
 
@@ -387,8 +531,8 @@ public class ParsedContact {
 
         int numParseErrors = 0;
         ServiceException conversionError = null;
-        if (mAttachments != null) {
-            for (Attachment attach: mAttachments) {
+        if (contactAttachments != null) {
+            for (Attachment attach: contactAttachments) {
                 try {
                     analyzeAttachment(attach, attachContent, indexAttachments);
                 } catch (MimeHandlerException e) {
@@ -466,15 +610,14 @@ public class ParsedContact {
         StringBuilder contentText = new StringBuilder();
 
         String emailFields[] = Contact.getEmailFields(acct);
-        
+
         FieldTokenStream fields = new FieldTokenStream();
         for (Map.Entry<String, String> entry : getFields().entrySet()) {
-            
-            // do not index SMIMECertificate
-            if (ContactConstants.A_SMIMECertificate.equalsIgnoreCase(entry.getKey())) {
+            // Ignore these fields as they can be too big.
+            if (Contact.isSMIMECertField(entry.getKey()) || ContactConstants.A_member.equals(entry.getKey())) {
                 continue;
             }
-            
+
             if (!Contact.isEmailField(emailFields, entry.getKey())) { // skip email addrs, they're added to CONTENT below
                 if (!ContactConstants.A_fileAs.equalsIgnoreCase(entry.getKey()))
                     contentText.append(entry.getValue()).append(' ');
@@ -512,7 +655,7 @@ public class ParsedContact {
         doc.addTo(to);
 
         /* put the name in the "From" field since the MailItem table uses 'Sender'*/
-        doc.addFrom(new RFC822AddressTokenStream(Contact.getFileAsString(mFields)));
+        doc.addFrom(new RFC822AddressTokenStream(Contact.getFileAsString(contactFields)));
         /* bug 11831 - put contact searchable data in its own field so wildcard search works better  */
         doc.addContactData(searchText.toString());
         doc.addContent(contentText.toString());

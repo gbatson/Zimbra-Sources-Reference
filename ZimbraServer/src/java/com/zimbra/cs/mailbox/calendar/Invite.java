@@ -42,6 +42,7 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.cs.index.Fragment;
+import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -1398,7 +1399,7 @@ public class Invite {
     public void setMethod(String methodStr) { mMethod = lookupMethod(methodStr); }
     
     public boolean sentByMe() { return mSentByMe; }
-    void setSentByMe(boolean sentByMe) { mSentByMe = sentByMe; }
+    public void setSentByMe(boolean sentByMe) { mSentByMe = sentByMe; }
     
     /**
      * @param acct
@@ -1840,7 +1841,11 @@ public class Invite {
                                     break;
                                 case RECURRENCE_ID:
                                     ParsedDateTime rid = ParsedDateTime.parse(prop, tzmap);
-                                    newInv.setRecurId(new RecurId(rid, RecurId.RANGE_NONE));
+                                    if (DebugConfig.enableThisAndFuture) {
+                                        newInv.setRecurId(new RecurId(rid, prop.paramVal(ICalTok.RANGE, null)));
+                                    } else {
+                                        newInv.setRecurId(new RecurId(rid, RecurId.RANGE_NONE));
+                                    }
                                     break;
                                 case SEQUENCE:
                                     newInv.setSeqNo(prop.getIntValue());
@@ -1910,9 +1915,11 @@ public class Invite {
                                     newInv.setIsRecurrence(true);
                                     break;
                                 case RDATE:
-                                    RdateExdate rdate = RdateExdate.parse(prop, tzmap);
-                                    addRecurs.add(rdate);
-                                    newInv.setIsRecurrence(true);
+                                    if (DebugConfig.enableRdate) {
+                                        RdateExdate rdate = RdateExdate.parse(prop, tzmap);
+                                        addRecurs.add(rdate);
+                                        newInv.setIsRecurrence(true);
+                                    }
                                     break;
                                 case EXRULE:
                                     ZRecur exrecur = new ZRecur(propVal, tzmap);
@@ -2158,9 +2165,11 @@ public class Invite {
 
                 switch (cur.getType()) { 
                 case Recurrence.TYPE_SINGLE_DATES:
-                    Recurrence.SingleDates sd = (Recurrence.SingleDates) cur;
-                    RdateExdate rdate = sd.getRdateExdate();
-                    component.addProperty(rdate.toZProperty());
+                    if (DebugConfig.enableRdate) {
+                        Recurrence.SingleDates sd = (Recurrence.SingleDates) cur;
+                        RdateExdate rdate = sd.getRdateExdate();
+                        rdate.addAsSeparateProperties(component);
+                    }
                     break;
                 case Recurrence.TYPE_REPEATING:
                     Recurrence.SimpleRepeatingRule srr = (Recurrence.SimpleRepeatingRule)cur;
@@ -2176,7 +2185,7 @@ public class Invite {
                 case Recurrence.TYPE_SINGLE_DATES:
                     Recurrence.SingleDates sd = (Recurrence.SingleDates) cur;
                     RdateExdate exdate = sd.getRdateExdate();
-                    component.addProperty(exdate.toZProperty());
+                    exdate.addAsSeparateProperties(component);
                     break;
                 case Recurrence.TYPE_REPEATING:
                     Recurrence.SimpleRepeatingRule srr = (Recurrence.SimpleRepeatingRule)cur;
@@ -2800,17 +2809,19 @@ public class Invite {
 
     private static final String OUTLOOK_GLOBAL_ID_PREFIX = "040000008200E00074C5B7101A82E008";
 
-    // Outlook-generated UIDs are supposed to be uppercase.  (bug 57727)
-    public static String fixupIfOutlookUid(String uid) {
+    public static boolean isOutlookUid(String uid) {
         if (uid == null)
-            return null;
+            return false;
         int len = uid.length();
         if (len >= 82 && len % 2 == 0 && isHexDigits(uid)) {
             String upper = uid.toUpperCase();
-            if (upper.startsWith(OUTLOOK_GLOBAL_ID_PREFIX)) {
-                return upper;
-            }
+            return upper.startsWith(OUTLOOK_GLOBAL_ID_PREFIX);
         }
-        return uid;
+        return false;
+    }
+    
+    // Outlook-generated UIDs are supposed to be uppercase.  (bug 57727)
+    public static String fixupIfOutlookUid(String uid) {
+        return isOutlookUid(uid) ? uid.toUpperCase() : uid;
     }
 }

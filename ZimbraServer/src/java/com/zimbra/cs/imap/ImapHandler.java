@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -71,6 +71,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -89,7 +90,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.regex.Pattern;
 
-public abstract class ImapHandler extends ProtocolHandler {
+abstract class ImapHandler extends ProtocolHandler {
     enum State { NOT_AUTHENTICATED, AUTHENTICATED, SELECTED, LOGOUT }
 
     enum ImapExtension { CONDSTORE, QRESYNC }
@@ -578,10 +579,12 @@ public abstract class ImapHandler extends ProtocolHandler {
                         if ("RETURN".equals(req.peekATOM()) && extensionEnabled("ESEARCH")) {
                             options = parseSearchOptions(req);  req.skipSpace();
                         }
-                        String charset = null;
+                        Charset charset = null;
                         if ("CHARSET".equals(req.peekATOM())) {
-                            req.skipAtom("CHARSET");  req.skipSpace();
-                            charset = req.readCharset();  req.skipSpace();
+                            req.skipAtom("CHARSET");
+                            req.skipSpace();
+                            charset = req.readCharset();
+                            req.skipSpace();
                         }
                         ImapSearch i4search = req.readSearch(charset);
                         checkEOF(tag, req);
@@ -623,8 +626,10 @@ public abstract class ImapHandler extends ProtocolHandler {
                             order.add(sort);  desc = false;
                         } while (desc || req.peekChar() != ')');
                         req.skipChar(')');
-                        req.skipSpace();  String charset = req.readCharset();
-                        req.skipSpace();  ImapSearch i4search = req.readSearch(charset);
+                        req.skipSpace();
+                        Charset charset = req.readCharset();
+                        req.skipSpace();
+                        ImapSearch i4search = req.readSearch(charset);
                         checkEOF(tag, req);
                         return isProxied ? mProxy.proxy(req) : doSORT(tag, i4search, byUID, options, order);
                     } else if (command.equals("SUBSCRIBE")) {
@@ -657,9 +662,12 @@ public abstract class ImapHandler extends ProtocolHandler {
                     break;
                 case 'T':
                     if (command.equals("THREAD") && extensionEnabled("THREAD=ORDEREDSUBJECT")) {
-                        req.skipSpace();  req.skipAtom("ORDEREDSUBJECT");
-                        req.skipSpace();  String charset = req.readCharset();
-                        req.skipSpace();  ImapSearch i4search = req.readSearch(charset);
+                        req.skipSpace();
+                        req.skipAtom("ORDEREDSUBJECT");
+                        req.skipSpace();
+                        Charset charset = req.readCharset();
+                        req.skipSpace();
+                        ImapSearch i4search = req.readSearch(charset);
                         checkEOF(tag, req);
                         return isProxied ? mProxy.proxy(req) : doTHREAD(tag, i4search, byUID);
                     }
@@ -800,7 +808,7 @@ public abstract class ImapHandler extends ProtocolHandler {
         ImapSession i4selected = mSelectedFolder;
         mSelectedFolder = null;
         if (i4selected != null) {
-            ImapSessionManager.closeFolder(i4selected, false);
+            ImapSessionManager.getInstance().closeFolder(i4selected, false);
             if (sendClosed && sessionActivated(ImapExtension.QRESYNC))
                 sendUntagged("OK [CLOSED] mailbox closed");
         }
@@ -819,7 +827,7 @@ public abstract class ImapHandler extends ProtocolHandler {
         if (path == null)
             return new Pair<ImapSession, InitialFolderValues>(null, null);
 
-        Pair<ImapSession, InitialFolderValues> selectdata = ImapSessionManager.openFolder(path, params, this);
+        Pair<ImapSession, InitialFolderValues> selectdata = ImapSessionManager.getInstance().openFolder(path, params, this);
         mSelectedFolder = selectdata.getFirst();
 
         ZimbraLog.imap.info("selected folder " + selectdata.getFirst().getPath());
@@ -994,7 +1002,7 @@ public abstract class ImapHandler extends ProtocolHandler {
             } catch (ServiceException e) {
                 ZimbraLog.imap.warn("Error in getting local server id", e);
             }
-            sendUntagged("ID (" + ID_PARAMS + " \"USER\" \"" + mCredentials.getUsername() + 
+            sendUntagged("ID (" + ID_PARAMS + " \"USER\" \"" + mCredentials.getUsername() +
                     (localServerId == null ? "" : "\" \"SERVER\" \"" + localServerId) + "\")");
         } else {
             sendUntagged("ID (" + ID_PARAMS + ")");
@@ -1934,11 +1942,16 @@ public abstract class ImapHandler extends ProtocolHandler {
         return CONTINUE_PROCESSING;
     }
 
-    private boolean checkSubscription(ImapPath path, Pattern pattern, Pattern childPattern, Map<ImapPath, Boolean> hits) {
+    private void checkSubscription(ImapPath path, Pattern pattern, Pattern childPattern, Map<ImapPath, Boolean> hits)
+            throws ServiceException {
+        if (!path.isVisible()) { // hidden folders are not exposed even if subscribed
+            return;
+        }
         if (pathMatches(path, pattern)) {
-            hits.put(path, Boolean.TRUE);  return true;
+            hits.put(path, Boolean.TRUE);
+            return;
         } else if (!pathMatches(path, childPattern)) {
-            return false;
+            return;
         }
 
         // 6.3.9: "A special situation occurs when using LSUB with the % wildcard. Consider
@@ -1947,16 +1960,14 @@ public abstract class ImapHandler extends ProtocolHandler {
         //         the LSUB response, and it MUST be flagged with the \Noselect attribute."
 
         // figure out the set of unsubscribed mailboxes that match the pattern and are parents of subscribed mailboxes
-        boolean matched = false;
         int delimiter = path.asImapPath().lastIndexOf('/');
         while (delimiter > 0) {
             path = new ImapPath(path.asImapPath().substring(0, delimiter), mCredentials);
             if (!hits.containsKey(path) && pathMatches(path, pattern)) {
-                hits.put(path, Boolean.FALSE);  matched = true;
+                hits.put(path, Boolean.FALSE);
             }
             delimiter = path.asImapPath().lastIndexOf('/');
         }
-        return matched;
     }
 
     static final int STATUS_MESSAGES      = 0x01;

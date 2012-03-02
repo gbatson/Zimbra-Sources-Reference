@@ -305,7 +305,7 @@ function(index, notify, callback, result) {
 	if (notify) {
 		this._notify(ZmEvent.E_MODIFY, {index: index});
 	}
-
+	AjxDebug.println(AjxDebug.FILTER, "_handleResponseSaveRules: notify == " + notify);
 	appCtxt.setStatusMsg(ZmMsg.filtersSaved);
 
 	if (callback) {
@@ -325,7 +325,7 @@ function(ex) {
 		ex.code == ZmCsfeException.SVC_INVALID_REQUEST)
 	{
 		var msgDialog = appCtxt.getMsgDialog();
-		msgDialog.setMessage([ZmMsg.filterError, " ", ex.msg].join(""), DwtMessageDialog.CRITICAL_STYLE);
+		msgDialog.setMessage([ZmMsg.filterError, " ", AjxStringUtil.htmlEncode(ex.msg)].join(""), DwtMessageDialog.CRITICAL_STYLE);
 		msgDialog.popup();
         //only reload rules if the filter rule dialog is not popped up or if a new rule is being added
         //get index for refreshing list view

@@ -1,14 +1,11 @@
 package com.zimbra.qa.selenium.framework.ui;
 
-import java.awt.AWTException;
-import java.awt.Robot;
+import java.awt.*;
 import java.awt.event.KeyEvent;
 
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.log4j.*;
 
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.*;
 
 
 /**
@@ -111,6 +108,82 @@ public abstract class AbsPage extends AbsSeleniumObject {
 	}
 	
 
+	private static class Coordinate {
+		final int X;
+		final int Y;
+		
+		public Coordinate(int x, int y) {
+			this.X = x;
+			this.Y = y;
+		}
+		
+		/** 
+		 * Print this coordinate in "x,y" format
+		 */
+		public String toString() {
+			return (this.X + "," + this.Y);
+		}
+		
+	}
+	
+	
+	/**
+	 * Drag and Drop a locator onto another locator
+	 * @param locatorSource The locator item to drag
+	 * @param locatorDestination The locator item to drop onto
+	 * @throws HarnessException
+	 */
+	public void zDragAndDrop(String locatorSource, String locatorDestination) throws HarnessException {
+
+		if ( !this.sIsElementPresent(locatorSource) ) {
+			throw new HarnessException("locator (source) cannot be found: "+ locatorSource);
+		}
+		
+		if ( !this.sIsElementPresent(locatorDestination) ) {
+			throw new HarnessException("locator (destination) cannot be found: "+ locatorDestination);
+		}
+		
+		SleepUtil.sleep(2000);
+		
+		// Get the coordinates for the locators
+		Coordinate destination = new Coordinate(
+				this.sGetElementPositionLeft(locatorDestination), 
+				this.sGetElementPositionTop(locatorDestination));
+		
+		Coordinate source = new Coordinate(
+				this.sGetElementPositionLeft(locatorSource), 
+				this.sGetElementPositionTop(locatorSource));
+		
+		Coordinate relative = new Coordinate(
+				destination.X - source.X,
+				destination.Y - source.Y);
+		
+		logger.info("x,y coordinate of the objectToBeDroppedInto=" + destination);
+		logger.info("x,y coordinate of the objectToBeDragged=" + source);
+		logger.info("x,y coordinate of the objectToBeDroppedInto relative to objectToBeDragged = " + relative);
+		
+		// Hold the mouse down on the source
+		this.sMouseDownAt(locatorSource, relative.toString());
+
+		SleepUtil.sleep(1000);
+		// Drag the mouse to the destination, plus the offset
+		this.sMouseMoveAt(locatorDestination, relative.toString());
+
+		// Wait a bit for things to happen
+		SleepUtil.sleep(1000 * 3);
+
+		this.sMouseMove(locatorDestination);
+		this.sMouseOver(locatorDestination);
+
+		SleepUtil.sleep(1000);
+		// Release the mouse
+		this.sMouseUpAt(locatorDestination, relative.toString());
+
+		// Wait for the client to come back
+		this.zWaitForBusyOverlay();		
+
+	}
+	
 	
 	
 	/**
@@ -268,7 +341,7 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		        case '=': doType(KeyEvent.VK_EQUALS); break;
 		        case '~': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_BACK_QUOTE); break;
 		        case '!': doType(KeyEvent.VK_EXCLAMATION_MARK); break;
-		        case '@': doType(KeyEvent.VK_AT); break;
+		        case '@': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_2); break;
 		        case '#': doType(KeyEvent.VK_NUMBER_SIGN); break;
 		        case '$': doType(KeyEvent.VK_DOLLAR); break;
 		        case '%': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_5); break;
@@ -277,7 +350,9 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		        case '*': doType(KeyEvent.VK_ASTERISK); break;
 		        case '(': doType(KeyEvent.VK_LEFT_PARENTHESIS); break;
 		        case ')': doType(KeyEvent.VK_RIGHT_PARENTHESIS); break;
-		        case '_': doType(KeyEvent.VK_UNDERSCORE); break;
+		       // case '_': doType(KeyEvent.VK_UNDERSCORE); break;
+		        case '_': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_MINUS); break;
+		        
 		        case '+': doType(KeyEvent.VK_PLUS); break;
 		        case '\t': doType(KeyEvent.VK_TAB); break;
 		        case '\n': doType(KeyEvent.VK_ENTER); break;

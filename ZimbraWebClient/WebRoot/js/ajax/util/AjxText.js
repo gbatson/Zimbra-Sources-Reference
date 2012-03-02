@@ -586,6 +586,11 @@ AjxDateFormat.initialize = function() {
 		I18nMsg.formatTimeShort, I18nMsg.formatTimeMedium,
 		I18nMsg.formatTimeLong, I18nMsg.formatTimeFull
 	];
+	AjxDateFormat._timeParsers = [];
+	for (var i=1, fmt; fmt = I18nMsg["parseTime"+i]; i++) {
+		AjxDateFormat._timeParsers.push(new RegExp(fmt,"i"));
+	}
+	
 
 	AjxDateFormat._DATE_FORMATTERS = {};
 	AjxDateFormat._TIME_FORMATTERS = {};
@@ -597,6 +602,36 @@ AjxDateFormat.initialize = function() {
 };
 
 // Public methods
+
+/**
+ * Parses the given time using one of the AjxDateFormat._timeParsers, which are regexes defined in the properties
+ */
+AjxDateFormat.parseTime = function(timeStr) {
+	for (var i=0; i<AjxDateFormat._timeParsers.length; i++) {
+		var result = AjxDateFormat._timeParsers[i].exec(timeStr);
+		if (result) {
+			var hours = parseInt(result[1],10) || 0;
+			var minutes = parseInt(result[2],10) || 0;
+			var ampm = result[3];
+			if (ampm) {
+				var pmChars = I18nMsg.parseTimePMChars;
+				if (hours == 12) {
+					hours = 0;
+				}
+				if (pmChars.indexOf(ampm)!=-1) {
+					hours += 12;
+				}
+			}
+			if (hours < 24 && minutes < 60) {
+				date = new Date();
+				date.setHours(hours);
+				date.setMinutes(minutes);
+				date.setSeconds(0);
+				return date;
+			}
+		}
+	}
+};
 
 /** 
  * Parses the given string and returns a date. If the string cannot be
@@ -640,6 +675,7 @@ AjxDateFormat.prototype.parse = function(s) {
 		object = date;
 	}
 	catch (e) {
+        DBG.println(AjxDebug.DBG3, e);
 		// do nothing
 	}
 	return object;
@@ -904,7 +940,11 @@ AjxDateFormat.DaySegment.prototype.format = function(date) {
 
 AjxDateFormat.DaySegment.prototype.parse = function(object, s, index) {
 	var fixedlen = this._getFixedLength();
-	var pname = /D/.test(this._s) ? "dayofyear" : "dayofmonth";
+    var dayofmonth = function(day) {
+                      if(day > AjxDateUtil.MAX_DAYS_PER_MONTH) { throw new AjxFormat.ParsingException(this._parent, this, "number too long"); }
+                      else { object["dayofmonth"] = day; }
+                     };
+	var pname = /D/.test(this._s) ? "dayofyear" : dayofmonth;
 	return AjxFormat.Segment._parseInt(object, pname, 0, s, index, fixedlen);
 };
 

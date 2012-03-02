@@ -107,6 +107,8 @@ function(list, contact, addr, isGroup) {
 	if (contact.isDL) {
 		email.isGroup = true;
 		email.canExpand = contact.canExpand;
+		var ac = window.parentAppCtxt || window.appCtxt;
+		ac.setIsExpandableDL(addr, email.canExpand);
 	}
 	list.push(email);
 };
@@ -122,7 +124,7 @@ function(html, idx, item, field, colIdx) {
 		html[idx++] = AjxImg.getImageHtml(item.icon);
 	} else if (field == ZmItem.F_NAME) {
 		html[idx++] = "<nobr>";
-		html[idx++] = item.name;
+		html[idx++] = AjxStringUtil.htmlEncode(item.name);
 		html[idx++] = "</nobr>";
 	} else if (field == ZmItem.F_EMAIL) {
 		html[idx++] = AjxStringUtil.htmlEncode(item.address);

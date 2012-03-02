@@ -57,13 +57,17 @@ public class ModifyContact extends MailDocumentHandler  {
         ItemId iid = new ItemId(cn.getAttribute(MailConstants.A_ID), zsc);
 
         Contact contact = mbox.getContactById(octxt, iid.getId());
-        Pair<Map<String,String>, List<Attachment>> cdata = CreateContact.parseContact(cn, zsc, octxt, contact);
+        
         ParsedContact pc;
-        if (replace)
+        if (replace) {
+            Pair<Map<String,Object>, List<Attachment>> cdata = CreateContact.parseContact(cn, zsc, octxt, contact);
             pc = new ParsedContact(cdata.getFirst(), cdata.getSecond());
-        else
+        } else {
+            Pair<ParsedContact.FieldDeltaList, List<Attachment>> cdata = 
+                CreateContact.parseContactMergeMode(cn, zsc, octxt, contact);
             pc = new ParsedContact(contact).modify(cdata.getFirst(), cdata.getSecond());
-
+        }
+        
         mbox.modifyContact(octxt, iid.getId(), pc);
         
         Contact con = mbox.getContactById(octxt, iid.getId());

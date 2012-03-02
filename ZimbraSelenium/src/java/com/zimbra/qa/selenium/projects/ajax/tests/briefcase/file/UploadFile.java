@@ -1,7 +1,7 @@
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import org.testng.annotations.Test;
-import com.zimbra.qa.selenium.framework.items.DocumentItem;
+import com.zimbra.qa.selenium.framework.items.FileItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.Action;
@@ -29,13 +29,13 @@ public class UploadFile extends AjaxCommonTest {
 		FolderItem briefcaseFolder = FolderItem.importFromSOAP(account,
 				SystemFolder.Briefcase);
 
-		// Create document item
-		DocumentItem document = new DocumentItem();
-
+		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-				+ "/data/public/other/testsoundfile.wav";
+		+ "/data/public/other/testsoundfile.wav";
+		
+		FileItem file = new FileItem(filePath);
 
-		String fileName = document.getFileName(filePath);
+		String fileName = file.getName();
 		
 		// Upload file to server through RestUtil
 		String attachmentId = account.uploadFile(filePath);
@@ -68,10 +68,7 @@ public class UploadFile extends AjaxCommonTest {
 		ZAssert.assertEquals(name, fileName, "Verify file name through SOAP");
 		
 		//delete file upon test completion
-		account.soapSend(
-				"<ItemActionRequest xmlns='urn:zimbraMail'>" +
-				"<action id='" + id + "' op='trash'/>" +
-				"</ItemActionRequest>");				
+		app.zPageBriefcase.deleteFileById(id);
 	}
 
 	@Test(description = "Upload file through RestUtil - verify through GUI", groups = { "sanity" })
@@ -81,13 +78,13 @@ public class UploadFile extends AjaxCommonTest {
 		FolderItem briefcaseFolder = FolderItem.importFromSOAP(account,
 				SystemFolder.Briefcase);
 
-		// Create document item
-		DocumentItem document = new DocumentItem();
-
+		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-				+ "/data/public/other/structure.jpg";
+		+ "/data/public/other/putty.log";
+		
+		FileItem fileItem = new FileItem(filePath);
 
-		String fileName = document.getFileName(filePath);
+		String fileName = fileItem.getName();
 
 		// Upload file to server through RestUtil
 		String attachmentId = account.uploadFile(filePath);
@@ -103,7 +100,10 @@ public class UploadFile extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		// Verify document is created
-		String name = app.zPageBriefcase.getText(fileName);
-		ZAssert.assertEquals(name, fileName, "Verify file name through GUI");
+		String name = app.zPageBriefcase.getItemNameFromListView(fileName);
+		ZAssert.assertStringContains(name, fileName, "Verify file name through GUI");
+		
+		// delete file upon test completion
+		app.zPageBriefcase.deleteFileByName(fileItem.getName());
 	}
 }

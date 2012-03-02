@@ -1,7 +1,6 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDisplay;
+import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 
 /**
@@ -24,6 +23,8 @@ public class DocumentPreview extends AbsDisplay {
 	public static enum Field {
 		Name, Time, Date, Body
 	}
+	
+	public final String pageTitle = "Zimbra: Briefcase";
 
 	/**
 	 * Protected constuctor for this object. Only classes within this package
@@ -40,6 +41,17 @@ public class DocumentPreview extends AbsDisplay {
 	public String myPageName() {
 		return (this.getClass().getName());
 	}
+
+	@Override
+	public AbsPage zPressButton(Button button) throws HarnessException {
+		logger.info(myPageName() + " zDisplayPressButton("+ button +")");
+		
+		tracer.trace("Click "+ button);
+
+		throw new HarnessException("no logic defined for button: "+ button);
+		
+	}
+	
 
 	/**
 	 * Get the string value of the specified field
@@ -94,6 +106,11 @@ public class DocumentPreview extends AbsDisplay {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		throw new HarnessException("implement me");
+		
+		zSelectWindow(pageTitle);
+		
+		zWaitForElementPresent("css=div[class=ZmPreviewView]");
+
+		return true;
 	}
 }

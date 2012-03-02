@@ -114,7 +114,9 @@ DwtForm.prototype.getValue = function(id, defaultValue) {
 	}
 	var value = this._getControlValue(id);
     if (value == null) value = item.value;
-	return value || defaultValue;
+
+    //added <|| ""> because ... if value="" than it always returns defaultValue which could be undefined.
+	return value || defaultValue || "";
 };
 
 /**
@@ -903,8 +905,10 @@ DwtForm.prototype._createControl = function(itemDef, parentDef,
 		control.setHandler(DwtEvent.ONKEYUP, onkeyup);
 
 		var blurhandler = DwtForm.__makeFunc(itemDef.onblur);
-		var onblur = AjxCallback.simpleClosure(this._input2model2handler, this, id, blurhandler);
-		control.setHandler(DwtEvent.ONBLUR, onblur);
+        if (blurhandler) {
+		    var onblur = AjxCallback.simpleClosure(this._input2model2handler, this, id, blurhandler);
+		    control.setHandler(DwtEvent.ONBLUR, onblur);
+        }
 		
 		control.setHint(itemDef.hint);
 	}
@@ -1550,3 +1554,5 @@ DwtFormRows.prototype._createHtmlFromTemplate = function(templateId, data) {
 	DwtForm.prototype._createHtmlFromTemplate.apply(this, arguments);
 	this._rowsEl = document.getElementById(this._htmlElId+"_rows");
 };
+
+

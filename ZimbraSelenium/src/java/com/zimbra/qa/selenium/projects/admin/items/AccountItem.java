@@ -9,62 +9,154 @@ import org.apache.log4j.Logger;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
+import com.zimbra.qa.selenium.framework.util.ZimbraAdminAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 
 
 public class AccountItem implements IItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
 
-	public String EmailAddress;
-	public String Id;
+	protected static String Id;
 	
-	public Map<String, String> AccountAttrs;
+	protected String localName; // Email Address is LocalName@DomainName
+	protected String domainName;
 	
-	public String Password;	// The password is encrypted in the attrs, so need to keep it separate
+	protected String Password;	// The password is encrypted in the attrs, so need to keep it separate
+
+	protected Map<String, String> accountAttrs;
+	
 	
 	public AccountItem() {
 		super();
 		
-		AccountAttrs = new HashMap<String, String>();
+		accountAttrs = new HashMap<String, String>();
 		
-		EmailAddress = 
-			"email" + ZimbraSeleniumProperties.getUniqueString() + 
-			"@" + ZimbraSeleniumProperties.getStringProperty("testdomain");
+		localName = "email" + ZimbraSeleniumProperties.getUniqueString();
+		domainName = ZimbraSeleniumProperties.getStringProperty("testdomain");
 		Id = null;
 		
 		// Surname is required in Admin Console
-		AccountAttrs.put("sn", "Lastname"+ ZimbraSeleniumProperties.getUniqueString());
+		accountAttrs.put("sn", "Lastname"+ ZimbraSeleniumProperties.getUniqueString());
 
 	}
 	
 	public AccountItem(String emailAddress, String lastName) {
 		
-		AccountAttrs = new HashMap<String, String>();
+		accountAttrs = new HashMap<String, String>();
+		
+		if ( emailAddress.contains("@") ) {
+			localName = emailAddress.split("@")[0];
+			domainName = emailAddress.split("@")[1];
+		} else {
+			localName = emailAddress;
+			domainName = ZimbraSeleniumProperties.getStringProperty("testdomain");
+		}
 
-		this.EmailAddress = emailAddress;
 		Id = null;
 		
 		// Surname is required in Admin Console
-		AccountAttrs.put("sn", lastName);
+		accountAttrs.put("sn", lastName);
 		
 	}
 
-	@Override
-	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
-		throw new HarnessException("implement me!");
-	}
 
 	@Override
 	public String prettyPrint() {
 		StringBuilder sb = new StringBuilder();
-		logger.error("implement me!", new Throwable("implement me!"));
+		sb.append(AccountItem.class.getSimpleName()).append('\n');
+		sb.append("Email: ").append(getEmailAddress());
+		sb.append("ID: ").append(getID());
+		
+		for (Map.Entry<String, String> entry : accountAttrs.entrySet()) {
+			sb.append("Attr: ").append(entry.getKey()).append("=").append(entry.getValue());
+		}
+		
 		return (sb.toString());
 	}
 
 	@Override
 	public String getName() {
-		return (EmailAddress);
+		return (getEmailAddress());
 	}
 	
+	public String getID() {
+		return (Id);
+	}
 	
+	public String getEmailAddress() {
+		return (localName + "@" + domainName);
+	}
+	
+	public void setLocalName(String name) {
+		localName = name;
+	}
+	
+	public String getLocalName() {
+		return (localName);
+	}
+
+	public void setDomainName(String domain) {
+		domainName = domain;
+	}
+	
+	public String getDomainName() {
+		return (domainName);
+	}
+	
+	public void setPassword(String password) {
+		Password = password;
+	}
+	
+	public Map<String, String> getAccountAttrs() {
+		return (accountAttrs);
+	}
+
+	// ImgAdminUser ImgAccount ImgSystemResource (others?)
+	protected String GAccountType = null;
+	public void setGAccountType(String imagetype) {
+		GAccountType = imagetype;
+	}
+	public String getGAccountType() {
+		return (GAccountType);
+	}
+
+	protected String GEmailAddress = null;
+	public void setGEmailAddress(String email) {
+		GEmailAddress = email;
+	}
+	public String getGEmailAddress() {
+		return (GEmailAddress);
+	}
+
+	public static AccountItem createUsingSOAP(AccountItem account) throws HarnessException {
+		
+		StringBuilder elementPassword = new StringBuilder();
+		if ( account.Password != null ) {
+			elementPassword.append("<password>").append(account.Password).append("</password>");
+		}
+		
+		StringBuilder elementAttrs = new StringBuilder();
+		for ( Map.Entry<String,String> entry : account.accountAttrs.entrySet() ) {
+			elementAttrs.append("<a n='").append(entry.getKey()).append("'>").append(entry.getValue()).append("</a>");
+		}
+		
+		ZimbraAdminAccount.AdminConsoleAdmin().soapSend(
+							"<CreateAccountRequest xmlns='urn:zimbraAdmin'>"
+				+				"<name>"+ account.getEmailAddress() +"</name>"
+				+				elementPassword.toString()
+				+				elementAttrs.toString()
+				+			"</CreateAccountRequest>");
+		
+		
+		Id = ZimbraAdminAccount.AdminConsoleAdmin().soapSelectValue("//admin:CreateAccountResponse/admin:account", "id").toString();
+		// TODO: Need to create a new AccountItem and set the account values to it, then return the new item
+		
+		return (account);
+	}
+
+	@Override
+	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
+		throw new HarnessException("not applicable for this IItem type");
+	}
+
 }

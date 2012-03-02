@@ -108,12 +108,17 @@ function(type, inclDispName) {
  *
  * @param	{constant}		type		the type
  * @param	{constant}		role		defines the role of the attendee (required/optional)
+ * @param	{Boolean} collapseLongList - if true, long lists have a "show more" link that expands.
+ * @param	{String}  htmlElId - required if collapseLongList is true - identifier for this view
  *
  * @return	{String}	the attendee string by role
  */
 ZmAppt.prototype.getAttendeesTextByRole =
-function(type, role) {
-	return ZmApptViewHelper.getAttendeesByRole(this._attendees[type], type, role);
+function(type, role, collapseLongList, objectManager, htmlElId) {
+	if (collapseLongList) {
+		return ZmApptViewHelper.getAttendeesByRoleCollapsed(this.getAttendees(type), type, role, objectManager, htmlElId);
+	}
+	return ZmApptViewHelper.getAttendeesByRole(this.getAttendees(type), type, role);
 };
 
 
@@ -214,7 +219,7 @@ function(controller) {
 	var appt = this.apptClone || this._orig || this;
 	var needDetails = (!appt._toolTip || (appt.otherAttendees && !appt.ptstHashMap));
 	if (needDetails) {
-		return {callback:new AjxCallback(appt, appt._getToolTip, [controller]), loading:true};
+		return {callback:new AjxCallback(appt, appt._getToolTip, [controller]), loading:false};
 	} else {
 		return appt._toolTip || appt._getToolTip(controller);
 	}
@@ -694,13 +699,15 @@ function(message) {
 	var rsvp;
 	var attendees = message.invite.getAttendees();
 	if (attendees) {
+		var ac = window.parentAppCtxt || window.appCtxt;
 		for (var i = 0; i < attendees.length; i++) {
 			var att = attendees[i];
 			var addr = att.a;
 			var name = att.d;
 			var email = new AjxEmailAddress(addr, null, name);
 			email.isGroup = att.isGroup;
-			email.canExpand = att.exp;
+			email.canExpand = att.isGroup && att.exp;
+			ac.setIsExpandableDL(att.a, email.canExpand);
             if (att.rsvp) {
 				rsvp = true;
 			}

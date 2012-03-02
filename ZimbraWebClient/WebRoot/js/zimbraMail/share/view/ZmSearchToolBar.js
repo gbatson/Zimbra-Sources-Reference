@@ -357,7 +357,7 @@ function() {
 	var inputFieldId = this._htmlElId + "_inputField";
 	var inputField = document.getElementById(inputFieldId);
 	if (inputField) {
-		this._searchField = new DwtInputField({parent:this, hint:ZmMsg.searchInput, inputId:ZmId.SEARCH_INPUT});
+		this._searchField = new DwtInputField({parent:this, hint:ZmMsg.searchInput, inputId:ZmId.SEARCH_INPUTFIELD});
 		var inputEl = this._searchField.getInputElement();
 		inputEl.className = "search_input";
 		this._searchField.reparentHtmlElement(inputFieldId);
@@ -515,9 +515,10 @@ function(ev) {
 	if (data) {
 		data[2].run(ev); // call original listener
 	} else {
+		var searchFor = item.getData(ZmSearchToolBar.MENUITEM_ID);
 		var queryString = this.getSearchFieldValue();
 		appCtxt.notifyZimlets("onKeyPressSearchField", [queryString]);
-		this._callback.run(queryString);
+		this._callback.run(queryString, searchFor);
 	}
 	return false;
 };

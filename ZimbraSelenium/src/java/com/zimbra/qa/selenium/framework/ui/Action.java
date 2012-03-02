@@ -37,6 +37,8 @@ public class Action {
 	public static final Action A_SHIFTSELECT = new Action("A_SHIFTSELECT");
 	public static final Action A_CTRLSELECT = new Action("A_CTRLSELECT");
 	public static final Action A_RIGHTCLICK = new Action("A_RIGHTCLICK");
+	public static final Action A_DOUBLECLICK = new Action("A_DOUBLECLICK");
+	public static final Action A_CHECKBOX = new Action("A_CHECK");
 
 
 	// Mail page actions
@@ -50,6 +52,10 @@ public class Action {
 	public static final Action A_TREE_EXPAND = new Action("A_TREE_EXPAND");
 	public static final Action A_TREE_COLLAPSE = new Action("A_TREE_COLLAPSE");
 	
+	// Briefcase page actions
+	public static final Action A_BRIEFCASE_CHECKBOX = new Action("A_BRIEFCASE_CHECKBOX");
+	public static final Action A_BRIEFCASE_HEADER_CHECKBOX = new Action("A_BRIEFCASE_HEADER_CHECKBOX");
+
 	private final String ID;
 	
 	protected Action(String id) {

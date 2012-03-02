@@ -1,8 +1,11 @@
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
+import java.util.*;
+
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+
 
 
 /**
@@ -32,7 +35,8 @@ public class DisplayMail extends AbsDisplay {
 		
 		public static final String zViewEntireMessage 	= "id=zv__CLV__MSG_msgTruncation_link";
 		public static final String zHighlightObjects 	= "id=zv__CLV_highlightObjects_link";
-
+		public static final String IsConViewActive 			= "css=[parentid='zv__CLV']";
+		public static final String IsMsgViewActive 			= "css=[parentid='zv__TV']";
 	}
 
 	/**
@@ -42,9 +46,11 @@ public class DisplayMail extends AbsDisplay {
 		ReceivedTime,	// Message received time
 		ReceivedDate,	// Message received date
 		From,
+		ReplyTo,
 		To,
 		Cc,
 		OnBehalfOf,
+		OnBehalfOfLabel,
 		Bcc,			// Does this show in any mail views?  Maybe in Sent?
 		Subject,
 		Body
@@ -69,35 +75,99 @@ public class DisplayMail extends AbsDisplay {
 		return (this.getClass().getName());
 	}
 
-	/**
-	 * Click on "view entire message" in this message
-	 * @return TBD: return the new window?
-	 * @throws HarnessException
-	 */
-	public AbsPage zClickViewEntireMessage() throws HarnessException {
-		logger.info(myPageName() + " zViewEntireMessage");
+	@Override
+	public AbsPage zPressButton(Button button) throws HarnessException {
+		logger.info(myPageName() + " zDisplayPressButton("+ button +")");
 		
-		tracer.trace("Click 'View Entire Message'");
+		tracer.trace("Click "+ button);
 
 		AbsPage page = this;
-		String locator = Locators.zViewEntireMessage;
+		String locator = null;
+
+		if ( button == Button.B_VIEW_ENTIRE_MESSAGE ) {
+			
+			locator = Locators.zViewEntireMessage;
+
+			this.sClick(locator);
+			
+			this.zWaitForBusyOverlay();
+
+			return (page);
+
+		} else if ( button == Button.B_HIGHLIGHT_OBJECTS ) {
+
+			locator = "css=span[id$='__TV_highlightObjects_link']";
+
+			this.sClick(locator);
+			
+			this.zWaitForBusyOverlay();
+
+			return (page);
+
+		} else if ( button == Button.B_ACCEPT ) {
+			
+			locator = "css=td[id$='__Inv__REPLY_ACCEPT_title']";
+			page = null;
+			
+		} else if ( button == Button.B_DECLINE ) {
+			
+			locator = "css=td[id$='__Inv__REPLY_TENTATIVE_title']";
+			page = null;
 		
-		this.sClick(locator);
+		} else if ( button == Button.B_TENTATIVE ) {
+			
+			locator = "css=td[id$='__Inv__REPLY_DECLINE_title']";
+			page = null;
+			
+		} else if ( button == Button.B_PROPOSE_NEW_TIME ) {
+			
+			locator = "css=td[id$='__Inv__PROPOSE_NEW_TIME_title']";
+			page = null;
+			
+		} else  {
+			
+			throw new HarnessException("no implementation for button: "+ button);
+
+		}
+		
+		if ( locator == null )
+			throw new HarnessException("no locator defined for button "+ button);
+		
+		
+		this.zClick(locator);
 		
 		this.zWaitForBusyOverlay();
 
+		if ( page != null ) {
+			page.zWaitForActive();
+		}
+		
 		return (page);
 	}
 
 	/**
-	 * Click on "highlight objects" in this message
-	 * @return TBD: return the new window?
+	 * Return TRUE/FALSE whether the Accept/Decline/Tentative buttons are present
+	 * @return
 	 * @throws HarnessException
 	 */
-	public AbsPage zClickHighlightObjects() throws HarnessException {
-		tracer.trace("Click 'highlight objects'");
+	public boolean zHasADTButtons() throws HarnessException {
+	
+		// Haven't fully baked this method.  
+		// Maybe it works.  
+		// Maybe it needs to check "visible" and/or x/y/z coordinates
 
-		throw new HarnessException("implement me!");
+		List<String> locators = Arrays.asList(
+				"css=td[id$='__Inv__REPLY_ACCEPT_title']",
+				"css=td[id$='__Inv__REPLY_TENTATIVE_title']",
+				"css=td[id$='__Inv__REPLY_DECLINE_title']",
+				"css=td[id$='__Inv__PROPOSE_NEW_TIME_title']");
+
+		for (String locator : locators) {
+			if ( !this.sIsElementPresent(locator) )
+				return (false);
+		}
+		
+		return (true);
 	}
 	
 	public HtmlElement zGetMailPropertyAsHtml(Field field) throws HarnessException {
@@ -128,7 +198,7 @@ public class DisplayMail extends AbsDisplay {
 		if ( source == null )
 			throw new HarnessException("source was null for "+ field);
 
-		logger.info("DisplayMail.zGetMailPropertyAsHtml() = "+ source);
+		logger.info("DisplayMail.zGetMailPropertyAsHtml() = "+ HtmlElement.clean(source).prettyPrint());
 
 		// Clean up the HTML code to be valid
 		return (HtmlElement.clean(source));
@@ -196,13 +266,25 @@ public class DisplayMail extends AbsDisplay {
 
 		} else if ( field == Field.OnBehalfOf ) {
 			
-			locator = "css=tr[id$='_obo'] span[id$='_com_zimbra_email'] span span";
+			locator = "css=td[id$='_obo'] span[id$='_com_zimbra_email'] span span";
 			if ( !sIsElementPresent(locator) ) {
 				// no email zimlet case
-				locator = "css=tr[id$='_obo']";
+				locator = "css=td[id$='_obo']";
 			}
 
-		}else if ( field == Field.ReceivedDate ) {
+		} else if ( field == Field.OnBehalfOfLabel ) {
+			
+			locator = "css=td[id$='_obo_label']";
+
+		} else if ( field == Field.ReplyTo ) {
+			
+			locator = "css=tr[id$='_reply to'] span[id$='_com_zimbra_email'] span span";
+			if ( !sIsElementPresent(locator) ) {
+				// no email zimlet case
+				locator = "css=tr[id$='_reply to']";
+			}
+
+		} else if ( field == Field.ReceivedDate ) {
 			
 			locator = "css=tr[id$='__MSG_hdrTableTopRow'] td[class~='DateCol']";
 
@@ -273,14 +355,10 @@ public class DisplayMail extends AbsDisplay {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		logger.warn("implement me", new Throwable());
-		
+		//logger.warn("implement me", new Throwable());
 		zWaitForZimlets();
-		
-		return (true);
+		return (sIsElementPresent(Locators.IsConViewActive) || sIsElementPresent(Locators.IsMsgViewActive) );
+				
 	}
-
-
-
-
+	
 }

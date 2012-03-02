@@ -17,6 +17,7 @@ package com.zimbra.cs.mailbox;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.json.JSONException;
@@ -132,5 +133,30 @@ public class GalSyncUtil {
             }
         }
         return con;
+    }
+    
+    /**
+     * Retrieve a list of groups email addresses 
+     * @param requestedAcct
+     * @param addrs - set of email addresses to select from
+     * @return - subset of addrs which are distribution lists
+     * @throws ServiceException
+     */
+    public static List<String> getGroupNames(Account requestedAcct, Set<String> addrs) throws ServiceException {
+        ZimbraQueryResults dlResult = (new OfflineGal((OfflineAccount)requestedAcct)).search(addrs, "group", "", 0, 0, null);
+        List<String> groups = new ArrayList<String>();
+        if (dlResult != null) {
+            try {
+                while (dlResult.hasNext()) {
+                    ZimbraHit hit = dlResult.getNext();
+                    Contact contact = (Contact) hit.getMailItem();
+                    String listName = contact.getEmailAddresses().size() > 0 ? contact.getEmailAddresses().get(0) : contact.getFileAsString();
+                    groups.add(listName);
+                }
+            } finally {
+                dlResult.doneWithSearchResults();
+            }
+        }
+        return groups;
     }
 }

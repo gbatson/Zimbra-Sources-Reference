@@ -1180,8 +1180,10 @@ function(asObj) {
 	
 	if (asObj) {
 		email = AjxEmailAddress.parse(email);
-		email.isGroup = this.isGroup;
-		email.canExpand = this.canExpand;
+        if(email){
+		    email.isGroup = this.isGroup;
+		    email.canExpand = this.canExpand;
+        }
 	}
 	
 	return email;
@@ -1282,31 +1284,13 @@ function(html) {
 		if (fullName) {
 			this._fullName = (fullName instanceof Array) ? fullName[0] : fullName;
 		}
-        if (!fullName || html) {
-			var fn = [];
-			var idx = 0;
-			var prefix = this.getAttr(ZmContact.F_namePrefix);
-			var first = this.getAttr(ZmContact.F_firstName);
-			var middle = this.getAttr(ZmContact.F_middleName);
-			var maiden = this.getAttr(ZmContact.F_maidenName);
-			var last = this.getAttr(ZmContact.F_lastName);
-			var suffix = this.getAttr(ZmContact.F_nameSuffix);
-			var pattern = ZmMsg.fullname;
-			if (suffix) {
-				pattern = maiden ? ZmMsg.fullnameMaidenSuffix : ZmMsg.fullnameSuffix;
-			}
-			else if (maiden) {
-				pattern = ZmMsg.fullnameMaiden;
-			}
-            var formatter = new AjxMessageFormat(pattern);
-			var args = [prefix,first,middle,maiden,last,suffix];
-            if (!fullName) {
-			    this._fullName = AjxStringUtil.trim(formatter.format(args), true);
-            }
-            if (html) {
-                fullNameHtml = this._getFullNameHtml(formatter, args);
-            }
-		}
+        else {
+            this._fullName = this.getFullNameForDisplay(false);
+        }
+
+        if (html) {
+            fullNameHtml = this.getFullNameForDisplay(html);
+        }
 	}
 
 	// as a last resort, set it to fileAs
@@ -1315,6 +1299,36 @@ function(html) {
 	}
 
 	return fullNameHtml || this._fullName;
+};
+
+/*
+* Gets the fullname for display -- includes (if applicable): prefix, first, middle, maiden, last, suffix
+*
+* @param {boolean}  if phonetic fields should be used
+* @return {String}  the fullname for display
+*/
+ZmContact.prototype.getFullNameForDisplay =
+function(html){
+    var prefix = this.getAttr(ZmContact.F_namePrefix);
+    var first = this.getAttr(ZmContact.F_firstName);
+    var middle = this.getAttr(ZmContact.F_middleName);
+    var maiden = this.getAttr(ZmContact.F_maidenName);
+    var last = this.getAttr(ZmContact.F_lastName);
+    var suffix = this.getAttr(ZmContact.F_nameSuffix);
+    var pattern = ZmMsg.fullname;
+    if (suffix) {
+        pattern = maiden ? ZmMsg.fullnameMaidenSuffix : ZmMsg.fullnameSuffix;
+    }
+    else if (maiden) {
+        pattern = ZmMsg.fullnameMaiden;
+    }
+    var formatter = new AjxMessageFormat(pattern);
+    var args = [prefix,first,middle,maiden,last,suffix];
+    if (!html){
+        return AjxStringUtil.trim(formatter.format(args), true);
+    }
+
+    return this._getFullNameHtml(formatter, args);
 };
 
 /**
@@ -1708,6 +1722,11 @@ function(node) {
 	this.isDL = this.isGal && (this.attr[ZmContact.F_type] == "group");
 	if (this.isDL) {
 		this.canExpand = node.exp;
+		var emails = this.getEmails();
+		var ac = window.parentAppCtxt || window.appCtxt;
+		for (var i = 0; i < emails.length; i++) {
+			ac.setIsExpandableDL(emails[i], this.canExpand);
+		}
 	}
 };
 
@@ -1721,7 +1740,7 @@ function(node) {
 ZmContact.prototype.getAttendeeText =
 function(type, shortForm) {
 	var email = this.getEmail(true);
-	return email.toString(shortForm || (type && type != ZmCalBaseItem.PERSON));
+	return (email?email.toString(shortForm || (type && type != ZmCalBaseItem.PERSON)):"");
 };
 
 /**

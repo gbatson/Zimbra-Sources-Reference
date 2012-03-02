@@ -177,8 +177,18 @@ function(insertFontStyle, onlyInnerContent ) {
 	// (which shouldnt be in base).
 	var content;
 	if (this._mode == DwtHtmlEditor.HTML) {
+		AjxDebug.println(AjxDebug.REPLY, "ZmHtmlEditor.prototype.getContent in HTML mode");
 		var iframeDoc = this._getIframeDoc();
-		var html = this._pendingContent || (iframeDoc && iframeDoc.body ? (this._getIframeDoc().body.innerHTML) : "");
+
+		var html = (iframeDoc && iframeDoc.body && iframeDoc.body.innerHTML) || "";
+		AjxDebug.println(AjxDebug.REPLY, "content from iframe body: " + AjxStringUtil.htmlEncode(html.substr(0,200)));
+		this._blankDiv = this._blankDiv || this._getFontStyle("");
+		this._blankHtml = this._blankHtml || this._embedHtmlContent("", true);
+		if (this._pendingContent && (!html || html == this._blankDiv || html == this._blankHtml)) {
+			html = this._pendingContent;
+			AjxDebug.println(AjxDebug.REPLY, "using pending content: " + AjxStringUtil.htmlEncode(html.substr(0,200)));
+			AjxDebug.println(AjxDebug.REPLY, "HTML mode inited: " + this._htmlModeInited);
+		}
 		content = this._embedHtmlContent(html, insertFontStyle, onlyInnerContent);
 		if (this.ACE_ENABLED) {
 			content = this._serializeAceObjects(content);
@@ -856,7 +866,9 @@ function(menu) {
 		// Can we split? (the cell has to be a merged cell)
 		var td = this.getNearestElement("td");
 		var splitEnabled = td && ((td.colSpan && td.colSpan > 1) || (td.rowSpan && td.rowSpan > 1));
-		items.splitCells.setEnabled(splitEnabled);
+		if (items.splitCells) { //this is only if geckoBased
+			items.splitCells.setEnabled(splitEnabled);
+		}
 
 		// Can we merge? (multiple cells are selected and none of them is previously merged)
 		var a = this.getSelectedCells();
@@ -878,7 +890,9 @@ function(menu) {
 		}
 		if (howMany < 2)
 			canMerge = false;
-		items.mergeCells.setEnabled(canMerge);
+		if (items.mergeCells) { //this is only if geckoBased
+			items.mergeCells.setEnabled(canMerge);
+		}
 	}
 };
 

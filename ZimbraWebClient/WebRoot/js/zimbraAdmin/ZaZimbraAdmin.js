@@ -559,9 +559,22 @@ function () {
 ZaZimbraAdmin.prototype._helpListener =
 function(ev) {
 	//DBG.println(AjxDebug.DBG1, "Help is clicked ...") ;
+    var acctName = ZaZimbraAdmin.currentUserLogin;
+    var domainName = acctName.split('@')[1];
+    var domain = ZaDomain.getDomainByName(domainName);
+    var curAcct = ZaZimbraAdmin.currentAdminAccount;
+    if(curAcct && domain) {
+        var url = null;
+        if(curAcct.attrs[ZaAccount.A_zimbraIsAdminAccount] == "TRUE")
+            url = domain.attrs[ZaDomain.A_zimbraHelpAdminURL];
+        else url = domain.attrs[ZaDomain.A_zimbraHelpDelegatedURL];
+        if(url) {
+                window.open(url);
+                return;
+        }
+    }
     //skin takes the zimbraHelpAdminURL and put it into the skin hints
-    var helpButton = skin && skin.hints && skin.hints.helpButton;
-	  
+    var helpButton = skin && skin.hints && skin.hints.helpButton;	  
     if (helpButton && helpButton.url) {
 		var sep = helpButton.url.match(/\?/) ? "&" : "?";
 		var url = [ helpButton.url, sep, "locid=", AjxEnv.DEFAULT_LOCALE ].join("");

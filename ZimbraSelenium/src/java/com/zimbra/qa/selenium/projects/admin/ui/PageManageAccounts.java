@@ -3,12 +3,16 @@
  */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
 import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.projects.admin.items.AccountItem;
 
 
@@ -20,16 +24,16 @@ import com.zimbra.qa.selenium.projects.admin.items.AccountItem;
 public class PageManageAccounts extends AbsTab {
 
 	public static class Locators {
-		
+
 		// ** OverviewTreePanel -> Addresses -> Accounts
-		public static final String zti__AppAdmin__ADDRESS__ACCOUNT_textCell = "xpath=//*[@id='zti__AppAdmin__ADDRESS__ACCOUNT_textCell']";
-		
+		public static final String zti__ACCOUNTS = "zti__AppAdmin__ADDRESS__ACCOUNT_textCell";
+
 		// ** "Manage Accounts" Tab Title
-		public static final String DWT93 = "xpath=//*[@id='DWT93']";
-		public static final String DWT93_classAttr = "xpath=(//*[@id='DWT93'])@class";
-		
+		public static final String ztab__MANAGE_ACCOUNT_ICON = "css=tr#ztab__MAIN_TAB_row div.ImgAccount";
+
 		// ** Menus
-		public static final String zb__ACLV__NEW_MENU_title = "xpath=//*[@id='zb__ACLV__NEW_MENU_title']";		// New Button
+		public static final String zb__ACLV__NEW_MENU_title = "xpath=//*[@id='zb__ACLV__NEW_MENU_title']";// New Button
+		public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown div.ImgSelectPullDownArrow";
 		public static final String zb__ACLV__EDIT_title = "xpath=//*[@id='zb__ACLV__EDIT_title']";
 		public static final String zb__ACLV__DELETE_title = "xpath=//*[@id='zb__ACLV__DELETE_title']";
 		public static final String zb__ACLV__CHNG_PWD_title = "xpath=//*[@id='zb__ACLV__CHNG_PWD_title']";
@@ -42,18 +46,18 @@ public class PageManageAccounts extends AbsTab {
 		public static final String zb__ACLV__PAGE_FORWARD_title = "xpath=//*[@id='zb__ACLV__PAGE_FORWARD_title']";
 		public static final String zb__ACLV__HELP_title = "xpath=//*[@id='zb__ACLV__HELP_title']";
 
-		
+
 		// NEW Menu
 		// TODO: define these locators
-		public static final String zmi__ACLV__NEW_WIZARD_title = "xpath=//*[@id='zmi__ACLV__NEW_WIZARD_title']";	// New -> Account (<td class="ZWidgetTitle" id="zmi__ACLV__NEW_WIZARD_title">Account</td>)
-		
+		public static final String zmi__ACLV__NEW_WIZARD_title = "zmi__ACLV__NEW_ACCT";	// New -> Account 
+
 
 	}
 
-	
-	
-	
-	
+
+
+
+
 	public PageManageAccounts(AbsApplication application) {
 		super(application);
 
@@ -74,24 +78,25 @@ public class PageManageAccounts extends AbsTab {
 	 */
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		
+
 		// Make sure the Admin Console is loaded in the browser
 		if ( !MyApplication.zIsLoaded() )
 			throw new HarnessException("Admin Console application is not active!");
 
-		
-		boolean present = sIsElementPresent(Locators.DWT93);
+
+		boolean present = sIsElementPresent(Locators.ztab__MANAGE_ACCOUNT_ICON);
 		if ( !present ) {
 			return (false);
 		}
-		
-		String attrs = sGetAttribute(Locators.DWT93_classAttr);
-		if ( !attrs.contains("ZSelected") ) {
+
+		boolean visible = zIsVisiblePerPosition(Locators.ztab__MANAGE_ACCOUNT_ICON, 0, 0);
+		if ( !visible ) {
+			logger.debug("isActive() visible = "+ visible);
 			return (false);
 		}
-		
+
 		return (true);
-		
+
 	}
 
 	/* (non-Javadoc)
@@ -104,158 +109,212 @@ public class PageManageAccounts extends AbsTab {
 			// This page is already active.
 			return;
 		}
-		
+
 		// Click on Addresses -> Accounts
-		sClick(Locators.zti__AppAdmin__ADDRESS__ACCOUNT_textCell);
-		
+		zClick(Locators.zti__ACCOUNTS);
+
 		zWaitForActive();
 
-	}
-	
-	/**
-	 * Click Previous/Next in the list
-	 * @param button
-	 * @throws HarnessException If the button is not active, throw Exception
-	 */
-	public void clickNavigation(ListNavButton button) throws HarnessException {
-		// TODO: If button is not enabled, thrown HarnessException
-		
-		// TODO: click on the button
-		
-		throw new HarnessException("implement me");
-	}
-
-	/**
-	 * Create the specified account using the Admin Console
-	 * @param account
-	 * @return
-	 * @throws HarnessException
-	 */
-	public AccountItem createAccount(AccountItem account) throws HarnessException {
-		logger.debug("createAccount(AccountItem account)" + account.EmailAddress);
-
-		// Get the New Account Wizard
-		WizardCreateAccount wizard = getNewAccountWizard(Locators.zb__ACLV__NEW_MENU_title);
-		AccountItem a = (AccountItem)wizard.zCompleteWizard(account);
-		
-		// Return the account
-		return (a);
-	}
-
-	/**
-	 * Get the "New Account" wizard by clicking on the specified locator
-	 * @param locator "New" or "New -> Account"
-	 * @return
-	 * @throws HarnessException
-	 */
-	public WizardCreateAccount getNewAccountWizard(String locator) throws HarnessException {
-		
-		// Make sure the Manage Accounts page is showing
-		zNavigateTo();
-
-		// Click on "New"
-		sClick(locator);
-
-		WizardCreateAccount wizard = new WizardCreateAccount(this);
-		if ( !wizard.zIsOpen() )
-			throw new HarnessException("Clicking on locator "+ locator +" did not open wizard");
-		
-		// Return the Wizard object
-		return (wizard);
-	}
-
-	/**
-	 * Edit the specified account by selecting the account in the list and clicking "Edit"
-	 * @param emailaddress
-	 * @throws HarnessException
-	 */
-	public void editAccount(String emailaddress) throws HarnessException {
-		throw new HarnessException("implement me");
-	}
-
-	/**
-	 * Delete the specified account by selecting the account in the list and clicking "Delete"
-	 * @param emailaddress
-	 * @param button Click on this button in the dialog
-	 * @throws HarnessException
-	 */
-	public void deleteAccount(String emailaddress, PopupButton button) throws HarnessException {
-		throw new HarnessException("implement me");
-	}
-
-	/**
-	 * Change the password for the specified account by selecting the account in the list and clicking "Change Password"
-	 * @param emailaddress
-	 * @param password
-	 * @param confirm
-	 * @param mustChangePassword
-	 * @param button Click on this button in the dialog
-	 * @throws HarnessException
-	 */
-	public void changePasswordAccount(String emailaddress, String password, String confirm, boolean mustChangePassword, PopupButton button) throws HarnessException {
-		throw new HarnessException("implement me");
-	}
-
-	/**
-	 * Expire the account sessions for the specified account by selecting the account in the list and clicking "Expire Sessions"
-	 * @param emailaddress
-	 * @param button Click on this button in the dialog
-	 * @throws HarnessException
-	 */
-	public void expireSessionsAccount(String emailaddress, PopupButton button) throws HarnessException {
-		throw new HarnessException("implement me");
-	}
-
-
-	/**
-	 * View the mailbox for the specified account by selecting the account in the list and clicking "View Mail"
-	 * @param emailaddress
-	 * @throws HarnessException
-	 */
-	public void viewMailAccount(String emailaddress) throws HarnessException {
-		throw new HarnessException("implement me");
-	}
-
-	/**
-	 * Search Mail (opens PageEditSearch object)
-	 * @param emailaddress
-	 * @throws HarnessException
-	 */
-	public void searchMailAccount(String emailaddress) throws HarnessException {
-		throw new HarnessException("implement me");
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, String item)
-			throws HarnessException {
+	throws HarnessException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, String item)
-			throws HarnessException {
+	throws HarnessException {
 		// TODO Auto-generated method stub
 		return null;
 	}
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
-			throws HarnessException {
+	throws HarnessException {
 		// TODO Auto-generated method stub
 		return null;	
 	}
-	
+
 	@Override
 	public AbsPage zToolbarPressButton(Button button) throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;
+
+		logger.info(myPageName() + " zToolbarPressButton("+ button +")");
+
+		tracer.trace("Press the "+ button +" button");
+
+		if ( button == null )
+			throw new HarnessException("Button cannot be null!");
+
+
+		// Default behavior variables
+		//
+		String locator = null;			// If set, this will be clicked
+		AbsPage page = null;	// If set, this page will be returned
+
+		// Based on the button specified, take the appropriate action(s)
+		//
+
+		if ( button == Button.B_NEW ) {
+
+			// New button
+			locator = Locators.zb__ACLV__NEW_MENU_title;
+
+			// Create the page
+			page = new WizardCreateAccount(this);
+
+			// FALL THROUGH
+
+		} else {
+			throw new HarnessException("no logic defined for button "+ button);
+		}
+
+		if ( locator == null ) {
+			throw new HarnessException("locator was null for button "+ button);
+		}
+
+		// Default behavior, process the locator by clicking on it
+		//
+		this.zClick(locator);
+		
+		
+
+		// If page was specified, make sure it is active
+		if ( page != null ) {
+			SleepUtil.sleepMedium();
+		}
+
+		sMouseOut(locator);
+		return (page);
+
+
 	}
 
 	@Override
-	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
-			throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;
+	public AbsPage zToolbarPressPulldown(Button pulldown, Button option) throws HarnessException {
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
+
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (option == null)
+			throw new HarnessException("Option cannot be null!");
+
+
+		// Default behavior variables
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+
+		if (pulldown == Button.B_NEW) {
+
+			if (option == Button.O_ACCOUNTS_ACCOUNT) {
+
+				pulldownLocator = Locators.zdd_NEW_MENU;
+				optionLocator = PageManageAccounts.Locators.zmi__ACLV__NEW_WIZARD_title;
+
+				page = new WizardCreateAccount(this);
+
+				// FALL THROUGH
+
+			} else {
+				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
+			}
+
+		} else {
+			throw new HarnessException("no logic defined for pulldown/option "
+					+ pulldown + "/" + option);
+		}
+
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown + " option " + option + " pulldownLocator " + pulldownLocator + " not present!");
+			}
+
+			this.zClick(pulldownLocator);
+
+			// If the app is busy, wait for it to become active
+			//zWaitForBusyOverlay();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException("Button " + pulldown + " option " + option + " optionLocator " + optionLocator + " not present!");
+				}
+
+				this.zClick(optionLocator);
+
+				// If the app is busy, wait for it to become active
+				//zWaitForBusyOverlay();
+			}
+
+		}
+
+		// Return the specified page, or null if not set
+		return (page);
+
+	}
+
+	/**
+	 * Return a list of all accounts in the current view
+	 * @return
+	 * @throws HarnessException 
+	 * @throws HarnessException 
+	 */
+	public List<AccountItem> zListGetAccounts() throws HarnessException {
+		
+		List<AccountItem> items = new ArrayList<AccountItem>();
+
+		// Make sure the button exists
+		if ( !this.sIsElementPresent("css=div[id='zl__ACCT_MANAGE'] div[id$='__rows']") )
+			throw new HarnessException("Account Rows is not present");
+
+		// How many items are in the table?
+		String rowsLocator = "//div[@id='zl__ACCT_MANAGE']//div[contains(@id, '__rows')]//div[contains(@id,'zli__')]";
+		int count = this.sGetXpathCount(rowsLocator);
+		logger.debug(myPageName() + " zListGetAccounts: number of accounts: "+ count);
+
+		// Get each conversation's data from the table list
+		for (int i = 1; i <= count; i++) {
+			final String accountLocator = rowsLocator + "["+ i +"]";
+			String locator;
+
+			AccountItem item = new AccountItem();
+
+			// Type (image)
+			// ImgAdminUser ImgAccount ImgSystemResource (others?)
+			locator = accountLocator + "//td[contains(@id, 'account_data_type_')]//div";
+			if ( this.sIsElementPresent(locator) ) {
+				item.setGAccountType(this.sGetAttribute("xpath=("+ locator + ")@class"));
+			}
+
+
+			// Email Address
+			locator = accountLocator + "//td[contains(@id, 'account_data_emailaddress_')]";
+			if ( this.sIsElementPresent(locator) ) {
+				item.setGEmailAddress(this.sGetText(locator).trim());
+			}
+			
+			// Display Name
+			// Status
+			// Lost Login Time
+			// Description
+			
+
+			// Add the new item to the list
+			items.add(item);
+			logger.info(item.prettyPrint());
+		}
+
+		// Return the list of items
+		return (items);
 	}
 
 

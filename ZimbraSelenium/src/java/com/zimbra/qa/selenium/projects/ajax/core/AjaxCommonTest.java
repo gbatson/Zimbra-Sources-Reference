@@ -81,7 +81,8 @@ public class AjaxCommonTest {
 
 	protected static OsType osType = null;
    private String _downloadFilePath = null;
-   private String _executableFilePath = null;
+   private String[] _executableFilePath = null;
+   private String [] _params = null;
    private final static String _accountFlavor = "Zimbra";
    public final static String defaultAccountName = ZimbraSeleniumProperties.getUniqueString();
 
@@ -99,6 +100,7 @@ public class AjaxCommonTest {
    private boolean _uninstallAppAfterTest = false;
    private boolean _forceInstall = false;
    protected String[] desktopZimlets = null;
+   private static StartDesktopClient _startDesktopClient = null;
 
 	/**
 	 * BeforeMethod variables
@@ -119,7 +121,7 @@ public class AjaxCommonTest {
 		startingAccountZimletPreferences = new HashMap<String, String>();
 	}
 
-   /**
+	/**
     * Global BeforeSuite
     * <p>
     * <ol>
@@ -138,11 +140,13 @@ public class AjaxCommonTest {
 		// Make sure there is a new default account
 		ZimbraAccount.ResetAccountZWC();
 
-		try
+		osType = OperatingSystem.getOSType();
+
+      try
 		{
 		   if (isRunningDesktopTest) {
 		      ZimbraSeleniumProperties.setAppType(ZimbraSeleniumProperties.AppType.DESKTOP);
-		      logger.info("commonTestBeforeSuite");
+		      
 
 		      _forceInstall = ZimbraSeleniumProperties.getStringProperty("desktop.forceInstall", "true").toLowerCase().equals("true") ? true : false;
 		      _uninstallAppAfterTest = ZimbraSeleniumProperties.getStringProperty("desktop.uninstallAfterTest", "false").toLowerCase().equals("true") ? true : false;
@@ -168,9 +172,6 @@ public class AjaxCommonTest {
 		      logger.info("_productName: " + _productName);
 		      logger.info("_branchName: " + _branchName);
 
-		      osType = OperatingSystem.getOSType();
-
-		      boolean isAppRunning = false;
 		      switch (osType){
 		      case WINDOWS: case WINDOWS_XP:
 		         _downloadFilePath = "C:\\download-zimbra-qa-test\\";
@@ -181,21 +182,24 @@ public class AjaxCommonTest {
 		         File root = new File(filePath); 
 		         if (root.exists()) {
 		            // 64 bit
-		            _executableFilePath = "C:\\WINDOWS\\SysWOW64\\cscript.exe \"C:\\Program Files (x86)\\Zimbra\\Zimbra Desktop\\win32\\zdrun.vbs\"";
+		            _executableFilePath = new String[] {"C:\\WINDOWS\\SysWOW64\\cscript.exe", "C:\\Program Files (x86)\\Zimbra\\Zimbra Desktop\\win32\\zdrun.vbs"};
 		         } else {
 		            // 32 bit
-		            _executableFilePath = "C:\\WINDOWS\\system32\\cscript.exe \"C:\\Program Files\\Zimbra\\Zimbra Desktop\\win32\\zdrun.vbs\"";
-		         }
-
-		         if (GeneralUtility.findWindowsRunningTask("zdesktop.exe")) {
-		            isAppRunning = true;
+		            _executableFilePath = new String[] {"C:\\WINDOWS\\system32\\cscript.exe", "C:\\Program Files\\Zimbra\\Zimbra Desktop\\win32\\zdrun.vbs"};
 		         }
 
 		         break;
 
 		      case LINUX:
+
+		         _downloadFilePath = "/download-zimbra-qa-test/";
 		         _arch = ARCH.RHEL4;
-		         //TODO: _executableFilePath
+		         String username = ZimbraDesktopProperties.getInstance().getUserName();
+		         String command = "/opt/zimbra/zdesktop/linux/prism/zdclient -webapp /home/<USER_NAME>/zdesktop/zdesktop.webapp -override /home/<USER_NAME>/zdesktop/zdesktop.webapp/override.ini -profile /home/<USER_NAME>/zdesktop/profile";
+		         command = command.replaceAll("<USER_NAME>", username);
+
+		         _executableFilePath = new String[] {"su", "-", username, "-c", command}; 
+		         _params = null;
 		         break;
 
 		      case MAC:
@@ -206,7 +210,6 @@ public class AjaxCommonTest {
 		      logger.info("_forceInstall: " + _forceInstall);
 		      if (_forceInstall) {
 		         DesktopInstallUtil.forceInstallLatestBuild(_productName, _branchName, _arch, _downloadFilePath);
-		         isAppRunning = false;
 		      } else {
 		         if (!DesktopInstallUtil.isDesktopAppInstalled()) {
 		            String buildUrl = ZimbraSeleniumProperties.getStringProperty("desktop.buildUrl", ""); 
@@ -223,29 +226,31 @@ public class AjaxCommonTest {
 		         } else {
 		            // Running test with already installed Desktop App.
 		            logger.info("Running with already installed app");
-		         }        
+		         }
 		      }
 
-		      if (!isAppRunning) {
-		         logger.info("Executable file path: " + _executableFilePath);
-		         CommandLine.CmdExec(_executableFilePath);
+		      if (!DesktopInstallUtil.isDesktopAppRunning()) {
+		         logger.info("Executable file path: " + Arrays.toString(_executableFilePath));
+		         _startDesktopClient = new StartDesktopClient(_executableFilePath, _params);
+		         _startDesktopClient.start();
+
 		      } else {
 		         logger.info("App is already running...");
 		      }
 
 		      GeneralUtility.waitFor(null, ZimbraAccount.AccountZWC(), false,
-		            "authenticateToMailClientHost", null, WAIT_FOR_OPERAND.NEQ, null, 30000, 3000);
+		            "authenticateToMailClientHost", null, WAIT_FOR_OPERAND.NEQ, null, 60000, 3000);
 		   } else {
 		      // AJAX test
 		      ZimbraSeleniumProperties.setAppType(ZimbraSeleniumProperties.AppType.AJAX);
 		   }
 
-			_selenium = ClientSessionFactory.session().selenium();
-			_selenium.start();
-			_selenium.windowMaximize();
-			_selenium.windowFocus();
-			_selenium.allowNativeXpath("true");
-			_selenium.setTimeout("30000");// Use 30 second timeout for opening the browser
+		   _selenium = ClientSessionFactory.session().selenium();
+	      _selenium.start();
+	      _selenium.windowMaximize();
+	      _selenium.windowFocus();
+	      _selenium.allowNativeXpath("true");
+	      _selenium.setTimeout("30000");// Use 30 second timeout for opening the browser
 
 			// Dynamic wait for App to be ready
 	      int maxRetry = 10;
@@ -274,7 +279,10 @@ public class AjaxCommonTest {
 
 		} catch (SeleniumException e) {
 			throw new HarnessException("Unable to open app", e);
-		}
+		} catch (Exception e) {
+         logger.info(e.getMessage());
+         e.printStackTrace();
+      }
 
 		logger.info("commonTestBeforeSuite: finish");		
 	}
@@ -557,12 +565,21 @@ public class AjaxCommonTest {
 	@AfterSuite( groups = { "always" } )
 	public void commonTestAfterSuite() throws HarnessException {	
 		logger.info("commonTestAfterSuite: start");
-		
-		CodeCoverage.getInstance().writeCoverage();
+
+		// Only for linux, kill the desktop process because
+		// in linux, the app is holding up the thread
+		if (OperatingSystem.getOSType() == OsType.LINUX) {
+		   DesktopInstallUtil.killDesktopProcess();
+		}
+
+		_startDesktopClient = null;
+
 		
 		ClientSessionFactory.session().selenium().stop();
 
 		logger.info("commonTestAfterSuite: finish");
+
+		
 
 	}
 	
@@ -574,8 +591,19 @@ public class AjaxCommonTest {
 	@AfterClass( groups = { "always" } )
 	public void commonTestAfterClass() throws HarnessException {
 		logger.info("commonTestAfterClass: start");
-		
-		logger.info("commonTestAfterClass: finish");
+
+		// For Ajax, if account is considered dirty (modified),
+      // then recreate a new account, but for desktop, the zimlet
+      // preferences has to be reset to default, all core zimlets are enabled
+      ZimbraAccount currentAccount = app.zGetActiveAccount();
+      if (currentAccount != null && currentAccount.accountIsDirty &&
+            currentAccount == ZimbraAccount.AccountZWC()) {
+         // Reset the account
+         ZimbraAccount.ResetAccountZWC();
+
+      }
+
+      logger.info("commonTestAfterClass: finish");
 	}
 
 	/**
@@ -586,39 +614,7 @@ public class AjaxCommonTest {
 	@AfterMethod( groups = { "always" } )
 	public void commonTestAfterMethod() throws HarnessException {
 		logger.info("commonTestAfterMethod: start");
-		
-		CodeCoverage.getInstance().calculateCoverage();
 
-		// For Ajax, if account is considered dirty (modified),
-		// then recreate a new account, but for desktop, the zimlet
-		// preferences has to be reset to default, all core zimlets are enabled
-		ZimbraAccount currentAccount = app.zGetActiveAccount();
-		if (currentAccount != null && currentAccount.accountIsDirty &&
-		      currentAccount == ZimbraAccount.AccountZWC()) {
-
-		   if (ZimbraSeleniumProperties.getAppType() == AppType.AJAX) {
-
-		      // Reset the account
-		      ZimbraAccount.ResetAccountZWC();
-
-		   } else if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-
-		      if (desktopZimlets == null) {
-		         throw new HarnessException("Desktop zimlets are null for unknown reason");
-		      }
-
-		      // Reset the zimlets preferences to default
-		      Map<String, String> defaultZimlets = new HashMap<String, String>();
-
-		      for (int i = 0; i < desktopZimlets.length; i++) {
-		         defaultZimlets.put(desktopZimlets[i], "enabled");
-		      }
-
-		      ZimbraAccount.AccountZWC().modifyZimletPreferences(defaultZimlets,
-	               SOAP_DESTINATION_HOST_TYPE.CLIENT);
-
-		   }
-		}
 
 		logger.info("commonTestAfterMethod: finish");
 	}

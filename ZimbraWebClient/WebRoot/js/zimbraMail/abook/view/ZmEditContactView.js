@@ -816,7 +816,9 @@ ZmEditContactView.prototype._handleDetailCheck = function(itemId, id) {
 	this.update();
 	var control = this.getControl(id);
 	if (control) {
+        control.disableFocusHdlr(); //disable focus handler so hint is displayed
 		control.focus();
+        control.enableFocusHdlr(); //re-enable
 	}
 };
 
@@ -2316,12 +2318,15 @@ ZmEditContactViewOther.prototype._resetPicker = function() {
 ZmEditContactViewOther.parseDate = function(dateStr) {
     // NOTE: Still try to parse date string in locale-specific
     // NOTE: format for backwards compatibility.
-    var aDate = AjxDateUtil.simpleParseDateStr(dateStr);
+    var noYear = dateStr.match(/^--/);
+    var pattern = noYear ? "--MM-dd" : "yyyy-MM-dd";
+    var aDate = AjxDateFormat.parse(pattern, dateStr);
+
     if (isNaN(aDate) || aDate == null) {
-        var noYear = dateStr.match(/^--/);
-        var pattern = noYear ? "--MM-dd" : "yyyy-MM-dd";
-        aDate = AjxDateFormat.parse(pattern, dateStr);
-        if (noYear) aDate.setFullYear(0);
+        aDate = AjxDateUtil.simpleParseDateStr(dateStr);
+    }
+    else if (noYear) {
+        aDate.setFullYear(0);
     }
     return aDate;
 };

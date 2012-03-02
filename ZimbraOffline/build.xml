@@ -187,6 +187,32 @@
     </classpath>
   </taskdef>
 
+  <macrodef name="win-copy-binary">
+    <attribute name="src" />
+    <attribute name="dst" />
+    <sequential>
+      <pathconvert targetos="windows" property="wcb.src">
+        <path>
+          <pathelement location="@{src}" />
+        </path>
+      </pathconvert>
+      <pathconvert targetos="windows" property="wcb.dst">
+        <path>
+          <pathelement location="@{dst}" />
+        </path>
+      </pathconvert>
+
+      <exec executable="cmd" failonerror="true">
+        <arg value="/C" />
+        <arg value="COPY" />
+        <arg value="/Y" />
+        <arg value="/B" />
+        <arg value="${wcb.src}" />
+        <arg value="${wcb.dst}" />
+      </exec>
+    </sequential>
+  </macrodef>
+  
   <!-- Targets -->
   <target name="offline-build-init">
     <mkdir dir="${build.classes.dir}" />
@@ -214,8 +240,9 @@
   </target>
 
   <target name="offline-jar" depends="offline-compile" description="Creates the jar file">
-    <jar destfile="${build.dir}/${jarfile}" basedir="${build.classes.dir}" excludes="com/zimbra/cs/offline/jsp/**"/>
-    <jar destfile="${build.dir}/offlinejsp.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/common/*.class,com/zimbra/cs/offline/jsp/*.class,com/zimbra/cs/offline/backup/*.class,com/zimbra/cs/datasource/offline/*.class,com/zimbra/cs/account/offline/OfflineDataSource.class"/>
+    <jar destfile="${build.dir}/${jarfile}" basedir="${build.classes.dir}" excludes="com/zimbra/cs/offline/jsp/**,com/zimbra/cs/offline/OfflineLC.class"/>
+    <jar destfile="${build.dir}/offlinejsp.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/jsp/*.class"/>
+  	<jar destfile="${build.dir}/offlinelc.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/OfflineLC.class"/>
     <jar destfile="${build.dir}/zdesktop.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/start/Main.class,com/zimbra/cs/offline/wrapper/WrapperUtil.class" />
     <jar destfile="${build.dir}/offlinecfgtool.jar" basedir="${build.classes.dir}" includes="com/zimbra/cs/offline/OfflineConfigTool.class" />
   </target>
@@ -265,7 +292,7 @@
     </antcall>
 
     <copy todir="${dist.dir}/jetty/webapps/zimbra/WEB-INF/lib">
-      <fileset dir="${build.dir}" includes="offlinejsp.jar"/>
+      <fileset dir="${build.dir}" includes="offlinejsp.jar,${jarfile}"/>
     </copy>
 
     <!--<unzip src="${webclient.web.dir}/help/WebHelp.zip" dest="${dist.dir}/jetty/webapps/zimbra" overwrite="true"/>-->
@@ -415,7 +442,11 @@
     <copy tofile="${dist.dir}/conf/log4j.properties" file="${config.dir}/log4j.properties" overwrite="true" />
         <copy tofile="${dist.dir}/conf/zdesktop.conf" file="${config.dir}/zdesktop.conf" overwrite="true" />
     <copy tofile="${dist.dir}/conf/timezones.ics" file="${server.config.dir}/timezones.ics" overwrite="true" />
-    <copy tofile="${dist.dir}/conf/zimbra-contact-fields.xml" file="${server.config.dir}/contacts/zimbra-contact-fields.xml" overwrite="true" />
+    <if><isset property="is-windows" /><then>
+      <win-copy-binary dst="${dist.dir}/conf/zimbra-contact-fields.xml" src="${server.config.dir}/contacts/zimbra-contact-fields.xml" />
+    </then><else>
+      <copy tofile="${dist.dir}/conf/zimbra-contact-fields.xml" file="${server.config.dir}/contacts/zimbra-contact-fields.xml" overwrite="true" />
+    </else></if>
     <copy todir="${dist.dir}/conf/msgs" overwrite="true">
       <fileset dir="${server.config.dir}/msgs" />
     </copy>
@@ -428,7 +459,11 @@
     <copy todir="${dist.dir}/conf/rights" overwrite="true">
       <fileset dir="${server.config.dir}/rights" excludes="*admin*" />
     </copy>
-    <fixcrlf srcdir="${dist.dir}/conf" eol="unix" includes="**" />
+    <if><isset property="is-windows" /><then>
+      <fixcrlf srcdir="${dist.dir}/conf" eol="unix" includes="**" excludes="zimbra-contact-fields.xml" />
+    </then><else>
+      <fixcrlf srcdir="${dist.dir}/conf" eol="unix" includes="**" />
+    </else></if>
 
     <copy todir="${dist.dir}/conf" file="${server.config.dir}/globs2" overwrite="true" />
     <copy todir="${dist.dir}/conf" file="${server.config.dir}/magic" overwrite="true" />
@@ -440,6 +475,7 @@
 
     <copy todir="${dist.dir}/jetty/common/lib" overwrite="true">
       <fileset dir="${server.build.dir}/dist/jetty/common/lib" includes="*.jar" excludes="derby.jar,sqlite*.jar,mysql*.jar,jfreechart*,testng*" />
+      <fileset dir="${build.dir}" includes="offlinelc.jar" />
       <fileset refid="gdata.jars"/>
     </copy>
     <delete>

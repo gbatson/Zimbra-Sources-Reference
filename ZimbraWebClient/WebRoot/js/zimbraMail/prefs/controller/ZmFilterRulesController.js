@@ -99,6 +99,9 @@ function(toolbar, listView) {
 		listView.addActionListener(new AjxListener(this, this._listActionListener));
 		this.resetListView();
 	}
+	else {
+		AjxDebug.println(AjxDebug.FILTER, "FILTER RULES CONTROLLER: initialize has no listview");
+	}
 };
 
 ZmFilterRulesController.prototype.getRules =
@@ -340,7 +343,7 @@ function(ev) {
 	ds.reset();
 	ds.registerCallback(DwtDialog.NO_BUTTON, this._clearDialog, this, this._deleteShield);
 	ds.registerCallback(DwtDialog.YES_BUTTON, this._deleteShieldYesCallback, this, rule);
-	var msg = AjxMessageFormat.format(ZmMsg.askDeleteFilter, rule.name);
+	var msg = AjxMessageFormat.format(ZmMsg.askDeleteFilter, AjxStringUtil.htmlEncode(rule.name));
 	ds.setMessage(msg, DwtMessageDialog.WARNING_STYLE);
 	ds.popup();
 };
@@ -404,7 +407,7 @@ function(dialog, folderList) {
 		return;
 	}
 
-	var work = new ZmFilterWork(filterSel);
+	var work = new ZmFilterWork(filterSel, this._outgoing);
 
 	this._progressController.start(folderList, work);
 
@@ -498,9 +501,11 @@ function(){
  * class that holds the work specification (in this case, filtering specific filters. Keeps track of progress stats too.
  * an instance of this is passed to ZmFilterRulesController to callback for stuff specific to this work. (template pattern, I believe)
  * @param filterSel
+ * @param outgoing
  */
-ZmFilterWork = function(filterSel) {
+ZmFilterWork = function(filterSel, outgoing) {
 	this._filterSel = filterSel;
+	this._outgoing = outgoing;
 	this._totalNumMessagesAffected = 0;
 
 };

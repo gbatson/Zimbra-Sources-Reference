@@ -550,6 +550,16 @@ function(folder) {
 	return (folder && folder.isOutbound());
 };
 
+/**
+ * Returns the current folder
+ *
+ */
+ZmMailListView.prototype.getFolder =
+function() {
+	return this._folderId && appCtxt.getById(this._folderId);
+};
+
+
 ZmMailListView.prototype._getRowClass =
 function(item) {
 	return item.isUnread ? "Unread" : null;
@@ -597,9 +607,16 @@ function(params) {
 		if (!addr) {
 			return;
 		}
-		//Let a Zimlet[Email Zimlet] handle creating and displaying tooltip.		
-		appCtxt.notifyZimlets("onHoverOverEmailInList", [addr, params.ev]);
-		return;
+		
+		var ttParams = {
+			address:	item.getAddress(AjxEmailAddress.FROM),
+			ev:			params.ev
+		}
+		var ttCallback = new AjxCallback(this,
+			function(callback) {
+				appCtxt.getToolTipMgr().getToolTip(ZmToolTipMgr.PERSON, ttParams, callback);
+			});
+		tooltip = {callback:ttCallback};
 	}
 	else if (field == ZmItem.F_SUBJECT) {
 		if ((item.type == ZmItem.MSG) && item.isInvite() && item.needsRsvp()) {
@@ -710,7 +727,7 @@ function(participants, item, availWidth) {
 	for (var i = 0; i < pLen; i++) {
 		var p = participants[i];
 		var field = p.name || p.address || p.company || "";
-		width += AjxStringUtil.getWidth(field, item.isUnread);
+		width += AjxStringUtil.getWidth(AjxStringUtil.htmlEncode(field), item.isUnread);
 		list.push({name:field, index:i});
 	}
 	width += (pLen - 1) * sepWidth;
@@ -729,7 +746,7 @@ function(participants, item, availWidth) {
 		var width = 0;
 		// total the width of the names
 		for (var i = 0; i < list.length; i++) {
-			width += AjxStringUtil.getWidth(list[i].name, item.isUnread);
+			width += AjxStringUtil.getWidth(AjxStringUtil.htmlEncode(list[i].name), item.isUnread);
 		}
 		// add the width of the separators
 		width += (list.length - 1) * sepWidth;

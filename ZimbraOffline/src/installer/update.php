@@ -1,7 +1,7 @@
 <?php
 // update url  : https://www.zimbra.com/aus/zdesktop2/update.php
 
-$download_url_prefix = "http://files2.zimbra.com/downloads/zdesktop/updates";
+$download_url_prefix = "http://files2.zimbra.com/downloads/zdesktop";
 $details_url = "http://wiki.zimbra.com/index.php?title=Zimbra_Desktop_2";
 $license_url = "http://www.zimbra.com/license/zimbra-public-eula-2-3.html";
 $version = "@version@";
@@ -37,7 +37,7 @@ if ($target == "macos") {
   $hash = $hash_win32;
 }
 
-$download_url = $download_url_prefix . "/" . $buildid . "/" . $file_media;
+$download_url = $download_url_prefix . "/" . $version . "/b" . $buildid . "/" . $file_media;
 
 header('Content-Type: text/xml');
 header('Cache-Control: no-cache');

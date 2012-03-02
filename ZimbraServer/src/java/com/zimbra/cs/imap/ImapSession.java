@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2010 Zimbra, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -25,7 +25,6 @@ import java.util.TreeMap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ArrayUtil;
-import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.imap.ImapFolder.DirtyMessage;
 import com.zimbra.cs.imap.ImapHandler.ImapExtension;
@@ -44,8 +43,6 @@ import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.session.Session;
 
 public class ImapSession extends Session {
-    public static final int  IMAP_IDLE_TIMEOUT_SEC  = 30 * Constants.SECONDS_PER_MINUTE;
-    public static final long IMAP_IDLE_TIMEOUT_MSEC = IMAP_IDLE_TIMEOUT_SEC * Constants.MILLIS_PER_SECOND;
 
     interface ImapFolderData {
         int getId();
@@ -89,7 +86,7 @@ public class ImapSession extends Session {
     }
 
     ImapFolder getImapFolder() throws IOException {
-        ImapSessionManager.recordAccess(this);
+        ImapSessionManager.getInstance().recordAccess(this);
         return reload();
     }
 
@@ -158,10 +155,10 @@ public class ImapSession extends Session {
             snapshotRECENT();
         }
 
-        mHandler = null;
         mFolder.endSelect();
         // removes this session from the global SessionCache, *not* from ImapSessionManager
         removeFromSessionCache();
+        mHandler = null;
     }
 
     /** If the folder is selected READ-WRITE, updates its high-water RECENT
@@ -180,34 +177,40 @@ public class ImapSession extends Session {
         }
     }
 
-    @Override protected boolean isMailboxListener() {
+    @Override
+    protected boolean isMailboxListener() {
         return true;
     }
 
-    @Override protected boolean isRegisteredInCache() {
+    @Override
+    protected boolean isRegisteredInCache() {
         return true;
     }
 
-    @Override public void doEncodeState(Element parent) {
+    @Override
+    public void doEncodeState(Element parent) {
         mFolder.doEncodeState(parent.addElement("imap"));
     }
 
-    @Override protected long getSessionIdleLifetime() {
-        return IMAP_IDLE_TIMEOUT_MSEC;
+    @Override
+    protected long getSessionIdleLifetime() {
+        return mHandler.getConfig().getAuthenticatedMaxIdleSeconds() * 1000L;
     }
 
     // XXX: need to handle the abrupt disconnect case, the LOGOUT case, the timeout case, and the too-many-sessions disconnect case
-    @Override public Session unregister() {
-        ImapSessionManager.closeFolder(this, true);
+    @Override
+    public Session unregister() {
+        ImapSessionManager.getInstance().closeFolder(this, true);
         return detach();
     }
 
     Session detach() {
-        ImapSessionManager.uncacheSession(this);
+        ImapSessionManager.getInstance().uncacheSession(this);
         return isRegistered() ? super.unregister() : this;
     }
 
-    @Override protected void cleanup() {
+    @Override
+    protected void cleanup() {
         // XXX: is there a synchronization issue here?
         ImapHandler handler = mHandler;
         if (handler != null) {
@@ -251,29 +254,35 @@ public class ImapSession extends Session {
         return (PagedFolderData) mFolder;
     }
 
-    synchronized ImapFolder reload() throws IOException {
-        // if the data's already paged in, we can short-circuit
-        PagedFolderData paged = mFolder instanceof PagedFolderData ? (PagedFolderData) mFolder : null;
-        if (paged != null) {
-            ImapFolder i4folder = ImapSessionManager.deserialize(paged.getCacheKey());
-            try {
-                paged.restore(i4folder);
-            } catch (ServiceException e) {
-                // IOException(String, Throwable) exists only since 1.6
-                IOException ioe = new IOException("unable to deserialize folder state");
-                ioe.initCause(e);
-                throw ioe;
-            }
-            // need to switch target before replay (yes, this is inelegant)
-            mFolder = i4folder;
-            // replay all queued events into the restored folder
-            paged.replay();
-            // if it's a disconnected session, no need to track expunges
-            if (!isInteractive()) {
-                i4folder.collapseExpunged(false);
+    ImapFolder reload() throws IOException {
+        Mailbox mbox = mMailbox;
+        if (mbox == null) {
+            return null;
+        }
+        // Mailbox.endTransaction() -> ImapSession.notifyPendingChanges() locks in the order of Mailbox -> ImapSession.
+        // Need to lock in the same order here, otherwise can result in deadlock.
+        synchronized (mbox) { // PagedFolderData.replay() locks Mailbox deep inside of it.
+            synchronized (this) {
+                PagedFolderData paged = mFolder instanceof PagedFolderData ? (PagedFolderData) mFolder : null;
+                if (paged != null) { // if the data's already paged in, we can short-circuit
+                    ImapFolder i4folder = ImapSessionManager.deserialize(paged.getCacheKey());
+                    try {
+                        paged.restore(i4folder);
+                    } catch (ServiceException e) {
+                        throw new IOException("unable to deserialize folder state", e);
+                    }
+                    // need to switch target before replay (yes, this is inelegant)
+                    mFolder = i4folder;
+                    // replay all queued events into the restored folder
+                    paged.replay();
+                    // if it's a disconnected session, no need to track expunges
+                    if (!isInteractive()) {
+                        i4folder.collapseExpunged(false);
+                    }
+                }
+                return (ImapFolder) mFolder;
             }
         }
-        return (ImapFolder) mFolder;
     }
 
     static class AddedItems {

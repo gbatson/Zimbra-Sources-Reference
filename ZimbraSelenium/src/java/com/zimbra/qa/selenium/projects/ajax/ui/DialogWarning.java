@@ -24,7 +24,10 @@ public class DialogWarning extends AbsDialog {
 		
 		public static DialogWarningID SendLink = new DialogWarningID("css=div[class=DwtConfirmDialog]");
 		public static DialogWarningID DeleteTagWarningMessage = new DialogWarningID("YesNoCancel");
-		
+		public static DialogWarningID EmptyFolderWarningMessage = new DialogWarningID("OkCancel");
+		public static DialogWarningID SaveSignatureChangeMessage = new DialogWarningID("YesNoCancel");
+		public static DialogWarningID CancelCreateContact = new DialogWarningID("YesNoCancel");
+
 		protected String Id;
 		protected DialogWarningID(String id) {
 			Id = id;
@@ -58,7 +61,7 @@ public class DialogWarning extends AbsDialog {
 	}
 	
 	public String zGetWarningContent() throws HarnessException {
-		String locator = "css=div[id='"+ MyDivId +"'] td[id='"+ MyDivId +"_content']";
+		String locator = "css=td[id=MessageDialog_1_Msg]";
 		return (zGetDisplayedText(locator));
 	}
 	
@@ -95,6 +98,13 @@ public class DialogWarning extends AbsDialog {
 		} else if ( button == Button.B_CANCEL ) {
 
 			locator = buttonsTableLocator + "//table//table//tr/td[3]/div";
+
+		} else if (button == Button.B_OK) {
+			if (MyDivId.contains("ErrorDialog")) {
+				locator = buttonsTableLocator + "//table//table//tr/td/div[contains(@id,'ErrorDialog_button2')]";
+			} else {
+				locator = buttonsTableLocator + "//table//table//tr/td[1]/div";
+			}
 
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);

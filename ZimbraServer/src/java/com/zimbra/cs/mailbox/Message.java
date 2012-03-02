@@ -21,6 +21,7 @@ package com.zimbra.cs.mailbox;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -53,6 +54,7 @@ import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteChanges;
+import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
@@ -448,7 +450,7 @@ public class Message extends MailItem {
             boolean sentByMe = false;
             String pmSender = pm.getSenderEmail();
             if (pmSender != null && pmSender.length() > 0)
-                sentByMe = AccountUtil.addressMatchesAccount(acct, pmSender);
+                sentByMe = AccountUtil.addressMatchesAccountOrSendAs(acct, pmSender);
 
             try {
                 components = Invite.createFromCalendar(acct, pm.getFragment(), cal, sentByMe, mbox, id);
@@ -695,14 +697,38 @@ public class Message extends MailItem {
                         dangerousSender = true;
                     }
                     if (!dangerousSender) {
-                        ZOrganizer org = new ZOrganizer(fromEmail, null);
-                        String senderEmail = pm.getSenderEmail(false);
-                        if (senderEmail != null && !senderEmail.equalsIgnoreCase(fromEmail))
-                            org.setSentBy(senderEmail);
-                        cur.setOrganizer(org);
-                        ZimbraLog.calendar.info(
-                                "Got malformed invite that lists attendees without specifying an organizer.  " +
-                                "Defaulting organizer to: " + org.toString());
+                        if (isOrganizerMethod = Invite.isOrganizerMethod(method)) {
+                            // For organizer-originated methods, use email sender as default organizer.
+                            ZOrganizer org = new ZOrganizer(fromEmail, null);
+                            String senderEmail = pm.getSenderEmail(false);
+                            if (senderEmail != null && !senderEmail.equalsIgnoreCase(fromEmail))
+                                org.setSentBy(senderEmail);
+                            cur.setOrganizer(org);
+                            ZimbraLog.calendar.info(
+                                    "Got malformed invite that lists attendees without specifying an organizer.  " +
+                                    "Defaulting organizer to: " + org.toString());
+                        } else {
+                            // For attendee-originated methods, look up organizer from appointment on calendar.
+                            // If appointment is not found, fall back to the intended-for address, then finally to self.
+                            ZOrganizer org = null;
+                            CalendarItem ci = mMailbox.getCalendarItemByUid(cur.getUid());
+                            if (ci != null) {
+                                Invite inv = ci.getInvite((RecurId) cur.getRecurId());
+                                if (inv == null)
+                                    inv = ci.getDefaultInviteOrNull();
+                                if (inv != null)
+                                    org = inv.getOrganizer();
+                            }
+                            if (org == null) {
+                                if (intendedForAddress != null)
+                                    org = new ZOrganizer(intendedForAddress, null);
+                                else
+                                    org = new ZOrganizer(acct.getName(), null);
+                            }
+                            cur.setOrganizer(org);
+                            cur.setIsOrganizer(intendedForMe);
+                            ZimbraLog.calendar.info("Got malformed reply missing organizer.  Defaulting to " + org.toString());
+                        }
                     }
                 }
             }
@@ -908,6 +934,11 @@ public class Message extends MailItem {
                     }
                 }
 
+                Account senderAcct = null;
+                String senderEmail = pm.getSenderEmail(false);
+                if (senderEmail != null)
+                    senderAcct = Provisioning.getInstance().get(AccountBy.name, senderEmail);
+
                 if (forwardTo != null && forwardTo.length > 0) {
                     List<String> rcptsUnfiltered = new ArrayList<String>();  // recipients to receive unfiltered message
                     List<String> rcptsFiltered = new ArrayList<String>();    // recipients to receive message filtered to remove private data
@@ -918,17 +949,41 @@ public class Message extends MailItem {
                         ZimbraLog.mailbox.warn("No such calendar folder (" + calItemFolderId + ") during invite auto-forwarding");
                     }
                     for (String fwd : forwardTo) {
+                        if (fwd != null) {
+                            fwd = fwd.trim();
+                        }
+                        if (StringUtil.isNullOrEmpty(fwd)) {
+                            continue;
+                        }
                         // Prevent forwarding to self.
                         if (AccountUtil.addressMatchesAccount(acct, fwd))
                             continue;
+                        // Don't forward back to the sender.  It's redundant and confusing.
+                        Account rcptAcct = Provisioning.getInstance().get(AccountBy.name, fwd);
+                        boolean rcptIsSender = false;
+                        if (rcptAcct != null) {
+                            if (senderAcct != null) {
+                                rcptIsSender = rcptAcct.getId().equalsIgnoreCase(senderAcct.getId());
+                            } else {
+                                rcptIsSender = AccountUtil.addressMatchesAccount(rcptAcct, senderEmail);
+                            }
+                        } else {
+                            if (senderAcct != null) {
+                                rcptIsSender = AccountUtil.addressMatchesAccount(senderAcct, fwd);
+                            } else {
+                                rcptIsSender = fwd.equalsIgnoreCase(senderEmail);
+                            }
+                        }
+                        if (rcptIsSender) {
+                            ZimbraLog.calendar.info("Not auto-forwarding to " + fwd + " because it is the sender of this message");
+                            continue;
+                        }
                         if (publicInvites) {
                             rcptsUnfiltered.add(fwd);
                         } else {
                             boolean allowed = false;
-                            if (calFolder != null) {
-                                Account rcptAcct = Provisioning.getInstance().get(AccountBy.name, fwd);
-                                if (rcptAcct != null)
-                                    allowed = calFolder.canAccess(ACL.RIGHT_PRIVATE, rcptAcct, false);
+                            if (calFolder != null && rcptAcct != null) {
+                                allowed = calFolder.canAccess(ACL.RIGHT_PRIVATE, rcptAcct, false);
                             }
                             if (allowed) {
                                 rcptsUnfiltered.add(fwd);
@@ -1056,7 +1111,8 @@ public class Message extends MailItem {
         return moved;
     }
 
-    @Override public List<IndexDocument> generateIndexData(boolean doConsistencyCheck) throws MailItem.TemporaryIndexingException {
+    @Override
+    public List<IndexDocument> generateIndexData(boolean doConsistencyCheck) throws TemporaryIndexingException {
         try {
             ParsedMessage pm = null;
             synchronized (getMailbox()) {
@@ -1068,6 +1124,7 @@ public class Message extends MailItem {
                     .setDigest(getDigest());
                 pm = new ParsedMessage(opt);
             }
+            pm.setDefaultCharset(getAccount().getPrefMailDefaultCharset());
 
             if (doConsistencyCheck) {
                 // because of bug 8263, we sometimes have fragments that are incorrect;
@@ -1080,20 +1137,21 @@ public class Message extends MailItem {
                 String subject = pm.getNormalizedSubject();
                 boolean subjectChanged = !getNormalizedSubject().equals(subject == null ? "" : subject);
 
-                if (fragmentChanged || subjectChanged)
+                if (fragmentChanged || subjectChanged) {
                     getMailbox().reanalyze(getId(), getType(), pm, getSize());
+                }
             }
 
             // don't hold the lock while extracting text!
             pm.analyzeFully();
 
-            if (pm.hasTemporaryAnalysisFailure())
-                throw new MailItem.TemporaryIndexingException();
-
+            if (pm.hasTemporaryAnalysisFailure()) {
+                throw new TemporaryIndexingException();
+            }
             return pm.getLuceneDocuments();
         } catch (ServiceException e) {
-            ZimbraLog.index.warn("Unable to generate index data for Message "+getId()+". Item will not be indexed", e);
-            return new ArrayList<IndexDocument>(0);
+            ZimbraLog.index.warn("Unable to generate index data for Message %d. Item will not be indexed.", getId(), e);
+            return Collections.emptyList();
         }
     }
 

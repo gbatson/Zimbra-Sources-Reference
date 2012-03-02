@@ -720,7 +720,9 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             Metadata metaRecur = meta.getMap(FN_CALITEM_RECURRENCE, true);
             if (metaRecur != null) {
                 mRecurrence = Recurrence.decodeMetadata(metaRecur, mTzMap);
-                tzids.addAll(Recurrence.getReferencedTZIDs(mRecurrence));
+                if (mRecurrence != null) {
+                    tzids.addAll(Recurrence.getReferencedTZIDs(mRecurrence));
+                }
             }
 
             if (meta.containsKey(Metadata.FN_REPLY_LIST)) {
@@ -2398,7 +2400,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                     updated = true;
                     multi.removeBodyPart(icalPartNum);
                     ZVCalendar cal = inv.newToICalendar(allowPrivateAccess);
-                    MimeBodyPart icalPart = CalendarMailSender.makeICalIntoMimePart(inv.getUid(), cal);
+                    MimeBodyPart icalPart = CalendarMailSender.makeICalIntoMimePart(cal);
                     multi.addBodyPart(icalPart, icalPartNum);
                     // Courtesy of JavaMail.  All three lines are necessary.
                     // Reasons unclear from JavaMail docs.
@@ -3115,6 +3117,13 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         }
     }
 
+    /**
+     * Returns a Pair containing a MimeMessage object and its estimated size for the requested sub part id.
+     * The size returned is not exact and should not be used in such context.
+     * @param subId
+     * @return
+     * @throws ServiceException
+     */
     public Pair<MimeMessage,Integer> getSubpartMessageData(int subId) throws ServiceException {
         try {
             MimeBodyPart mbp = findBodyBySubId(subId);

@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -600,7 +600,7 @@ public class Folder extends MailItem {
         markItemModified(Change.INTERNAL_ONLY);
         mImapRECENT = 0;
         mImapRECENTCutoff = mMailbox.getLastItemId();
-        saveMetadata();
+        saveFolderCounts(false);
     }
 
     /** Persists the folder's current unread/message counts and IMAP UIDNEXT
@@ -665,7 +665,7 @@ public class Folder extends MailItem {
             return false;
         else if ((type == TYPE_CONVERSATION) != (mId == Mailbox.ID_FOLDER_CONVERSATIONS))
             return false;
-        else if (mId == Mailbox.ID_FOLDER_SPAM && type == TYPE_FOLDER)
+        else if (type == TYPE_FOLDER && !mMailbox.isChildFolderPermitted(mId))
             return false;
         return true;
     }
@@ -743,7 +743,7 @@ public class Folder extends MailItem {
         data.folderId = (id == Mailbox.ID_FOLDER_ROOT ? id : parent.getId());
         data.parentId = data.folderId;
         data.date     = mbox.getOperationTimestamp();
-        data.flags    = flags & Flag.FLAGS_FOLDER;
+        data.flags    = (flags | Flag.flagsToBitmask(mbox.getAccount().getDefaultFolderFlags())) & Flag.FLAGS_FOLDER;
         data.name     = name;
         data.subject  = name;
         data.metadata = encodeMetadata(color, 1, custom, attributes, view, null, new SyncData(url), id + 1, 0, mbox.getOperationChangeID(), -1, 0, 0, 0);

@@ -104,6 +104,11 @@ public class ExecuteHarnessMain {
 	protected String testoutputfoldername = null;
 	public void setTestOutputFolderName(String path) {
 		
+		// The Code Coverage report should exist at the root
+		File coverage = new File(path + "/coverage");
+		if ( !coverage.exists() )	coverage.mkdirs();
+		CodeCoverage.getInstance().setOutputFolder(coverage.getAbsolutePath());
+
 		String browser = ZimbraSeleniumProperties.getStringProperty(
 				ZimbraSeleniumProperties.getLocalHost() + ".browser",
 				ZimbraSeleniumProperties.getStringProperty("browser"));
@@ -136,10 +141,6 @@ public class ExecuteHarnessMain {
 		File testng = new File(testoutputfoldername + "/TestNG");
 		if ( !testng.exists() )		testng.mkdirs();
 		
-		// Also, create the CodeCoverage folder
-		File coverage = new File(testoutputfoldername + "/coverage");
-		if ( !coverage.exists() )	coverage.mkdirs();
-		CodeCoverage.getInstance().setOutputFolder(coverage.getAbsolutePath());
 		
 	}
 	
@@ -377,12 +378,23 @@ public class ExecuteHarnessMain {
 	protected String executeCodeCoverage() throws FileNotFoundException, HarnessException, IOException {
 		
 		try {
-			
-			CodeCoverage.getInstance().instrumentServer();
-			return (executeSelenium());
-			
+
+			try {
+				
+				CodeCoverage.getInstance().instrumentServer();
+				return (executeSelenium());
+				
+			} finally {
+				
+				CodeCoverage.getInstance().instrumentServerUndo();
+				
+			}
 		} finally {
-			CodeCoverage.getInstance().instrumentServerUndo();
+			
+			// Since writing the report may require the (uninstrumented) source code, then
+			// write the coverage report last (after uninstrumenting)
+			CodeCoverage.getInstance().writeCoverage();
+			
 		}
 
 	}
@@ -554,6 +566,9 @@ public class ExecuteHarnessMain {
 		@Override
 		public void afterInvocation(IInvokedMethod method, ITestResult result) {
 			if ( method.isTestMethod() ) {
+				
+				CodeCoverage.getInstance().calculateCoverage();
+
 				logger.info("MethodListener: FINISH: "+ getTestCaseID(method.getTestMethod().getMethod()));
 				
 				tracer.trace("");
@@ -738,7 +753,7 @@ public class ExecuteHarnessMain {
         options.addOption(new Option("c", "config", true, "dynamic setting config properties i.e browser, server, locale... ( -c 'locale=en_US,browser=firefox' "));
 
         options.addOption(new Option("e", "exclude", true, "exclude pattern  "));
-        options.addOption(new Option("eg", "exclude groups", true, "comma separated list of groups to exclude when execute (skip)"));
+        options.addOption(new Option("eg", "exclude_groups", true, "comma separated list of groups to exclude when execute (skip)"));
         
         // Set required options
         options.getOption("j").setRequired(true);
@@ -748,7 +763,13 @@ public class ExecuteHarnessMain {
 	        CommandLineParser parser = new GnuParser();
 	        CommandLine cmd = parser.parse(options, arguments);
 	        
-	        
+	        // Processing log4j must come first so debugging can happen
+	        if ( cmd.hasOption('l') ) {
+	        	PropertyConfigurator.configure(cmd.getOptionValue('l'));
+	        } else {
+	        	BasicConfigurator.configure();
+	        }
+	        	        
 	        if ( cmd.hasOption('h') ) {
 	    		HelpFormatter formatter = new HelpFormatter();
 	    		formatter.printHelp("ExecuteTests", options);
@@ -815,12 +836,6 @@ public class ExecuteHarnessMain {
 	        }
 	        
 	        	
-	        if ( cmd.hasOption('l') ) {
-	        	PropertyConfigurator.configure(cmd.getOptionValue('l'));
-	        } else {
-	        	BasicConfigurator.configure();
-	        }
-	        	        
 	        if ( cmd.hasOption('j') ) {
 	        	this.jarfilename = cmd.getOptionValue('j'); 
 	        }
@@ -865,7 +880,6 @@ public class ExecuteHarnessMain {
 		
 		BasicConfigurator.configure();
 
-    	
     	String result = "No results";
 		try {
 			

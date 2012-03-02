@@ -180,29 +180,38 @@ function(name, bv) {
  * toggled.
  * 
  * @param {Boolean}	forceShow		if <code>true</code>, show panel
+ * @param {Boolean}	forceHide		if <code>true</code>, hide panel (takes precenence over forceShow)
  * @param {AjxCallback}	callback		the callback to run after display is done
  */
 ZmSearchController.prototype.showBrowseView =
-function(forceShow, callback) {
+function(forceShow, callback, forceHide) {
 	if (!this._browseViewController) {
-		var loadCallback = new AjxCallback(this, this._handleLoadShowBrowseView, [callback]);
-		AjxDispatcher.require("Browse", false, loadCallback, null, false);
-	} else {
-		var bvc = this._browseViewController;
-		bvc.setBrowseViewVisible(forceShow || !bvc.getBrowseViewVisible());
-		if (callback) {
-			callback.run(bvc.getBrowseView());
+		if (forceHide) {
+			return; //it was never displayed yet anyway so no need to hide
 		}
+		var loadCallback = new AjxCallback(this, this._handleLoadShowBrowseView, [forceShow, forceHide, callback]);
+		AjxDispatcher.require("Browse", false, loadCallback, null, false);
+		return;
 	}
+	this._doShowBrowseView(forceShow, forceHide, callback);
 };
 
 /**
  * @private
  */
 ZmSearchController.prototype._handleLoadShowBrowseView =
-function(callback) {
-	var bvc = this._browseViewController = new ZmBrowseController(this.searchPanel);
-	bvc.setBrowseViewVisible(true);
+function(forceShow, forceHide, callback) {
+	this._browseViewController = new ZmBrowseController(this.searchPanel);
+	this._doShowBrowseView(forceShow, forceHide, callback);
+};
+
+/**
+ * @private
+ */
+ZmSearchController.prototype._doShowBrowseView =
+function(forceShow, forceHide, callback) {
+	var bvc = this._browseViewController;
+	bvc.setBrowseViewVisible(!forceHide && (forceShow || !bvc.getBrowseViewVisible()));
 	if (callback) {
 		callback.run(bvc.getBrowseView());
 	}
@@ -340,8 +349,38 @@ function(menu) {
  */
 ZmSearchController.prototype.search =
 function(params) {
-	if (params.searchFor != ZmItem.APPT && (!params.query && !params.queryHint)) {
-		return;
+
+	if (!params.query && !params.queryHint) { // What to do when the search field is empty?
+		var appName;
+		switch (params.searchFor) {
+			case ZmId.SEARCH_MAIL:
+				appName = ZmApp.MAIL;
+				break;
+			case ZmId.SEARCH_GAL:
+				// Do not search in GAL when query is empty
+				return;
+			case ZmId.SEARCH_ANY:
+				params.query = "is:anywhere";
+				break;
+			default:
+				// Get the app of the item type being searched
+				appName = ZmItem.APP[params.searchFor];
+				break;
+		}
+		if (appName) {
+			// Get the "main" folder of the app related to the searched item type
+			var organizerName = ZmOrganizer.APP2ORGANIZER[appName];
+			var defaultFolder = organizerName && ZmOrganizer.DEFAULT_FOLDER[organizerName];
+			var folder = defaultFolder && appCtxt.getById(defaultFolder);
+			if (folder) {
+				params.query = "in:" + folder.name;
+			}
+		}
+		if (params.query) {
+			params.userText = false;
+		} else if (params.searchFor != ZmItem.APPT) { // Appointment searches without query are ok, all others should fail
+			return;
+		}
 	}
 
 	// if the search string starts with "$set:" then it is a command to the client
@@ -351,7 +390,6 @@ function(params) {
 	}
 
 	params.searchAllAccounts = this.searchAllAccounts;
-
 	var respCallback = new AjxCallback(this, this._handleResponseSearch, [params.callback]);
 	this._doSearch(params, params.noRender, respCallback, params.errorCallback);
 };
@@ -667,15 +705,14 @@ function(search, noRender, isMixed, callback, noUpdateOverview, noClear, result)
 
 	if (results.type == ZmItem.APPT) {
 		this._results = new ZmSearchResult(search);
-		return;
-	}
+	} else {
+		this.currentSearch = search;
+		DBG.timePt("execute search", true);
 
-	this.currentSearch = search;
-	DBG.timePt("execute search", true);
-
-	// bug fix #34776 - don't show search results if user is in the composer
-	if (!noRender) {
-		this._showResults(results, search, isMixed, noUpdateOverview, noClear);
+		// bug fix #34776 - don't show search results if user is in the composer
+		if (!noRender) {
+			this._showResults(results, search, isMixed, noUpdateOverview, noClear);
+		}
 	}
 
 	if (callback) {
@@ -791,9 +828,9 @@ function(types, account) {
  * @private
  */
 ZmSearchController.prototype._searchFieldCallback =
-function(queryString) {
+function(queryString, searchFor) {
 	var getHtml = appCtxt.get(ZmSetting.VIEW_AS_HTML);
-	this.search({query: queryString, userText: true, getHtml: getHtml});
+	this.search({query: queryString, userText: true, getHtml: getHtml, searchFor: searchFor});
 };
 
 /**
@@ -808,6 +845,7 @@ function(ev) {
 	var menu = btn && btn.getMenu();
 	var mi = menu && menu.getSelectedItem();
 	var data = mi && mi.getData("CustomSearchItem");
+    var opId = mi && mi.getData(ZmOperation.MENUITEM_ID);
 	if (data) {
 		data[2].run(ev);
 	} else {
@@ -820,7 +858,7 @@ function(ev) {
 		}
 		appCtxt.notifyZimlets("onSearchButtonClick", [queryString]);
 		var getHtml = appCtxt.get(ZmSetting.VIEW_AS_HTML);
-		this.search({query: queryString, userText: userText, getHtml: getHtml});
+		this.search({query: queryString, userText: userText, getHtml: getHtml, searchFor: opId});
 	}
 };
 

@@ -516,6 +516,8 @@ function(data) {
 		data.name1 = ++i > 1 || ZmContact.IS_ADDONE[data.name] ? data.name + i : data.name;
 		var values = data.attrs[data.name1];
 		if (!values) { break; }
+		data.name1 = AjxStringUtil.htmlEncode(data.name1);
+		data.type = AjxStringUtil.htmlEncode(data.type);
 		values = AjxUtil.toArray(values);
 		for (var j=0; j<values.length; j++) {
 			var value = values[j];
@@ -593,6 +595,7 @@ function(data) {
 				if (!itemListData.address)  {
 					itemListData.address = {};
 				}
+				value = AjxStringUtil.htmlEncode(value);
 				itemListData.address[suffix] = value.replace(/\n/g,"<br/>");
 			}
 			if (!itemListData.address) { break; }
@@ -1110,7 +1113,7 @@ function(contact, params) {
 				val = imAddr.screenName;
 			}
 		}
-		fileAs = [AjxStringUtil.htmlEncode(ZmMsg.noName), val].join(" ");
+		fileAs = [AjxStringUtil.htmlEncode(ZmMsg.noName), AjxStringUtil.htmlEncode(val)].join(" ");
 	}
 	htmlArr[idx++] = "<td id='" + this._getFieldId(contact, "fileas") + "' style='vertical-align:middle;'>&nbsp;";
 	htmlArr[idx++] = fileAs;
@@ -1171,9 +1174,16 @@ function(htmlArr, idx, contact, field, colIdx, params) {
  */
 ZmContactSimpleView.prototype._getToolTip =
 function(params) {
-	return (params.item && (params.field == ZmItem.F_FROM)) ?
-			params.item.getToolTip(params.item.getAttr(ZmContact.F_email)) :
-			ZmContactsBaseView.prototype._getToolTip.apply(this, arguments);
+
+	var ttParams = {
+		contact:		params.item,
+		ev:				params.ev
+	};
+	var ttCallback = new AjxCallback(this,
+		function(callback) {
+			appCtxt.getToolTipMgr().getToolTip(ZmToolTipMgr.PERSON, ttParams, callback);
+		});
+	return {callback:ttCallback};
 };
 
 /**

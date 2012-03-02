@@ -73,7 +73,7 @@ function(onlyValid) {
 	this._rehashByName();
 	for (var id in this._signatures) {
 		var signature = this._signatures[id];
-		if (signature._new && !(onlyValid && this._isInvalidSig(signature, true))) {
+		if (signature._new && !this._isAutoAddedAndBlank(signature) && !(onlyValid && this._isInvalidSig(signature, true))) {
 			list.push(signature);
 		}
 	}
@@ -474,7 +474,7 @@ function(identity, table, signatures, index) {
 	var cell = row.insertCell(-1);
 	cell.className = "ZOptionsLabel";
 	var id = identity.id + "_name";
-	cell.innerHTML = "<span id='" + id + "'>" + name + ":</span>";
+	cell.innerHTML = "<span id='" + id + "'>" + AjxStringUtil.htmlEncode(name) + ":</span>";
 
 	this._sigSelect[identity.id] = {};
 	for (var i = 0; i < ZmSignaturesPage.SIG_FIELDS.length; i++) {
@@ -688,6 +688,7 @@ function(reset) {
 	}
 	this._calcAutoSignatureNames(signatures);
 	for (var i = count; i < this._minEntries; i++) {
+        this._autoAddedSig = true;
 		this._addNewSignature(true);
 	}
 
@@ -1120,6 +1121,7 @@ function(signatures) {
 // ZmSignatureEditor
 
 ZmSignatureEditor = function(parent) {
+    this.setTextAreaId("TEXTAREA_SIGNATURE");
 	ZmHtmlEditor.call(this, parent);
 };
 
@@ -1341,4 +1343,18 @@ function(ev) {
 	}
 
 	this.popdown();
+};
+
+/*
+ * determines if signature was auto-added (e.g. user had no signatures) and is blank.
+ * returns true if both auto added and blank, else false
+ *
+ */
+ZmSignaturesPage.prototype._isAutoAddedAndBlank =
+function(signature) {
+  if (this._autoAddedSig) {
+    var hasValue = AjxStringUtil._NON_WHITESPACE.test(signature.getValue());
+    return !hasValue;
+  }
+  return false;
 };

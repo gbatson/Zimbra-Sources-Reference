@@ -83,7 +83,10 @@ function(params) {
 	delete params1.fromFolderId;
 
 	params1.attrs = {};
-	params1.attrs.tcon = this._getTcon(params.items, params.fromFolderId);
+	var tcon = this._getTcon(params.items, params.fromFolderId);
+	if (tcon) {
+		params1.attrs.tcon = tcon;
+	}
 	params1.attrs.l = params.folder.id;
 	params1.action = (params.folder.id == ZmFolder.ID_TRASH) ? "trash" : "move";
     if (params1.folder.id == ZmFolder.ID_TRASH) {
@@ -120,6 +123,7 @@ function(params) {
  *        markAsSpam	[boolean]		if true, mark as "spam"
  *        folder		[ZmFolder]		destination folder
  *        childWin		[window]*		the child window this action is happening in
+ *        closeChildWin	[boolean]*		is the child window closed at the end of the action?
  *        callback		[AjxCallback]*	callback to run after each sub-request
  *        finalCallback	[AjxCallback]*	callback to run after all items have been processed
  *        count			[int]*			starting count for number of items processed
@@ -165,7 +169,10 @@ function(params) {
 
 	params1.action = params.markAsSpam ? "spam" : "!spam";
 	params1.attrs = {};
-	params1.attrs.tcon = this._getTcon(params.items);
+	var tcon = this._getTcon(params.items);
+	if (tcon) {
+		params1.attrs.tcon = tcon;
+	}
 	if (params.folder) {
 		params1.attrs.l = params.folder.id;
 	}
@@ -685,9 +692,11 @@ function(items, nId) {
     }
 
 	for (var i = 0; i < folders.length; i++) {
-		var folder = folders[i];
-		if (nId != folder) {
-			chars.push(ZmFolder.TCON_CODE[folder]);
+		var folderId = folders[i];
+		var folder = appCtxt.getById(folderId);
+		var nFolder = appCtxt.getById(nId);
+		if (nId != folderId && folder && nFolder && !nFolder.isChildOf(folder)) {
+			chars.push(ZmFolder.TCON_CODE[folderId]);
 		}
 	}
 	return (chars.length) ?  ("-" + chars.join("")) : "";

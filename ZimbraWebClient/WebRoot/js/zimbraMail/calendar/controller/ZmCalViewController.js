@@ -632,6 +632,7 @@ function(ev) {
 	sc.setSearchField("");
 	sc.getSearchToolbar().blur();
 	this._refreshMaintenance = true;
+    this.searchInProgress = false;
 	this._refreshAction(false);
 };
 
@@ -1039,7 +1040,27 @@ ZmCalViewController.prototype._msgLoadedCallback =
 function(mailItem, date, subject) {
 	var newAppt = this._newApptObject(date, null, null, mailItem);
 	newAppt.setFromMailMessage(mailItem, subject);
-	this.newAppointment(newAppt, ZmCalItem.MODE_NEW, true);
+
+    var addAttendeeDlg = this._attAttendeeDlg = appCtxt.getYesNoMsgDialog();
+	addAttendeeDlg.reset();
+	addAttendeeDlg.setMessage(ZmMsg.addRecipientstoAppt, DwtMessageDialog.WARNING_STYLE, ZmMsg.addAttendees);
+	addAttendeeDlg.registerCallback(DwtDialog.YES_BUTTON, this._addAttendeeYesCallback, this, [newAppt]);
+	addAttendeeDlg.registerCallback(DwtDialog.NO_BUTTON, this._addAttendeeNoCallback, this, [newAppt]);
+	addAttendeeDlg.popup();
+};
+
+
+ZmCalViewController.prototype._addAttendeeYesCallback =
+function(newAppt) {
+    this._attAttendeeDlg.popdown();
+    this.newAppointment(newAppt, ZmCalItem.MODE_NEW, true);
+};
+
+ZmCalViewController.prototype._addAttendeeNoCallback =
+function(newAppt) {
+    this._attAttendeeDlg.popdown();
+    newAppt.setAttendees(null,ZmCalBaseItem.PERSON);
+    this.newAppointment(newAppt, ZmCalItem.MODE_NEW, true);
 };
 
 /**
@@ -1464,7 +1485,7 @@ function(appt, mode, params) {
 	if(params.startDate) appt.setStartDate(params.startDate);
 	if(params.endDate) appt.setEndDate(params.endDate);
 
-    if(!appt.isOrganizer())
+    if(!appt.isOrganizer() || appt.isShared())
     {
           var origOrganizer=appt.organizer;
           var myEmail=appt.getFolder().getAccount().getEmail();
@@ -1704,7 +1725,7 @@ function(appt, mode) {
     confirmDialog.setTitle(ZmMsg.confirmDeleteApptTitle);
 
     var calendar = appt && appt.getFolder();
-    var isTrash = calendar && calendar.id==ZmOrganizer.ID_TRASH;
+    var isTrash = calendar && calendar.nId==ZmOrganizer.ID_TRASH;
 
 	if (!isTrash && appt.otherAttendees && !appt.inviteNeverSent && appCtxt.get(ZmSetting.MAIL_ENABLED)) {
 		var cancelReplyCallback = new AjxCallback(this, this._continueDeleteReply, [appt, mode]);
@@ -1714,7 +1735,7 @@ function(appt, mode) {
 		var msg = isTrash ? ZmMsg.confirmPermanentCancelAppt : ZmMsg.confirmCancelAppt;
 
 		if (appt.isRecurring() && !isTrash) {
-			msg = (mode == ZmCalItem.MODE_DELETE_INSTANCE) ? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, appt.name) :  ZmMsg.confirmCancelApptSeries;
+			msg = (mode == ZmCalItem.MODE_DELETE_INSTANCE) ? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, AjxStringUtil.htmlEncode(appt.name)) :  ZmMsg.confirmCancelApptSeries;
 		}
 		confirmDialog.popup(msg, cancelNoReplyCallback);
 	}
@@ -1767,7 +1788,7 @@ function(appt, mode) {
 		var msg = ZmMsg.confirmCancelAppt;
 		if (appt.isRecurring()) {
 			msg = (mode == ZmCalItem.MODE_DELETE_INSTANCE)
-				? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, appt.name)
+				? AjxMessageFormat.format(ZmMsg.confirmCancelApptInst, AjxStringUtil.htmlEncode(appt.name))
 				: ZmMsg.confirmCancelApptSeries;
 		}
 		this._deleteNotifyDialog = new ZmApptDeleteNotifyDialog({
@@ -1814,7 +1835,7 @@ function(appt) {
 	if (!appt) { return; }
 
     var calendar = appt.getFolder();
-    var isTrash =  calendar && calendar.id == ZmOrganizer.ID_TRASH;
+    var isTrash =  calendar && calendar.nId == ZmOrganizer.ID_TRASH;
 
 	if (appt.isRecurring() && !isTrash && !appt.isException) {
 		this._showTypeDialog(appt, ZmCalItem.MODE_DELETE);
@@ -2188,7 +2209,7 @@ function(appt) {
 			}
 		} else {
 			// if simple appointment, no prompting necessary
-            var isTrash = calendar.id == ZmOrganizer.ID_TRASH;
+            var isTrash = calendar.nId == ZmOrganizer.ID_TRASH;
 			if (appt.isReadOnly() || calendar.isReadOnly() || isSynced || isTrash) {
 				var mode = appt.isException ? ZmCalItem.MODE_EDIT_SINGLE_INSTANCE : ZmCalItem.MODE_EDIT_SERIES;
 				this.showApptReadOnlyView(appt, mode);
@@ -2316,7 +2337,7 @@ function(appt, mode) {
  * @private
  */
 ZmCalViewController.prototype.dndUpdateApptDate =
-function(appt, startDateOffset, endDateOffset, callback, errorCallback, ev) {
+function(appt, startDateOffset, endDateOffset, callback, errorCallback, ev) {	
 	appt.dndUpdate = true;
 	if (!appt.isRecurring()) {
 		var viewMode = ZmCalItem.MODE_EDIT;
@@ -2338,6 +2359,7 @@ function(appt, startDateOffset, endDateOffset, callback, errorCallback, ev) {
 			}
 		}
 	}
+	appCtxt.notifyZimlets("onApptDrop", [appt, startDateOffset, endDateOffset]);		
 };
 
 ZmCalViewController.prototype._handleResponseUpdateApptDate =
@@ -2442,7 +2464,7 @@ function(appt, viewMode, startDateOffset, endDateOffset, callback, errorCallback
  * @param	{AjxCallback}	callback		the callback
  */
 ZmCalViewController.prototype.getDayToolTipText =
-function(date, noheader, callback) {
+function(date, noheader, callback, isMinical) {
 	try {
 		var start = new Date(date.getTime());
 		start.setHours(0, 0, 0, 0);
@@ -2450,11 +2472,11 @@ function(date, noheader, callback) {
 		var end = start.getTime() + AjxDateUtil.MSEC_PER_DAY;
 		var params = {start:startTime, end:end, fanoutAllDay:true};
 		if(callback) {
-			params.callback = new AjxCallback(this, this._handleToolTipSearchResponse, [start, noheader, callback]);
+			params.callback = new AjxCallback(this, this._handleToolTipSearchResponse, [start, noheader, callback, isMinical]);
 			this.getApptSummaries(params);
 		} else {
 			var result = this.getApptSummaries(params);
-			return ZmApptViewHelper.getDayToolTipText(start, result, this, noheader);
+			return ZmApptViewHelper.getDayToolTipText(start, result, this, noheader, null, isMinical);
 		}
 	} catch (ex) {
 		DBG.println(ex);
@@ -2463,9 +2485,9 @@ function(date, noheader, callback) {
 };
 
 ZmCalViewController.prototype._handleToolTipSearchResponse =
-function(start, noheader, callback, result) {
+function(start, noheader, callback, isMinical, result) {
 	try {
-		var tooltip = ZmApptViewHelper.getDayToolTipText(start, result, this, noheader);
+		var tooltip = ZmApptViewHelper.getDayToolTipText(start, result, this, noheader, null, isMinical);
 		callback.run(tooltip);
 	} catch (ex) {
 		DBG.println(ex);
@@ -2595,7 +2617,7 @@ function(parent, num) {
 		}
 		var appt = this.getSelection()[0];
 		var calendar = appt && appt.getFolder();
-        var isTrash = calendar && calendar.id == ZmOrganizer.ID_TRASH;
+        var isTrash = calendar && calendar.nId == ZmOrganizer.ID_TRASH;
 		var isReadOnly = calendar ? calendar.isReadOnly() : false;
 		var isSynced = Boolean(calendar && calendar.url);
 		var isShared = calendar ? calendar.isRemote() : false;
@@ -2603,25 +2625,23 @@ function(parent, num) {
 		var isPrivate = appt && appt.isPrivate() && calendar.isRemote() && !calendar.hasPrivateAccess();
 		var isForwardable = !isTrash && calendar && !calendar.isReadOnly();
 		var isReplyable = !isTrash && appt && (num == 1);
-        if(isTrash && num>1){
-            parent.enableAll(false);
-        }
-        else{
-		    parent.enable([ZmOperation.REPLY, ZmOperation.REPLY_ALL], isReplyable);
-            parent.enable(ZmOperation.TAG_MENU, (!isShared && !isSynced && num > 0));
-            parent.enable(ZmOperation.VIEW_APPOINTMENT, !isPrivate);
-            parent.enable([ZmOperation.FORWARD_APPT, ZmOperation.FORWARD_APPT_INSTANCE, ZmOperation.FORWARD_APPT_SERIES], isForwardable);
-            parent.enable(ZmOperation.PROPOSE_NEW_TIME, !isTrash && (appt && !appt.isOrganizer()));
-            parent.enable(ZmOperation.SHOW_ORIG, num == 1 && appt && appt.getRestUrl() != null);
-        }
+        var isTrashMultiple = isTrash && (num && num>1);
+
+		parent.enable([ZmOperation.REPLY, ZmOperation.REPLY_ALL], (isReplyable && !isTrashMultiple));
+        parent.enable(ZmOperation.TAG_MENU, (!isShared && !isSynced && num > 0));
+        parent.enable(ZmOperation.VIEW_APPOINTMENT, !isPrivate && !isTrashMultiple);
+        parent.enable([ZmOperation.FORWARD_APPT, ZmOperation.FORWARD_APPT_INSTANCE, ZmOperation.FORWARD_APPT_SERIES], isForwardable && !isTrashMultiple);
+        parent.enable(ZmOperation.PROPOSE_NEW_TIME, !isTrash && (appt && !appt.isOrganizer()) && !isTrashMultiple);
+        parent.enable(ZmOperation.SHOW_ORIG, num == 1 && appt && appt.getRestUrl() != null && !isTrashMultiple);
+
 
         parent.enable([ZmOperation.DELETE, ZmOperation.MOVE], !disabled);
 
         parent.enable(ZmOperation.VIEW_APPT_INSTANCE,!isTrash);
 
         var apptAccess = ((appt && appt.isPrivate() && calendar.isRemote()) ? calendar.hasPrivateAccess() : true );
-        parent.enable(ZmOperation.DUPLICATE_APPT,apptAccess);
-        parent.enable(ZmOperation.SHOW_ORIG,apptAccess);
+        parent.enable(ZmOperation.DUPLICATE_APPT,apptAccess && !isTrashMultiple);
+        parent.enable(ZmOperation.SHOW_ORIG,apptAccess && !isTrashMultiple);
 
 	}
 
@@ -2669,7 +2689,7 @@ function(ev) {
 	delete actionMenu.__appt;
 
 	var calendar = appt.getFolder();
-    var isTrash = calendar && calendar.id == ZmOrganizer.ID_TRASH;
+    var isTrash = calendar && calendar.nId == ZmOrganizer.ID_TRASH;
 	var isSynced = Boolean(calendar.url);
 	var mode = ZmCalItem.MODE_EDIT;
 	var menuItem = ev.item;
@@ -2950,7 +2970,7 @@ function(appt, actionMenu) {
 
 	var share = calendar && calendar.link ? calendar.getMainShare() : null;
 	var workflow = share ? share.isWorkflow() : true;
-    var isTrash = calendar && calendar.id == ZmOrganizer.ID_TRASH;
+    var isTrash = calendar && calendar.nId == ZmOrganizer.ID_TRASH;
 	var isPrivate = appt.isPrivate() && calendar.isRemote() && !calendar.hasPrivateAccess();
 	var enabled = !isOrganizer && workflow && !isPrivate;
     var isReplyable = !isTrash && appt.otherAttendees;
@@ -2962,6 +2982,8 @@ function(appt, actionMenu) {
 	actionMenu.enable(ZmOperation.REPLY_TENTATIVE, enabled && isReplyable && appt.ptst != ZmCalBaseItem.PSTATUS_TENTATIVE);
 	actionMenu.enable(ZmOperation.INVITE_REPLY_MENU, enabled && isReplyable);
 	actionMenu.enable([ZmOperation.FORWARD_APPT, ZmOperation.FORWARD_APPT_INSTANCE, ZmOperation.FORWARD_APPT_SERIES], isForwardable);
+
+	actionMenu.enable(ZmOperation.PROPOSE_NEW_TIME, !isOrganizer);
 
 	actionMenu.enable(ZmOperation.REPLY, isReplyable && !isOrganizer);
 	actionMenu.enable(ZmOperation.REPLY_ALL, isReplyable);
@@ -2998,7 +3020,7 @@ function(ev) {
 	var appt = ev.item;
 	var actionMenu = this.getActionMenu();
     var calendar = appt && appt.getFolder();
-    var isTrash = calendar && calendar.id == ZmOrganizer.ID_TRASH;
+    var isTrash = calendar && calendar.nId == ZmOrganizer.ID_TRASH;
 	var menu = (appt.isRecurring() && !isTrash) ? this._recurringActionMenu : actionMenu;
 	this._enableActionMenuReplyOptions(appt, menu);
 	var op = (menu == actionMenu) && appt.exception ? ZmOperation.VIEW_APPT_INSTANCE : null;
@@ -3465,6 +3487,12 @@ function(work, forceMaintenance) {
 	{
 		this._pendingWork |= work;
 	}
+};
+
+ZmCalViewController.prototype.resetSearchFlags =
+function() {
+    this.searchInProgress = false;
+    this._pendingWork = ZmCalViewController.MAINT_NONE;
 };
 
 ZmCalViewController.prototype._errorRecovery =

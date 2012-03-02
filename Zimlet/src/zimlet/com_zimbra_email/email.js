@@ -18,6 +18,7 @@ function com_zimbra_email_handlerObject() {
 	// support for showing address objects in the msg header as bubbles
 	this._isBubble = {};
 	this._bubbleClassName = "addrBubble";
+	this._bubbleParams = {};
 	this._internalId = Dwt.getNextId();
 	DwtControl.ALL_BY_ID[this._internalId] = this;
 }
@@ -40,14 +41,9 @@ EmailTooltipZimlet.prototype.init =
 function() {
 	if (appCtxt.get(ZmSetting.CONTACTS_ENABLED)) {
 		AjxDispatcher.require(["ContactsCore", "Contacts"]);
-		this._composeTooltipHint = ZmMsg.leftClickComposeHint + "<br>" + ZmMsg.rightClickHint;
-		this._newTooltipHint = ZmMsg.leftClickNewContactHint + "<br>" + ZmMsg.rightClickHint;
-
 		if (appCtxt.get(ZmSetting.IM_ENABLED)) {
 			this._presenceCache = [];
 		}
-	} else {
-		this._newTooltipHint = ZmMsg.leftClickComposeHint + "<br>" + ZmMsg.rightClickHint;
 	}
 	this._prefDialog = new EmailToolTipPrefDialog(this);
 
@@ -118,6 +114,18 @@ function(ev) {
 	}
 };
 
+EmailTooltipZimlet.prototype.onFindMsgObjects =
+function() {
+	
+	if (appCtxt.get(ZmSetting.USE_ADDR_BUBBLES)) {
+		// TODO: dispose old bubbles
+		this._bubbleList = new ZmAddressBubbleList();
+		this._bubbleList.addSelectionListener(new AjxListener(this, this._bubbleSelectionListener));
+		this._bubbleList.addActionListener(new AjxListener(this, this._bubbleActionListener));
+		this._bubbleParams = {};
+	}
+};
+
 // create bubble for address in header
 EmailTooltipZimlet.prototype.generateSpan =
 function(html, idx, obj, spanId, context, options) {
@@ -125,7 +133,7 @@ function(html, idx, obj, spanId, context, options) {
 	options = options || {};
 	if (options.addrBubbles) {
 		this._isBubble[spanId] = true;
-		var canExpand = obj.isGroup && obj.canExpand;
+		var canExpand = obj.isGroup && obj.canExpand && appCtxt.get("EXPAND_DL_ENABLED");
 		if (canExpand && !this._aclv) {
 			// create a ZmAutocompleteListView to handle DL expansion; it's never shown
 			var aclvParams = {
@@ -137,7 +145,11 @@ function(html, idx, obj, spanId, context, options) {
 			this._aclv = new ZmAutocompleteListView(aclvParams);
 		}
 
+		// We'll be creating controls (bubbles) later, so we provide the tooltip now and let the control manage
+		// it instead of the zimlet framework.
 		var bubbleParams = {
+			parent:		appCtxt.getShell(),
+			parentId:	this._internalId,
 			addrObj:	obj,
 			id:			spanId,
 			canExpand:	canExpand,
@@ -145,13 +157,75 @@ function(html, idx, obj, spanId, context, options) {
 			separator:	AjxEmailAddress.SEPARATOR
 		};
 		ZmAddressInputField.BUBBLE_OBJ_ID[spanId] = this._internalId;	// pretend to be a ZmAddressInputField
-		html[idx++] = "<span class='addrBubble' id='" + spanId + "'>";
-		html[idx++] = ZmAddressBubble.getContent(bubbleParams);
+		this._bubbleParams[spanId] = bubbleParams;
+		
+		// placeholder SPAN
+		html[idx++] = "<span id='" + spanId + "'>";
 		html[idx++] = "</span>";
 		return idx;
 	} else {
 		return ZmObjectHandler.prototype.generateSpan.apply(this, arguments);
 	}
+};
+
+EmailTooltipZimlet.prototype.onMsgView =
+function() {
+	
+	for (var id in this._bubbleParams) {
+		// make sure SPAN was actually added to DOM (may have been ignored by template, for example) 
+		if (!document.getElementById(id)) {
+			continue;
+		}
+		var bubbleParams = this._bubbleParams[id];
+		var bubble = new ZmAddressBubble(bubbleParams);
+		bubble.replaceElement(id);
+		if (this._bubbleList) {
+			this._bubbleList.add(bubble);
+		}
+	}
+};
+
+EmailTooltipZimlet.prototype._bubbleSelectionListener =
+function(ev) {
+
+	var bubble = ev.item;
+	if (ev.detail == DwtEvent.ONDBLCLICK) {
+		this._composeListener(ev, bubble.address);
+	}
+	else if (this._bubbleList) {
+		this._bubbleList.selectText(bubble);
+	}
+};
+
+EmailTooltipZimlet.prototype._bubbleActionListener =
+function(ev) {
+
+	var bubble = ev.item;
+	var menu = this.getActionMenu(bubble.addrObj);
+	if (menu) {
+		this._actionBubble = bubble;
+		menu.popup(0, ev.docX, ev.docY);
+	}
+};
+
+EmailTooltipZimlet.prototype._menuPopdownListener =
+function() {
+
+	if (!appCtxt.get(ZmSetting.USE_ADDR_BUBBLES)) { return; }
+	
+	if (this._actionBubble) {
+		this._actionBubble.setClassName(this._bubbleClassName);
+	}
+	
+	// use a timer since popdown happens before listeners are called; alternatively, we could put the
+	// code below at the end of every menu action listener
+	AjxTimedAction.scheduleAction(new AjxTimedAction(this,
+		function() {
+			this._actionBubble = null;
+			if (this._bubbleList) {
+				this._bubbleList.clearRightSelection();
+			}
+		}), 10);
 };
 
 EmailTooltipZimlet.prototype.getClassName =
@@ -263,10 +337,11 @@ function(contact, address) {
 };
 
 EmailTooltipZimlet.prototype.hoverOut =
-function(object, context, x, y, span) {
-	if(!this.tooltip) {
-		return;
-	}
+function(object, context, span, spanId) {
+
+	if(!this.tooltip) {	return;	}
+	if (spanId && this._bubbleParams[spanId]) { return; }
+
 	this._hoverOver =  false;
 	this.tooltip._poppedUp = false;//makes the tooltip sticky
 	setTimeout(AjxCallback.simpleClosure(this.popDownIfMouseNotOnSlide, this), 700);
@@ -302,71 +377,68 @@ function(subscriberZimlet, isPrimary) {
 		this.primarySubscriberZimlet = subscriberZimlet;
 	}
 };
-/**
-* This is called from core-zimbra when the user hover-over's an email within msg/conv lists.
-*
-**/
-EmailTooltipZimlet.prototype.onHoverOverEmailInList =
-function(object, ev) {
-	this.hoverOver(object, null, ev.docX, ev.docY);
-};
 
+// This is called by the zimlet framework.
 EmailTooltipZimlet.prototype.hoverOver =
 function(object, context, x, y, span) {
+	var shell = DwtShell.getShell(window);
+	var tooltip = shell.getToolTip();
+	tooltip.setContent('<div id="zimletTooltipDiv"/>', true);
+	this.x = x;
+	this.y = y;
+	if (!this.toolTipPoppedUp(span, object, context, document.getElementById("zimletTooltipDiv"))) {
+		tooltip.popup(x, y, true, new AjxCallback(this, this.hoverOut, object, context, span));
+	}
+};
+
+EmailTooltipZimlet.prototype.toolTipPoppedUp =
+function(spanElement, contentObjText, matchContext, canvas) {
+	var tooltip = appCtxt.getToolTipMgr().getToolTip(ZmToolTipMgr.PERSON, {address:contentObjText});
+	if (tooltip) {
+		// for some reason canvas is not the live element, need to fetch it from DOM here
+		var tooltipDiv = document.getElementById("zimletTooltipDiv");
+		if (tooltipDiv) {
+			tooltipDiv.innerHTML = tooltip;
+		}
+		return false;
+	}
+	return true;
+};
+
+// This is called from the core tooltip manager.
+EmailTooltipZimlet.prototype.onHoverOverEmailInList =
+function(object, ev, noRightClick) {
+
+	if (!object || !object.address) {
+		return false;
+	}
+	var x = ev ? ev.docX : this.x;
+	var y = ev ? ev.docY : this.y;
+	this.noRightClick = noRightClick;
+	return this.handleHover(object, null, x, y);
+};
+
+// return true if we have handled the hover
+EmailTooltipZimlet.prototype.handleHover =
+function(object, context, x, y, span, spanId) {
+
+	if (spanId && this._bubbleParams[spanId]) { return false; }
+
 	this._hoverOver = true;
 	this._initializeProps(object, context, x, y, span);
 	appCtxt.notifyZimlets("onEmailHoverOver", [this], {waitUntilLoaded:true});
 	if (this.primarySubscriberZimlet) {
 		this.primarySubscriberZimlet.showTooltip();
+		return true;
 	}
 	else if (this._subscriberZimlets.length > 0 && !this.primarySubscriberZimlet) {
 		this._unknownPersonSlide = new UnknownPersonSlide();
 		this._unknownPersonSlide.onEmailHoverOver(this);
 		this._unknownPersonSlide.showTooltip();
-	}
-	else { // if no subscribers..
-		this._showTooltip(object, context, x, y, span);
-	}
-};
-
-EmailTooltipZimlet.prototype._showTooltip =
-function(object, context, x, y, span) {
-	var shell = DwtShell.getShell(window);
-	var tooltip = shell.getToolTip();
-	tooltip.setContent('<div id="zimletTooltipDiv"/>', true);
-	this.toolTipPoppedUp(span, object, context, document.getElementById("zimletTooltipDiv"));
-	tooltip.popup(x, y, true, new AjxCallback(this, this.hoverOut, object, context, span));
-};
-
-
-EmailTooltipZimlet.prototype.toolTipPoppedUp =
-function(spanElement, contentObjText, matchContext, canvas) {
-	var addr = (contentObjText instanceof AjxEmailAddress)
-		? contentObjText.address : contentObjText;
-
-	var isMailTo = this.isMailToLink(addr);
-	if (isMailTo) {
-		addr = (this.parseMailToLink(addr)).to || addr;
+		return true;
 	}
 
-	var toolTip;
-	var contactList = AjxDispatcher.run("GetContacts");
-	var contact = contactList ? contactList.getContactByEmail(addr) : null;
-	if (contact) {
-		var hint = this._composeTooltipHint;
-		toolTip = contact.getToolTip(addr, false, hint);
-	} else {
-		var hint = this._newTooltipHint;
-		if (isMailTo) {
-			hint = this._composeTooltipHint;
-		}
-		var subs = {
-			addrstr: addr.toString(),
-			hint: hint
-		};
-		toolTip = AjxTemplate.expand("abook.Contacts#TooltipNotInAddrBook", subs);
-	}
-	canvas.innerHTML = toolTip;
+	return false;
 };
 
 EmailTooltipZimlet.prototype._initializeProps =
@@ -628,6 +700,11 @@ function(obj, span, context) {
 			ZmOperation.setOperation(actionMenu, "NEWCONTACT", ZmOperation.NEW_CONTACT, ZmMsg.AB_ADD_CONTACT);
 		}
 	}
+	
+	if (!actionMenu.isListenerRegistered(DwtEvent.POPDOWN)) {
+		actionMenu.addPopdownListener(new AjxListener(this, this._menuPopdownListener));
+	}
+	
 	return actionMenu;
 };
 
@@ -650,7 +727,9 @@ function(str){
 	parts.subject = match ? decodeURIComponent(match[1]) : null;
 
 	match = str.match(/\bto\:([^&]+)/);
-	if(!match) match = str.match(/\bmailto\:([^\?]+)/i);
+	if (!match) {
+		match = str.match(/\bmailto\:([^\?]+)/i);
+	}
 	parts.to = match ? decodeURIComponent(match[1]) : null;
 
 	match = str.match(/\bbody=([^&]+)/i);
@@ -661,32 +740,22 @@ function(str){
 
 EmailTooltipZimlet.prototype.clicked =
 function(spanElement, contentObjText, matchContext, ev) {
-	if(this.tooltip) {
+
+	var spanId = spanElement && spanElement.id;
+	if (spanId && this._bubbleParams[spanId]) { return; }
+
+	if (this.tooltip) {
 		this.tooltip.popdown();
 	}
-	var addr = (contentObjText instanceof AjxEmailAddress)
-		? contentObjText.address : contentObjText;
+	var addr = this._getAddress(contentObjText);
 
-	var contact = addr;
-	var isMailTo = this.isMailToLink(addr);
-	//extract mailid from mailto:mailid?params
-	if (isMailTo && EmailTooltipZimlet.MAILTO_RE.test(addr)) {
-		contact = RegExp.$1;
+	// extract addr from mailto params
+	if (this.isMailToLink(addr) && EmailTooltipZimlet.MAILTO_RE.test(addr)) {
+		addr = RegExp.$1;
 	}
 
 	this._actionObject = contentObjText;
-	var contactList = AjxDispatcher.run("GetContacts");
-	var addrContact = contactList ? contactList.getContactByEmail(contact) : null;
-	// if contact found or there is no contact list (i.e. contacts app is disabled), go to compose view
-	if (isMailTo || addrContact || contactList == null)
-	{
-		this._composeListener(ev, addr);
-	}
-	else
-	{
-		// otherwise, no contact in addrbook means go to contact edit view
-		this._contactListener(true);
-	}
+	this._composeListener(ev, addr);
 };
 
 EmailTooltipZimlet.prototype.menuItemSelected =

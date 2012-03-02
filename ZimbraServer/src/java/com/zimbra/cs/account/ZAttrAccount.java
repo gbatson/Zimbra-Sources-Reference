@@ -35,7 +35,7 @@ public class ZAttrAccount  extends MailTarget {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20110321-1148 */
+    /* build: 7.0.0_BETA1_1111 pshao 20110524-1711 */
 
     /**
      * RFC2256: ISO-3166 country 2-letter code
@@ -2200,6 +2200,78 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
+     * RFC2256: X.509 user certificate
+     *
+     * @return userCertificate, or null if unset
+     */
+    @ZAttr(id=-1)
+    public byte[] getUserCertificate() {
+        return getBinaryAttr(Provisioning.A_userCertificate);
+    }
+
+    /**
+     * RFC2256: X.509 user certificate
+     *
+     * @return userCertificate, or empty array if unset
+     */
+    @ZAttr(id=-1)
+    public String[] getUserCertificateAsString() {
+        return getMultiAttr(Provisioning.A_userCertificate);
+    }
+
+    /**
+     * RFC2256: X.509 user certificate
+     *
+     * @param userCertificate new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=-1)
+    public void setUserCertificate(byte[] userCertificate) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userCertificate, userCertificate==null ? "" : ByteUtil.encodeLDAPBase64(userCertificate));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * RFC2256: X.509 user certificate
+     *
+     * @param userCertificate new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=-1)
+    public Map<String,Object> setUserCertificate(byte[] userCertificate, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userCertificate, userCertificate==null ? "" : ByteUtil.encodeLDAPBase64(userCertificate));
+        return attrs;
+    }
+
+    /**
+     * RFC2256: X.509 user certificate
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=-1)
+    public void unsetUserCertificate() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userCertificate, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * RFC2256: X.509 user certificate
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=-1)
+    public Map<String,Object> unsetUserCertificate(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userCertificate, "");
+        return attrs;
+    }
+
+    /**
      * RFC2256/2307: password of user. Stored encoded as SSHA (salted-SHA1)
      *
      * @return userPassword, or null if unset
@@ -2258,6 +2330,78 @@ public class ZAttrAccount  extends MailTarget {
     public Map<String,Object> unsetUserPassword(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_userPassword, "");
+        return attrs;
+    }
+
+    /**
+     * RFC2798: PKCS#7 SignedData used to support S/MIME
+     *
+     * @return userSMIMECertificate, or null if unset
+     */
+    @ZAttr(id=-1)
+    public byte[] getUserSMIMECertificate() {
+        return getBinaryAttr(Provisioning.A_userSMIMECertificate);
+    }
+
+    /**
+     * RFC2798: PKCS#7 SignedData used to support S/MIME
+     *
+     * @return userSMIMECertificate, or empty array if unset
+     */
+    @ZAttr(id=-1)
+    public String[] getUserSMIMECertificateAsString() {
+        return getMultiAttr(Provisioning.A_userSMIMECertificate);
+    }
+
+    /**
+     * RFC2798: PKCS#7 SignedData used to support S/MIME
+     *
+     * @param userSMIMECertificate new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=-1)
+    public void setUserSMIMECertificate(byte[] userSMIMECertificate) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userSMIMECertificate, userSMIMECertificate==null ? "" : ByteUtil.encodeLDAPBase64(userSMIMECertificate));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * RFC2798: PKCS#7 SignedData used to support S/MIME
+     *
+     * @param userSMIMECertificate new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=-1)
+    public Map<String,Object> setUserSMIMECertificate(byte[] userSMIMECertificate, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userSMIMECertificate, userSMIMECertificate==null ? "" : ByteUtil.encodeLDAPBase64(userSMIMECertificate));
+        return attrs;
+    }
+
+    /**
+     * RFC2798: PKCS#7 SignedData used to support S/MIME
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=-1)
+    public void unsetUserSMIMECertificate() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userSMIMECertificate, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * RFC2798: PKCS#7 SignedData used to support S/MIME
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=-1)
+    public Map<String,Object> unsetUserSMIMECertificate(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_userSMIMECertificate, "");
         return attrs;
     }
 
@@ -2688,7 +2832,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created admin auth tokens Must be in valid duration
+     * lifetime of newly created admin auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -2705,7 +2849,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created admin auth tokens Must be in valid duration
+     * lifetime of newly created admin auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -2718,7 +2862,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created admin auth tokens Must be in valid duration
+     * lifetime of newly created admin auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -2734,7 +2878,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created admin auth tokens Must be in valid duration
+     * lifetime of newly created admin auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -2751,7 +2895,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created admin auth tokens Must be in valid duration
+     * lifetime of newly created admin auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -2766,7 +2910,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created admin auth tokens Must be in valid duration
+     * lifetime of newly created admin auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -3764,7 +3908,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created auth tokens Must be in valid duration
+     * lifetime of newly created auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -3781,7 +3925,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created auth tokens Must be in valid duration
+     * lifetime of newly created auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -3794,7 +3938,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created auth tokens Must be in valid duration
+     * lifetime of newly created auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -3810,7 +3954,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created auth tokens Must be in valid duration
+     * lifetime of newly created auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -3827,7 +3971,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created auth tokens Must be in valid duration
+     * lifetime of newly created auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -3842,7 +3986,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of newly created auth tokens Must be in valid duration
+     * lifetime of newly created auth tokens. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -4324,7 +4468,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * CalDAV shared folder cache duration Must be in valid duration format:
+     * CalDAV shared folder cache duration. Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -4343,7 +4487,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * CalDAV shared folder cache duration Must be in valid duration format:
+     * CalDAV shared folder cache duration. Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -4358,7 +4502,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * CalDAV shared folder cache duration Must be in valid duration format:
+     * CalDAV shared folder cache duration. Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -4376,7 +4520,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * CalDAV shared folder cache duration Must be in valid duration format:
+     * CalDAV shared folder cache duration. Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -4395,7 +4539,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * CalDAV shared folder cache duration Must be in valid duration format:
+     * CalDAV shared folder cache duration. Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -4412,7 +4556,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * CalDAV shared folder cache duration Must be in valid duration format:
+     * CalDAV shared folder cache duration. Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -4430,7 +4574,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * see description of zimbraCalendarCalDavSyncStart Must be in valid
+     * see description of zimbraCalendarCalDavSyncStart. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -4450,7 +4594,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * see description of zimbraCalendarCalDavSyncStart Must be in valid
+     * see description of zimbraCalendarCalDavSyncStart. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -4466,7 +4610,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * see description of zimbraCalendarCalDavSyncStart Must be in valid
+     * see description of zimbraCalendarCalDavSyncStart. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -4485,7 +4629,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * see description of zimbraCalendarCalDavSyncStart Must be in valid
+     * see description of zimbraCalendarCalDavSyncStart. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -4505,7 +4649,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * see description of zimbraCalendarCalDavSyncStart Must be in valid
+     * see description of zimbraCalendarCalDavSyncStart. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -4523,7 +4667,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * see description of zimbraCalendarCalDavSyncStart Must be in valid
+     * see description of zimbraCalendarCalDavSyncStart. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -4548,10 +4692,10 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraCalendarCalDavSyncEnd is set to 1 years, then the appointments
      * between (now - 30 days) and (now + 1 year) will be available via
      * CalDAV. When they are unset all the appointments are available via
-     * CalDAV. Must be in valid duration format: {digits}{time-unit}. digits:
-     * 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d -
-     * days, ms - milliseconds. If time unit is not specified, the default is
-     * s(seconds).
+     * CalDAV. . Must be in valid duration format: {digits}{time-unit}.
+     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
+     * seconds, d - days, ms - milliseconds. If time unit is not specified,
+     * the default is s(seconds).
      *
      * <p>Use getCalendarCalDavSyncStartAsString to access value as a string.
      *
@@ -4573,10 +4717,10 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraCalendarCalDavSyncEnd is set to 1 years, then the appointments
      * between (now - 30 days) and (now + 1 year) will be available via
      * CalDAV. When they are unset all the appointments are available via
-     * CalDAV. Must be in valid duration format: {digits}{time-unit}. digits:
-     * 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d -
-     * days, ms - milliseconds. If time unit is not specified, the default is
-     * s(seconds).
+     * CalDAV. . Must be in valid duration format: {digits}{time-unit}.
+     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
+     * seconds, d - days, ms - milliseconds. If time unit is not specified,
+     * the default is s(seconds).
      *
      * @return zimbraCalendarCalDavSyncStart, or null if unset
      *
@@ -4594,10 +4738,10 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraCalendarCalDavSyncEnd is set to 1 years, then the appointments
      * between (now - 30 days) and (now + 1 year) will be available via
      * CalDAV. When they are unset all the appointments are available via
-     * CalDAV. Must be in valid duration format: {digits}{time-unit}. digits:
-     * 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d -
-     * days, ms - milliseconds. If time unit is not specified, the default is
-     * s(seconds).
+     * CalDAV. . Must be in valid duration format: {digits}{time-unit}.
+     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
+     * seconds, d - days, ms - milliseconds. If time unit is not specified,
+     * the default is s(seconds).
      *
      * @param zimbraCalendarCalDavSyncStart new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -4618,10 +4762,10 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraCalendarCalDavSyncEnd is set to 1 years, then the appointments
      * between (now - 30 days) and (now + 1 year) will be available via
      * CalDAV. When they are unset all the appointments are available via
-     * CalDAV. Must be in valid duration format: {digits}{time-unit}. digits:
-     * 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d -
-     * days, ms - milliseconds. If time unit is not specified, the default is
-     * s(seconds).
+     * CalDAV. . Must be in valid duration format: {digits}{time-unit}.
+     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
+     * seconds, d - days, ms - milliseconds. If time unit is not specified,
+     * the default is s(seconds).
      *
      * @param zimbraCalendarCalDavSyncStart new value
      * @param attrs existing map to populate, or null to create a new map
@@ -4643,10 +4787,10 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraCalendarCalDavSyncEnd is set to 1 years, then the appointments
      * between (now - 30 days) and (now + 1 year) will be available via
      * CalDAV. When they are unset all the appointments are available via
-     * CalDAV. Must be in valid duration format: {digits}{time-unit}. digits:
-     * 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d -
-     * days, ms - milliseconds. If time unit is not specified, the default is
-     * s(seconds).
+     * CalDAV. . Must be in valid duration format: {digits}{time-unit}.
+     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
+     * seconds, d - days, ms - milliseconds. If time unit is not specified,
+     * the default is s(seconds).
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -4666,10 +4810,10 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraCalendarCalDavSyncEnd is set to 1 years, then the appointments
      * between (now - 30 days) and (now + 1 year) will be available via
      * CalDAV. When they are unset all the appointments are available via
-     * CalDAV. Must be in valid duration format: {digits}{time-unit}. digits:
-     * 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d -
-     * days, ms - milliseconds. If time unit is not specified, the default is
-     * s(seconds).
+     * CalDAV. . Must be in valid duration format: {digits}{time-unit}.
+     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
+     * seconds, d - days, ms - milliseconds. If time unit is not specified,
+     * the default is s(seconds).
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -5840,7 +5984,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Caldav data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5861,7 +6005,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Caldav data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5878,7 +6022,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Caldav data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5898,7 +6042,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Caldav data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5919,7 +6063,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Caldav data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5938,7 +6082,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Caldav data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5958,7 +6102,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a remote calendar
      * data source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5979,7 +6123,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a remote calendar
      * data source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -5996,7 +6140,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a remote calendar
      * data source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6016,7 +6160,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a remote calendar
      * data source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6037,7 +6181,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a remote calendar
      * data source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6056,7 +6200,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a remote calendar
      * data source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6076,7 +6220,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a GAL data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6097,7 +6241,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a GAL data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6114,7 +6258,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a GAL data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6134,7 +6278,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a GAL data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6155,7 +6299,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a GAL data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6174,7 +6318,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a GAL data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6194,7 +6338,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for an Imap data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6215,7 +6359,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for an Imap data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6232,7 +6376,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for an Imap data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6252,7 +6396,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for an Imap data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6273,7 +6417,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for an Imap data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6292,7 +6436,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for an Imap data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6312,7 +6456,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Live data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6333,7 +6477,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Live data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6350,7 +6494,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Live data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6370,7 +6514,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Live data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6391,7 +6535,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Live data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6410,7 +6554,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Live data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6490,10 +6634,10 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Shortest allowed duration for zimbraDataSourcePollingInterval. Must be
-     * in valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
-     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
-     * milliseconds. If time unit is not specified, the default is
+     * Shortest allowed duration for zimbraDataSourcePollingInterval.. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
      * <p>Use getDataSourceMinPollingIntervalAsString to access value as a string.
@@ -6510,10 +6654,10 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Shortest allowed duration for zimbraDataSourcePollingInterval. Must be
-     * in valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
-     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
-     * milliseconds. If time unit is not specified, the default is
+     * Shortest allowed duration for zimbraDataSourcePollingInterval.. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
      * @return zimbraDataSourceMinPollingInterval, or "1m" if unset
@@ -6526,10 +6670,10 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Shortest allowed duration for zimbraDataSourcePollingInterval. Must be
-     * in valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
-     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
-     * milliseconds. If time unit is not specified, the default is
+     * Shortest allowed duration for zimbraDataSourcePollingInterval.. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
      * @param zimbraDataSourceMinPollingInterval new value
@@ -6545,10 +6689,10 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Shortest allowed duration for zimbraDataSourcePollingInterval. Must be
-     * in valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
-     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
-     * milliseconds. If time unit is not specified, the default is
+     * Shortest allowed duration for zimbraDataSourcePollingInterval.. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
      * @param zimbraDataSourceMinPollingInterval new value
@@ -6565,10 +6709,10 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Shortest allowed duration for zimbraDataSourcePollingInterval. Must be
-     * in valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
-     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
-     * milliseconds. If time unit is not specified, the default is
+     * Shortest allowed duration for zimbraDataSourcePollingInterval.. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -6583,10 +6727,10 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Shortest allowed duration for zimbraDataSourcePollingInterval. Must be
-     * in valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
-     * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
-     * milliseconds. If time unit is not specified, the default is
+     * Shortest allowed duration for zimbraDataSourcePollingInterval.. Must
+     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
+     * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
      * @param attrs existing map to populate, or null to create a new map
@@ -6611,8 +6755,8 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraDataSourcePollingInterval is set on data source, use it 2.
      * otherwise use the zimbraDataSource{Proto}PollingInterval on
      * account/cos 3. if zimbraDataSource{Proto}PollingInterval is not set on
-     * account/cos, use 0, which means no automated polling. Must be in valid
-     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * account/cos, use 0, which means no automated polling. . Must be in
+     * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -6638,8 +6782,8 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraDataSourcePollingInterval is set on data source, use it 2.
      * otherwise use the zimbraDataSource{Proto}PollingInterval on
      * account/cos 3. if zimbraDataSource{Proto}PollingInterval is not set on
-     * account/cos, use 0, which means no automated polling. Must be in valid
-     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * account/cos, use 0, which means no automated polling. . Must be in
+     * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -6661,8 +6805,8 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraDataSourcePollingInterval is set on data source, use it 2.
      * otherwise use the zimbraDataSource{Proto}PollingInterval on
      * account/cos 3. if zimbraDataSource{Proto}PollingInterval is not set on
-     * account/cos, use 0, which means no automated polling. Must be in valid
-     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * account/cos, use 0, which means no automated polling. . Must be in
+     * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -6687,8 +6831,8 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraDataSourcePollingInterval is set on data source, use it 2.
      * otherwise use the zimbraDataSource{Proto}PollingInterval on
      * account/cos 3. if zimbraDataSource{Proto}PollingInterval is not set on
-     * account/cos, use 0, which means no automated polling. Must be in valid
-     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * account/cos, use 0, which means no automated polling. . Must be in
+     * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -6714,8 +6858,8 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraDataSourcePollingInterval is set on data source, use it 2.
      * otherwise use the zimbraDataSource{Proto}PollingInterval on
      * account/cos 3. if zimbraDataSource{Proto}PollingInterval is not set on
-     * account/cos, use 0, which means no automated polling. Must be in valid
-     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * account/cos, use 0, which means no automated polling. . Must be in
+     * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -6739,8 +6883,8 @@ public class ZAttrAccount  extends MailTarget {
      * zimbraDataSourcePollingInterval is set on data source, use it 2.
      * otherwise use the zimbraDataSource{Proto}PollingInterval on
      * account/cos 3. if zimbraDataSource{Proto}PollingInterval is not set on
-     * account/cos, use 0, which means no automated polling. Must be in valid
-     * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
+     * account/cos, use 0, which means no automated polling. . Must be in
+     * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -6758,7 +6902,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Pop3 data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6779,7 +6923,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Pop3 data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6796,7 +6940,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Pop3 data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6816,7 +6960,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Pop3 data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6837,7 +6981,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Pop3 data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6856,7 +7000,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Pop3 data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6876,7 +7020,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Rss data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6897,7 +7041,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Rss data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6914,7 +7058,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Rss data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6934,7 +7078,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Rss data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6955,7 +7099,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Rss data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6974,7 +7118,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Rss data
      * source. If unset or 0, the data source will not be scheduled for
-     * automated polling. Must be in valid duration format:
+     * automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -6994,7 +7138,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Yahoo address
      * book data source. If unset or 0, the data source will not be scheduled
-     * for automated polling. Must be in valid duration format:
+     * for automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -7015,7 +7159,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Yahoo address
      * book data source. If unset or 0, the data source will not be scheduled
-     * for automated polling. Must be in valid duration format:
+     * for automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -7032,7 +7176,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Yahoo address
      * book data source. If unset or 0, the data source will not be scheduled
-     * for automated polling. Must be in valid duration format:
+     * for automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -7052,7 +7196,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Yahoo address
      * book data source. If unset or 0, the data source will not be scheduled
-     * for automated polling. Must be in valid duration format:
+     * for automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -7073,7 +7217,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Yahoo address
      * book data source. If unset or 0, the data source will not be scheduled
-     * for automated polling. Must be in valid duration format:
+     * for automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -7092,7 +7236,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The time interval between automated data imports for a Yahoo address
      * book data source. If unset or 0, the data source will not be scheduled
-     * for automated polling. Must be in valid duration format:
+     * for automated polling. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -7222,6 +7366,93 @@ public class ZAttrAccount  extends MailTarget {
     public Map<String,Object> unsetDebugInfo(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraDebugInfo, "");
+        return attrs;
+    }
+
+    /**
+     * Default flags on folder. These are set when a new folder is created,
+     * has no effect on existing folders. Possible values are: * -
+     * \Subscribed b - \ExcludeFB # - \Checked i - \NoInherit y - \SyncFolder
+     * ~ - \Sync o - \Noinferiors g - \Global
+     *
+     * @return zimbraDefaultFolderFlags, or null if unset
+     *
+     * @since ZCS 7.1.1
+     */
+    @ZAttr(id=1210)
+    public String getDefaultFolderFlags() {
+        return getAttr(Provisioning.A_zimbraDefaultFolderFlags, null);
+    }
+
+    /**
+     * Default flags on folder. These are set when a new folder is created,
+     * has no effect on existing folders. Possible values are: * -
+     * \Subscribed b - \ExcludeFB # - \Checked i - \NoInherit y - \SyncFolder
+     * ~ - \Sync o - \Noinferiors g - \Global
+     *
+     * @param zimbraDefaultFolderFlags new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.1
+     */
+    @ZAttr(id=1210)
+    public void setDefaultFolderFlags(String zimbraDefaultFolderFlags) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDefaultFolderFlags, zimbraDefaultFolderFlags);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Default flags on folder. These are set when a new folder is created,
+     * has no effect on existing folders. Possible values are: * -
+     * \Subscribed b - \ExcludeFB # - \Checked i - \NoInherit y - \SyncFolder
+     * ~ - \Sync o - \Noinferiors g - \Global
+     *
+     * @param zimbraDefaultFolderFlags new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.1
+     */
+    @ZAttr(id=1210)
+    public Map<String,Object> setDefaultFolderFlags(String zimbraDefaultFolderFlags, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDefaultFolderFlags, zimbraDefaultFolderFlags);
+        return attrs;
+    }
+
+    /**
+     * Default flags on folder. These are set when a new folder is created,
+     * has no effect on existing folders. Possible values are: * -
+     * \Subscribed b - \ExcludeFB # - \Checked i - \NoInherit y - \SyncFolder
+     * ~ - \Sync o - \Noinferiors g - \Global
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.1.1
+     */
+    @ZAttr(id=1210)
+    public void unsetDefaultFolderFlags() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDefaultFolderFlags, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Default flags on folder. These are set when a new folder is created,
+     * has no effect on existing folders. Possible values are: * -
+     * \Subscribed b - \ExcludeFB # - \Checked i - \NoInherit y - \SyncFolder
+     * ~ - \Sync o - \Noinferiors g - \Global
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.1.1
+     */
+    @ZAttr(id=1210)
+    public Map<String,Object> unsetDefaultFolderFlags(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDefaultFolderFlags, "");
         return attrs;
     }
 
@@ -13415,7 +13646,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The amount of time to sleep between every two messages during
      * ApplyFilterRules. Increasing this value will even out server load at
-     * the expense of slowing down the operation. Must be in valid duration
+     * the expense of slowing down the operation. . Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -13424,36 +13655,36 @@ public class ZAttrAccount  extends MailTarget {
      *
      * @see #getFilterSleepIntervalAsString()
      *
-     * @return zimbraFilterSleepInterval in millseconds, or 100 (100ms)  if unset
+     * @return zimbraFilterSleepInterval in millseconds, or 1 (1ms)  if unset
      *
      * @since ZCS 7.0.0
      */
     @ZAttr(id=1159)
     public long getFilterSleepInterval() {
-        return getTimeInterval(Provisioning.A_zimbraFilterSleepInterval, 100L);
+        return getTimeInterval(Provisioning.A_zimbraFilterSleepInterval, 1L);
     }
 
     /**
      * The amount of time to sleep between every two messages during
      * ApplyFilterRules. Increasing this value will even out server load at
-     * the expense of slowing down the operation. Must be in valid duration
+     * the expense of slowing down the operation. . Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
      *
-     * @return zimbraFilterSleepInterval, or "100ms" if unset
+     * @return zimbraFilterSleepInterval, or "1ms" if unset
      *
      * @since ZCS 7.0.0
      */
     @ZAttr(id=1159)
     public String getFilterSleepIntervalAsString() {
-        return getAttr(Provisioning.A_zimbraFilterSleepInterval, "100ms");
+        return getAttr(Provisioning.A_zimbraFilterSleepInterval, "1ms");
     }
 
     /**
      * The amount of time to sleep between every two messages during
      * ApplyFilterRules. Increasing this value will even out server load at
-     * the expense of slowing down the operation. Must be in valid duration
+     * the expense of slowing down the operation. . Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -13473,7 +13704,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The amount of time to sleep between every two messages during
      * ApplyFilterRules. Increasing this value will even out server load at
-     * the expense of slowing down the operation. Must be in valid duration
+     * the expense of slowing down the operation. . Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -13494,7 +13725,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The amount of time to sleep between every two messages during
      * ApplyFilterRules. Increasing this value will even out server load at
-     * the expense of slowing down the operation. Must be in valid duration
+     * the expense of slowing down the operation. . Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -13513,7 +13744,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * The amount of time to sleep between every two messages during
      * ApplyFilterRules. Increasing this value will even out server load at
-     * the expense of slowing down the operation. Must be in valid duration
+     * the expense of slowing down the operation. . Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -13922,7 +14153,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * The duration of f/b block pushed to Exchange server.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -13942,7 +14173,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * The duration of f/b block pushed to Exchange server.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -13958,7 +14189,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * The duration of f/b block pushed to Exchange server.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -13977,7 +14208,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * The duration of f/b block pushed to Exchange server.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -13997,7 +14228,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * The duration of f/b block pushed to Exchange server.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -14015,7 +14246,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * The duration of f/b block pushed to Exchange server. Must be in valid
+     * The duration of f/b block pushed to Exchange server.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -14035,8 +14266,8 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server. Must
-     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * relative to today) of the f/b interval pushed to Exchange server..
+     * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -14056,8 +14287,8 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server. Must
-     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * relative to today) of the f/b interval pushed to Exchange server..
+     * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -14073,8 +14304,8 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server. Must
-     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * relative to today) of the f/b interval pushed to Exchange server..
+     * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -14093,8 +14324,8 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server. Must
-     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * relative to today) of the f/b interval pushed to Exchange server..
+     * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -14114,8 +14345,8 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server. Must
-     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * relative to today) of the f/b interval pushed to Exchange server..
+     * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -14133,8 +14364,8 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * The value of duration is used to indicate the start date (in the past
-     * relative to today) of the f/b interval pushed to Exchange server. Must
-     * be in valid duration format: {digits}{time-unit}. digits: 0-9,
+     * relative to today) of the f/b interval pushed to Exchange server..
+     * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
      * s(seconds).
@@ -16788,7 +17019,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the dumpster. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -16808,7 +17039,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the dumpster. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -16824,7 +17055,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the dumpster. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -16843,7 +17074,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the dumpster. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -16863,7 +17094,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the dumpster. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -16881,7 +17112,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the dumpster. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -17221,7 +17452,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * idle timeout Must be in valid duration format: {digits}{time-unit}.
+     * idle timeout. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -17238,7 +17469,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * idle timeout Must be in valid duration format: {digits}{time-unit}.
+     * idle timeout. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -17251,7 +17482,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * idle timeout Must be in valid duration format: {digits}{time-unit}.
+     * idle timeout. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -17267,7 +17498,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * idle timeout Must be in valid duration format: {digits}{time-unit}.
+     * idle timeout. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -17284,7 +17515,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * idle timeout Must be in valid duration format: {digits}{time-unit}.
+     * idle timeout. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -17299,7 +17530,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * idle timeout Must be in valid duration format: {digits}{time-unit}.
+     * idle timeout. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -17315,7 +17546,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of a mail message regardless of location Must be in valid
+     * lifetime of a mail message regardless of location. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17333,7 +17564,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of a mail message regardless of location Must be in valid
+     * lifetime of a mail message regardless of location. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17347,7 +17578,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of a mail message regardless of location Must be in valid
+     * lifetime of a mail message regardless of location. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17364,7 +17595,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of a mail message regardless of location Must be in valid
+     * lifetime of a mail message regardless of location. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17382,7 +17613,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of a mail message regardless of location Must be in valid
+     * lifetime of a mail message regardless of location. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17398,7 +17629,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * lifetime of a mail message regardless of location Must be in valid
+     * lifetime of a mail message regardless of location. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17415,7 +17646,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * minimum allowed value for zimbraPrefMailPollingInterval Must be in
+     * minimum allowed value for zimbraPrefMailPollingInterval. Must be in
      * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17433,7 +17664,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * minimum allowed value for zimbraPrefMailPollingInterval Must be in
+     * minimum allowed value for zimbraPrefMailPollingInterval. Must be in
      * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17447,7 +17678,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * minimum allowed value for zimbraPrefMailPollingInterval Must be in
+     * minimum allowed value for zimbraPrefMailPollingInterval. Must be in
      * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17464,7 +17695,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * minimum allowed value for zimbraPrefMailPollingInterval Must be in
+     * minimum allowed value for zimbraPrefMailPollingInterval. Must be in
      * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17482,7 +17713,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * minimum allowed value for zimbraPrefMailPollingInterval Must be in
+     * minimum allowed value for zimbraPrefMailPollingInterval. Must be in
      * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17498,7 +17729,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * minimum allowed value for zimbraPrefMailPollingInterval Must be in
+     * minimum allowed value for zimbraPrefMailPollingInterval. Must be in
      * valid duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -17945,7 +18176,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefJunkLifetime, which is user-modifiable. The
-     * shorter duration is used. Must be in valid duration format:
+     * shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -17965,7 +18196,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefJunkLifetime, which is user-modifiable. The
-     * shorter duration is used. Must be in valid duration format:
+     * shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -17981,7 +18212,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefJunkLifetime, which is user-modifiable. The
-     * shorter duration is used. Must be in valid duration format:
+     * shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18000,7 +18231,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefJunkLifetime, which is user-modifiable. The
-     * shorter duration is used. Must be in valid duration format:
+     * shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18020,7 +18251,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefJunkLifetime, which is user-modifiable. The
-     * shorter duration is used. Must be in valid duration format:
+     * shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18038,7 +18269,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefJunkLifetime, which is user-modifiable. The
-     * shorter duration is used. Must be in valid duration format:
+     * shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18234,7 +18465,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefTrashLifetime, which is user-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18254,7 +18485,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefTrashLifetime, which is user-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18270,7 +18501,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefTrashLifetime, which is user-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18289,7 +18520,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefTrashLifetime, which is user-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18309,7 +18540,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefTrashLifetime, which is user-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -18327,7 +18558,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This admin-modifiable attribute works in
      * conjunction with zimbraPrefTrashLifetime, which is user-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -20773,10 +21004,10 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * how long an account is locked out. Use 0 to lockout an account until
-     * admin resets it Must be in valid duration format: {digits}{time-unit}.
-     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
-     * seconds, d - days, ms - milliseconds. If time unit is not specified,
-     * the default is s(seconds).
+     * admin resets it. Must be in valid duration format:
+     * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
+     * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
+     * specified, the default is s(seconds).
      *
      * <p>Use getPasswordLockoutDurationAsString to access value as a string.
      *
@@ -20791,10 +21022,10 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * how long an account is locked out. Use 0 to lockout an account until
-     * admin resets it Must be in valid duration format: {digits}{time-unit}.
-     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
-     * seconds, d - days, ms - milliseconds. If time unit is not specified,
-     * the default is s(seconds).
+     * admin resets it. Must be in valid duration format:
+     * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
+     * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
+     * specified, the default is s(seconds).
      *
      * @return zimbraPasswordLockoutDuration, or "1h" if unset
      */
@@ -20805,10 +21036,10 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * how long an account is locked out. Use 0 to lockout an account until
-     * admin resets it Must be in valid duration format: {digits}{time-unit}.
-     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
-     * seconds, d - days, ms - milliseconds. If time unit is not specified,
-     * the default is s(seconds).
+     * admin resets it. Must be in valid duration format:
+     * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
+     * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
+     * specified, the default is s(seconds).
      *
      * @param zimbraPasswordLockoutDuration new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -20822,10 +21053,10 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * how long an account is locked out. Use 0 to lockout an account until
-     * admin resets it Must be in valid duration format: {digits}{time-unit}.
-     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
-     * seconds, d - days, ms - milliseconds. If time unit is not specified,
-     * the default is s(seconds).
+     * admin resets it. Must be in valid duration format:
+     * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
+     * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
+     * specified, the default is s(seconds).
      *
      * @param zimbraPasswordLockoutDuration new value
      * @param attrs existing map to populate, or null to create a new map
@@ -20840,10 +21071,10 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * how long an account is locked out. Use 0 to lockout an account until
-     * admin resets it Must be in valid duration format: {digits}{time-unit}.
-     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
-     * seconds, d - days, ms - milliseconds. If time unit is not specified,
-     * the default is s(seconds).
+     * admin resets it. Must be in valid duration format:
+     * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
+     * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
+     * specified, the default is s(seconds).
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -20856,10 +21087,10 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * how long an account is locked out. Use 0 to lockout an account until
-     * admin resets it Must be in valid duration format: {digits}{time-unit}.
-     * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
-     * seconds, d - days, ms - milliseconds. If time unit is not specified,
-     * the default is s(seconds).
+     * admin resets it. Must be in valid duration format:
+     * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
+     * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
+     * specified, the default is s(seconds).
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -20936,7 +21167,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * the duration after which old consecutive failed login attempts are
      * purged from the list, even though no successful authentication has
-     * occurred Must be in valid duration format: {digits}{time-unit}.
+     * occurred. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -20955,7 +21186,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * the duration after which old consecutive failed login attempts are
      * purged from the list, even though no successful authentication has
-     * occurred Must be in valid duration format: {digits}{time-unit}.
+     * occurred. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -20970,7 +21201,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * the duration after which old consecutive failed login attempts are
      * purged from the list, even though no successful authentication has
-     * occurred Must be in valid duration format: {digits}{time-unit}.
+     * occurred. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -20988,7 +21219,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * the duration after which old consecutive failed login attempts are
      * purged from the list, even though no successful authentication has
-     * occurred Must be in valid duration format: {digits}{time-unit}.
+     * occurred. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -21007,7 +21238,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * the duration after which old consecutive failed login attempts are
      * purged from the list, even though no successful authentication has
-     * occurred Must be in valid duration format: {digits}{time-unit}.
+     * occurred. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -21024,7 +21255,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * the duration after which old consecutive failed login attempts are
      * purged from the list, even though no successful authentication has
-     * occurred Must be in valid duration format: {digits}{time-unit}.
+     * occurred. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -22836,7 +23067,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * time to wait before auto saving a draft Must be in valid duration
+     * time to wait before auto saving a draft. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -22855,7 +23086,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * time to wait before auto saving a draft Must be in valid duration
+     * time to wait before auto saving a draft. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -22870,7 +23101,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * time to wait before auto saving a draft Must be in valid duration
+     * time to wait before auto saving a draft. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -22888,7 +23119,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * time to wait before auto saving a draft Must be in valid duration
+     * time to wait before auto saving a draft. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -22907,7 +23138,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * time to wait before auto saving a draft Must be in valid duration
+     * time to wait before auto saving a draft. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -22924,7 +23155,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * time to wait before auto saving a draft Must be in valid duration
+     * time to wait before auto saving a draft. Must be in valid duration
      * format: {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h -
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
@@ -29730,7 +29961,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of read messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29750,7 +29981,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of read messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29766,7 +29997,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of read messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29785,7 +30016,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of read messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29805,7 +30036,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of read messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29823,7 +30054,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of read messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29842,7 +30073,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of unread messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29862,7 +30093,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of unread messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29878,7 +30109,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of unread messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29897,7 +30128,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of unread messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29917,7 +30148,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of unread messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -29935,7 +30166,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of unread messages in the Inbox folder. 0 means that
-     * all messages will be retained. Must be in valid duration format:
+     * all messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -30152,7 +30383,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailSpamLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -30174,7 +30405,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailSpamLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -30192,7 +30423,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailSpamLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -30213,7 +30444,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailSpamLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -30235,7 +30466,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailSpamLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -30255,7 +30486,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Junk folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailSpamLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -31040,7 +31271,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * interval at which the web client polls the server for new messages
+     * interval at which the web client polls the server for new messages.
      * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
@@ -31058,7 +31289,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * interval at which the web client polls the server for new messages
+     * interval at which the web client polls the server for new messages.
      * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
@@ -31072,7 +31303,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * interval at which the web client polls the server for new messages
+     * interval at which the web client polls the server for new messages.
      * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
@@ -31089,7 +31320,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * interval at which the web client polls the server for new messages
+     * interval at which the web client polls the server for new messages.
      * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
@@ -31107,7 +31338,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * interval at which the web client polls the server for new messages
+     * interval at which the web client polls the server for new messages.
      * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
@@ -31123,7 +31354,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * interval at which the web client polls the server for new messages
+     * interval at which the web client polls the server for new messages.
      * Must be in valid duration format: {digits}{time-unit}. digits: 0-9,
      * time-unit: [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days,
      * ms - milliseconds. If time unit is not specified, the default is
@@ -31140,7 +31371,9 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * user&#039;s S/MIME public keys (certificates)
+     * Deprecated since: 7.1.1. deprecated in favor of userCertificate and
+     * userSMIMECertificate. Orig desc: user&#039;s S/MIME public keys
+     * (certificates)
      *
      * @return zimbraPrefMailSMIMECertificate, or null if unset
      *
@@ -31152,7 +31385,9 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * user&#039;s S/MIME public keys (certificates)
+     * Deprecated since: 7.1.1. deprecated in favor of userCertificate and
+     * userSMIMECertificate. Orig desc: user&#039;s S/MIME public keys
+     * (certificates)
      *
      * @return zimbraPrefMailSMIMECertificate, or empty array if unset
      *
@@ -31164,7 +31399,9 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * user&#039;s S/MIME public keys (certificates)
+     * Deprecated since: 7.1.1. deprecated in favor of userCertificate and
+     * userSMIMECertificate. Orig desc: user&#039;s S/MIME public keys
+     * (certificates)
      *
      * @param zimbraPrefMailSMIMECertificate new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -31179,7 +31416,9 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * user&#039;s S/MIME public keys (certificates)
+     * Deprecated since: 7.1.1. deprecated in favor of userCertificate and
+     * userSMIMECertificate. Orig desc: user&#039;s S/MIME public keys
+     * (certificates)
      *
      * @param zimbraPrefMailSMIMECertificate new value
      * @param attrs existing map to populate, or null to create a new map
@@ -31195,7 +31434,9 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * user&#039;s S/MIME public keys (certificates)
+     * Deprecated since: 7.1.1. deprecated in favor of userCertificate and
+     * userSMIMECertificate. Orig desc: user&#039;s S/MIME public keys
+     * (certificates)
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      *
@@ -31209,7 +31450,9 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * user&#039;s S/MIME public keys (certificates)
+     * Deprecated since: 7.1.1. deprecated in favor of userCertificate and
+     * userSMIMECertificate. Orig desc: user&#039;s S/MIME public keys
+     * (certificates)
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -32558,7 +32801,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * server remembers addresses to which notifications have been sent for
      * this interval, and does not send duplicate notifications in this
-     * interval Must be in valid duration format: {digits}{time-unit}.
+     * interval. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -32577,7 +32820,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * server remembers addresses to which notifications have been sent for
      * this interval, and does not send duplicate notifications in this
-     * interval Must be in valid duration format: {digits}{time-unit}.
+     * interval. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -32592,7 +32835,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * server remembers addresses to which notifications have been sent for
      * this interval, and does not send duplicate notifications in this
-     * interval Must be in valid duration format: {digits}{time-unit}.
+     * interval. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -32610,7 +32853,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * server remembers addresses to which notifications have been sent for
      * this interval, and does not send duplicate notifications in this
-     * interval Must be in valid duration format: {digits}{time-unit}.
+     * interval. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -32629,7 +32872,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * server remembers addresses to which notifications have been sent for
      * this interval, and does not send duplicate notifications in this
-     * interval Must be in valid duration format: {digits}{time-unit}.
+     * interval. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -32646,7 +32889,7 @@ public class ZAttrAccount  extends MailTarget {
     /**
      * server remembers addresses to which notifications have been sent for
      * this interval, and does not send duplicate notifications in this
-     * interval Must be in valid duration format: {digits}{time-unit}.
+     * interval. Must be in valid duration format: {digits}{time-unit}.
      * digits: 0-9, time-unit: [hmsd]|ms. h - hours, m - minutes, s -
      * seconds, d - days, ms - milliseconds. If time unit is not specified,
      * the default is s(seconds).
@@ -34039,7 +34282,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the Sent folder. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -34059,7 +34302,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the Sent folder. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -34075,7 +34318,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the Sent folder. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -34094,7 +34337,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the Sent folder. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -34114,7 +34357,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the Sent folder. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -34132,7 +34375,7 @@ public class ZAttrAccount  extends MailTarget {
 
     /**
      * Retention period of messages in the Sent folder. 0 means that all
-     * messages will be retained. Must be in valid duration format:
+     * messages will be retained. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -35434,7 +35677,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailTrashLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -35456,7 +35699,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailTrashLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -35474,7 +35717,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailTrashLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -35495,7 +35738,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailTrashLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -35517,7 +35760,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailTrashLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -35537,7 +35780,7 @@ public class ZAttrAccount  extends MailTarget {
      * Retention period of messages in the Trash folder. 0 means that all
      * messages will be retained. This user-modifiable attribute works in
      * conjunction with zimbraMailTrashLifetime, which is admin-modifiable.
-     * The shorter duration is used. Must be in valid duration format:
+     * The shorter duration is used. . Must be in valid duration format:
      * {digits}{time-unit}. digits: 0-9, time-unit: [hmsd]|ms. h - hours, m -
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
@@ -36766,7 +37009,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Minimum duration of time between quota warnings. Must be in valid
+     * Minimum duration of time between quota warnings.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -36784,7 +37027,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Minimum duration of time between quota warnings. Must be in valid
+     * Minimum duration of time between quota warnings.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -36798,7 +37041,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Minimum duration of time between quota warnings. Must be in valid
+     * Minimum duration of time between quota warnings.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -36815,7 +37058,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Minimum duration of time between quota warnings. Must be in valid
+     * Minimum duration of time between quota warnings.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -36833,7 +37076,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Minimum duration of time between quota warnings. Must be in valid
+     * Minimum duration of time between quota warnings.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is
@@ -36849,7 +37092,7 @@ public class ZAttrAccount  extends MailTarget {
     }
 
     /**
-     * Minimum duration of time between quota warnings. Must be in valid
+     * Minimum duration of time between quota warnings.. Must be in valid
      * duration format: {digits}{time-unit}. digits: 0-9, time-unit:
      * [hmsd]|ms. h - hours, m - minutes, s - seconds, d - days, ms -
      * milliseconds. If time unit is not specified, the default is

@@ -12,7 +12,7 @@ public class RecipientItem implements IItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
 
 	public enum RecipientType {
-		To, Cc, Bcc, From
+		To, Cc, Bcc, From, Sender, ReplyTo
 	}
 	public String dEmailAddress;
 	public String dDisplayName;
@@ -79,6 +79,10 @@ public class RecipientItem implements IItem {
 				recipient.dType = RecipientType.Bcc;
 			else if ( type.equals("f") )
 				recipient.dType = RecipientType.From;
+			else if ( type.equals("s") )
+				recipient.dType = RecipientType.Sender;
+			else if ( type.equals("r") )
+				recipient.dType = RecipientType.ReplyTo;
 			else
 				throw new HarnessException("Unkown <e t='?'/> attribute: "+ type);
 			

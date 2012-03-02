@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,10 @@ import com.zimbra.common.service.ServiceException;
 public final class ContactConstants {
     private ContactConstants() {
     }
+
+    public static final int MAX_FIELD_NAME_LENGTH = 100;
+    public static final int MAX_FIELD_VALUE_LENGTH = 10000000; // 10M
+    public static final int MAX_FIELD_COUNT = 1000;
 
     /** "File as" setting: &nbsp;<tt>Last, First</tt> */
     public static final int FA_LAST_C_FIRST = 1;
@@ -47,6 +51,7 @@ public final class ContactConstants {
     // these are the "well known attrs". keep in sync with Attr enum below
     public static final String A_assistantPhone = Attr.assistantPhone.name();
     public static final String A_birthday = Attr.birthday.name();
+    public static final String A_anniversary = Attr.anniversary.name();
     public static final String A_callbackPhone = Attr.callbackPhone.name();
     public static final String A_canExpand = Attr.canExpand.name();
     public static final String A_carPhone = Attr.callbackPhone.name();
@@ -95,7 +100,8 @@ public final class ContactConstants {
     public static final String A_otherStreet = Attr.otherStreet.name();
     public static final String A_otherURL = Attr.otherURL.name();
     public static final String A_pager = Attr.pager.name();
-    public static final String A_SMIMECertificate = Attr.SMIMECertificate.name();
+    public static final String A_userCertificate = Attr.userCertificate.name();
+    public static final String A_userSMIMECertificate = Attr.userSMIMECertificate.name();
     public static final String A_workCity = Attr.workCity.name();
     public static final String A_workCountry = Attr.workCountry.name();
     public static final String A_workFax = Attr.workFax.name();
@@ -147,6 +153,7 @@ public final class ContactConstants {
     public enum Attr {
         assistantPhone,
         birthday,
+        anniversary,
         callbackPhone,
         canExpand,
         carPhone,
@@ -196,7 +203,8 @@ public final class ContactConstants {
         otherURL,
         pager,
         tollFree,
-        SMIMECertificate,
+        userCertificate,
+        userSMIMECertificate,
         workCity,
         workCountry,
         workFax,

@@ -20,7 +20,6 @@ import com.zimbra.common.util.Constants;
 import com.zimbra.cs.account.offline.OfflineDataSource;
 import com.zimbra.cs.mailbox.MailSender;
 import com.zimbra.cs.mailbox.Mailbox;
-
 import javax.mail.Address;
 import javax.mail.MessagingException;
 import javax.mail.Session;

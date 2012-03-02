@@ -96,23 +96,20 @@ public class DirectorySync {
     private Map<String, Long> mLastSyncTimes = new HashMap<String, Long>();
     private Map<String, Long> mLastFailTimes = new HashMap<String, Long>();
 
-    private boolean mSyncRunning;
-
-    private boolean lockAccountsToSync() {
-        if (!mSyncRunning) {
-            synchronized (this) {
-                if (!mSyncRunning) {
-                    mSyncRunning = true;
-                    return true;
-                }
-            }
+    HashMap<String, Boolean> accountSyncStatus = new HashMap<String, Boolean>();
+    
+    private synchronized boolean lockAccountToSync(Account acct) {
+        Boolean inProgress = accountSyncStatus.get(acct.getId()) ; 
+        if (inProgress != null && inProgress) {
+            return false;
+        } else {
+            accountSyncStatus.put(acct.getId(), Boolean.TRUE);
+            return true;
         }
-        return false;
     }
-
-    private void unlockAccounts() {
-        assert mSyncRunning == true;
-        mSyncRunning = false;
+    
+    private synchronized void unlockAccount(Account acct) {
+        accountSyncStatus.remove(acct.getId());
     }
 
     void syncAllAccounts(boolean isOnRequest) {
@@ -120,85 +117,84 @@ public class DirectorySync {
         if (!isOnRequest && now - lastExecutionTime < mMinSyncInterval)
             return;
 
-        if (lockAccountsToSync()) {
-            try {
-                OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
-                // first, be sure to push the locally-changed accounts
-                if (prov.hasDirtyAccounts()) {
-                    for (Account acct : prov.listDirtyAccounts()) {
-                        long lastFail = mLastFailTimes.get(acct.getId()) == null ? 0 : mLastFailTimes.get(acct.getId());
-                        if (now - lastFail > mFailSyncInterval) { //we slow donw dir sync if a failure ever happened
-                            if (sync(acct, isOnRequest)) {
-                                mLastSyncTimes.put(acct.getId(), now);
-                                mLastFailTimes.remove(acct.getId());
-                            } else
-                                mLastFailTimes.put(acct.getId(), now);
-                        }
-                    }
-                }
-
-                // then, sync the accounts we haven't synced in a while
-                // XXX: we should have a cache and iterate over it -- accounts shouldn't change out from under us
-                for (Account acct : prov.getAllZcsAccounts()) {
-                    long lastSync = mLastSyncTimes.get(acct.getId()) == null ? 0 : mLastSyncTimes.get(acct.getId());
+        try {
+            OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
+            // first, be sure to push the locally-changed accounts
+            if (prov.hasDirtyAccounts()) {
+                for (Account acct : prov.listDirtyAccounts()) {
                     long lastFail = mLastFailTimes.get(acct.getId()) == null ? 0 : mLastFailTimes.get(acct.getId());
-                    if (now - lastFail > mFailSyncInterval && now - lastSync > mAccountPollInterval) {
-                        if (sync(acct, isOnRequest)) {
-                            mLastSyncTimes.put(acct.getId(), now);
-                            mLastFailTimes.remove(acct.getId());
-                        } else
-                            mLastFailTimes.put(acct.getId(), now);
+                    if (now - lastFail > mFailSyncInterval) { //we slow donw dir sync if a failure ever happened
+                        sync(acct, isOnRequest);
                     }
                 }
-
-                lastExecutionTime = now;
-            } catch (ServiceException e) {
-                if (!e.getCode().equals(ServiceException.INTERRUPTED))
-                    OfflineLog.offline.warn("error listing accounts to sync", e);
-            } catch (Exception t) {
-                OfflineLog.offline.error("Unexpected exception syncing directory", t);
-            } finally {
-                unlockAccounts();
             }
-        }
+
+            // then, sync the accounts we haven't synced in a while
+            // XXX: we should have a cache and iterate over it -- accounts shouldn't change out from under us
+            for (Account acct : prov.getAllZcsAccounts()) {
+                long lastSync = mLastSyncTimes.get(acct.getId()) == null ? 0 : mLastSyncTimes.get(acct.getId());
+                long lastFail = mLastFailTimes.get(acct.getId()) == null ? 0 : mLastFailTimes.get(acct.getId());
+                if (now - lastFail > mFailSyncInterval && now - lastSync > mAccountPollInterval) {
+                    sync(acct, isOnRequest);
+                }
+            }
+
+            lastExecutionTime = now;
+        } catch (ServiceException e) {
+            if (!e.getCode().equals(ServiceException.INTERRUPTED))
+                OfflineLog.offline.warn("error listing accounts to sync", e);
+        } catch (Exception t) {
+            OfflineLog.offline.error("Unexpected exception syncing directory", t);
+        } 
     }
 
-    private boolean sync(Account acct, boolean isOnRequest) throws ServiceException {
-        OfflineSyncManager.getInstance().continueOK();
-        if (!isOnRequest && !OfflineSyncManager.getInstance().reauthOK(acct)) //don't reauth if just failed not too long ago
-            return false;
-
-        OfflineProvisioning prov = (OfflineProvisioning) Provisioning.getInstance();
-
-        // figure out where we need to connect to
-        String email = acct.getAttr(Provisioning.A_mail);
-        String password = acct.getAttr(OfflineProvisioning.A_offlineRemotePassword);
-        String baseUri = acct.getAttr(OfflineProvisioning.A_offlineRemoteServerUri);
-
-        if (email == null || password == null || baseUri == null) {
-            OfflineLog.offline.warn("one of email/password/uri not set for account: " + acct.getName());
-            return false;
-        }
-
-        try {
-            // fetch the account data from the remote host
-            ZMailbox zmbx = prov.newZMailbox((OfflineAccount)acct, AccountConstants.USER_SERVICE_URI);
-            syncAccount(prov, acct, zmbx);
-            pushAccount(prov, acct, zmbx);
-            if (((OfflineAccount)acct).getRemoteServerVersion().isAtLeast6xx()) {
-                syncFilterRules(prov, acct, zmbx);
-                syncWhiteBlackList(prov, acct, zmbx);
+    public void sync(Account acct, boolean isOnRequest) throws ServiceException {
+        if (lockAccountToSync(acct)) {
+            try {
+                OfflineSyncManager.getInstance().continueOK();
+                if (!isOnRequest && !OfflineSyncManager.getInstance().reauthOK(acct)) //don't reauth if just failed not too long ago
+                    return;
+        
+                OfflineProvisioning prov = (OfflineProvisioning) Provisioning.getInstance();
+        
+                // figure out where we need to connect to
+                String email = acct.getAttr(Provisioning.A_mail);
+                String password = acct.getAttr(OfflineProvisioning.A_offlineRemotePassword);
+                String baseUri = acct.getAttr(OfflineProvisioning.A_offlineRemoteServerUri);
+        
+                if (email == null || password == null || baseUri == null) {
+                    OfflineLog.offline.warn("one of email/password/uri not set for account: " + acct.getName());
+                    return;
+                }
+        
+                try {
+                    // fetch the account data from the remote host
+                    ZMailbox zmbx = prov.newZMailbox((OfflineAccount)acct, AccountConstants.USER_SERVICE_URI);
+                    syncAccount(prov, acct, zmbx);
+                    pushAccount(prov, acct, zmbx);
+                    if (((OfflineAccount)acct).getRemoteServerVersion().isAtLeast6xx()) {
+                        syncFilterRules(prov, acct, zmbx);
+                        syncWhiteBlackList(prov, acct, zmbx);
+                    }
+                    else {
+                        syncRules5xx(prov, acct, zmbx);
+                    }
+        
+                    // FIXME: there's a race condition here, as <tt>acct</tt> may have been modified during the push
+                    prov.markAccountClean(acct);
+                    mLastSyncTimes.put(acct.getId(), System.currentTimeMillis());
+                    mLastFailTimes.remove(acct.getId());
+                    return;
+                } catch (Exception e) {
+                    OfflineSyncManager.getInstance().processSyncException(acct, e, false);
+                    mLastFailTimes.put(acct.getId(), System.currentTimeMillis());
+                    return;
+                }
+            } finally {
+                unlockAccount(acct);
             }
-            else {
-                syncRules5xx(prov, acct, zmbx);
-            }
-
-            // FIXME: there's a race condition here, as <tt>acct</tt> may have been modified during the push
-            prov.markAccountClean(acct);
-            return true;
-        } catch (Exception e) {
-            OfflineSyncManager.getInstance().processSyncException(acct, e, false);
-            return false;
+        } else {
+            OfflineLog.offline.info("directory sync already in progress for account "+acct);
         }
     }
 
@@ -348,7 +344,7 @@ public class DirectorySync {
         attrs.putAll(zgi.getAttrs());
         attrs.putAll(zgi.getPrefAttrs());
 
-        attrs = diffAttributes(acct, attrs);
+        attrs = diffAttributes(acct, acct, attrs);
 
         attrs.put(Provisioning.A_zimbraMailQuota, "0"); //legacy account correction in case an old account sync down server quota
         attrs.put(OfflineProvisioning.A_offlineRemoteServerVersion, zgi.getVersion()); //make sure always update if different
@@ -408,7 +404,7 @@ public class DirectorySync {
             Account localAccount = prov.getLocalAccount();
             //TODO: right now we're assuming zimletAttr has a single key (zimbraZimletUserProperties)
             //if that changes later may need to have diffattributes only delete from a subset of all acct attrs
-            zimletAttrs = diffAttributes(localAccount, zimletAttrs, false); //we're only looking at zimlet attrs; dont delete others
+            zimletAttrs = diffAttributes(localAccount, localAccount, zimletAttrs, false); //we're only looking at zimlet attrs; dont delete others
             if (!zimletAttrs.isEmpty()) {
                 OfflineLog.offline.info("Syncing zimlet properties from account "+acct.getName());
                 prov.modifyAttrs(localAccount, zimletAttrs, false, true, false);
@@ -420,21 +416,31 @@ public class DirectorySync {
         return e.getMultiAttrSet(OfflineProvisioning.A_offlineModifiedAttrs).contains(OfflineProvisioning.A_offlineDn);
     }
     
-    private static Map<String, Object> scrubAttributes(Map<String, Object> attrs) {
+    private static Map<String, Object> scrubAttributes(Map<String, Object> attrs, Account acct) {
         for (Iterator<java.util.Map.Entry<String, Object>> i = attrs.entrySet().iterator(); i.hasNext();) {
             String name = i.next().getKey();
-            if (OfflineProvisioning.sOfflineAttributes.contains(name))
+            if (OfflineProvisioning.sOfflineAttributes.contains(name)) {
                 i.remove();
+            } else {
+                try {
+                    if (!AttributeManager.getInstance().inVersion(name, ((OfflineAccount)acct).getRemoteServerVersion().toString())) {
+                        i.remove();
+                    }
+                } catch (ServiceException se) {
+                    OfflineLog.offline.warn("ServiceException checking attr version; assuming it's not a valid attr",se);
+                    i.remove();
+                }
+            }
         }
         return attrs;
     }
 
-    private static Map<String, Object> diffAttributes(Entry e, Map<String, Object> attrs) {
-        return diffAttributes(e, attrs, true);
+    private static Map<String, Object> diffAttributes(Account acct, Entry e, Map<String, Object> attrs) {
+        return diffAttributes(acct, e, attrs, true);
     }
     
     @SuppressWarnings("unchecked")
-    private static Map<String, Object> diffAttributes(Entry e, Map<String, Object> attrs, boolean delete) {
+    private static Map<String, Object> diffAttributes(Account acct, Entry e, Map<String, Object> attrs, boolean delete) {
         // write over all unchanged account attributes
         Set<String> modified = e.getMultiAttrSet(OfflineProvisioning.A_offlineModifiedAttrs);
         Map<String, Object> changes = new HashMap<String, Object>();
@@ -463,9 +469,20 @@ public class DirectorySync {
             Set<String> existing = new HashSet<String>(e.getAttrs().keySet());
             existing.removeAll(modified);
             existing.removeAll(changes.keySet());
-            for (String key : existing)
-                if (!key.startsWith("offline") && !OfflineProvisioning.sOfflineAttributes.contains(key) && !key.equals(Provisioning.A_zimbraMailSieveScript) && !key.equals(Provisioning.A_zimbraMailOutgoingSieveScript))
-                    changes.put(key, null);
+            String remoteVersion = ((OfflineAccount) acct).getRemoteServerVersion().toString();
+            for (String key : existing) {
+                if (!key.startsWith("offline") && !OfflineProvisioning.sOfflineAttributes.contains(key) && !key.equals(Provisioning.A_zimbraMailSieveScript) && !key.equals(Provisioning.A_zimbraMailOutgoingSieveScript)) {
+                    try {
+                        if (AttributeManager.getInstance().inVersion(key, remoteVersion)) {
+                            changes.put(key, null);
+                        } else {
+                            OfflineLog.offline.debug("retaining local value for missing remote attribute: %s",key);
+                        }
+                    } catch (ServiceException se) {
+                        OfflineLog.offline.error("Unable to determine in key %s is in ZCS %s",key,remoteVersion);
+                    }
+                } 
+            }
         }
         return changes;
     }
@@ -502,11 +519,11 @@ public class DirectorySync {
         if (ident == null) {
             // if we're here and haven't locally deleted the identity, it's a new one and needs to be created
             if (!acct.getMultiAttrSet(OfflineProvisioning.A_offlineDeletedIdentity).contains(identityId)) {
-                ident = prov.createIdentity(acct, name, scrubAttributes(attrs), false);
+                ident = prov.createIdentity(acct, name, scrubAttributes(attrs, acct), false);
                 OfflineLog.offline.debug("dsync: created identity: " + acct.getName() + '/' + ident.getName());
             }
         } else {
-            prov.modifyIdentity(acct, ident.getName(), diffAttributes(ident, zident.getAttrs()), false);
+            prov.modifyIdentity(acct, ident.getName(), diffAttributes(acct, ident, zident.getAttrs()), false);
             prov.reload(ident);
             OfflineLog.offline.debug("dsync: updated identity: " + acct.getName() + '/' + ident.getName());
         }
@@ -540,11 +557,11 @@ public class DirectorySync {
         if (signature == null) {
             if (!acct.getMultiAttrSet(OfflineProvisioning.A_offlineDeletedSignature).contains(signatureId)) {
                 // if we're here and haven't locally deleted the signature, it's a new one and needs to be created
-                signature = prov.createSignature(acct, name, scrubAttributes(attrs), false);
+                signature = prov.createSignature(acct, name, scrubAttributes(attrs, acct), false);
                 OfflineLog.offline.debug("dsync: created signature: " + acct.getName() + '/' + signature.getName());
             }
         } else {
-            prov.modifySignature(acct, signature.getId(), diffAttributes(signature, zsig.getAttrs()), false);
+            prov.modifySignature(acct, signature.getId(), diffAttributes(acct, signature, zsig.getAttrs()), false);
             prov.reload(signature);
             OfflineLog.offline.debug("dsync: updated signature: " + acct.getName() + '/' + signature.getName());
         }
@@ -656,7 +673,7 @@ public class DirectorySync {
 
         Map<String, Object> attrs = ident.getAttrs();
         attrs.remove(OfflineProvisioning.A_offlineModifiedAttrs);
-        scrubAttributes(attrs);
+        scrubAttributes(attrs, acct);
         ZIdentity zident = new ZIdentity(ident.getName(), attrs);
 
         // create or modify the identity, as requested
@@ -709,8 +726,9 @@ public class DirectorySync {
 
         Map<String, Object> attrs = signature.getAttrs();
         attrs.remove(OfflineProvisioning.A_offlineModifiedAttrs);
-        scrubAttributes(attrs);
-        String sigType = signature.getAttr(Provisioning.A_zimbraPrefMailSignatureHTML, null) == null ? "text/plain" : "text/html";
+        scrubAttributes(attrs, acct);
+        String sigHtml = signature.getAttr(Provisioning.A_zimbraPrefMailSignatureHTML, null);
+        String sigType = (sigHtml == null || sigHtml.length() == 0) ? "text/plain" : "text/html";
         ZSignature zsig = new ZSignature(signature.getId(), signature.getName(), signature.getAttr(Signature.mimeTypeToAttrName(sigType)), sigType);
 
         // create or modify the signature, as requested

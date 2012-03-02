@@ -6,10 +6,10 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import com.zimbra.common.soap.Element;
+import com.zimbra.qa.selenium.framework.ui.AbsApplication;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-
 
 /**
  * Used to define a Zimbra Contact
@@ -19,6 +19,7 @@ import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
  */
 public class ContactItem implements IItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
+	public static final String IMAGE_CLASS   = "ImgContact";
 
 	public String fileAs = null;	
 	public String type = null;
@@ -131,6 +132,28 @@ public class ContactItem implements IItem {
 		return (address);
 	}
 	
+	public static ContactItem createUsingSOAP(AbsApplication app, String ... tagIdArray ) throws HarnessException {
+		
+		String tagParam ="";
+		if (tagIdArray.length == 1) {
+			tagParam = " t='" + tagIdArray[0] + "'";
+		}
+
+        // Create a contact item
+		ContactItem contactItem = ContactItem.generateContactItem(GenerateItemType.Basic);
+	
+		app.zGetActiveAccount().soapSend(
+	                "<CreateContactRequest xmlns='urn:zimbraMail'>" +
+	                "<cn " + tagParam + " >" +
+	                "<a n='firstName'>" + contactItem.firstName +"</a>" +
+	                "<a n='lastName'>" + contactItem.lastName +"</a>" +
+	                "<a n='email'>" + contactItem.email + "</a>" +
+	                "</cn>" +
+	                "</CreateContactRequest>");	  
+		
+        return contactItem;
+    }
+	
 	public enum GenerateItemType {
 		Default, Basic, AllAttributes
 	}
@@ -152,7 +175,7 @@ public class ContactItem implements IItem {
 			c.middleName = "middle" + ZimbraSeleniumProperties.getUniqueString();
 			c.lastName = "last" + ZimbraSeleniumProperties.getUniqueString();
 		    c.email = "email" +  ZimbraSeleniumProperties.getUniqueString() + "@zimbra.com";
-			//default value for file as is last, first
+			//default value for file as is  last , first
 			c.fileAs = c.lastName + ", " + c.firstName;
 			return (c);
 		}

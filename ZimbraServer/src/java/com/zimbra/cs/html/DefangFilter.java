@@ -88,7 +88,7 @@ public class DefangFilter extends DefaultFilter {
     private static final Pattern AV_SCRIPT_TAG = Pattern.compile("</?script/?>", Pattern.CASE_INSENSITIVE);
     
     // regex for URLs href. TODO: beef this up
-	private static final Pattern VALID_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|cid:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*)", Pattern.CASE_INSENSITIVE);
+	private static final Pattern VALID_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|cid:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
 
     //
     // Data
@@ -97,13 +97,13 @@ public class DefangFilter extends DefaultFilter {
     // information
 
     /** attr Set cache */
-    private static HashMap mAttrSetCache = new HashMap();
+    private static HashMap<String, HashSet<String>> mAttrSetCache = new HashMap<String, HashSet<String>>();
 
     /** Accepted elements. */
-    private static HashMap mAcceptedElements = new HashMap();
+    private static HashMap<String, HashSet<String>> mAcceptedElements = new HashMap<String, HashSet<String>>();
 
     /** Removed elements. */
-    private static HashMap mRemovedElements = new HashMap();
+    private static HashMap<String, Object> mRemovedElements = new HashMap<String, Object>();
 
     // state
 
@@ -242,7 +242,7 @@ public class DefangFilter extends DefaultFilter {
             acceptElement("button", CORE_LANG+KBD+"disabled,name,type,value");
             acceptElement("fieldset", CORE_LANG);
             acceptElement("form", CORE_LANG+"action,accept,acceptcharset,enctype,method,name,target");
-            acceptElement("input", CORE_LANG+"accept,align,alt,checked,disabled,maxlength,name,readonly,size,src,type,value");
+            acceptElement("input", CORE_LANG+"accept,align,alt,checked,disabled,maxlength,name,readonly,size,type,value");
             acceptElement("legend", CORE_LANG+"align");
             acceptElement("map", CORE_LANG+"name");
             acceptElement("optgroup", CORE_LANG+"disabled,label");
@@ -296,13 +296,13 @@ public class DefangFilter extends DefaultFilter {
      */
     public static void acceptElement(String element, String attributes) {
         element = element.toLowerCase();
-        HashSet set = (HashSet) mAttrSetCache.get(attributes);
+        HashSet<String> set = mAttrSetCache.get(attributes);
         if (set != null) {
             //System.out.println(element+" cached set "+set.size());
             mAcceptedElements.put(element, set);
             return;
         }
-        set = new HashSet();
+        set = new HashSet<String>();
         String attrs[] = attributes.toLowerCase().split(",");
         if (attrs != null && attrs.length > 0) {
             for (int i=0; i < attrs.length; i++) {
@@ -325,7 +325,7 @@ public class DefangFilter extends DefaultFilter {
      * @param element The element to completely remove.
      */
     public static void removeElement(String element) {
-        Object key = element.toLowerCase();
+        String key = element.toLowerCase();
         Object value = NULL;
         mRemovedElements.put(key, value);
     } // removeElement(String)
@@ -337,7 +337,8 @@ public class DefangFilter extends DefaultFilter {
     // since Xerces-J 2.2.0
 
     /** Start document. */
-    @Override public void startDocument(XMLLocator locator, String encoding, 
+    @Override 
+    public void startDocument(XMLLocator locator, String encoding, 
                               NamespaceContext nscontext, Augmentations augs) 
     throws XNIException {
         mRemovalElementCount = 0;
@@ -488,13 +489,13 @@ public class DefangFilter extends DefaultFilter {
 
     /** Returns true if the specified element is accepted. */
     protected static boolean elementAccepted(String element) {
-        Object key = element.toLowerCase();
+        String key = element.toLowerCase();
         return mAcceptedElements.containsKey(key);
     } // elementAccepted(String):boolean
 
     /** Returns true if the specified element should be removed. */
     protected static boolean elementRemoved(String element) {
-        Object key = element.toLowerCase();
+        String key = element.toLowerCase();
         return mRemovedElements.containsKey(key);
     } // elementRemoved(String):boolean
 
@@ -516,13 +517,15 @@ public class DefangFilter extends DefaultFilter {
             }
         }
         if (elementAccepted(element.rawname)) {
-            Object value = mAcceptedElements.get(eName);
+            HashSet<String> value = mAcceptedElements.get(eName);
             if (value != NULL) {
-                HashSet anames = (HashSet) value;
+                HashSet<String> anames = value;
                 int attributeCount = attributes.getLength();
                 for (int i = 0; i < attributeCount; i++) {
                     String aName = attributes.getQName(i).toLowerCase();
-                    if (!anames.contains(aName)) {
+                    // remove the attribute if it isn't in the list of accepted names
+                    // or it has invalid content
+                    if (!anames.contains(aName) || removeAttrValue(eName, aName, attributes, i)) {
                         attributes.removeAttributeAt(i--);
                         attributeCount--;
                     } else {
@@ -619,7 +622,23 @@ public class DefangFilter extends DefaultFilter {
             attributes.addAttribute(new QName("", "target", "target", null), "CDATA", "_blank");
         }
     }
-
+    /**
+     * Checks to see if an attr value should just be removed
+     * @param eName The element name
+     * @param aName The attribute name
+     * @param attributes The set of the attribtues
+     * @param i The index of the attribute
+     * @return true if the attr should be removed, false if not
+     */
+    private boolean removeAttrValue(String eName, String aName, XMLAttributes attributes, int i) {
+        String value = attributes.getValue(i);
+        if (aName.equalsIgnoreCase("href") || aName.equalsIgnoreCase("src") || aName.equalsIgnoreCase("longdesc") || aName.equalsIgnoreCase("usemap")){
+            if (!VALID_URL.matcher(value).find()) {
+                return true;
+            }
+        }
+        return false;
+    }
     /**
      * sanitize an attr value. For now, this means stirpping out Java Script entity tags &{...},
      * and <script> tags.
@@ -628,23 +647,16 @@ public class DefangFilter extends DefaultFilter {
      */
     private void sanatizeAttrValue(String eName, String aName, XMLAttributes attributes, int i) {
         String value = attributes.getValue(i);
-        //System.out.println("==== "+eName+" "+aName+" ("+value+")");
         String result = AV_JS_ENTITY.matcher(value).replaceAll("JS-ENTITY-BLOCKED");
         result = AV_SCRIPT_TAG.matcher(result).replaceAll("SCRIPT-TAG-BLOCKED");
-        // TODO: change to set?
-        if (aName.equalsIgnoreCase("href") || aName.equalsIgnoreCase("src") || aName.equalsIgnoreCase("longdesc") || aName.equalsIgnoreCase("usemap")){
-            if (!VALID_URL.matcher(result).find()) {
-                // TODO: just leave blank?
-                result = "about:blank";
-            }
-        }
+                
         if (aName.equalsIgnoreCase("style")) {
             result = value.replaceAll("/\\*.*\\*/","");
             result = result.replaceAll("[uU][Rr][Ll]\\s*\\(.*\\)","none");
             result = result.replaceAll("expression\\s*\\(.*\\)","");
         }
+
         if (!result.equals(value)) {
-            //System.out.println("**** "+eName+" "+aName+" ("+result+")");
             attributes.setValue(i, result);
         }
     }

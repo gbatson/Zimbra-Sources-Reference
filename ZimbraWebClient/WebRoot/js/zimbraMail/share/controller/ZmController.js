@@ -97,7 +97,7 @@ function(msg, ex, noExecReset, hideReportButton, expanded) {
 		html[i++] = "<table>";
 		for (var j = 0; j < fields.length; j++) {
 			var fld = fields[j];
-			var value = ex[fld];
+			var value = AjxStringUtil.htmlEncode(ex[fld]);
 			if (value) {
 				if (fld == "request") {
 					value = ["<pre>", value, "</pre>"].join("");
@@ -113,7 +113,7 @@ function(msg, ex, noExecReset, hideReportButton, expanded) {
 		detailStr = html.join("");
 	}
 	errorDialog.registerCallback(DwtDialog.OK_BUTTON, this._errorDialogCallback, this);
-	errorDialog.setMessage(msg, detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
+	errorDialog.setMessage(AjxStringUtil.htmlEncode(msg), detailStr, DwtMessageDialog.CRITICAL_STYLE, ZmMsg.zimbraTitle);
 	errorDialog.popup(null, hideReportButton);
 	if (expanded)
 		errorDialog.showDetail();
@@ -302,7 +302,11 @@ function(ev, op) {
 	switch (op) {
 		// new organizers
 		case ZmOperation.NEW_FOLDER: {
-			ZmController.showDialog(appCtxt.getNewFolderDialog(), this.getNewFolderCallback());
+			var currentView = appCtxt.getCurrentView();
+			var mailListView = currentView.getMailListView ? currentView.getMailListView() : null;
+			var currentFolder = mailListView && mailListView.getFolder ? mailListView.getFolder() : null;
+
+			ZmController.showDialog(appCtxt.getNewFolderDialog(), this.getNewFolderCallback(), currentFolder);
 			break;
 		}
 		case ZmOperation.NEW_TAG: {
@@ -499,6 +503,7 @@ function(ex, continuation) {
 			return;
 		} else {
 			// NO_AUTH_TOKEN
+			reloginMode = true;
 			loginDialog.setError(null);
 		}
 		loginDialog.setReloginMode(reloginMode);
@@ -626,9 +631,14 @@ function(continuation, username, password, rememberMe) {
 ZmController.prototype._handleResponseDoAuth =
 function(continuation, rememberMe, result) {
 	try {
-		result.getResponse();
+		var result = result.getResponse();
 		this._authenticating = false;
 		appCtxt.rememberMe = rememberMe;
+		//set up auth token expires time
+		if (result && result.Body && result.Body.AuthResponse) {
+			appCtxt.set(ZmSetting.TOKEN_LIFETIME, result.Body.AuthResponse.lifetime)
+		}
+		ZmZimbraMail.setAuthTokenEndTime();
 		if (continuation) {
 			if (continuation.continueCallback) {
 				// sync request
@@ -804,6 +814,11 @@ function(visible) {
 
 	if (!appCtxt.getSkinHint("hideSearchInCompose")) {
 		return;
+	}
+
+	//hide advanced search if open
+	if (!visible) {
+		appCtxt.getSearchController().showBrowseView(false, null, true);
 	}
 
 	var tb = document.getElementById(ZmId.SEARCH_TOOLBAR);

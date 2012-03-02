@@ -27,19 +27,16 @@ public class UnTagDocument extends AjaxCommonTest {
 				SystemFolder.Briefcase);
 
 		// Create document item
-		DocumentItem document = new DocumentItem();
+		DocumentItem docItem = new DocumentItem();
 
-		String docName = document.getDocName();
-		String docText = document.getDocText();
-	
 		// Create document using SOAP
 		String contentHTML = XmlStringUtil.escapeXml("<html>" + "<body>"
-				+ docText + "</body>" + "</html>");
+				+ docItem.getDocText() + "</body>" + "</html>");
 
 		account
 				.soapSend("<SaveDocumentRequest requestId='0' xmlns='urn:zimbraMail'>"
 						+ "<doc name='"
-						+ docName
+						+ docItem.getName()
 						+ "' l='"
 						+ briefcaseFolder.getId()
 						+ "' ct='application/x-zimbra-doc'>"
@@ -48,7 +45,7 @@ public class UnTagDocument extends AjaxCommonTest {
 						+ "</content>"
 						+ "</doc>"
 						+ "</SaveDocumentRequest>");
-		
+
 		/*
 		 * String docId =
 		 * account.soapSelectValue("//mail:SaveDocumentResponse//mail:doc"
@@ -62,7 +59,7 @@ public class UnTagDocument extends AjaxCommonTest {
 		 * String docId = account.soapSelectValue(
 		 * "//mail:SearchResponse//mail:doc[@name='" + docName + "']", "id");
 		 * String version = account.soapSelectValue(
-		 * "//mail:SearchResponse//mail:doc[@name='" + docName + "']", "id");
+		 * "//mail:SearchResponse//mail:doc[@name='" + docName + "']", "ver");
 		 * 
 		 * account.soapSend(
 		 * "<SearchRequest xmlns='urn:zimbraMail' types='document'>" + "<query>"
@@ -71,44 +68,44 @@ public class UnTagDocument extends AjaxCommonTest {
 		 * docId = account.soapSelectValue("//mail:doc", "id"); version =
 		 * account.soapSelectValue("//mail:doc", "ver");
 		 */
-		
+
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
+
+		SleepUtil.sleepVerySmall();
 		
-	    // Click on created document
+		// Click on created document
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-      app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docName);
+		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
 
-      // Create a tag 
-		String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();
-		
+		// Create a tag
+		String tagName = "tag" + ZimbraSeleniumProperties.getUniqueString();
+
 		/*
-		//this flow needs page reload
-		account.soapSend(
-				"<CreateTagRequest xmlns='urn:zimbraMail'>" +
-                	"<tag name='"+ tagName +"' color='1' />" +
-                "</CreateTagRequest>");
-		
-		String tagId = account.soapSelectValue("//mail:CreateTagResponse/mail:tag", "id");
+		 * //this flow needs page reload account.soapSend(
+		 * "<CreateTagRequest xmlns='urn:zimbraMail'>" + "<tag name='"+ tagName
+		 * +"' color='1' />" + "</CreateTagRequest>");
+		 * 
+		 * String tagId =
+		 * account.soapSelectValue("//mail:CreateTagResponse/mail:tag", "id");
+		 * 
+		 * account.soapSend( "<ItemActionRequest xmlns='urn:zimbraMail'>" +
+		 * "<action id='"+ docId +"' op='tag' tag='" + tagId + "'/>" +
+		 * "</ItemActionRequest>");
+		 * 
+		 * //ClientSessionFactory.session().selenium().refresh();
+		 */
 
-		account.soapSend(
-				"<ItemActionRequest xmlns='urn:zimbraMail'>" +
-                	"<action id='"+ docId +"' op='tag' tag='" + tagId + "'/>" +
-                "</ItemActionRequest>");
-				
-		//ClientSessionFactory.session().selenium().refresh();
-		*/
+		// Click on New Tag
+		DialogTag dialogTag = (DialogTag) app.zPageBriefcase
+				.zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_NEWTAG);
 
-	   // Click on New Tag
-      DialogTag dialogTag = (DialogTag) app.zPageBriefcase
-            .zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_NEWTAG);
+		dialogTag.zSetTagName(tagName);
+		dialogTag.zClickButton(Button.B_OK);
 
-      dialogTag.zSetTagName(tagName);
-      dialogTag.zClickButton(Button.B_OK);
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
-      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-
-      // Make sure the tag was created on the server (get the tag ID)
+		// Make sure the tag was created on the server (get the tag ID)
 		account.soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");
 
 		String tagId = account.soapSelectValue(
@@ -117,30 +114,36 @@ public class UnTagDocument extends AjaxCommonTest {
 
 		// Make sure the tag was applied to the document
 		account
-		.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-				+ "<query>" + docName + "</query>" + "</SearchRequest>");
-		
-		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc", "t");
-		
-		ZAssert.assertEquals(id, tagId,"Verify the tag was attached to the document");
-		
+				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
+						+ "<query>" + docItem.getName() + "</query>" + "</SearchRequest>");
+
+		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
+				"t");
+
+		ZAssert.assertEquals(id, tagId,
+				"Verify the tag was attached to the document");
+
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
-	    // Click on tagged document
-      app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docName);
-      
-      // Click Remove Tag
-      app.zPageBriefcase.zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_REMOVETAG);
-
-      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-
-      account
-		.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-				+ "<query>" + docName + "</query>" + "</SearchRequest>");
+		SleepUtil.sleepVerySmall();
 		
+		// Click on tagged document
+		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
+
+		// Click Remove Tag
+		app.zPageBriefcase.zToolbarPressPulldown(Button.B_TAG,
+				Button.O_TAG_REMOVETAG);
+
+		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+
+		account
+				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
+						+ "<query>" + docItem.getName() + "</query>" + "</SearchRequest>");
+
 		id = account.soapSelectValue("//mail:SearchResponse//mail:doc", "t");
-		
-		ZAssert.assertStringDoesNotContain(id,tagId, "Verify that the tag is removed from the message");		
+
+		ZAssert.assertStringDoesNotContain(id, tagId,
+				"Verify that the tag is removed from the message");
 	}
 }

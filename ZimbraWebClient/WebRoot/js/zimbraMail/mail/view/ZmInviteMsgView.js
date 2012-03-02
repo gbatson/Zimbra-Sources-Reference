@@ -77,6 +77,10 @@ function(msg) {
 	if (invite && invite.hasAcceptableComponents() &&
 		msg.folderId != ZmFolder.ID_SENT)
 	{
+		if (msg.isInviteCanceled()) {
+			//appointment was canceled (not necessarily on this instance, but by now it is canceled. Do not show the toolbar.
+			return;
+		}
 		if (invite.hasCounterMethod()) {
 			if (!this._counterToolbar) {
 				this._counterToolbar = this._getCounterToolbar();
@@ -165,7 +169,7 @@ function(msg) {
  *    with the results returned.
  */
 ZmInviteMsgView.prototype.showMoreInfo =
-function() {
+function(callback) {
 	var apptId = this._invite && this._invite.hasAttendeeResponse() && this._invite.getAppointmentId();
 	if (apptId) {
 		var jsonObj = {GetAppointmentRequest:{_jsns:"urn:zimbraMail"}};
@@ -175,16 +179,19 @@ function() {
 		appCtxt.getAppController().sendRequest({
 			jsonObj: jsonObj,
 			asyncMode: true,
-			callback: (new AjxCallback(this, this._handleShowMoreInfo))
+			callback: (new AjxCallback(this, this._handleShowMoreInfo, [callback]))
 		});
 	}
 	else {
 		this._showFreeBusy();
+		if (callback) {
+			callback.run();
+		}
 	}
 };
 
 ZmInviteMsgView.prototype._handleShowMoreInfo =
-function(result) {
+function(callback, result) {
 	var appt = result && result.getResponse().GetAppointmentResponse.appt[0];
 	if (appt) {
 		var om = this.parent._objectManager;
@@ -192,11 +199,16 @@ function(result) {
 		var idx = 0;
 		var attendees = appt.inv[0].comp[0].at || [];
         AjxDispatcher.require(["CalendarCore"]);
+
+        var options = {};
+	    options.addrBubbles = appCtxt.get(ZmSetting.USE_ADDR_BUBBLES);
+	    options.shortAddress = appCtxt.get(ZmSetting.SHORT_ADDRESS);
+
 		for (var i = 0; i < attendees.length; i++) {
 			var at = attendees[i];
 			var subs = {
 				icon: ZmCalItem.getParticipationStatusIcon(at.ptst),
-				attendee: (om ? om.findObjects((new AjxEmailAddress(at.a)), true, ZmObjectManager.EMAIL) : at.a)
+				attendee: (om ? om.findObjects((new AjxEmailAddress(at.a)), true, ZmObjectManager.EMAIL, false, options) : at.a)
 			};
 			html[idx++] = AjxTemplate.expand("mail.Message#InviteHeaderPtst", subs);
 		}
@@ -204,6 +216,10 @@ function(result) {
 		var ptstEl = document.getElementById(this._ptstId);
         if(ptstEl)
             ptstEl.innerHTML = html.join("");
+	}
+
+	if (callback) {
+		callback.run();
 	}
 
 	this._showFreeBusy();
@@ -344,10 +360,79 @@ function(reset) {
 	}
 };
 
+/**
+ * enables all invite toolbar buttons, except one that matches the current ptst
+ * @param ptst participant status
+ */
+ZmInviteMsgView.prototype.enableToolbarButtons =
+function(ptst) {
+	var disableButtonId;
+	switch (ptst) {
+		case ZmCalBaseItem.PSTATUS_ACCEPT:
+			disableButtonId = ZmOperation.REPLY_ACCEPT;
+			break;
+		case ZmCalBaseItem.PSTATUS_DECLINED:
+			disableButtonId = ZmOperation.REPLY_DECLINE;
+			break;
+		case ZmCalBaseItem.PSTATUS_TENTATIVE:
+			disableButtonId = ZmOperation.REPLY_TENTATIVE;
+			break;
+	}
+	var inviteToolbar = this.getInviteToolbar();
+
+	var buttonIds = [ZmOperation.REPLY_ACCEPT, ZmOperation.REPLY_DECLINE, ZmOperation.REPLY_TENTATIVE];
+	for (var i = 0; i < buttonIds.length; i++) {
+		var buttonId = buttonIds[i];
+		inviteToolbar.getButton(buttonId).setEnabled(buttonId != disableButtonId);
+	}
+};
+
+/**
+ * hide the participant status message (no longer relevant)
+ */
+ZmInviteMsgView.prototype.updatePtstMsg =
+function(ptst) {
+	var ptstMsgBannerDiv = document.getElementById(this._ptstMsgBannerId);
+	if (!ptstMsgBannerDiv) {
+		return;
+	}
+	ptstMsgBannerDiv.className = ZmInviteMsgView.PTST_MSG[ptst].className;
+	ptstMsgBannerDiv.style.display = "block"; // since it might be display none if there's no message to begin with (this is the first time ptst is set by buttons)
+
+	var ptstMsgElement = document.getElementById(this._ptstMsgId);
+	ptstMsgElement.innerHTML = ZmInviteMsgView.PTST_MSG[ptst].msg;
+
+	var ptstIconImg = document.getElementById(this._ptstMsgIconId);
+	var icon = ZmCalItem.getParticipationStatusIcon(ptst);
+	ptstIconImg.innerHTML = AjxImg.getImageHtml(icon)
+
+
+};
+
+
+ZmInviteMsgView.PTST_MSG = [];
+ZmInviteMsgView.PTST_MSG[ZmCalBaseItem.PSTATUS_ACCEPT] = {msg: AjxMessageFormat.format(ZmMsg.inviteAccepted), className: "InviteStatusAccept"};
+ZmInviteMsgView.PTST_MSG[ZmCalBaseItem.PSTATUS_DECLINED] = {msg: AjxMessageFormat.format(ZmMsg.inviteDeclined), className: "InviteStatusDecline"};
+ZmInviteMsgView.PTST_MSG[ZmCalBaseItem.PSTATUS_TENTATIVE] = {msg: AjxMessageFormat.format(ZmMsg.inviteAcceptedTentatively), className: "InviteStatusTentative"};
+
 ZmInviteMsgView.prototype.addSubs =
 function(subs, sentBy, sentByAddr, obo) {
     AjxDispatcher.require(["CalendarCore", "Calendar"]);
 	subs.invite = this._invite;
+
+	if (!this._msg.isInviteCanceled() && !subs.invite.isOrganizer() && subs.invite.hasInviteReplyMethod()) {
+		var yourPtst = this._msg.getPtst();
+		this.enableToolbarButtons(yourPtst);
+		if (yourPtst) {
+			subs.ptstMsg = ZmInviteMsgView.PTST_MSG[yourPtst].msg;
+			subs.ptstClassName = ZmInviteMsgView.PTST_MSG[yourPtst].className;
+			subs.ptstIcon = ZmCalItem.getParticipationStatusIcon(yourPtst);
+		}
+	}
+	//ids for updating later
+	subs.ptstMsgBannerId = this._ptstMsgBannerId = (this.parent._htmlElId + "_ptstMsgBanner");
+	subs.ptstMsgId = this._ptstMsgId = (this.parent._htmlElId + "_ptstMsg");
+	subs.ptstMsgIconId = this._ptstMsgIconId = (this.parent._htmlElId + "_ptstMsgIcon");
 
 	var isOrganizer = this._invite && this._invite.isOrganizer();
 	
@@ -387,11 +472,14 @@ function(subs, sentBy, sentByAddr, obo) {
         subs.ptstId = this._ptstId = (this.parent._htmlElId + "_ptst");
     }
 
-	var om = this.parent._objectManager;
+    var options = {};
+	options.addrBubbles = appCtxt.get(ZmSetting.USE_ADDR_BUBBLES);
+	options.shortAddress = appCtxt.get(ZmSetting.SHORT_ADDRESS);
 
+	var om = this.parent._objectManager;
 	// organizer
 	var org = new AjxEmailAddress(this._invite.getOrganizerEmail(), null, this._invite.getOrganizerName());
-	subs.invOrganizer = om ? om.findObjects(org, true, ZmObjectManager.EMAIL) : org.toString();
+	subs.invOrganizer = om ? om.findObjects(org, true, ZmObjectManager.EMAIL, false, options) : org.toString();
 
     if(obo) {
         subs.obo = om ? om.findObjects(obo, true, ZmObjectManager.EMAIL) : obo.toString();
@@ -400,7 +488,7 @@ function(subs, sentBy, sentByAddr, obo) {
 	// sent-by
 	var sentBy = this._invite.getSentBy();
 	if (sentBy) {
-		subs.invSentBy = om ? om.findObjects(sentBy, true, ZmObjectManager.EMAIL) : sentBy.toString();
+		subs.invSentBy = om ? om.findObjects(sentBy, true, ZmObjectManager.EMAIL, false, options) : sentBy.toString();
 	}
 
     if(this._msg.cif) {
@@ -409,22 +497,22 @@ function(subs, sentBy, sentByAddr, obo) {
     }
 
 	// inviteees
-	var str = [];
-    var opt = [];
+	var invitees = [];
+    var optInvitees = [];
 
 	var list = this._invite.getAttendees();
 	for (var i = 0; i < list.length; i++) {
 		var at = list[i];
 		var attendee = new AjxEmailAddress(at.a, null, at.d);
-        if(at.role == ZmCalItem.ROLE_OPTIONAL) {
-            opt.push(om ? om.findObjects(attendee, true, ZmObjectManager.EMAIL) : attendee.toString());
+        if (at.role == ZmCalItem.ROLE_OPTIONAL) {
+            optInvitees.push(attendee);
         }
         else {
-            str.push(om ? om.findObjects(attendee, true, ZmObjectManager.EMAIL) : attendee.toString());
+            invitees.push(attendee);
         }
 	}
-	subs.invitees = str.join(AjxEmailAddress.SEPARATOR);
-	subs.optInvitees = opt.join(AjxEmailAddress.SEPARATOR);
+	subs.invitees = this.parent.getAddressesFieldHtml(invitees, options, "inv");
+	subs.optInvitees = this.parent.getAddressesFieldHtml(optInvitees, options, "opt");
 
 	// convert to local timezone if necessary
 	var inviteTz = this._invite.getServerStartTimeTz();
@@ -498,9 +586,12 @@ ZmInviteMsgView.prototype.getInviteToolbar =
 function() {
 	if (!this._inviteToolbar) {
 		this._inviteToolbar = this._createInviteToolbar();
+		//hide it till needed. Just in case after the fix I submit with this, some future change will call it before needs to be displayed.
+		this._inviteToolbar.setDisplay(Dwt.DISPLAY_NONE);
+		
 	}
 	return this._inviteToolbar;
-}
+};
 
 
 ZmInviteMsgView.prototype._createInviteToolbar =

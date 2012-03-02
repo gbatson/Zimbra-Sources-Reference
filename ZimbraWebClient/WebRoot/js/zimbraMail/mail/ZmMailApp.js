@@ -74,7 +74,7 @@ ZmApp.LOAD_SORT[ZmApp.MAIL]					= 20;
 ZmApp.QS_ARG[ZmApp.MAIL]					= "mail";
 
 ZmMailApp.DEFAULT_AUTO_SAVE_DRAFT_INTERVAL	= 30;
-ZmMailApp.DEFAULT_MAX_MESSAGE_SIZE			= 100000;
+ZmMailApp.DEFAULT_MAX_MESSAGE_SIZE			= 250000;
 
 ZmMailApp.POP_DOWNLOAD_SINCE_ALL			= 0;
 ZmMailApp.POP_DOWNLOAD_SINCE_NO_CHANGE		= 1;
@@ -1346,6 +1346,13 @@ function(creates, type, items, currList, sortBy, convs, last) {
 			var itemClass = eval(ZmList.ITEM_CLASS[type]);
 			item = itemClass.createFromDom(create, {}, true);
 		}
+		else if (item.type == ZmItem.MSG) {
+			// bug 47589: make sure conv knows its folders
+			var conv = appCtxt.getById(item.cid);
+			if (conv) {
+				conv.folders[item.folderId] = true;
+			}
+		}
 		items[item.id] = item;
 		result.gotMail = true;
 	}
@@ -1559,6 +1566,8 @@ function(msg, callback) {
 			callback.run();
 		}
 		this._notifyRendered();
+
+		appCtxt.notifyZimlets('onMsgView', [msg, null, appCtxt.getCurrentView()], {waitUntilLoaded:true});
 	}
 };
 
@@ -1859,8 +1868,20 @@ function() {
  */
 ZmMailApp.prototype.compose =
 function(params) {
-	var controller = AjxDispatcher.run("GetComposeController");
-	appCtxt.composeCtlrSessionId = controller.sessionId; //this is used in ZmNewWindow.js. For disposing of the controller and its listeners, overview, and tree listeners.
+    var controllers = this._sessionController[ZmId.VIEW_COMPOSE];
+    var controller;
+    var msgId = params.msg && params.msg.nId;
+    for (var id in controllers) {
+          if (controllers[id].getMsg() && controllers[id].getMsg().nId == msgId){
+             controller = controllers[id];
+             break;
+          }
+    }
+    if (!controller) {
+	    controller = AjxDispatcher.run("GetComposeController");
+    }
+
+    appCtxt.composeCtlrSessionId = controller.sessionId; //this is used in ZmNewWindow.js. For disposing of the controller and its listeners, overview, and tree listeners.
 	controller.doAction(params);
 };
 
@@ -2099,8 +2120,8 @@ ZmMailApp.prototype.getTrustedSendersList =
 function() {
     if(!this._trustedList) {
         var trustedList = appCtxt.get(ZmSetting.TRUSTED_ADDR_LIST);
-        if(trustedList && trustedList[0]) {
-            this._trustedList = AjxVector.fromArray(trustedList[0].split(","));
+        if(trustedList) {
+            this._trustedList = AjxVector.fromArray(trustedList);
         }
         else {
             this._trustedList = new AjxVector();

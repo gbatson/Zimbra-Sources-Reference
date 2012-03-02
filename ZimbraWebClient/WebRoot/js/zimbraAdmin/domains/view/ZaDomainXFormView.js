@@ -780,6 +780,19 @@ ZaDomainXFormView.myXFormModifier = function(xFormObject,entry) {
 				  label:ZaMsg.NAD_Notes, labelCssStyle:"vertical-align:top", width:250,
 				  onChange:ZaDomainXFormView.onFormFieldChanged});
 
+	// help URL
+	case1.items.push(
+			{ ref: ZaDomain.A_zimbraHelpAdminURL, type:_TEXTFIELD_,
+          		label:ZaMsg.Domain_zimbraHelpAdminURL, width:250,
+          		onChange:ZaDomainXFormView.onFormFieldChanged
+        		}
+		);
+        case1.items.push(
+                        { ref: ZaDomain.A_zimbraHelpDelegatedURL, type:_TEXTFIELD_,
+                        label:ZaMsg.Domain_zimbraHelpDelegatedURL, width:250,
+                        onChange:ZaDomainXFormView.onFormFieldChanged
+                        }
+                )
 	
 			
 	switchGroup.items.push(case1);
@@ -901,7 +914,7 @@ ZaDomainXFormView.myXFormModifier = function(xFormObject,entry) {
 								{type:_OUTPUT_, ref:".", label:null,labelLocation:_NONE_}
 							]
 						},
-						{ref:ZaDomain.A_zimbraAuthLdapStartTlsEnabled, type:_OUTPUT_, label:ZaMsg.Domain_AuthLdapStartTlsEnabled, labelLocation:_LEFT_,choices:ZaModel.BOOLEAN_CHOICES},
+						{ref:ZaDomain.A_zimbraAuthLdapStartTlsEnabled, type:_OUTPUT_, label:ZaMsg.Domain_llAuthLdapStartTlsEnabled, labelLocation:_LEFT_,choices:ZaModel.BOOLEAN_CHOICES},
 						{ref:ZaDomain.A_AuthLdapSearchFilter, type:_OUTPUT_, label:ZaMsg.Domain_AuthLdapFilter, labelLocation:_LEFT_},
 						{ref:ZaDomain.A_AuthLdapSearchBase, type:_OUTPUT_, label:ZaMsg.Domain_AuthLdapSearchBase, labelLocation:_LEFT_},
 						{ref:ZaDomain.A_AuthUseBindPassword, type:_OUTPUT_, label:ZaMsg.Domain_AuthUseBindPassword, labelLocation:_LEFT_,choices:ZaModel.BOOLEAN_CHOICES},											

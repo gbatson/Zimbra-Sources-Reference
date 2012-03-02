@@ -48,8 +48,8 @@ function(data, more, total) {
 	// filter the domain alias
 	var withoutAlias = [];
 	for(var i = 0; data && i < data.length; i++) {
-		var targetObj = ZaDomain.getTargetDomainByName(data[i]) ;
-		if (targetObj.attrs [ZaDomain.A_domainType] == ZaDomain.domainTypes.local){
+		//var targetObj = ZaDomain.getTargetDomainByName(data[i]) ;
+		if (data[i] && data[i].attrs [ZaDomain.A_domainType] == ZaDomain.domainTypes.local){
 			withoutAlias.push(data[i]);
 		}
 	}
@@ -78,6 +78,18 @@ function () {
 	this._inputWidth = this.getInheritedProperty("inputWidth");
 	if (this._inputWidth == null) this._inputWidth = 200;
 	this.items[0].width = this._inputWidth;
+
+	this._nameContainerCss = this.getInheritedProperty("nameContainerCss");
+	if (this._nameContainerCss)
+            this.items[0].containerCssStyle = this._nameContainerCss; 
+	
+	this._inputDomainpartWidth =  this.getInheritedProperty("domainPartWidth");
+	if (this._inputDomainpartWidth)
+             this.items[2].inputWidth = this._inputDomainpartWidth; 
+
+	this._domainContainerWidth =  this.getInheritedProperty("domainContainerWidth");
+	if (this._domainContainerWidth)
+	    this.items[2].width = this._domainContainerWidth;
 
 	Composite_XFormItem.prototype.initializeItems.call(this);
 	try {

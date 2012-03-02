@@ -52,6 +52,7 @@ import com.zimbra.cs.mailbox.ChangeTrackingMailbox.TracelessContext;
 import com.zimbra.cs.mailbox.Contact.Attachment;
 import com.zimbra.cs.mailbox.InitialSync.InviteMimeLocator;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
+import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.util.TypedIdList;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedContact;
@@ -682,7 +683,7 @@ public class PushChanges {
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
-            if (suppressRssFailure && folder.getUrl() != null) {
+            if (suppressRssFailure && folder.getUrl() != null && folder.getUrl() != "") {
                 OfflineErrorUtil.reportError(ombx, folder.getId(), "failed to sync rss url ["+folder.getUrl()+"]", sfe);
                 return true;
             } else if (!sfe.getCode().equals(MailServiceException.NO_SUCH_FOLDER)) {
@@ -1229,7 +1230,7 @@ public class PushChanges {
                     try {
                         CalendarItem calItem = ombx.getCalendarItemById(sContext, serverItemId);
                         OfflineLog.offline.debug("New calendar item %d has been mapped to existing calendar item %d during push", id, serverItemId);
-                        boolean uidSame = (calItem.getUid() == null && uid == null) || (calItem.getUid() != null && calItem.getUid().equals(uid)); 
+                        boolean uidSame = (calItem.getUid() == null && uid == null) || (calItem.getUid() != null && (calItem.getUid().equals(uid) || (Invite.isOutlookUid(calItem.getUid()) && calItem.getUid().equalsIgnoreCase(uid)))); 
                         if (!uidSame) {
                             OfflineLog.offline.warn("calendar item %d UID %s differs from server-mapped item %d UID %s", id, uid, calItem.getId(), calItem.getUid());
                             assert(uidSame);

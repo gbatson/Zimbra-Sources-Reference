@@ -627,6 +627,7 @@ XFormItem.prototype.updateEnabledDisabled = function (parentDisabled) {
 					} else if (myEnabledDisabledChecks[i] instanceof Array) {
 						//first element is a func reference, the rest of elements are arguments
 						var func = myEnabledDisabledChecks[i].shift();
+						if(!func || !func.apply) continue;
 						isEnabled = func.apply(this, myEnabledDisabledChecks[i]);
 						myEnabledDisabledChecks[i].unshift(func);
 						if(!isEnabled)
@@ -2005,6 +2006,7 @@ XFormItemFactory.createItemType("_OUTPUT_", "output", Output_XFormItem, XFormIte
 
 //	type defaults
 Output_XFormItem.prototype.writeElementDiv = true;
+Output_XFormItem.prototype.labelWrap = true;
 Output_XFormItem.prototype.cssClass =  "xform_output";	// element itself (or element div)
 Output_XFormItem.prototype.containerCssClass =  "xform_output_container";	// element itself (or element div)
 
@@ -2282,6 +2284,8 @@ Checkbox_XFormItem.prototype.falseValue = _UNDEFINED_;
 Checkbox_XFormItem.prototype.focusable = true;
 Checkbox_XFormItem.prototype.visibilityChecks = [XFormItem.prototype.hasReadPermission];
 Checkbox_XFormItem.prototype.enableDisableChecks = [XFormItem.prototype.hasWritePermission];
+Checkbox_XFormItem.prototype.nowrap = false;
+Checkbox_XFormItem.prototype.labelWrap = true;
 //	methods
 Checkbox_XFormItem.prototype.outputHTML = function (html, currentCol) {
 	// figure out how to show the checkbox as checked or not

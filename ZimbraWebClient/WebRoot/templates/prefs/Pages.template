@@ -119,7 +119,7 @@ and the container element is replaced with that control.
 						<td class='ZOptionsField'><table cellspacing=0 cellpadding=0 border=0><tr><td><div id='${id}_PAGE_SIZE' tabindex='90'></div></td><td style="padding-left:4px;"><$=ZmMsg.pageSizeDesc$></td></tr></table></td>
 					</tr>
 					<tr>
-						<td class='ZOptionsLabel'><$=ZmMsg.settingsLabel$></td>
+						<td class='ZOptionsLabel'><$=ZmMsg.selection$></td>
 						<td class='ZOptionsField'><div id='${id}_SHOW_SELECTION_CHECKBOX' tabindex='95'></div></td>
 					</tr>
 					<$ if (appCtxt.isOffline && appCtxt.accountList.size() > 2) { $>
@@ -2428,9 +2428,10 @@ NOTE: The tables inside of the filter rule sections MUST contain a tbody element
                         <td class="ZOptionsField" colspan="3"><div id="${id}_DEVICE_EMAIL_CODE_VALIDATE" tabindex='810'></div></td>
                     </tr>
                     <tr><td class='ZOptionsLabel'><$=ZmMsg.deviceEmailNotificationsVerificationStatusLabel$></td>
-                        <td class='ZOptionsField' colspan="4">
+                        <td class='ZOptionsField'>
                             <div id='${id}_DEVICE_EMAIL_CODE_STATUS' tabindex='900'></div>
                         </td>
+                        <td class="ZOptionsField" colspan="3"><div id="${id}_DEVICE_EMAIL_CODE_INVALIDATE" tabindex='910'></div></td>
                     </tr>
                 </table>
                 </td>

@@ -58,6 +58,7 @@ ZmApptEditView = function(parent, attendees, controller, dateInfo) {
 
     // Store Appt form values.
     this._apptFormValue = {};
+    this._showAsValueChanged = false;
 };
 
 ZmApptEditView.prototype = new ZmCalItemEditView;
@@ -83,6 +84,10 @@ ZmApptEditView.REMINDER_MAX_VALUE[ZmCalItem.REMINDER_UNIT_MINUTES]		= 20160;
 ZmApptEditView.REMINDER_MAX_VALUE[ZmCalItem.REMINDER_UNIT_HOURS]		= 336;
 ZmApptEditView.REMINDER_MAX_VALUE[ZmCalItem.REMINDER_UNIT_WEEKS]		= 2;
 
+ZmApptEditView.TIMEZONE_TYPE = "TZ_TYPE";
+
+ZmApptEditView.START_TIMEZONE = 1;
+ZmApptEditView.END_TIMEZONE = 2;
 
 // Public Methods
 
@@ -163,6 +168,7 @@ function() {
 	}
 
     this._attendeesHashMap = {};
+    this._showAsValueChanged = false;
 
     //Default Persona
     this.setIdentity();
@@ -184,7 +190,10 @@ function(bEnableInputs) {
 		this._attendeesInputField.setEnabled(bEnableAttendees);
 		this._optAttendeesInputField.setEnabled(bEnableAttendees);
         this.enablePickers(bEnableAttendees);        
-	}
+	}else {
+        //bug 57083 - disabling group calendar should disable attendee pickers
+        this.enablePickers(false);
+    }
 	this._attInputField[ZmCalBaseItem.LOCATION].setEnabled(bEnableInputs);
 };
 
@@ -253,6 +262,23 @@ function() {
 	this.updateAllDayField(!this._allDayCheckbox.checked);
 };
 
+ZmApptEditView.prototype.updateShowAsField =
+function(isAllDay) {
+    if(!this._showAsValueChanged) {
+        if(isAllDay) {
+            this._showAsSelect.setSelectedValue("F");
+        }
+        else {
+            this._showAsSelect.setSelectedValue("B");
+        }
+    }
+};
+
+ZmApptEditView.prototype.setShowAsFlag =
+function(flag) {
+    this._showAsValueChanged = flag;
+};
+
 ZmApptEditView.prototype.updateTimeField =
 function(dateInfo) {
      this._startTimeSelect.setValue(dateInfo.startTimeStr);
@@ -272,6 +298,7 @@ function(startDate, endDate, ignoreTimeUpdate) {
     if(this._schedulerOpened) {
         this._scheduleView.handleTimeChange();
     }
+    appCtxt.notifyZimlets("onEditAppt_updateTime", [this, {startDate:startDate, endDate:endDate}]);//notify Zimlets    
 };
 
 ZmApptEditView.prototype.updateTimezone =
@@ -495,6 +522,9 @@ function(calItem, mode) {
 	if (isAllDayAppt) {
 		this._allDayCheckbox.checked = true;
 		this._showTimeFields(false);
+        this.updateShowAsField(true);
+        this._showAsSelect.setSelectedValue(calItem.freeBusy);
+        this._showAsSelect.setEnabled(enableApptDetails);
 
 		// set time anyway to current time and default duration (in case user changes mind)
 		var now = AjxDateUtil.roundTimeMins(new Date(), 30);
@@ -504,7 +534,7 @@ function(calItem, mode) {
 		this._endTimeSelect.set(now);
 
 		// bug 9969: HACK - remove the all day durtion for display
-		if (!isNew && ed.getHours() == 0 && ed.getMinutes() == 0 && ed.getSeconds() == 0 && sd.getTime() != ed.getTime()) {
+		if (!isNew && !calItem.draftUpdated && ed.getHours() == 0 && ed.getMinutes() == 0 && ed.getSeconds() == 0 && sd.getTime() != ed.getTime()) {
 			ed.setHours(-12);
 		}
 	} else {
@@ -568,13 +598,14 @@ function(calItem, mode) {
 	// set the location attendee(s)
 	var locations = calItem.getAttendees(ZmCalBaseItem.LOCATION);
 	if (locations && locations.length) {
+        this.updateAttendeesCache(ZmCalBaseItem.LOCATION, locations);
 		this._attendees[ZmCalBaseItem.LOCATION] = AjxVector.fromArray(locations);
         var locStr = ZmApptViewHelper.getAttendeesString(locations, ZmCalBaseItem.LOCATION);
         this._setAddresses(this._attInputField[ZmCalBaseItem.LOCATION], locStr);
         showScheduleView = true;
 	}else{
         // set the location *label*
-	    this._setAddresses(this._attInputField[ZmCalBaseItem.LOCATION], calItem.getLocation());
+	    this._attInputField[ZmCalBaseItem.LOCATION].setValue(calItem.getLocation());
     }
 
     // set the equipment attendee(s)
@@ -582,6 +613,7 @@ function(calItem, mode) {
 	if (equipment && equipment.length) {
         this._toggleResourcesField(true);
 		this._attendees[ZmCalBaseItem.EQUIPMENT] = AjxVector.fromArray(equipment);
+        this.updateAttendeesCache(ZmCalBaseItem.EQUIPMENT, equipment);
         var equipStr = ZmApptViewHelper.getAttendeesString(equipment, ZmCalBaseItem.EQUIPMENT);
         this._setAddresses(this._attInputField[ZmCalBaseItem.EQUIPMENT], equipStr);
         showScheduleView = true;
@@ -653,6 +685,7 @@ function(calItem, mode) {
     this.setApptMessage(this._getMeetingStatusMsg(calItem));
 
     this.updateToolbarOps();
+    this._controller.setRequestResponses(calItem && calItem.hasAttendees() ? calItem.shouldRsvp() : true);
 
     showScheduleView = showScheduleView && !this._isForward;
 
@@ -789,6 +822,7 @@ function(width) {
 		this._showAsSelect.addOption(option.label, option.selected, option.value, "showAs" + option.value);
 	}
 
+	this._showAsSelect.addChangeListener(new AjxListener(this, this.setShowAsFlag, [true]));
 	this._folderSelect.addChangeListener(new AjxListener(this, this._folderListener));
 
     this._privateCheckbox = document.getElementById(this._htmlElId + "_privateCheckbox");
@@ -809,16 +843,17 @@ function(width) {
     }
 
 	// timezone DwtSelect
-	var timezoneListener = new AjxListener(this, this._timezoneListener);
-
+    var timezoneListener = new AjxListener(this, this._timezoneListener);
     this._tzoneSelectStartElement = document.getElementById(this._htmlElId + "_tzoneSelectStart");
 	this._tzoneSelectStart = new DwtSelect({parent:this, parentElement:this._tzoneSelectStartElement, layout:DwtMenu.LAYOUT_SCROLL, maxRows:7});
 	this._tzoneSelectStart.addChangeListener(timezoneListener);
+    this._tzoneSelectStart.setData(ZmApptEditView.TIMEZONE_TYPE, ZmApptEditView.START_TIMEZONE);
     this._tzoneSelectStart.dynamicButtonWidth();
 
     this._tzoneSelectEndElement = document.getElementById(this._htmlElId + "_tzoneSelectEnd");
 	this._tzoneSelectEnd = new DwtSelect({parent:this, parentElement:this._tzoneSelectEndElement, layout:DwtMenu.LAYOUT_SCROLL, maxRows:7});
 	this._tzoneSelectEnd.addChangeListener(timezoneListener);
+    this._tzoneSelectEnd.setData(ZmApptEditView.TIMEZONE_TYPE, ZmApptEditView.END_TIMEZONE);
     this._tzoneSelectEnd.dynamicButtonWidth();
 
 	// NOTE: tzone select is initialized later
@@ -993,6 +1028,7 @@ function(forceShow) {
     //todo: scheduler auto complete
     Dwt.setVisible(this._schedulerContainer, true);
     scheduleView.setVisible(true);
+    scheduleView.resetPagelessMode(false);
     scheduleView.showMe();
     this.autoSize();
 };
@@ -1231,7 +1267,7 @@ function(addrInput, addrs, type, shortForm) {
 					else if (addr instanceof ZmContact) {
 						email = addr.getEmail(true);
                         //bug: 57858 - give preference to lookup email address if its present
-						addrStr = addr.getLookupEmail() || email.toString(shortForm);
+						addrStr = addr.getLookupEmail() || ZmApptViewHelper.getAttendeesText(addr, type);
 						match = {isDL: addr.isGroup && addr.canExpand, email: addrStr};
 					}
 					addrInput.addBubble({address:addrStr, match:match, skipNotify:true});
@@ -1376,7 +1412,12 @@ function(calItem, mode, isDirty, apptComposeMode) {
 
 ZmApptEditView.prototype.isSuggestionsNeeded =
 function() {
-    return !this._isForward && this.GROUP_CALENDAR_ENABLED;
+    if (appCtxt.isOffline) {
+        var ac = window["appCtxt"].getAppController();
+        return !this._isForward && this.GROUP_CALENDAR_ENABLED && ac._isPrismOnline && ac._isUserOnline;
+    } else {
+        return !this._isForward && this.GROUP_CALENDAR_ENABLED;
+    }
 };
 
 ZmApptEditView.prototype.getCalendarAccount =
@@ -1840,6 +1881,13 @@ function() {
 
 ZmApptEditView.prototype._timezoneListener =
 function(ev) {
+    var dwtSelect = ev.item.parent.parent;
+    var type = dwtSelect ? dwtSelect.getData(ZmApptEditView.TIMEZONE_TYPE) : ZmApptEditView.START_TIMEZONE;
+    //bug: 55256 - Changing start timezone should auto-change end timezone
+    if(type == ZmApptEditView.START_TIMEZONE) {
+        var tzValue = dwtSelect.getValue();
+        this._tzoneSelectEnd.setSelectedValue(tzValue);
+    }
     this.handleTimezoneOverflow();
 	ZmApptViewHelper.getDateInfo(this, this._dateInfo);
     if(this._schedulerOpened) {
@@ -2026,6 +2074,7 @@ function(type, attendees) {
 	// *always* force replace of attendees list with what we've found
 	this.parent.updateAttendees(attendees, type);
     this._updateScheduler(type, attendees);
+   appCtxt.notifyZimlets("onEditAppt_updateAttendees", [this]);//notify Zimlets
 };
 
 ZmApptEditView.prototype._updateScheduler =
@@ -2112,6 +2161,7 @@ function(el) {
 		var edv = AjxCore.objectWithId(el._editViewId);
 		ZmApptViewHelper.getDateInfo(edv, edv._dateInfo);
 		this._showTimeFields(!el.checked);
+        this.updateShowAsField(el.checked);
 		if (el.checked && this._reminderSelect) {
 			this._reminderSelect.setSelectedValue(1080);
 		}

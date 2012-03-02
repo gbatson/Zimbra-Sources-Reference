@@ -127,7 +127,7 @@ class ImapFolderSync {
             createLocalFolder(ld);
         }
         if (tracker != null) {
-            remoteFolder.info("syncing remote folder " + path);
+            remoteFolder.info("syncing remote folder %s", path);
             // Check local folder flags for consistency with remote folder
             localFolder.updateFlags(ld);
         }
@@ -266,7 +266,7 @@ class ImapFolderSync {
 
         // Get remote folder UIDNEXT and UIDVALIDITY
         if (mailboxInfo == null) {
-            mailboxInfo = fullSync ? remoteFolder.select() : remoteFolder.status();
+            mailboxInfo = fullSync || remoteFolder.isSelected() ? remoteFolder.select() : remoteFolder.status();
         }
 
         // Refresh folder state and force full sync if UIDVALIDITY changed

@@ -1,3 +1,18 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2011 Zimbra, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * ***** END LICENSE BLOCK *****
+ */
+
 package com.zimbra.cs.service;
 
 import java.io.IOException;
@@ -5,6 +20,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -17,13 +33,26 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.httpclient.URLUtil;
-import com.zimbra.cs.service.authenticator.SSOAuthenticator;
 import com.zimbra.cs.service.authenticator.SSOAuthenticator.ZimbraPrincipal;
 import com.zimbra.cs.servlet.ZimbraServlet;
 
 public abstract class SSOServlet extends ZimbraServlet {
+    private final static String IGNORE_LOGIN_URL = "/?ignoreLoginURL=1";
     
-    protected AuthToken authorize(HttpServletRequest req, SSOAuthenticator authenticator, 
+    
+    public void init() throws ServletException {
+        String name = getServletName();
+        ZimbraLog.account.info("Servlet " + name + " starting up");
+        super.init();
+    }
+
+    public void destroy() {
+        String name = getServletName();
+        ZimbraLog.account.info("Servlet " + name + " shutting down");
+        super.destroy();
+    }
+    
+    protected AuthToken authorize(HttpServletRequest req, AuthContext.Protocol proto, 
             ZimbraPrincipal principal, boolean isAdminRequest) 
     throws ServiceException {
         
@@ -35,8 +64,7 @@ public abstract class SSOServlet extends ZimbraServlet {
         Provisioning prov = Provisioning.getInstance();
         Account acct = principal.getAccount();
         
-        // use soap for the protocol for now. should we use a new protocol for each SSO method?
-        prov.ssoAuthAccount(acct, AuthContext.Protocol.soap, authCtxt); 
+        prov.ssoAuthAccount(acct, proto, authCtxt); 
         
         if (isAdminRequest) {
             if (!AccessManager.getInstance().isAdequateAdminAccount(acct)) {
@@ -46,15 +74,33 @@ public abstract class SSOServlet extends ZimbraServlet {
         
         AuthToken authToken = AuthProvider.getAuthToken(acct, isAdminRequest);
         
+        /*
         ZimbraLog.security.info(ZimbraLog.encodeAttrs(
-                new String[] {"cmd", authenticator.getAuthMethod(), "account", acct.getName(), "admin", isAdminRequest+""}));
+                new String[] {"cmd", authType, "account", acct.getName(), "admin", isAdminRequest+""}));
+        */
         
         return authToken;
     }
     
-    protected boolean onAdminPort(HttpServletRequest req) throws ServiceException {
+    protected boolean isOnAdminPort(HttpServletRequest req) throws ServiceException {
         int adminPort = Provisioning.getInstance().getLocalServer().getAdminPort();
         return req.getLocalPort() == adminPort;
+    }
+    
+    protected boolean isFromZCO(HttpServletRequest req) throws ServiceException {
+        final String UA_ZCO = "Zimbra-ZCO";
+        String userAgent = req.getHeader("User-Agent");
+        return userAgent.contains(UA_ZCO);
+    }
+    
+    protected void setAuthTokenCookieAndReturn(HttpServletRequest req, HttpServletResponse resp, 
+            AuthToken authToken) 
+    throws IOException, ServiceException {
+        
+        boolean isAdmin = AuthToken.isAnyAdmin(authToken);
+        boolean secureCookie = isProtocolSecure(req.getScheme());
+        authToken.encode(resp, isAdmin, secureCookie);
+        resp.setContentLength(0);
     }
     
     protected void setAuthTokenCookieAndRedirect(HttpServletRequest req, HttpServletResponse resp, 
@@ -75,6 +121,9 @@ public abstract class SSOServlet extends ZimbraServlet {
             redirectUrl = getMailUrl(server);
         }
         
+        // always append the ignore loginURL query so we do not get into a redirect loop.
+        redirectUrl = redirectUrl + IGNORE_LOGIN_URL;  // not yet supported for admin console
+        
         URL url = new URL(redirectUrl);
         boolean isRedirectProtocolSecure = isProtocolSecure(url.getProtocol());
         
@@ -85,24 +134,29 @@ public abstract class SSOServlet extends ZimbraServlet {
         resp.sendRedirect(redirectUrl);
     }
     
-    // redirect to the webapp's regular entry page without an auth token cookie
-    // the default behavior is the login/password page
-    protected void redirectWithoutAuthTokenCookie(HttpServletRequest req, HttpServletResponse resp, boolean isAdminRequest) 
-    throws IOException, ServiceException {
-        
-        // append the ignore loginURL query so we do not get into a redirect loop.
-        final String IGNORE_LOGIN_URL = "/?ignoreLoginURL=1";
-        
-        Server server = Provisioning.getInstance().getLocalServer();
+    // Redirect to the specified error page without Zimbra auth token cookie.
+    // The default error page is the webapp's regular entry page where user can
+    // enter his username/password.
+    protected void redirectToErrorPage(HttpServletRequest req, HttpServletResponse resp, 
+            boolean isAdminRequest, String errorUrl) throws IOException, ServiceException {
         String redirectUrl;
-        if (isAdminRequest) {
-            redirectUrl = getAdminUrl(server) + IGNORE_LOGIN_URL; // not yet supported for admin console
-        } else {
-            redirectUrl = getMailUrl(server) + IGNORE_LOGIN_URL;
-        }
         
-        URL url = new URL(redirectUrl);
-        boolean isRedirectProtocolSecure = isProtocolSecure(url.getProtocol());
+        if (errorUrl == null) {
+            
+            Server server = Provisioning.getInstance().getLocalServer();
+            
+            if (isAdminRequest) {
+                redirectUrl = getAdminUrl(server); 
+            } else {
+                redirectUrl = getMailUrl(server);
+            }
+            
+            // always append the ignore loginURL query so we do not get into a redirect loop.
+            redirectUrl = redirectUrl + IGNORE_LOGIN_URL;  // not yet supported for admin console
+            
+        } else {
+            redirectUrl = errorUrl;
+        }
         
         resp.sendRedirect(redirectUrl);
     }

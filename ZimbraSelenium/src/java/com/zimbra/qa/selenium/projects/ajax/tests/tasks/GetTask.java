@@ -4,6 +4,8 @@ import java.util.*;
 
 import org.testng.annotations.Test;
 
+
+
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -148,45 +150,50 @@ public class GetTask extends AjaxCommonTest {
 
 	@Test(	description = "Get a task with html content - verify task contents",
 			groups = { "smoke" })
-	public void GetTask_03() throws HarnessException {
+			public void GetTask_03() throws HarnessException {
 
 		FolderItem taskFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Tasks);
+		
 
 		// Create the message data to be sent
 		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 		String bodyText = "text" + ZimbraSeleniumProperties.getUniqueString();
 		String bodyHTML = "text <strong>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong> text";
 		String contentHTML = XmlStringUtil.escapeXml(
-			"<html>" +
+				"<html>" +
 				"<head></head>" +
 				"<body>"+ bodyHTML +"</body>" +
-			"</html>");
-		
+		"</html>");
+
 		app.zGetActiveAccount().soapSend(
 				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
-					"<m >" +
-			        	"<inv>" +
-			        		"<comp name='"+ subject +"'>" +
-			        			"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
-			        		"</comp>" +
-			        	"</inv>" +
-			        	"<su>"+ subject +"</su>" +
-						"<mp ct='multipart/alternative'>" +
-						"<mp ct='text/plain'>" +
-							"<content>" + bodyText +"</content>" +
-						"</mp>" +
-						"<mp ct='text/html'>" +
-							"<content>"+ contentHTML +"</content>" +
-						"</mp>" +
-					"</mp>" +
-					"</m>" +
-				"</CreateTaskRequest>");
+				"<m >" +
+				"<inv>" +
+				"<comp name='"+ subject +"'>" +
+				"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+				"</comp>" +
+				"</inv>" +
+				"<su>"+ subject +"</su>" +
+				"<mp ct='multipart/alternative'>" +
+				"<mp ct='text/plain'>" +
+				"<content>" + bodyText +"</content>" +
+				"</mp>" +
+				"<mp ct='text/html'>" +
+				"<content>"+ contentHTML +"</content>" +
+				"</mp>" +
+				"</mp>" +
+				"</m>" +
+		"</CreateTaskRequest>");
+
+		String calItemId = app.zGetActiveAccount().soapSelectValue(
+				"//mail:CreateTaskResponse", "calItemId");
 
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
+
 		TaskItem task = TaskItem.importFromSOAP(app.zGetActiveAccount(), subject);
 		ZAssert.assertNotNull(task, "Verify the task is created");
-		
+
 		// Refresh the tasks view
 		app.zTreeTasks.zTreeItem(Action.A_LEFTCLICK, taskFolder);
 
@@ -194,14 +201,17 @@ public class GetTask extends AjaxCommonTest {
 		DisplayTask actual = (DisplayTask) app.zPageTasks.zListItem(Action.A_LEFTCLICK, subject);
 
 		// Verify the To, From, Subject, Body
-		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Subject), subject, "Verify the subject matches");
-		
+		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Subject), subject, "Verify the subject matches");		
 
-		// Verify the To, From, Subject, Body		
-		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Body), contentHTML, "Verify the content matches");
+		// Verify HTML content through show original window
+		String EmailAddress = app.zGetActiveAccount().EmailAddress;
+		String showOrigBody = app.zPageTasks.GetShowOrigBodyText(EmailAddress,calItemId);
+		String bodyHtml = bodyHTML.trim().replaceAll(" ", "");
+		ZAssert.assertStringContains(showOrigBody, bodyHtml,"Verify the content matches");		
 		
 	}
 
+	
 	@Test(	description = "Get a task with all fields - verify task contents",
 			groups = { "smoke" })
 	public void GetTask_04() throws HarnessException {
@@ -220,13 +230,13 @@ public class GetTask extends AjaxCommonTest {
 				"<CreateTaskRequest xmlns='urn:zimbraMail'>" +
 					"<m >" +
 			        	"<inv>" +
-			        		"<comp priority='1' status='INPR' percentComplete='50' allDay='1' name='"+ subject +"' location='"+ location +"'>" +
+			        		"<comp priority='1' status='INPR' percentComplete='50' allDay='1' name='"+ subject +"' loc='"+ location +"'>" +
 		        				"<s d='"+ startDate.toYYYYMMDD() +"'/>" +
-		        				"<s d='"+ dueDate.toYYYYMMDD() +"'/>" +
+		        				"<e d='"+ dueDate.toYYYYMMDD() +"'/>" +
 								"<or a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
 								"<alarm action='DISPLAY'>" +
 									"<trigger>" +
-										"<abs d='"+ reminderDate.toYYYYMMDDHHMMSSZ() +"'/>" +
+										"<abs d='"+ reminderDate.toYYYYMMDDTHHMMSSZ() +"'/>" +
 									"</trigger>" +
 								"</alarm>" +
 			        		"</comp>" +
@@ -256,8 +266,9 @@ public class GetTask extends AjaxCommonTest {
 		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.DueDate), dueDate.toMMM_dC_yyyy(), "Verify the due date matches");
 		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Priority), "High", "Verify the priority matches");
 		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Status), "In Progress", "Verify the status matches");
-		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Percentage), "50", "Verify the percentage matches");
-		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Reminder), dueDate.toMMM_dd_yyyy_A_hCmm_a(), "Verify the percentage matches");
+		ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Percentage), "50%", "Verify the percentage matches");
+		//ZAssert.assertEquals(	actual.zGetTaskProperty(Field.Reminder), dueDate.toMMM_dd_yyyy_A_hCmm_a(), "Verify the percentage matches");
+		ZAssert.assertStringContains(actual.zGetTaskProperty(Field.Reminder), reminderDate.toMMM_dC_yyyy(), "Verify the percentage matches");
 		
 		// The body could contain HTML, even though it is only displaying text (e.g. <br> may be present)
 		// do a contains, rather than equals.

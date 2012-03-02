@@ -102,9 +102,10 @@ public class CosAndGlobalConfigDefault extends LdapUpgrade {
         if (attrVersion == null)
             return false;  // no version info, i.e. a 4.X attr, not need to upgrade
 
-        if (!am.inVersion(attr, since) && !attrVersion.isFuture())
+        if (!am.beforeVersion(attr, since) && !attrVersion.isFuture())
             return true;
-
+        
+        
         //
         // bug 38426
         //
@@ -147,6 +148,20 @@ public class CosAndGlobalConfigDefault extends LdapUpgrade {
          */
         if (Provisioning.A_zimbraFreebusyExchangeServerType.equalsIgnoreCase(attr)) {
             boolean fromATroubledInstall = (mSince.compare("7.0.0") == 0);
+            if (fromATroubledInstall) {
+                return true;
+            }
+        }
+        
+        /*
+         * bug 58084
+         * 
+         * zimbraMailEmptyFolderBatchThreshold was added in 6.0.13, *after* 7.1.0 and before 7.1.1
+         * 
+         */
+        if (Provisioning.A_zimbraMailEmptyFolderBatchThreshold.equalsIgnoreCase(attr)) {
+            boolean fromATroubledInstall = (mSince.compare("7.0.0") >= 0 &&
+                                            mSince.compare("7.1.1") < 0);
             if (fromATroubledInstall) {
                 return true;
             }

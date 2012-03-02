@@ -3,33 +3,32 @@ package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsDialog;
 import com.zimbra.qa.selenium.framework.ui.AbsForm;
-import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Field;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Locators;
 
 public class DocumentBriefcaseNew extends AbsForm {
 
 	public static class Locators {
-		public static final String zFrame = "css=iframe[id*='DWT']";
+		public static final String zFrame = "css=iframe[class=ZDEditor]";
 		public static final String zSaveAndCloseIconBtn = "//*[@id='DWT9_left_icon']";
 		public static final String zBodyField = "css=body";
 		public static final String zNameField = "css=[id^=DWT4]>input";
 		public static final String zEditNameField = "css=[class=DwtInputField] [input$=]";
+		public static final String zEnableVersionNotes = "css=div[class=DwtComposite] input[id=enableDesc]";
 	}
 
 	public static class Field {
 		public static final Field Name = new Field("Name");
 		public static final Field Body = new Field("Body");
 
-		private String field;
+		// private String field;
 
 		private Field(String name) {
-			field = name;
+			// field = name;
 		}
 	}
 
@@ -49,8 +48,9 @@ public class DocumentBriefcaseNew extends AbsForm {
 		sSelectFrame(Locators.zFrame);
 		// ClientSessionFactory.session().selenium().selectFrame("css=iframe[id='DWT10',class='ZDEditor']");
 		// ClientSessionFactory.session().selenium().type("xpath=(//html/body)",text);
-		logger.info("typing Document Text" + text);
+		logger.info("typing Document Text: ");
 		sType(Locators.zBodyField, text);
+		logger.info(text);
 	}
 
 	public void typeDocumentName(String text) throws HarnessException {
@@ -61,7 +61,7 @@ public class DocumentBriefcaseNew extends AbsForm {
 
 	public void editDocumentName(DocumentItem docItem) throws HarnessException {
 		if (sIsElementPresent(Locators.zEditNameField))
-			sType(Locators.zEditNameField, docItem.getDocName());
+			sType(Locators.zEditNameField, docItem.getName());
 	}
 
 	@Override
@@ -70,43 +70,53 @@ public class DocumentBriefcaseNew extends AbsForm {
 
 	public void zFillField(Field field, String value) throws HarnessException {
 
-		String locator = null;
-
 		if (field == Field.Name) {
 
-			locator = Locators.zNameField;
+			String nameFieldLocator = Locators.zNameField;
 
-			zSelectWindow("Zimbra Docs");
+			zSelectWindow(pageTitle);
 
-			// FALL THROUGH
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(nameFieldLocator))
+				throw new HarnessException("Locator is not present: "
+						+ nameFieldLocator);
+
+			this.sMouseOver(nameFieldLocator);
+			this.sFocus(nameFieldLocator);
+			this.zClick(nameFieldLocator);
+			this.sType(nameFieldLocator, value);
+			logger.info("typed: " + value);
 
 		} else if (field == Field.Body) {
 
-			locator = Locators.zBodyField;
+			String iframeLocator = Locators.zFrame;
 
-			sSelectFrame(Locators.zFrame);
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(iframeLocator))
+				throw new HarnessException("Locator is not present: "
+						+ iframeLocator);
 
-			// FALL THROUGH
+			this.sMouseOver(iframeLocator);
+			this.sFocus(iframeLocator);
+			this.zClick(iframeLocator);
 
+			this
+					.sGetEval("var bodytext=\""
+							+ value
+							+ "\";"
+							+ "var iframe_locator=\""
+							+ iframeLocator
+							+ "\";"
+							+ "var iframe_body=selenium.browserbot.findElement(iframe_locator).contentWindow.document.body;"
+							+ "if (browserVersion.isFirefox || browserVersion.isChrome){iframe_body.textContent=bodytext;}"
+							+ "else if(browserVersion.isIE){iframe_body.innerText=bodytext;}"
+							+ "else {iframe_body.innerText=bodytext;}");
 		} else {
-			throw new HarnessException("not implemented for field " + field);
+			throw new HarnessException("Not implemented field: " + field);
 		}
-
-		if (locator == null) {
-			throw new HarnessException("locator was null for field " + field);
-		}
-
-		// Default behavior, enter value into locator field
-
-		// Make sure the button exists
-		if (!this.sIsElementPresent(locator))
-			throw new HarnessException("Field is not present field=" + field
-					+ " locator=" + locator);
-
-		// Enter text
-		this.sType(locator, value);
 
 		this.zWaitForBusyOverlay();
+		SleepUtil.sleepVerySmall();
 	}
 
 	@Override
@@ -123,20 +133,26 @@ public class DocumentBriefcaseNew extends AbsForm {
 			throw new HarnessException("Save & Close button is not visible "
 					+ Locators.zSaveAndCloseIconBtn);
 
-		// Click on it
-		zClick(Locators.zSaveAndCloseIconBtn);
-		// this.sMouseDown(Locators.zSaveAndCloseIconBtn);
-		// this.sMouseUp(Locators.zSaveAndCloseIconBtn);
+		if (!(sIsElementPresent(Locators.zEnableVersionNotes) && sIsChecked(Locators.zEnableVersionNotes))) {
+			// Click on it
+			zClick(Locators.zSaveAndCloseIconBtn);
+		} else {
+			// Click on it
+			// this.sMouseDown(Locators.zSaveAndCloseIconBtn);
+			// this.sMouseUp(Locators.zSaveAndCloseIconBtn);
+			zClick(Locators.zSaveAndCloseIconBtn);
 
-		// Add Document version notes in the popped up dialog
-		DialogAddVersionNotes dlgAddNotes = new DialogAddVersionNotes(
-				MyApplication, ((AppAjaxClient) MyApplication).zPageBriefcase);
+			// TODO: Add Version Notes dialog hasn't existed in ZD 7.0.1, thus
+			// ignoring below the Add Version Notes dialog for Desktop.
+			// Please remove this if condition block once it is available in ZD.
+			if (ZimbraSeleniumProperties.getAppType() != AppType.DESKTOP) {
+				// add version notes
+				DialogAddVersionNotes dlgAddNotes = new DialogAddVersionNotes(
+						MyApplication,
+						((AppAjaxClient) MyApplication).zPageBriefcase);
 
-		if (dlgAddNotes.zIsActive()) {
-			dlgAddNotes.zEnterVersionNotes("notes"
-					+ ZimbraSeleniumProperties.getUniqueString());
-
-			dlgAddNotes.zClickButton(Button.B_OK);
+				dlgAddNotes.zDismissAddVersionNotesDlg(pageTitle);
+			}
 		}
 	}
 
@@ -148,10 +164,12 @@ public class DocumentBriefcaseNew extends AbsForm {
 
 		zWaitForElementPresent("css=div[class='ZDToolBar ZWidget']");
 
+		zWaitForElementPresent("css=table[class='ZToolbarTable']");
+
 		zWaitForElementPresent("css=iframe[id*='DWT'][class='ZDEditor']");
 
 		zWaitForIframeText("css=iframe[id*='DWT'][class='ZDEditor']", "");
-		
+
 		return true;
 	}
 }

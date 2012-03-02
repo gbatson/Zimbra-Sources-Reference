@@ -21,8 +21,10 @@ import java.util.List;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
+import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.soap.Element;
@@ -129,6 +131,9 @@ public class RdateExdate implements Cloneable {
     }
 
     public Element toXml(Element parent) {
+        if (isRDATE() && !DebugConfig.enableRdate) {
+            return null;
+        }
         Element dateElem = parent.addElement(MailConstants.E_CAL_DATES);
         if (mTimeZone != null)
             dateElem.addAttribute(MailConstants.A_CAL_TIMEZONE, mTimeZone.getID());
@@ -154,16 +159,6 @@ public class RdateExdate implements Cloneable {
             }
         }
         return dateElem;
-    }
-
-    public ZProperty toZProperty() {
-        ZProperty prop = new ZProperty(mPropertyName);
-        if (mTimeZone != null)
-            prop.addParameter(new ZParameter(ICalTok.TZID, mTimeZone.getID()));
-        if (!ICalTok.DATE_TIME.equals(mValueType))
-            prop.addParameter(new ZParameter(ICalTok.VALUE, mValueType.toString()));
-        prop.setValue(getDatesCSV());
-        return prop;
     }
 
     public static RdateExdate parse(ZProperty prop, TimeZoneMap tzmap)
@@ -300,5 +295,31 @@ public class RdateExdate implements Cloneable {
         }
 
         return rexdate;
+    }
+
+    // bug 59333: Hack for Apple iCal.  It doesn't like comma-separate values in a single EXDATE property.
+    // Output each value as its own EXDATE property.
+    void addAsSeparateProperties(ZComponent comp) {
+        if (isRDATE() && !DebugConfig.enableRdate) {
+            return;
+        }
+        ZParameter tzid = mTimeZone != null ? new ZParameter(ICalTok.TZID, mTimeZone.getID()) : null;
+        ZParameter valType = !ICalTok.DATE_TIME.equals(mValueType) ? new ZParameter(ICalTok.VALUE, mValueType.toString()) : null;
+        for (Object value : mValues) {
+            ZProperty prop = new ZProperty(mPropertyName);
+            if (tzid != null) {
+                prop.addParameter(tzid);
+            }
+            if (valType != null) {
+                prop.addParameter(valType);
+            }
+            if (value instanceof ParsedDateTime) {
+                ParsedDateTime t = (ParsedDateTime) value;
+                prop.setValue(t.getDateTimePartString(false));
+            } else if (value instanceof Period) {
+                prop.setValue(value.toString());
+            }
+            comp.addProperty(prop);
+        }
     }
 }

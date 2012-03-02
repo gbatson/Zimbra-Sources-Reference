@@ -191,11 +191,15 @@ function(params) {
 
 	this._msgSent = false;
 	if (params.inNewWindow) {
-		var newWinObj = ac.getNewWindow();
+        var msgId = params.msg ? params.msg.nId : (this._msg ? this._msg.nId : Dwt.getNextId());
+		var newWinObj = ac.getNewWindow(false, null, null, ZmId.VIEW_COMPOSE + "_" + msgId);
 
 		// this is how child window knows what to do once loading:
 		newWinObj.command = "compose";
 		newWinObj.params = params;
+        if (newWinObj.win) {
+            newWinObj.win.focus();
+        }
 	} else {
 		this._setView(params);
 		this._listController = params.listController;
@@ -236,6 +240,7 @@ function() {
 	var sendUID = view.sendUID;
 	var action = view._action || this._action;
 	var identity = view.getIdentity();
+    var requestReadReceipt = this.isRequestReadReceipt();
 
 	var addrList = {};
 	var addrs = !view._useAcAddrBubbles && view.getRawAddrFields();
@@ -245,13 +250,18 @@ function() {
 	}
 
 	// this is how child window knows what to do once loading:
-	var newWinObj = appCtxt.getNewWindow();
+    var msgId = (msg && msg.nId) || Dwt.getNextId();
+	var newWinObj = appCtxt.getNewWindow(false, null, null, ZmId.VIEW_COMPOSE + "_" + msgId);
+    if (newWinObj.win) {
+        newWinObj.win.focus();
+    }
 	newWinObj.command = "composeDetach";
 	newWinObj.params = {
 		action: action,
 		msg: msg,
 		addrs: addrList,
 		subj: subj,
+		priority: view._getPriority(),
 		forwardHtml: forAttHtml,
 		msgAttId: msgAttId,
 		body: body,
@@ -262,7 +272,8 @@ function() {
 		sendUID: sendUID,
 		msgIds: this._msgIds,
 		forAttIds: this._forAttIds,
-		sessionId: this.sessionId
+		sessionId: this.sessionId,
+        readReceipt: requestReadReceipt
 	};
 };
 
@@ -270,6 +281,7 @@ ZmComposeController.prototype.popShield =
 function() {
 	var dirty = this._composeView.isDirty();
 	if (!dirty && (this._draftType != ZmComposeController.DRAFT_TYPE_AUTO)) {
+		this._cancelAuthTimedSave(); //cancel the timer
 		return true;
 	}
 
@@ -468,10 +480,12 @@ function(attId, docIds, draftType, callback, contactId) {
 		} else {
 			acctName = ac.getActiveAccount().name;
 		}
-        // if shared folder, make sure we save the draft under the owner account name
-		var folder = msg.folderId ? ac.getById(msg.folderId) : null;
-		if (folder && folder.isRemote()) {
-			acctName = folder.getOwner();
+		if (msg._origMsg && msg._origMsg.isDraft) {
+			// if shared folder, make sure we save the draft under the owner account name
+			var folder = msg.folderId ? ac.getById(msg.folderId) : null;
+			if (folder && folder.isRemote()) {
+				acctName = folder.getOwner();
+			}
 		}
 	} else {
 		// if shared folder, make sure we send the email on-behalf-of
@@ -502,15 +516,7 @@ function(attId, docIds, draftType, callback, contactId) {
 	}
 
 	// check for read receipt
-	var requestReadReceipt = false;
-	var acct = acctName && appCtxt.accountList.getAccountByName(acctName);
-	if (appCtxt.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED, null, acct)) {
-		var menu = this._toolbar.getButton(ZmOperation.COMPOSE_OPTIONS).getMenu();
-		if (menu) {
-			var mi = menu.getItemById(ZmOperation.KEY_ID, ZmOperation.REQUEST_READ_RECEIPT);
-			requestReadReceipt = (!!(mi && mi.getChecked()));
-		}
-	}
+	var requestReadReceipt = this.isRequestReadReceipt();
 
 	var respCallback = new AjxCallback(this, this._handleResponseSendMsg, [draftType, msg, callback]);
 	var errorCallback = new AjxCallback(this, this._handleErrorSendMsg, msg);
@@ -540,6 +546,10 @@ function(draftType, msg, callback, result) {
         this.sendMsgCallback.run(result);
     }
 
+	if (draftType && draftType == ZmComposeController.DRAFT_TYPE_NONE) {
+		this._cancelAuthTimedSave(); //message sent; cancel auth token timer
+	}
+
 	appCtxt.notifyZimlets("onSendMsgSuccess", [this, msg]);//notify Zimlets on success	
 };
 
@@ -548,6 +558,7 @@ function() {
 	AjxDebug.println(AjxDebug.REPLY, "Reset compose view: _handleResponseCancelOrModifyAppt");
 	this._composeView.reset(false);
 	this._app.popView(true);
+    appCtxt.setStatusMsg(ZmMsg.messageSent);
 };
 
 ZmComposeController.prototype._handleErrorSendMsg =
@@ -800,6 +811,14 @@ function(sigId, account) {
 
 ZmComposeController.prototype._deleteDraft =
 function(delMsg) {
+    var ac = window.parentAppCtxt || window.appCtxt;
+
+    if (delMsg && delMsg.isSent) {
+      var folder = delMsg.folderId ? ac.getById(delMsg.folderId) : null;
+	  if (folder && folder.isRemote() && !folder.isPermAllowed(ZmOrganizer.PERM_DELETE)) {
+         return;   //remote folder no permission to delete, exit
+	  }
+    }
 
 	var list = delMsg.list;
 	var mailItem, request;
@@ -834,6 +853,7 @@ function(delMsg) {
  * @param composeMode	[constant]*		HTML or text compose
  * @param accountName	[string]*		on-behalf-of From address
  * @param msgIds		[Array]*		list of msg Id's to be added as attachments
+ * @param readReceipt   [boolean]       true/false read receipt setting
  */
 ZmComposeController.prototype._setView =
 function(params) {
@@ -885,6 +905,15 @@ function(params) {
 
 	cv.set(params);
 	this._setOptionsMenu();
+
+    if (params.readReceipt) {
+        var menu = this._optionsMenu[this._action];
+        var mi = menu && menu.getOp(ZmOperation.REQUEST_READ_RECEIPT);
+        if (mi && this.isReadReceiptEnabled()) {
+            mi.setChecked(true, true);
+        }
+    }
+
 	this._setComposeTabGroup();
 	this._app.pushView(this.viewId);
 	if (!appCtxt.isChildWindow) {
@@ -1020,6 +1049,21 @@ function() {
 		} else {
 			this._autoSaveTimer.resurrect(autoSaveInterval * 1000);
 		}
+	}
+
+	var authTokenEndTime = appCtxt.get(ZmSetting.TOKEN_ENDTIME);  //get time for auth token expiration
+	if (authTokenEndTime) {
+		var now = new Date();
+		var interval = authTokenEndTime - now.getTime() - 10000; //set timer for auth token expire time - 10 seconds
+		DBG.println(AjxDebug.DBG1, "ZmComposeController: setting auth token timer interval to " + interval);
+		DBG.println(AjxDebug.DBG1, "ZmComposeController: auth token timer callback scheduled for " + new Date(now.getTime() + interval).toLocaleString());
+		//check to see if we need to reschedule  -- auth token may have expired or timer was canceled
+		if (authTokenEndTime != this._authTokenEndTime || !this._authTimedAction) {
+			this._authTokenEndTime = authTokenEndTime;
+			this._authTimedAction = new AjxTimedAction(this, this._authSaveCallback)
+			AjxTimedAction.scheduleAction(this._authTimedAction, interval);
+		}
+
 	}
 };
 
@@ -1202,15 +1246,15 @@ function(msg, identity) {
                 composeMode = DwtHtmlEditor.HTML;
             }
         } 
+		else if (this._action == ZmOperation.DRAFT) {
+			if (msg && msg.isHtmlMail()) {
+				composeMode = DwtHtmlEditor.HTML;
+			}
+		}
 		else if (identity) {
 			var sameFormat = appCtxt.get(ZmSetting.COMPOSE_SAME_FORMAT);
 			var asFormat = appCtxt.get(ZmSetting.COMPOSE_AS_FORMAT);
 			if ((!sameFormat && asFormat == ZmSetting.COMPOSE_HTML) ||  (sameFormat && msg && msg.isHtmlMail())) {
-				composeMode = DwtHtmlEditor.HTML;
-			}
-		}
-        else if (this._action == ZmOperation.DRAFT) {
-			if (msg && msg.isHtmlMail()) {
 				composeMode = DwtHtmlEditor.HTML;
 			}
 		}
@@ -1568,6 +1612,13 @@ function(idle) {
 	}
 };
 
+ZmComposeController.prototype._authSaveCallback =
+function() {
+	DBG.println(AjxDebug.DBG1, "ZmComposeController: authSaveCallback -- now = " + new Date().toLocaleString());
+	DBG.println(AjxDebug.DBG1, "ZmComposeController: auth token to expire, auto saving draft");
+	this._autoSaveCallback(true);
+};
+
 ZmComposeController.prototype.saveDraft =
 function(draftType, attId, docIds, callback, contactId) {
 
@@ -1642,7 +1693,7 @@ function() {
 	var time = this._delayDialog.getValue(); //Returns {date: Date, timezone: String (see AjxTimezone)}
 
 	var date = time.date;
-	var dateOffset = AjxTimezone.getOffset(AjxTimezone.getClientId(time.timezone), date);
+	var dateOffset = AjxTimezone.getOffset(AjxTimezone.getRule(AjxTimezone.getClientId(time.timezone)), date);
 	var utcDate = new Date(date.getTime() - dateOffset*60*1000);
 
 	var now = new Date();
@@ -1743,6 +1794,7 @@ function(mailtoParams) {
 ZmComposeController.prototype._popShieldYesDraftSaved =
 function() {
 	appCtxt.getAppViewMgr().showPendingView(true);
+	this._cancelAuthTimedSave();
 };
 
 // Called as: No, don't save as draft
@@ -1759,6 +1811,7 @@ function(mailtoParams) {
 
 		AjxDebug.println(AjxDebug.REPLY, "Reset compose view: _popShieldNoCallback");
         this._composeView.reset(false);
+		this._cancelAuthTimedSave();
 
 		if (!mailtoParams) {
 			appCtxt.getAppViewMgr().showPendingView(true);
@@ -1897,4 +1950,58 @@ function() {
 ZmComposeController.prototype._canSaveDraft =
 function() {
 	return appCtxt.get(ZmSetting.SAVE_DRAFT_ENABLED) && !this._composeView._isInviteReply(this._action);
+};
+
+/*
+ * Return true/false if read receipt is being requested
+ */
+ZmComposeController.prototype.isRequestReadReceipt =
+function(){
+
+  	// check for read receipt
+	var requestReadReceipt = false;
+    var isEnabled = this.isReadReceiptEnabled();
+	if (isEnabled) {
+		var menu = this._toolbar.getButton(ZmOperation.COMPOSE_OPTIONS).getMenu();
+		if (menu) {
+			var mi = menu.getItemById(ZmOperation.KEY_ID, ZmOperation.REQUEST_READ_RECEIPT);
+			requestReadReceipt = (!!(mi && mi.getChecked()));
+		}
+	}
+
+    return requestReadReceipt;
+};
+
+/*
+ * Return true/false if read receipt is enabled
+ */
+ZmComposeController.prototype.isReadReceiptEnabled =
+function(){
+    var acctName = appCtxt.multiAccounts
+		? this._composeView.getFromAccount().name : this._accountName;
+    var acct = acctName && appCtxt.accountList.getAccountByName(acctName);
+    if (appCtxt.get(ZmSetting.MAIL_READ_RECEIPT_ENABLED, null, acct)){
+        return true;
+    }
+
+    return false;
+};
+
+/*
+ * Return ZmMailMsg object
+ * @return {ZmMailMsg} message object
+ */
+ZmComposeController.prototype.getMsg =
+function(){
+    return this._msg;
+};
+
+
+ZmComposeController.prototype._cancelAuthTimedSave =
+function() {
+	if (this._authTimedAction && this._authTimedAction._id) {
+		AjxTimedAction.cancelAction(this._authTimedAction._id);
+		DBG.println(AjxDebug.DBG1, "ZmComposeController: auth time save canceled. Action ID = " + this._authTimedAction._id);
+		this._authTimedAction = null;
+	}
 };

@@ -6,7 +6,7 @@ package com.zimbra.qa.selenium.projects.admin.ui;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.AbsWizard;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.admin.items.AccountItem;
 
 
@@ -16,14 +16,11 @@ import com.zimbra.qa.selenium.projects.admin.items.AccountItem;
  */
 public class WizardCreateAccount extends AbsWizard {
 
-	public static final String zdlg__NEW_ACCT = "xpath=//*[@id='zdlg__NEW_ACCT']";
-
-	// Wizard Navigation Buttons
-	public static final String DWT279_title = "xpath=//*[@id='DWT279_title']"; // "Cancel" button
-	public static final String DWT280_title = "xpath=//*[@id='DWT280_title']"; // "Help" button
-	public static final String DWT281_title = "xpath=//*[@id='DWT281_title']"; // "Previous" button
-	public static final String DWT282_title = "xpath=//*[@id='DWT282_title']"; // "Next" button
-	public static final String DWT283_title = "xpath=//*[@id='DWT283_title']"; // "Finish" button
+	public static final String zdlg_NEW_ACCT = "zdlg__NEW_ACCT";
+	public static final String zdlg_ACCT_NAME = "zdlgv__NEW_ACCT_name_2";
+	public static final String zdlg_DOMAIN_NAME="zdlgv__NEW_ACCT_name_3_display";
+	public static final String zdlg_LAST_NAME="zdlgv__NEW_ACCT_sn";
+	public static final String zdlg_OK="css=div#zdlg__MSG td[id^='OK']";
 
 	public WizardCreateAccount(AbsTab page) {
 		super(page);
@@ -35,47 +32,56 @@ public class WizardCreateAccount extends AbsWizard {
 	 */
 	@Override
 	public IItem zCompleteWizard(IItem item) throws HarnessException {
-		
+
 		if ( !(item instanceof AccountItem) )
 			throw new HarnessException("item must be an AccountItem, was "+ item.getClass().getCanonicalName());
-		
+
 		AccountItem account = (AccountItem)item;
-		
-		String CN = account.EmailAddress.split("@")[0];
-		String domain = account.EmailAddress.split("@")[1];
-		
-		sType("xpath=//@[@id='_XForm_3_name_2']", CN);
-		sType("xpath=//@[@id='_XForm_3_name_3_display']", domain);
-		
-		for (String key : account.AccountAttrs.keySet()) {
-			
+
+		String CN = account.getLocalName();
+		String domain = account.getDomainName();
+
+
+		zType(zdlg_ACCT_NAME, CN);
+
+		zType(zdlg_DOMAIN_NAME, domain);
+
+		for (String key : account.getAccountAttrs().keySet()) {
+
 			// TODO: Handle Previous/Next to find the input field, if necessary
-			
-			if ( key.equals("givenName")) {
-				sType("xpath=//@[@id='_XForm_3_givenName']", account.AccountAttrs.get(key));
+
+			if ( key.equals("sn")) {
+
+				zType(zdlg_LAST_NAME, account.getAccountAttrs().get(key));
 				continue;
 			}
 
 			// TODO: add all account keys
-			
+
 			throw new HarnessException("Unknown account attribute key "+ key);
-			
+
 		}
+
+		clickFinish();
 		
+		// Need to dismiss the "account created" dialog.
+		sClick(zdlg_OK);
+		//throw new HarnessException("See http://bugzilla.zimbra.com/show_bug.cgi?id=59013");
 		
-		return (account);
-		
+		 return (account);
+
+
 	}
 
 	@Override
-	public boolean zIsOpen() throws HarnessException {
-		
-		boolean present = sIsElementPresent(zdlg__NEW_ACCT);
+	public boolean zIsActive() throws HarnessException {
+
+		boolean present = sIsElementPresent(zdlg_NEW_ACCT);
 		if ( !present ) {
 			return (false);
 		}
-		
-		boolean visible = this.zIsVisiblePerPosition(zdlg__NEW_ACCT, 0, 0);
+
+		boolean visible = this.zIsVisiblePerPosition(zdlg_NEW_ACCT, 0, 0);
 		if ( !visible ) {
 			return (false);
 		}
@@ -89,10 +95,5 @@ public class WizardCreateAccount extends AbsWizard {
 		return null;
 	}
 
-	@Override
-	public boolean zIsActive() throws HarnessException {
-		// TODO Auto-generated method stub
-		return false;
-	}
 
 }

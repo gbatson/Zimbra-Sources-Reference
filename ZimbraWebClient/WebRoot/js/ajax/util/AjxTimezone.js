@@ -495,14 +495,8 @@ AjxTimezone.GMT = "Europe/London";
 
 /**
  * Client identifier for GMT with no daylight savings time.
- * <p>
- * <strong>Note:</strong>
- * This is a temporary solution at best because at some point in
- * the future, this timezone may observe daylight savings time.
- * For a real solution, there should be a UTC entry in the list
- * of known timezones.
  */
-AjxTimezone.GMT_NO_DST = "Africa/Casablanca";
+AjxTimezone.GMT_NO_DST = "UTC";
 
 /**
  * <strong>Note:</strong>

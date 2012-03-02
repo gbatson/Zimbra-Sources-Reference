@@ -26,13 +26,11 @@ public class UnTagFile extends AjaxCommonTest {
 		FolderItem briefcaseFolder = FolderItem.importFromSOAP(account,
 				SystemFolder.Briefcase);
 
-		// Create document item
-		DocumentItem document = new DocumentItem();
-
+		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-				+ "/data/public/other/com_zimbra_ymaps.zip";
-
-		String fileName = document.getFileName(filePath);
+		+ "/data/public/other/com_zimbra_ymaps.zip";
+		
+		FileItem fileItem = new FileItem(filePath);
 
 		// Upload file to server through RestUtil
 		String attachmentId = account.uploadFile(filePath);
@@ -55,7 +53,7 @@ public class UnTagFile extends AjaxCommonTest {
 		 * String docId = account.soapSelectValue(
 		 * "//mail:SearchResponse//mail:doc[@name='" + docName + "']", "id");
 		 * String version = account.soapSelectValue(
-		 * "//mail:SearchResponse//mail:doc[@name='" + docName + "']", "id");
+		 * "//mail:SearchResponse//mail:doc[@name='" + docName + "']", "ver");
 		 * 
 		 * account.soapSend(
 		 * "<SearchRequest xmlns='urn:zimbraMail' types='document'>" + "<query>"
@@ -68,9 +66,10 @@ public class UnTagFile extends AjaxCommonTest {
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
+		SleepUtil.sleepVerySmall();
+		
 		// Click on created document
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileName);
+		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 
 		// Create a tag
 		String tagName = "tag" + ZimbraSeleniumProperties.getUniqueString();
@@ -109,7 +108,10 @@ public class UnTagFile extends AjaxCommonTest {
 		// Make sure the tag was applied to the document
 		account
 				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-						+ "<query>" + fileName + "</query>" + "</SearchRequest>");
+						+ "<query>"
+						+ fileItem.getName()
+						+ "</query>"
+						+ "</SearchRequest>");
 
 		String id = account.soapSelectValue("//mail:SearchResponse//mail:doc",
 				"t");
@@ -120,8 +122,10 @@ public class UnTagFile extends AjaxCommonTest {
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
+		SleepUtil.sleepVerySmall();
+		
 		// Click on tagged document
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileName);
+		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
 
 		// Click Remove Tag
 		app.zPageBriefcase.zToolbarPressPulldown(Button.B_TAG,
@@ -131,11 +135,17 @@ public class UnTagFile extends AjaxCommonTest {
 
 		account
 				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-						+ "<query>" + fileName + "</query>" + "</SearchRequest>");
+						+ "<query>"
+						+ fileItem.getName()
+						+ "</query>"
+						+ "</SearchRequest>");
 
 		id = account.soapSelectValue("//mail:SearchResponse//mail:doc", "t");
 
 		ZAssert.assertStringDoesNotContain(id, tagId,
 				"Verify that the tag is removed from the message");
+		
+		// delete file upon test completion
+		app.zPageBriefcase.deleteFileByName(fileItem.getName());
 	}
 }

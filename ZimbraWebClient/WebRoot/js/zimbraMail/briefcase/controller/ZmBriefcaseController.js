@@ -220,6 +220,7 @@ function(parent, num) {
 
 	var items = this._listView[this._currentView].getSelection();
 	var isFolderSelected=false, noOfFolders = 0, isRevisionSelected=false, isBriefcaseItemSelected=false, isMixedSelected=false;
+    var isWebDocSelected= false, hasLocked = false, allLocked = true, sameLockOwner=true;
     var hasHighestRevisionSelected = false;
 	if (items) {
 		for (var i = 0; i < items.length; i++) {
@@ -235,6 +236,14 @@ function(parent, num) {
             }else{
                 isBriefcaseItemSelected = true;
             }
+
+            isWebDocSelected = isWebDocSelected || ( !item.isFolder && item.isWebDoc() );
+
+            allLocked = allLocked && item.locked;
+
+            hasLocked = hasLocked || item.locked;
+
+            sameLockOwner = sameLockOwner && (item.locked && item.lockUser == appCtxt.getActiveAccount().name);
 		}
 	}
 
@@ -274,7 +283,7 @@ function(parent, num) {
     parent.enable(ZmOperation.RENAME_FILE, ( num ==1 && !isFolderSelected && !isReadOnly && !isRevision && (isLocked ? isLockOwner : true) ));
 
     //Download - Files
-    parent.enable(ZmOperation.SAVE_FILE, isItemSelected && firstItem.isRealFile() && num == 1);
+    parent.enable(ZmOperation.SAVE_FILE, num >0 );
 
     // Edit
     parent.enable(ZmOperation.OPEN_FILE, (num == 1 && isWebDoc));
@@ -297,14 +306,14 @@ function(parent, num) {
         parent.enable(ZmOperation.CHECKIN, checkinEnabled && num == 1 );
 
         //Checkout
-        var checkoutEnabled = !isReadOnly && !isLocked && !isRevision;
+        var checkoutEnabled = !isReadOnly && !hasLocked && !isRevisionSelected;
         parent.getOp(ZmOperation.CHECKOUT) && parent.getOp(ZmOperation.CHECKOUT).setVisible(!isRevision && !isLocked);
-        parent.enable(ZmOperation.CHECKOUT, checkoutEnabled && num == 1);
+        parent.enable(ZmOperation.CHECKOUT, checkoutEnabled);
 
         //Discard Checkout
-        var discardCheckoutEnabled = (num == 1) && isLocked && !isRevision;
+        var discardCheckoutEnabled = sameLockOwner && !isRevisionSelected;
         parent.getOp(ZmOperation.DISCARD_CHECKOUT) && parent.getOp(ZmOperation.DISCARD_CHECKOUT).setVisible(discardCheckoutEnabled);
-        parent.enable(ZmOperation.DISCARD_CHECKOUT, discardCheckoutEnabled && (isAdmin || isLockOwner || !isShared));
+        parent.enable(ZmOperation.DISCARD_CHECKOUT, discardCheckoutEnabled && (isAdmin || sameLockOwner || !isShared));
 
         //Versioning
         var versionEnabled = (!isReadOnly && num == 1 && isRevision);
@@ -557,13 +566,21 @@ function(ev) {
 
 		}
 		if (restUrl) {
-            if(item.isDownloadable() && !(item.contentType == ZmMimeTable.APP_ADOBE_PDF && this.hasPDFReader())) {
+            if(item.isDownloadable() && !this._alwaysOpenInNewWindow(item)) {
                 this._downloadFile(restUrl);
             }else {
 			    window.open(restUrl, this._getWindowName(item.name), item.isWebDoc() ? "" : ZmBriefcaseApp.getDocWindowFeatures());
             }
 		}
 	}
+};
+
+ZmBriefcaseController.prototype._alwaysOpenInNewWindow =
+function(item){
+
+    return (item.contentType == ZmMimeTable.APP_ADOBE_PDF && this.hasPDFReader())
+            || (item.contentType == ZmMimeTable.TEXT_XML) || (item.contentType == ZmMimeTable.APP_XML);
+
 };
 
 ZmBriefcaseController.prototype.hasPDFReader =
@@ -613,9 +630,19 @@ function(){
 
 ZmBriefcaseController.prototype._checkoutListener =
 function(){
-     var item = this._getSelectedItem();
-     if(item && item instanceof ZmBriefcaseItem){
-        this.checkout(item, item.isWebDoc() ? null : new AjxCallback(this, this._postCheckout, item));
+     var items = this._getSelectedItems();
+     if(items.length > 1){
+        for(var i=0; i< items.length; i++){
+           var item = items[i];
+           if(item && item instanceof ZmBriefcaseItem){
+                this.checkout(item);
+           }
+        }
+     }else{
+        var item = items[0];
+        if(item && item instanceof ZmBriefcaseItem){
+            this.checkout(item, item.isWebDoc() ? null : new AjxCallback(this, this._postCheckout, item));
+        }
      }
 };
 
@@ -648,9 +675,12 @@ function(item, file){
 
 ZmBriefcaseController.prototype._handleDiscardCheckout =
 function(){    
-    var item = this._getSelectedItem();
-    if(item && item instanceof ZmBriefcaseItem)
-        this.unlockItem(item);
+    var items = this._getSelectedItems();
+    for(var i=0; i< items.length; i++){
+        var item = items[i];
+        if(item && item instanceof ZmBriefcaseItem)
+            this.unlockItem(item);
+    }
 };
 
 ZmBriefcaseController.prototype.refreshItem =
@@ -709,6 +739,12 @@ function(){
     var view = this._listView[this._currentView];
 	var items = view.getSelection();    
     return ( items && items.length > 0 ) ? items[0] : null;
+};
+
+ZmBriefcaseController.prototype._getSelectedItems =
+function(){
+    var view = this._listView[this._currentView];
+	return view.getSelection();
 };
 
 ZmBriefcaseController.prototype._getCheckinDlg =
@@ -866,19 +902,33 @@ function() {
 
 	items = AjxUtil.toArray(items);
 
-	    // Allow download to only one file.
-        this.downloadFile(items[0]);
+	// Allow download to only one file.
+    this.downloadFile(items);
 };
 
 ZmBriefcaseController.prototype.downloadFile =
-function(item){
-    var restUrl = item.getRestUrl();
+function(items){
+
+    var restUrl, length= items.length;
+    if(length > 1){
+        var params = [];
+        for(var i=0; i< length; i++){
+            var item = items[i];
+            params.push((item.isRevision ? item.parent.id : item.id)+"."+item.version);
+        }
+        var organizer = appCtxt.getById(items[0].folderId);
+        restUrl = [ organizer.getRestUrl(), "?fmt=zip&list=", params.join(',')].join('');
+    }else{
+       var item = AjxUtil.isArray(items) ? items[0] : items;
+       restUrl = item.getRestUrl();
+       restUrl += "?disp=a"+(item.version ? "&ver="+item.version : "");
+    }
+
     if (!restUrl) {
         return false;
     }
     restUrl = AjxStringUtil.fixCrossDomainReference(restUrl);
     if (restUrl) {
-        restUrl += "?disp=a"+(item.version ? "&ver="+item.version : "");
         this._downloadFile(restUrl)
     }
 };
@@ -946,7 +996,16 @@ function(event) {
 
 	for (var i = 0; i < items.length; i++) {
 		var item = items[i];
-		var url = item.getRestUrl();
+		briefcase = appCtxt.getById(item.folderId);
+		var url;
+		if (briefcase.restUrl) {
+			//present if the briefcase is a share from another user. In this case, keep that URL as the base.
+			url = [briefcase.restUrl, "/", AjxStringUtil.urlComponentEncode(item.name)].join("")
+		}
+		else {
+			//item is in this user's briefcase, so build the rest url.
+			url = item.getRestUrl();
+		}
 		if (appCtxt.isOffline) {
 			var remoteUri = appCtxt.get(ZmSetting.OFFLINE_REMOTE_SERVER_URI);
 			url = remoteUri + url.substring((url.indexOf("/",7)));
@@ -957,7 +1016,6 @@ function(event) {
 
 		if (noprompt) { continue; }
 
-		briefcase = appCtxt.getById(item.folderId);
 		shares = briefcase && briefcase.shares;
 		if (shares) {
 			for (var j = 0; j < shares.length; j++) {

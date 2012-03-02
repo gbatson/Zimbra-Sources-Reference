@@ -5,7 +5,8 @@ package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.Stafpostqueue;
+import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
+
 
 
 /**
@@ -17,8 +18,8 @@ import com.zimbra.qa.selenium.framework.util.Stafpostqueue;
 public class DialogShare extends AbsDialog {
 
 	public static class Locators {
-	
-
+		public static final String zDialogShareId = "ShareDialog";
+		public static final String zButtonsId = "ShareDialog_buttons";
 	}
 	
 	
@@ -56,13 +57,17 @@ public class DialogShare extends AbsDialog {
 	public void zSetEmailAddress(String email) throws HarnessException {
 		logger.info(myPageName() + " zSetEmailAddress("+ email +")");
 
-		String locator = "implement me";
+		String locator = "//div[@id='ShareDialog_grantee']/input";
+		
 		
 		// Make sure the locator exists
 		if ( !this.sIsElementPresent(locator) ) {
 			throw new HarnessException("zSetEmailAddress "+ locator +" is not present");
 		}
-
+		this.sFocus(locator);
+	    this.zClick(locator);
+	    zKeyboard.zTypeCharacters(email);
+		//this.sType(locator, email);
 	}
 	
 	public static class ShareRole {
@@ -84,14 +89,17 @@ public class DialogShare extends AbsDialog {
 	
 	public void zSetRole(ShareRole role) throws HarnessException {
 		logger.info(myPageName() + " zSetRole("+ role +")");
-
-		String locator = "implement me";
-		
-		// Make sure the locator exists
-		if ( !this.sIsElementPresent(locator) ) {
+		String locator =null;
+		if(role== ShareRole.Admin){
+			locator = "//div[@id='"+ Locators.zDialogShareId +"']//div[contains(@id,'_content')]//div/fieldset/div/table/tbody/tr[4]/td/input[contains(@id,'ShareRole_ADMIN')]";
+		}else if (role== ShareRole.Manager){
+			locator = "//div[@id='"+ Locators.zDialogShareId +"']//div[contains(@id,'_content')]//div/fieldset/div/table/tbody/tr[3]/td/input[contains(@id,'ShareRole_MANAGER')]";
+		}else{
 			throw new HarnessException("zSetRole "+ locator +" is not present");
 		}
-
+		this.sFocus(locator);
+		this.sClick(locator);
+		//this.sCheck(locator);
 	}
 	
 	public static class ShareMessageType {
@@ -131,7 +139,7 @@ public class DialogShare extends AbsDialog {
 		
 		if ( button == Button.B_OK ) {
 			
-			locator =  "implement me";
+			locator =  "//div[@id='"+ Locators.zDialogShareId +"']//div[@id='"+ Locators.zButtonsId +"']//td[text()='OK']";
 			
 		} else if ( button == Button.B_CANCEL ) {
 			
@@ -185,8 +193,21 @@ public class DialogShare extends AbsDialog {
 	@Override
 	public boolean zIsActive() throws HarnessException {
 		
-		String locator = "css=[]";
-		return ( this.sIsElementPresent(locator) );
+		logger.info(myPageName() + " zIsActive()");
+
+		String locator = "id="+ Locators.zDialogShareId;
+		
+		if ( !this.sIsElementPresent(locator) ) {
+			return (false); // Not even present
+		}
+		
+		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
+			return (false);	// Not visible per position
+		}
+	
+		// Yes, visible
+		logger.info(myPageName() + " zIsVisible() = true");
+		return (true);
 	}
 
 

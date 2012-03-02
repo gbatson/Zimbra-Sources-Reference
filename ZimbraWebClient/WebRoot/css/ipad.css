@@ -1,0 +1,708 @@
+/* CSS document for iPad */
+
+/* Browser reset */
+html,body,p,div,table,ul,li,form{
+
+	margin: 0;
+	padding: 0;
+	border: none;
+}
+
+a{
+	outline: none;
+}
+
+/* Chrome*/
+
+html, body{
+	font: normal 11px Arial,Tahoma,helvetica,Verdana,sans-serif;;
+	overflow: hidden;
+}
+
+.ul li{
+
+	list-style: none;
+	display: inline;
+	margin: 0;
+}
+
+.alignLeft{
+	float: left;
+}
+
+.alignRight{
+	float: right;
+}
+
+.clear{
+	clear: both;
+}
+
+/* Topbar Styles */
+
+.topbar {
+	background: #dbd0b5 url("/img/mobile/ipad/topbar-bg.gif") repeat-x top left;
+	height: 40px;
+	overflow: hidden;
+	color: #5f5a4a;
+
+}
+
+	.topbar a{
+		text-decoration: none;
+
+	}
+
+
+.logo{
+		background: transparent url("/img/mobile/ipad/logo.png") no-repeat top left;
+		width: 80px;
+		height: 20px;
+		float: left;
+		margin: 10px 0 0 10px;
+}
+
+
+.search{
+
+		margin: 10px 10px 0 0;
+		width: 200px;		
+}
+
+	.search input{
+		-webkit-border-radius: 8px;
+		outline: none;
+		padding: 2px 4px;
+		width: 200px;
+}
+
+
+.signout{
+		margin: 15px 10px 0 10px;
+}
+
+	.signout a{
+		text-decoration: none;
+	}
+
+
+.tab{
+
+}
+
+	ul.ul{
+		margin: 20px 0 0 20%;
+		width: 455px;		
+	}
+
+	 ul.ul li{
+		margin-right: 0px;
+		padding: 10px 20px;
+	}
+	
+		ul.ul li a{ color: #5f5a4a; }
+
+	ul.ul li.sel{
+		background: #7f7b6e url("/img/mobile/ipad/tab-selected.gif") repeat-x top left;
+		-webkit-border-top-left-radius: 4px;
+		-webkit-border-top-right-radius: 4px;
+		color: white;
+		font-weight: bold;
+	}
+
+		ul.ul li.sel a{ color: white; } 
+
+/* Toolbar Style */
+
+.toolbar{
+	background: #676356 url("/img/mobile/ipad/toolbar-bg.gif") repeat-x top left;
+	height: 45px;
+	overflow: hidden;
+	border: none;
+	padding: 0 0 0 0!important;
+}
+
+.overviewActions{
+	/* float: left;
+	width: 24.9%; */
+	border-right: 1px solid #999;
+}
+
+.applicationActions{
+	/* float: left;
+	width: 74.9%; */
+	border-left: 1px solid #444;
+
+}
+
+
+.button{
+	background: #c5bba3 url("/img/mobile/ipad/button-bg.gif") repeat-x bottom left;
+	-webkit-border-radius: 6px;
+	height: 20px;
+	padding: 6px 4px 0 4px;
+	font-size: 11px;
+	font-weight: bold;
+	text-align: center;
+}
+
+	.button:active{
+		background: #7b7769 url("/img/mobile/ipad/button-selected-bg.gif") repeat-x top left;
+		color: white;
+	}
+
+		.button a, .buttonRight a, .buttonRight{
+			text-decoration: none;
+			color: #453928;
+			vertical-align: middle;
+			
+		}
+	
+		.button a:active{
+			color: white;
+		}
+	
+		.button input{
+			background-color: transparent;
+			border: none;
+			color: #453928;
+			font-weight: bold;
+		}		
+	
+.buttonRight{	
+	float: right;
+	margin-right: 10px;
+	min-width: 60px;
+}
+
+	
+.folder{
+	float: left;
+	margin-left: 10px;
+	 min-width: 50px;
+}
+
+	.folder div{ margin: 4px;}
+
+
+.select{
+	float: right;
+	margin-right: 10px;
+	width: 70px;
+}
+
+	.select select{
+		background: transparent;
+		border: none;
+		width: 70px;
+		color: #453928;
+		font-weight: bold;
+	}
+
+
+.icons{
+	float: right;
+	margin-right: 10px;
+	width: 20px;
+}
+
+
+.compose{
+	float: left;
+	margin-left: 10px;
+	width: 60px;
+}
+
+	.compose div{ margin: 4px;}
+
+
+.actions{
+	float: right;
+	margin-right: 10px;
+	overflow: hidden;
+
+}
+
+.left, .center, .right{
+ 	float: left;
+
+}
+
+.left{
+	-webkit-border-top-left-radius: 6px;
+	-webkit-border-bottom-left-radius: 6px;
+	-webkit-border-top-right-radius: 0;
+	-webkit-border-bottom-right-radius: 0;
+	border-right: 1px solid #999;
+}
+ 
+.center{
+	-webkit-border-top-left-radius: 0;
+	-webkit-border-bottom-left-radius: 0;
+	-webkit-border-top-right-radius: 0;
+	-webkit-border-bottom-right-radius: 0;
+	border-left: 1px solid #444;
+	border-right: 1px solid #999;
+}
+
+.right{
+	-webkit-border-top-left-radius: 0;
+	-webkit-border-bottom-left-radius: 0;
+	-webkit-border-top-right-radius: 6px;
+	-webkit-border-bottom-right-radius: 6px;
+	border-left: 1px solid #444;
+}
+
+.left div, .center div, .right div{
+	margin: 4px;
+
+
+}
+
+
+/*List view and Content View styles */
+
+
+.view{
+	width: 100%;
+	overflow: hidden;
+	background: #786448 url("/img/mobile/ipad/brown-pattern.gif") top left;
+}
+
+.listViewPane{
+	float: left;
+	width: 34.9%;
+	border-right: 1px solid #999;
+	background-color: white;
+	position: relative;
+}
+
+
+ul.list li{
+	list-style: none;
+	display: block;
+	border-bottom: 1px solid #ede8db;
+}
+
+.msgContainer{
+	padding: 10px 4px;
+	overflow: hidden;
+}
+.msgContainerSel{
+	padding: 10px 4px;
+	overflow: hidden;
+	background: #d9ceb2 url("/img/mobile/ipad/listview-sel-bg.gif") repeat-x top left;
+}
+
+.contentViewPane{
+	float: left;
+	width: 64.9%;
+	height: 100%;
+	overflow: none;
+	border-left: 1px solid #444;
+}
+
+
+.checkBox{
+	width: 5%;
+}
+
+.msg{
+	width: 75%;
+	overflow: hidden;
+	margin-left: 10px;
+}
+
+.header{
+	margin: 10px 10px 0 10px;
+	overflow: hidden;
+	padding: 0 5px;
+}
+
+	.header div{
+		padding: 0 !important;
+		margin-bottom: 0 !important;
+	}
+	
+	
+	
+.subject{
+	color: white;
+	font-size: 18px;
+	font-weight: bold;
+	width: 70%;
+}
+
+.time{
+	width: 29.9%;
+	color: white;
+	text-align: right;
+}
+
+	.time a {
+		text-decoration: none;
+		color: white;
+		text-align: right;
+	}
+	
+	
+.msgBody{
+	background-color: white;
+	-webkit-border-radius: 12px;
+	height: 570px;
+	margin: 5px 10px 10px 10px ;
+	padding: 10px;
+	overflow-y: auto;
+	word-break: break-all;
+	-webkit-box-shadow: 3px 2px 5px #666;
+}
+
+.address{
+	color: #7C6E4E;
+	letter-spacing: 1px;
+	border-bottom: 1px solid #F1EEE6;
+	padding: 6px;
+}
+
+
+.buttonBg{
+	background: #c5bba3 url("/img/mobile/ipad/button-bg.gif") repeat-x bottom left;
+	-webkit-border-radius: 6px;
+	vertical-align: middle;
+	padding: 0 !important;
+	margin-top: 6px;
+	color: #453928;
+	font-size: 11px;
+	font-weight: bold;
+	width: 40% !important;
+}
+
+	.buttonBg a{
+		text-decoration: none;
+		color: black;
+	}
+	
+	.buttonBg a:hover{
+		background-hover: black;
+		color: white;
+	}
+	
+/** ListView Styles **/
+
+.wrap-dlist {
+    position:relative;	/* needed */
+    z-index:10;			/* needed and important */
+    height: 610px;
+}
+
+.tbl {
+    display: table;
+    width: 100%;
+    text-align:center;
+}
+
+.tr {
+    display: table-row;
+    text-align:center;
+}
+
+.td {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+    padding-top:4px;
+    padding-bottom:4px;
+}
+
+.dlist .list-row .td, .dlist .list-row-unread .td, .lableBorder{
+    border-bottom: 1px solid #ede8db;
+}
+
+.list-row, .list-row-unread{
+    padding: 3px;
+    /* border-bottom: 1px solid #ede8db; */
+    background-color: white;
+} 
+
+.list-row-unread {
+    font-weight: bold;
+}
+
+.list-row-sel{
+	background: #d9ceb2 url("/img/mobile/ipad/listview-sel-bg.gif") repeat-x top left;
+}
+
+.small-gray-text {
+    color: #888888;
+    font-size: 11px;
+}
+
+.list-row-unread .small-gray-text,.Email a {
+    color: #666666;
+    font-weight:normal;
+    
+}
+
+.list-row-unread .l{
+	font-weight: normal;
+}
+
+.from-span a {
+    color: black;
+    text-decoration: none;
+}
+
+.ConvOpen{
+    background-position: 0 -326px !important;
+}
+
+.displayNone{
+	display: none;
+}
+
+.displayShow{
+	display: block;
+}
+.dlist .td{
+}
+
+.f {    
+    white-space: nowrap;
+}
+
+
+.l {
+    text-align: right; 
+	vertical-align: middle;
+	padding-right: 5px;
+}
+
+	.l a{ 
+		color: #666666;
+		text-decoration: none;
+		
+		
+	}
+.m {
+    overflow:hidden;
+    text-overflow:ellipsis;
+	vertical-align: top;
+    text-align:left;
+    font-size: 12px;
+}
+
+	.m a{
+		text-decoration: none;
+		color: black;
+	}
+	
+.msg-list-in-conv {
+}
+
+.msg-list-in-conv .cell {
+    padding: 2px !important;
+}
+
+.SmlIcnHldr{
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align:middle;
+}
+
+.Msg {
+    background: transparent url("/img/im/Img_ImSmallAvailable.gif") no-repeat center center;
+}
+
+.Attachment{
+	background: transparent url("/img/startup/ImgAttachment.gif") no-repeat top left;
+}
+
+.Flag{
+	background: transparent url("/img/startup/ImgFlagRed.gif") no-repeat top left;
+}
+
+.View hr{
+	border: 1px solid white;
+	background-color: white;
+}
+
+/** Style for Contacts **/
+
+.Person48 {
+    background: url( "/img/large/ImgPerson_48.gif" ) 90% 50% no-repeat;
+    height: 50px;
+    width: 50px;
+    padding: 2px;
+}
+
+.aleft {
+    text-align:left !important;
+    padding-left: 5px;
+}
+.aright {
+    text-align:right !important;
+    padding-right:5px;
+}
+
+span.aleft > div{
+	color: white;
+	font-size: 12px;
+}
+
+span.aleft > div:first-child, .contactHeader {
+	font-size: 24px;
+	color: white;
+}
+
+
+.View .list-row{   									/*. View div, */
+    padding: 12px;
+    margin-bottom: 8px;
+    /* border-bottom: 1px solid #ede8db; */
+	font-size: 14px;
+} 
+
+.View .list-row .label, .View div .label{
+	float: left;
+	width: 100px;
+	text-tranform: capitalize;
+	color: #666;
+	text-align: left;
+}
+
+.cont_view .tr{
+	display: block;
+	text-align: left;
+	margin-bottom: 8px;
+	padding: 4px;
+}
+
+.cont_view .label{
+	width: 120px;
+	text-tranform: capitalize;
+	color: #666;
+	text-align: left;
+	float: none !important;
+	font-size: 14px;
+}
+.cont_view .value{
+	text-align: left !important;
+	width: 500px;
+}
+
+.value input{
+	font-size: 14px;
+}
+
+.value a{
+ 	text-decoration: none;
+ 	font-weight: bold;
+ 	color: black;
+}
+
+.attachments div{
+	padding: 4px;
+    margin-bottom: 2px;
+}
+
+
+
+/** needed for iscroll.js **/
+.scrollbar {
+	position: absolute;
+	z-index: 10;
+	width: 1px;
+	height: 1px;
+	border-width: 3px;
+/*	-webkit-border-image: url(images/scrollbar.png) 3;  */
+
+}
+
+.scrollbar.horizontal {
+	bottom: 1px;
+	left: 1px;
+}
+
+.scrollbar.vertical {
+	top: 1px;
+	right: 1px;
+}
+
+
+/**Compose UI styles **/
+
+.veil{
+	background-color: black;
+	opacity: 0.6;
+	-webkit-opacity: 0.6;
+	width: 100%;
+	height: 100%;
+	position: absolute;
+    z-index: 12;
+}
+
+.wrapper{
+	position: absolute;
+	z-index: 14;
+	width: 100%;
+}
+.composeBox{
+	width: 500px;
+	margin: 2px auto;
+	position: relative;
+	-webkit-box-shadow: 3px 2px 5px #333;
+	background-color: transparent;
+
+
+
+}
+
+.composeToolbar{
+	background: #dbd0b5 url("/img/mobile/ipad/topbar-bg.gif") repeat-x top left;
+	height: 40px;
+	overflow: hidden;
+	border: none;
+	-webkit-border-top-left-radius: 8px;
+	-webkit-border-top-right-radius: 8px;
+}
+	
+	.composeToolbar .compose, .composeToolbar .buttonRight{
+		margin-top: 6px;
+	}
+	
+	
+.composeFields{
+	background-color: white;
+	height: 30%;
+	-webkit-border-bottom-left-radius: 8px;
+	-webkit-border-bottom-right-radius: 8px;
+}
+
+
+.cmp_container .View div.tr, .cmp_body, .cmp_body textarea{
+	width: 95%;
+	text-align: left;
+	margin-bottom: 8px;
+	padding: 4px;
+	display: block;
+	font-size: 14px;
+}
+
+.cmp_container .View span.label{
+	width: 100px;
+}
+
+.cmp_container .View span.value div{
+	padding: 0;
+	margin-bottom: 0;
+}
+
+.cmp_container .View span.value, .cmp_container .View span.value input{
+	width: 365px;
+}
+ .cmp_body textarea{
+ 	height: 200px;
+ 	width: 100%;
+ 	margin-left: 2px;
+ }

@@ -1,0 +1,13 @@
+<zimlet name="com_zimbra_phone" version="2.0" target="main view-window" description="Highlights phone numbers to enable Skype call numbers and add to Address Book.">
+	<include>phone.js</include>
+	<include>templates/Phone.template.js</include>
+	<handlerObject>Com_Zimbra_Phone</handlerObject>
+	<serverExtension hasKeyword="phone" extensionClass="com.zimbra.cs.zimlet.handler.NANPHandler"/>
+	<contentObject type="phone">
+		<contextMenu>
+			<menuItem label="${msg.search}" icon="Search" id="SEARCH"/>
+			<menuItem label="${msg.addToContacts}" icon="NewContact" id="ADDCONTACT"/>
+			<menuItem label="${msg.skypeCall}" icon="Telephone" id="CALL"/>
+		</contextMenu>
+	</contentObject>
+</zimlet>

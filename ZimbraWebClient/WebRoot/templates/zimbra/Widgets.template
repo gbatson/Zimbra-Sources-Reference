@@ -1,0 +1,8 @@
+<template id='zimbra.Widgets#ZmErrorDialogControls' width='20' height='32'>
+  <div id='${id}_buttons' class='DwtDialogButtonBar'>
+    <$ if (AjxEnv.isNav) { $>
+      <input type='button' id='${id}_focus' style='height:0px;width:0px;display:none;'>
+    <$ } $>
+  </div>
+</template>
+

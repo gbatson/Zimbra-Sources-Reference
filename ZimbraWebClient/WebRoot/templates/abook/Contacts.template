@@ -1,0 +1,1028 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * Zimbra Collaboration Suite Web Client
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * 
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ * 
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * ***** END LICENSE BLOCK *****
+ */
+<template id="abook.Contacts#ZmEditContactView">
+	<div id="${id}_DEBUG"></div>
+	<table valign=top width='100%' cellspacing=0>
+		<tr valign=top class=contactHeaderTable>
+			<td class=contactHeaderCell>
+				<div id="${id}_IMAGE" tabindex="100"></div>
+				<div id="${id}_REMOVE_IMAGE_row" style='padding-left:7px;font-size:.8em'>
+					<nobr>
+						<a id="${id}_VIEW_IMAGE" href="#view" tabindex="101"><$=ZmMsg.view$></a>
+						|
+						<a id="${id}_REMOVE_IMAGE" href="#remove" tabindex="102"><$=ZmMsg.remove$></a>
+					</nobr>
+				</div>
+			</td>
+			<td class=contactHeaderCell valign=bottom>
+				<div style='padding:.125em'>
+					<div id="${id}_FULLNAME"></div>
+				</div>
+				<div id="${id}_NAME_row">
+					<table><tr>
+						<td id="${id}_PREFIX_row"><div id="${id}_PREFIX" tabindex="200"></div></td>
+						<td><div id="${id}_FIRST" tabindex="201"></div></td>
+						<td id="${id}_MIDDLE_row"><div id="${id}_MIDDLE" tabindex="202"></div></td>
+						<td id="${id}_MAIDEN_row">
+							<table border=0 cellspacing=0 cellpadding=0>
+								<td style='padding:0 2;'>(</td>
+								<td><div id="${id}_MAIDEN" tabindex="203"></div></td>
+								<td style='padding:0 2;'>)</td>
+							</table>
+						</td>
+						<td><div id="${id}_LAST" tabindex="204"></div></td>
+						<td id="${id}_SUFFIX_row">
+							<table border=0 cellspacing=0 cellpadding=0>
+								<td style='padding-right:4;'>,</td>
+								<td><div id="${id}_SUFFIX" tabindex="205"></div></td>
+							</table>
+						</td>
+						<td><div id="${id}_DETAILS" tabindex="206"></div></td>
+					</tr></table>
+				</div>
+				<div id="${id}_NICKNAME_row">
+					<table><tr>
+						<td>&ldquo;</td>
+						<td><div id="${id}_NICKNAME" tabindex="250"></div></td>
+						<td>&rdquo;</td>
+					</tr></table>
+				</div>
+				<div id="${id}_JOB_row">
+					<table><tr>
+						<td id="${id}_TITLE_row"><div id="${id}_TITLE" tabindex="301"></div></td>
+						<td id="${id}_TITLE_DEPARTMENT_SEP">&nbsp;-&nbsp;</td>
+						<td id="${id}_DEPARTMENT_row"><div id="${id}_DEPARTMENT" tabindex="302"></div></td>
+					</tr></table>
+				</div>
+				<div id="${id}_COMPANY_row">
+					<table><tr>
+						<td><div id="${id}_COMPANY" tabindex="305"></div></td>
+					</tr></table>
+				</div>
+			</td>
+			<td class=contactHeaderCell>
+				<table>
+				<tr><td><$=ZmMsg.fileAsLabel$></td><td><div id="${id}_FILE_AS" tabindex="400"></div></td></tr>
+				<tr><td><$=ZmMsg.locationLabel$></td><td><div id="${id}_FOLDER" tabindex="401"></div></td></tr>
+				<$ if (appCtxt.multiAccounts) { $>
+					<tr><td><$=ZmMsg.accountLabel$></td><td><div id="${id}_ACCOUNT"></div></td></tr>
+				<$ } $>
+				</table>
+			</td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.emailLabel$></td>
+			<td class=rowValue><div id="${id}_EMAIL" tabindex="500"></div></td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.phoneLabel$></td>
+			<td class=rowValue><div id="${id}_PHONE" tabindex="600"></div></td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.imLabel$></td>
+			<td class=rowValue><div id="${id}_IM" tabindex="700"></div></td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.addressLabel$></td>
+			<td class=rowValue><div id="${id}_ADDRESS" tabindex="800"></div></td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.urlLabel$></td>
+			<td class=rowValue><div id="${id}_URL" tabindex="900"></div></td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.otherLabel$></td>
+			<td class=rowValue><div id="${id}_OTHER" tabindex="1000"></div></td>
+		</tr>
+		<tr valign=top>
+			<td class=rowLabel><$=ZmMsg.notesLabel$></td>
+			<td class=rowValue style='padding-left:3'><div id="${id}_NOTES" tabindex="1100"></div></td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewDetailsButton">
+	<span id="${id}_title" class="ZButtonBorder ZWidgetTitle"></span>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewInputSelect">
+	<table border=0 cellpadding=0 cellspacing=0>
+		<tr><td style='padding-right:3'><div id='${id}_input' tabindex="100"></div></td>
+			<td><div id='${id}_select' tabindex="200"></div></td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewInputDoubleSelect">
+	<table border=0 cellpadding=0 cellspacing=0>
+		<tr><td style='padding-right:3'><div id='${id}_input' tabindex="100"></div></td>
+			<td><div id='${id}_select' tabindex="200"></div></td>
+			<td><div id='${id}_select2' tabindex="300"></div></td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewOther">
+	<table border=0 cellpadding=0 cellspacing=0>
+		<tr><td style='padding-right:3'><div id='${id}_input' tabindex="100"></div></td>
+			<td style='padding-right:3'><div id='${id}_picker' tabindex="200"></div></td>
+			<td style='padding-left:14px'><div id='${id}_select' tabindex="300"></div></td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewAddressRow">
+	<table>
+		<tr id="${id}_row" class="DwtFormRow" valign=top>
+			<td><div id="${id}" tabindex="100"></div></td>
+			<td><div id="${id}_add" class="DwtFormRowAdd" tabindex="200"></div></td>
+			<td><div id="${id}_remove" class="DwtFormRowRemove" tabindex="300"></div></td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewAddressSelect">
+	<table border=0 cellpadding=0 cellspacing=0>
+		<tr valign=top>
+			<td style='padding-right:3'><div id='${id}_input' tabindex="100"></div></td>
+			<td><div id='${id}_select' tabindex="200"></div></td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#ZmEditContactViewAddress" class="DwtForm ZmEditContactViewAddress">
+	<table style='position:relative;left:-3'>
+		<tr><td><div id="${id}_STREET" tabindex="100"></div></td></tr>
+	</table>
+	<table style='position:relative;left:-3'>
+		<tr><td><div id="${id}_CITY" tabindex="200"></div></td>
+			<td>,&nbsp;</td>
+			<td><div id="${id}_STATE" tabindex="300"></div></td>
+			<td>&nbsp;&nbsp;</td>
+			<td><div id="${id}_ZIP" tabindex="400"></div></td>
+		</tr>
+	</table>
+	<table style='position:relative;left:-3'>
+		<tr><td><div id="${id}_COUNTRY" tabindex="500"></div></td></tr>
+	</table>
+</template>
+
+<!----------------------------------------------------------------------------->
+<!---------------------------- ZmContactCardsView ----------------------------->
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#CardsView">
+	<center>
+		<table border=0 cellpadding=5 cellspacing=5 id='${cardTableId}'>
+			<$
+				var count = 0;
+				for (var i = 0; i < data.list.length; i++) {
+					var contact = data.list[i];
+					if (count % 2 == 0) {
+			$>
+						<tr>
+					<$ }
+						count++;
+					$>
+
+					<td valign=top id='${id}_contact_<$= contact.id $>'></td>
+
+					<$ if (count % 2 == 0) { $>
+						</tr>
+					<$ } $>
+			<$ } $>
+		</table>
+	</center>
+</template>
+
+<template id="abook.Contacts#CardsView-NoResults">
+	<center>
+		<div class='NoResults' id='${id}'>
+			<br><br><$= AjxMsg.noResults $>
+		</div>
+	</center>
+</template>
+
+<template id="abook.Contacts#CardBase">
+	<div name='${name}' class='${className}' id='${id}' style='width:${width}'>
+		<table border=0 width=100% height=100% cellpadding=0 cellspacing=0>
+			<tr class='contactHeader ${headerColor}'>
+				<td width=16>
+					<$= AjxImg.getImageHtml(data.contact.getIcon(), "width:16") $>
+				</td>
+				<td width=100% valign=top>
+					<div class='contactHeader'><$= data.contact.getFileAs() $></div>
+				</td>
+				<$ if (data.tagCellId) { $>
+					<td width=16 id='${tagCellId}'>${tagIcon}</td>
+				<$ } $>
+			</tr>
+			<$ if (data.contact.isGroup()) { $>
+				<$= AjxTemplate.expand("abook.Contacts#CardGroup", {data:data}) $>
+			<$ } else { $>
+				<$= AjxTemplate.expand("abook.Contacts#CardContact", {data:data}) $>
+			<$ } $>
+		</table>
+		${imgHtml}
+	</div>
+</template>
+
+<template id="abook.Contacts#CardGroup">
+	<$
+		var members = data.data.groupMembers;
+		var len = members.length;
+		var size = len <= 5 ? len : Math.min(len, 5);
+	$>
+
+	<tr height=100%>
+		<td colspan=3 valign=top width=100% style='padding-left:2px'>
+			<table border=0>
+				<$ for (var i = 0; i < size; i++) { $>
+					<tr>
+						<td width=20>
+							<$= AjxImg.getImageHtml("Message") $>
+						</td>
+						<td>
+							<nobr><$= AjxStringUtil.htmlEncode(members[i].toString()) $></nobr>
+						</td>
+					</tr>
+				<$ } $>
+
+				<$ if (size < len) { $>
+					<tr>
+						<td colspan=2>
+							<a href="javascript:;" onclick="ZmContactCardsView._moreDetailsCallback('<$= data.data.contact.id $>'); return false">
+								<$= ZmMsg.more $>
+							</a>
+						</td>
+					</tr>
+				<$ } $>
+			</table>
+		</td>
+	</tr>
+</template>
+
+<template id="abook.Contacts#CardContact">
+	<$
+		var value;
+		var contact = data.data.contact;
+	$>
+
+	<tr>
+		<td colspan=2 valign=top width=100% style='font-weight:bold; padding-left:2px'>
+			<$= contact.getCompanyField() || "&nbsp;" $>
+		</td>
+	</tr>
+	<tr height=100%>
+		<td valign=top colspan=10>
+			<table height=100% border=0 cellpadding=1 cellspacing=1>
+				<tr height=100%>
+					<td valign=top>
+						<table border=0>
+							<$ if (value = contact.getWorkAddrField()) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewW, value:value, type:ZmObjectManager.ADDRESS}) $>
+							<$ } else if (value = contact.getHomeAddrField()) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewH, value:value, type:ZmObjectManager.ADDRESS}) $>
+							<$ } $>
+
+							<$ if (value = contact.getAttr("email")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewE, value:value, type:ZmObjectManager.EMAIL}) $>
+							<$ } $>
+
+							<$ if (value = contact.getAttr("email2")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewE2, value:value, type:ZmObjectManager.EMAIL}) $>
+							<$ } else if (value = contact.getAttr("email3")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewE3, value:value, type:ZmObjectManager.EMAIL}) $>
+							<$ } $>
+						</table>
+					</td>
+					<td valign=top>
+						<table border=0>
+							<$ if (value = contact.getAttr("workPhone")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewW, value:value, type:ZmObjectManager.PHONE}) $>
+							<$ } $>
+
+							<$ if (value = contact.getAttr("workPhone2")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewW2, value:value, type:ZmObjectManager.PHONE}) $>
+							<$ } $>
+
+							<$ if (value = contact.getAttr("workFax")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewF, value:value, type:ZmObjectManager.PHONE}) $>
+							<$ } $>
+
+							<$ if (value = contact.getAttr("mobilePhone")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewM, value:value, type:ZmObjectManager.PHONE}) $>
+							<$ } $>
+
+							<$ if (value = contact.getAttr("homePhone")) { $>
+								<$= AjxTemplate.expand("abook.Contacts#CardContactField", {data:data, fname:ZmMsg.cardViewH, value:value, type:ZmObjectManager.PHONE}) $>
+							<$ } $>
+						</table>
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<$ if (!contact.isLoaded) { $>
+		<tr>
+			<td colspan=10 class="FinishLoading" onclick="ZmContactCardsView._loadContact(this, '<$= contact.id $>')">
+				<center><$= ZmMsg.finishLoading $></center>
+			</td>
+		</tr>
+	<$ } $>
+</template>
+
+<template id="abook.Contacts#CardContactField">
+	<$
+		var newValue = data.data.data.isDnd
+			? data.value
+			: data.data.data.view._generateObject(data.value, data.type)
+	$>
+
+	<tr>
+		<td valign=top class='ZmContactFieldValue'>
+			<$= data.fname $>
+		</td>
+		<td valign=top class='ZmContactField'>
+			<$= AjxStringUtil.nl2br(newValue) $>
+		</td>
+	</tr>
+</template>
+
+
+
+<!----------------------------------------------------------------------------->
+<!---------------------------- ZmContactSplitView ----------------------------->
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#SplitView">
+	<table border=0 cellpadding=0 cellspacing=5 width=100% height=100% style='table-layout:fixed'>
+		<col width=230></col>
+		<tr>
+			<td id='${id}_alphabetbar' colspan=2></td>
+		</tr>
+		<tr height=100%>
+			<td width=200 valign=top id='${id}_listview'></td>
+			<td valign=top id='${id}_contentCell' height=100%>
+				<div class='ZmContactInfoView' id='${id}_content'></div>
+			</td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#SplitView_content">
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_header", data) $>
+	<table>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_emails", data) $>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_phones", data) $>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_ims", data) $>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_addresses", data) $>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_urls", data) $>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_other",  data) $>
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_notes",  data) $>
+	</table>
+</template>
+
+<template id="abook.Contacts#SplitView_header">
+	<$
+		var contact		= data.contact;
+		var imageUrl	= contact.getImageUrl();
+		var nickname	= contact.getAttr(ZmContact.F_nickname); 
+		var company		= contact.getAttr(ZmContact.F_company);
+		var title		= contact.getAttr(ZmContact.F_jobTitle);
+		var department	= contact.getAttr(ZmContact.F_department);
+		var fullname	= contact.getFullName();
+		var accountName = appCtxt.multiAccounts && contact.account && contact.account.getDisplayName();
+	$>
+	<table border=0 cellspacing=2 cellpadding=2 width=100% class='contactHeaderTable <$= data.contactHdrClass $>'>
+		<tr>
+			<$ if (imageUrl) { $>
+				<td valign=bottom width=48 rowspan=2><img src="<$= imageUrl $>" width=48 height=48 border=0></td>
+			<$ } else { $>
+				<td valign=bottom width=48 rowspan=2><$= AjxImg.getImageHtml("Person_48") $></td>
+			<$ } $>
+			<td id='${id}_tags' align='right' colspan=2></td>
+		</tr>
+		<tr>
+			<td valign=bottom>
+				<div class='contactHeader <$= data.isInTrash ? "Trash" : "" $>'><$= AjxStringUtil.htmlEncode(fullname) $></div>
+				<$ if (nickname) { $>
+					<div class='companyName'>&ldquo;<$= AjxStringUtil.htmlEncode(nickname) $>&rdquo;</div>
+				<$ } $>
+				<$ if (title || department) { $>
+					<div class='companyName'>
+					<$ if (title) { $>
+						<span><$= AjxStringUtil.htmlEncode(title) $></span>
+					<$ } $>
+					<$ if (department) { $>
+						<$ if (title) { $>
+							&nbsp;-&nbsp;
+						<$ } $>
+						<span><$= AjxStringUtil.htmlEncode(department) $></span>
+					<$ } $>
+					</div>
+				<$ } $>
+				<$ if (company) { $>
+					<div class='companyName'><$= AjxStringUtil.htmlEncode(company) $></div>
+				<$ } $>
+			</td>
+			<td valign=bottom align='right'>
+				<$ if (accountName) { $>
+					<table border=0 cellpadding=0 cellspacing=0 width=1%>
+						<tr>
+							<td class='contactLocation' nowrap="nowrap"><$= ZmMsg.accountLabel $>&nbsp;</td>
+							<td class='companyFolder' colspan=10><$= AjxStringUtil.htmlEncode(accountName) $></td>
+						</tr>
+					</table>
+				<$ } $>
+				<table border=0 cellpadding=0 cellspacing=0 width=1%>
+					<tr>
+						<td class='contactLocation' nowrap="nowrap"><$= ZmMsg.locationLabel $>&nbsp;</td>
+						<$ if (data.addrbook) { $>
+							<td width=20><$= AjxImg.getImageHtml(data.addrbook.getIcon()) $></td>
+							<td>&nbsp;</td>
+							<td class='companyFolder'><$= data.addrbook.getName() $></td>
+						<$ } else if (data.isGal) { $>
+							<td width=20><$= AjxImg.getImageHtml("GAL") $></td>
+							<td>&nbsp;</td>
+							<td class='companyFolder'><$= ZmMsg.GAL $></td>
+						<$ } $>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+</template>
+
+<template id="abook.Contacts#SplitView_emails">
+	<$
+	var itemlistdata = {
+		id: data.id,
+		attrs: data.attrs, seenone: false,
+		findObjects: data.findObjects, objectType: ZmObjectManager.EMAIL,
+		label: ZmMsg.emailLabel
+	};
+	var names = ZmEditContactView.LISTS.EMAIL.attrs;
+	itemlistdata.names = names;
+	for (var i = 0; i < names.length; i++) {
+		itemlistdata.name = names[i];
+		itemlistdata.type = ZmMsg["AB_FIELD_"+names[i]]; $>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+	<$ } $>
+</template>
+
+<template id="abook.Contacts#SplitView_phones">
+	<$
+	var itemlistdata = {
+		id: data.id,
+		attrs: data.attrs, seenone: false,
+		findObjects: data.findObjects, objectType: ZmObjectManager.PHONE,
+		label: ZmMsg.phoneLabel
+	};
+	var names = ZmEditContactView.LISTS.PHONE.attrs;
+	itemlistdata.names = names;
+	for (var i = 0; i < names.length; i++) {
+		itemlistdata.name = names[i];
+		itemlistdata.type = ZmMsg["AB_FIELD_"+names[i]]; $>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+	<$ } $>
+</template>
+
+<template id="abook.Contacts#SplitView_ims">
+	<$
+	var itemlistdata = {
+		id: data.id,
+		attrs: data.attrs, seenone: false,
+		label: ZmMsg.imLabel
+	};
+	if (AjxUtil.isFunction(data.encode.IM)) {
+		itemlistdata.encode = data.encode.IM;
+	}
+	var names = ZmEditContactView.LISTS.IM.attrs;
+	itemlistdata.names = names;
+	for (var i = 0; i < names.length; i++) {
+		itemlistdata.name = names[i];
+		itemlistdata.type = ZmMsg["AB_FIELD_"+names[i]]; $>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+	<$ } $>
+</template>
+
+<template id="abook.Contacts#SplitView_addresses">
+	<$
+	var attrs = data.attrs;
+	var itemdata = {
+		id: data.id,
+		attrs: attrs, seenone: false,
+		label: ZmMsg.addressLabel
+	};
+	var types = {"work":ZmMsg.work,"home":ZmMsg.home,"other":ZmMsg.other};
+	var prefixes = ZmEditContactView.ADDR_PREFIXES;
+	var suffixes = ZmEditContactView.ADDR_SUFFIXES;
+	for (var i = 0; i < prefixes.length; i++) {
+		var count = 0;
+		var prefix = prefixes[i];
+		itemdata.type = types[prefix] || prefix;
+		while (true) {
+			count++;
+			itemdata.address = null;
+			for (var j = 0; j < suffixes.length; j++) {
+				var suffix = suffixes[j];
+				var name = [prefix,suffix,count>1?count:""].join("");
+				var value = attrs[name];
+				if (!value) continue;
+				if (!itemdata.address) itemdata.address = {};
+				itemdata.address[suffix] = value.replace(/\n/g,"<br/>");
+			}
+			if (!itemdata.address) break;
+			itemdata.name = [prefix,"Address",count>1?count:""].join("");
+			$>
+			<$= AjxTemplate.expand("#SplitView_address_value", itemdata) $>
+			<$
+			itemdata.seenone = true;
+		}
+	}
+	$>
+</template>
+
+<template id="abook.Contacts#SplitView_address_value">
+	<tr valign=top>
+		<td class=rowLabel><$= data.seenone ? "" : data.label $></td>
+		<td id='${id}_<$=data.name$>' class=rowValue>
+			<$ var address = data.address;
+			if (address.Street) { $>
+				<div><$=address.Street$></div>
+			<$ }
+			if (address.City || address.State || address.PostalCode) { $>
+				<div>
+					<span><$=address.City$></span>
+					<$ if (address.City && address.State) { $>, <$ } $>
+					<span><$=address.State$></span>
+					<$ if (address.City && address.State) { $>&nbsp;<$ } $>
+					<span><$=address.PostalCode$></span>
+				</div>
+			<$ }
+			if (address.Country) { $>
+				<div><$=address.Country$></div>
+			<$ } $>
+		</td>
+		<td style='color:gray' class='rowType'>&nbsp;<$= data.type $></td>
+	</tr>
+</template>
+
+<template id="abook.Contacts#SplitView_urls">
+	<$
+	var itemlistdata = {
+		id: data.id,
+		attrs: data.attrs, seenone: false,
+		findObjects: data.findObjects, objectType: ZmObjectManager.URL,
+		label: ZmMsg.urlLabel
+	};
+	var types = {};
+	types[ZmContact.F_homeURL] = ZmMsg.home;
+	types[ZmContact.F_workURL] = ZmMsg.work;
+	types[ZmContact.F_otherURL] = ZmMsg.other;
+	var names = ZmEditContactView.LISTS.URL.attrs;
+	itemlistdata.names = names;
+	for (var i = 0; i < names.length; i++) {
+		var name = names[i]; 
+		itemlistdata.name = name;
+		itemlistdata.type = types[name] || ZmMsg["AB_FIELD_"+name]; $>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+	<$ } $>
+</template>
+
+<template id="abook.Contacts#SplitView_other">
+	<$
+	var itemlistdata = {
+		id: data.id,
+		attrs: data.attrs, seenone: false,
+		findObjects: data.findObjects,
+		label: ZmMsg.otherLabel
+	};
+	var names = ZmEditContactView.LISTS.OTHER.attrs;
+	itemlistdata.names = names;
+	for (var i = 0; i < names.length; i++) {
+		var name = names[i];
+		itemlistdata.name = name;
+		itemlistdata.type = ZmMsg["AB_FIELD_"+names[i]];
+		$>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+		<$
+	}
+
+	// find unknown attributes
+	var attrs = {};
+	for (var a in itemlistdata.attrs) {
+		var aname = a.replace(/\d+$/,"");
+		if (aname in ZmContact.IS_IGNORE) continue;
+		attrs[aname] = true;
+	}
+	for (var id in ZmEditContactView.ATTRS) {
+		delete attrs[ZmEditContactView.ATTRS[id]];
+	}
+	for (var id in ZmEditContactView.LISTS) {
+		var list = ZmEditContactView.LISTS[id];
+		if (!list.attrs) continue;
+		for (var i = 0; i < list.attrs.length; i++) {
+			delete attrs[list.attrs[i]];
+		}
+	}
+	var prefixes = ZmEditContactView.ADDR_PREFIXES;
+	var suffixes = ZmEditContactView.ADDR_SUFFIXES;
+	for (var i = 0; i < prefixes.length; i++) {
+		for (var j = 0; j < suffixes.length; j++) {
+			delete attrs[prefixes[i]+suffixes[j]];
+		}
+	}
+
+	// display custom
+	for (var a in attrs) {
+		itemlistdata.name = a;
+		itemlistdata.type = a;
+		$>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+		<$
+	}
+	$>
+</template>
+
+<template id="abook.Contacts#SplitView_notes">
+	<$
+	var itemlistdata = {
+		id: data.id,
+		attrs: data.attrs,
+		encode: AjxStringUtil.nl2br,
+		seenone: false,
+		label: ZmMsg.notesLabel,
+		name: ZmContact.F_notes,
+		names: [ZmContact.F_notes]
+	};
+	$>
+	<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+</template>
+
+<!-- NOTE: This template is used internally and should NOT be called in code! -->
+<template id="abook.Contacts#SplitView_item_list">
+	<$
+	var isEmail = data.objectType == ZmObjectManager.EMAIL;
+	var i = 0;
+	while (true) {
+		var name = ++i > 1 || ZmContact.IS_ADDONE[data.name] ? data.name+i : data.name;
+		var value = data.attrs[name];
+		if (!value) break;
+		if (!isEmail) {
+			value = AjxStringUtil.htmlEncode(value);
+		}
+		if (ZmContact.IS_DATE[data.name]) {
+			var date = ZmEditContactViewOther.parseDate(value);
+			value = date ? AjxDateFormat.getDateInstance(AjxDateFormat.LONG).format(date) : value;
+		}
+		if (data.findObjects) {
+			value = data.findObjects(value, data.objectType);
+		}
+		if (data.encode) {
+			value = data.encode(value);
+		}
+		$>
+
+		<tr valign=top>
+			<td class=rowLabel><$= data.seenone ? "" : data.label $></td>
+			<td id='${id}_<$=name$>' <$= data.type ? "" : "colspan=2" $> class=rowValue>
+				<$= value $>
+			</td>
+			<$ if (data.type) { $>
+				<td style='color:gray' class='rowType'>&nbsp;<$= data.type $></td>
+			<$ } $>
+		</tr>
+
+		<$ data.seenone = true;
+	}
+	$>
+</template>
+
+<template id="abook.Contacts#SplitViewGroup">
+	<$= AjxTemplate.expand("abook.Contacts#SplitView_header", data) $>
+	<table>
+	<$
+	var itemlistdata = {
+		id: data.id, name: "email",
+		attrs: {}, addone: false, seenone: false,
+		findObjects: data.findObjects, objectType: ZmObjectManager.EMAIL,
+		label: ZmMsg.emailLabel
+	};
+	for (var i = 0; i < data.groupMembers.length; i++) {
+		var address = data.groupMembers[i];
+		itemlistdata.attrs.email = address.getAddress();
+		itemlistdata.type = address.getName() || address.getDispName(); $>
+		<$= AjxTemplate.expand("#SplitView_item_list", itemlistdata) $>
+	<$ } $>
+	</table>
+</template>
+
+
+
+<!----------------------------------------------------------------------------->
+<!-------------------------------- ZmContactSimpleView ------------------------>
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#SimpleView-NoResults">
+	<table width='100%' cellspacing=0 cellpadding=1>
+		<tr>
+			<td class='NoResults' valign='top' >
+				<br/><br/><$= AjxMsg.noResults $>
+			</td>
+		</tr>
+	</table>
+</template>
+
+
+<!----------------------------------------------------------------------------->
+<!-------------------------------- ZmGroupView -------------------------------->
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#GroupView">
+	<!-- title bar -->
+	<table cellspacing=0 cellpadding=0 width=100%>
+		<tr class='contactHeaderRow' id='${id}_headerRow'>
+			<td width=20><center><$= AjxImg.getImageHtml("Group") $></center></td>
+			<td><div id='${id}_title' class='contactHeader'></div></td>
+			<td align='right' id='${id}_tags'></td>
+		</tr>
+	</table>
+
+	<table border=0 cellpadding=5 cellspacing=5 width=100% height=100%>
+		<tr>
+			<!-- content: left pane -->
+			<td width=50% valign=top>
+				<table border=0 cellpadding=2 cellspacing=2 width=100%>
+					<tr>
+						<td nowrap>*&nbsp;<$= ZmMsg.groupNameLabel $>&nbsp;<input type='text' autocomplete='off' size=18 id='${id}_groupName'></td>
+						<td>
+							<table border=0 cellpadding=0 cellspacing=0>
+								<tr>
+									<td nowrap><$= ZmMsg.addressBookLabel $>&nbsp;</td>
+									<td id='${id}_folderSelect'></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<tr>
+						<td colspan='2' nowrap>*&nbsp;<$= ZmMsg.groupMembers $></td>
+					</tr>
+                </table>
+                <div class='groupMembers'  id='${id}_groupMembers'></div>
+                <table border=0 cellpadding=3 cellspacing=2 width=100%>
+                    <tr>
+                        <td id='${id}_delButton'></td>
+                        <td id='${id}_delAllButton'></td>
+                        <td width=100%></td>                        
+                    </tr>
+                </table>
+			</td>
+
+			<!-- content: right pane -->
+			<td width=50% valign=top>
+				<fieldset>
+					<legend class='groupFieldset'><$= ZmMsg.addMembers $></legend>
+					<table border=0>
+						<tr>
+							<td align=right><$= ZmMsg.findLabel $></td>
+							<td><input type='text' id='${id}_searchField'></td>
+							<td id='${id}_searchButton'></td>
+						</tr>
+						<$ if (data.showSearchIn) { $>
+						<tr>
+							<td align=right><$= ZmMsg.searchIn $></td>
+							<td colspan=2 id='${id}_listSelect'></td>
+						</tr>
+						<$ } $>
+					</table>
+					<div class='groupMembers' id='${id}_listView'></div>
+					<table border=0 cellpadding=3 cellspacing=2 width=100%>
+						<tr>
+							<td id='${id}_addButton'></td>
+							<td id='${id}_addAllButton'></td>
+							<td width=100%></td>
+							<td id='${id}_prevButton'></td>
+							<td id='${id}_nextButton'></td>
+						</tr>
+					</table>
+                   <table border=0 cellpadding=3 cellspacing=2 width=100%>
+						<tr>
+                            <td><$=ZmMsg.enterAddrBelow$></td>
+                        </tr>
+                        <tr>
+                            <td>
+                              <textarea class='groupMembers' id='${id}_addNewField'></textarea>
+                            </td>
+                            <td id='${id}_addNewButton'></td>
+                        </tr>
+                    </table>
+                </fieldset>
+			</td>
+		</tr>
+	</table>
+</template>
+
+<!----------------------------------------------------------------------------->
+<!------------------------------- ZmAlphabetBar ------------------------------->
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#ZmAlphabetBar">
+	<center>
+		<table class='AlphabetBarTable' border=0 cellpadding=0 cellspacing=0 width=80% id='${id}_alphabet'>
+			<tr>
+				<$ for (var i = 0; i < data.numLetters; i++) { $>
+					<td _idx='<$= i $>' onclick='ZmContactAlphabetBar.alphabetClicked(this
+						<$ if (i > 0) { $>
+							, "<$= i == 1 ? '0' : data.alphabet[i] $>"
+							<$ if (i+1 < data.numLetters) { $>
+								, "<$= i == 1 ? 'A' : data.alphabet[i+1] $>"
+							<$ } $>
+						<$ } $>
+						); return false;'
+						<$ if (data.alphabet[i].length > 1) { $> colspan='<$= data.alphabet[i].length/2 + 1 $>' <$ } $>
+						class='DwtButton AlphabetBarCell' onmouseover='ZmContactAlphabetBar._onMouseOver(this)' onmouseout='ZmContactAlphabetBar._onMouseOut(this)' <$= (i>0) ? " style='border-left-width:0;'>" : ">" $>
+						<$= data.alphabet[i] $>
+					</td>
+				<$ } $>
+			</tr>
+		</table>
+	</center>
+</template>
+		
+
+<!----------------------------------------------------------------------------->
+<!------------------------------ Contact Tooltip ------------------------------>
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#Tooltip">
+	<table cellpadding=0 cellspacing=0 border=0 width=250>
+		<tr>
+			<td colspan=2 valign=top>
+				<div style='border-bottom: 1px solid black; margin-bottom:2px'>
+					<table cellpadding=0 cellspacing=0 border=0 width=100%>
+						<tr valign='bottom'>
+							<td style='font-weight:bold'><$= AjxStringUtil.htmlEncode(data.entryTitle); $></td>
+							<td align='right'><$= AjxImg.getImageHtml(data.contact.getIcon()); $></td>
+						</tr>
+					</table>
+				</div>
+			</td>
+		</tr>
+		<$ if (data.contact.isGroup()) {
+			var members = data.contact.getGroupMembers().good.getArray();
+			for (var i = 0; i < members.length; i++) {
+		$>
+		<tr>
+			<td width=20><$= AjxImg.getImageHtml("Message") $></td>
+			<td><$= AjxStringUtil.htmlEncode(members[i].toString()) $></td>
+		</tr>
+		<$	} 
+		} else {
+		$>
+			<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"fullName"}) $>
+			<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"jobTitle"}) $>
+			<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"company"}) $>
+			<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"mobilePhone"}) $>
+			<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"workPhone"}) $>
+			<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"homePhone"}) $>
+			<$ if (data.contact.isGal) {
+				var emails = data.contact.getEmails();
+				for (var i = 0; i < emails.length && emails.length <= 3; i++) {
+			$>
+					<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"email", val:emails[i]}) $>
+			<$	} $>
+				<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"notes", truncate:500}) $>
+			<$	} else { $>
+				<$= AjxTemplate.expand("abook.Contacts#AddTooltipEntry", {data:data, field:"email", val:data.contact._lookupEmail || data.email}) $>
+			<$	} $>
+		<$	} $>
+
+		<$ if (data.buddy) { $>
+			<tr>
+				<td colspan="2">
+					<table align="center">
+						<tr>
+							<td><$= AjxImg.getImageHtml(data.buddy.getPresence().getIcon()) $></td>
+							<td><$= AjxStringUtil.htmlEncode(data.buddy.getPresence().getShowText()) $></td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		<$ } $>
+
+		<$ if (data.hint) { $>
+			<tr>
+				<td colspan="2">
+					<div class='TooltipHint'>
+						<hr color=black size=1>
+						<$= data.hint $>
+					</div>
+				</td>
+			</tr>
+		<$ } $>
+	</table>
+</template>
+
+<template id="abook.Contacts#TooltipNotInAddrBook">
+	<$ if (data.hint) { $>
+	<table cellpadding=0 cellspacing=0 border=0 width=250>
+		<tr>
+			<td valign=top>
+				<$ if (appCtxt.get(ZmSetting.CONTACTS_ENABLED)) { $>
+					<div style='border-bottom: 1px solid black;'>
+						<table cellpadding=0 cellspacing=0 border=0 width=100%>
+							<tr valign='bottom'>
+								<td style='font-weight:bold'><$= ZmMsg.newContact $></td>
+								<td align='right'><$= AjxImg.getImageHtml("NewContact"); $></td>
+							</tr>
+						</table>
+					</div>
+				<$ } $>
+				<div class="TooltipNotInAddrBook">
+					<$= AjxStringUtil.htmlEncode(data.addrstr) $>
+				</div>
+				<hr color=black size=1>
+				<div class='TooltipHint'><$= data.hint $></div>
+			</td>
+		</tr>
+	</table>
+	<$ } else { $>
+		<span style='font-weight:bold'><$= ZmMsg.emailLabel $> </span>
+		<$= AjxStringUtil.htmlEncode(data.addrstr) $>
+	<$ } $>
+</template>
+
+<template id="abook.Contacts#AddTooltipEntry">
+	<$ if (data.val == null) {
+		data.val = data.field == "fullName" ? data.data.contact.getFullName() : data.data.contact.getAttr(data.field);
+	} $>
+
+	<$ if (data.val != null && data.val != "") { $>
+		<tr valign=top>
+			<td class='ZmTooltipLabel'>
+				<$= AjxMessageFormat.format(ZmMsg.makeLabel,
+											 AjxStringUtil.htmlEncode(ZmContact._AB_FIELD[data.field])) $>
+			</td>
+		<$ if (data.truncate) { $>
+			<td><$= AjxMessageFormat.format(ZmMsg.makeLabel,
+											AjxStringUtil.htmlEncode(data.val.substring(0,data.truncate))) $></td>
+		<$ } else { $>
+			<td style='white-space:nowrap;'><$= AjxStringUtil.htmlEncode(data.val) $></td>
+		<$ } $>
+		</tr>
+	<$ } $>
+</template>
+
+
+
+<!----------------------------------------------------------------------------->
+<!------------------------------ ZmContactPicker ------------------------------>
+<!----------------------------------------------------------------------------->
+<template id="abook.Contacts#ZmContactPicker">
+	<div class='ZmContactPicker'>
+		<table border=0 cellpadding=1 cellspacing=1 width=100%>
+			<tr>
+				<td>
+					<table border=0 cellpadding=0 cellspacing=0>
+						<tr>
+							<td width=20 valign=middle><div id='${id}_searchIcon' class="ImgSearch"></div></td>
+							<td><input type='text' autocomplete='off' size=30 nowrap id='${id}_searchField'>&nbsp;</td>
+							<td id='${id}_searchButton'></td>
+						</tr>
+					</table>
+				</td>
+				<td align=right>
+					<$ if (data.showSelect) { $>
+						<table border=0 cellpadding=0 cellspacing=0>
+							<tr>
+								<td class='Label nobreak'><$= ZmMsg.showNames $>&nbsp;</td>
+								<td id='${id}_listSelect'></td>
+							</tr>
+						</table>
+					<$ } $>
+				</td>
+			</tr>
+		</table>
+		<div id='${id}_chooser'></div>
+		<div id='${id}_paging'>
+			<center>
+				<table border=0 cellspacing=0 cellpadding=0 width=100%>
+					<tr>
+						<td>&nbsp;&nbsp;&nbsp;</td>
+						<td id='${id}_pageLeft'></td>
+						<td width=100%></td>
+						<td id='${id}_pageRight' align=right></td>
+					</tr>
+				</table>
+			</center>
+		</div>
+	</div>
+</template>

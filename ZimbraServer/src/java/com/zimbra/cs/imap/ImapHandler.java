@@ -743,7 +743,7 @@ abstract class ImapHandler extends ProtocolHandler {
 
     private QResyncInfo parseQResyncInfo(ImapRequest req) throws ImapParseException {
         QResyncInfo qri = new QResyncInfo();
-        req.skipSpace();  req.skipChar('(');
+        req.skipChar('(');
         qri.uvv = req.parseInteger(req.readNumber());  req.skipSpace();
         qri.modseq = req.parseInteger(req.readNumber());
         if (req.peekChar() == ' ') {
@@ -1062,6 +1062,9 @@ abstract class ImapHandler extends ProtocolHandler {
 
     boolean doLOGOUT(String tag) throws IOException {
         sendBYE();
+        if (mCredentials != null)
+        	ZimbraLog.imap.info("dropping connection for user " + mCredentials.getUsername() + " (LOGOUT)");
+
         sendOK(tag, "LOGOUT completed");
         return STOP_PROCESSING;
     }
@@ -1481,7 +1484,7 @@ abstract class ImapHandler extends ProtocolHandler {
                     throw ImapServiceException.CANT_RENAME_INBOX();
                 ZMailbox zmbx = (ZMailbox) mboxobj;
                 ZFolder zfolder = (ZFolder) oldPath.getFolder();
-                zmbx.renameFolder(zfolder.getId(), newPath.asResolvedPath());
+                zmbx.renameFolder(zfolder.getId(), "/" + newPath.asResolvedPath());
             } else {
                 ZimbraLog.imap.info("RENAME failed: cannot get mailbox for path: " + oldPath);
                 sendNO(tag, "RENAME failed");

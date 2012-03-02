@@ -227,10 +227,6 @@ function(params) {
 		appCtxt.set(ZmSetting.HTTPS_PORT, params.httpsPort);
 	}
 
-	if (/dogfood/.test(location.hostname) || (params.devMode == "1")) {
-		AjxUtil.enableLogType("rpc", true);
-	}
-
 	// Create the shell
 	var userShell = params.userShell = window.document.getElementById(ZmId.SKIN_SHELL);
 	if (!userShell) {
@@ -505,7 +501,11 @@ function(params, result) {
 	if (!appCtxt.isOffline) {
 		this.setPollInterval(true);
 	} else {
-		this.registerMailtoHandler();
+		if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && window.platform && 
+			window.platform.isRegisteredProtocolHandler("mailto")) {  
+		    // bug fix #34342 - always register the protocol handler for mac on start up
+		    this.registerMailtoHandler(AjxEnv.isMac);
+		}    
 	}
 
 	window.onbeforeunload = ZmZimbraMail._confirmExitMethod;
@@ -576,6 +576,10 @@ function(params, result) {
 	{
 		this.handleCalendarComponents();
 	}
+	
+    if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && appCtxt.isOffline) {
+        this.handleOfflineMailTo(location.search);
+    }
 };
 
 /**
@@ -712,6 +716,14 @@ function(online) {
 
 ZmZimbraMail.prototype._updateNetworkStatus =
 function(online) {
+	// bug 48108 - Prism sometimes triggers network status change mutliple times
+	// So don't bother if the last change is the same as current status
+	if ((online && this._currentNetworkStatus == ZmZimbraMail.UI_NETWORK_UP) ||
+		(!online && this._currentNetworkStatus == ZmZimbraMail.UI_NETWORK_DOWN))
+	{
+		return;
+	}
+
 	if (online) {
 		if (!this._firstTimeNetworkChange) {
 			this.setStatusMsg(ZmMsg.networkChangeOnline);
@@ -719,11 +731,12 @@ function(online) {
 			this._firstTimeNetworkChange = false;
 			this._isUserOnline = online;
 		}
-		this.sendClientEventNotify(ZmZimbraMail.UI_NETWORK_UP);
+		this._currentNetworkStatus = ZmZimbraMail.UI_NETWORK_UP;
 	} else {
 		this.setStatusMsg(ZmMsg.networkChangeOffline, ZmStatusView.LEVEL_WARNING);
-		this.sendClientEventNotify(ZmZimbraMail.UI_NETWORK_DOWN);
+		this._currentNetworkStatus = ZmZimbraMail.UI_NETWORK_DOWN;
 	}
+	this.sendClientEventNotify(this._currentNetworkStatus);
 
 	this._networkStatusIcon.setToolTipContent(online ? ZmMsg.networkStatusOffline : ZmMsg.networkStatusOnline);
 	this._networkStatusIcon.getHtmlElement().innerHTML = AjxImg.getImageHtml(online ? "Connect" : "Disconnect");
@@ -1090,18 +1103,12 @@ function() {
 	return this._pollInstantNotifications;
 };
 
-/**
- * @private
- */
 ZmZimbraMail.prototype.registerMailtoHandler =
-function() {
-	if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) &&
-		appCtxt.get(ZmSetting.OFFLINE_IS_MAILTO_HANDLER) && window.platform)
-	{
+function(regProto) {
+	if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && window.platform) {
 		try { // add try/catch - see bug #33870
 			// register mailto handler
-			// bug fix #34342 - always register mailto handler for mac
-			if (AjxEnv.isMac || !window.platform.isRegisteredProtocolHandler("mailto")) {
+			if (regProto) {
 				var url = appCtxt.get(ZmSetting.OFFLINE_WEBAPP_URI, null, appCtxt.accountList.mainAccount);
 				window.platform.registerProtocolHandler("mailto", url + "&mailto=%s");
 			}
@@ -1126,18 +1133,154 @@ function() {
  */
 ZmZimbraMail.prototype.handleOfflineMailTo =
 function(uri, callback) {
-	if (!appCtxt.get(ZmSetting.OFFLINE_IS_MAILTO_HANDLER)) { return false; }
+	if (window.platform && !window.platform.isRegisteredProtocolHandler("mailto")) { return false; }
 
 	var mailApp = this.getApp(ZmApp.MAIL);
 	var idx = (uri.indexOf("mailto"));
 	if (idx >= 0) {
 		var query = "to=" + decodeURIComponent(uri.substring(idx+7));
 		query = query.replace(/\?/g, "&");
-
-		mailApp._showComposeView(callback, query);
+		var controller = mailApp._showComposeView(callback, query);
+        	this._checkOfflineMailToAttachments(controller, query);
 		return true;
 	}
 	return false;
+};
+
+ZmZimbraMail.prototype._checkOfflineMailToAttachments =
+function(controller, queryStr) {
+    var qs = queryStr || location.search;
+
+    var match = qs.match(/\bto=([^&]+)/);
+    var to = match ? AjxStringUtil.urlComponentDecode(match[1]) : null;
+
+    match = qs.match(/\battachments=([^&]+)/);
+    var attachments = match ? (AjxStringUtil.urlComponentDecode(match[1]).replace(/\+/g, " ")) : null;
+
+    if (to && to.indexOf('mailto') == 0) {
+        to = to.replace(/mailto:/,'');
+        var mailtoQuery = to.split('?');
+        if (mailtoQuery.length > 1) {
+            mailtoQuery = mailtoQuery[1];
+            match = mailtoQuery.match(/\battachments=([^&]+)/);
+            if(!attachments) attachments = match ? (AjxStringUtil.urlComponentDecode(match[1]).replace(/\+/g, " ")) : null;
+        }
+    }
+
+    if(attachments) {
+        attachments = attachments.replace(/;$/, "");
+        attachments = attachments.split(";");
+        this._mailtoAttachmentsLength = attachments.length;
+        this._attachmentsProcessed = 0;        
+        this.attachment_ids = [];
+        for(var i=0; i<attachments.length; i++) {
+            this._handleMailToAttachment(attachments[i], controller);
+        }
+    }
+};
+
+ZmZimbraMail.prototype._handleMailToAttachment =
+function(attachment, controller) {
+
+    var filePath = attachment;
+    var filename = filePath.replace(/^.*\\/, '');
+
+    DBG.println("Uploading File :" + filename + ",filePath:" + filePath);
+
+    //check read file permission;
+    try {
+        netscape.security.PrivilegeManager.enablePrivilege("UniversalXPConnect");
+    } catch (e) {
+        //permission denied to read file
+        DBG.println("Permission denied to read file");
+        return;
+    }
+
+    try {
+        var file = Components.classes["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
+        file.initWithPath( filePath );
+
+        var contentType = this._getAttachmentContentType(file);
+
+        var inputStream = Components.classes[ "@mozilla.org/network/file-input-stream;1" ].createInstance(Components.interfaces.nsIFileInputStream);
+        inputStream.init(file, -1, -1, false );
+
+        var binary = Components.classes[ "@mozilla.org/binaryinputstream;1" ].createInstance(Components.interfaces.nsIBinaryInputStream);
+        binary.setInputStream(inputStream);
+
+        var req = new XMLHttpRequest();
+        req.open("POST", appCtxt.get(ZmSetting.CSFE_UPLOAD_URI)+"&fmt=extended,raw", true);
+        req.setRequestHeader("Cache-Control", "no-cache");
+        req.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        req.setRequestHeader("Content-Type",  (contentType || "application/octet-stream") );
+        req.setRequestHeader("Content-Disposition", 'attachment; filename="'+ filename + '"');
+
+        var reqObj = req;
+        req.onreadystatechange = AjxCallback.simpleClosure(this._handleUploadResponse, this, reqObj, controller);
+        req.sendAsBinary(binary.readBytes(binary.available()));
+        delete req;
+    }catch(ex) {
+        DBG.println("exception in handling attachment: " + attachment);
+        DBG.println(ex);
+        this._attachmentsProcessed++;
+    }
+};
+
+ZmZimbraMail.prototype._getAttachmentContentType =
+function(file) {
+	var contentType;
+	try {
+		contentType = Components.classes["@mozilla.org/mime;1"].getService(Components.interfaces.nsIMIMEService).getTypeFromFile(file);
+	}catch(ex) {
+		 DBG.println("exception in reading content type: " + ex);
+		 contentType =  "application/octet-stream";
+	}
+	return contentType;
+};
+
+ZmZimbraMail.prototype._handleUploadErrorResponse = function(respCode) {
+    var warngDlg = appCtxt.getMsgDialog();
+    var style = DwtMessageDialog.CRITICAL_STYLE;
+    if (respCode == '200') {
+        return true;
+    } else if(respCode == '413') {
+        warngDlg.setMessage(ZmMsg.errorAttachmentTooBig, style);
+    } else {
+       var msg = AjxMessageFormat.format(ZmMsg.errorAttachment, (respCode || AjxPost.SC_NO_CONTENT));
+       warngDlg.setMessage(msg, style);
+    }
+    warngDlg.popup();
+};
+
+ZmZimbraMail.prototype._handleUploadResponse = function(req, controller) {
+    if(req) {
+        if(req.readyState == 4 && req.status == 200) {
+            var resp = eval("["+req.responseText+"]");
+            this._attachmentsProcessed++;
+            this._handleUploadErrorResponse(resp[0]);
+            if(resp.length > 2) {
+                var respObj = resp[2];
+                for (var i = 0; i < respObj.length; i++) {
+                    if(respObj[i].aid != "undefined") {
+                        this.attachment_ids.push(respObj[i].aid);
+                    }
+                }
+
+                if(this.attachment_ids.length > 0 && this._attachmentsProcessed == this._mailtoAttachmentsLength) {
+                    var attachment_list = this.attachment_ids.join(",");
+                    if(!controller) {
+                        var msg = new ZmMailMsg();
+                        controller = AjxDispatcher.run("GetComposeController");
+                        controller._setView({action:ZmOperation.NEW_MESSAGE, msg:msg, inNewWindow:false});
+                    }
+                    var callback = new AjxCallback (controller,controller._handleResponseSaveDraftListener);
+        		    controller.sendMsg(attachment_list, ZmComposeController.DRAFT_TYPE_MANUAL,callback);
+                    this.getAppViewMgr().pushView(controller.viewId);
+                }
+            }
+        }
+    }
+
 };
 
 /**

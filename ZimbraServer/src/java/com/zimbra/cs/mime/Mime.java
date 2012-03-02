@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -70,6 +70,7 @@ import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.util.JMSession;
+import com.zimbra.cs.util.Zimbra;
 
 /**
  * @author schemers
@@ -661,7 +662,13 @@ public class Mime {
         InternetAddress[] addresses;
         try {
             addresses = InternetAddress.parseHeader(header, false);
-        } catch (AddressException e) {
+        } catch (Throwable e) {
+            // Catch everything in case MIME parser was not robust enough to handle a malformed header.
+            if (e instanceof OutOfMemoryError) {
+                Zimbra.halt("MIME parser failed: " + header, e);
+            } else if (!(e instanceof AddressException)) {
+                sLog.error("MIME parser failed: " + header, e);
+            }
             try {
                 return new InternetAddress[] { new InternetAddress(null, header, MimeConstants.P_CHARSET_UTF8) };
             } catch (UnsupportedEncodingException e1) {
@@ -1055,11 +1062,9 @@ public class Mime {
         return subject == null ? null : MimeHeader.decode(subject);
     }
 
-    /**
-     * Returns the decoded value of the <tt>From</tt> header.  If not available,
-     * returns the value of the <tt>Sender</tt> header.  Returns an empty
-     * <tt>String</tt> if neither header is available.
-     */
+    /** Returns the value of the <tt>From</tt> header.  If not available,
+     *  returns the value of the <tt>Sender</tt> header.  Returns an empty
+     *  {@code String} if neither header is available. */
     public static String getSender(MimeMessage msg) {
         String sender = null;
         try {
@@ -1075,13 +1080,7 @@ public class Mime {
         } else if (sender.endsWith("<>")) { // Bug #47492
             sender = sender.replaceAll("<>$","").trim();
         }
-        String decoded;
-        try {
-            decoded = MimeUtility.decodeText(sender);
-        } catch (UnsupportedEncodingException e) {
-            return sender;
-        }
-        return decoded;
+        return sender;
     }
     
     private static Set<String> TEXT_ALTERNATES = new HashSet<String>(Arrays.asList(MimeConstants.CT_TEXT_ENRICHED, MimeConstants.CT_TEXT_HTML));
@@ -1242,4 +1241,22 @@ public class Mime {
         }
         return size;
     }
+    
+    /**
+     * Returns {@code true} if the {@code Auto-Submitted} header is set
+     * to a value other than {@code no}.
+     */
+    public static boolean isAutoSubmitted(MimePart part)
+    throws MessagingException {
+        String[] autoSubmitted = part.getHeader("Auto-Submitted");
+        if (autoSubmitted != null) {
+            for (int i = 0; i < autoSubmitted.length; i++) {
+                if (!autoSubmitted[i].equalsIgnoreCase("no")) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
 }

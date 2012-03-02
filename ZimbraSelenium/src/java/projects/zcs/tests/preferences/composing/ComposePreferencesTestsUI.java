@@ -87,7 +87,7 @@ public class ComposePreferencesTestsUI extends CommonTest {
 		needReset = true;
 	}
 
-	@Test(groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(groups = { "smoke", "full","debug" }, retryAnalyzer = RetryFailedTests.class)
 	public void zComposingComposeFormat() throws Exception {
 
 		if (isExecutionARetry)
@@ -532,9 +532,8 @@ public class ComposePreferencesTestsUI extends CommonTest {
 		String accountName = selfAccountName;
 
 		page.zMailApp.zNavigateToComposingPreferences();
-
-		obj.zRadioBtn.zClick(localize(locator.saveToSentNOT));
-
+		obj.zCheckbox.zClick(localize(locator.saveToSent));  
+	
 		waitForIE();
 
 		obj.zButton.zClick(page.zCalApp.zPreferencesSaveIconBtn);
@@ -551,9 +550,9 @@ public class ComposePreferencesTestsUI extends CommonTest {
 		page.zMailApp.zNavigateToComposingPreferences();
 
 		if (config.getString("locale").equals("de")) {
-			obj.zRadioBtn.zClick("Kopie im Ordner");
+			obj.zCheckbox.zClick("Kopie im Ordner");
 		} else {
-			obj.zRadioBtn.zClick(localize(locator.saveToSent));
+			obj.zCheckbox.zClick(localize(locator.saveToSent));
 		}
 
 		waitForIE();

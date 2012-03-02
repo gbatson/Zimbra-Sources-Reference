@@ -145,8 +145,8 @@ public class BasicApptTests extends CommonTest {
 		needReset = false;
 	}
 
-	@Test(dataProvider = "apptInviteTestDataProvider", groups = { "smoke",
-			"full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "apptCreateDataProvider", groups = { "smoke",
+			"full"}, retryAnalyzer = RetryFailedTests.class)
 	public void deleteAppt_Bug38150(String singleOrInstanceOrSeries,
 			String subject, String location, String attendees, String body,
 			String recurring) throws Exception {
@@ -206,7 +206,7 @@ public class BasicApptTests extends CommonTest {
 			obj.zAppointment.zExists(subject);
 		}
 		page.zCalApp.zCalViewSwitch("list");
-		selenium.clickAt(("//*[@id=\"zlhi__CLL__se\"]"), "");
+		selenium.clickAt(("//div[@id=\"zlhi__CLL__se\"]"), "");
 		obj.zButton.zClick(page.zCalApp.zCalDeleteBtn);
 		obj.zRadioBtn.zClickInDlgByName(localize(locator.deleteSeries),
 				localize(locator.deleteRecurringItem));
@@ -448,8 +448,8 @@ public class BasicApptTests extends CommonTest {
 
 	}
 
-	@Test(dataProvider = "apptInviteTestDataProvider", groups = { "smoke",
-			"full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "apptCreateDataProvider", groups = { "smoke",
+			"full"}, retryAnalyzer = RetryFailedTests.class)
 	public void verifyNumberOfRecurringItems(String subject, String location,
 			String attendees, String body, String recurring) throws Exception {
 		if (isExecutionARetry)

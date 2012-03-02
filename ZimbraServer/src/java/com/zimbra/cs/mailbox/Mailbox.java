@@ -459,12 +459,6 @@ public class Mailbox {
                 mIndexHelper.indexAllDeferredFlagItems();            
             }
 
-            // bug 41144: map "workEmail" contact fields to "email"
-            if (!getVersion().atLeast(1, 6)) {
-                MailboxUpgrade.upgradeTo1_6(this);
-                updateVersion(new MailboxVersion((short) 1, (short) 6));
-            }
-
             // bug 41893: revert folder colors back to mapped value
             if (!getVersion().atLeast(1, 7)) {
                 MailboxUpgrade.upgradeTo1_7(this);
@@ -1905,7 +1899,7 @@ public class Mailbox {
                type == MailItem.TYPE_MOUNTPOINT;
     }
 
-    private <T extends MailItem> T checkAccess(T item) throws ServiceException {
+    protected <T extends MailItem> T checkAccess(T item) throws ServiceException {
         if (item == null || item.canAccess(ACL.RIGHT_READ))
             return item;
         throw ServiceException.PERM_DENIED("you do not have sufficient permissions");
@@ -2270,10 +2264,8 @@ public class Mailbox {
             } else {
                 // check for the specified item -- folder first, then document
                 item = parent.findSubfolder(name);
-                if (item == null) {
-                	checkAccess(parent);
+                if (item == null)
                     item = getItem(DbMailItem.getByName(this, parent.getId(), name, MailItem.TYPE_DOCUMENT));
-                }
             }
             // make sure the item is visible to the requester
             if (checkAccess(item) == null)
@@ -3810,7 +3802,15 @@ public class Mailbox {
                         // ONLY create an calendar item if this is a REQUEST method...otherwise don't.
                         String method = scid.mInv.getMethod();
                         if ("REQUEST".equals(method) || "PUBLISH".equals(method)) {
-                            calItem = createCalendarItem(folderId, flags, tags, scid.mInv.getUid(), scid.mPm, scid.mInv, null);
+                            try {
+                                calItem = createCalendarItem(folderId, flags, tags, scid.mInv.getUid(), scid.mPm, scid.mInv, null);
+                            } catch (MailServiceException mse) {
+                                if (mse.getCode() == MailServiceException.ALREADY_EXISTS) {
+                                    //bug 49106 - did not find the appointment above in getCalendarItemByUid(), but the mail_item exists
+                                    ZimbraLog.calendar.error("failed to create calendar item; already exists. cause: "+(scidList.isEmpty()?"no items in uuid list.":"uuid not found in appointment: "+scidList.get(0).mInv.getUid()+" or bad mail_item type"));
+                                }
+                                throw mse;
+                            }
                         } else {
                             return null; // for now, just ignore this Invitation
                         }
@@ -4087,7 +4087,9 @@ public class Mailbox {
                                                          preserveExistingAlarms, discardExistingInvites);
                 }
                 
-                queueForIndexing(calItem, !calItemIsNew, null);
+                if (Invite.isOrganizerMethod(inv.getMethod()))  // Don't update the index for replies. (bug 55317)
+                    queueForIndexing(calItem, !calItemIsNew, null);
+
                 redoRecorder.setCalendarItemAttrs(calItem.getId(), calItem.getFolderId());
                 
                 success = true;
@@ -4396,7 +4398,6 @@ public class Mailbox {
                 if (cpi != null && CalendarItem.isAcceptableInvite(getAccount(), cpi)) {
                     if (ICalTok.REPLY.equals(cpi.method)) {
                         processICalReplies(octxt, cpi.cal);
-                        noICal = true;
                     }
                 }
             } catch (Exception e) {
@@ -6068,7 +6069,7 @@ public class Mailbox {
                     // URL removed from folder.
                     String dsid = ds.getId();
                     prov.deleteDataSource(account, dsid);
-                    DataSourceManager.updateSchedule(account.getId(), dsid);
+                    DataSourceManager.cancelSchedule(account, dsid);
                 }
                 return;
             }
@@ -6090,7 +6091,7 @@ public class Mailbox {
                 }
                 
                 ds = prov.createDataSource(account, type, name, attrs);
-                DataSourceManager.updateSchedule(account.getId(), ds.getId());
+                DataSourceManager.updateSchedule(account, ds);
             }
         } catch (ServiceException e) {
             ZimbraLog.mailbox.warn("Unable to update data source for folder %s.", folder.getPath(), e);

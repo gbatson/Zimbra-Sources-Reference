@@ -793,11 +793,35 @@
 		<replace file="${dist.app.dir}/jetty/etc/webdefault.xml" token="@production@" value="${param.production}"/>
 		<replace file="${dist.data.dir}/bin/zdesktop" token="@install.app.root@" value="${param.app.dir}"/>
 		<replace file="${dist.data.dir}/bin/zdesktop" token="@install.data.root@" value="${param.data.dir}"/>
-	
+		<if>
+			<isset property="is-windows"/>
+			<then>
+				<set-assert-flag file="${dist.data.dir}/conf/zdesktop.conf"/>
+			</then>
+			<else>
+				<set-assert-flag file="${dist.data.dir}/bin/zdesktop"/>
+			</else>
+		</if>	
+
 		<chmod file="${dist.data.dir}/bin/zdesktop" perm="ugo+x" />
 
 		<antcall target="offline-make-dist-ext"/>
 	</target>
+
+	<macrodef name="set-assert-flag">
+		<attribute name="file"/>
+		<sequential>
+			<if>
+				<equals arg1="${offline.enable_assert}" arg2="true"/>
+				<then>
+					<replace file="@{file}" token="@assert_flag@" value="-ea"/>
+				</then>
+				<else>
+					<replace file="@{file}" token="@assert_flag@" value="-da"/>
+				</else>
+			</if>
+		</sequential>
+	</macrodef>
 
 	<target name="offline-make-dist-ext" if="build.exchange.ext">
 		<antcall target="offline-ext-jars"/>
@@ -859,9 +883,9 @@
 		<copy todir="${dist.app.dir}/win32/prism" file="src/installer/win32/prism/application.ini" overwrite="true"/>
 	</target>
 
-	<property name="prism.version.macos" value="051810"/>
-	<property name="prism.version.win32" value="051810"/>
-	<property name="prism.version.linux" value="052810"/>
+	<property name="prism.version.macos" value="110910"/>
+	<property name="prism.version.win32" value="110910"/>
+	<property name="prism.version.linux" value="110910"/>
 	<property name="prism.extroot.macos" value="${dist.app.dir}/macos/prism/Prism.app/Contents/Resources"/>
 	<property name="prism.extroot.win32" value="${dist.app.dir}/win32/prism"/>
 	<property name="prism.extroot.linux" value="${dist.app.dir}/linux/prism"/>
@@ -971,12 +995,9 @@
 		</copy>
 
 		<!-- patch xulrunner with our update service mod -->
-		<copy tofile="${dist.app.dir}/macos/prism/Prism.app/Contents/Frameworks/XUL.framework/components/nsUpdateService.js" file="src/installer/updater/macos/nsUpdateService.js" overwrite="true"/>
 		<copy tofile="${dist.app.dir}/macos/prism/Prism.app/Contents/Frameworks/XUL.framework/updater.app/Contents/MacOS/updater" file="src/installer/updater/macos/updater" overwrite="true"/>
 		<chmod file="${dist.app.dir}/macos/prism/Prism.app/Contents/Frameworks/XUL.framework/updater.app/Contents/MacOS/updater" perm="ugo+x"/>
-		<copy tofile="${dist.app.dir}/win32/prism/xulrunner/components/nsUpdateService.js" file="src/installer/updater/win32/nsUpdateService.js" overwrite="true"/>
 		<copy tofile="${dist.app.dir}/win32/prism/xulrunner/updater.exe" file="src/installer/updater/win32/updater.exe" overwrite="true"/>
-		<copy tofile="${dist.app.dir}/linux/prism/xulrunner/components/nsUpdateService.js" file="src/installer/updater/linux/nsUpdateService.js" overwrite="true"/>
 		<copy tofile="${dist.app.dir}/linux/prism/xulrunner/updater" file="src/installer/updater/linux/updater" overwrite="true"/>
 		<chmod file="${dist.app.dir}/linux/prism/xulrunner/updater" perm="ugo+x"/>
 

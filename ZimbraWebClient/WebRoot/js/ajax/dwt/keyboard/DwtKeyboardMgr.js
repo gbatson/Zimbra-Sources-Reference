@@ -354,7 +354,7 @@ function(timeout) {
 DwtKeyboardMgr.prototype.clearKeySeq =
 function() {
 	this.__killKeySeqTimedActionId = -1;
-	this.__keySequence.length = 0;
+	this.__keySequence = [];
 };
 
 /**
@@ -664,6 +664,9 @@ function(kbMgr, obj) {
  */
 DwtKeyboardMgr.__keyDownHdlr =
 function(ev) {
+
+	try {
+
 	if (DwtKeyboardMgr.__shell._blockInput) { return false; }
 	ev = DwtUiEvent.getEvent(ev, this);
 	DBG.println("kbnav", [ev.type, ev.keyCode, ev.charCode, ev.which].join(" / "));
@@ -792,6 +795,10 @@ function(ev) {
 	}
 
 	return kbMgr.__processKeyEvent(ev, kev, propagate);
+
+	} catch (ex) {
+		AjxException.reportScriptError(ex);
+	}
 };
 
 /**

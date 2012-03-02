@@ -47,22 +47,6 @@ function() {
 		Com_Zimbra_Url.REGEXES.push(r);
 	}
 
-	this._resetView();
-};
-
-Com_Zimbra_Url.prototype._resetView =
-function() {
-	try {
-		if ( appCtxt.getAppController().toString() == "ZmZimbraMail" ) {
-			var view = appCtxt.getAppViewMgr().getCurrentView();
-			if ( view.toString() == "ZmMailMsgView" ) {
-				var msg = view.getMsg();
-				view.reset();
-				view.set(msg);
-			}
-		}
-	} catch(e) {
-	}
 };
 
 // Const

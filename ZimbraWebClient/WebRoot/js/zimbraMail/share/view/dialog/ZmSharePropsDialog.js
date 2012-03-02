@@ -193,9 +193,15 @@ function(mode, object, share) {
 ZmSharePropsDialog.prototype._populateUrls =
 function() {
 
-	var restUrl = this._object.getRestUrl();
+    var acct, restUrl;
+    if (appCtxt.multiAccounts) {
+        acct = this._object.getAccount();
+        restUrl = this._object.getRestUrl(acct);
+    } else {
+        restUrl = this._object.getRestUrl();
+    }    
 	if (appCtxt.isOffline) {
-		var remoteUri = appCtxt.get(ZmSetting.OFFLINE_REMOTE_SERVER_URI);
+		var remoteUri = appCtxt.get(ZmSetting.OFFLINE_REMOTE_SERVER_URI, null, acct);
 		restUrl = remoteUri + restUrl.substring((restUrl.indexOf("/",7)));
 	}
 	var url = AjxStringUtil.htmlEncode(restUrl).replace(/&amp;/g,'%26');
@@ -212,16 +218,16 @@ function() {
 		if (this._object.type == ZmOrganizer.CALENDAR) {
 			this._urlEl.innerHTML = [
 				"<div>", ZmMsg.ics, ":&nbsp;&nbsp;&nbsp;&nbsp;",
-					"<a target=_new href='",url,"'>",text,"</a>",
+					'<a target=_new href="',url,'">',text,"</a>",
 				"</div>",
 				"<div>", ZmMsg.view, ":&nbsp;&nbsp;",
-					"<a target=_new href='",url,".html'>",text,".html</a>",
+					'<a target=_new href="',url,'.html">',text,".html</a>",
 				"</div>"
 			].join("");
 		} else {
 			this._urlEl.innerHTML = [
 				"<div style='padding-left:2em;'>",
-					"<a target=_new href='",url,"'>",text,"</a>",
+					'<a target=_new href="',url,'">',text,"</a>",
 				"</div>"
 			].join("");
 		}
@@ -378,9 +384,11 @@ function(shares, result) {
 				tmpShare.link.id = tmpShare.object.rid;
                 tmpShare.link.name = tmpShare.object.oname || tmpShare.object.name;
 			} else {
-				tmpShare.grantor.id = appCtxt.get(ZmSetting.USERID);
-				tmpShare.grantor.email = appCtxt.get(ZmSetting.USERNAME);
-				tmpShare.grantor.name = appCtxt.get(ZmSetting.DISPLAY_NAME) || tmpShare.grantor.email;
+                // bug: 50936  get setting for respective account 
+                // to prevent sharing the default account unintentionally
+				tmpShare.grantor.id = appCtxt.get(ZmSetting.USERID, null, this._object.getAccount());
+				tmpShare.grantor.email = appCtxt.get(ZmSetting.USERNAME, null, this._object.getAccount());
+				tmpShare.grantor.name = appCtxt.get(ZmSetting.DISPLAY_NAME, null, this._object.getAccount()) || tmpShare.grantor.email;
 				tmpShare.link.id = tmpShare.object.id;
                 tmpShare.link.name = tmpShare.object.name;
 			}

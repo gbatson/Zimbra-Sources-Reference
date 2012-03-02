@@ -198,7 +198,9 @@ public class ShortcutsGeneral extends CommonTest {
 
 		zRobot.keyPress(KeyEvent.VK_ESCAPE);
 		zRobot.keyRelease(KeyEvent.VK_ESCAPE);
+		Thread.sleep(2000);
 
+		/*
 		if (tabName.equals(localize(locator.calendar))
 				|| tabName.equals(localize(locator.tasks))) {
 			obj.zButton.zClickInDlgByName(localize(locator.no),
@@ -206,7 +208,8 @@ public class ShortcutsGeneral extends CommonTest {
 		}
 
 		Thread.sleep(2000);
-
+        */
+		
 		needReset = false;
 	}
 
@@ -434,6 +437,7 @@ public class ShortcutsGeneral extends CommonTest {
 		selenium.selectWindow("_blank");
 		zWaitTillObjectExist("button", page.zMailApp.zSendBtn_newWindow);
 		obj.zButton.zClick(page.zMailApp.zCancelBtn_newWindow);
+		Thread.sleep(3000);		
 		selenium.selectWindow(null);
 
 		needReset = false;

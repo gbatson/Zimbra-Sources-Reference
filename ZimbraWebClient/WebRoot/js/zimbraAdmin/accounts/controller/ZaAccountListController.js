@@ -575,12 +575,21 @@ ZaAccountListController.prototype._editItem = function (item) {
 **/
 ZaAccountListController.prototype._chngPwdListener =
 function(ev) {
+ try{
 	if(this._contentView.getSelectionCount()==1) {
 		this._chngPwdDlg = new ZaAccChangePwdXDlg(ZaApp.getInstance().getAppCtxt().getShell(), "400px","90px");
 		var item = this._contentView.getSelection()[0];
 		item.loadEffectiveRights("id", item.id, false);
-		this._chngPwdDlg.registerCallback(DwtDialog.OK_BUTTON, ZaAccountListController._changePwdOKCallback, this, item);				
-		this._chngPwdDlg.setTitle(ZaMsg.CHNP_Title + " (" + item.name + ")");
+		this._chngPwdDlg.registerCallback(DwtDialog.OK_BUTTON, ZaAccountListController._changePwdOKCallback, this, item);
+		if (item.name != undefined && item.name.length > 80) {
+                        this._chngPwdDlg.setTitle(ZaMsg.CHNP_Title + " (" + item.name.substring(1,80) + "..." + ")");
+                } else {
+                      if (item.name != undefined) {
+                        this._chngPwdDlg.setTitle(ZaMsg.CHNP_Title + " (" + item.name + ")");
+                      } else {
+                        this._chngPwdDlg.setTitle(ZaMsg.CHNP_Title);
+                      }
+                }
 		var obj = new Object();
 		obj[ZaAccount.A2_confirmPassword]="";
 		obj.attrs = {};
@@ -591,6 +600,43 @@ function(ev) {
 		this._chngPwdDlg.setObject(obj)
 		this._chngPwdDlg.popup();
 	}
+  } catch (ex) {
+                 if (ex.code &&
+                        (ex.code == ZmCsfeException.SVC_AUTH_EXPIRED ||
+                                ex.code == ZmCsfeException.SVC_AUTH_REQUIRED ||
+                                ex.code == ZmCsfeException.NO_AUTH_TOKEN ||
+                                ex.code == ZmCsfeException.AUTH_TOKEN_CHANGED
+                         )
+                ){
+                 try {
+                        var bReloginMode = false;
+                        if (ZaApp.getInstance() != null && (ex.code == ZmCsfeException.SVC_AUTH_EXPIRED ||
+                                                            ex.code == ZmCsfeException.AUTH_TOKEN_CHANGED
+                                                           ))
+                        {
+                                ZmCsfeCommand._curAuthToken = null;
+
+                                var dlgs = ZaApp.getInstance().dialogs;
+                                if (dlgs != undefined) {
+                                for (var dlg in dlgs) {
+                                        dlgs[dlg].popdown();
+                                }}
+                                this._loginDialog.registerCallback(this.loginCallback, this);
+                                this._loginDialog.setError(ZaMsg.ERROR_SESSION_EXPIRED);
+                                this._loginDialog.clearPassword();
+                        } else {
+                                this._loginDialog.setError(null);
+                                bReloginMode = false;
+                        }
+                        this._loginDialog.setReloginMode(bReloginMode);
+                        this._showLoginDialog(bReloginMode);
+                } catch (ex2) {
+                        console.log(ex2.code);
+                }
+                } else {
+                      this._handleException(ex, "ZaAccountListController._chngPwdListenerLauncher", null, false);
+                }
+    }  
 }
 
 ZaAccountListController.prototype._expireSessionListener = 
@@ -680,6 +726,7 @@ function(ev) {
 	this._haveAccounts = false;
 	this._haveDls = false;
 	this._haveDomains = false;	
+	//this._haveCoses = false;
 	if(this._contentView.getSelectionCount()>0) {
 		var arrItems = this._contentView.getSelection();
 		var cnt = arrItems.length;
@@ -697,9 +744,13 @@ function(ev) {
 						this._haveAccounts = true;
 					} else if(!this._haveDls && item.type == ZaItem.DL) {
 						this._haveDls = true;
-					}  else if(!this._haveDomains && item.type == ZaItem.DOMAIN) {
+					} else if(!this._haveDomains && item.type == ZaItem.DOMAIN) {
 						this._haveDomains = true;
-					}
+					//} else if(!this._haveCoses && item.type == ZaItem.COS) {
+                                          //      this._haveCoses = true;
+                                        }
+
+
 				}
 			}
 		}
@@ -756,8 +807,10 @@ function () {
 			dlgMsg = ZaMsg.Q_DELETE_ACCOUNTS;
 		} else if(this._haveAliases && !(this._haveDls || this._haveAccounts || this._haveDomains)) {
 			dlgMsg = ZaMsg.Q_DELETE_ALIASES;
-		} else if(this._haveDomains && !(this._haveAliases || this._haveAccounts || this._haveDomains)) {
+		} else if(this._haveDomains && !(this._haveAliases || this._haveAccounts || this._haveDls)) {
 			dlgMsg = ZaMsg.Q_DELETE_DOMAINS;
+                //} else if(this._haveCoses && !(this._haveAliases || this._haveAccounts || this._haveDomains || this._haveDls)) {
+                  //      dlgMsg = ZaMsg.Q_DELETE_COSES;
 		} else {
 			dlgMsg = ZaMsg.Q_DELETE_OBJECTS;
 		}
@@ -825,6 +878,11 @@ function () {
 	ZaApp.getInstance().dialogs["removeProgressDlg"].setObject(this._removeList);
 	ZaApp.getInstance().dialogs["removeProgressDlg"].startDeletingAccounts();
 
+	//update cos list tree
+	//if(this._haveCoses){
+		//var overviewPanelCtrl = ZaApp.getInstance()._appCtxt.getAppController().getOverviewPanelController();
+		//overviewPanelCtrl.removeCosTreeItems(this._removeList);
+	//}
 }
 
 
@@ -1220,6 +1278,41 @@ function () {
 			this._popupOperations[ZaOperation.MOVE_ALIAS].enabled = false;
 		}	
 	}
+ 	for(var i=0;i<cnt;i++) {
+        var myitem = this._contentView.getSelection()[i];
+        if(myitem && myitem.type==ZaItem.ACCOUNT){
+                myitem = this._contentView.getSelection()[i].toString();
+                var mydomain = ZaAccount.getDomain(myitem);
+                var domainObj =  ZaDomain.getDomainByName(mydomain);
+                if (myitem == "admin@"+mydomain || myitem == "root@"+mydomain || myitem == "postmaster@"+mydomain || myitem == "domainadmin@"+mydomain) {
+                         this._toolbarOperations[ZaOperation.DELETE].enabled=false;
+                }
+                if (domainObj.attrs[ZaDomain.A_zimbraGalAccountId]){
+                        if (myitem == domainObj.attrs[ZaDomain.A_zimbraGalAccountId]){
+                                this._toolbarOperations[ZaOperation.DELETE].enabled=false;}
+                }
+                if (ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraSpamAccount]){
+                        if (myitem == ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraSpamAccount].toString()){
+                                this._toolbarOperations[ZaOperation.DELETE].enabled=false;}
+                }
+                if (ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraHamAccount]){
+                        if (myitem == ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraHamAccount].toString()){
+                                this._toolbarOperations[ZaOperation.DELETE].enabled=false;}
+                }
+                if (ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraAmavisQAccount]){
+                        if (myitem == ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraAmavisQAccount].toString()){
+                                this._toolbarOperations[ZaOperation.DELETE].enabled=false;}
+                }
+                if (ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraWikiAccount]){
+                        if (myitem == ZaApp.getInstance().getGlobalConfig().attrs[ZaGlobalConfig.A_zimbraWikiAccount].toString()){
+                                this._toolbarOperations[ZaOperation.DELETE].enabled=false;}
+                }
+                if (this._contentView.getSelection()[i].attrs[ZaAccount.A_isCCAccount]){
+                        this._toolbarOperations[ZaOperation.DELETE].enabled=false;
+                }
+
+        }
+        }
 }
 ZaController.changeActionsStateMethods["ZaAccountListController"].push(ZaAccountListController.changeActionsStateMethod);
 

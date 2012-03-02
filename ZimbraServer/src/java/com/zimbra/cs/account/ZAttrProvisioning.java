@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 jylee 20101213-1102 */
+    /* build: 6.0.2_BETA1_1111 jylee 20110211-1747 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -68,6 +68,22 @@ public class ZAttrProvisioning {
         public boolean isClosed() { return this == closed;}
         public boolean isLocked() { return this == locked;}
         public boolean isLockout() { return this == lockout;}
+    }
+
+    public static enum AdminAccessControlMech {
+        acl("acl"),
+        global("global");
+        private String mValue;
+        private AdminAccessControlMech(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static AdminAccessControlMech fromString(String s) throws ServiceException {
+            for (AdminAccessControlMech value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isAcl() { return this == acl;}
+        public boolean isGlobal() { return this == global;}
     }
 
     public static enum BackupMode {
@@ -210,6 +226,22 @@ public class ZAttrProvisioning {
         }
         public boolean isForm() { return this == form;}
         public boolean isBasic() { return this == basic;}
+    }
+
+    public static enum FreebusyExchangeServerType {
+        webdav("webdav"),
+        ews("ews");
+        private String mValue;
+        private FreebusyExchangeServerType(String value) { mValue = value; }
+        public String toString() { return mValue; }
+        public static FreebusyExchangeServerType fromString(String s) throws ServiceException {
+            for (FreebusyExchangeServerType value : values()) {
+                if (value.mValue.equals(s)) return value;
+             }
+             throw ServiceException.INVALID_REQUEST("invalid value: "+s+", valid values: "+ Arrays.asList(values()), null);
+        }
+        public boolean isWebdav() { return this == webdav;}
+        public boolean isEws() { return this == ews;}
     }
 
     public static enum GalLdapAuthMech {
@@ -1200,6 +1232,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=659)
     public static final String A_zimbraACE = "zimbraACE";
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public static final String A_zimbraAdminAccessControlMech = "zimbraAdminAccessControlMech";
 
     /**
      * lifetime (nnnnn[hmsd]) of newly created admin auth tokens
@@ -3117,6 +3158,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraFreebusyExchangeCachedIntervalStart = "zimbraFreebusyExchangeCachedIntervalStart";
 
     /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public static final String A_zimbraFreebusyExchangeServerType = "zimbraFreebusyExchangeServerType";
+
+    /**
      * URL to Exchange server for free/busy lookup and propagation
      *
      * @since ZCS 5.0.3
@@ -3439,6 +3489,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=589)
     public static final String A_zimbraGalSyncLdapURL = "zimbraGalSyncLdapURL";
+
+    /**
+     * Maximum number of concurrent GAL sync requests allowed on the system /
+     * domain.
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1154)
+    public static final String A_zimbraGalSyncMaxConcurrentClients = "zimbraGalSyncMaxConcurrentClients";
 
     /**
      * LDAP generalized time format for external GAL sync

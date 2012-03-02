@@ -53,19 +53,13 @@ function startStopServer(verb) {
       zdctl.append("zdctl-wrapper.vbs");
       args = [zdctl.path, verb];
     }
-    else if (os == "linux") {
+    else if (os == "darwin" || os == "linux") {
       var appRoot = WebAppProperties.getAppRoot();
       var zdesktopRoot = appRoot.parent;
       zdesktopServer = zdesktopRoot.clone();
       zdesktopServer.append("bin");
       zdesktopServer.append("zdesktop");
       args = [verb];
-    }
-    else if (os == "darwin") {
-      zdesktopServer = Cc["@mozilla.org/file/local;1"].createInstance(Components.interfaces.nsILocalFile);
-      zdesktopServer.initWithPath("/bin");
-      zdesktopServer.append("launchctl");
-      args = [verb, "com.zimbra.desktop"];
     }
 
     var process = Cc["@mozilla.org/process/util;1"].createInstance(Ci.nsIProcess);
@@ -80,27 +74,43 @@ function startStopServer(verb) {
   return true;
 }
 
-function reloadWebAppIni() {
-  var appRoot = WebAppProperties.getAppRoot();
-  var iniFile = appRoot.clone();
-  iniFile.append("webapp.ini");
-  WebAppProperties.readINI(iniFile);  
+function getPort(uri) {
+  var p1 = uri.indexOf("127.0.0.1:");
+  if (p1 > 0) {
+    p1 = p1 + 10;
+    var p2 = uri.indexOf("/", p1);
+    return uri.substring(p1, p2);
+  } else {
+    return "";
+  }
+}
 
-  var pos = WebAppProperties.uri.indexOf("127.0.0.1:");
-  var ss = WebAppProperties.uri.substring(pos + 10);
-  pos = ss.indexOf("/");
+function reloadWebAppIni(iniFile) {
+  var oldUri = WebAppProperties.uri;
+  var oldPort = getPort(oldUri);
+  WebAppProperties.readINI(iniFile);
+  var newUri = WebAppProperties.uri; 
+  var newPort = getPort(newUri);
+
+  WebAppProperties.uri = oldPort != "" && oldPort != newPort ? 
+    oldUri.replace(":" + oldPort + "/", ":" + newPort + "/") : oldUri;
+
   var prefs = Components.classes["@mozilla.org/preferences-service;1"].getService(Components.interfaces.nsIPrefBranch);
   if (prefs) {
-     prefs.setCharPref("capability.principal.codebase.p1.id", "http://127.0.0.1:" + ss.substr(0, pos));
+     prefs.setCharPref("capability.principal.codebase.p1.id", "http://127.0.0.1:" + newPort);
+     prefs.setCharPref("prism.protocol.mailto", newUri + "&mailto=%s");
   }
 }
 
 function serverCheck() {
   var startTime = null;
   var threadManager = Cc["@mozilla.org/thread-manager;1"].getService(Ci.nsIThreadManager);
+  var appRoot = WebAppProperties.getAppRoot();
+  var iniFile = appRoot.clone();
+  iniFile.append("webapp.ini");
   do {
     // update Uri
-    reloadWebAppIni();
+    reloadWebAppIni(iniFile);
     
     // Check whether the server is running
     var req = new XMLHttpRequest();

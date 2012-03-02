@@ -609,24 +609,24 @@ function(force, viewId, skipHistory) {
 	// check if trying to pop non-current view
 	if (viewId && !isPendingView && (this.getCurrentViewId() != viewId)) { return false; }
 
-	// handle cases where there are no views in the hidden stack (entry via deep link)
-	var noHide = false, noShow = false;
-	var goToApp = null;
-	if (!this._hidden.length && !this._isNewWindow) {
-		noHide = !this._isTabView[this._currentView];
-		noShow = true;
-		var qsParams = AjxStringUtil.parseQueryString();
-		if (qsParams && ((qsParams.view && qsParams.view == "compose") || qsParams.id)) {
-			// if ZCS opened into compose or msg tab, take user to Mail
-			goToApp = ZmApp.MAIL;
-		}
-	}
-
 	DBG.println(AjxDebug.DBG1, "popView: " + this._currentView);
 	DBG.println(AjxDebug.DBG2, "hidden (before): " + this._hidden);
-	if (!this._hideView(this._currentView, force, noHide)) {
+	if (!this._hideView(this._currentView, force)) {
 		this._pendingAction = this._popCallback;
 		this._pendingView = null;
+		return false;
+	}
+
+	if (!this._hidden.length && !this._isNewWindow) {
+		DBG.println(AjxDebug.DBG1, "ERROR: no view to replace popped view");
+		// bug fix #11264 - if logged in w/ view=compose, popView should reload mail app
+		if (location && (location.search.match(/\bview=compose\b/))) {
+			// bug fix #45068 - also remove the compose tab after asking to save
+			this._deactivateView(this._views[this._currentView]);
+			if (this._isTabView[this._currentView] && this._tabParams[this._currentView] && this._tabParams[this._currentView].id)
+				appCtxt.getAppChooser().removeButton(this._tabParams[this._currentView].id);
+			this._controller.activateApp(ZmApp.MAIL);
+		}
 		return false;
 	}
 
@@ -634,13 +634,6 @@ function(force, viewId, skipHistory) {
 
 	if (this._isTabView[this._currentView]) {
 		appCtxt.getAppChooser().removeButton(this._tabParams[this._currentView].id);
-	}
-	
-	if (noShow) {
-		if (goToApp) {
-			this._controller.activateApp(ZmApp.MAIL);
-		}
-		return !noHide;
 	}
 
 	this._lastView = this._currentView;
@@ -992,7 +985,7 @@ function(view) {
  * @private
  */
 ZmAppViewMgr.prototype._hideView =
-function(view, force, noHide) {
+function(view, force) {
 	if (!view) { return true; }
 	var okToContinue = true;
 	var callback = this._callbacks[view] ? this._callbacks[view][ZmAppViewMgr.CB_PRE_HIDE] : null;
@@ -1001,9 +994,7 @@ function(view, force, noHide) {
 		okToContinue = callback.run(view, force);
 	}
 	if (okToContinue) {
-		if (!noHide) {
-			this._setViewVisible(view, false);
-		}
+		this._setViewVisible(view, false);
         if (appCtxt.get(ZmSetting.USE_KEYBOARD_SHORTCUTS)) {
 		    appCtxt.getKeyboardMgr().clearKeySeq();
         }

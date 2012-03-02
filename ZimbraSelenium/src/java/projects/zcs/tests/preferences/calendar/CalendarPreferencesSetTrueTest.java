@@ -140,7 +140,7 @@ public class CalendarPreferencesSetTrueTest extends CommonTest {
 		needReset = false;
 	}
 
-	@Test(groups = { "smoke", "full","enabled" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
 	public void zCalendarPrefQuickAdd() throws Exception {
 
 		if (isExecutionARetry)
@@ -174,9 +174,9 @@ public class CalendarPreferencesSetTrueTest extends CommonTest {
 		
 		Thread.sleep(1000);
 
-		String timeZone = obj.zMiscObj.zExistsDontWait("ZmApptComposeView ZWidget/*tzoneSelect/ZSelectAutoSizingContainer ZHasDropDown");
-		
-		Assert.assertEquals(timeZone, "true", "Timezone menu doesn't exist on setting the ShowTimeZone pref to True");
+		//String timeZone = obj.zMiscObj.zExistsDontWait("ZmApptComposeView ZWidget/*tzoneSelect/ZSelectAutoSizingContainer ZHasDropDown");
+		boolean timeZoneExist = selenium.isElementPresent("//td[contains(@id,'_tzoneSelect')]/div[contains(@class,'ZHasDropDown')]");
+		Assert.assertTrue(timeZoneExist, "Timezone menu doesn't exist on setting the ShowTimeZone pref to True");
 		
 		needReset = false;
 	}

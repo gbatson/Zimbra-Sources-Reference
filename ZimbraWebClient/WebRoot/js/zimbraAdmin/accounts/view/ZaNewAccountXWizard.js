@@ -43,9 +43,28 @@ ZaNewAccountXWizard.helpURL = location.pathname + ZaUtil.HELP_URL + "managing_ac
 ZaNewAccountXWizard.prototype.handleXFormChange = 
 function () {
 	if(this._localXForm.hasErrors()) {
-		this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(false);
-		this._button[DwtWizardDialog.NEXT_BUTTON].setEnabled(false);
-		this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(false);
+		var isNeeded = true;
+				
+/*
+ *Bug 49662 If it is alias step, we check the error'root. If the error is thrown
+ *for the username is null, we reset this error's status. For emailaddr item's 
+ *OnChange() function is called after item value validation. At the stage of
+ *value validation, an error is thrown and OnChange can't be called. If we
+ *modify the email-address's validation method, it will effect the first stage
+ *of account creatin. So we reset the error status here
+ */		
+        	if(this._containedObject[ZaModel.currentStep] == ZaNewAccountXWizard.ALIASES_STEP){
+			var args = arguments[0];
+			if(args && args.formItem && (args.formItem.type == "emailaddr")){
+				isNeeded = !args.formItem.clearNameNullError();
+			}
+		}
+
+		if(isNeeded){
+			this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(false);
+			this._button[DwtWizardDialog.NEXT_BUTTON].setEnabled(false);
+			this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(false);
+		}
 	} else {
 		if(this._containedObject.attrs[ZaAccount.A_lastName]
                 && this._containedObject[ZaAccount.A_name].indexOf("@") > 0
@@ -587,7 +606,9 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 			cssClass:"admin_xform_name_input"
 		},
 		{ref:ZaAccount.A_zimbraPasswordMustChange,  type:_CHECKBOX_,
-			msgName:ZaMsg.NAD_MustChangePwd,label:ZaMsg.NAD_MustChangePwd,trueValue:"TRUE", falseValue:"FALSE"}
+			msgName:ZaMsg.NAD_MustChangePwd,label:ZaMsg.NAD_MustChangePwd,trueValue:"TRUE", falseValue:"FALSE"},
+		  {ref:ZaAccount.A_zimbraAuthLdapExternalDn,type:_TEXTFIELD_,width:256,
+                                msgName:ZaMsg.NAD_AuthLdapExternalDn,label:ZaMsg.NAD_AuthLdapExternalDn, labelLocation:_LEFT_, align:_LEFT_}
 		]
 	};
 	case1Items.push(passwordGroup);														
@@ -1201,7 +1222,8 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 			ZaAccount.A_zimbraPrefHtmlEditorDefaultFontFamily,ZaAccount.A_zimbraPrefHtmlEditorDefaultFontSize,
 			ZaAccount.A_zimbraPrefHtmlEditorDefaultFontColor,ZaAccount.A_zimbraPrefForwardReplyInOriginalFormat,
 			ZaAccount.A_zimbraPrefMailSignatureEnabled,/*ZaAccount.A_zimbraPrefMailSignatureStyle,*/
-			ZaAccount.A_zimbraMailSignatureMaxLength,ZaAccount.A_zimbraPrefMailSignature,ZaAccount.A_zimbraPrefMandatorySpellCheckEnabled],[])) {				
+			ZaAccount.A_zimbraMailSignatureMaxLength,ZaAccount.A_zimbraPrefMailSignature,
+			ZaAccount.A_zimbraPrefMandatorySpellCheckEnabled, ZaAccount.A_zimbraPrefAutoSaveDraftInterval],[])) {				
 			prefItems.push({type:_ZAWIZ_TOP_GROUPER_, id:"account_prefs_mail_composing",borderCssClass:"LowPadedTopGrouperBorder",
 							label:ZaMsg.NAD_MailOptionsComposing,
 							items :[																										
@@ -1267,7 +1289,14 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 									labelCssStyle:"vertical-align:top", width:"30em",
 									enableDisableChangeEventSources:[ZaAccount.A_zimbraPrefMailSignatureEnabled],
 									enableDisableChecks:[ZaAccountXFormView.isMailSignatureEnabled]									
-								}
+								},
+                                                                {ref:ZaAccount.A_zimbraPrefAutoSaveDraftInterval, type:_SUPER_LIFETIME_,
+                                                                        colSizes:["195px","80px","295px","190px"],
+                                                                        msgName:ZaMsg.MSG_zimbraPrefAutoSaveDraftInterval,
+                                                                        txtBoxLabel:ZaMsg.LBL_zimbraPrefAutoSaveDraftInterval,
+                                                                        resetToSuperLabel:ZaMsg.NAD_ResetToCOS,colSpan:2,
+                                                                        nowrap:false,labelWrap:true                                                          
+                                                                }
 							]
 						});
 		}		
@@ -1514,6 +1543,22 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 							]
 						});
 		}
+
+		if(ZAWizTopGrouper_XFormItem.isGroupVisible(entry,[ZaAccount.A_zimbraDataSourceMinPollingInterval],[])) {				
+			advancedCaseItems.push({type:_ZAWIZ_TOP_GROUPER_, id:"account_datasourcepolling_settings",colSizes:["260px","190px","150px"],numCols:3,
+							label:ZaMsg.NAD_DataSourcePolling,						
+							items: [
+                                                                {ref:ZaAccount.A_zimbraDataSourceMinPollingInterval, type:_SUPER_LIFETIME_,
+                                                                        colSizes:["195px","80px","295px","190px"],
+                                                                        msgName:ZaMsg.MSG_zimbraDataSourceMinPollingInterval,
+                                                                        txtBoxLabel:ZaMsg.LBL_zimbraDataSourceMinPollingInterval,
+                                                                        resetToSuperLabel:ZaMsg.NAD_ResetToCOS,colSpan:2,
+                                                                        nowrap:false,labelWrap:true
+                                                                }
+							]
+						});
+		}
+
 		if(ZAWizTopGrouper_XFormItem.isGroupVisible(entry,[ZaAccount.A_zimbraPasswordLocked,ZaAccount.A_zimbraMinPwdLength,
 			ZaAccount.A_zimbraMaxPwdLength,ZaAccount.A_zimbraPasswordMinUpperCaseChars,ZaAccount.A_zimbraPasswordMinLowerCaseChars,
 			ZaAccount.A_zimbraPasswordMinPunctuationChars,ZaAccount.A_zimbraPasswordMinNumericChars,

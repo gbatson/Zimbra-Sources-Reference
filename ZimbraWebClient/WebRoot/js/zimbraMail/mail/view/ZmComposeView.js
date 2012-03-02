@@ -378,7 +378,7 @@ function(msg) {
 ZmComposeView.prototype._handleInlineAtts =
 function(msg, handleInlineDocs){
 
-	var handled = false, ci, cid, dfsrc, inlineAtt;
+	var handled = false, ci, cid, dfsrc, inlineAtt, attached = {};
 
 	var idoc = this._htmlEditor._getIframeDoc();
 	var images = idoc.getElementsByTagName("img");
@@ -398,8 +398,11 @@ function(msg, handleInlineDocs){
 						inlineAtt = this._msg.findInlineAtt(ci);
 					}
 					if (inlineAtt) {
-						msg.addInlineAttachmentId(cid, null, inlineAtt.part);
-						handled = true;
+                        if(!attached[(cid+"_"+inlineAtt.part)]){
+                            msg.addInlineAttachmentId(cid, null, inlineAtt.part);
+                            handled = true;
+                            attached[(cid+"_"+inlineAtt.part)] = true;
+                        }
 					}
 				}
 			}
@@ -558,19 +561,28 @@ function(attId, isDraft, dummyMsg) {
 		var textPart = new ZmMimePart();
 		textPart.setContentType(ZmMimeTable.TEXT_PLAIN);
 		var self = this;
-		var convertor = {"hr":
-			function(el) {
+		var convertor = {
+			"hr": function(el) {
 				return ZmComposeView._convertHtmlPreface(self, el);
+			},
+			"blockquote": function(el) {
+				return "\n<blockquote>\n";
+			},
+			"/blockquote": function(el) {
+				return "\n</blockquote>\n";
 			}
 		}
-		textPart.setContent(this._htmlEditor.getTextVersion(convertor));
+		var text = this._htmlEditor.getTextVersion(convertor);
+		text = this._applyHtmlPrefix(text, "<blockquote>", "</blockquote>");
+
+		textPart.setContent(text);
 		top.children.add(textPart);
 
 		var htmlPart = new ZmMimePart();
 		htmlPart.setContentType(ZmMimeTable.TEXT_HTML);		
 
 		var idoc = this._htmlEditor._getIframeDoc();
-        this._cleanupFileRefImages(idoc);
+		this._cleanupFileRefImages(idoc);
 		this._restoreMultipartRelatedImages(idoc);
 		if (!isDraft) {
 			this._cleanupSignatureIds(idoc);
@@ -594,7 +606,20 @@ function(attId, isDraft, dummyMsg) {
 		}
 
 		htmlPart.setContent(defangedContent);
+         //set img src to cid and remove dfsrc before sending
+        var content = htmlPart.getContent();
+        var imgContent = content.split(/<img/i);
+        for(var i=0; i<imgContent.length; i++){
+            var dfsrc = imgContent[i].match(/cid:[^\"\']+/); //look for CID assignment in image
+            if (dfsrc && dfsrc.length > 0){
+                var tempStr = imgContent[i].replace(/\s+src=[\"\'][^\"\']+[\"\']/," src=\""+dfsrc[0]+"\"");
+                tempStr = tempStr.replace(/dfsrc=[\"\'][^\"\']+[\"\']+/,"");
+                content = content.replace(imgContent[i], tempStr);
+            }
+        }
 
+        htmlPart.setContent(content);
+        
 		this._handleInlineAtts(msg, true); // Better Code
 		var inlineAtts = msg.getInlineAttachments();
 		var inlineDocAtts = msg.getInlineDocAttachments();
@@ -1013,7 +1038,10 @@ function(msg, idoc) {
 					images[i].setAttribute("dfsrc", dfsrc);
 				}
 			} else if (dfsrc.substring(0,4) == "doc:") {
-				images[i].src = [appCtxt.get(ZmSetting.REST_URL), ZmFolder.SEP, dfsrc.substring(4)].join('');
+                //IE: Over HTTPS, http src urls for images might cause an issue.
+				try{
+                    images[i].src = [appCtxt.get(ZmSetting.REST_URL), ZmFolder.SEP, dfsrc.substring(4)].join('');
+                }catch(ex){};
 			} else if (msg && dfsrc.indexOf("//") == -1) { // check for content-location verison
 				var src = msg.getContentPartAttachUrl(ZmMailMsg.CONTENT_PART_LOCATION, dfsrc);
 				//Cache cleared, becoz part id's may change.
@@ -1074,6 +1102,7 @@ function(idoc) {
 				cid = "cid:"+Dwt.getNextId();
 				img.removeAttribute("dfsrc");
 				img.setAttribute("doc", dfsrc.substring(4, dfsrc.length));
+                img.setAttribute("dfsrc", cid);
 			} else {
 				// If "Display External Images" is false then handle Reply/Forward
 				if (dfsrc)
@@ -1081,7 +1110,8 @@ function(idoc) {
 					try{ img.src = dfsrc; }catch(ex){};
 				}
 			if (cid) {
-				img.src = cid;
+                //IE: Over HTTPS, http src urls for images might cause an issue.
+                try{ img.src = cid; }catch(ex){};
 			}
 		}
 	}
@@ -1657,9 +1687,9 @@ ZmComposeView.prototype._acKeyupHandler =
 function(ev, acListView, result) {
 	var key = DwtKeyEvent.getCharCode(ev);
 	// process any printable character or enter/backspace/delete keys
-	if (result && AjxStringUtil.isPrintKey(key) ||
-		key == 3 || key == 13 || key == 8 || key == 46 ||
-		(AjxEnv.isMac && key == 224)) // bug fix #24670
+	if (result && (ev.inputLengthChanged ||
+		(key == 3 || key == 13 || key == 8 || key == 46 ||
+		(AjxEnv.isMac && key == 224)))) // bug fix #24670
 	{
 		this._adjustAddrHeight(DwtUiEvent.getTargetWithProp(ev, "id"));
 	}
@@ -1741,7 +1771,11 @@ function(action, type, override) {
 		// When updating address lists, use this._addressesMsg instead of this._msg, because
 		// this._msg changes after a draft is saved.
 		if (!this._addressesMsg.isSent) {
-			var addrVec = this._addressesMsg.getReplyAddresses(action, used);
+			var isDefaultIdentity = true;
+			if(this.identitySelect) {
+				var isDefaultIdentity = defaultIdentity.id == this.identitySelect.getValue(); 
+			}
+			var addrVec = this._addressesMsg.getReplyAddresses(action, used, isDefaultIdentity);
 			var addr = this._getAddrString(addrVec);
 			if (action == ZmOperation.REPLY_ALL) {
 				for (var i = 0, len = addrVec.size(); i < len; i++) {
@@ -2098,6 +2132,40 @@ function(self, el) {
 	return (el && el.id == "zwchr") ? self._getPreface(DwtHtmlEditor.TEXT) + ZmMsg.CRLF : null;
 };
 
+ZmComposeView.prototype._applyHtmlPrefix =
+function(text, tagStart, tagEnd) {
+	var incOptions = this._controller._curIncOptions;
+	if (incOptions && incOptions.prefix) {
+		var wrapParams = ZmHtmlEditor.getWrapParams(false, incOptions);
+		wrapParams.preserveReturns = true;
+
+		var lines = text.split("\n");
+		var level = 0;
+		var out = [];
+		var k = 0;
+		for (var i=0; i<lines.length; i++) {
+			var line = lines[i];
+			if (line==tagStart) {
+				level++;
+			} else if (line==tagEnd) {
+				level--;
+			} else {
+				wrapParams.len = ZmHtmlEditor.WRAP_LENGTH;
+				for (var j=0; j<level; j++) {
+					wrapParams.text = line;
+					line = AjxStringUtil.wordWrap(wrapParams);
+				}
+				out[k++] = line;
+			}
+		}
+		return out.join("");
+	} else {
+		return text.replace(tagStart,"").replace(tagEnd,"");
+	}
+}
+
+
+
 ZmComposeView.prototype.resetBody =
 function(action, msg, extraBodyText, incOptions) {
 	this.cleanupAttachments(true);
@@ -2232,7 +2300,7 @@ function(templateId, data) {
 	this._identityDivId = data.identityRowId;
 
 	// init autocomplete list
-	if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) || appCtxt.get(ZmSetting.GAL_ENABLED)) {
+	if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) || appCtxt.get(ZmSetting.GAL_ENABLED) || appCtxt.isOffline) {
 		var params = {
 			parent: appCtxt.getShell(),
 			dataClass: appCtxt.getAutocompleter(),
@@ -2281,7 +2349,7 @@ function(templateId, data) {
 				button.addrType = type;
 
 				// autocomplete-related handlers
-				if (appCtxt.get(ZmSetting.CONTACTS_ENABLED)) {
+				if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) || appCtxt.isOffline) {
 					this._acAddrSelectList.handle(this._field[type]);
 				} else {
 					this._setEventHandler(this._fieldId[type], "onKeyUp");
@@ -2699,7 +2767,9 @@ function(msg) {
 		selectedIdentity = ac.getIdentityCollection(active).defaultIdentity;
 	}
 
-	this._fromSelect.setSelectedValue(selectedIdentity.id);
+    if(selectedIdentity && selectedIdentity.id) {
+        this._fromSelect.setSelectedValue(selectedIdentity.id);
+    }
 
 	// for cross account searches, the active account isn't necessarily the
 	// account of the selected conv/msg so reset it based on the selected option.

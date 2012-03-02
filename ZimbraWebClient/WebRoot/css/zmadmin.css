@@ -257,7 +257,7 @@ input.admin_xform_name_input_disabled {
 }
 
 .DLTarget { 
-  height:338px;
+  height:270px;
 }
 
 .DLSource { 
@@ -534,6 +534,7 @@ input.admin_xform_name_input_disabled {
 
 .CenterGrouperBorder {
 	@FieldSet@
+        padding-top:7px;
 	padding-left:5px;	/* ??? SIZE */
 	padding-right:10px;
 	padding-bottom:10px;
@@ -543,6 +544,7 @@ input.admin_xform_name_input_disabled {
 
 .AllScreenGrouperBorder {
 	@FieldSet@
+        padding-top:7px;
 	padding-left:0px;	/* ??? SIZE */
 	padding-right:0px;
 	padding-bottom:10px;
@@ -706,12 +708,14 @@ div.ZaSearchBuilderOptionRemoveAll table  {
 
 /* text style for name of a selected and focused tree item */
 .AdminTreeItem-selected-focused {
-	@SelectedBg@
+    @TreeItem@
+    @SelectedBg@
 	@ImagePadding@
 }
 
 /* text style for a right-clicked tree item */
 .AdminTreeItem-actioned {
+    @TreeItem@
 	@RightClickBg@
 	@ImagePadding@
 }

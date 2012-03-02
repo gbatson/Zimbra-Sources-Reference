@@ -146,6 +146,11 @@ function(bEnableInputs) {
 	this._attInputField[ZmCalBaseItem.LOCATION].setEnabled(bEnableInputs);
 };
 
+ZmApptEditView.prototype.isOrganizer =
+function() {
+    return Boolean(this._isOrganizer);
+};
+
 ZmApptEditView.prototype.isValid =
 function() {
 	var errorMsg;
@@ -241,6 +246,18 @@ function() {
 		this._origFormValueMinusReminder = newMode ? "" : this._formValue(false, true);
 		this._origReminderValue = this._reminderSelectInput.getValue();
 	}
+    this._keyInfoValue = newMode ? "" : this._keyValue();	
+};
+
+/**
+ * Checks if location/time/recurrence only are changed.
+ *
+ * @return	{Boolean}	<code>true</code> if location/time/recurrence only are changed
+ */
+ZmApptEditView.prototype.isKeyInfoChanged =
+function() {
+	var formValue = this._keyInfoValue;
+	return (this._keyValue() != formValue);
 };
 
 ZmApptEditView.prototype._getClone =
@@ -252,6 +269,8 @@ ZmApptEditView.prototype._populateForSave =
 function(calItem) {
 
     ZmCalItemEditView.prototype._populateForSave.call(this, calItem);
+    
+    if(this.isOrganizer() && this.isKeyInfoChanged()) this.resetParticipantStatus();
 
     //Handle Persona's
     var identity = this.getIdentity();
@@ -837,16 +856,33 @@ function(calItem, mode, isDirty, apptComposeMode) {
     ZmCalItemEditView.prototype.initialize.call(this, calItem, mode, isDirty, apptComposeMode);
 };
 
+ZmApptEditView.prototype.getCalendarAccount =
+function() {
+	var cal = appCtxt.getById(this._folderSelect.getValue());
+	return cal && cal.getAccount();
+};
+
 ZmApptEditView.prototype._folderListener =
 function() {
 	if (!this._privacySelect) { return; }
 
 	var calId = this._folderSelect.getValue();
 	var cal = appCtxt.getById(calId);
-    //bug:48189 Hide schedule tab for non-ZCS acct
-    if(appCtxt.isOffline){
-        this.parent.parent.setTabVisibility([ZmApptComposeView.TAB_SCHEDULE], cal.getAccount().isZimbraAccount);
-    }
+
+	// bug: 48189 - Hide schedule tab for non-ZCS acct
+	if (appCtxt.isOffline) {
+        var currAcct = cal.getAccount();
+        appCtxt.accountList.setActiveAccount(currAcct);
+		this.parent.parent.setTabVisibility([ZmApptComposeView.TAB_SCHEDULE], (currAcct.isZimbraAccount && !currAcct.isMain));
+        var tabPage = this.parent.parent._tabPages[ZmApptComposeView.TAB_ATTENDEES];
+		var attendeesTab = (!(tabPage instanceof AjxCallback)) ? this.parent.getTabPage(ZmApptComposeView.TAB_ATTENDEES) : null;
+		if (attendeesTab) {
+			attendeesTab.cleanup();
+		}
+        // show / hide source select in attendees tab
+        attendeesTab.setSelectVisibility();
+	}
+
 	var acct = appCtxt.getActiveAccount();
 	var id = String(cal.id);
 	var isRemote = (id.indexOf(":") != -1) && (id.indexOf(acct.id) != 0);
@@ -1085,6 +1121,28 @@ function(excludeAttendees, excludeReminder) {
 	return str;
 };
 
+ZmApptEditView.prototype._keyValue =
+function() {
+	var vals = [];
+	vals.push(this._attInputField[ZmCalBaseItem.LOCATION].getValue());
+	vals.push(ZmApptViewHelper.getAttendeesString(this._attendees[ZmCalBaseItem.LOCATION].getArray(), ZmCalBaseItem.LOCATION));
+	var startDate = AjxDateUtil.simpleParseDateStr(this._startDateField.value);
+	var endDate = AjxDateUtil.simpleParseDateStr(this._endDateField.value);
+    startDate = this._startTimeSelect.getValue(startDate);
+	endDate = this._endTimeSelect.getValue(endDate);
+	vals.push(
+		AjxDateUtil.getServerDateTime(startDate),
+		AjxDateUtil.getServerDateTime(endDate)
+	);
+	vals.push("" + this._allDayCheckbox.checked);
+	if (Dwt.getDisplay(this._tzoneSelect.getHtmlElement()) != Dwt.DISPLAY_NONE) {
+		vals.push(this._tzoneSelect.getValue());
+    }
+	vals.push(this._repeatSelect.getValue());
+	var str = vals.join("|");
+	str = str.replace(/\|+/, "|");
+	return str;
+};
 
 // Listeners
 
@@ -1140,6 +1198,15 @@ function(type, useException) {
 	this._controller._invalidAttendees = [];
 	var value = this._attInputField[type].getValue();
     return this._updateAttendeeFieldValues(type, value);
+};
+
+ZmApptEditView.prototype.resetParticipantStatus =
+function() {
+    var personalAttendees = this._attendees[ZmCalBaseItem.PERSON].getArray();
+    for (var i = 0; i < personalAttendees.length; i++) {
+        var attendee = personalAttendees[i];
+        if(attendee) attendee.setParticipantStatus(ZmCalBaseItem.PSTATUS_NEEDS_ACTION);
+    }
 };
 
 ZmApptEditView.prototype._updateAttendeeFieldValues =

@@ -163,7 +163,11 @@ function(what) {
 			if (item.folderId) {
 				invalid = true;
 				for (var i = 0; i < items.length; i++) {
-					var folder = appCtxt.getById(items[i].folderId);
+                    var folder = appCtxt.getById(items[i].folderId);
+                    if(items[i].isReadOnly() && folder.owner != this.owner) {
+                        invalid = true;
+                        break;
+                    }
 					if (item.viewMode == ZmCalItem.MODE_NEW || folder != this) {
 						invalid = false;
 						break;
@@ -267,3 +271,40 @@ ZmCalendar.prototype.supportsPrivatePermission =
 function() {
 	return true;
 };
+
+ZmCalendar.prototype.getRestUrl =
+function(acct) {
+	// return REST URL as seen by server
+	if (this.restUrl) {
+		return this.restUrl;
+	}
+
+	// if server doesn't tell us what URL to use, do our best to generate
+	url = this._generateRestUrl(acct);
+	DBG.println(AjxDebug.DBG3, "NO REST URL FROM SERVER. GENERATED URL: " + url);
+
+	return url;
+};
+
+ZmCalendar.prototype._generateRestUrl =
+function(acct) {
+	var loc = document.location;
+	var owner = this.getOwner();
+	var uname = owner || appCtxt.get(ZmSetting.USERNAME);
+    if (appCtxt.multiAccounts) {
+        uname = appCtxt.get(ZmSetting.USERNAME, null, acct)
+    }
+	var m = uname.match(/^(.*)@(.*)$/);
+	var host = loc.host || (m && m[2]);
+
+	// REVISIT: What about port? For now assume other host uses same port
+	if (loc.port && loc.port != 80 && (owner == appCtxt.get(ZmSetting.USERNAME))) {
+		host = host + ":" + loc.port;
+	}
+
+	return [
+		loc.protocol, "//", host, "/service/user/", uname, "/",
+		AjxStringUtil.urlEncode(this.getSearchPath(true))
+	].join("");
+};
+

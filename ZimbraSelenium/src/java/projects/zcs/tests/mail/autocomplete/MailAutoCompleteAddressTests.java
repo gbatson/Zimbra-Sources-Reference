@@ -10,6 +10,8 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 import com.zimbra.common.service.ServiceException;
+
+import framework.core.SelNGBase;
 import framework.util.RetryFailedTests;
 import projects.zcs.clients.ProvZCS;
 import projects.zcs.tests.CommonTest;
@@ -53,7 +55,7 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				|| test
 						.equals("autocompleteShowsContactFromTrashedABFolders_Bug47044")
 				|| test
-						.equals("verifyAutocompleteFromContactsSubAndSubSubFolders")
+						.equals("verifyAutocompleteFromContactsSubAndSubSubFolders_Bug47044")
 				|| test
 						.equals("verifyAutocompleteFromSharedSubAndSubSubFolders_Bug45550")
 				|| test
@@ -61,6 +63,25 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 			return new Object[][] { { "_selfAccountName_", "_selfAccountName_",
 					"ccuser@testdomain.com", "bccuser@testdomain.com",
 					"commonsubject", "commonbody", "" } };
+		} else if (test
+				.equals("forgetAutocompleteWithGALAndEmailedAddressOnOff")) {
+			return new Object[][] {
+					{ "GALOFFAndEmailedContactsOFF", "_selfAccountName_",
+							"_selfAccountName_", "ccuser@testdomain.com",
+							"bccuser@testdomain.com", "commonsubject",
+							"commonbody", "" },
+					{ "GALOFFAndEmailedContactsON", "_selfAccountName_",
+							"_selfAccountName_", "ccuser@testdomain.com",
+							"bccuser@testdomain.com", "commonsubject",
+							"commonbody", "" },
+					{ "GALONAndEmailedContactsOFF", "_selfAccountName_",
+							"_selfAccountName_", "ccuser@testdomain.com",
+							"bccuser@testdomain.com", "commonsubject",
+							"commonbody", "" },
+					{ "GALONAndEmailedContactsON", "_selfAccountName_",
+							"_selfAccountName_", "ccuser@testdomain.com",
+							"bccuser@testdomain.com", "commonsubject",
+							"commonbody", "" } };
 		} else {
 			return new Object[][] { { "_selfAccountName_", "_selfAccountName_",
 					"ccuser@testdomain.com", "bccuser@testdomain.com",
@@ -356,35 +377,35 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				.assertTrue(
 						"Verifying first autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
 										+ acc3.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying second autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
 										+ acc5.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying third autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_2')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_2')]//td[contains(text(), '"
 										+ acc1.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying fourth autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_3')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_3')]//td[contains(text(), '"
 										+ acc4.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying fifth autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_4')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_4')]//td[contains(text(), '"
 										+ acc2.toLowerCase() + "')]"));
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
@@ -483,15 +504,15 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				.assertTrue(
 						"Verifying first autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
-										+ acc2 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
+										+ acc2.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying second autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
-										+ acc1 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
+										+ acc1.toLowerCase() + "')]"));
 		pressKeys("'");
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
@@ -706,13 +727,13 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				.assertTrue(
 						"Verifying first autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
 										+ acc2.toLowerCase() + "')]"));
 		Assert
 				.assertTrue(
 						"Verifying second autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
 										+ acc1.toLowerCase() + "')]"));
 		Robot zRobot = new Robot();
 		zRobot.keyPress(KeyEvent.VK_COMMA);
@@ -736,13 +757,13 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				.assertTrue(
 						"Verifying first autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
 										+ acc2.toLowerCase() + "')]"));
 		Assert
 				.assertTrue(
 						"Verifying second autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
 										+ acc1.toLowerCase() + "')]"));
 		zRobot.keyPress(KeyEvent.VK_COMMA);
 		zRobot.keyRelease(KeyEvent.VK_COMMA);
@@ -896,7 +917,7 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				"testBody", "");
 		getKeyboardKeys(acc1);
 		typeKeyboardKeys();
-		page.zMailApp.zVerifyAutocompleteExists(acc1, 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists(acc1.toLowerCase(), 1, 1);
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
 		zGoToApplication("Address Book");
@@ -910,7 +931,7 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 		pressKeys("delete");
 
 		typeKeyboardKeys();
-		page.zMailApp.zVerifyAutocompleteNotExists(acc1, 1, 1);
+		page.zMailApp.zVerifyAutocompleteNotExists(acc1.toLowerCase(), 1, 1);
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
 		zGoToApplication("Address Book");
@@ -923,14 +944,14 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 		pressKeys("delete");
 
 		typeKeyboardKeys();
-		page.zMailApp.zVerifyAutocompleteNotExists(acc1, 1, 1);
+		page.zMailApp.zVerifyAutocompleteNotExists(acc1.toLowerCase(), 1, 1);
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
 		selenium.refresh();
 		Thread.sleep(3500);
 		zWaitTillObjectExist("id", "ztih__main_Mail__ZIMLET_textCell");
 		typeKeyboardKeys();
-		page.zMailApp.zVerifyAutocompleteNotExists(acc1, 1, 1);
+		page.zMailApp.zVerifyAutocompleteNotExists(acc1.toLowerCase(), 1, 1);
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
 		needReset = false;
@@ -1197,9 +1218,9 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 	 * 6.Refresh UI and again verify autocomplete not exists
 	 */
 	@Test(dataProvider = "composeDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
-	public void verifyAutocompleteFromContactsSubAndSubSubFolders(String from,
-			String to, String cc, String bcc, String subject, String body,
-			String attachments) throws Exception {
+	public void verifyAutocompleteFromContactsSubAndSubSubFolders_Bug47044(
+			String from, String to, String cc, String bcc, String subject,
+			String body, String attachments) throws Exception {
 		if (isExecutionARetry)
 			handleRetry();
 
@@ -1397,62 +1418,70 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 		page.zComposeView.zNavigateToMailCompose();
 		obj.zTextAreaField.zActivate(page.zComposeView.zCcField);
 		pressKeys("1");
-		page.zMailApp.zVerifyAutocompleteExists("1@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("19@testing.com", 20, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("1@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("19@testdomain.com", 20, 0);
 		pressKeys("0");
-		page.zMailApp.zVerifyAutocompleteExists("10@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("100@testing.com", 2, 0);
-		page.zMailApp.zVerifyAutocompleteExists("1000@testing.com", 3, 0);
-		page.zMailApp.zVerifyAutocompleteExists("101@testing.com", 4, 0);
-		page.zMailApp.zVerifyAutocompleteExists("102@testing.com", 5, 0);
-		page.zMailApp.zVerifyAutocompleteExists("103@testing.com", 6, 0);
-		page.zMailApp.zVerifyAutocompleteExists("104@testing.com", 7, 0);
-		page.zMailApp.zVerifyAutocompleteExists("105@testing.com", 8, 0);
-		page.zMailApp.zVerifyAutocompleteExists("106@testing.com", 9, 0);
-		page.zMailApp.zVerifyAutocompleteExists("107@testing.com", 10, 0);
-		page.zMailApp.zVerifyAutocompleteExists("108@testing.com", 11, 0);
-		page.zMailApp.zVerifyAutocompleteExists("109@testing.com", 12, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("10@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("100@testdomain.com", 2, 0);
+		page.zMailApp.zVerifyAutocompleteExists("1000@testdomain.com", 3, 0);
+		page.zMailApp.zVerifyAutocompleteExists("101@testdomain.com", 4, 0);
+		page.zMailApp.zVerifyAutocompleteExists("102@testdomain.com", 5, 0);
+		page.zMailApp.zVerifyAutocompleteExists("103@testdomain.com", 6, 0);
+		page.zMailApp.zVerifyAutocompleteExists("104@testdomain.com", 7, 0);
+		page.zMailApp.zVerifyAutocompleteExists("105@testdomain.com", 8, 0);
+		page.zMailApp.zVerifyAutocompleteExists("106@testdomain.com", 9, 0);
+		page.zMailApp.zVerifyAutocompleteExists("107@testdomain.com", 10, 0);
+		page.zMailApp.zVerifyAutocompleteExists("108@testdomain.com", 11, 0);
+		page.zMailApp.zVerifyAutocompleteExists("109@testdomain.com", 12, 0);
 		pressKeys("backspace, backspace, 2");
-		page.zMailApp.zVerifyAutocompleteExists("2@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("29@testing.com", 20, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("2@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("29@testdomain.com", 20, 0);
 		pressKeys("backspace, 7");
-		page.zMailApp.zVerifyAutocompleteExists("7@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("79@testing.com", 20, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("7@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("79@testdomain.com", 20, 0);
 		pressKeys("backspace, 9");
-		page.zMailApp.zVerifyAutocompleteExists("9@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("90@testing.com", 2, 0);
-		page.zMailApp.zVerifyAutocompleteExists("900@testing.com", 3, 0);
-		page.zMailApp.zVerifyAutocompleteExists("901@testing.com", 4, 0);
-		page.zMailApp.zVerifyAutocompleteExists("902@testing.com", 5, 0);
-		page.zMailApp.zVerifyAutocompleteExists("903@testing.com", 6, 0);
-		page.zMailApp.zVerifyAutocompleteExists("904@testing.com", 7, 0);
-		page.zMailApp.zVerifyAutocompleteExists("905@testing.com", 8, 0);
-		page.zMailApp.zVerifyAutocompleteExists("906@testing.com", 9, 0);
-		page.zMailApp.zVerifyAutocompleteExists("907@testing.com", 10, 0);
-		page.zMailApp.zVerifyAutocompleteExists("908@testing.com", 11, 0);
-		page.zMailApp.zVerifyAutocompleteExists("91@testing.com", 12, 0);
-		page.zMailApp.zVerifyAutocompleteExists("92@testing.com", 13, 0);
-		page.zMailApp.zVerifyAutocompleteExists("93@testing.com", 14, 0);
-		page.zMailApp.zVerifyAutocompleteExists("94@testing.com", 15, 0);
-		page.zMailApp.zVerifyAutocompleteExists("95@testing.com", 16, 0);
-		page.zMailApp.zVerifyAutocompleteExists("96@testing.com", 17, 0);
-		page.zMailApp.zVerifyAutocompleteExists("97@testing.com", 18, 0);
-		page.zMailApp.zVerifyAutocompleteExists("98@testing.com", 19, 0);
-		page.zMailApp.zVerifyAutocompleteExists("99@testing.com", 20, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("9@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("90@testdomain.com", 2, 0);
+		page.zMailApp.zVerifyAutocompleteExists("900@testdomain.com", 3, 0);
+		page.zMailApp.zVerifyAutocompleteExists("901@testdomain.com", 4, 0);
+		page.zMailApp.zVerifyAutocompleteExists("902@testdomain.com", 5, 0);
+		page.zMailApp.zVerifyAutocompleteExists("903@testdomain.com", 6, 0);
+		page.zMailApp.zVerifyAutocompleteExists("904@testdomain.com", 7, 0);
+		page.zMailApp.zVerifyAutocompleteExists("905@testdomain.com", 8, 0);
+		page.zMailApp.zVerifyAutocompleteExists("906@testdomain.com", 9, 0);
+		page.zMailApp.zVerifyAutocompleteExists("907@testdomain.com", 10, 0);
+		page.zMailApp.zVerifyAutocompleteExists("908@testdomain.com", 11, 0);
+		page.zMailApp.zVerifyAutocompleteExists("91@testdomain.com", 12, 0);
+		page.zMailApp.zVerifyAutocompleteExists("92@testdomain.com", 13, 0);
+		page.zMailApp.zVerifyAutocompleteExists("93@testdomain.com", 14, 0);
+		page.zMailApp.zVerifyAutocompleteExists("94@testdomain.com", 15, 0);
+		page.zMailApp.zVerifyAutocompleteExists("95@testdomain.com", 16, 0);
+		page.zMailApp.zVerifyAutocompleteExists("96@testdomain.com", 17, 0);
+		page.zMailApp.zVerifyAutocompleteExists("97@testdomain.com", 18, 0);
+		page.zMailApp.zVerifyAutocompleteExists("98@testdomain.com", 19, 0);
+		page.zMailApp.zVerifyAutocompleteExists("99@testdomain.com", 20, 0);
 		pressKeys("9");
-		page.zMailApp.zVerifyAutocompleteExists("99@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("990@testing.com", 2, 0);
-		page.zMailApp.zVerifyAutocompleteExists("991@testing.com", 3, 0);
-		page.zMailApp.zVerifyAutocompleteExists("992@testing.com", 4, 0);
-		page.zMailApp.zVerifyAutocompleteExists("993@testing.com", 5, 0);
-		page.zMailApp.zVerifyAutocompleteExists("994@testing.com", 6, 0);
-		page.zMailApp.zVerifyAutocompleteExists("995@testing.com", 7, 0);
-		page.zMailApp.zVerifyAutocompleteExists("996@testing.com", 8, 0);
-		page.zMailApp.zVerifyAutocompleteExists("997@testing.com", 9, 0);
-		page.zMailApp.zVerifyAutocompleteExists("998@testing.com", 10, 0);
-		page.zMailApp.zVerifyAutocompleteExists("999@testing.com", 11, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("99@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("990@testdomain.com", 2, 0);
+		page.zMailApp.zVerifyAutocompleteExists("991@testdomain.com", 3, 0);
+		page.zMailApp.zVerifyAutocompleteExists("992@testdomain.com", 4, 0);
+		page.zMailApp.zVerifyAutocompleteExists("993@testdomain.com", 5, 0);
+		page.zMailApp.zVerifyAutocompleteExists("994@testdomain.com", 6, 0);
+		page.zMailApp.zVerifyAutocompleteExists("995@testdomain.com", 7, 0);
+		page.zMailApp.zVerifyAutocompleteExists("996@testdomain.com", 8, 0);
+		page.zMailApp.zVerifyAutocompleteExists("997@testdomain.com", 9, 0);
+		page.zMailApp.zVerifyAutocompleteExists("998@testdomain.com", 10, 0);
+		page.zMailApp.zVerifyAutocompleteExists("999@testdomain.com", 11, 0);
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
-		page.zComposeView.zComposeAndSendMail("999@testing.com", "", "",
+
+		ProvZCS.createAccount("999@testdomain.com");
+		page.zComposeView.zComposeAndSendMail("999@testdomain.com", "", "",
 				"testSubject", "testBody", "");
 
 		selenium.refresh();
@@ -1461,17 +1490,94 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 		page.zComposeView.zNavigateToMailCompose();
 		obj.zTextAreaField.zActivate(page.zComposeView.zToField);
 		pressKeys("9, 9");
-		page.zMailApp.zVerifyAutocompleteExists("999@testing.com", 1, 1);
-		page.zMailApp.zVerifyAutocompleteExists("99@testing.com", 2, 0);
-		page.zMailApp.zVerifyAutocompleteExists("990@testing.com", 3, 0);
-		page.zMailApp.zVerifyAutocompleteExists("991@testing.com", 4, 0);
-		page.zMailApp.zVerifyAutocompleteExists("992@testing.com", 5, 0);
-		page.zMailApp.zVerifyAutocompleteExists("993@testing.com", 6, 0);
-		page.zMailApp.zVerifyAutocompleteExists("994@testing.com", 7, 0);
-		page.zMailApp.zVerifyAutocompleteExists("995@testing.com", 8, 0);
-		page.zMailApp.zVerifyAutocompleteExists("996@testing.com", 9, 0);
-		page.zMailApp.zVerifyAutocompleteExists("997@testing.com", 10, 0);
-		page.zMailApp.zVerifyAutocompleteExists("998@testing.com", 11, 0);
+		Thread.sleep(2000);
+		page.zMailApp.zVerifyAutocompleteExists("999@testdomain.com", 1, 1);
+		page.zMailApp.zVerifyAutocompleteExists("99@testdomain.com", 2, 0);
+		page.zMailApp.zVerifyAutocompleteExists("990@testdomain.com", 3, 0);
+		page.zMailApp.zVerifyAutocompleteExists("991@testdomain.com", 4, 0);
+		page.zMailApp.zVerifyAutocompleteExists("992@testdomain.com", 5, 0);
+		page.zMailApp.zVerifyAutocompleteExists("993@testdomain.com", 6, 0);
+		page.zMailApp.zVerifyAutocompleteExists("994@testdomain.com", 7, 0);
+		page.zMailApp.zVerifyAutocompleteExists("995@testdomain.com", 8, 0);
+		page.zMailApp.zVerifyAutocompleteExists("996@testdomain.com", 9, 0);
+		page.zMailApp.zVerifyAutocompleteExists("997@testdomain.com", 10, 0);
+		page.zMailApp.zVerifyAutocompleteExists("998@testdomain.com", 11, 0);
+		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
+
+		needReset = false;
+	}
+
+	/**
+	 * Verify forget functionality for autocomplete. Steps, 1.Create 2 accounts
+	 * 2.Send 1 mail to each account, 3.Verify autocomplete 4.Forget one of the
+	 * account 5.Recompose mail and check forgotten contact not exist in
+	 * autocomplete. Run testcases for 4 different options for e.g.
+	 * GALOFFAndEmailedContactsOFF, GALOFFAndEmailedContactsON,
+	 * GALONAndEmailedContactsOFF & GALONAndEmailedContactsON
+	 */
+	@Test(dataProvider = "composeDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	public void forgetAutocompleteWithGALAndEmailedAddressOnOff(
+			String settings, String from, String to, String cc, String bcc,
+			String subject, String body, String attachments) throws Exception {
+		if (isExecutionARetry)
+			handleRetry();
+
+		if (settings.equals("GALOFFAndEmailedContactsOFF")) {
+			acc1 = config.getString("locale").replace("_", "")
+					+ "forg1@testdomain.com";
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefGalAutoCompleteEnabled", "FALSE");
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefAutoAddAddressEnabled", "FALSE");
+		} else if (settings.equals("GALOFFAndEmailedContactsON")) {
+			acc1 = config.getString("locale").replace("_", "")
+					+ "gorg1@testdomain.com";
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefGalAutoCompleteEnabled", "FALSE");
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefAutoAddAddressEnabled", "TRUE");
+		} else if (settings.equals("GALONAndEmailedContactsOFF")) {
+			acc1 = config.getString("locale").replace("_", "")
+					+ "horg1@testdomain.com";
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefGalAutoCompleteEnabled", "TRUE");
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefAutoAddAddressEnabled", "FALSE");
+		} else if (settings.equals("GALONAndEmailedContactsON")) {
+			acc1 = config.getString("locale").replace("_", "")
+					+ "jorg1@testdomain.com";
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefGalAutoCompleteEnabled", "TRUE");
+			ProvZCS.modifyAccount(SelNGBase.selfAccountName,
+					"zimbraPrefAutoAddAddressEnabled", "TRUE");
+		}
+
+		selenium.refresh();
+		Thread.sleep(3500);
+		zWaitTillObjectExist("id", "ztih__main_Mail__ZIMLET_textCell");
+
+		ProvZCS.createAccount(acc1);
+		page.zComposeView.zComposeAndSendMail(acc1, "", "", "testSubject",
+				"testBody", "");
+		page.zComposeView.zNavigateToMailCompose();
+		obj.zTextAreaField.zActivate(page.zComposeView.zToField);
+		getKeyboardKeys(acc1);
+		typeKeyboardKeys();
+		zVerifyAutocompleteExists(acc1.toLowerCase(), 1, 1);
+		zForgetAutocomplete(1);
+		assertReport(localize(locator.forgetSummary, acc1.toLowerCase(), ""),
+				obj.zToastAlertMessage.zGetMsg(),
+				"Verifying autocomplete forget summary toast message");
+		zVerifyAutocompleteNotExists(acc1.toLowerCase(), 1, 1);
+
+		page.zComposeView.zNavigateToMailCompose();
+		obj.zTextAreaField.zActivate(page.zComposeView.zToField);
+		typeKeyboardKeys();
+		if (settings.equals("GALONAndEmailedContactsOFF")) {
+			zVerifyAutocompleteExists(acc1.toLowerCase(), 1, 1);
+		} else {
+			zVerifyAutocompleteNotExists(acc1.toLowerCase(), 1, 1);
+		}
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 
 		needReset = false;
@@ -1542,71 +1648,71 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 					.assertTrue(
 							"Verifying first autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
-											+ acc3 + "')]"));
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
+											+ acc3.toLowerCase() + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying second autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
-											+ acc5 + "')]"));
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
+											+ acc5.toLowerCase() + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying third autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_2')]//td[contains(text(), '"
-											+ acc1 + "')]"));
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_2')]//td[contains(text(), '"
+											+ acc1.toLowerCase() + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying fourth autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_3')]//td[contains(text(), '"
-											+ acc4 + "')]"));
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_3')]//td[contains(text(), '"
+											+ acc4.toLowerCase() + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying fifth autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_4')]//td[contains(text(), '"
-											+ acc2 + "')]"));
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_4')]//td[contains(text(), '"
+											+ acc2.toLowerCase() + "')]"));
 			obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 		} else {
 			Assert
 					.assertTrue(
 							"Verifying first autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
 											+ acc1 + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying second autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
 											+ acc2 + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying third autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_2')]//td[contains(text(), '"
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_2')]//td[contains(text(), '"
 											+ acc3 + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying fourth autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_3')]//td[contains(text(), '"
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_3')]//td[contains(text(), '"
 											+ acc4 + "')]"));
 
 			Assert
 					.assertTrue(
 							"Verifying fifth autocomplete list rank",
 							selenium
-									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_4')]//td[contains(text(), '"
+									.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_4')]//td[contains(text(), '"
 											+ acc5 + "')]"));
 		}
 	}
@@ -1617,36 +1723,36 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 				.assertTrue(
 						"Verifying first autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_0')]//td[contains(text(), '"
-										+ acc5 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_0')]//td[contains(text(), '"
+										+ acc5.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying second autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_1')]//td[contains(text(), '"
-										+ acc1 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_1')]//td[contains(text(), '"
+										+ acc1.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying third autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_2')]//td[contains(text(), '"
-										+ acc2 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_2')]//td[contains(text(), '"
+										+ acc2.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying fourth autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_3')]//td[contains(text(), '"
-										+ acc3 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_3')]//td[contains(text(), '"
+										+ acc3.toLowerCase() + "')]"));
 
 		Assert
 				.assertTrue(
 						"Verifying fifth autocomplete list rank",
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_4')]//td[contains(text(), '"
-										+ acc4 + "')]"));
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_4')]//td[contains(text(), '"
+										+ acc4.toLowerCase() + "')]"));
 		obj.zButton.zClick(page.zComposeView.zCancelIconBtn);
 	}
 
@@ -1723,16 +1829,10 @@ public class MailAutoCompleteAddressTests extends CommonTest {
 
 	public static void zVerifyIsColonAutocompleteExists(String value, int rank)
 			throws Exception {
-		Assert
-				.assertTrue(
-						"Verifying is: autocomplete list rank " + rank
-								+ " for " + value,
-						selenium
-								.isElementPresent("//div[contains(@id, 'AutoCompleteListViewDiv_"
-										+ (rank - 1)
-										+ "') and contains(text(), '"
-										+ value
-										+ "')]"));
+		Assert.assertTrue("Verifying is: autocomplete list rank " + rank
+				+ " for " + value, selenium
+				.isElementPresent("//div[contains(@id, 'acRow_" + (rank - 1)
+						+ "') and contains(text(), '" + value + "')]"));
 	}
 
 	//--------------------------------------------------------------------------

@@ -325,42 +325,48 @@ function(account, skipUpdate, ignoreProvider) {
 	var isExternal = account instanceof ZmDataSource;
 	var provider = !ignoreProvider && isExternal && account.getProvider();
 	var div = (provider && this._sectionDivs[provider.id]) || this._getSectionDiv(account);
-	if (div) {
-		this._currentAccount = account;
-		Dwt.setVisible(div, true);
-		if (appCtxt.isOffline) {
-			this._currentSection = ZmAccountsPage.SECTIONS["PRIMARY"];
-			this._setZimbraAccount(account, this._currentSection);
-		} else {
-			switch (account.type) {
-				case ZmAccount.TYPE_POP:
-				case ZmAccount.TYPE_IMAP: {
-					this._currentSection = provider && ZmAccountsPage.SECTIONS[provider.id];
-					this._currentSection = this._currentSection || ZmAccountsPage.SECTIONS["EXTERNAL"];
-					this._setExternalAccount(account, this._currentSection);
-					if (ignoreProvider) {
-						this._setControlValue("PROVIDER", this._currentSection, "");
-					}
-					if (!skipUpdate) {
-						var password = this._getControlObject("PASSWORD", this._currentSection);
-						if (password) {
-							password.setShowPassword(false);
-						}
-					}
-					break;
-				}
-				case ZmAccount.TYPE_PERSONA: {
-					this._currentSection = ZmAccountsPage.SECTIONS["PERSONA"];
-					this._setPersona(account, this._currentSection);
-					break;
-				}
-				default: {
-					this._currentSection = ZmAccountsPage.SECTIONS["PRIMARY"];
-					this._setZimbraAccount(account, this._currentSection);
-					break;
-				}
-			}
-		}
+    if (div) {
+        this._currentAccount = account;
+        Dwt.setVisible(div, true);
+        if (appCtxt.isOffline) {
+            // bug 48014 - add "Use this persona" section for offline
+            if(account.type == ZmAccount.TYPE_PERSONA) {
+                this._currentSection = ZmAccountsPage.SECTIONS["PERSONA"];
+                this._setPersona(account, this._currentSection);
+            } else {
+                this._currentSection = ZmAccountsPage.SECTIONS["PRIMARY"];
+                this._setZimbraAccount(account, this._currentSection);
+            }
+        } else {
+            switch (account.type) {
+                case ZmAccount.TYPE_POP:
+                case ZmAccount.TYPE_IMAP: {
+                    this._currentSection = provider && ZmAccountsPage.SECTIONS[provider.id];
+                    this._currentSection = this._currentSection || ZmAccountsPage.SECTIONS["EXTERNAL"];
+                    this._setExternalAccount(account, this._currentSection);
+                    if (ignoreProvider) {
+                        this._setControlValue("PROVIDER", this._currentSection, "");
+                    }
+                    if (!skipUpdate) {
+                        var password = this._getControlObject("PASSWORD", this._currentSection);
+                        if (password) {
+                            password.setShowPassword(false);
+                        }
+                    }
+                    break;
+                }
+                case ZmAccount.TYPE_PERSONA: {
+                    this._currentSection = ZmAccountsPage.SECTIONS["PERSONA"];
+                    this._setPersona(account, this._currentSection);
+                    break;
+                }
+                default: {
+                    this._currentSection = ZmAccountsPage.SECTIONS["PRIMARY"];
+                    this._setZimbraAccount(account, this._currentSection);
+                    break;
+                }
+            }
+        }
 		if (!this._tabGroup.contains(this._currentSection.tabGroup)) {
 			this._tabGroup.addMember(this._currentSection.tabGroup);
 		}
@@ -1374,7 +1380,7 @@ function() {
 ZmAccountsPage.prototype._getSectionDiv =
 function(account) {
 	return appCtxt.isOffline
-		? this._sectionDivs[ZmAccount.TYPE_ZIMBRA]
+		? ((account.type == ZmAccount.TYPE_PERSONA) ? this._sectionDivs[account.type] : this._sectionDivs[ZmAccount.TYPE_ZIMBRA] )
 		: this._sectionDivs[account.type];
 };
 
@@ -1753,11 +1759,17 @@ function(folder) {
 
 ZmAccountsPage.prototype._preSave =
 function(continueCallback) {
-	// make sure that the current object proxy is up-to-date
-	this._setAccountFields(this._currentAccount, this._currentSection);
+    // make sure that the current object proxy is up-to-date
+    this._setAccountFields(this._currentAccount, this._currentSection);
 
-	// perform account tests
-	this._preSaveTest(continueCallback);
+    if(appCtxt.isOffline) {
+        // skip account tests  
+        this._preSaveCreateFolders(continueCallback);
+    } else {
+        // perform account tests
+        this._preSaveTest(continueCallback);
+    }
+
 };
 
 ZmAccountsPage.prototype._preSaveTest =

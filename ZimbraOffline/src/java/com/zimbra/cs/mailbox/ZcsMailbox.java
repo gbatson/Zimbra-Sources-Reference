@@ -19,6 +19,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -37,6 +38,10 @@ import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.Provisioning.ServerBy;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.db.DbMailItem;
@@ -50,11 +55,16 @@ import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.UserServlet.HttpInputStream;
+import com.zimbra.cs.session.Session;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StoreManager;
+import com.zimbra.soap.DocumentHandler;
+import com.zimbra.soap.ProxyTarget;
+import com.zimbra.soap.ZimbraSoapContext;
 
 public class ZcsMailbox extends ChangeTrackingMailbox {
 
@@ -198,8 +208,45 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
         // locally-generated items must be differentiable from authentic, server-blessed ones
         return FIRST_OFFLINE_ITEM_ID;
     }
+    
+    /**
+     * Get a tag from persistence. If useRenumbered = false, we check only the db
+     * @param octxt
+     * @param id
+     * @param useRenumbered
+     * @return
+     * @throws ServiceException
+     */
+    public synchronized Tag getTagById(OperationContext octxt, int id, boolean useRenumbered)
+            throws ServiceException {
+        if (useRenumbered) {
+            return (Tag) getItemById(octxt, id, MailItem.TYPE_TAG);
+        } else {
+            boolean success = false;
+            try {
+                beginTransaction("getItemById", octxt);
+                MailItem item = checkAccess(getItemById(id, MailItem.TYPE_TAG, false));
+                success = true;
+                return (Tag) item;
+            } finally {
+                endTransaction(success);
+            }
+        }
+    }
 
     @Override MailItem getItemById(int id, byte type) throws ServiceException {
+        return getItemById(id, type, true);
+    }
+
+    /**
+     * Get a MailItem. Optionally use renumbered item cache
+     * @param id
+     * @param type
+     * @param useRenumbered
+     * @return
+     * @throws ServiceException
+     */
+    MailItem getItemById(int id, byte type, boolean useRenumbered) throws ServiceException {
         NoSuchItemException trappedExcept = null;
         try { 
             MailItem item = super.getItemById(id, type);
@@ -209,9 +256,11 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
         catch (NoSuchItemException nsie) {
             trappedExcept = nsie;
         }
-        Integer renumbered = mRenumbers.get(id < -FIRST_USER_ID ? -id : id);
-        if (renumbered != null)
-            return super.getItemById(id < 0 ? -renumbered : renumbered, type);
+        if (useRenumbered) {
+            Integer renumbered = mRenumbers.get(id < -FIRST_USER_ID ? -id : id);
+            if (renumbered != null)
+                return super.getItemById(id < 0 ? -renumbered : renumbered, type);
+        }
         if (trappedExcept != null)
             throw trappedExcept;
         return null;
@@ -265,12 +314,15 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
             beginTransaction("setConversationId", octxt);
 
             Message msg = getMessageById(msgId);
+            Conversation oldConv = (Conversation) msg.getParent();
             if (convId == msg.getConversationId()) {
                 success = true;
+                if (oldConv != null && (oldConv.getSize() < 1 || oldConv.getUnreadCount() < msg.getUnreadCount())) {
+                    OfflineLog.offline.error("Conversation size/unread inconsistent for conversation "+oldConv);
+                }
                 return;
             }
 
-            Conversation oldConv = (Conversation) msg.getParent();
 
             try {
                 Conversation newConv;
@@ -280,9 +332,11 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
                 } else {
                     // moving to an existing real conversation
                     newConv = getConversationById(convId);
-                    newConv.addChild(msg);
                 }
                 DbMailItem.setParent(msg, newConv);
+                if (convId > 0) {
+                    newConv.addChild(msg);
+                }
                 msg.markItemModified(Change.MODIFIED_PARENT);
                 msg.mData.parentId = convId;
                 msg.mData.metadataChanged(this);
@@ -333,7 +387,11 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
 
             // update the id in the database and in memory
             markItemDeleted(item.getType(), id);
-            DbOfflineMailbox.renumberItem(item, newId);
+            try {
+                DbOfflineMailbox.renumberItem(item, newId);
+            } catch (ServiceException se) {
+                throw ServiceException.FAILURE("Failure renumbering item name["+item.getName()+"] subject["+item.getSubject()+"]", se);
+            }
             item.mId = item.mData.id = newId;
             item.markItemCreated();
 
@@ -447,6 +505,26 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
         }
     }
 
+    synchronized void syncFolderDefaultView(OperationContext octxt, int itemId, byte type, byte defaultView) throws ServiceException {
+        boolean success = false;
+        try {
+            beginTransaction("syncFolderDefaultView", octxt);
+            MailItem item = getItemById(itemId, type);
+            if (item instanceof Folder) {
+                Folder folder = (Folder) item;
+                if (folder.getDefaultView() != defaultView) {
+                    //use only the relevant parts of Folder.migrateDefaultView(); avoid immutable check in Folder.setDefaultView()
+                    //UI will not see change until next time it is refreshed; if ZD was open during ZCS upgrade it must be closed and reopened
+                    folder.mDefaultView = defaultView;
+                    folder.saveMetadata();
+                }
+            }
+            success = true;
+        } finally {
+            endTransaction(success);
+        }
+    }
+
     @Override
     boolean isPushType(byte type) {
         return PushChanges.PUSH_TYPES_SET.contains(type);
@@ -486,6 +564,40 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
         }            
     }
     
+    public Element sendRequestWithNotification(Element request) throws ServiceException {
+        Server server = Provisioning.getInstance().get(ServerBy.name,OfflineConstants.SYNC_SERVER_PREFIX+getAccountId());
+        if (server != null) {
+            //when we first add an account, server is still null
+            List<Session> soapSessions = getListeners(Session.Type.SOAP);
+            Session session = null;
+            if (soapSessions.size() == 1) {
+                session = soapSessions.get(0);
+            } else if (soapSessions.size() > 1) {
+                //this occurs if user refreshes web browser (or opens ZD in two different browsers); older session does not time out so there are now two listening
+                //only the most recent is 'active'
+                for (Session ses:soapSessions) {
+                    if (session == null || ses.accessedAfter(session.getLastAccessTime())) {
+                        session = ses;
+                    }
+                }
+            }
+            if (session != null) {
+                ZAuthToken zat = getAuthToken(false);
+                if (zat != null) {
+                    AuthToken at = AuthProvider.getAuthToken(OfflineProvisioning.getOfflineInstance().getLocalAccount());
+                    at.setProxyAuthToken(zat.getValue());
+                    ProxyTarget proxy = new ProxyTarget(server, at, getSoapUri());
+                    //zscProxy needs to be for the 'ffffff-' account, but with target of *this* mailbox's acct
+                    //currently UI receives SoapJS in its responses, we ask for that protocol so notifications are handled correctly
+                    ZimbraSoapContext zscIn = new ZimbraSoapContext(at, at.getAccountId(), SoapProtocol.Soap12, SoapProtocol.SoapJS);
+                    ZimbraSoapContext zscProxy = new ZimbraSoapContext(zscIn, getAccountId(), session);
+                    return DocumentHandler.proxyWithNotification(request, proxy, zscProxy, session);
+                }
+            } 
+        }
+        return sendRequest(request);
+    }
+
     public Element sendRequest(Element request) throws ServiceException {
         return sendRequest(request, true);
     }
@@ -618,10 +730,10 @@ public class ZcsMailbox extends ChangeTrackingMailbox {
         setConfig(null, VERSIONS_KEY, config);
     }
 
-    public boolean pushNewFolder(OperationContext octxt, int id) throws ServiceException {
+    public boolean pushNewFolder(OperationContext octxt, int id, boolean suppressRssFailure, ZimbraSoapContext zsc) throws ServiceException {
         if ((getChangeMask(octxt, id, MailItem.TYPE_FOLDER) & Change.MODIFIED_CONFLICT) == 0)
             return false;
-        return PushChanges.syncFolder(this, id);
+        return PushChanges.syncFolder(this, id, suppressRssFailure, zsc);
     }
     
     @Override

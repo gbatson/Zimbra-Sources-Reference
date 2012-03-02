@@ -413,7 +413,7 @@ ZmFolder.prototype.notifyCreate =
 function(obj, elementType, skipNotify) {
 	// ignore creates of system folders
 	var nId = ZmOrganizer.normalizeId(obj.id);
-	if (nId < ZmOrganizer.FIRST_USER_ID[this.type]) { return; }
+	if (this.isSystem() && nId < ZmOrganizer.FIRST_USER_ID[this.type]) { return; }
 
 	var account = ZmOrganizer.parseId(obj.id).account;
 	var folder = ZmFolderTree.createFromJs(this, obj, this.tree, elementType, null, account);
@@ -613,7 +613,12 @@ function(what, folderType) {
 						invalid = true;
 						break;
 					}
-				} else if (items[i].isDraft && (this.nId != ZmFolder.ID_TRASH && this.nId != ZmFolder.ID_DRAFTS && this.rid != ZmFolder.ID_DRAFTS)) {
+				} else if (Dwt.instanceOf(item, "ZmBriefcaseFolderItem")) {
+                     if (item.folder && item.folder.isRemote() && !item.folder.rid) {
+                        invalid = true;
+                        break;
+                     }
+                } else if (items[i].isDraft && (this.nId != ZmFolder.ID_TRASH && this.nId != ZmFolder.ID_DRAFTS && this.rid != ZmFolder.ID_DRAFTS)) {
 					// can move drafts into Trash or Drafts
 					invalid = true;
 					break;
@@ -714,8 +719,8 @@ function(){
  */
 ZmFolder.prototype._remoteMoveOk =
 function(folder) {
-	//if (!this.isRemote() && folder.isMountpoint) { return true; } // bug: 42017 - Disable moving remote folders into local folders until serverside code is ready
-	if (!this.link || !folder.link || this.zid != folder.zid) { return false; }
+	if (!this.isRemote() && folder.isMountpoint && folder.rid) { return true; }
+    if (!this.link || !folder.link || this.zid != folder.zid) { return false; }
 	if (this.id.split(":")[0] != folder.id.split(":")[0]) { return false; }
 	var share = this.shares && this.shares[0];
 	if (!(share && share.isInsert())) { return false; }

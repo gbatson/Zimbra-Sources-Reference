@@ -438,7 +438,7 @@ public class ProvUtil implements HttpDebugListener {
         DELETE_XMPP_COMPONENT("deleteXMPPComponent", "dxc", "{xmpp-component-name}", Category.CONFIG, 1, 1),
         DESCRIBE("describe", "desc", "[[-v] [-ni] [{entry-type}]] | [-a {attribute-name}]", Category.MISC, 0, Integer.MAX_VALUE, null, null, true),
         EXIT("exit", "quit", "", Category.MISC, 0, 0),
-        FLUSH_CACHE("flushCache", "fc", "[-a] {skin|locale|license|account|config|cos|domain|group|server|zimlet|<extension-cache-type>} [name1|id1 [name2|id2...]]", Category.MISC, 1, Integer.MAX_VALUE),
+        FLUSH_CACHE("flushCache", "fc", "[-a] {skin|locale|license|account|config|cos|domain|group|mime|server|zimlet|<extension-cache-type>} [name1|id1 [name2|id2...]]", Category.MISC, 1, Integer.MAX_VALUE),
         GENERATE_DOMAIN_PRE_AUTH("generateDomainPreAuth", "gdpa", "{domain|id} {name|id|foreignPrincipal} {by} {timestamp|0} {expires|0}", Category.MISC, 5, 6),
         GENERATE_DOMAIN_PRE_AUTH_KEY("generateDomainPreAuthKey", "gdpak", "[-f] {domain|id}", Category.MISC, 1, 2),
         GET_ACCOUNT("getAccount", "ga", "[-e] {name@domain|id} [attr1 [attr2...]]", Category.ACCOUNT, 1, Integer.MAX_VALUE),
@@ -504,6 +504,7 @@ public class ProvUtil implements HttpDebugListener {
         PUSH_FREEBUSY("pushFreebusy", "pfb", "[account-id ...]", Category.FREEBUSY, 1, Integer.MAX_VALUE),
         PUSH_FREEBUSY_DOMAIN("pushFreebusyDomain", "pfbd", "{domain}", Category.FREEBUSY, 1, 1),
         PURGE_ACCOUNT_CALENDAR_CACHE("purgeAccountCalendarCache", "pacc", "{name@domain|id} [...]", Category.CALENDAR, 1, Integer.MAX_VALUE),
+        PURGE_FREEBUSY_QUEUE("purgeFreebusyQueue", "pfbq", "[{provider-name}]", Category.FREEBUSY, 0, 1),
         RECALCULATE_MAILBOX_COUNTS("recalculateMailboxCounts", "rmc", "{name@domain|id}", Category.MAILBOX, 1, 1),
         REMOVE_ACCOUNT_ALIAS("removeAccountAlias", "raa", "{name@domain|id} {alias@domain}", Category.ACCOUNT, 2, 2),
         REMOVE_ACCOUNT_LOGGER("removeAccountLogger", "ral", "[-s/--server hostname] [{name@domain|id}] [{logging-category}]", Category.LOG, 0, 4),
@@ -828,12 +829,8 @@ public class ProvUtil implements HttpDebugListener {
             doGetAllDomains(args); 
             break;                        
         case GET_ALL_FREEBUSY_PROVIDERS:
-        {
-        	FbCli fbcli = new FbCli();
-        	for (FbCli.FbProvider fbprov : fbcli.getAllFreeBusyProviders())
-        		System.out.println(fbprov.toString());
-        	break;
-        }
+            doGetAllFreeBusyProviders();
+            break;
         case GET_ALL_RIGHTS:
             doGetAllRights(args); 
             break;    
@@ -856,15 +853,8 @@ public class ProvUtil implements HttpDebugListener {
             doGetDomainInfo(args);
             break;
         case GET_FREEBUSY_QUEUE_INFO:
-        {
-        	FbCli fbcli = new FbCli();
-        	String name = null;
-        	if (args.length > 1)
-        		name = args[1];
-        	for (FbCli.FbQueue fbqueue : fbcli.getFreeBusyQueueInfo(name))
-        		System.out.println(fbqueue.toString());
-        	break;
-        }
+            doGetFreeBusyQueueInfo(args);
+            break;
         case GET_RIGHT:
             dumpRight(lookupRight(args[1]));
             break;
@@ -954,24 +944,14 @@ public class ProvUtil implements HttpDebugListener {
             mProv.deleteXMPPComponent(lookupXMPPComponent(args[1]));
             break;
         case PUSH_FREEBUSY:
-        {
-        	FbCli fbcli = new FbCli();
-			HashSet<String> accounts = new HashSet<String>();
-			java.util.Collections.addAll(accounts, args);
-			accounts.remove(args[0]);
-			for (String acct : accounts)
-			    if (mProv.getAccountByName(acct) == null)
-	                throw AccountServiceException.NO_SUCH_ACCOUNT(acct);
-			fbcli.pushFreeBusyForAccounts(accounts);
-        	break;
-        }
-        case PUSH_FREEBUSY_DOMAIN:
-        {
-            FbCli fbcli = new FbCli();
-            lookupDomain(args[1]);
-            fbcli.pushFreeBusyForDomain(args[1]);
+            doPushFreeBusy(args);
             break;
-        }
+        case PUSH_FREEBUSY_DOMAIN:
+            doPushFreeBusyForDomain(args);
+            break;
+        case PURGE_FREEBUSY_QUEUE:
+            doPurgeFreeBusyQueue(args);
+            break;
         case PURGE_ACCOUNT_CALENDAR_CACHE:
             doPurgeAccountCalendarCache(args);
             break;
@@ -4037,6 +4017,11 @@ public class ProvUtil implements HttpDebugListener {
             grantee = args[4];
         }
         
+        System.out.println("Domain:  " + domain);
+        System.out.println("Cos:     " + cos);
+        System.out.println("Grantee: " + grantee);
+        System.out.println();
+        
         RightCommand.EffectiveRights effRights = mProv.getCreateObjectAttrs(targetType,
                                                                             domainBy, domain,
                                                                             cosBy, cos,
@@ -4151,7 +4136,63 @@ public class ProvUtil implements HttpDebugListener {
         System.out.println();
 
     }
+
+    private void doGetAllFreeBusyProviders() throws ServiceException, IOException {
+        FbCli fbcli = new FbCli();
+        for (FbCli.FbProvider fbprov : fbcli.getAllFreeBusyProviders())
+            System.out.println(fbprov.toString());
+    }
     
+    private void doGetFreeBusyQueueInfo(String[] args) throws ServiceException, IOException {
+        FbCli fbcli = new FbCli();
+        String name = null;
+        if (args.length > 1)
+            name = args[1];
+        for (FbCli.FbQueue fbqueue : fbcli.getFreeBusyQueueInfo(name))
+            System.out.println(fbqueue.toString());
+    }
+    
+    private void doPushFreeBusy(String[] args) throws ServiceException, IOException {
+        FbCli fbcli = new FbCli();
+        HashMap<String,HashSet<String>> accountMap = new HashMap<String,HashSet<String>>();
+        for (int i = 1; i < args.length; i++) {
+            String acct = args[i];
+            Account account = mProv.getAccountById(acct);
+            if (account == null)
+                throw AccountServiceException.NO_SUCH_ACCOUNT(acct);
+            String host = account.getMailHost();
+            HashSet<String> accountSet = accountMap.get(host);
+            if (accountSet == null) {
+                accountSet = new HashSet<String>();
+                accountMap.put(host, accountSet);
+            }
+            accountSet.add(acct);
+        }
+        for (String host : accountMap.keySet()) {
+            System.out.println("pushing to server " + host);
+            fbcli.setServer(host);
+            fbcli.pushFreeBusyForAccounts(accountMap.get(host));
+        }
+    }
+    
+    private void doPushFreeBusyForDomain(String[] args) throws ServiceException, IOException {
+        lookupDomain(args[1]);
+        FbCli fbcli = new FbCli();
+        for (Server server : mProv.getAllServers()) {
+            System.out.println("pushing to server " + server.getName());
+            fbcli.setServer(server.getName());
+            fbcli.pushFreeBusyForDomain(args[1]);
+        }
+    }
+
+    private void doPurgeFreeBusyQueue(String[] args) throws ServiceException, IOException {
+        String provider = null;
+        if (args.length > 1)
+            provider = args[1];
+        FbCli fbcli = new FbCli();
+        fbcli.purgeFreeBusyQueue(provider);
+    }
+
     private void doHelp(String[] args) {
         Category cat = null;
         if (args != null && args.length >= 2) {

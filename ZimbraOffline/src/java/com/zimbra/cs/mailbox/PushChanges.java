@@ -32,6 +32,8 @@ import javax.mail.Message.RecipientType;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import org.dom4j.QName;
+
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.BigByteBuffer;
 import com.zimbra.common.util.Constants;
@@ -43,7 +45,9 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
+import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.mailbox.ChangeTrackingMailbox.TracelessContext;
 import com.zimbra.cs.mailbox.Contact.Attachment;
 import com.zimbra.cs.mailbox.InitialSync.InviteMimeLocator;
@@ -55,6 +59,7 @@ import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.OfflineSyncManager;
+import com.zimbra.cs.offline.util.OfflineErrorUtil;
 import com.zimbra.cs.service.mail.ItemAction;
 import com.zimbra.cs.service.mail.Sync;
 import com.zimbra.cs.service.mail.ToXML;
@@ -62,6 +67,7 @@ import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.util.JMSession;
 import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.soap.ZimbraSoapContext;
 
 public class PushChanges {
 	
@@ -182,8 +188,8 @@ public class PushChanges {
         return new PushChanges(ombx).sync(isOnRequest);
     }
 
-    public static boolean syncFolder(ZcsMailbox ombx, int id) throws ServiceException {
-        return new PushChanges(ombx).syncFolder(id);
+    public static boolean syncFolder(ZcsMailbox ombx, int id, boolean suppressRssFailure, ZimbraSoapContext zsc) throws ServiceException {
+        return new PushChanges(ombx).syncFolder(id, suppressRssFailure, zsc);
     }
     
     private boolean sync(boolean isOnRequest) throws ServiceException {
@@ -229,7 +235,7 @@ public class PushChanges {
                     if (changes.remove(folder.getType(), folder.getId())) {
                         switch (folder.getType()) {
                             case MailItem.TYPE_SEARCHFOLDER:  syncSearchFolder(folder.getId());  break;
-                            case MailItem.TYPE_FOLDER:        syncFolder(folder.getId());        break;
+                            case MailItem.TYPE_FOLDER:        syncFolder(folder.getId(), true, null);        break;
                         }
                     }
                 }
@@ -361,7 +367,10 @@ public class PushChanges {
                     Element m = request.addElement(MailConstants.E_MSG).addAttribute(MailConstants.A_ATTACHMENT_ID, uploadId);
                     if (!msg.getDraftOrigId().equals(""))
                         m.addAttribute(MailConstants.A_ORIG_ID, msg.getDraftOrigId()).addAttribute(MailConstants.A_REPLY_TYPE, msg.getDraftReplyType());
-                	
+                    String saveToSent = OfflineProvisioning.getOfflineInstance().getLocalAccount().getAttr(Provisioning.A_zimbraPrefSaveToSent);
+                    if (!Boolean.valueOf(saveToSent)) {
+                        request.addAttribute(MailConstants.A_NO_SAVE_TO_SENT,1);
+                    }
                     //run one more time to make sure it's still in outbox after we finished uploading the message
                     msg = ombx.getMessageById(sContext, id);
                     if (msg.getFolderId() != DesktopMailbox.ID_FOLDER_OUTBOX) {
@@ -626,23 +635,26 @@ public class PushChanges {
         }
     }
 
-    private boolean syncFolder(int id) throws ServiceException {
-        Element request = new Element.XMLElement(MailConstants.FOLDER_ACTION_REQUEST);
+    private boolean syncFolder(int id, boolean suppressRssFailure, ZimbraSoapContext zsc) throws ServiceException {
+        QName elementName = MailConstants.FOLDER_ACTION_REQUEST;
+        Element request = zsc != null ? zsc.createElement(elementName) : new Element.XMLElement(elementName);
         Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
 
         int flags, parentId;
         byte color;
         String name, url;
         boolean create = false;
+        Folder folder = null;
         synchronized (ombx) {
-            Folder folder = ombx.getFolderById(sContext, id);
+            folder = ombx.getFolderById(sContext, id);
             name = folder.getName();  parentId = folder.getFolderId();  flags = folder.getInternalFlagBitmask();
             url = folder.getUrl();    color = folder.getColor();
 
             int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_FOLDER);
             if ((mask & Change.MODIFIED_CONFLICT) != 0) {
                 // this is a new folder; need to push to the server
-                request = new Element.XMLElement(MailConstants.CREATE_FOLDER_REQUEST);
+                elementName = MailConstants.CREATE_FOLDER_REQUEST;
+                request = zsc != null ? zsc.createElement(elementName) : new Element.XMLElement(elementName);
                 action = request.addElement(MailConstants.E_FOLDER).addAttribute(MailConstants.A_DEFAULT_VIEW, MailItem.getNameForType(folder.getDefaultView()));
                 create = true;
             }
@@ -668,13 +680,17 @@ public class PushChanges {
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
-            if (!sfe.getCode().equals(MailServiceException.NO_SUCH_FOLDER))
+            if (suppressRssFailure && folder.getUrl() != null) {
+                OfflineErrorUtil.reportError(ombx, folder.getId(), "failed to sync rss url ["+folder.getUrl()+"]", sfe);
+                return true;
+            } else if (!sfe.getCode().equals(MailServiceException.NO_SUCH_FOLDER)) {
                 throw sfe;
+            }
             OfflineLog.offline.info("push: remote folder " + id + " has been deleted; skipping");
         }
 
         synchronized (ombx) {
-            Folder folder = ombx.getFolderById(sContext, id);
+            folder = ombx.getFolderById(sContext, id);
             // check to see if the folder was changed while we were pushing the update...
             int mask = 0;
             if (flags != folder.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;

@@ -55,6 +55,7 @@ ZaGlobalConfig.A_zimbraMtaMyNetworks = "zimbraMtaMyNetworks";
 ZaGlobalConfig.A_zimbraComponentAvailable = "zimbraComponentAvailable";
 ZaGlobalConfig.A_zimbraSmtpSendAddOriginatingIP = "zimbraSmtpSendAddOriginatingIP";
 ZaGlobalConfig.A_zimbraDNSCheckHostname = "zimbraDNSCheckHostname";
+ZaGlobalConfig.A_zimbraBasicAuthRealm = "zimbraBasicAuthRealm";
 ZaGlobalConfig.A_zimbraAdminConsoleDNSCheckEnabled = "zimbraAdminConsoleDNSCheckEnabled";
 ZaGlobalConfig.A_zimbraAdminConsoleCatchAllAddressEnabled = "zimbraAdminConsoleCatchAllAddressEnabled";
 ZaGlobalConfig.A_zimbraAdminConsoleSkinEnabled = "zimbraAdminConsoleSkinEnabled";
@@ -110,6 +111,12 @@ ZaGlobalConfig.A_zimbraImapCleartextLoginEnabled = "zimbraImapCleartextLoginEnab
 ZaGlobalConfig.A_zimbraSpamKillPercent = "zimbraSpamKillPercent";
 ZaGlobalConfig.A_zimbraSpamTagPercent = "zimbraSpamTagPercent";
 ZaGlobalConfig.A_zimbraSpamSubjectTag = "zimbraSpamSubjectTag";
+ZaGlobalConfig.A_zimbraSpamAccount = "zimbraSpamIsSpamAccount";
+ZaGlobalConfig.A_zimbraHamAccount = "zimbraSpamIsNotSpamAccount";
+//wiki account
+ZaGlobalConfig.A_zimbraWikiAccount = "zimbraNotebookAccount";
+//Amavis account
+ZaGlobalConfig.A_zimbraAmavisQAccount = "zimbraAmavisQuarantineAccount";
 // anti-virus
 ZaGlobalConfig.A_zimbraVirusWarnRecipient = "zimbraVirusWarnRecipient";
 ZaGlobalConfig.A_zimbraVirusWarnAdmin = "zimbraVirusWarnAdmin";
@@ -318,6 +325,7 @@ ZaGlobalConfig.myXModel = {
 		{ id:ZaGlobalConfig.A_zimbraMtaMaxMessageSize, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaMaxMessageSize, type: _FILE_SIZE_, units: AjxUtil.SIZE_KILOBYTES, required: true },
 		{ id:ZaGlobalConfig.A_zimbraFileUploadMaxSize, ref:"attrs/" + ZaGlobalConfig.A_zimbraFileUploadMaxSize, type: _FILE_SIZE_, units: AjxUtil.SIZE_KILOBYTES },
 		{ id:ZaGlobalConfig.A_zimbraMtaRelayHost, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaRelayHost, type:_LIST_, listItem:{ type: _HOSTNAME_OR_IP_, maxLength: 256 }},
+		{id:ZaGlobalConfig.A_zimbraMtaMyNetworks, ref:"attrs/" +  ZaGlobalConfig.A_zimbraMtaMyNetworks, type:_STRING_, maxLength: 10240 },
 		{ id:ZaGlobalConfig.A_zimbraSmtpSendAddOriginatingIP, ref: "attrs/" + ZaGlobalConfig.A_zimbraSmtpSendAddOriginatingIP, type:_ENUM_, choices:ZaModel.BOOLEAN_CHOICES},
 		
 		{ id:ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaDnsLookupsEnabled, type: _ENUM_, choices: ZaModel.BOOLEAN_CHOICES },
@@ -330,6 +338,7 @@ ZaGlobalConfig.myXModel = {
 		{ id:ZaGlobalConfig.A_zimbraMtaRejectUnknownHostname, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaRejectUnknownHostname, type: _ENUM_, choices: [false,true] },
 		{ id:ZaGlobalConfig.A_zimbraMtaRejectUnknownSenderDomain, ref:"attrs/" + ZaGlobalConfig.A_zimbraMtaRejectUnknownSenderDomain, type: _ENUM_, choices: [false,true] },
 		{id:ZaGlobalConfig.A_zimbraDNSCheckHostname, type:_STRING_, ref:"attrs/" + ZaGlobalConfig.A_zimbraDNSCheckHostname, maxLength:255},		
+		{id:ZaGlobalConfig.A_zimbraBasicAuthRealm, type:_STRING_, ref:"attrs/" + ZaGlobalConfig.A_zimbraBasicAuthRealm, maxLength:255},
 		{id:ZaGlobalConfig.A_zimbraAdminConsoleDNSCheckEnabled, type:_ENUM_, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/" + ZaGlobalConfig.A_zimbraAdminConsoleDNSCheckEnabled},
 
         {id:ZaGlobalConfig.A_zimbraAdminConsoleCatchAllAddressEnabled, type:_ENUM_, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/" + ZaGlobalConfig.A_zimbraAdminConsoleCatchAllAddressEnabled},

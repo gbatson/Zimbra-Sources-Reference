@@ -40,7 +40,7 @@ html, body{
 /* Topbar Styles */
 
 .topbar {
-	background: #dbd0b5 url("/img/mobile/ipad/topbar-bg.gif?v=@jsVersion@") repeat-x top left;
+	background: #dbd0b5 url("/img/mobile/ipad/topbar-bg.gif") repeat-x top left;
 	height: 50px;
 	overflow: hidden;
 	color: #5f5a4a;
@@ -54,7 +54,7 @@ html, body{
 
 
 .logo{
-		background: transparent url("/img/mobile/ipad/logo.png?v=@jsVersion@") no-repeat top left;
+		background: transparent url("/img/mobile/ipad/logo.png") no-repeat top left;
 		width: 80px;
 		height: 20px;
 		float: left;
@@ -102,7 +102,7 @@ html, body{
 		ul.ul li a{ color: #5f5a4a; }
 
 	ul.ul li.sel, ul.ul li:active{
-		background: #7f7b6e url("/img/mobile/ipad/tab-selected.gif?v=@jsVersion@") repeat-x top left;
+		background: #7f7b6e url("/img/mobile/ipad/tab-selected.gif") repeat-x top left;
 		-webkit-border-top-left-radius: 4px;
 		-webkit-border-top-right-radius: 4px;
 		color: white;
@@ -115,7 +115,7 @@ html, body{
 /* Toolbar Style */
 
 .toolbar{
-	background: #7f7b6f url("/img/mobile/ipad/toolbar-bg.gif?v=@jsVersion@") repeat-x bottom left;
+	background: #7f7b6f url("/img/mobile/ipad/toolbar-bg.gif") repeat-x bottom left;
 	height: 45px;
 	overflow: hidden;
 	border: none;
@@ -132,7 +132,7 @@ html, body{
 
 
 .button{
-	background: #dbd0b5 url("/img/mobile/ipad/button-bg.gif?v=@jsVersion@") repeat-x bottom left;
+	background: #dbd0b5 url("/img/mobile/ipad/button-bg.gif") repeat-x bottom left;
 	-webkit-border-radius: 6px;
 	-webkit-box-shadow: rgba(255,255,255,0.1)0 1px 0;
 	border: 1px solid #555;
@@ -144,7 +144,7 @@ html, body{
 }
 
 	.button:active{
-		background: #7b7769 url("/img/mobile/ipad/button-selected-bg.gif?v=@jsVersion@") repeat-x top left;
+		background: #7b7769 url("/img/mobile/ipad/button-selected-bg.gif") repeat-x top left;
 		color: white;
 	}
 
@@ -261,7 +261,7 @@ html, body{
 .view{
 	width: 100%;
 	overflow: hidden;
-	background: #786448 url("/img/mobile/ipad/brown-pattern.gif?v=@jsVersion@") top left;
+	background: #786448 url("/img/mobile/ipad/brown-pattern.gif") top left;
 }
 
 .listViewPane{
@@ -286,7 +286,7 @@ ul.list li{
 .msgContainerSel{
 	padding: 10px 4px;
 	overflow: hidden;
-	background: #d9ceb2 url("/img/mobile/ipad/listview-sel-bg.gif?v=@jsVersion@") repeat-x top left;
+	background: #d9ceb2 url("/img/mobile/ipad/listview-sel-bg.gif") repeat-x top left;
 }
 
 .contentViewPane{
@@ -362,7 +362,7 @@ ul.list li{
 
 
 .buttonBg{
-	background: #c5bba3 url("/img/mobile/ipad/button-bg.gif?v=@jsVersion@") repeat-x bottom left;
+	background: #c5bba3 url("/img/mobile/ipad/button-bg.gif") repeat-x bottom left;
 	-webkit-border-radius: 6px;
 	vertical-align: middle;
 	padding: 0 !important;
@@ -425,7 +425,7 @@ ul.list li{
 }
 
 .list-row-sel{
-	background: #d9ceb2 url("/img/mobile/ipad/listview-sel-bg.gif?v=@jsVersion@") repeat-x top left;
+	background: #d9ceb2 url("/img/mobile/ipad/listview-sel-bg.gif") repeat-x top left;
 }
 
 .small-gray-text {
@@ -507,19 +507,19 @@ ul.list li{
 }
 
 .Msg {
-    background: transparent url("/img/im/Img_ImSmallAvailable.gif?v=@jsVersion@") no-repeat center center;
+    background: transparent url("/img/im/Img_ImSmallAvailable.gif") no-repeat center center;
 }
 
 .Attachment{
-	background: transparent url("/img/startup/ImgAttachment.gif?v=@jsVersion@") no-repeat top left;
+	background: transparent url("/img/startup/ImgAttachment.gif") no-repeat top left;
 }
 
 .Flag{
-	background: transparent url("/img/startup/ImgFlagRed.gif?v=@jsVersion@") no-repeat top left;
+	background: transparent url("/img/startup/ImgFlagRed.gif") no-repeat top left;
 }
 
 .Edit{
-	background: transparent url("/img/startup/ImgEdit.gif?v=@jsVersion@") no-repeat top left;
+	background: transparent url("/img/startup/ImgEdit.gif") no-repeat top left;
 }
 
 .View hr{
@@ -530,7 +530,7 @@ ul.list li{
 /** Style for Contacts **/
 
 .Person48 {
-    background: url( "/img/large/ImgPerson_48.gif?v=@jsVersion@" ) 90% 50% no-repeat;
+    background: url( "/img/large/ImgPerson_48.gif" ) 90% 50% no-repeat;
     height: 50px;
     width: 50px;
     padding: 2px;
@@ -626,7 +626,7 @@ span.aleft > div:first-child, .contactHeader {
 }
 
 .folderBar{
-	background: #dbd0b5 url("/img/mobile/ipad/button-bg.gif?v=@jsVersion@") repeat-x bottom left;
+	background: #dbd0b5 url("/img/mobile/ipad/button-bg.gif") repeat-x bottom left;
 	height: 15px;
 	color: #453928;
 }
@@ -666,7 +666,7 @@ span.aleft > div:first-child, .contactHeader {
 	width: 1px;
 	height: 1px;
 	border-width: 3px;
-/*	-webkit-border-image: url(images/scrollbar.png?v=@jsVersion@) 3;  */
+/*	-webkit-border-image: url(images/scrollbar.png) 3;  */
 
 }
 
@@ -708,7 +708,7 @@ span.aleft > div:first-child, .contactHeader {
 }
 
 .composeToolbar{
-	background: #e7decb url("/img/mobile/ipad/topbar-bg.gif?v=@jsVersion@") repeat-x bottom left;
+	background: #e7decb url("/img/mobile/ipad/topbar-bg.gif") repeat-x bottom left;
 	height: 45px;
 	overflow: hidden;
 	border: none;

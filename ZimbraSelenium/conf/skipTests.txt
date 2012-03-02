@@ -158,7 +158,7 @@ CLASS:projects.zcs.tests.preferences.composing.ComposePreferencesSetTrueTest;MET
 CLASS:projects.zcs.tests.features.ClientURLTests;METHOD:CustomLoginToCalendarApp;LOCALE:all;BROWSERS:na;BUGS:44367;REMARK:Client URL for composing appointment broken
 CLASS:projects.zcs.tests.features.ClientURLTests;METHOD:calendarViewURL;LOCALE:all;BROWSERS:na;BUGS:44367;REMARK:Client URL for composing appointment broken
 
-CLASS:projects.zcs.tests.addressbook.newcontact.CreateContactTests;METHOD:addRemoveContactPhotoAndVerify;LOCALE:all;BROWSERS:na;BUGS:na;REMARK:Typing file name through keyboard event fails
+#CLASS:projects.zcs.tests.addressbook.newcontact.CreateContactTests;METHOD:addRemoveContactPhotoAndVerify;LOCALE:all;BROWSERS:na;BUGS:na;REMARK:Typing file name through keyboard event fails
 
 #Need to work on these IE specific failures
 #CLASS:projects.zcs.tests.preferences.accounts.AccountsPref;METHOD:addBasicPersonaWithTextSignature;LOCALE:na;BROWSERS:IE;BUGS:na;REMARK:Not able to select signature drop down
@@ -232,6 +232,21 @@ CLASS:projects.zcs.tests.calendar.newappt.ApptInviteTests;METHOD:apptAddRemoveAt
 
 #bug 48696
 CLASS:projects.zcs.tests.zcscommon.TagActionTestsForAllAppTab;METHOD:createRenameDeleteTagAndVerifyInAllTab;LOCALE:all;BROWSERS:na;BUGS:48696;REMARK:Js error (appCtxt.getById(this.tagId) is undefined) while navigate Mail tab
+
+#bug 47044
+CLASS:projects.zcs.tests.mail.autocomplete.MailAutoCompleteAddressTests;METHOD:verifyAutocompleteFromContactsSubAndSubSubFolders_Bug47044;LOCALE:all;BROWSERS:na;BUGS:47044;REMARK:Autocomplete shows contact from deleted(Trashed) address book folders
+CLASS:projects.zcs.tests.mail.autocomplete.MailAutoCompleteAddressTests;METHOD:autocompleteShowsContactFromTrashedABFolders_Bug47044;LOCALE:all;BROWSERS:na;BUGS:47044;REMARK:Autocomplete shows contact from deleted(Trashed) address book folders
+CLASS:projects.zcs.tests.mail.autocomplete.MailAutoCompleteAddressTests;METHOD:unableToGetRidOfEmailedContacts_Bug40081;LOCALE:all;BROWSERS:na;BUGS:47044;REMARK:Autocomplete shows contact from deleted(Trashed) address book folders
+
+#bug 49898
+CLASS:projects.zcs.tests.preferences.signatures.ChangeMailFormatSignatureTests;METHOD:draft_AttachDontAttachSignatureAndChangeBodyFormat;LOCALE:all;BROWSERS:na;BUGS:49898;REMARK:Signature is not removed on selecting "Do not attach signature" for html saved draft
+CLASS:projects.zcs.tests.preferences.signatures.ChangeMailFormatSignatureTests;METHOD:fwd_AttachDontAttachSignatureAndChangeBodyFormat;LOCALE:all;BROWSERS:na;BUGS:49898;REMARK:Signature is not removed on selecting "Do not attach signature" for html saved draft
+CLASS:projects.zcs.tests.preferences.signatures.ChangeMailFormatSignatureTests;METHOD:newMail_AttachDontAttachSignatureAndChangeBodyFormat;LOCALE:all;BROWSERS:na;BUGS:49898;REMARK:Signature is not removed on selecting "Do not attach signature" for html saved draft
+
+#bug 49957
+CLASS:projects.zcs.tests.mail.tags.TagMessageTests;METHOD:applyMutlipleTagToMessageAndVerify;LOCALE:all;BROWSERS:na;BUGS:49957;REMARK:Message is not tagged after creating new tag from toolbar button
+CLASS:projects.zcs.tests.mail.tags.TagMessageTests;METHOD:verifyTagFunctionalityFor2MessageAndRemoveTag;LOCALE:all;BROWSERS:na;BUGS:49957;REMARK:Message is not tagged after creating new tag from toolbar button
+
 
 
 #------------------------HTML tests to be skipped ------------------

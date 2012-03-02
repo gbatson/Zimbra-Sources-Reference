@@ -999,7 +999,24 @@ public class CommonTest extends SelNGBase {
 		Assert
 				.assertTrue(
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_"
+										+ (rank - 1)
+										+ "')]//td[contains(text(), '"
+										+ value
+										+ "')]"),
+						"Verifying autocomplete list rank " + rank + " for "
+								+ value);
+	}
+
+	public static void zVerifyAutocompleteExistsForSearchBar(String value,
+			int rank, int wait) throws Exception {
+		if (wait == 1) {
+			Thread.sleep(1000);
+		}
+		Assert
+				.assertTrue(
+						selenium
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'DWT18_acRow_"
 										+ (rank - 1)
 										+ "')]//td[contains(text(), '"
 										+ value
@@ -1016,13 +1033,39 @@ public class CommonTest extends SelNGBase {
 		Assert
 				.assertFalse(
 						selenium
-								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//div[contains(@id, 'AutoCompleteListViewDiv_"
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'acRow_"
 										+ (rank - 1)
 										+ "')]//td[contains(text(), '"
 										+ value
 										+ "')]"),
 						"Verifying autocomplete list rank " + rank + " for "
 								+ value);
+	}
+
+	public static void zVerifyAutocompleteNotExistsForSearchBar(String value,
+			int rank, int wait) throws Exception {
+		if (wait == 1) {
+			Thread.sleep(1000);
+		}
+		Assert
+				.assertFalse(
+						selenium
+								.isElementPresent("//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, 'DWT18_acRow_"
+										+ (rank - 1)
+										+ "')]//td[contains(text(), '"
+										+ value
+										+ "')]"),
+						"Verifying autocomplete list rank " + rank + " for "
+								+ value);
+	}
+
+	public static void zForgetAutocomplete(int rank) throws Exception {
+		selenium.clickAt(
+				"//div[contains(@class, 'ZmAutocompleteListView')]//tr[contains(@id, '_acRow_"
+						+ (rank - 1) + "')]//td[contains(@class, '"
+						+ localize(locator.forget)
+						+ "')]//a[contains(@id, '_acForget_" + (rank - 1)
+						+ "')]//div[contains(@class, 'ForgetText')]", "");
 	}
 
 	/**

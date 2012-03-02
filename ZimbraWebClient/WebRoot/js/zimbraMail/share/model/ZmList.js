@@ -355,6 +355,16 @@ function(params) {
 		params.action = params.value ? params.op : "!" + params.op;
 	}
 
+    if (appCtxt.multiAccounts) {
+		// check if we're flagging item from remote folder, in which case, always send
+		// request on-behalf-of the account the item originally belongs to.
+        var folderId = params.items[0].getFolderId();
+        var fromFolder = appCtxt.getById(folderId);
+		if (fromFolder.isRemote()) {
+			params.accountName = params.items[0].getAccount().name;
+		}
+	}
+
 	this._itemAction(params);
 };
 
@@ -495,6 +505,21 @@ function(params) {
 		params1.callback = new AjxCallback(this, this._handleResponseMoveItems, params);
 	}
 
+    if (appCtxt.multiAccounts) {
+		// Reset accountName for multi-account to be the respective account if we're
+		// moving a draft out of Trash.
+		// OR,
+		// check if we're moving to or from a shared folder, in which case, always send
+		// request on-behalf-of the account the item originally belongs to.
+        var folderId = params.items[0].getFolderId();
+        var fromFolder = appCtxt.getById(folderId);
+		if ((params.items[0].isDraft && params.folder.id == ZmFolder.ID_DRAFTS) ||
+			(params.folder.isRemote()) || (fromFolder.isRemote()))
+		{
+			params1.accountName = params.items[0].getAccount().name;
+		}
+	}
+
 	this._itemAction(params1);
 };
 
@@ -516,10 +541,12 @@ function(params, result) {
 		// batched change notification
 		var item = movedItems[0];
 		var list = item.list;
-		list._evt.batchMode = true;
-		list._evt.item = item;	// placeholder
-		list._evt.items = movedItems;
-		list._notify(ZmEvent.E_MOVE, details);
+        if (list) {
+            list._evt.batchMode = true;
+            list._evt.item = item;	// placeholder
+            list._evt.items = movedItems;
+            list._notify(ZmEvent.E_MOVE, details);
+        }
 	}
 
 	if (params.callback) {
@@ -549,6 +576,10 @@ function(params) {
     params.actionText = ZmMsg.actionCopied;
     params.actionArg = params.folder.getName(false, false, true);
 	params.callback = new AjxCallback(this, this._handleResponseCopyItems, params);
+
+	if (appCtxt.multiAccounts && params.folder.isRemote()) {
+		params.accountName = params.items[0].getAccount().name;
+	}
 
 	this._itemAction(params);
 };
@@ -894,13 +925,14 @@ function(params) {
 	} else {
 		params.action.id = idStr;
 	}
+	var more = Boolean(params.ids.length && !params.cancelled);
 
 	var respCallback = new AjxCallback(this, this._handleResponseDoAction, [params]);
 
 	if (params.batchCmd) {
 		params.batchCmd.addRequestParams(params.request, respCallback, params.errorCallback);
 	} else {
-		var reqParams = {asyncMode:true, callback:respCallback, accountName:params.accountName};
+		var reqParams = {asyncMode:true, callback:respCallback, errorCallback: params.errorCallback, accountName:params.accountName, more:more};
 		if (useJson) {
 			reqParams.jsonObj = params.request;
 		} else {

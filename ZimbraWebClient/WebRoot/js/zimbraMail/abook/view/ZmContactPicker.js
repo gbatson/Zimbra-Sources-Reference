@@ -385,20 +385,33 @@ function(firstTime, result) {
 				lastSortVal = email.sf;
 			}
 		}
-		this.search(null, null, null, lastId, lastSortVal);
-	} else {
+		if (!lastSortVal && isPagingSupported) {
+			// BAIL. Server didn't send us enough info to make the next request
+			this._searchIcon.className = "ImgSearch";
+			return;
+		}  else if (!lastSortVal && !isPagingSupported) {	
+            //paging not supported, show what we have
+            this._showResults(isPagingSupported, more, this.getSubList());	
+        }
+		else {
+          this.search(null, null, null, lastId, lastSortVal);
+        }
+	}
+	else {
 		list = this.getSubList();
 		// If the AB ends with a long list of contacts w/o addresses,
 		// we may never get a list back.  If that's the case, roll back the offset
 		// and refetch, should disable the "next page" button.
 		if (!list) {
 			this._offset -= ZmContactsApp.SEARCHFOR_MAX;
-			if (this._offset < 0)
+			if (this._offset < 0) {
 				this._offset = 0;
+			}
 			list = this.getSubList();
 		}
-		if (!more) 
+		if (!more) {
 			more = (this._offset+ZmContactsApp.SEARCHFOR_MAX) < this._list.size();
+		}
 		this._showResults(isPagingSupported, more, list);
 	}
 
@@ -438,8 +451,9 @@ ZmContactPicker.prototype._pageListener =
 function(ev) {
 	if (ev.item == this._prevButton) {
 		this._offset -= ZmContactsApp.SEARCHFOR_MAX;
-		if (this._offset < 0)
+		if (this._offset < 0) {
 			this._offset = 0;
+		}
 		this._showResults(true, true, this.getSubList()); // show cached results
 	}
 	else {
@@ -448,8 +462,9 @@ function(ev) {
 		this._offset += ZmContactsApp.SEARCHFOR_MAX;
 		var list = this.getSubList();
 		if (!list || ((list.size() < ZmContactsApp.SEARCHFOR_MAX) && this._list.hasMore)) {
-			if (!list)
+			if (!list) {
 				list = this._chooser.sourceListView.getList();
+			}
 			var email = (list.size() > 0) ? list.getLast() : null;
 			if (email) {
 				lastId = email.__contact.id;
@@ -477,8 +492,9 @@ function() {
 
 	var end = this._offset+ZmContactsApp.SEARCHFOR_MAX;
 
-	if (end > size) 
+	if (end > size) {
 		end = size;
+	}
 
 	return (this._offset < end)
 		? (AjxVector.fromArray(this._list.getArray().slice(this._offset, end))) : null;

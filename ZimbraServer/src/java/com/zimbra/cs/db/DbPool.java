@@ -50,6 +50,7 @@ public class DbPool {
     private static boolean sIsInitialized;
     
     private static boolean isShutdown;
+    private static boolean isUsageWarningEnabled = true;
 
     static ValueCounter<String> sConnectionStackCounter = new ValueCounter<String>();
     
@@ -225,23 +226,6 @@ public class DbPool {
         }
     }
     
-    private static class ZimbraConnectionFactory
-    extends DriverManagerConnectionFactory {
-        ZimbraConnectionFactory(String connectUri, Properties props) {
-            super(connectUri, props);
-        }
-        
-        /**
-         * Wraps the JDBC connection from the pool with a <tt>DebugConnection</tt>,
-         * which does  <tt>sqltrace</tt> logging.
-         */
-        @Override public java.sql.Connection createConnection() throws SQLException {
-            java.sql.Connection conn = super.createConnection();
-            Db.getInstance().postCreate(conn);
-            return new DebugConnection(conn);
-        }
-    }
-
     /** Initializes the connection pool. */
     private static synchronized PoolingDataSource getPool() {
     	if (isShutdown)
@@ -252,7 +236,7 @@ public class DbPool {
 
         PoolConfig pconfig = Db.getInstance().getPoolConfig();
         sConnectionPool = new GenericObjectPool(null, pconfig.mPoolSize, GenericObjectPool.WHEN_EXHAUSTED_BLOCK, -1, pconfig.mPoolSize);
-        ConnectionFactory cfac = new ZimbraConnectionFactory(pconfig.mConnectionUrl, pconfig.mDatabaseProperties);
+        ConnectionFactory cfac = ZimbraConnectionFactory.getConnectionFactory(pconfig);
 
         boolean defAutoCommit = false, defReadOnly = false;
         new PoolableConnectionFactory(cfac, sConnectionPool, null, null, defReadOnly, defAutoCommit);
@@ -297,6 +281,7 @@ public class DbPool {
         if (!isInitialized()) {
             throw ServiceException.FAILURE("Database connection pool not initialized.", null);
         }
+        assert(mbox == null || Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(mbox));
         long start = ZimbraPerf.STOPWATCH_DB_CONN.start();
 
         // If the connection pool is overutilized, warn about potential leaks
@@ -370,9 +355,12 @@ public class DbPool {
             }
             stackTraceMsg = buf.toString();
         }
-        ZimbraLog.dbconn.warn(
-            "Connection pool is 75%% utilized (%d connections out of a maximum of %d in use).  %s",
-            numActive, maxActive, stackTraceMsg);
+        String logMsg = "Connection pool is 75%% utilized (%d connections out of a maximum of %d in use).  %s";
+        if (isUsageWarningEnabled) {
+            ZimbraLog.dbconn.warn(logMsg, numActive, maxActive, stackTraceMsg);
+        } else {
+            ZimbraLog.dbconn.debug(logMsg, numActive, maxActive, stackTraceMsg);
+        }
     }
 
     /**
@@ -506,5 +494,9 @@ public class DbPool {
     public static synchronized void shutdown() throws Exception {
     	isShutdown = true;
     	close();
+    }
+    
+    public static void disableUsageWarning() {
+        isUsageWarningEnabled = false;
     }
 }

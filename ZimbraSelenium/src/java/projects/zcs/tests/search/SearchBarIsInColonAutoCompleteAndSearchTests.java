@@ -494,7 +494,7 @@ public class SearchBarIsInColonAutoCompleteAndSearchTests extends CommonTest {
 		Thread.sleep(1000);
 		String sent = selenium.getValue("xpath=//input[@class='search_input']");
 		assertReport(
-				"in:" + (char) 34 + "inbox" + (char) 34,
+				"-in:" + (char) 34 + "inbox" + (char) 34,
 				sent,
 				"Advanced search string not showing 'in:inbox' on search edit field while press tab in autocomplete option");
 
@@ -678,30 +678,20 @@ public class SearchBarIsInColonAutoCompleteAndSearchTests extends CommonTest {
 	//------------------------------autocomplete_functions----------------------
 	public static void VerifyIsColonAutocompleteExists(String value, int rank)
 			throws Exception {
-		Assert
-				.assertTrue(
-						"Verifying is: autocomplete list rank " + rank
-								+ " for " + value,
-						selenium
-								.isElementPresent("//div[contains(@id, 'AutoCompleteListViewDiv_"
-										+ (rank - 1)
-										+ "') and contains(text(), '"
-										+ value
-										+ "')]"));
+		Assert.assertTrue("Verifying is: autocomplete list rank " + rank
+				+ " for " + value, selenium
+				.isElementPresent("//tr[contains(@id, 'DWT18_acRow_"
+						+ (rank - 1) + "')]//td[contains(text(), '" + value
+						+ "')]"));
 	}
 
 	public static void VerifyIsColonAutocompleteNotExists(String value, int rank)
 			throws Exception {
-		Assert
-				.assertFalse(
-						"Verifying is: autocomplete list rank " + rank
-								+ " for " + value,
-						selenium
-								.isElementPresent("//div[contains(@id, 'AutoCompleteListViewDiv_"
-										+ (rank - 1)
-										+ "') and contains(text(), '"
-										+ value
-										+ "')]"));
+		Assert.assertFalse("Verifying is: autocomplete list rank " + rank
+				+ " for " + value, selenium
+				.isElementPresent("//tr[contains(@id, 'DWT18_acRow_"
+						+ (rank - 1) + "')]//td[contains(text(), '" + value
+						+ "')]"));
 	}
 
 	public static void ClickAutoComplete(String value, int rank)
@@ -720,17 +710,14 @@ public class SearchBarIsInColonAutoCompleteAndSearchTests extends CommonTest {
 				|| value.contains("remotefolder")) {
 			pressKeys("i, n, :");
 			Thread.sleep(1000);
-			selenium.clickAt("//div[contains(@id, 'AutoCompleteListViewDiv_"
-					+ rank + "')]//td[contains(text(), '" + value + "')]",
-					"0,0");
+			selenium.clickAt("//div[contains(@id, 'DWT18_acRow_" + rank
+					+ "')]//td[contains(text(), '" + value + "')]", "0,0");
 
 		} else {
 			pressKeys("i, s, :");
 			Thread.sleep(1000);
-			selenium
-					.clickAt("//div[contains(@id, 'AutoCompleteListViewDiv_"
-							+ rank + "') and contains(text(), '" + value
-							+ "')]", "0,0");
+			selenium.clickAt("//div[contains(@id, 'DWT18_acRow_" + rank
+					+ "') and contains(text(), '" + value + "')]", "0,0");
 		}
 	}
 

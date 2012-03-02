@@ -286,7 +286,7 @@ public class AttendeesResourcesAutocompleteAndSearchTests extends CommonTest {
 	 * to Schedule tab and select Location and verify location autocomplete with
 	 * tab key and also verify location link by clicking it
 	 */
-	@Test(dataProvider = "composeDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "composeDataProvider", groups = { "smoke", "full"}, retryAnalyzer = RetryFailedTests.class)
 	public void verifyLocationAutocompleteInScheduleTab(String from, String to,
 			String cc, String bcc, String subject, String body,
 			String attachments) throws Exception {
@@ -311,15 +311,29 @@ public class AttendeesResourcesAutocompleteAndSearchTests extends CommonTest {
 						"//div//table[contains(@id, 'attendeesTable')]//td[contains(@id, 'select_container')]",
 						"");
 		obj.zMenuItem.zClick(localize(locator.location));
-		pressKeys("tab, l, o, c, a, t, i, o, n, 2, tab");
+		Thread.sleep(1000);
+		
+		String locationStr="//input[contains(@id,'_INPUT_') and @class='ZmSchedulerInput']";
+
+		obj.zEditField.zActivate(locationStr);        
+		
+		
+		pressKeys("l, o, c, a, t, i, o, n, 2, tab");
+		
 		Thread.sleep(1000);
 		obj.zTab.zClick(localize(locator.apptDetails));
+		Thread.sleep(1000);
+		
 		expectedValue = location;
-		actualValue = obj.zEditField
-				.zGetInnerText(getNameWithoutSpace(localize(locator.locationLabel)));
+		actualValue = obj.zEditField.zGetInnerText(getNameWithoutSpace(localize(locator.locationLabel)));
+		
+		
 		assertReport(expectedValue, actualValue,
-				"Verifying autocomplete for resource in schedule tab");
+				"Verifying autocomplete for location in schedule tab");
+		
 		selenium.click("link=" + location);
+		Thread.sleep(1000);
+		
 		obj.zButton.zIsDisabled(localize(locator.select));
 		obj.zButton.zIsEnabled(localize(locator.remove));
 		obj.zButton.zClick(page.zCalCompose.zApptCancelBtn);
@@ -360,10 +374,20 @@ public class AttendeesResourcesAutocompleteAndSearchTests extends CommonTest {
 						"//div//table[contains(@id, 'attendeesTable')]//td[contains(@id, 'select_container')]",
 						"");
 		obj.zMenuItem.zClick(localize(locator.resourceAttendee));
-		pressKeys("tab, e, q, u, i, p, m, e, n, t, 1, enter");
+        
+		String locationStr="//input[contains(@id,'_INPUT_') and @class='ZmSchedulerInput']";
+		obj.zEditField.zActivate(locationStr);        
 		Thread.sleep(1000);
+
+		pressKeys("e, q, u, i, p, m, e, n, t, 1, enter"); //can replace enter for tab without affect the result
+		Thread.sleep(1000);
+				
 		obj.zTab.zClick(localize(locator.apptDetails));
+		Thread.sleep(1000);
+				
 		selenium.click("link=" + equipment);
+		Thread.sleep(1000);
+		
 		obj.zButton.zIsDisabled(localize(locator.add));
 		obj.zButton.zIsDisabled(localize(locator.addAll));
 		obj.zButton.zIsEnabled(localize(locator.remove));
@@ -497,7 +521,7 @@ public class AttendeesResourcesAutocompleteAndSearchTests extends CommonTest {
 	 * remove it and save it 6.Open appointment again and re-verify location and
 	 * equipment removed from appointment
 	 */
-	@Test(dataProvider = "composeDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "composeDataProvider", groups = { "smoke", "full"}, retryAnalyzer = RetryFailedTests.class)
 	public void addRemoveLocationAndResourceAndVerify(String from, String to,
 			String cc, String bcc, String subject, String body,
 			String attachments) throws Exception {

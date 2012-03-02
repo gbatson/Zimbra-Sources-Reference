@@ -721,6 +721,20 @@ function() {
 	}
 };
 
+/**
+ *   This is for bug 45129.
+ *   In the DwControl's focusByMouseDownEvent, it focuses the TreeItem 
+ *   And change TreeItem's color. But sometimes when mousedown and mouseup
+ *   haven't been matched on the one element. It will cause multiple selection. 
+ *   For in the mouseup handle function, we has done focus if we find both mouse 
+ *   down and up happened on the same element. So when the mouse is down, we just
+ *   do nothing.
+ */
+DwtTreeItem.prototype._focusByMouseDownEvent =
+function(ev) {
+	
+}
+
 DwtTreeItem._nodeIconMouseDownHdlr =
 function(ev) {
 	var obj = DwtControl.getTargetControl(ev);
@@ -750,24 +764,26 @@ function(ev) {
 
 DwtTreeItem.prototype._expand =
 function(expand, ev, skipNotify) {
-	if (!expand) {
-		this._expanded = false;
-		this._childDiv.style.display = "none";
-		if (this._nodeCell) {
-			AjxImg.setImage(this._nodeCell, this._collapseNodeImage);
-		}
-		this._tree._itemCollapsed(this, ev, skipNotify);
-	} else {
-		// The first thing we need to do is initialize any deferred children so that they
-		// actually have content
-		this._realizeDeferredChildren();
-		this._expanded = true;
-		this._childDiv.style.display = "block";
-		if (this._nodeCell) {
-			AjxImg.setImage(this._nodeCell, this._expandNodeImage);
-		}
-		this._tree._itemExpanded(this, ev, skipNotify);
-	}	
+	if (expand !== this._expanded) {
+		if (!expand) {
+			this._expanded = false;
+			this._childDiv.style.display = "none";
+			if (this._nodeCell) {
+				AjxImg.setImage(this._nodeCell, this._collapseNodeImage);
+			}
+			this._tree._itemCollapsed(this, ev, skipNotify);
+		} else {
+			// The first thing we need to do is initialize any deferred children so that they
+			// actually have content
+			this._realizeDeferredChildren();
+			this._expanded = true;
+			this._childDiv.style.display = "block";
+			if (this._nodeCell) {
+				AjxImg.setImage(this._nodeCell, this._expandNodeImage);
+			}
+			this._tree._itemExpanded(this, ev, skipNotify);
+		}	
+	}
 };
 
 DwtTreeItem.prototype._realizeDeferredChildren =

@@ -210,7 +210,7 @@ public class SoapSession extends Session {
                                 forceConversationModification((Message) item, pms, filtered, MODIFIED_CONVERSATION_FLAGS);
                         }
                     } else if (chg.what instanceof Mailbox) {
-                        if (mMailbox.hasFullAccess(new OperationContext(getAuthenticatedAccountId()))) {
+                        if (((Mailbox) chg.what).hasFullAccess(new OperationContext(getAuthenticatedAccountId()))) {
                             filtered.recordModified((Mailbox) chg.what, chg.why);
                         }
                     }
@@ -249,7 +249,7 @@ public class SoapSession extends Session {
         }
     }
 
-    private static class RemoteNotifications {
+    static class RemoteNotifications {
         int count = -1;
         String deleted;
         List<Element> created;
@@ -385,7 +385,7 @@ public class SoapSession extends Session {
     private long mLastWrite      = -1;
 
     // read/write access to all these members requires synchronizing on "mSentChanges"
-    private   int mForceRefresh;
+    protected   int mForceRefresh;
     protected LinkedList<QueuedNotifications> mSentChanges = new LinkedList<QueuedNotifications>();
     protected QueuedNotifications mChanges = new QueuedNotifications(1);
 
@@ -477,9 +477,9 @@ public class SoapSession extends Session {
 
     private boolean mIsOffline = false;
     
-    public boolean isOfflineSoapSession() { return mIsOffline; }
-    
-    public void setOfflineSoapSession() { mIsOffline = true; }
+    public boolean isOfflineSoapSession()  { return mIsOffline; }
+    public void setOfflineSoapSession()    { mIsOffline = true; }
+
 
     public Session getDelegateSession(String targetAccountId) {
         if (mUnregistered || targetAccountId == null)
@@ -539,7 +539,7 @@ public class SoapSession extends Session {
         }
     }
 
-    private boolean registerRemoteSessionId(Server server, String sessionId) {
+    protected boolean registerRemoteSessionId(Server server, String sessionId) {
         if (mMailbox == null || server == null || sessionId == null)
             return true;
 
@@ -565,7 +565,7 @@ public class SoapSession extends Session {
         handleRemoteNotifications(server, context, false, false);
     }
 
-    private void handleRemoteNotifications(Server server, Element context, boolean ignoreRefresh, boolean isPing) {
+    protected void handleRemoteNotifications(Server server, Element context, boolean ignoreRefresh, boolean isPing) {
         if (context == null)
             return;
 
@@ -737,11 +737,7 @@ public class SoapSession extends Session {
         }
     }
     
-    /**
-     * On the session's first write op, record the timestamp to the database
-     * 
-     * @param mbox
-     */
+    /** On the session's first write op, record the timestamp to the database. */
     public void updateLastWrite(Mailbox mbox) {
         boolean firstWrite = mLastWrite == -1;
         mLastWrite = System.currentTimeMillis();
@@ -762,11 +758,12 @@ public class SoapSession extends Session {
      *  on the Mailbox.
      *  <p>
      *  *All* changes are currently cached, regardless of the client's state/views.
+     * @param pms       A set of new change notifications from our Mailbox.
      * @param changeId  The sync-token change id of the change.
-     * @param pms       A set of new change notifications from our Mailbox. */
-    @Override public void notifyPendingChanges(PendingModifications pms, int changeIdxxx, Session source) {
+     * @param source    The (optional) Session which initiated these changes. */
+    @Override public void notifyPendingChanges(PendingModifications pms, int changeId, Session source) {
         Mailbox mbox = mMailbox;
-        if (pms == null || !pms.hasNotifications() || mbox == null)
+        if (pms == null || mbox == null || !pms.hasNotifications())
             return;
 
         if (source == this) {
@@ -797,14 +794,32 @@ public class SoapSession extends Session {
         handleNotifications(pms, source == this);
     }
 
+    boolean hasSerializableChanges(PendingModifications pms) {
+        // catch cases where the only notifications are mailbox config changes, which we don't serialize
+        if (pms.created != null && !pms.created.isEmpty())
+            return true;
+        if (pms.deleted != null && !pms.deleted.isEmpty())
+            return true;
+        if (pms.modified != null && !pms.modified.isEmpty()) {
+            for (Change chg : pms.modified.values()) {
+                if (!(chg.what instanceof Mailbox) || chg.why != Change.MODIFIED_CONFIG)
+                    return true;
+            }
+        }
+        return false;
+    }
+
     void handleNotifications(PendingModifications pms, boolean fromThisSession) {
+        if (!hasSerializableChanges(pms))
+            return;
+
         try {
             // update the set of notifications not yet sent to the client
             cacheNotifications(pms, fromThisSession);
             // if we're in a hanging no-op, alert the client that there are changes
-        	notifyPushChannel(pms, true);
+            notifyPushChannel(pms, true);
             // FIXME: this query result cache purge seems a little aggressive
-        	clearCachedQueryResults();
+            clearCachedQueryResults();
         } catch (ServiceException e) {
             ZimbraLog.session.warn("ServiceException in notifyPendingChanges ", e);
         }
@@ -823,7 +838,7 @@ public class SoapSession extends Session {
         }
     }
 
-    private boolean skipNotifications(int notificationCount, boolean fromThisSession) {
+    protected boolean skipNotifications(int notificationCount, boolean fromThisSession) {
         // if we're going to be sending a <refresh> anyway, there's no need to record these changes
         int currentSequence = getCurrentNotificationSequence();
         if (mForceRefresh == currentSequence && !fromThisSession)
@@ -1243,7 +1258,7 @@ public class SoapSession extends Session {
      *  skip the notification. */
     private static final int DELEGATED_CONVERSATION_SIZE_LIMIT = 50;
 
-    private static final String A_ID = "id";
+    protected static final String A_ID = "id";
 
     /** Write a single instance of the PendingModifications structure into the 
      *  passed-in <ctxt> block. */
@@ -1265,9 +1280,6 @@ public class SoapSession extends Session {
 
         PendingModifications pms = ntfn.mMailboxChanges;
         RemoteNotifications rns = ntfn.mRemoteChanges;
-
-        // remote notifications get delivered *once*, then are discarded
-        ntfn.mRemoteChanges = null;
 
         Element eDeleted = eNotify.addUniqueElement(ZimbraNamespace.E_DELETED);
         StringBuilder deletedIds = new StringBuilder();
@@ -1307,7 +1319,7 @@ public class SoapSession extends Session {
                 if (debug)
                     ZimbraLog.session.debug("adding " + rns.created.size() + " proxied creates");
                 for (Element elt : rns.created)
-                    eCreated.addElement(elt.detach());
+                    eCreated.addElement(elt.clone().detach());
             }
         }
 
@@ -1351,7 +1363,7 @@ public class SoapSession extends Session {
                 if (debug)
                     ZimbraLog.session.debug("adding " + rns.modified.size() + " proxied modifies");
                 for (Element elt : rns.modified)
-                    eModified.addElement(elt.detach());
+                    eModified.addElement(elt.clone().detach());
             }
         }
         

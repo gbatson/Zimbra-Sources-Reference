@@ -342,7 +342,13 @@ function(src, dontExecCommand, width, height) {
     if(dontExecCommand){
         var doc = this._getIframeDoc();
 	    var img = doc.createElement("img");
-        img.src = src;
+        //avoid mixed content security warning with IE
+        if (src && src.indexOf("cid:") == 0) {
+            img.setAttribute("dfsrc", src);
+        }
+        else {
+            img.setAttribute("src", src);
+        }
         if(width) img.width = width;
         else img.removeAttribute('width');
         if(height) img.height = height;
@@ -849,9 +855,12 @@ function() {
 		this._registerEditorEventHandlers(document.getElementById(this._iFrameId), doc);
 	};
 
-        // most browsers need time out here
-	setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY * 4);
-
+	if (AjxEnv.isIE || AjxEnv.isChrome) {
+		// IE needs a timeout
+		setTimeout(AjxCallback.simpleClosure(cont, this, doc), DwtHtmlEditor._INITDELAY);
+	} else {
+		cont.call(this, doc);
+	}
 };
 
 DwtHtmlEditor.prototype._focus =

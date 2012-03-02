@@ -98,10 +98,12 @@ function(params) {
 		// Reset accountName for multi-account to be the respective account if we're
 		// moving a draft out of Trash.
 		// OR,
-		// check if we're moving to a shared folder, in which case, always send
+		// check if we're moving to or from a shared folder, in which case, always send
 		// request on-behalf-of the account the item originally belongs to.
+        var folderId = params.items[0].getFolderId();
+        var fromFolder = appCtxt.getById(folderId);
 		if ((params.items[0].isDraft && params.folder.id == ZmFolder.ID_DRAFTS) ||
-			(params.folder.isRemote()))
+			(params.folder.isRemote()) || (fromFolder && fromFolder.isRemote()))
 		{
 			params1.accountName = params.items[0].getAccount().name;
 		}
@@ -167,7 +169,7 @@ function(params) {
 
 	params1.action = params.markAsSpam ? "spam" : "!spam";
 	params1.attrs = {};
-	params1.attrs.tcon = this._getTcon();
+	params1.attrs.tcon = this._getTcon(params.items);
 	if (params.folder) {
 		params1.attrs.l = params.folder.id;
 	}
@@ -640,16 +642,16 @@ function(items, sortBy, event, details) {
 
 ZmMailList.prototype._getTcon =
 function() {
-	var chars = ["-"];
+	var chars = [];
 	var folders = [ZmFolder.ID_TRASH, ZmFolder.ID_SPAM, ZmFolder.ID_SENT];
 	var searchFolder = this.search && appCtxt.getById(this.search.folderId);
+	var nId = searchFolder && ( searchFolder.isRemote() ? searchFolder.rid : searchFolder.nId );
 	for (var i = 0; i < folders.length; i++) {
-		if (!(searchFolder && searchFolder.nId == folders[i])) {
+		if (nId != folders[i]) {
 			chars.push(ZmFolder.TCON_CODE[folders[i]]);
 		}
 	}
-
-	return chars.join("");
+	return (chars.length) ?  ("-" + chars.join("")) : "";
 };
 
 // If this list is the result of a search that is constrained by the read

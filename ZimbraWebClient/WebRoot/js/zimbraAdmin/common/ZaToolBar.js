@@ -282,7 +282,7 @@ function () {
             break ;
         } else { //duplicate the operation.
             var op =  this._opList [this._btnOrder [i]] ;
-	    if (op != null  && op.className != undefined) {	
+            if (op != null) {
                 this._moreActionsMenuList.push (ZaOperation.duplicate(op)) ;
             }
         }
@@ -315,7 +315,19 @@ ZaToolBar.prototype.getAlwaysVisibleButtonWidths = function () {
         if (this._btnOrder [i] == ZaOperation.NONE ) {
             isAfterNoneOp = true ;
         }
+        
+        /*
+         Handle for LABEL, label uses labelid to index, but button uses id.
+         */ 
+        if (this._btnOrder [i] == ZaOperation.LABEL) { 
+            b = this._buttons[ZaOperation.SEARCH_RESULT_COUNT]; 
+        }
+  
         if (isAfterNoneOp) {
+            if (this._btnOrder [i] == ZaOperation.SEP){
+               w += 5; // for seperator, we give it a fixed value.
+            }
+            
             if (b && b.getVisible()) {
                 w += b.getW () ;
             }
@@ -344,9 +356,8 @@ ZaToolBar.prototype.enableMoreActionsMenuItems = function () {
             if (!toolbarButton) { continue ;} ;
             var visiblity = toolbarButton.getVisible() ;
             var menuItem = moreActionMenu.getMenuItem (opId) ; //menu item operation id is the same as the toolbar button id
-	    if (menuItem !=null && menuItem != undefined) {
             menuItem.setVisible(!visiblity) ;
-            menuItem.setEnabled (toolbarButton.getEnabled()) ;}
+            menuItem.setEnabled (toolbarButton.getEnabled()) ;
         }
     }
 }

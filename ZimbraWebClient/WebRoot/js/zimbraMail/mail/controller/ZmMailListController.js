@@ -797,7 +797,8 @@ function(params) {
 		}
 	}
 
-    if(action == ZmOperation.DRAFT){
+    if (action == ZmOperation.DRAFT || action == ZmOperation.FORWARD_INLINE ||
+            action == ZmOperation.REPLY || action == ZmOperation.REPLY_ALL) {
         var bp = msg.getBodyPart();
         if(bp && bp.truncated){
             params.noTruncate = true;
@@ -1396,15 +1397,15 @@ function(ev) {
             }else{
                 ids.push("C:"+item.id);
             }
-			if (item instanceof ZmConv) {
-				var msgList = item.getMsgList();
-				for(var j=0; j<msgList.length; j++) {
-					if(msgList[j].showImages) {
-						showImages = true;
-						break;
-					}
-				}
-			}
+            if (item instanceof ZmConv) {
+                var msgList = item.getMsgList();
+                for(var j=0; j<msgList.length; j++) {
+                    if(msgList[j].showImages) {
+                        showImages = true;
+                        break;
+                    }
+                }
+            }
         } else {
             ids.push(item.id);
             if (item.showImages) {
@@ -1414,7 +1415,11 @@ function(ev) {
     }
     var url = ("/h/printmessage?id=" + ids.join(","));
     if(appCtxt.get(ZmSetting.DISPLAY_EXTERNAL_IMAGES) || showImages){
-       url = url+"&xim=1";
+        url = url+"&xim=1";
+    }
+    if (appCtxt.isOffline) {
+        var acctName = items[0].getAccount().name;
+        url+="&acct=" + acctName ;
     }
     window.open(appContextPath+url, "_blank");
 };

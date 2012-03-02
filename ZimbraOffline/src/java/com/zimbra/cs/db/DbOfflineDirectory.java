@@ -48,8 +48,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("getting last ID for " + table, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -62,7 +62,7 @@ public class DbOfflineDirectory {
         int entryId;
 
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             stmt = conn.prepareStatement("INSERT INTO directory (entry_type, entry_name, zimbra_id, modified)" +
                     " VALUES (?, ?, ?, ?)");
@@ -93,9 +93,58 @@ public class DbOfflineDirectory {
             else
                 throw ServiceException.FAILURE("inserting new " + etype + ": " + zimbraId, e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
+    }
+    
+    private static void validateNewLeafName(EntryType etype, NamedEntry parent, String name, int entryId, Connection conn)
+    throws ServiceException {
+        //bug 52717; cannot rely on db to do case-insensitive check with utf8
+        //have to read existing and compare in java; otherwise we create entries that cause directory sync to fail
+        String currentName = null;
+        if (entryId >= 0) {
+            currentName = getLeafName(etype, parent, entryId, conn);
+            if (currentName != null && currentName.equals(name)) {
+                return; //some external site is updating with same name; this is inefficient but otherwise ok
+            }
+        }
+        List<String> names = DbOfflineDirectory.listAllDirectoryLeaves(etype, parent, conn);
+        for (String existing : names) {
+            if (existing.equalsIgnoreCase(name)) {
+                if (etype == EntryType.IDENTITY)
+                    throw AccountServiceException.IDENTITY_EXISTS(name);
+                else if (etype == EntryType.DATASOURCE)
+                    throw AccountServiceException.DATA_SOURCE_EXISTS(name);
+                else if (etype == EntryType.SIGNATURE)
+                    throw AccountServiceException.SIGNATURE_EXISTS(name);
+            }
+        }
+    }
+
+    private static String getLeafName(EntryType etype, NamedEntry parent, int entryId, Connection conn)
+    throws ServiceException {
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            stmt = conn.prepareStatement("SELECT entry_name FROM directory_leaf WHERE parent_id = ? AND "+
+                "entry_type = ? AND entry_id = ?");
+            stmt.setInt(1, getIdForParent(conn, parent));
+            stmt.setString(2, etype.toString());
+            stmt.setInt(3, entryId);
+            rs = stmt.executeQuery();
+            if (!rs.next()) {
+                return null;
+            } else {
+                return rs.getString(1);
+            }
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("listing all entries of type " + etype, e);
+        } finally {
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+        }
+        
     }
 
     public static void createDirectoryLeaf(EntryType etype, NamedEntry parent, String name, String id, Map<String,Object> attrs, boolean markChanged)
@@ -105,7 +154,8 @@ public class DbOfflineDirectory {
         int entryId;
 
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
+            validateNewLeafName(etype, parent, name, -1, conn);
 
             int parentId = getIdForParent(conn, parent);
 
@@ -148,8 +198,8 @@ public class DbOfflineDirectory {
                 throw ServiceException.FAILURE("inserting new " + etype + ": " + parent.getName() + '/' + name, e);
             }
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -165,7 +215,7 @@ public class DbOfflineDirectory {
             stmt.setString(3, value);
             stmt.executeUpdate();
         } finally {
-            DbPool.closeStatement(stmt);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -182,12 +232,12 @@ public class DbOfflineDirectory {
                     " WHERE entry_id = ? AND " + Db.equalsSTRING("name") +
                     (allValues ? "" : " AND " + Db.equalsSTRING("value")));
             stmt.setInt(1, entryId);
-            stmt.setString(2, key.toUpperCase());
+            stmt.setString(2, key);
             if (!allValues)
-                stmt.setString(3, value.toUpperCase());
+                stmt.setString(3, value);
             stmt.executeUpdate();
         } finally {
-            DbPool.closeStatement(stmt);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -198,7 +248,7 @@ public class DbOfflineDirectory {
             stmt.setInt(1, entryId);
             stmt.executeUpdate();
         } finally {
-            DbPool.closeStatement(stmt);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -206,7 +256,7 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int entryId = getIdForEntry(conn, etype, Provisioning.A_zimbraId, entry.getId());
             if (entryId <= 0)
@@ -230,8 +280,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("marking entry " + entry.getName() + " as clean", e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -240,7 +290,7 @@ public class DbOfflineDirectory {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             stmt = conn.prepareStatement("SELECT zimbra_id FROM directory WHERE entry_type = ? AND modified > 0");
             stmt.setString(1, etype.toString());
@@ -252,9 +302,9 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("listing dirty entries of type " + etype, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -263,7 +313,7 @@ public class DbOfflineDirectory {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             stmt = conn.prepareStatement("SELECT zimbra_id FROM directory WHERE entry_type = ?");
             stmt.setString(1, etype.toString());
@@ -275,19 +325,26 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("listing all entries of type " + etype, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
     public static List<String> listAllDirectoryLeaves(EntryType etype, NamedEntry parent) throws ServiceException {
         Connection conn = null;
+        try {
+            conn = OfflineDbPool.getInstance().getConnection();
+            return listAllDirectoryLeaves(etype, parent, conn);
+        } finally {
+            OfflineDbPool.getInstance().quietClose(conn);
+        }
+    }
+
+    private static List<String> listAllDirectoryLeaves(EntryType etype, NamedEntry parent, Connection conn) throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
-
             stmt = conn.prepareStatement("SELECT entry_name FROM directory_leaf WHERE parent_id = ? AND entry_type = ?");
             stmt.setInt(1, getIdForParent(conn, parent));
             stmt.setString(2, etype.toString());
@@ -299,9 +356,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("listing all entries of type " + etype, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -310,7 +366,7 @@ public class DbOfflineDirectory {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int pos = 1;
             if (lookupKey.equalsIgnoreCase(Provisioning.A_zimbraId)) {
@@ -323,9 +379,9 @@ public class DbOfflineDirectory {
                 stmt = conn.prepareStatement("SELECT zimbra_id FROM directory d, directory_attrs da" +
                         " WHERE " + Db.equalsSTRING("name") + " AND " + Db.likeSTRING("value") +
                         " AND d.entry_id = da.entry_id AND entry_type = ?");
-                stmt.setString(pos++, lookupKey.toUpperCase());
+                stmt.setString(pos++, lookupKey);
             }
-            stmt.setString(pos++, lookupPattern.toUpperCase());
+            stmt.setString(pos++, lookupPattern);
             stmt.setString(pos++, etype.toString());
             rs = stmt.executeQuery();
             List<String> ids = new ArrayList<String>();
@@ -335,9 +391,9 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("searching all entries of type " + etype, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
     
@@ -346,7 +402,7 @@ public class DbOfflineDirectory {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int entryId = getIdForEntry(conn, etype, lookupKey, lookupValue);
             if (entryId <= 0)
@@ -366,9 +422,9 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("fetching " + etype + " (" + lookupKey + "=" + lookupValue + ")", e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -382,7 +438,7 @@ public class DbOfflineDirectory {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int entryId = getIdForLeaf(conn, etype, parent, lookupKey, lookupValue);
             if (entryId <= 0)
@@ -402,9 +458,9 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("fetching " + etype + ": " + parent.getName() + '/' + lookupValue, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -412,7 +468,7 @@ public class DbOfflineDirectory {
     throws ServiceException {
         Connection conn = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int entryId = getIdForEntry(conn, etype, lookupKey, lookupValue);
             if (entryId <= 0)
@@ -427,7 +483,7 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("modifying " + etype + " (" + lookupKey + "=" + lookupValue + ")", e);
         } finally {
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -437,12 +493,15 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int entryId = getIdForLeaf(conn, etype, parent, lookupKey, lookupValue);
             if (entryId <= 0)
                 return;
 
+            if (newName != null) {
+                validateNewLeafName(etype, parent, newName, entryId, conn);
+            }
             modifyDirectoryEntry(conn, etype, entryId, attrs);
 
             if (newName != null) {
@@ -460,8 +519,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("modifying " + etype + ": " + parent.getName() + '/' + lookupValue, e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -518,20 +577,20 @@ public class DbOfflineDirectory {
             if (lookupKey.equalsIgnoreCase(Provisioning.A_zimbraId)) {
                 stmt = conn.prepareStatement("SELECT entry_id FROM directory" +
                         " WHERE " + Db.equalsSTRING("zimbra_id") + " AND entry_type = ?");
-                stmt.setString(1, lookupValue.toUpperCase());
+                stmt.setString(1, lookupValue);
                 stmt.setString(2, etype.toString());
             } else if (lookupKey.equalsIgnoreCase(OfflineProvisioning.A_offlineDn)) {
                 stmt = conn.prepareStatement("SELECT entry_id FROM directory" +
                         " WHERE " + Db.equalsSTRING("entry_name") + " AND entry_type = ?");
-                stmt.setString(1, lookupValue.toUpperCase());
+                stmt.setString(1, lookupValue);
                 stmt.setString(2, etype.toString());
             } else {
                 stmt = conn.prepareStatement("SELECT da.entry_id FROM directory_attrs da, directory d" +
                         " WHERE " + Db.equalsSTRING("da.name") + " AND " + Db.equalsSTRING("da.value") +
                         " AND da.entry_id = d.entry_id AND d.entry_type = ?" +
                         " GROUP BY da.entry_id");
-                stmt.setString(1, lookupKey.toUpperCase());
-                stmt.setString(2, lookupValue.toUpperCase());
+                stmt.setString(1, lookupKey);
+                stmt.setString(2, lookupValue);
                 stmt.setString(3, etype.toString());
             }
             rs = stmt.executeQuery();
@@ -541,8 +600,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("fetching id for " + etype + " (" + lookupKey + "=" + lookupValue + ")", e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -562,13 +621,13 @@ public class DbOfflineDirectory {
                         " WHERE parent_id = ? AND entry_type = ? AND " + Db.equalsSTRING("zimbra_id"));
                 stmt.setInt(1, getIdForParent(conn, parent));
                 stmt.setString(2, etype.toString());
-                stmt.setString(3, lookupValue.toUpperCase());
+                stmt.setString(3, lookupValue);
             } else if (lookupKey.equals(OfflineProvisioning.A_offlineDn)) {
                 stmt = conn.prepareStatement("SELECT entry_id FROM directory_leaf" +
                         " WHERE parent_id = ? AND entry_type = ? AND " + Db.equalsSTRING("entry_name"));
                 stmt.setInt(1, getIdForParent(conn, parent));
                 stmt.setString(2, etype.toString());
-                stmt.setString(3, lookupValue.toUpperCase());
+                stmt.setString(3, lookupValue);
             } else {
                 stmt = conn.prepareStatement("SELECT da.entry_id FROM directory_leaf_attrs da, directory_leaf d" +
                         " WHERE d.parent_id = ? AND d.entry_type = ? AND da.entry_id = d.entry_id" +
@@ -576,8 +635,8 @@ public class DbOfflineDirectory {
                         " GROUP BY da.entry_id");
                 stmt.setInt(1, getIdForParent(conn, parent));
                 stmt.setString(2, etype.toString());
-                stmt.setString(3, lookupKey.toUpperCase());
-                stmt.setString(4, lookupValue.toUpperCase());
+                stmt.setString(3, lookupKey);
+                stmt.setString(4, lookupValue);
             }
             rs = stmt.executeQuery();
             if (rs.next())
@@ -586,8 +645,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("fetching id for " + etype + ": " + parent.getName() + '/' + lookupValue, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
         }
     }
 
@@ -595,12 +654,12 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             stmt = conn.prepareStatement("DELETE FROM directory" +
                     " WHERE entry_type = ? AND " + Db.equalsSTRING("zimbra_id"));
             stmt.setString(1, etype.toString());
-            stmt.setString(2, zimbraId.toUpperCase());
+            stmt.setString(2, zimbraId);
             synchronized(lock) {
                 stmt.executeUpdate();
                 conn.commit();
@@ -608,8 +667,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("deleting " + etype + ": " + zimbraId, e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
 
@@ -617,7 +676,7 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
             stmt = conn.prepareStatement("DELETE FROM directory WHERE entry_id = ?");
             stmt.setInt(1, entryId);
             synchronized(lock) {
@@ -627,8 +686,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("deleting entry " + Integer.toString(entryId), e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
         
@@ -636,7 +695,7 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
 
             int parentId = getIdForParent(conn, parent);
 
@@ -644,7 +703,7 @@ public class DbOfflineDirectory {
                     " WHERE parent_id = ? AND entry_type = ? AND " + Db.equalsSTRING("zimbra_id"));
             stmt.setInt(1, parentId);
             stmt.setString(2, etype.toString());
-            stmt.setString(3, id.toUpperCase());
+            stmt.setString(3, id);
             int count;
             
             synchronized(lock) {
@@ -669,8 +728,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("deleting " + etype + ": " + parent.getName() + '/' + id, e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
     
@@ -678,7 +737,7 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
             int parentId = getIdForParent(conn, parent);
             stmt = conn.prepareStatement("DELETE FROM directory_leaf WHERE parent_id = ? AND entry_id = ?");
             stmt.setInt(1, parentId);
@@ -690,8 +749,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("deleting entry " + parent.getName() + '/' + Integer.toString(entryId), e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
     
@@ -711,7 +770,7 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
             stmt = conn.prepareStatement("INSERT INTO directory_granter (granter_name, granter_id, grantee_id) VALUES (?, ?, ?)");
             stmt.setString(1, name);
             stmt.setString(2, id);
@@ -722,8 +781,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("creating granter entry: " + name + ", " + id + ", " + granteeId, e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }
     }
     
@@ -732,10 +791,10 @@ public class DbOfflineDirectory {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
             stmt = conn.prepareStatement("SELECT granter_name, granter_id, grantee_id FROM directory_granter" +
                 " WHERE " + Db.equalsSTRING("granter_name") + " AND grantee_id = ?");
-            stmt.setString(1, name.toUpperCase());
+            stmt.setString(1, name);
             stmt.setString(2, granteeId);
             
             rs = stmt.executeQuery();
@@ -743,9 +802,9 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("reading granter: " + name + ", " + granteeId, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }         
     }
     
@@ -755,10 +814,10 @@ public class DbOfflineDirectory {
         ResultSet rs = null;
         String column = by.equalsIgnoreCase("id") ? "granter_id" : "granter_name";
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
             stmt = conn.prepareStatement("SELECT granter_name, granter_id, grantee_id FROM directory_granter" +
                 " WHERE " + Db.likeSTRING(column));
-            stmt.setString(1, pattern.toUpperCase());
+            stmt.setString(1, pattern);
             
             rs = stmt.executeQuery();            
             List<GranterEntry> ents = new ArrayList<GranterEntry>();
@@ -768,9 +827,9 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("searching granters: " + by + " like " + pattern, e);
         } finally {
-            DbPool.closeResults(rs);
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeResults(rs);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }        
     }
     
@@ -778,7 +837,7 @@ public class DbOfflineDirectory {
         Connection conn = null;
         PreparedStatement stmt = null;
         try {
-            conn = DbPool.getConnection();
+            conn = OfflineDbPool.getInstance().getConnection();
             stmt = conn.prepareStatement("DELETE FROM directory_granter WHERE grantee_id = ?");
             stmt.setString(1, granteeId);
             
@@ -787,8 +846,8 @@ public class DbOfflineDirectory {
         } catch (SQLException e) {
             throw ServiceException.FAILURE("deleting granter by grantee " + granteeId + ": " + e.getMessage(), e);
         } finally {
-            DbPool.closeStatement(stmt);
-            DbPool.quietClose(conn);
+            OfflineDbPool.getInstance().closeStatement(stmt);
+            OfflineDbPool.getInstance().quietClose(conn);
         }        
     }
 }

@@ -153,7 +153,10 @@ function(ev) {
 		result = ZmAutocompleteListView._onKeyDown(ev);
 	}
 	var element = DwtUiEvent.getTargetWithProp(ev, "_aclvId");
-	var aclv = DwtControl.ALL_BY_ID[element._aclvId]
+	var aclv = element && DwtControl.ALL_BY_ID[element._aclvId];
+	if (aclv) {
+		aclv._inputLength = element.value.length;
+	}
 	if (aclv && aclv._keyDownCallback) {
 		var cbResult = aclv._keyDownCallback.run(ev, aclv, result);
 		result = (cbResult === true || cbResult === false) ? cbResult : result;
@@ -181,7 +184,7 @@ function(ev) {
 		}
 	}
 	var element = DwtUiEvent.getTargetWithProp(ev, "_aclvId");
-	var aclv = DwtControl.ALL_BY_ID[element._aclvId]
+	var aclv = element && DwtControl.ALL_BY_ID[element._aclvId];
 	if (aclv && aclv._keyPressCallback) {
 		var cbResult = aclv._keyPressCallback.run(ev, aclv);
 		result = (cbResult === true || cbResult === false) ? cbResult : result;
@@ -206,7 +209,7 @@ function(ev) {
 	}
 	var result = ZmAutocompleteListView._onKeyUp(ev);
 	var element = DwtUiEvent.getTargetWithProp(ev, "_aclvId");
-	var aclv = DwtControl.ALL_BY_ID[element._aclvId]
+	var aclv = element && DwtControl.ALL_BY_ID[element._aclvId];
 	if (aclv && aclv._keyUpCallback) {
 		var cbResult = aclv._keyUpCallback.run(ev, aclv, result);
 		result = (cbResult === true || cbResult === false) ? cbResult : result;
@@ -272,6 +275,7 @@ function(ev) {
 
 	var value = element.value;
 	DBG.println(AjxDebug.DBG3, ev.type + " event, key = " + key + ", value = " + value);
+	ev.inputLengthChanged = (value.length != aclv._inputLength);
 
 	// reset timer on any address field key activity
 	if (aclv._acActionId != -1 && !DwtKeyMap.IS_MODIFIER[key]) {
@@ -302,7 +306,7 @@ function(ev) {
 		return ZmAutocompleteListView._echoKey(true, ev);
 	}
 
-	if (AjxStringUtil.isPrintKey(key) || (key == 3 || key == 9 || key == 13)) {
+	if (ev.inputLengthChanged || (key == 3 || key == 9 || key == 13)) {
 		aclv._numChars++;
 	}
 		
@@ -326,7 +330,7 @@ function(ev) {
 	}
 
 	// skip if it's some weird character
-	if (!AjxStringUtil.isPrintKey(key) && (key != 3 && key != 13 && key != 9 && key != 8 && key != 46)) {
+	if (!ev.inputLengthChanged && (key != 3 && key != 13 && key != 9 && key != 8 && key != 46)) {
 		return ZmAutocompleteListView._echoKey(true, ev);
 	}
 
@@ -887,7 +891,7 @@ function() {
 
 ZmAutocompleteListView.prototype._showForgetLink =
 function(rowId, show) {
-	var forgetText = this._rowForgetHash[rowId];
+	var forgetText = this._rowForgetHash && this._rowForgetHash[rowId];
 	if (forgetText) {
 		forgetText.setClassName(!show ? this._hideForgetTextClass :
 			this._canForget[rowId] ? this._showForgetTextClass : this._hideSelForgetTextClass);
@@ -1014,11 +1018,13 @@ function() {
 			table.deleteRow(i);
 		}
 	}
-	var forgetTextIds = AjxUtil.values(this._rowForgetHash);
-	for (var i = 0, len = forgetTextIds.length; i < len; i++) {
-		var forgetTextId = forgetTextIds[i];
-		DwtControl.ALL_BY_ID[forgetTextId] = null;
-		delete DwtControl.ALL_BY_ID[forgetTextId];
+	if (this._rowForgetHash) {
+		var forgetTextIds = AjxUtil.values(this._rowForgetHash);
+		for (var i = 0, len = forgetTextIds.length; i < len; i++) {
+			var forgetTextId = forgetTextIds[i];
+			DwtControl.ALL_BY_ID[forgetTextId] = null;
+			delete DwtControl.ALL_BY_ID[forgetTextId];
+		}
 	}
 };
 

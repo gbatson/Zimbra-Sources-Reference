@@ -1,5 +1,8 @@
 <%@ page session="false" %>
 <%@ page import='java.util.Locale' %>
+<%@ page import="java.util.regex.Pattern" %>
+<%@ page import="java.util.regex.Matcher" %>
+<%@ page import="com.zimbra.cs.taglib.bean.BeanUtils" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <%@ taglib prefix="fmt" uri="com.zimbra.i18n" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %><%
@@ -77,6 +80,7 @@
 		localeId = request.getParameter("localeId");
 	}
 	if (localeId != null) {
+		localeId = BeanUtils.cook(localeId);
         int index = localeId.indexOf("_");
         if (index == -1) {
 			locale = new Locale(localeId);
@@ -113,7 +117,7 @@
 	appCurrentSkin = "${skin}";
 	// NOTE: Force zimlets to load individually to avoid aggregation!
 	appExtension   = "js";
-	appDevMode     = true;
+	window.appDevMode     = true;
     <c:if test="${isOfflineMode}">
         isTinyMCE      = true;
     </c:if>
@@ -130,8 +134,15 @@
     String pprefix = isDevMode ? "public/jsp" : "js";
     String psuffix = isDevMode ? ".jsp" : "_all.js";
 
-    String[] pnames = packages.split(",");
-    for (String pname : pnames) {
+      Pattern p = Pattern.compile("\\.|\\/|\\\\");
+      String[] pnames = packages.split(",");
+      for (String pname : pnames) {
+           //bug: 52944
+           // Security: Avoid including external pages inline
+           Matcher matcher = p.matcher(pname);
+           if(matcher.find()){
+               continue;
+           }
         String pageurl = "/"+pprefix+"/"+pname+psuffix;
 		pageContext.setAttribute("pageurl", pageurl);
 		if (isDevMode) { %>

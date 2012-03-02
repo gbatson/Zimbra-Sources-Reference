@@ -74,7 +74,7 @@ public class AddressBookBugTests extends CommonTest {
 	 * @throws Exception
 	 * @author Girish
 	 */
-	@Test(dataProvider = "ABDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "ABDataProvider", groups = { "smoke", "full"}, retryAnalyzer = RetryFailedTests.class)
 	public void checkAutoFillForConatctWorkAddr_41144(String cnLastName,
 			String cnMiddleName, String cnFirstName, String email)
 			throws Exception {
@@ -91,18 +91,18 @@ public class AddressBookBugTests extends CommonTest {
 				cnFirstName);
 		Thread.sleep(1000);
 		selenium.clickAt("id=editcontactform_EMAIL_0_add", "");
-		Thread.sleep(2000);
+		Thread.sleep(2000);     
 		obj.zEditField.zActivateAndType(page.zABCompose.zWorkEmail1EditField,
 				email);
 		obj.zButton.zClick(localize(locator.save), "2");
 		Thread.sleep(1500);
 		obj.zContactListItem.zExists(cnLastName);
-		zGoToApplication("Mail");
+		zGoToApplication("Mail");   
 		page.zComposeView.zNavigateToMailCompose();
 		System.out.println(email);
 		if (email.contains("@")) {
 			email = email.substring(0, email.indexOf('@'));
-		}
+		} 
 		selenium.typeKeys("id=zv__COMPOSE1_to_control", email);
 		selenium.keyDown("id=zv__COMPOSE1_to_control", "\\13");
 		selenium.keyUp("id=zv__COMPOSE1_to_control", "\\13");
@@ -110,7 +110,7 @@ public class AddressBookBugTests extends CommonTest {
 		Assert
 				.assertTrue(
 						selenium
-								.isElementPresent("xpath=//div[contains(@id,'DWT') and contains(@style,'display: block') and @class='ZmAutocompleteListView']/div"),
+								.isElementPresent("xpath=//div[contains(@id,'DWT') and contains(@style,'display: block') and @class='ZmAutocompleteListView']"),
 						"Auto complete not showing");
 
 		needReset = false;

@@ -77,7 +77,7 @@ public class CreateContactTests extends CommonTest {
 		needReset = true;
 	}
 
-	@Test(dataProvider = "ABDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "ABDataProvider", groups = { "smoke", "full","debug" }, retryAnalyzer = RetryFailedTests.class)
 	public void addRemoveContactPhotoAndVerify(String cnLastName,
 			String cnFirstname, String filename) throws Exception {
 		if (isExecutionARetry)
@@ -98,7 +98,7 @@ public class CreateContactTests extends CommonTest {
 						selenium
 								.isElementPresent("xpath=//div[contains(@id,'editcontactform_REMOVE_IMAGE_row') and contains(@style,'display: none')]"),
 						"View/Remove image link exist even photo is not uploaded");
-
+  
 		obj.zEditField.zActivateAndType(page.zABCompose.zLastEditField,
 				cnLastName);
 		obj.zEditField.zActivateAndType(page.zABCompose.zFirstEditField,
@@ -107,7 +107,9 @@ public class CreateContactTests extends CommonTest {
 		Thread.sleep(2000);
 		File f = new File("src/java/projects/zcs/data/" + filename);
 		String path = f.getAbsolutePath();
-		obj.zBrowseField.zTypeInDlgWithKeyboard(localize(locator.uploadImage),
+		
+		//obj.zBrowseField.zTypeInDlgWithKeyboard(localize(locator.uploadImage),
+		obj.zBrowseField.zTypeInDlgWithKeyboard(localize(locator.fileLabel),
 				path, "1");
 		obj.zButton.zClickInDlg(localize(locator.ok));
 		Thread.sleep(2000);
@@ -122,8 +124,11 @@ public class CreateContactTests extends CommonTest {
 			}
 		}
 		obj.zButton.zClick(page.zABCompose.zSaveContactMenuIconBtn);
+		Thread.sleep(1000);
 		obj.zContactListItem.zClick(cnLastName);
+		Thread.sleep(1000);
 		obj.zButton.zClick(page.zABCompose.zEditContactIconBtn);
+		Thread.sleep(1000);
 		if (config.getString("browser").equals("IE")) {
 			Thread.sleep(2500);
 		} else {
@@ -137,23 +142,30 @@ public class CreateContactTests extends CommonTest {
 
 		// Remove photo and re verify
 		selenium.click("id=editcontactform_REMOVE_IMAGE");
+		Thread.sleep(1000);
 		obj.zButton.zClick(page.zABCompose.zSaveContactMenuIconBtn);
+		Thread.sleep(1000);
 		obj.zContactListItem.zClick(cnLastName);
+		Thread.sleep(1000);
 		obj.zButton.zClick(page.zABCompose.zEditContactIconBtn);
+		Thread.sleep(1000);
 		if (config.getString("browser").equals("IE")) {
 			Thread.sleep(2500);
 		} else {
 			Thread.sleep(2000);
 		}
 		viewLinkPresent = selenium
-				.isElementPresent("id=editcontactform_VIEW_IMAGE");
+		        .isVisible("id=editcontactform_VIEW_IMAGE");
+				//.isElementPresent("id=editcontactform_VIEW_IMAGE");
 		removeLinkPresent = selenium
-				.isElementPresent("id=editcontactform_REMOVE_IMAGE");
+		        .isVisible("id=editcontactform_REMOVE_IMAGE");
+				//.isElementPresent("id=editcontactform_REMOVE_IMAGE");
 		assertReport("false", viewLinkPresent.toString(),
 				"View link exist after uploading contact photo");
 		assertReport("false", removeLinkPresent.toString(),
 				"Remove link exist after uploading contact photo");
-
+        
+		
 		needReset = false;
 	}
 

@@ -40,7 +40,7 @@ public class ZAttrConfig extends Entry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 6.0.2_BETA1_1111 jylee 20101213-1102 */
+    /* build: 6.0.2_BETA1_1111 jylee 20110211-1747 */
 
     /**
      * RFC2256: descriptive information
@@ -539,6 +539,145 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetAccountExtraObjectClass(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraAccountExtraObjectClass, "");
+        return attrs;
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @return zimbraAdminAccessControlMech, or ZAttrProvisioning.AdminAccessControlMech.acl if unset and/or has invalid value
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public ZAttrProvisioning.AdminAccessControlMech getAdminAccessControlMech() {
+        try { String v = getAttr(Provisioning.A_zimbraAdminAccessControlMech); return v == null ? ZAttrProvisioning.AdminAccessControlMech.acl : ZAttrProvisioning.AdminAccessControlMech.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.AdminAccessControlMech.acl; }
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @return zimbraAdminAccessControlMech, or "acl" if unset
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public String getAdminAccessControlMechAsString() {
+        return getAttr(Provisioning.A_zimbraAdminAccessControlMech, "acl");
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @param zimbraAdminAccessControlMech new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public void setAdminAccessControlMech(ZAttrProvisioning.AdminAccessControlMech zimbraAdminAccessControlMech) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAdminAccessControlMech, zimbraAdminAccessControlMech.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @param zimbraAdminAccessControlMech new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public Map<String,Object> setAdminAccessControlMech(ZAttrProvisioning.AdminAccessControlMech zimbraAdminAccessControlMech, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAdminAccessControlMech, zimbraAdminAccessControlMech.toString());
+        return attrs;
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @param zimbraAdminAccessControlMech new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public void setAdminAccessControlMechAsString(String zimbraAdminAccessControlMech) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAdminAccessControlMech, zimbraAdminAccessControlMech);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @param zimbraAdminAccessControlMech new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public Map<String,Object> setAdminAccessControlMechAsString(String zimbraAdminAccessControlMech, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAdminAccessControlMech, zimbraAdminAccessControlMech);
+        return attrs;
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public void unsetAdminAccessControlMech() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAdminAccessControlMech, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * access control mechanism for admin access acl: ACL based access
+     * control (a.k.a. delegated admin). global: allows only global admins.
+     *
+     * <p>Valid values: [acl, global]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.9
+     */
+    @ZAttr(id=1101)
+    public Map<String,Object> unsetAdminAccessControlMech(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraAdminAccessControlMech, "");
         return attrs;
     }
 
@@ -7472,6 +7611,145 @@ public class ZAttrConfig extends Entry {
     }
 
     /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @return zimbraFreebusyExchangeServerType, or ZAttrProvisioning.FreebusyExchangeServerType.webdav if unset and/or has invalid value
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public ZAttrProvisioning.FreebusyExchangeServerType getFreebusyExchangeServerType() {
+        try { String v = getAttr(Provisioning.A_zimbraFreebusyExchangeServerType); return v == null ? ZAttrProvisioning.FreebusyExchangeServerType.webdav : ZAttrProvisioning.FreebusyExchangeServerType.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return ZAttrProvisioning.FreebusyExchangeServerType.webdav; }
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @return zimbraFreebusyExchangeServerType, or "webdav" if unset
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public String getFreebusyExchangeServerTypeAsString() {
+        return getAttr(Provisioning.A_zimbraFreebusyExchangeServerType, "webdav");
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @param zimbraFreebusyExchangeServerType new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public void setFreebusyExchangeServerType(ZAttrProvisioning.FreebusyExchangeServerType zimbraFreebusyExchangeServerType) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @param zimbraFreebusyExchangeServerType new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public Map<String,Object> setFreebusyExchangeServerType(ZAttrProvisioning.FreebusyExchangeServerType zimbraFreebusyExchangeServerType, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType.toString());
+        return attrs;
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @param zimbraFreebusyExchangeServerType new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public void setFreebusyExchangeServerTypeAsString(String zimbraFreebusyExchangeServerType) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @param zimbraFreebusyExchangeServerType new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public Map<String,Object> setFreebusyExchangeServerTypeAsString(String zimbraFreebusyExchangeServerType, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, zimbraFreebusyExchangeServerType);
+        return attrs;
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public void unsetFreebusyExchangeServerType() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Can be set to either webdav for Exchange 2007 or older, or ews for
+     * 2010 and newer
+     *
+     * <p>Valid values: [ews, webdav]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 6.0.11
+     */
+    @ZAttr(id=1174)
+    public Map<String,Object> unsetFreebusyExchangeServerType(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraFreebusyExchangeServerType, "");
+        return attrs;
+    }
+
+    /**
      * URL to Exchange server for free/busy lookup and propagation
      *
      * @return zimbraFreebusyExchangeURL, or null if unset
@@ -8473,6 +8751,83 @@ public class ZAttrConfig extends Entry {
     public Map<String,Object> unsetGalSyncLdapPageSize(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraGalSyncLdapPageSize, "");
+        return attrs;
+    }
+
+    /**
+     * Maximum number of concurrent GAL sync requests allowed on the system /
+     * domain.
+     *
+     * @return zimbraGalSyncMaxConcurrentClients, or 2 if unset
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1154)
+    public int getGalSyncMaxConcurrentClients() {
+        return getIntAttr(Provisioning.A_zimbraGalSyncMaxConcurrentClients, 2);
+    }
+
+    /**
+     * Maximum number of concurrent GAL sync requests allowed on the system /
+     * domain.
+     *
+     * @param zimbraGalSyncMaxConcurrentClients new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1154)
+    public void setGalSyncMaxConcurrentClients(int zimbraGalSyncMaxConcurrentClients) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalSyncMaxConcurrentClients, Integer.toString(zimbraGalSyncMaxConcurrentClients));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of concurrent GAL sync requests allowed on the system /
+     * domain.
+     *
+     * @param zimbraGalSyncMaxConcurrentClients new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1154)
+    public Map<String,Object> setGalSyncMaxConcurrentClients(int zimbraGalSyncMaxConcurrentClients, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalSyncMaxConcurrentClients, Integer.toString(zimbraGalSyncMaxConcurrentClients));
+        return attrs;
+    }
+
+    /**
+     * Maximum number of concurrent GAL sync requests allowed on the system /
+     * domain.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1154)
+    public void unsetGalSyncMaxConcurrentClients() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalSyncMaxConcurrentClients, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of concurrent GAL sync requests allowed on the system /
+     * domain.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.0.0
+     */
+    @ZAttr(id=1154)
+    public Map<String,Object> unsetGalSyncMaxConcurrentClients(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraGalSyncMaxConcurrentClients, "");
         return attrs;
     }
 

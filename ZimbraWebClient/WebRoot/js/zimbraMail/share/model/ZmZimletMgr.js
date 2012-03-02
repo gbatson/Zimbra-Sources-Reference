@@ -501,7 +501,7 @@ function(zimletArray, zimletNames, isJS) {
 
 
 		// include messages
-		if (appDevMode && isJS) {
+		if (window.appDevMode && isJS) {
 			includes.push([appContextPath, "/res/", zimlet.name, ".js", query].join(""));
 		}
 
@@ -514,25 +514,20 @@ function(zimletArray, zimletNames, isJS) {
 				includes.push(fullurl);
 				continue;
 			}
-			if (appDevMode || isDevZimlet) {
+			if (window.appDevMode || isDevZimlet) {
 				includes.push([baseUrl, url, query].join(""));
 			}
 		}
 	}
 
 	// add link to aggregated files
-	if (!appDevMode) {
-		var cosId = null;
-		if (appCtxt.getSettings() && appCtxt.getSettings().getInfoResponse && appCtxt.getSettings().getInfoResponse.cos) {
-			cosId = appCtxt.getSettings().getInfoResponse.cos.id;
-		}
+	if (!window.appDevMode) {
 		var extension = (!AjxEnv.isIE || (!AjxEnv.isIE6 && AjxEnv.isIE6up)) ? appExtension : "";
 		includes.unshift([
 			"/service/zimlet/res/Zimlets-nodev_all",
 			(isJS ? (".js" + extension) : ".css"),
 			(languageId ? "?language=" + languageId : ""),
-			(countryId ? "&country=" + countryId : ""),
-			(cosId ? "&cosId=" + cosId : "")  // For an explanation of why we add cosId here, please see bug #58979
+			(countryId ? "&country=" + countryId : "")
 		].join(""));
 	}
 

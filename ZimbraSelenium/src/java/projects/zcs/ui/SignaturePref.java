@@ -97,7 +97,7 @@ public class SignaturePref extends CommonTest {
 		Thread.sleep(2000);
 		String actualSignature = obj.zEditor.zGetInnerText("");
 		Assert.assertTrue(actualSignature.contains(signatureBody),
-				"Signature not included in mail body");
+				signatureBody + " not included in " + actualSignature );
 	}
 
 	public static void zVerifySignaturePlaceInText(String placeOfSignature,

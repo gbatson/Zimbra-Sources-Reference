@@ -523,8 +523,6 @@ function(n, types,excludeClosed) {
         for (var i = 0 ; i < types.length; i ++) {
             if (types[i] == "domains") {
                 query.push ("(zimbraDomainName=*"+n+"*)") ;
-	    } else if(types[i] == ZaSearch.ALIASES) {
-		query.push("(zimbraDomainName=*" + n + "*)(uid=*"+n+"*)");
             } else {
             	if(!addedAddrFields) {
             		query.push("(mail=*"+n+"*)(cn=*"+n+"*)(sn=*"+n+"*)(gn=*"+n+"*)(displayName=*"+n+"*)") ;
@@ -779,7 +777,32 @@ ZaSearch.loadPredefinedSearch =
 function () {
     if (ZaSearchField.canViewSavedSearch()) {
         var currentSavedSearches = ZaSearch.getSavedSearches().Body.GetAdminSavedSearchesResponse.search;
-
+       
+        /*
+         * If we get saved search from server and have write-permission, we will         * replace all the "zimbraIsDomainAdminAccount" with "zimbraIsDelegatedA         * dminAccount" to update the query string for version update      
+         */ 
+        if ( currentSavedSearches && ( ZaSearchField.canSaveSearch() )){
+            var modifiedSearches = [];
+ 
+            for (var i = 0; i < currentSavedSearches.length; i++ ){
+               var currentName = currentSavedSearches[i].name;
+               var currentContent = currentSavedSearches[i]._content;
+    
+               if (currentContent.search(/zimbraIsDomainAdminAccount/) != -1){
+             
+                  currentContent = currentContent.replace(/zimbraIsDomainAdminAccount/g , "zimbraIsDelegatedAdminAccount"); //'g' is used for global replace
+                  modifiedSearches.push ({
+                      name  : currentName,
+                      query : currentContent
+                  });
+               }
+            } 
+            
+            if ( modifiedSearches.length != 0 ){
+               ZaSearch.modifySavedSearches (modifiedSearches);
+            }   
+        }
+        
         if ((! currentSavedSearches) && (ZaSearchField.canSaveSearch())){//load the predefined searches
             //if (AjxEnv.hasFirebug) console.log("Load the predefined saved searches ...") ;
             var savedSearchArr = [] ;

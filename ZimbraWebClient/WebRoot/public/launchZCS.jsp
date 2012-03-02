@@ -84,6 +84,7 @@
 		}
 		request.setAttribute("packages", "dev");
 	}
+    boolean isScriptErrorOn = getParameter(request, "scripterrors", "0").equals("1");
 	String debug = getParameter(request, "debug", getAttribute(request, "debug", null));
 	String extraPackages = getParameter(request, "packages", getAttribute(request, "packages", null));
 	String startApp = getParameter(request, "app", "");
@@ -125,6 +126,7 @@
 	pageContext.setAttribute("app", startApp);
 	pageContext.setAttribute("locale", locale);
 	pageContext.setAttribute("isDevMode", isDev);
+    pageContext.setAttribute("isScriptErrorOn", isScriptErrorOn);
 	pageContext.setAttribute("isOfflineMode", offlineMode != null && offlineMode.equals("true"));
 	pageContext.setAttribute("isProdMode", !prodMode.equals(""));
 	pageContext.setAttribute("isDebug", isSkinDebugMode || isDevMode);
@@ -153,7 +155,8 @@
 	appContextPath = "${zm:jsEncode(contextPath)}";
 	appCurrentSkin = "${zm:jsEncode(skin)}";
 	appExtension   = "${zm:jsEncode(ext)}";
-	appDevMode     = ${isDevMode};
+	window.appDevMode     = ${isDevMode};
+    window.isScriptErrorOn   = ${isScriptErrorOn};
 </script>
 <noscript>
 <meta http-equiv="Refresh" content="0;url=public/noscript.jsp" >

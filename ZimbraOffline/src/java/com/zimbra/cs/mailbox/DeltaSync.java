@@ -82,7 +82,7 @@ public class DeltaSync {
         // keep delta sync'ing until the server tells us the delta sync is complete ("more=0")
         do {
             Element request = new Element.XMLElement(MailConstants.SYNC_REQUEST).addAttribute(MailConstants.A_TOKEN, oldToken).addAttribute(MailConstants.A_TYPED_DELETES, true);
-            response = ombx.sendRequest(request);
+            response = ombx.sendRequestWithNotification(request);
             newToken = response.getAttribute(MailConstants.A_TOKEN);
     
             OfflineLog.offline.debug("starting delta sync [token " + oldToken + ']');
@@ -529,31 +529,42 @@ public class DeltaSync {
         }
 
         Folder conflict = parent.findSubfolder(name);
-        if (conflict != null && conflict.getId() != id) {
-            int conflict_mask = ombx.getChangeMask(sContext, conflict.getId(), conflict.getType());
-
-            String uuid = '{' + UUID.randomUUID().toString() + '}', newName;
-            if (name.length() + uuid.length() > MailItem.MAX_NAME_LENGTH)
-                newName = name.substring(0, MailItem.MAX_NAME_LENGTH - uuid.length()) + uuid;
-            else
-                newName = name + uuid;
-
-            if (local == null && (conflict_mask & Change.MODIFIED_CONFLICT) != 0 && isCompatibleFolder(conflict, elt, type)) {
-                // if the new and existing folders are identical and being created, try to merge them
-                ombx.renumberItem(sContext, conflict.getId(), type, id);
-                ombx.setChangeMask(sContext, id, type, conflict_mask & ~Change.MODIFIED_CONFLICT);
-                return false;
-            } else if (!conflict.isMutable() || (conflict_mask & Change.MODIFIED_NAME) != 0) {
-                // either the local user also renamed the folder or the folder's immutable, so the local client wins
-                name = newName;
-                elt.addAttribute(MailConstants.A_NAME, name).addAttribute(InitialSync.A_RELOCATED, true);
+        if (conflict != null) {
+            if (conflict.getId() != id) {
+                int conflict_mask = ombx.getChangeMask(sContext, conflict.getId(), conflict.getType());
+    
+                String uuid = '{' + UUID.randomUUID().toString() + '}', newName;
+                if (name.length() + uuid.length() > MailItem.MAX_NAME_LENGTH)
+                    newName = name.substring(0, MailItem.MAX_NAME_LENGTH - uuid.length()) + uuid;
+                else
+                    newName = name + uuid;
+    
+                if (local == null && (conflict_mask & Change.MODIFIED_CONFLICT) != 0 && isCompatibleFolder(conflict, elt, type)) {
+                    // if the new and existing folders are identical and being created, try to merge them
+                    ombx.renumberItem(sContext, conflict.getId(), type, id);
+                    ombx.setChangeMask(sContext, id, type, conflict_mask & ~Change.MODIFIED_CONFLICT);
+                    return false;
+                } else if (!conflict.isMutable() || (conflict_mask & Change.MODIFIED_NAME) != 0) {
+                    // either the local user also renamed the folder or the folder's immutable, so the local client wins
+                    name = newName;
+                    elt.addAttribute(MailConstants.A_NAME, name).addAttribute(InitialSync.A_RELOCATED, true);
+                } else {
+                    // if there's a folder naming conflict within the target folder, usually push the local folder out of the way
+                    ombx.rename(null, conflict.getId(), conflict.getType(), newName);
+                    if ((conflict_mask & Change.MODIFIED_NAME) == 0)
+                        mSyncRenames.add(conflict.getId());
+                }
             } else {
-                // if there's a folder naming conflict within the target folder, usually push the local folder out of the way
-                ombx.rename(null, conflict.getId(), conflict.getType(), newName);
-                if ((conflict_mask & Change.MODIFIED_NAME) == 0)
-                    mSyncRenames.add(conflict.getId());
+                String viewStr = elt.getAttribute(MailConstants.A_DEFAULT_VIEW, null);
+                if (viewStr != null) {
+                    byte defaultView = MailItem.getTypeForName(viewStr);
+                    if (conflict.getDefaultView() != defaultView) {
+                        ombx.syncFolderDefaultView(sContext, id, type, defaultView);
+                    }
+                }
             }
         }
+        
 
         // if conflicts have forced us to deviate from the specified sync, update the local store such that these changes are pushed during the next sync
         if (local != null && elt.getAttributeBool(InitialSync.A_RELOCATED, false))
@@ -695,6 +706,9 @@ public class DeltaSync {
 
     static Tag getTag(Mailbox mbox, int id) throws ServiceException {
         try {
+            if (mbox instanceof ZcsMailbox) {
+                return ((ZcsMailbox) mbox).getTagById(sContext, id, false);
+            }
             return mbox.getTagById(sContext, id);
         } catch (MailServiceException.NoSuchItemException nsie) {
             return null;
@@ -766,41 +780,45 @@ public class DeltaSync {
     }
 
     void syncMessage(Element elt, int folderId, byte type) throws ServiceException {
-   		int id = (int) elt.getAttributeLong(MailConstants.A_ID);
-    	try {
-	        Message msg = null;
-	        try {
-	            // make sure that the message we're delta-syncing actually exists
-	            msg = ombx.getMessageById(sContext, id);
-	        } catch (MailServiceException.NoSuchItemException nsie) {
-	            // if it's been locally deleted but not pushed to the server yet, just return and let the delete happen later
-	            if (!ombx.isPendingDelete(sContext, id, type))
-	                getInitialSync().syncMessage(id, folderId, type);
-	            return;
-	        }
-	
-	        byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
-	        int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null));
-	        long tags = Tag.tagsToBitmask(elt.getAttribute(MailConstants.A_TAGS, null));
-	        int convId = (int) elt.getAttributeLong(MailConstants.A_CONV_ID);
-	
-	        int date = (int) (elt.getAttributeLong(MailConstants.A_DATE) / 1000);
-	
-	        synchronized (ombx) {
-	            ombx.setConversationId(sContext, id, convId <= 0 ? -id : convId);
-	            ombx.syncMetadata(sContext, id, type, folderId, flags, tags, color);
-	            ombx.syncDate(sContext, id, type, date);
-	        }
-	        OfflineLog.offline.debug("delta: updated " + MailItem.getNameForType(type) + " (" + id + "): " + msg.getSubject());
-    	} catch (Exception x) {
-    		if (x instanceof ServiceException && ((ServiceException)x).getCode().equals(MailServiceException.NO_SUCH_FOLDER)) {
-    			//message could be moved during
-    			OfflineLog.offline.debug("delta: moved" + MailItem.getNameForType(type) + " (" + id + ")");
-    		} else {
-    			SyncExceptionHandler.checkRecoverableException("DeltaSync.syncMessage", x);
-    			SyncExceptionHandler.syncMessageFailed(ombx, id, x);
-    		}
-    	}
+        int id = (int) elt.getAttributeLong(MailConstants.A_ID);
+        try {
+            Message msg = null;
+            try {
+                // make sure that the message we're delta-syncing actually exists
+                msg = ombx.getMessageById(sContext, id);
+            } catch (MailServiceException.NoSuchItemException nsie) {
+                // if it's been locally deleted but not pushed to the server yet, just return and let the delete happen later
+                if (!ombx.isPendingDelete(sContext, id, type))
+                    getInitialSync().syncMessage(id, folderId, type);
+                return;
+            }
+
+            byte color = (byte) elt.getAttributeLong(MailConstants.A_COLOR, MailItem.DEFAULT_COLOR);
+            int flags = Flag.flagsToBitmask(elt.getAttribute(MailConstants.A_FLAGS, null));
+            long tags = Tag.tagsToBitmask(elt.getAttribute(MailConstants.A_TAGS, null));
+            int convId = (int) elt.getAttributeLong(MailConstants.A_CONV_ID);
+        
+            int date = (int) (elt.getAttributeLong(MailConstants.A_DATE) / 1000);
+            synchronized (ombx) {
+                try {
+                    ombx.setConversationId(sContext, id, convId <= 0 ? -id : convId);
+                    ombx.syncMetadata(sContext, id, type, folderId, flags, tags, color);
+                    ombx.syncDate(sContext, id, type, date);
+                } catch (MailServiceException.NoSuchItemException nsie) {
+                    OfflineLog.offline.warn("NoSuchItemException in delta sync. Item ["+id+"] must have been deleted while sync was in progress");
+                    return;
+                }
+            }
+            OfflineLog.offline.debug("delta: updated " + MailItem.getNameForType(type) + " (" + id + "): " + msg.getSubject());
+        } catch (Exception x) {
+            if (x instanceof ServiceException && ((ServiceException)x).getCode().equals(MailServiceException.NO_SUCH_FOLDER)) {
+                //message could be moved during
+                OfflineLog.offline.debug("delta: moved" + MailItem.getNameForType(type) + " (" + id + ")");
+            } else {
+                SyncExceptionHandler.checkRecoverableException("DeltaSync.syncMessage", x);
+                SyncExceptionHandler.syncMessageFailed(ombx, id, x);
+            }
+        }
     }
     
     void syncDocuments(List<Integer> documents) throws ServiceException {

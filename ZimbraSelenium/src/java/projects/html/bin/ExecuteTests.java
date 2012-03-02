@@ -22,6 +22,7 @@ import java.util.Map;
 import org.apache.commons.configuration.*;
 import org.testng.TestNG;
 import org.testng.xml.XmlClass;
+import org.testng.xml.XmlInclude;
 import org.testng.xml.XmlSuite;
 import org.testng.xml.XmlTest;
 
@@ -176,9 +177,14 @@ public class ExecuteTests {
 				testName = METHOD_OPT;
 				test.setName(test.getName() + " " + testName);
 				String[] methodnames = ((String) margs.get(METHOD_OPT)).split(",");
-				List<String> methods = Arrays.asList(methodnames);			
+				List<String> str_methods = Arrays.asList(methodnames);
+				List<XmlInclude> xml_methods = new ArrayList<XmlInclude>();;
+				for (String s : str_methods) {
+					XmlInclude inc = new XmlInclude(s);
+					xml_methods.add(inc);		
+				}									
 				for (XmlClass xc : lxc) {
-					xc.setIncludedMethods(methods);				
+					xc.setIncludedMethods(xml_methods);				
 				}	
 			}else{
 				usage();
@@ -302,7 +308,7 @@ public class ExecuteTests {
 		suites.add(suite);
 		System.out.println(suite.toXml());
 		SummaryReporter createSummary = new SummaryReporter(conf, appType);
-		TestStatusReporter testReporter = new TestStatusReporter();
+		TestStatusReporter testReporter = new TestStatusReporter(conf, appType);
 		TestNG tng = new TestNG();
 		tng.setXmlSuites(suites);
 		tng.addListener(createSummary);

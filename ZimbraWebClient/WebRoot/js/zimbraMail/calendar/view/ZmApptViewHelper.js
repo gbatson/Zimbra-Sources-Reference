@@ -343,6 +343,9 @@ function(item, type, strictText, strictEmail, checkForAvailability) {
 			} else if (attendee && type == ZmCalBaseItem.PERSON) {
 				// remember actual address (in case it's email2 or email3)
 				attendee._inviteAddress = addr;
+                attendee.getEmail = function() {
+                    return this._inviteAddress || this.constructor.prototype.getEmail.apply(this);
+                }
 			}
 		}
 	}
@@ -368,11 +371,13 @@ function(addr, type) {
  * Returns a AjxEmailAddress for the organizer.
  *
  * @param organizer	[string]*		organizer's email address
+ * @param account	[ZmAccount]*	organizer's account
  */
 ZmApptViewHelper.getOrganizerEmail =
-function(organizer) {
-	var orgAddress = organizer ? organizer : appCtxt.get(ZmSetting.USERNAME);
-	var orgName = (orgAddress == appCtxt.get(ZmSetting.USERNAME)) ? appCtxt.get(ZmSetting.DISPLAY_NAME) : null;
+function(organizer, account) {
+	var orgAddress = organizer ? organizer : appCtxt.get(ZmSetting.USERNAME, null, account);
+	var orgName = (orgAddress == appCtxt.get(ZmSetting.USERNAME, null, account))
+		? appCtxt.get(ZmSetting.DISPLAY_NAME, null, account) : null;
 	return new AjxEmailAddress(orgAddress, null, orgName);
 };
 

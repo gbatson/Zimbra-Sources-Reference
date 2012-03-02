@@ -52,7 +52,7 @@ public class SignatureBugTests extends CommonTest {
 	}
 
 	// Tests
-	@Test(dataProvider = "AccPrefDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "SigPrefDataProvider", groups = { "smoke", "full","debug" }, retryAnalyzer = RetryFailedTests.class)
 	public void lossOfSpacesAfterSignatureChange_Bug41092(String signatureName,
 			String signatureBody) throws Exception {
 		if (isExecutionARetry)
@@ -136,7 +136,7 @@ public class SignatureBugTests extends CommonTest {
 	 * @throws Exception
 	 * @author Girish
 	 */
-	@Test(dataProvider = "AccPrefDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
+	@Test(dataProvider = "SigPrefDataProvider", groups = { "smoke", "full" }, retryAnalyzer = RetryFailedTests.class)
 	public void verifyingComposingAndSignaturePref_39282(String signatureName,
 			String signatureBody) throws Exception {
 		if (isExecutionARetry)

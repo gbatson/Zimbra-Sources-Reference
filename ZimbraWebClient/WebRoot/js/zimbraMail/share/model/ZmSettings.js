@@ -40,6 +40,7 @@ ZmSettings = function(noInit) {
 	this._nameToId = {};	// map to get from server setting name to setting ID
 
 	this.getInfoResponse = null; // Cached GetInfoResponse for lazy creation of identities, etc.
+	this._handleImplicitChange = new AjxListener(this, this._implicitChangeListener);
 
 	if (!noInit) {
 		this.initialize();
@@ -65,6 +66,9 @@ function(id, params) {
 	var setting = this._settings[id] = new ZmSetting(id, params);
 	if (params.name) {
 		this._nameToId[params.name] = id;
+	}
+	if (params.isImplicit) {
+		setting.addChangeListener(this._handleImplicitChange);
 	}
 	return setting;
 };
@@ -102,6 +106,7 @@ function() {
 
 	if (appCtxt.isOffline) {
 		this.getSetting(ZmSetting.OFFLINE_NOTEBOOK_SYNC_ENABLED).addChangeListener(listener);
+		this.getSetting(ZmSetting.OFFLINE_IS_MAILTO_HANDLER).addChangeListener(listener);
 	}
 };
 
@@ -220,8 +225,8 @@ function(callback, errorCallback, accountName, response, batchCommand) {
  */
 ZmSettings.prototype._handleResponseLoadUserSettings =
 function(callback, accountName, result) {
-	var obj = this.getInfoResponse = result.getResponse().GetInfoResponse;
 
+	var obj = this.getInfoResponse = result.getResponse().GetInfoResponse;
 	if (obj.name) 			{ this._settings[ZmSetting.USERNAME].setValue(obj.name); }
 	if (obj.lifetime)		{ this._settings[ZmSetting.TOKEN_LIFETIME].setValue(obj.lifetime); }
 	if (obj.accessed)		{ this._settings[ZmSetting.LAST_ACCESS].setValue(obj.accessed); }
@@ -294,13 +299,6 @@ function(callback, accountName, result) {
 		if (setting) {
 			setting.setValue(false, null, true);
 		}
-	}
-
-	if (appCtxt.isOffline && appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) &&
-		window.platform && window.platform.isRegisteredProtocolHandler("mailto") &&
-		!appCtxt.get(ZmSetting.OFFLINE_IS_MAILTO_HANDLER))
-	{
-		appCtxt.set(ZmSetting.OFFLINE_IS_MAILTO_HANDLER, true, null, null, true);
 	}
 
 	// load zimlets *only* for the main account
@@ -496,9 +494,9 @@ function(list, callback, batchCommand, account) {
 	var acct = account || appCtxt.getActiveAccount();
 	var soapDoc = AjxSoapDoc.create("ModifyPrefsRequest", "urn:zimbraAccount");
 	var gotOne = false;
-	var metaData = [], done = {};
+	var metaData = [], done = {}, setting;
 	for (var i = 0; i < list.length; i++) {
-		var setting = list[i];
+		setting = list[i];
         if (done[setting.id]) { continue; }
 		if (setting.type == ZmSetting.T_METADATA) {
 			metaData.push(setting);
@@ -534,6 +532,11 @@ function(list, callback, batchCommand, account) {
         done[setting.id] = true;
 		gotOne = true;
 	}
+
+    // bug: 50668 if the setting is implicit and global, use main Account
+    if(appCtxt.isOffline && ZmSetting.IS_IMPLICIT[setting.id] && ZmSetting.IS_GLOBAL[setting.id]) {
+        acct = appCtxt.accountList.mainAccount;
+    }
 
 	if (metaData.length > 0) {
 		var metaDataCallback = new AjxCallback(this, this._handleResponseSaveMetaData, [metaData]);
@@ -597,6 +600,7 @@ function(list, callback, result) {
  */
 ZmSettings.prototype._setDefaults =
 function() {
+
 	var value = AjxUtil.formatUrl({host:location.hostname, path:"/service/soap/", qsReset:true});
 	this._settings[ZmSetting.CSFE_SERVER_URI].setValue(value, null, false, true);
 
@@ -615,6 +619,19 @@ function() {
 	// CSFE EXPORT URI
 	value = AjxUtil.formatUrl({host:location.hostname, path:"/service/home/~/", qsReset:true, qsArgs:{auth:"co", id:"{0}", fmt:"csv"}});
 	this._settings[ZmSetting.CSFE_EXPORT_URI].setValue(value, null, false, true);
+
+	var h = location.hostname;
+	var isDev = ((h.indexOf(".zimbra.com") != -1) || (window.appDevMode && (/\.local$/.test(h) || (!appCtxt.isOffline && h == "localhost"))));
+	this._settings[ZmSetting.IS_DEV_SERVER].setValue(isDev);
+	if (isDev || window.isScriptErrorOn) {
+		this._settings[ZmSetting.SHOW_SCRIPT_ERRORS].setValue(true, null, false, true);
+	}
+
+	// script error reporting
+	var rse = AjxException.reportScriptErrors = this._settings[ZmSetting.SHOW_SCRIPT_ERRORS].getValue();
+	if (rse) {
+		AjxException.setScriptErrorHandler(ZmController.handleScriptError);
+	}
 
 	// default sorting preferences
 	this._settings[ZmSetting.SORTING_PREF].setValue(ZmSearch.DATE_DESC, ZmId.VIEW_CONVLIST, true, true);
@@ -638,7 +655,7 @@ function() {
 	// CONFIG SETTINGS
 	this.registerSetting("AC_TIMER_INTERVAL",				{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_INT, defaultValue:300});
 	this.registerSetting("ASYNC_MODE",						{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
-	this.registerSetting("BRANCH",							{type:ZmSetting.T_CONFIG, defaultValue:"main"});
+	this.registerSetting("BRANCH",							{type:ZmSetting.T_CONFIG, defaultValue:"GNR"});
 
 	// next 3 are replaced during deployment
 	this.registerSetting("CLIENT_DATETIME",					{type:ZmSetting.T_CONFIG, defaultValue:"@buildDateTime@"});
@@ -657,10 +674,12 @@ function() {
 	this.registerSetting("HTTPS_PORT",						{type:ZmSetting.T_CONFIG, defaultValue:ZmSetting.HTTPS_DEFAULT_PORT});
 	this.registerSetting("INSTANT_NOTIFY_INTERVAL",			{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_INT, defaultValue:500}); // milliseconds
 	this.registerSetting("INSTANT_NOTIFY_TIMEOUT",			{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_INT, defaultValue:300}); // seconds
+	this.registerSetting("IS_DEV_SERVER",					{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("LOG_REQUEST",						{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	this.registerSetting("LOGO_URI",						{type:ZmSetting.T_CONFIG, defaultValue:null});
 	this.registerSetting("PROTOCOL_MODE",					{type:ZmSetting.T_CONFIG, defaultValue:ZmSetting.PROTO_HTTP});
 	this.registerSetting("SERVER_VERSION",					{type:ZmSetting.T_CONFIG});
+	this.registerSetting("SHOW_SCRIPT_ERRORS",				{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("TIMEOUT",							{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_INT, defaultValue:30}); // seconds
 	this.registerSetting("USE_XML",							{type:ZmSetting.T_CONFIG, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 
@@ -699,7 +718,7 @@ function() {
 	this.registerSetting("DISPLAY_NAME",					{name:"displayName", type:ZmSetting.T_COS});
 	this.registerSetting("ERROR_REPORT_URL",				{name:"zimbraErrorReportUrl", type:ZmSetting.T_COS, dataType:ZmSetting.D_STRING});
 	this.registerSetting("FLAGGING_ENABLED",				{name:"zimbraFeatureFlaggingEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
-	this.registerSetting("FOLDER_TREE_OPEN",				{name:"zimbraPrefFolderTreeOpen", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:true, isImplicit:true});
+    this.registerSetting("FOLDER_TREE_OPEN",				{name:"zimbraPrefFolderTreeOpen", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:true, isImplicit:true});
 	this.registerSetting("GAL_AUTOCOMPLETE_ENABLED",		{name:"zimbraFeatureGalAutoCompleteEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN,	defaultValue:false});
 	this.registerSetting("GAL_ENABLED",						{name:"zimbraFeatureGalEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN,	defaultValue:true});
 	this.registerSetting("GROUP_CALENDAR_ENABLED",			{name:"zimbraFeatureGroupCalendarEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
@@ -892,6 +911,18 @@ function(ev) {
 		cd.registerCallback(DwtDialog.YES_BUTTON, this._refreshBrowserCallback, this, [cd]);
 		cd.setMessage(ZmMsg.accountChangeRestart, DwtMessageDialog.WARNING_STYLE);
 		cd.popup();
+	} else if (appCtxt.isOffline && id == ZmSetting.OFFLINE_IS_MAILTO_HANDLER) {
+		appCtxt.getAppController().registerMailtoHandler(true);
+	}
+};
+
+ZmSettings.prototype._implicitChangeListener =
+function(ev) {
+	if (ev.type != ZmEvent.S_SETTING) { return; }
+	var id = ev.source.id;
+	var setting = this.getSetting(id);
+	if (ZmSetting.IS_IMPLICIT[id] && setting) {
+		this.save([setting]);
 	}
 };
 

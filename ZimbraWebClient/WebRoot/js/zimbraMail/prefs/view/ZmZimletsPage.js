@@ -167,8 +167,10 @@ function(callback) {
 	var pword;
 	var searches = document.location.search.split("&");
 	for (var i = 0; i < searches.length; i++) {
-		if (searches[i].indexOf("at=") == 0) {
-			pword = searches[i].substring(3);
+		var idx = searches[i].indexOf("at=");
+		if (idx != -1) {
+			pword = searches[i].substring(idx+3);
+			break;
 		}
 	}
 
@@ -220,6 +222,8 @@ function(aid, action) {
 	var soapDoc = AjxSoapDoc.create("DeployZimletRequest", "urn:zimbraAdmin");
 	var method = soapDoc.getMethod();
 	method.setAttribute("action", (action || "deployLocal"));
+	method.setAttribute("flush", "1");
+	method.setAttribute("synchronous", "1");
 	var content = soapDoc.set("content");
 	content.setAttribute("aid", aid);
 
@@ -237,6 +241,10 @@ function(aid, action) {
 
 ZmZimletsPage.prototype._deployZimletResponse =
 function(dialog, aid, result) {
+    
+    // remove Admin auth key
+     AjxCookie.deleteCookie(document, ZmZimletsPage.ADMIN_COOKIE_NAME, "/service/upload");
+
 	if (result.isException()) {
 		dialog.popdown();
 		this._uploadButton.setEnabled(true);
@@ -311,6 +319,10 @@ function(zimletName) {
 
 ZmZimletsPage.prototype._undeployZimletResponse =
 function(zimletName, result) {
+
+    // remove admin auth key
+    AjxCookie.deleteCookie(document, ZmZimletsPage.ADMIN_COOKIE_NAME, "/service/upload");
+    
 	if (result.isException()) {
 		this._controller.popupErrorDialog(ZmMsg.zimletUndeployError, result.getException());
 		return;

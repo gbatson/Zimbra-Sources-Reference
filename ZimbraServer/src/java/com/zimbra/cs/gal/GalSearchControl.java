@@ -117,7 +117,6 @@ public class GalSearchControl {
 		// fallback to ldap search
 		mParams.setQuery(query+"*");
 		mParams.getResultCallback().reset(mParams);
-		mParams.setLimit(100);
 		ldapSearch();
 	}
 	
@@ -147,12 +146,45 @@ public class GalSearchControl {
 				query = "*"+query;
 			mParams.setQuery(query);
 			mParams.getResultCallback().reset(mParams);
-			mParams.setLimit(100);
 			ldapSearch();
 		}
 	}
 	
-	public void sync() throws ServiceException {
+    private static HashSet<String> SyncClients;
+    
+    static {
+        SyncClients = new HashSet<String>();
+    }
+    
+    public void sync() throws ServiceException {
+        String id = Thread.currentThread().getName();
+        int capacity = mParams.getDomain().getGalSyncMaxConcurrentClients();
+        boolean doSync = false;
+        
+        try {
+            synchronized (SyncClients) {
+                // allow the sync only when the # of sync clients
+                // are within the capacity.
+                if (SyncClients.size() < capacity) {
+                    SyncClients.add(id);
+                    doSync = true;
+                }
+            }
+            if (doSync) {
+                doSync();
+            } else {
+                // return "no change".
+                mParams.getResultCallback().setNewToken(mParams.getGalSyncToken());
+                return;
+            }
+        } finally {
+            synchronized (SyncClients) {
+                SyncClients.remove(id);
+            }
+        }
+    }
+    
+    private void doSync() throws ServiceException {
 	    
 	    checkFeatureEnabled(Provisioning.A_zimbraFeatureGalSyncEnabled);
 	    
@@ -497,6 +529,11 @@ public class GalSearchControl {
             mParams.setType(stype);
         }
         int limit = mParams.getLimit();
+        if (limit == 0 && GalOp.sync != mParams.getOp()) {
+            limit = domain.getGalMaxResults();
+            mParams.setLimit(limit);
+        }
+        
         if (galMode == GalMode.both) {
         	// make two gal searches for 1/2 results each
         	mParams.setLimit(limit / 2);

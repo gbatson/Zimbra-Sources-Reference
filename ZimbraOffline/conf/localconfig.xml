@@ -133,6 +133,12 @@
   <key name="zimbra_class_attrmanager">
     <value>com.zimbra.cs.account.offline.OfflineAttributeManager</value>
   </key>
+  <key name="zimbra_class_soapsessionfactory">
+    <value>com.zimbra.cs.session.OfflineSoapSessionFactory</value>  
+  </key>
+  <key name="zimbra_class_dbconnfactory">
+    <value>com.zimbra.cs.db.RetryConnectionFactory</value>
+  </key>
   <key name="zimbra_disk_cache_servlet_flush">
     <value>false</value>
   </key>
@@ -201,5 +207,8 @@
   </key>
   <key name="data_source_imap_reuse_connections">
     <value>true</value>
+  </key>
+  <key name="zimbra_auth_provider">
+    <value>offline</value>
   </key>
 </localconfig>

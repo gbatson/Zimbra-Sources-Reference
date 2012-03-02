@@ -227,6 +227,7 @@ ZaCosXFormView.PREFERENCES_TAB_ATTRS = [
 	ZaCos.A_zimbraAllowAnyFromAddress,
 	ZaCos.A_zimbraMailMinPollingInterval,
 	ZaCos.A_zimbraPrefMailPollingInterval,
+	ZaAccount.A_zimbraPrefAutoSaveDraftInterval,
 	ZaCos.A_zimbraPrefMailDefaultCharset,
 	ZaCos.A_zimbraMaxMailItemsPerPage,
 	ZaCos.A_zimbraPrefMailItemsPerPage,
@@ -290,6 +291,7 @@ ZaCosXFormView.ADVANCED_TAB_ATTRS = [ZaCos.A_zimbraAttachmentsBlocked,
 	ZaCos.A_zimbraMailMessageLifetime,
 	ZaCos.A_zimbraMailTrashLifetime,
 	ZaCos.A_zimbraMailSpamLifetime,
+	ZaCos.A_zimbraDataSourceMinPollingInterval,
 	ZaCos.A_zimbraFreebusyExchangeUserOrg];
 ZaCosXFormView.ADVANCED_TAB_RIGHTS = [];
 
@@ -713,7 +715,8 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
 						ZaCos.A_zimbraPrefHtmlEditorDefaultFontColor,
 						ZaCos.A_zimbraPrefForwardReplyInOriginalFormat,
 						ZaCos.A_zimbraPrefMandatorySpellCheckEnabled,
-						ZaCos.A_zimbraMailSignatureMaxLength
+						ZaCos.A_zimbraMailSignatureMaxLength,
+						ZaCos.A_zimbraPrefAutoSaveDraftInterval
 					]]
 				],
             	items :[
@@ -755,7 +758,13 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
                 {ref:ZaCos.A_zimbraMailSignatureMaxLength, type:_TEXTFIELD_,
                     msgName:ZaMsg.LBL_zimbraMailSignatureMaxLength,
                     label:ZaMsg.LBL_zimbraMailSignatureMaxLength, labelLocation:_LEFT_,
-                    cssClass:"admin_xform_number_input"}
+                    cssClass:"admin_xform_number_input"},
+                {ref:ZaCos.A_zimbraPrefAutoSaveDraftInterval, type:_LIFETIME_,
+                    msgName:ZaMsg.MSG_zimbraPrefAutoSaveDraftInterval,
+                    label:ZaMsg.LBL_zimbraPrefAutoSaveDraftInterval, labelLocation:_LEFT_,
+                    onChange:ZaCosXFormView.validatePollingInterval,
+                    labelCssStyle:"white-space:normal;",nowrap:false,labelWrap:true
+                }
             ]},
             {type:_GROUP_, cssClass:"ZaHeader2", colSpan: "*", id:"cos_form_prefs_contacts_header",
             	visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible, 
@@ -1059,6 +1068,19 @@ ZaCosXFormView.myXFormModifier = function(xFormObject, entry) {
                     }
                 ]
             },
+
+            {type:_ZA_TOP_GROUPER_, id:"cos_datasourcepolling_settings",
+                label:ZaMsg.NAD_DataSourcePolling,
+                items: [
+                    {ref:ZaCos.A_zimbraDataSourceMinPollingInterval, type:_LIFETIME_,
+                        msgName:ZaMsg.MSG_zimbraDataSourceMinPollingInterval,
+                        label:ZaMsg.LBL_zimbraDataSourceMinPollingInterval, labelLocation:_LEFT_,
+                        onChange:ZaCosXFormView.validatePollingInterval,
+                        labelCssStyle:"white-space:normal;",nowrap:false,labelWrap:true
+                    }
+                ]
+            },
+
             {type:_ZA_TOP_GROUPER_,id:"cos_password_settings",
                 label:ZaMsg.NAD_PasswordGrouper,
                 items: [

@@ -1112,7 +1112,8 @@ OR
 // any time!
 //
 <GetAppointmentRequest
-    id="appointment_id"
+    id="appointment_id"      // either id or uid should be specified, but not both
+    uid="iCalendar UID"
     [sync="1"]
     [includeContent="0|1"]   // if 1, MIME parts for body content are returned; default 0
 />
@@ -1138,6 +1139,7 @@ OR
               recurId="YYMMDD[THHMMSS[Z]]"
               [tz="timezonename"]
               rangeType="1"          // always 1
+              [ridZ="YYMMDDTHHMMSSZ"]  // recurrence-id in UTC time zone; used in non-all-day appointments only
              ]
      />]*
   </replies>] // one or more replies which we have sent out

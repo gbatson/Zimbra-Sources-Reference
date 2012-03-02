@@ -1,3 +1,7 @@
+<%@ page import="com.zimbra.cs.taglib.bean.BeanUtils" %>
+<%@ page import="java.util.regex.Pattern" %>
+<%@ page import="java.util.regex.Matcher" %>
+<%@ taglib prefix="zm" uri="com.zimbra.zm" %>
 <!--
 ***** BEGIN LICENSE BLOCK *****
 Zimbra Collaboration Suite Web Client
@@ -51,7 +55,7 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
     <title>Zimbra ALE - Prototype</title>
       <style type="text/css">
         <!--
-        @import url(<%= contextPath %>/css/common,dwt,msgview,login,zm,spellcheck,wiki,spreadsheet,images,skin.css?v=<%= vers %><%= inSkinDebugMode || inDevMode ? "&debug=1" : "" %>&skin=<%= skin %>);
+        @import url(<%= contextPath %>/css/common,dwt,msgview,login,zm,spellcheck,wiki,spreadsheet,images,skin.css?v=<%= vers %><%= inSkinDebugMode || inDevMode ? "&debug=1" : "" %>&skin=${zm:cook(skin)});
         @import url( style.css );
         -->
       </style>
@@ -64,13 +68,20 @@ basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
         String packages = "Ajax,SpreadsheetEmbed";
 
         String extraPackages = request.getParameter("packages");
-        if (extraPackages != null) packages += ","+extraPackages;
+        if (extraPackages != null) packages += ","+ BeanUtils.cook(extraPackages);
 
         String pprefix = inDevMode ? "public/jsp" : "js";
         String psuffix = inDevMode ? ".jsp" : "_all.js";
 
-        String[] pnames = packages.split(",");
-        for (String pname : pnames) {
+          Pattern p = Pattern.compile("\\.|\\/|\\\\");
+          String[] pnames = packages.split(",");
+          for (String pname : pnames) {
+              //bug: 52944
+              // Security: Avoid including external pages inline
+              Matcher matcher = p.matcher(pname);
+              if(matcher.find()){
+                  continue;
+              }
             String pageurl = "/"+pprefix+"/"+pname+psuffix;
             if (inDevMode) { %>
                 <jsp:include>

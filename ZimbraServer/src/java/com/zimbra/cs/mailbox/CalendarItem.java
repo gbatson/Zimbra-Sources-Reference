@@ -1611,9 +1611,7 @@ public abstract class CalendarItem extends MailItem {
                 } else {
                     // Appointment already has a newer version of the Invite.  The passed-in one is outdated,
                     // perhaps delivered out of order.  Ignore it.
-                    modifiedCalItem = false;
-                    addNewOne = false;
-                    break;
+                    return false;
                 }
             } else if (!isCancel) {
                 modifiedCalItem = true;
@@ -2759,17 +2757,16 @@ public abstract class CalendarItem extends MailItem {
      * @throws ServiceException
      */
     public String getEffectivePartStat(Invite inv, Instance inst) throws ServiceException {
-        Account acct = getMailbox().getAccount();
-        ZAttendee at = mReplyList.getEffectiveAttendee(acct, inv, inst);
-        if (at == null || inv.isOrganizer()) {
-            return inv.getPartStat();
+        if (!inv.isOrganizer()) {
+            ZAttendee at = mReplyList.getEffectiveAttendee(getMailbox().getAccount(), inv, inst);
+            if (at != null) {
+                if (at.hasPartStat())
+                    return at.getPartStat();
+                else
+                    return IcalXmlStrMap.PARTSTAT_NEEDS_ACTION;
+            }
         }
-
-        if (at.hasPartStat()) {
-            return at.getPartStat();
-        } else {
-            return IcalXmlStrMap.PARTSTAT_NEEDS_ACTION;
-        }
+        return inv.getPartStat();
     }
     
     /**

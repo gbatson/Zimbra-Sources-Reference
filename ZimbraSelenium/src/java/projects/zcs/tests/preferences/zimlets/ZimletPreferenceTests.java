@@ -20,6 +20,7 @@ public class ZimletPreferenceTests extends CommonTest {
 	public static final String zZimletEmailChkBox = "id=com_zimbra_email_zimletCheckbox";
 	public static final String zZimletEmoticonsChkBox = "id=com_zimbra_ymemoticons_zimletCheckbox";
 	public static final String zZimletLocalChkBox = "id=com_zimbra_local_zimletCheckbox";
+	public static final String zZimletDnDChkBox = "id=com_zimbra_dnd_zimletCheckbox";
 
 	//--------------------------------------------------------------------------
 	// SECTION 1: SETUP
@@ -56,7 +57,7 @@ public class ZimletPreferenceTests extends CommonTest {
 		obj.zCheckbox.zActivate(zZimletURLChkBox);
 		obj.zCheckbox.zActivate(zZimletEmoticonsChkBox);
 		obj.zCheckbox.zActivate(zZimletDateChkBox);
-		obj.zCheckbox.zActivate(zZimletLocalChkBox);
+		obj.zCheckbox.zActivate(zZimletDnDChkBox);
 		obj.zCheckbox.zActivate(zZimletHighlightPhoneChkBox);
 		obj.zButton.zClick("id=zb__PREF__SAVE_left_icon");
 		Thread.sleep(3000);
@@ -72,7 +73,7 @@ public class ZimletPreferenceTests extends CommonTest {
 		obj.zCheckbox.zVerifyIsNotChecked(zZimletURLChkBox);
 		obj.zCheckbox.zVerifyIsNotChecked(zZimletEmoticonsChkBox);
 		obj.zCheckbox.zVerifyIsNotChecked(zZimletDateChkBox);
-		obj.zCheckbox.zVerifyIsNotChecked(zZimletLocalChkBox);
+		obj.zCheckbox.zVerifyIsNotChecked(zZimletDnDChkBox);
 		obj.zCheckbox.zVerifyIsNotChecked(zZimletHighlightPhoneChkBox);
 		
 		// verify zimlets stuff if possible

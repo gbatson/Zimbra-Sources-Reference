@@ -84,7 +84,10 @@ public class OfflineAutoComplete extends AutoComplete {
 
         if (result.entries.size() < limit)
             autoCompleteFromOtherAccounts(request, ctxt, account, name, limit, stype, result);
-            
+        
+        if (result.entries.size() >= limit)
+        	result.canBeCached = false;
+        
         Element response = ctxt.createElement(MailConstants.AUTO_COMPLETE_RESPONSE);
         toXML(response, result, ctxt.getAuthtokenAccountId());
         return response;        
@@ -99,8 +102,11 @@ public class OfflineAutoComplete extends AutoComplete {
         
         int lmt = limit - result.entries.size();
         for(Account account : accounts) {
-            if (account.getId().equals(reqAcctId) || !account.getBooleanAttr(OfflineProvisioning.A_zimbraPrefShareContactsInAutoComplete , false))
+            String acctId = account.getId();
+            if (acctId.equals(reqAcctId) || (!acctId.equals(OfflineProvisioning.LOCAL_ACCOUNT_ID) &&
+                !account.getBooleanAttr(OfflineProvisioning.A_zimbraPrefShareContactsInAutoComplete , false))) {
                 continue;
+            }
             
             AutoCompleteResult res = query(request, ctxt, account, true, name, lmt, stype);
             if (res != null)

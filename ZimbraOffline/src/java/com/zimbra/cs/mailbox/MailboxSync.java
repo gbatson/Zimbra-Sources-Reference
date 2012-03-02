@@ -151,8 +151,14 @@ public class MailboxSync {
                             long frequency = ombx.getSyncFrequency() < freqLimit ? freqLimit : ombx.getSyncFrequency();
 
                             if (freqLimit == 0 && syncMan.isOnLine(ombx.getAccount()) && ombx.isPushEnabled()) {
-                                if (!poller.hasChanges(mSyncToken))
+                                if (!poller.hasChanges(mSyncToken)) {
+                                    if (ombx.anyChangesSince(syncMan.getLastSyncTime(ombx.getAccount()))) {
+                                        syncMan.syncStart(ombx.getAccount());
+                                        PushChanges.sync(ombx, isOnRequest);
+                                        syncMan.syncComplete(ombx.getAccount());
+                                    }
                                     return;
+                                }
                             } else if (System.currentTimeMillis() - syncMan.getLastSyncTime(ombx.getAccount()) < frequency) {
                                 return;
                             }
@@ -199,7 +205,7 @@ public class MailboxSync {
                 }
             }
         } else if (isOnRequest) {
-            OfflineLog.offline.info("sync already in progress");
+            OfflineLog.offline.info("[" + ombx.getAccount().getName() + "] sync already in progress");
         }
     }
     

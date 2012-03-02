@@ -195,7 +195,8 @@ function(appt, mode, isDirty) {
     this.setTabVisibility([ZmApptComposeView.TAB_ATTENDEES], appt.isOrganizer() || isForward);
     //bug:48189 Hide schedule tab for non-ZCS acct
     if (appCtxt.isOffline) {
-        this.setTabVisibility([ZmApptComposeView.TAB_SCHEDULE], appCtxt.getActiveAccount().isZimbraAccount);
+        var currAcct = appCtxt.getActiveAccount();
+        this.setTabVisibility([ZmApptComposeView.TAB_SCHEDULE], (!currAcct.isMain && currAcct.isZimbraAccount));
     }
 
 };
@@ -589,7 +590,9 @@ function(ev) {
     if(type == ZmCalBaseItem.LOCATION) {
         var location = ZmApptViewHelper.getAttendeesString(this._attendees[ZmCalBaseItem.LOCATION].getArray(), ZmCalBaseItem.LOCATION);
         var apptTab = this._tabPages[ZmApptComposeView.TAB_APPOINTMENT];
-        //apptTab.setApptLocation(location);
+        if(!this._proposeNewTime) {
+            apptTab.setApptLocation(location);
+        }
     }
 };
 

@@ -11,12 +11,12 @@ public class ToastAlertMessage extends SelNGBase{
 	
 	public boolean zAlertMsgExists(String expectedMsg, String customMsg) {
 	    String actMsg = "";
-		for(int i =0; i < 15; i++) {
+		for(int i =0; i < 30; i++) {
 		    	actMsg = zGetMsg();
 			if(actMsg.indexOf(expectedMsg) >=0)
 				return true;
 			try {
-				Thread.sleep(2000);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

@@ -1,10 +1,11 @@
 <project name="Offline-Installer" default="default">
 
 	<property file="build.properties"/>
-	<property name="media_win32" value="zdesktop_${offline.filever}_${offline.branch}_b${offline.buildid}_${offline.suffix_win32}"/>
-	<property name="media_macos" value="zdesktop_${offline.filever}_${offline.branch}_b${offline.buildid}_${offline.suffix_macos}"/>
-	<property name="media_linux" value="zdesktop_${offline.filever}_${offline.branch}_b${offline.buildid}_${offline.suffix_linux}"/>
-	<property name="media_linux_dir" value="zdesktop_${offline.filever}_${offline.branch}_b${offline.buildid}_linux_i686"/>
+	<property name="prod_title" value="Zimbra Desktop"/>
+	<property name="media_win32" value="zdesktop_${offline.filever}${offline.branch}_b${offline.buildid}_${offline.suffix_win32}"/>
+	<property name="media_macos" value="zdesktop_${offline.filever}${offline.branch}_b${offline.buildid}_${offline.suffix_macos}"/>
+	<property name="media_linux" value="zdesktop_${offline.filever}${offline.branch}_b${offline.buildid}_${offline.suffix_linux}"/>
+	<property name="media_linux_dir" value="zdesktop_${offline.filever}${offline.branch}_b${offline.buildid}_linux_i686"/>
 	<property name="build.dir" location="../ZimbraBuild/i386" />
 	<property name="pmdoc.dir" location="./build/macos_installer.pmdoc" />
 	<property name="wxs.dir" location="${basedir}\build" />
@@ -54,7 +55,7 @@
        	<mkdir dir="${build.dir}" />
 
 	<if><available file="build/dist/ext/exchange.zip" type="file" /><then> 
-		<move tofile="${build.dir}/exchange_${offline.filever}_${offline.branch}_b${offline.buildid}.zip" file="build/dist/ext/exchange.zip"/>
+		<move tofile="${build.dir}/exchange_${offline.filever}${offline.branch}_b${offline.buildid}.zip" file="build/dist/ext/exchange.zip"/>
 		<delete dir="build/dist/ext"/>
 	</then></if>    
 
@@ -73,8 +74,6 @@
 		</copy>
 		<replace file="${pmdoc.dir}/index.xml" token="@build.root@" value="${basedir}" />
 		<replace file="${pmdoc.dir}/01app.xml" token="@build.root@" value="${basedir}" />
-		<copy todir="build/dist/app/data/bin" file="src/installer/macos/start-zdesktop" overwrite="true" />
-		<copy todir="build/dist/app/data/bin" file="src/installer/macos/stop-zdesktop" overwrite="true" />
 		<chmod dir="build/dist/app/data/bin" includes="*" perm="ugo+rx" />
 	
 		<delete dir="build/dist/app/win32" />
@@ -100,26 +99,28 @@
 			<arg value="--doc" />
 			<arg value="build/macos_installer.pmdoc" />
 			<arg value="--title" />
-			<arg value="${media_macos}" />
+			<arg value="${prod_title}" />
+			<arg value="--id" />
+			<arg value="com.zimbra.desktop.full" />
 			<arg value="--verbose" />
 			<arg value="--no-recommend" />
 		</exec>
 
-		<move file="${media_macos}.mpkg" tofile="${build.dir}/${media_macos}.mpkg" preservelastmodified="true" />
+		<move file="${prod_title}.mpkg" tofile="${build.dir}/${prod_title}.mpkg" preservelastmodified="true" />
 		<exec executable="/usr/bin/hdiutil" failonerror="true">
 			<arg value="create" />
 			<arg value="-srcfolder" />
-			<arg value="${build.dir}/${media_macos}.mpkg" />
+			<arg value="${build.dir}/${prod_title}.mpkg" />
 			<arg value="-volname" />
-			<arg value="Zimbra_Desktop_Installer" />
+			<arg value="Zimbra Desktop Installer" />
 			<arg value="-ov" />
-			<arg value="${build.dir}/${media_macos}.dmg" />
+			<arg value="${build.dir}/${media_macos}" />
 			<arg value="-format" />
 			<arg value="UDZO" />
 			<arg value="-imagekey" />
 			<arg value="zlib-level=6" />
 		</exec>
-		<delete dir="${build.dir}/${media_macos}.mpkg" />
+		<delete dir="${build.dir}/${prod_title}.mpkg" />
 	</target>
 
 	<!-- These open source programs are required for building Windows installer  -->
@@ -165,8 +166,6 @@
 				<arg value="sign" />
 				<arg value="/f" />
 				<arg value="${sign.cert}" />
-				<arg value="/p" />
-				<arg value="zimbra" />
 				<arg value="${build.dir}\${media_win32}" />
 			</exec>
 		</then></if>
@@ -199,9 +198,9 @@
 		<copy file="src/installer/update.php" todir="${build.dir}" overwrite="true"/>
 		<replace file="${build.dir}/update.php" token="@version@" value="${offline.version}"/>
 		<replace file="${build.dir}/update.php" token="@buildid@" value="${offline.buildid}"/>
-		<replace file="${build.dir}/update.php" token="@suffix_win32@" value="${offline.suffix_win32}"/>
-		<replace file="${build.dir}/update.php" token="@suffix_macos@" value="${offline.suffix_macos}"/>
-		<replace file="${build.dir}/update.php" token="@suffix_linux@" value="${offline.suffix_linux}"/>
+		<replace file="${build.dir}/update.php" token="@media_win32@" value="${media_win32}"/>
+		<replace file="${build.dir}/update.php" token="@media_macos@" value="${media_macos}"/>
+		<replace file="${build.dir}/update.php" token="@media_linux@" value="${media_linux}"/>
 	
 		<if><available file="${build.dir}/${media_win32}" type="file"/><then>
 			<checksum file="${build.dir}/${media_win32}" property="hash_win32"/>
@@ -210,9 +209,9 @@
 			<replace file="${build.dir}/update.php" token="@size_win32@" value="${size_win32}"/>
 		</then></if>
 	
-		<if><available file="${build.dir}/${media_macos}.dmg" type="file"/><then>
-			<checksum file="${build.dir}/${media_macos}.dmg" property="hash_macos"/>
-			<length file="${build.dir}/${media_macos}.dmg" property="size_macos"/>
+		<if><available file="${build.dir}/${media_macos}" type="file"/><then>
+			<checksum file="${build.dir}/${media_macos}" property="hash_macos"/>
+			<length file="${build.dir}/${media_macos}" property="size_macos"/>
 			<replace file="${build.dir}/update.php" token="@hash_macos@" value="${hash_macos}"/>
 			<replace file="${build.dir}/update.php" token="@size_macos@" value="${size_macos}"/>
 		</then></if>
@@ -230,9 +229,9 @@
 			<delete file="${build.dir}/zdesktop_linux_i686.tgz" quiet="true" />
 			<symlink link="${build.dir}/zdesktop_linux_i686.tgz" resource="${media_linux}" overwrite="true"/>
 		</then></if>
-		<if><available file="${build.dir}/${media_macos}.dmg" type="file"/><then>
+		<if><available file="${build.dir}/${media_macos}" type="file"/><then>
 			<delete file="${build.dir}/zdesktop_macos_intel.dmg" quiet="true" />
-			<symlink link="${build.dir}/zdesktop_macos_intel.dmg" resource="${media_macos}.dmg" overwrite="true"/>
+			<symlink link="${build.dir}/zdesktop_macos_intel.dmg" resource="${media_macos}" overwrite="true"/>
 		</then></if>
 		<if><available file="${build.dir}/${media_win32}" type="file"/><then>
 			<copy tofile="${build.dir}/zdesktop_win32.msi" file="${build.dir}/${media_win32}" overwrite="true"/>

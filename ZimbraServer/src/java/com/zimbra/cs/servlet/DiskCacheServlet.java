@@ -53,6 +53,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
     private String cacheDirName;
     private File cacheDir;
     private int cacheSize;
+    protected String cacheKeyPrefix;
 
     protected static final String EXT_COMPRESSED = ".gz";
     protected static final String P_CACHE_DIR = "resource-cache-dir";
@@ -64,6 +65,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
 
     public void init(ServletConfig config) throws ServletException {
         super.init(config);
+        cacheKeyPrefix = getServletContext().getServletContextName().replaceAll("[^a-zA-Z0-9_]","");
         createCache();
         createCacheDir();
     }
@@ -115,7 +117,7 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
      * Returns the key used to create a file from a cacheId
      */
     protected String getCacheKey(String cacheId) {
-        return ByteUtil.getMD5Digest(cacheId.getBytes(), false);
+        return cacheKeyPrefix+'-'+ByteUtil.getMD5Digest(cacheId.getBytes(), false);
     }
     
     // cache management
@@ -205,13 +207,13 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
                     cacheDir = new File(getTempDir(), subDirName);
                 } else {
                     for (String file : cacheDir.list()) {
-                        int idx = file.indexOf("-");
+                        int idx = file.lastIndexOf("-");
                         
-                        if (idx != -1 && !file.endsWith(EXT_COMPRESSED)) {
+                        if (idx != -1) {
                             String cacheKey = file.substring(0, idx);
                             
                             cache.put(cacheKey, new File(cacheDir.getAbsolutePath() +
-                                '/' + file));
+                                File.separatorChar + file));
                         }
                     }
                 }
@@ -272,12 +274,17 @@ public abstract class DiskCacheServlet extends ZimbraServlet {
 
     // file utility functions
 
+    /** Compress a file and store the content in dest file. */
+    protected File compress(File src) throws IOException {
+        File dest = new File(src.getParentFile(), src.getName()+EXT_COMPRESSED);
+        return compress(src, dest);
+    }
+
     /**
      * Compress a file and store the content in a new file in the same
      * location as the original file, appending ".gz" extension.
      */
-    protected File compress(File src) throws IOException {
-        File dest = new File(src.getParentFile(), src.getName()+EXT_COMPRESSED);
+    protected File compress(File src, File dest) throws IOException {
         GZIPOutputStream out = new GZIPOutputStream(new FileOutputStream(dest));
         
         copy(src, out);

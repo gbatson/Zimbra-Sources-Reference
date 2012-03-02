@@ -33,6 +33,7 @@ import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.datasource.SyncErrorManager;
 import com.zimbra.cs.datasource.imap.ImapSync;
 import com.zimbra.cs.db.DbOfflineDirectory;
+import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.mailbox.DesktopMailbox;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.LocalJMSession;
@@ -133,6 +134,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     private final NamedEntryCache<Account> mAccountCache;
     private final NamedEntryCache<Account> mGranterCache;
     private final Map<String, Server> mSyncServerCache; 
+    private Account zimbraAdminAccount;
 
     private boolean mHasDirtyAccounts = true;
 
@@ -143,8 +145,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         mMimeTypes    = OfflineMimeType.instantiateAll();
         mZimlets      = OfflineZimlet.instantiateAll(this);
         mSyncServerCache = new HashMap<String, Server>();
-        mAccountCache = new NamedEntryCache<Account>(16, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
-        mGranterCache = new NamedEntryCache<Account>(16, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
+        mAccountCache = new NamedEntryCache<Account>(64, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
+        mGranterCache = new NamedEntryCache<Account>(64, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
+        DbPool.disableUsageWarning();
     }
     
     public ZMailbox newZMailbox(OfflineAccount account, String serviceUri) throws ServiceException {
@@ -663,7 +666,6 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_zimbraFeatureIMEnabled, FALSE);
         attrs.put(A_zimbraFeatureNotebookEnabled, FALSE);
         attrs.put(A_zimbraPrefAccountTreeOpen , getAllAccounts().size() == 0 ? TRUE : FALSE);
-        attrs.put(A_zimbraZimletAvailableZimlets, new String[0]);
 
         Account account = createAccountInternal(emailAddress, accountId, attrs, false, false);
         OfflineDataSource ds = null;
@@ -821,6 +823,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
         attrs.put(A_zimbraPrefAccountTreeOpen , TRUE);
         attrs.put(A_zimbraPrefCalendarAlwaysShowMiniCal , TRUE);
+        attrs.put(A_zimbraPrefShareContactsInAutoComplete, TRUE);
         attrs.put(A_zimbraPrefGetMailAction, "update");
         setDefaultAccountAttributes(attrs);
 
@@ -1168,10 +1171,14 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         DbOfflineDirectory.GranterEntry granter = null;
         if (keyType == AccountBy.id) {
             if ((acct = mAccountCache.getById(key)) == null) {
-                attrs = DbOfflineDirectory.readDirectoryEntry(EntryType.ACCOUNT, A_zimbraId, key);
-
-                if (attrs == null && (acct = mGranterCache.getById(key)) == null)
-                    granter = lookupGranter("id", key);
+                if (zimbraAdminAccount != null && key.equals(zimbraAdminAccount.getId())) {
+                    acct = zimbraAdminAccount;
+                } else {
+                    attrs = DbOfflineDirectory.readDirectoryEntry(EntryType.ACCOUNT, A_zimbraId, key);
+    
+                    if (attrs == null && (acct = mGranterCache.getById(key)) == null)
+                        granter = lookupGranter("id", key);
+                }
             }
         } else if (keyType == AccountBy.name) {
             if (key.equals(LOCAL_ACCOUNT_NAME))
@@ -1183,7 +1190,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                     granter = lookupGranter("name", key);
             }
         } else if (keyType == AccountBy.adminName) {
-            if ((acct = mAccountCache.getByName(key)) == null && key.equals(LC.zimbra_ldap_user.value())) {
+            if ((acct = mAccountCache.getByName(key)) == null && key.equals(LC.zimbra_ldap_user.value()) && (acct = zimbraAdminAccount) == null) {
                 attrs = new HashMap<String,Object>(7);
                 attrs.put(A_mail, key);
                 attrs.put(A_cn, key);
@@ -1198,9 +1205,11 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (granter != null)
             acct = makeGranter(granter.name, granter.id, granter.granteeId);
 
-        if (acct != null)
-            attrs = acct.getAttrs();
-
+        if (acct != null) {
+            // don't copy over attrs from OfflineCos, so that account won't cache stale values of COS attrs.
+            attrs = acct.getAttrs(false);
+        }
+        
         String name = null;
         if (attrs != null)
             name = (String)attrs.get(A_mail);
@@ -1236,6 +1245,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                 attrs, mDefaultCos.getAccountDefaults(),
                 keyType == AccountBy.id && key.equals(LOCAL_ACCOUNT_ID) ? null :
                 getLocalAccount(), this);
+            if (keyType == AccountBy.adminName && key.equals(LC.zimbra_ldap_user.value())) {
+                zimbraAdminAccount = acct;
+            }
             mAccountCache.put(acct);
         }
 
@@ -2018,7 +2030,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_zimbraDataSourceName, name); // must be the same
         attrs.put(A_offlineDataSourceType, type.toString());
         attrs.put(A_objectClass, "zimbraDataSource");
-        if (!passwdAlreadyEncrypted)
+        if (!passwdAlreadyEncrypted && attrs.get(A_zimbraDataSourcePassword) != null)
             attrs.put(A_zimbraDataSourcePassword, DataSource.encryptData(dsid, (String) attrs.get(A_zimbraDataSourcePassword)));
         if (markChanged)
             attrs.put(A_offlineModifiedAttrs, A_offlineDn);

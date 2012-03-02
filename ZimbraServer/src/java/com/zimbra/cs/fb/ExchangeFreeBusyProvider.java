@@ -40,6 +40,7 @@ import org.apache.commons.httpclient.methods.PostMethod;
 import org.dom4j.DocumentException;
 
 import com.zimbra.common.httpclient.HttpClientUtil;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ByteUtil;
@@ -53,20 +54,21 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.httpclient.HttpProxyUtil;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 
 public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	
 	public static final String USER_AGENT = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; .NET CLR 1.1.4322)";
-	public static final String FORM_AUTH_PATH = "/exchweb/bin/auth/owaauth.dll";
+	//public static final String FORM_AUTH_PATH = "/exchweb/bin/auth/owaauth.dll";  // specified in LC.calendar_exchange_form_auth_url
 	public static final int FB_INTERVAL = 30;
 	public static final int MULTI_STATUS = 207;
+	public static final String TYPE_WEBDAV = "webdav";
 	
 	public enum AuthScheme { basic, form };
 	
 	public static class ServerInfo {
+		public boolean enabled;
 		public String url;
 		public String org;
 		public String cn;
@@ -112,6 +114,8 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 			} catch (ServiceException se) {
 				info.cn = null;
 			}
+			String exchangeType = getAttr(Provisioning.A_zimbraFreebusyExchangeServerType, emailAddr);
+			info.enabled = TYPE_WEBDAV.equals(exchangeType);
 			return info;
 		}
 		// first lookup account/cos, then domain, then globalConfig.
@@ -171,6 +175,8 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 				break;
 		}
 		if (info == null)
+			throw new FreeBusyUserNotFoundException();
+		if (!info.enabled)
 			throw new FreeBusyUserNotFoundException();
 		addRequest(info, req);
 	}
@@ -266,10 +272,14 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	}
 	
 	public boolean handleMailboxChange(String accountId) {
-		String email;
+		String email = getEmailAddress(accountId);
+		ServerInfo serverInfo = getServerInfo(email);
+		if (email == null || !serverInfo.enabled) {
+			return true;  // no retry
+		}
+		
 		FreeBusy fb;
 		try {
-			email = getEmailAddress(accountId);
 			fb = getFreeBusy(accountId, FreeBusyQuery.CALENDAR_FOLDER_ALL);
 		} catch (ServiceException se) {
 			ZimbraLog.fb.warn("can't get freebusy for account "+accountId, se);
@@ -277,10 +287,9 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 			return !se.isReceiversFault();
 		}
 		if (email == null || fb == null) {
-			ZimbraLog.fb.warn("can't get freebusy for account "+accountId);
+			ZimbraLog.fb.warn("account not found / incorrect / wrong host: "+accountId);
 			return true;  // no retry
 		}
-		ServerInfo serverInfo = getServerInfo(email);
 		if (serverInfo == null || serverInfo.org == null || serverInfo.cn == null) {
 			ZimbraLog.fb.warn("no exchange server info for user "+email);
 			return true;  // no retry
@@ -313,7 +322,7 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 	private int sendRequest(HttpMethod method, ServerInfo info) throws IOException {
 		method.setDoAuthentication(true);
 		method.setRequestHeader(HEADER_USER_AGENT, USER_AGENT);
-		HttpClient client = DebugConfig.disableFreeBusyUsingZimbraHttpConnectionManager? new HttpClient() : ZimbraHttpConnectionManager.getExternalHttpConnMgr().newHttpClient();
+		HttpClient client = ZimbraHttpConnectionManager.getExternalHttpConnMgr().newHttpClient();
 		HttpProxyUtil.configureProxy(client);
 		switch (info.scheme) {
 		case basic:
@@ -323,7 +332,7 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 			formAuth(client, info);
 			break;
 		}
-		return DebugConfig.disableFreeBusyUsingHttpClientUtil ? client.executeMethod(method) : HttpClientUtil.executeMethod(client, method);
+		return HttpClientUtil.executeMethod(client, method);
 	}
 	
 	private boolean basicAuth(HttpClient client, ServerInfo info) {
@@ -348,14 +357,14 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		buf.append("&flags=0");
 		buf.append("&SubmitCreds=Log On");
 		buf.append("&trusted=0");
-		String url = info.url + FORM_AUTH_PATH;
+		String url = info.url + LC.calendar_exchange_form_auth_url.value();
 		PostMethod method = new PostMethod(url);
 		ByteArrayRequestEntity re = new ByteArrayRequestEntity(buf.toString().getBytes(), "x-www-form-urlencoded");
 		method.setRequestEntity(re);
 		HttpState state = new HttpState();
 		client.setState(state);
 		try {
-			int status = DebugConfig.disableFreeBusyUsingHttpClientUtil ? client.executeMethod(method) : HttpClientUtil.executeMethod(client, method);
+			int status = HttpClientUtil.executeMethod(client, method);
 			if (status >= 400) {
 				ZimbraLog.fb.error("form auth to Exchange returned an error: "+status);
 				return false;
@@ -370,20 +379,18 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		mRequests = new HashMap<String,ArrayList<Request>>();
 	}
 	
-	private List<FreeBusy> getEmptyList(ArrayList<Request> req) {
-		ArrayList<FreeBusy> ret = new ArrayList<FreeBusy>();
-		for (Request r : req)
-			ret.add(FreeBusy.nodataFreeBusy(r.email, r.start, r.end));
-		return ret;
-	}
-	
 	public List<FreeBusy> getFreeBusyForHost(String host, ArrayList<Request> req) throws IOException {
+		ArrayList<FreeBusy> ret = new ArrayList<FreeBusy>();
 		Request r = req.get(0);
 		ServerInfo serverInfo = (ServerInfo) r.data;
 		if (serverInfo == null) {
 			ZimbraLog.fb.warn("no exchange server info for user "+r.email);
-			return getEmptyList(req);
+			return ret;
 		}
+		
+		if (!serverInfo.enabled)
+			return ret;
+		
 		String url = constructGetUrl(serverInfo, req);
 		ZimbraLog.fb.debug("fetching fb from url="+url);
 		HttpMethod method = new GetMethod(url);
@@ -413,7 +420,6 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		} finally {
 			method.releaseConnection();
 		}
-		ArrayList<FreeBusy> ret = new ArrayList<FreeBusy>();
 		for (Request re : req) {
 			String fb = getFbString(response, re.email);
 			ret.add(new ExchangeUserFreeBusy(fb, re.email, FB_INTERVAL, re.start, re.end));

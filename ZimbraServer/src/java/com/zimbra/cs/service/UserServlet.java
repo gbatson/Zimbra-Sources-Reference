@@ -384,13 +384,11 @@ public class UserServlet extends ZimbraServlet {
     }
 
     private void sendError(Context ctxt, HttpServletRequest req, HttpServletResponse resp, String message) throws IOException {
-        if (ctxt == null) {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, message);
-        } else if (!ctxt.cookieAuthHappened && ctxt.basicAuthAllowed() && !ctxt.basicAuthHappened) {
+        if (ctxt != null &&!ctxt.cookieAuthHappened && ctxt.basicAuthAllowed() && !ctxt.basicAuthHappened) {
             resp.addHeader(WWW_AUTHENTICATE_HEADER, getRealmHeader());
-            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, message);
+            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, L10nUtil.getMessage(MsgKey.errMustAuthenticate, req));
         } else {
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, message);
+            resp.sendError(HttpServletResponse.SC_NOT_FOUND, message);
         }
     }
 
@@ -420,11 +418,10 @@ public class UserServlet extends ZimbraServlet {
 
             doAuthGet(req, resp, context);
 
-        } catch (NoSuchItemException e) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, L10nUtil.getMessage(MsgKey.errNoSuchItem, req));
         } catch (ServiceException se) {
-            if (se.getCode() == ServiceException.PERM_DENIED)
-                sendError(context, req, resp, se.getMessage());
+            if (se.getCode() == ServiceException.PERM_DENIED ||
+                se instanceof NoSuchItemException)
+                sendError(context, req, resp, L10nUtil.getMessage(MsgKey.errNoSuchItem, req));
             else
                 throw new ServletException(se);
         } catch (UserServletException e) {
@@ -613,11 +610,10 @@ public class UserServlet extends ZimbraServlet {
                 throw ServiceException.PERM_DENIED(L10nUtil.getMessage(MsgKey.errPermissionDenied, req));
 
             context.formatter.save(context, ctype, folder, filename);
-        } catch (NoSuchItemException e) {
-            resp.sendError(HttpServletResponse.SC_NOT_FOUND, "no such item");
         } catch (ServiceException se) {
-            if (se.getCode() == ServiceException.PERM_DENIED)
-                sendError(context, req, resp, se.getMessage());
+            if (se.getCode() == ServiceException.PERM_DENIED ||
+                se instanceof NoSuchItemException)
+                sendError(context, req, resp, L10nUtil.getMessage(MsgKey.errNoSuchItem, req));
             else
                 throw new ServletException(se);
         } catch (UserServletException e) {
@@ -1427,7 +1423,7 @@ public class UserServlet extends ZimbraServlet {
             PutMethod method = new PutMethod(u.toString());
             String contentType = doc.getContentType();
             method.addRequestHeader("Content-Type", contentType);
-            method.setRequestEntity(new InputStreamRequestEntity(doc.getContentStream(), doc.getSize(), contentType));
+            method = HttpClientUtil.addInputStreamToHttpMethod(method, doc.getContentStream(), doc.getSize(), contentType);
             Pair<Header[], HttpMethod> pair = doHttpOp(authToken, method);
             return new Pair<Header[], HttpInputStream>(pair.getFirst(), new HttpInputStream(pair.getSecond()));
         }
@@ -1498,7 +1494,7 @@ public class UserServlet extends ZimbraServlet {
     	
         try {
             int statusCode = HttpClientUtil.executeMethod(client, method);
-            if (statusCode == HttpStatus.SC_NOT_FOUND)
+            if (statusCode == HttpStatus.SC_NOT_FOUND || statusCode == HttpStatus.SC_FORBIDDEN)
                 throw MailServiceException.NO_SUCH_ITEM(-1);
             else if (statusCode != HttpStatus.SC_OK && 
             		statusCode != HttpStatus.SC_CREATED &&

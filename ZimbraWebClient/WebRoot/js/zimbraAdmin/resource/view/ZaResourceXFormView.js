@@ -234,6 +234,10 @@ ZaResourceXFormView.isDeleteCalFwdAddrEnabled = function () {
 	return (!AjxUtil.isEmpty(this.getInstanceValue(ZaResource.A2_calFwdAddr_selection_cache)));
 }
 
+ZaResourceXFormView.isAutoDisplayname = function () {
+    return(this.getInstanceValue(ZaResource.A2_autoLocationName)=="FALSE");
+}
+
 ZaResourceXFormView.CONTACT_TAB_ATTRS = [ZaResource.A_zimbraCalResContactName,
 		ZaResource.A_zimbraCalResContactEmail, 
 		ZaResource.A_zimbraCalResContactPhone, 
@@ -511,8 +515,9 @@ ZaResourceXFormView.myXFormModifier = function(xFormObject, entry) {
                     {type:_GROUP_, numCols:3, nowrap:true, msgName:ZaMsg.NAD_LocationDisplayName, width:200, label:ZaMsg.NAD_LocationDisplayName, labelLocation:_LEFT_,
                         items: [
                             {ref:ZaResource.A_locationDisplayName, type:_TEXTFIELD_, label:null, cssClass:"admin_xform_name_input", width:defaultWidth,
-                                enableDisableChecks:[ [XForm.checkInstanceValue,ZaResource.A2_autodisplayname,"FALSE"] ],
-                                enableDisableChangeEventSources:[ZaResource.A2_autodisplayname]
+				 enableDisableChecks:[ZaResourceXFormView.isAutoDisplayname],
+                                 enableDisableChangeEventSources:[ZaResource.A2_autoLocationName],bmolsnr:true
+	
                             },
                             {ref:ZaResource.A2_autoLocationName, type:_CHECKBOX_, msgName:ZaMsg.NAD_Auto,
                                 label:ZaMsg.NAD_Auto,labelLocation:_RIGHT_,

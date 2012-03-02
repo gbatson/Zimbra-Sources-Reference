@@ -199,7 +199,7 @@ public class ZFieldObject extends ZObject {
 			robot = new Robot();
 
 			int strLen = data.length();
-
+            System.out.println(data);
 			for (int i = 0; i < strLen; i++) {
 				String chStr = String.valueOf(data.charAt(i));
 				if (chStr.equals(":")) {
@@ -207,8 +207,15 @@ public class ZFieldObject extends ZObject {
 					robot.keyPress(KeyEvent.VK_SEMICOLON);
 					robot.keyRelease(KeyEvent.VK_SEMICOLON);
 					robot.keyRelease(KeyEvent.VK_SHIFT);
-				} else
-					robot.keyPress(getKeyValue(chStr));
+				} 
+				else if (chStr.equals("_")) {
+					robot.keyPress(KeyEvent.VK_SHIFT);
+					robot.keyPress(KeyEvent.VK_MINUS);
+					robot.keyRelease(KeyEvent.VK_MINUS);
+					robot.keyRelease(KeyEvent.VK_SHIFT);
+				}
+		        else
+					robot.keyPress(getKeyValue(chStr));				   
 				robot.delay(100);
 
 			}
@@ -223,6 +230,7 @@ public class ZFieldObject extends ZObject {
 	}
 
 	public static int getKeyValue(String ch) {
+		System.out.println(ch);
 		if (ch.toLowerCase().equals("a"))
 			return KeyEvent.VK_A;
 		else if (ch.toLowerCase().equals("b"))
@@ -305,7 +313,9 @@ public class ZFieldObject extends ZObject {
 			return KeyEvent.VK_PERIOD;
 		else if (ch.equals("-"))
 			return KeyEvent.VK_MINUS;
-
+		else if (ch.equals(" "))
+			return KeyEvent.VK_SPACE;
+		
 		return 0;
 	}
 }

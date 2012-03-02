@@ -183,6 +183,9 @@ public class LC {
     public static final KnownKey soap_response_buffer_size;
     public static final KnownKey soap_response_chunked_transfer_encoding_disabled;
     public static final KnownKey zimbra_servlet_output_stream_buffer_size;
+    public static final KnownKey servlet_max_concurrent_requests_per_session =
+        new KnownKey("servlet_max_concurrent_requests_per_session", "0",
+                "max number of concurrent HTTP requests per HTTP session (0 means no limit)");
 
     public static final KnownKey ldap_host;
     public static final KnownKey ldap_port;
@@ -237,6 +240,7 @@ public class LC {
     public static final KnownKey ldap_cache_external_domain_maxage;
     public static final KnownKey ldap_cache_group_maxsize;
     public static final KnownKey ldap_cache_group_maxage;
+    public static final KnownKey ldap_cache_mime_maxage;
     public static final KnownKey ldap_cache_right_maxsize;
     public static final KnownKey ldap_cache_right_maxage;
     public static final KnownKey ldap_cache_server_maxsize;
@@ -359,9 +363,10 @@ public class LC {
     public static final KnownKey calendar_cache_range_month_from;
     public static final KnownKey calendar_cache_range_months;
     public static final KnownKey calendar_cache_max_stale_items;
+    public static final KnownKey calendar_exchange_form_auth_url;
 
     public static final KnownKey text_attachments_base64;
-    
+
     public static final KnownKey nio_imap_enabled =
         new KnownKey("nio_imap_enabled", "false");
 
@@ -399,10 +404,10 @@ public class LC {
     public static final KnownKey zimbra_mtareport_max_users;
     public static final KnownKey zimbra_mtareport_max_hosts;
 
+    public static final KnownKey zmmtaconfig_enable_config_restarts;
     public static final KnownKey zmmtaconfig_interval;
     public static final KnownKey zmmtaconfig_log_level;
     public static final KnownKey zmmtaconfig_listen_port;
-    public static final KnownKey zmmtaconfig_enable_config_restarts;
 
     public static final KnownKey zimbra_mailbox_groups;
 
@@ -415,6 +420,8 @@ public class LC {
     public static final KnownKey zimbra_class_rulerewriterfactory;
     public static final KnownKey zimbra_class_datasourcemanager;
     public static final KnownKey zimbra_class_attrmanager;
+    public static final KnownKey zimbra_class_soapsessionfactory;
+    public static final KnownKey zimbra_class_dbconnfactory;
 
     // XXX REMOVE AND RELEASE NOTE
     public static final KnownKey data_source_trust_self_signed_certs;
@@ -605,6 +612,12 @@ public class LC {
     public static final KnownKey zdesktop_local_account_id = new KnownKey(
         "zdesktop_local_account_id", null, "ZDesktop special local account");
 
+    public static final KnownKey filter_null_env_sender_for_dsn_redirect = new KnownKey(
+        "filter_null_env_sender_for_dsn_redirect", "true",
+        "If true, sets the envelope sender to null when redirecting a DSN with mail filters.  " +
+        "Setting this key to false may result in mail loops.  See bug 56566.  " +
+        "This key will be removed in 8.x.");
+    
     static {
         @SuppressWarnings("unused")
         final String ZM_MYCNF_CAVEAT = "This value is stored here for use by zmmycnf program.  " +
@@ -975,6 +988,8 @@ public class LC {
         ldap_cache_group_maxsize = new KnownKey("ldap_cache_group_maxsize", "2000");
 
         ldap_cache_group_maxage = new KnownKey("ldap_cache_group_maxage", "15");
+        
+        ldap_cache_mime_maxage = new KnownKey("ldap_cache_mime_maxage", "15");
 
         ldap_cache_right_maxsize = new KnownKey("ldap_cache_right_maxsize", "100");
 
@@ -1246,7 +1261,7 @@ public class LC {
         wiki_user.setDefault("wiki");
 
         calendar_outlook_compatible_allday_events = new KnownKey("calendar_outlook_compatible_allday_events");
-        calendar_outlook_compatible_allday_events.setDefault("true");
+        calendar_outlook_compatible_allday_events.setDefault("false");
 
         calendar_entourage_compatible_timezones = new KnownKey("calendar_entourage_compatible_timezones");
         calendar_entourage_compatible_timezones.setDefault("true");
@@ -1289,6 +1304,9 @@ public class LC {
 
         calendar_cache_max_stale_items = new KnownKey("calendar_cache_max_stale_items");
         calendar_cache_max_stale_items.setDefault("10");
+
+        calendar_exchange_form_auth_url = new KnownKey("calendar_exchange_form_auth_url");
+        calendar_exchange_form_auth_url.setDefault("/exchweb/bin/auth/owaauth.dll");
 
         krb5_keytab = new KnownKey("krb5_keytab");
         krb5_keytab.setDefault("${zimbra_home}" + FS + "conf" + FS + "krb5.keytab");
@@ -1346,6 +1364,8 @@ public class LC {
         zimbra_class_rulerewriterfactory = new KnownKey("zimbra_class_rulerewriterfactory", "com.zimbra.cs.filter.RuleRewriterFactory");
         zimbra_class_datasourcemanager = new KnownKey("zimbra_class_datasourcemanager", "com.zimbra.cs.datasource.DataSourceManager");
         zimbra_class_attrmanager = new KnownKey("zimbra_class_attrmanager", "com.zimbra.cs.account.AttributeManager");
+        zimbra_class_soapsessionfactory = new KnownKey("zimbra_class_soapsessionfactory", "com.zimbra.soap.SoapSessionFactory");
+        zimbra_class_dbconnfactory = new KnownKey("zimbra_class_dbconnfactory", "com.zimbra.cs.db.ZimbraConnectionFactory");
 
         data_source_trust_self_signed_certs = new KnownKey("data_source_trust_self_signed_certs", "false");
         data_source_fetch_size = new KnownKey("data_source_fetch_size", "5");
@@ -1636,12 +1656,12 @@ public class LC {
                 "Number of seconds to cache successful hostname-to-IP address lookup from the name service. ");
 
         text_attachments_base64 = new KnownKey("text_attachments_base64", "true");
-        
-		// NOTE: When adding a new KnownKey, you do not need to call
-		//       setDoc. The documentation string will come from the
-		//       ZsMsg properties file, using the same key as the
-		//       KnownKey.
-		//       You can still use setDoc but it is NOT recommended
-		//       because it will not be able to be translated.
+
+        // NOTE: When adding a new KnownKey, you do not need to call
+        //       setDoc. The documentation string will come from the
+        //       ZsMsg properties file, using the same key as the
+        //       KnownKey.
+        //       You can still use setDoc but it is NOT recommended
+        //       because it will not be able to be translated.
     }
 }

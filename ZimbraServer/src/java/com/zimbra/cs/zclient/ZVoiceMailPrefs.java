@@ -18,14 +18,14 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.VoiceConstants;
+import com.zimbra.cs.account.Provisioning;
 
 import java.util.HashMap;
-import java.util.Set;
 
 public class ZVoiceMailPrefs extends ZCallFeature {
     private HashMap<String, String> mMap;
 
-    public ZVoiceMailPrefs(String name) {
+	public ZVoiceMailPrefs(String name) {
         super(name);
         mMap = new HashMap<String, String>();
     }
@@ -36,7 +36,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
 
     public void setEmailNotificationAddress(String address) {
-        this.set(VoiceConstants.A_vmPrefEmailNotifAddress, address);
+        mMap.put(VoiceConstants.A_vmPrefEmailNotifAddress, address);
     }
 
     public boolean getPlayDateAndTimeInMsgEnv() {
@@ -44,7 +44,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setPlayDateAndTimeInMsgEnv(boolean value) {
-        this.set(VoiceConstants.A_vmPrefPlayDateAndTimeInMsgEnv, value);
+        mMap.put(VoiceConstants.A_vmPrefPlayDateAndTimeInMsgEnv, value ? "true":"false");
     }
     
     public boolean getAutoPlayNewMsgs() {
@@ -52,7 +52,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setAutoPlayNewMsgs(boolean value) {
-        this.set(VoiceConstants.A_vmPrefAutoPlayNewMsgs, value);
+        mMap.put(VoiceConstants.A_vmPrefAutoPlayNewMsgs, value ? "true":"false");
     }
     
     public String getPromptLevel() {
@@ -60,9 +60,8 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setPromptLevel(String level) {
-        if (level != null && (level.equals("RAPID") || level.equals("STANDARD") || level.equals("EXTENDED"))) {
-            this.set(VoiceConstants.A_vmPrefPromptLevel, level);
-        }
+        if (level != null && (level.equals("RAPID") || level.equals("STANDARD") || level.equals("EXTENDED")))
+            mMap.put(VoiceConstants.A_vmPrefPromptLevel, level);
     }
     
     public boolean getPlayCallerNameInMsgEnv() {
@@ -70,7 +69,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setPlayCallerNameInMsgEnv(boolean value) {
-        this.set(VoiceConstants.A_vmPrefPlayCallerNameInMsgEnv, value);
+        mMap.put(VoiceConstants.A_vmPrefPlayCallerNameInMsgEnv, value ? "true":"false");
     }
     
     public boolean getSkipPinEntry() {
@@ -78,7 +77,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setSkipPinEntry(boolean value) {
-        this.set(VoiceConstants.A_vmPrefSkipPinEntry, value);
+        mMap.put(VoiceConstants.A_vmPrefSkipPinEntry, value ? "true":"false");
     }
     
     public String getUserLocale() {
@@ -86,7 +85,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setUserLocale(String locale) {
-        this.set(VoiceConstants.A_vmPrefUserLocale, locale);
+        mMap.put(VoiceConstants.A_vmPrefUserLocale, locale);
     }
     
     public String getAnsweringLocale() {
@@ -94,7 +93,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setAnsweringLocale(String locale) {
-        this.set(VoiceConstants.A_vmPrefAnsweringLocale, locale);
+        mMap.put(VoiceConstants.A_vmPrefAnsweringLocale, locale);
     }
 
     public String getGreetingType() {
@@ -102,7 +101,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
 
     public void setGreetingType(String type) {
-        this.set(VoiceConstants.A_vmPrefGreetingType, type);
+        mMap.put(VoiceConstants.A_vmPrefGreetingType, type);
     }
 
     public boolean getEmailNotifStatus() {
@@ -110,7 +109,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setEmailNotifStatus(boolean value) {
-        this.set(VoiceConstants.A_vmPrefEmailNotifStatus, value);
+        mMap.put(VoiceConstants.A_vmPrefEmailNotifStatus, value ? "true":"false");
     }
 
     public boolean getPlayTutorial() {
@@ -118,7 +117,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setPlayTutorial(boolean value) {
-        this.set(VoiceConstants.A_vmPrefPlayTutorial, value);
+        mMap.put(VoiceConstants.A_vmPrefPlayTutorial, value ? "true":"false");
     }
 
     public int getVoiceItemsPerPage() {
@@ -126,53 +125,25 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public void setVoiceItemsPerPage(int value) {
-        this.set(VoiceConstants.A_zimbraPrefVoiceItemsPerPage, value);
-    }
-
-    public boolean getEmailNotifTrans() {
-        return this.getBoolean(VoiceConstants.A_vmPrefEmailNotifTrans);
+        mMap.put(VoiceConstants.A_zimbraPrefVoiceItemsPerPage, Integer.toString(value));
     }
     
-    public void setEmailNotifTrans(boolean value) {
-        this.set(VoiceConstants.A_vmPrefEmailNotifTrans, value);
-    }
 
-    public boolean getEmailNotifAttach() {
-        return this.getBoolean(VoiceConstants.A_vmPrefEmailNotifAttach);
-    }
-    
-    public void setEmailNotifAttach(boolean value) {
-        this.set(VoiceConstants.A_vmPrefEmailNotifAttach, value);
-    }
-
-    public Set<String> keySet() {
-        return mMap.keySet();
-    }
     public String get(String key) {
         return mMap.get(key);
     }
-    public void set(String key, String value) {
-        mMap.put(key, value);
-    }
-    public void set(String key, boolean value) {
-        this.set(key, value ? "true" : "false");
-    }
-    public void set(String key, int value) {
-        this.set(key, Integer.toString(value));
-    }
-
 
     public long getLong(String name) {
-        String v = this.get(name);
-        try {
-            return v == null ? -1 : Long.parseLong(v);
-        } catch (NumberFormatException e) {
-            return -1;
-        }
+	String v = get(name);
+	try {
+		return v == null ? -1 : Long.parseLong(v);
+	} catch (NumberFormatException e) {
+		return -1;
+	}
     }
 
     public int getInt(String name) {
-        String v = this.get(name);
+        String v = get(name);
         try {
             return v == null ? -1 : Integer.parseInt(v);
         } catch (NumberFormatException e) {
@@ -181,12 +152,12 @@ public class ZVoiceMailPrefs extends ZCallFeature {
     }
     
     public boolean getBoolean(String name) {
-        String v = this.get(name);
-        try {
-            return (v != null && (v.equalsIgnoreCase("true") || v.equalsIgnoreCase("yes") || Integer.parseInt(v) != 0));
-        } catch (NumberFormatException e) {
-            return false;
-        }
+	String v = get(name);
+	try {
+		return (v != null && (v.equalsIgnoreCase("true") || v.equalsIgnoreCase("yes") || Integer.parseInt(v) != 0));
+	} catch (NumberFormatException e) {
+		return false;
+	}
     }
 
     public synchronized void assignFrom(ZCallFeature that) {
@@ -195,7 +166,7 @@ public class ZVoiceMailPrefs extends ZCallFeature {
             HashMap<String, String> thatMap = ((ZVoiceMailPrefs) that).mMap;
             for (String name : thatMap.keySet()) {
                 String value = thatMap.get(name);
-                this.set(name, value);
+                mMap.put(name, value);
             }
         }
     }
@@ -205,14 +176,14 @@ public class ZVoiceMailPrefs extends ZCallFeature {
         for (Element prefElement : element.listElements(VoiceConstants.E_PREF)) {
             String name = prefElement.getAttribute(MailConstants.A_NAME);
             String value = prefElement.getText();
-            this.set(name, value);
+            mMap.put(name, value);
         }
     }
 
     void toElement(Element element) throws ServiceException {
         super.toElement(element);
-        for (String name : this.keySet()) {
-            String value = this.get(name);
+        for (String name : mMap.keySet()) {
+            String value = mMap.get(name);
             Element prefElement = element.addElement(VoiceConstants.E_PREF);
             prefElement.addAttribute(MailConstants.A_NAME, name);
             prefElement.setText(value);

@@ -354,6 +354,18 @@ ZaSearch.prototype.dynSelectSearchDomains = function (callArgs) {
 		params.types = [ZaSearch.DOMAINS];
 		params.callback = dataCallback;
 		params.sortBy = ZaDomain.A_domainName;
+        	params.query = "";
+        	if(ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsDelegatedAdminAccount] == "TRUE") {
+            	var domainNameList = ZaApp.getInstance()._domainNameList;
+            	if(domainNameList && domainNameList instanceof Array) {
+                	for(var i = 0; i < domainNameList.length; i++) {
+                    		if(!value || domainNameList[i].indexOf(value) != -1)
+                    		params.query += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
+                	}
+                	if(domainNameList.length > 1)
+                    		params.query = "(|" + params.query + ")";
+            	}
+        	} else
 		params.query = ZaSearch.getSearchDomainByNameQuery(value);
 		params.controller = ZaApp.getInstance().getCurrentController();
 		params.showBusy = true;
@@ -381,6 +393,16 @@ ZaSearch.prototype.dynSelectSearchCoses = function (callArgs) {
 		params.types = [ZaSearch.COSES];
 		params.callback = dataCallback;
 		params.sortBy = ZaCos.A_name;
+                params.query = "";
+                if(!ZaZimbraAdmin.isGlobalAdmin()) {
+                        var cosNameList = ZaApp.getInstance()._cosNameList;
+                        if(cosNameList && (cosNameList instanceof Array) && cosNameList.length == 0) {
+                            for(var i = 0; i < cosNameList.length; i++)
+                                query += "(" + ZaCos.A_name + "=" + cosNameList[i] + ")";
+                            if(cosNameList.length > 1)
+                                query = "(|" + query + ")";
+                        } else params.query = ZaSearch.getSearchCosByNameQuery(value);
+                } else
 		params.query = ZaSearch.getSearchCosByNameQuery(value);
 		params.controller = ZaApp.getInstance().getCurrentController();
 		params.showBusy = true;

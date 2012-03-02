@@ -44,6 +44,7 @@
           <Set name="lowResourcesMaxIdleTime">1000</Set>
           <Set name="Acceptors">2</Set>
           <Set name="confidentialPort">7443</Set>
+	  <Set name="Forwarded">true</Set>
         </New>
       </Arg>
     </Call>
@@ -73,6 +74,7 @@
               <Item>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</Item>
             </Array>
           </Set>
+          <Set name="Forwarded">true</Set>
         </New>
       </Arg>
     </Call>
@@ -99,6 +101,7 @@
               <Item>SSL_DHE_DSS_EXPORT_WITH_DES40_CBC_SHA</Item>
             </Array>
           </Set>
+          <Set name="Forwarded">true</Set>
         </New>
       </Arg>
     </Call>
@@ -302,7 +305,7 @@
     <Ref id="RequestLog">
       <Set name="requestLog">
         <New id="RequestLogImpl" class="org.mortbay.jetty.NCSARequestLog">
-          <Arg><SystemProperty name="jetty.home" default="."/>/logs/access_log.yyyy_mm_dd</Arg>
+          <Arg><SystemProperty name="jetty.home" default="."/>/../log/access_log.yyyy_mm_dd</Arg>
           <Set name="logDateFormat">dd/MMM/yyyy:HH:mm:ss Z</Set>
           <Set name="retainDays">30</Set>
           <Set name="append">true</Set>
@@ -319,7 +322,7 @@
         <Set name="handler"><Ref id="oldhandler"/></Set>
         <Set name="outputStream">
           <New class="org.mortbay.util.RolloverFileOutputStream">
-            <Arg type="String"><SystemProperty name="jetty.home" default="."/>/logs/yyyy_mm_dd.trace.log</Arg>
+            <Arg type="String"><SystemProperty name="jetty.home" default="."/>/../log/yyyy_mm_dd.trace.log</Arg>
             <Arg type="boolean">true</Arg> <!-- append -->
             <Arg type="int">10</Arg> <!-- retain days -->
           </New>

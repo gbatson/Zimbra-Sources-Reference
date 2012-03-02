@@ -117,7 +117,20 @@ ZaOverviewPanelController.prototype.searchDomains = function() {
 	var busyId = Dwt.getNextId () ;
 	//var callback = new AjxCallback(this, this.domainSearchCallback,{busyId:busyId});
 	var domainListController = ZaApp.getInstance().getDomainListController ();
-	
+    	domainListController._currentQuery = "";
+	if(!ZaZimbraAdmin.isGlobalAdmin()) {
+           var domainNameList = ZaApp.getInstance()._domainNameList;
+            if(!domainNameList || !(domainNameList instanceof Array) || domainNameList.length == 0) {
+                ZaApp.getInstance()._domainList =  new ZaItemList(ZaDomain);
+                return;
+           }
+           if(domainNameList && domainNameList instanceof Array) {
+              for(var i = 0; i < domainNameList.length; i++)
+                 domainListController._currentQuery += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
+              if(domainNameList.length > 1)
+                 domainListController._currentQuery = "(|" + domainListController._currentQuery + ")";
+           }
+        } else 	
 	domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
 	var searchParams = {
 			query: domainListController._currentQuery, 
@@ -363,6 +376,15 @@ function() {
             ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._RESOURCE_VIEW] = ZaOverviewPanelController.resourceListTreeListener;
         }
     }
+
+        if(!ZaZimbraAdmin.isGlobalAdmin()) {
+               var domainNamelist = ZaDomain.getEffectiveDomainList(ZaZimbraAdmin.currentAdminAccount.id);
+               ZaApp.getInstance()._domainNameList = domainNamelist;
+
+               var cosNamelist = ZaCos.getEffectiveCosList(ZaZimbraAdmin.currentAdminAccount.id);
+               ZaApp.getInstance()._cosNameList = cosNamelist;
+
+        }
 
 	//TODO:  ZaSettings.DOMAIN_AUTH_WIZ_ENABLED - LDAPAuthWizard enabled for the domain admin	
 	if(showConfig ) {	
@@ -749,6 +771,16 @@ ZaOverviewPanelController.domainListTreeListener = function (ev) {
 	var domainListController = ZaApp.getInstance().getDomainListController ();
 	
 	//if we do not have access to domains we will only get our own domain in response anyway, so no need to add a query
+        domainListController._currentQuery = "";
+	if(!ZaZimbraAdmin.isGlobalAdmin()) {
+           var domainNameList = ZaApp.getInstance()._domainNameList;
+           if(domainNameList && domainNameList instanceof Array && domainNameList.length > 0) {
+              for(var i = 0; i < domainNameList.length; i++)
+                 domainListController._currentQuery += "(" + ZaDomain.A_domainName + "=" + domainNameList[i] + ")";
+              if(domainNameList.length > 1)
+                 domainListController._currentQuery = "(|" + domainListController._currentQuery + ")";
+           } else domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
+        } else
 	domainListController._currentQuery = ZaDomain.LOCAL_DOMAIN_QUERY;
 			
 	if(ZaApp.getInstance().getCurrentController()) {

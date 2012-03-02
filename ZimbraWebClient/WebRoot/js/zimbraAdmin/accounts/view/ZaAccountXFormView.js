@@ -1027,9 +1027,11 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 			},
 			visibilityChecks:[ZaItem.hasReadPermission]	
 	});*/
-
-    if (ZaItem.hasReadPermission(ZaAccount.A_mailHost, entry)) {
-	    headerItems.push({type:_OUTPUT_, ref:ZaAccount.A_mailHost, labelLocation:_LEFT_,label:ZaMsg.NAD_MailServer});
+	
+    if (!entry.isExternal && ZaItem.hasReadPermission(ZaAccount.A_mailHost, entry)) {
+            headerItems.push({type:_OUTPUT_, ref:ZaAccount.A_mailHost, labelLocation:_LEFT_,label:ZaMsg.NAD_MailServer});
+    } else if(entry.isExternal && ZaItem.hasReadPermission(ZaAccount.A_zimbraMailTransport, entry)) {
+        headerItems.push({type:_OUTPUT_, ref:ZaAccount.A_zimbraMailTransport, labelLocation:_LEFT_,label:ZaMsg.NAD_MailServer});
     }
 
     if (ZaItem.hasReadPermission(ZaAccount.A_accountStatus, entry)) {
@@ -2488,6 +2490,7 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 									visibilityChecks:[ZaItem.hasReadPermission]
 								},
 								{type:_GROUP_, numCols:6, width:"625px",colSizes:["275","100px","auto","100px","auto","100px"], colSpan:2,
+									visibilityChecks:[[ZaItem.hasWritePermission,ZaAccount.A_zimbraPrefCalendarForwardInvitesTo]],
 									cssStyle:"margin-bottom:10px;padding-bottom:0px;margin-top:10px;pxmargin-left:10px;margin-right:10px;",
 									items: [
 										{type:_CELLSPACER_},

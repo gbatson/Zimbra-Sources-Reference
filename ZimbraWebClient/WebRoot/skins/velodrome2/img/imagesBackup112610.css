@@ -1,0 +1,1176 @@
+ .ImgBuildAdBook{background:url("/zimbra/skins/velodrome2/img/misc/ImgBuildAdBook.gif?v=101123102159") 0px 0px no-repeat;width:215px !important;height:25px !important;overflow:hidden;}
+ .ImgButtonSearch{background:url("/zimbra/skins/velodrome2/img/misc/ImgButtonSearch.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ImgButtonSearch_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgButtonSearch_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ImgButtonSearch_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgButtonSearch_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ImgContactsFolder{background:url("/zimbra/skins/velodrome2/img/misc/ImgContactsFolder.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDialog_E{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_E.repeaty.gif?v=101123102159") 0px 0px repeat-y;width:2px !important;overflow:hidden;}
+ .ImgDialog_N{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_N.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:30px !important;overflow:hidden;}
+ .ImgDialog_NE{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_NE.gif?v=101123102159") 0px 0px no-repeat;width:2px !important;height:30px !important;overflow:hidden;}
+ .ImgDialog_NW{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_NW.gif?v=101123102159") 0px 0px no-repeat;width:2px !important;height:30px !important;overflow:hidden;}
+ .ImgDialog_S{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_S.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:35px !important;overflow:hidden;}
+ .ImgDialog_SE{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_SE.gif?v=101123102159") 0px 0px no-repeat;width:2px !important;height:35px !important;overflow:hidden;}
+ .ImgDialog_SW{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_SW.gif?v=101123102159") 0px 0px no-repeat;width:2px !important;height:35px !important;overflow:hidden;}
+ .ImgDialog_W{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_W.repeaty.gif?v=101123102159") 0px 0px repeat-y;width:2px !important;overflow:hidden;}
+ .ImgInbox{background:url("/zimbra/skins/velodrome2/img/misc/ImgInbox.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPerson_48{background:url("/zimbra/skins/velodrome2/img/misc/ImgPerson_48.gif?v=101123102159") 0px 0px no-repeat;width:48px !important;height:48px !important;overflow:hidden;}
+ .ImgTab{background:url("/zimbra/skins/velodrome2/img/misc/ImgTab.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:30px !important;overflow:hidden;}
+ .ImgTab_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgTab_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ImgTab_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgTab_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ImgTaskCheckbox{background:url("/zimbra/skins/velodrome2/img/misc/ImgTaskCheckbox.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .Search_ImgButton{background:url("/zimbra/skins/velodrome2/img/misc/Search_ImgButton.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .Search_ImgButton_L{background:url("/zimbra/skins/velodrome2/img/misc/Search_ImgButton_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .Search_ImgButton_R{background:url("/zimbra/skins/velodrome2/img/misc/Search_ImgButton_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ZActive .ImgSelect{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgSelect.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZActive .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgSelect_L.gif?v=101123102159") 0px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgSelect_R.gif?v=101123102159") 0px 0px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgToolbarButton.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZActive .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgToolbarButton_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZActive .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgToolbarButton_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgButton{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgButton.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgButton_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgButton_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgSelect{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgSelect.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgSelect_L.gif?v=101123102159") 0px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgSelect_R.gif?v=101123102159") 0px 0px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgTab{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgTab.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:30px !important;overflow:hidden;}
+ .ZFocused .ImgTab_L{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgTab_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ZFocused .ImgTab_R{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgTab_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:27px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZHover .ImgSelect{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgSelect.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZHover .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgSelect_L.gif?v=101123102159") 0px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgSelect_R.gif?v=101123102159") 0px 0px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgToolbarButton.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZHover .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgToolbarButton_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZHover .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgToolbarButton_R.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ImgPause.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ImgPlay.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZActive-ImgPause.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZActive-ImgPlay.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZHover-ImgPause.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZHover-ImgPlay.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZSelected-ImgPause.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZSelected-ImgPlay.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .quotaUsed{background:url("/zimbra/skins/velodrome2/img/misc/quotaUsed.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:6px !important;overflow:hidden;}
+ .quotabar{background:url("/zimbra/skins/velodrome2/img/misc/quotabar.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:6px !important;overflow:hidden;}
+ .vertSep{background:url("/zimbra/skins/velodrome2/img/misc/vertSep.gif?v=101123102159") 0px 0px no-repeat;width:2px !important;height:26px !important;overflow:hidden;}
+ .ImgPrefsHeader{background:url("/zimbra/skins/velodrome2/img/prefs/ImgPrefsHeader.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:25px !important;overflow:hidden;}
+ .ImgPrefsHeader_L{background:url("/zimbra/skins/velodrome2/img/prefs/ImgPrefsHeader_L.gif?v=101123102159") 0px 0px no-repeat;width:9px !important;height:25px !important;overflow:hidden;}
+ .ImgPrefsHeader_R{background:url("/zimbra/skins/velodrome2/img/prefs/ImgPrefsHeader_R.gif?v=101123102159") 0px 0px no-repeat;width:9px !important;height:25px !important;overflow:hidden;}
+ .ImgAppTab{background:url("/zimbra/skins/velodrome2/img/appTab/ImgAppTab.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgAppTab_L{background:url("/zimbra/skins/velodrome2/img/appTab/ImgAppTab_L.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ImgAppTab_R{background:url("/zimbra/skins/velodrome2/img/appTab/ImgAppTab_R.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgAppTab{background:url("/zimbra/skins/velodrome2/img/appTab/ZSelected-ImgAppTab.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgAppTab_L{background:url("/zimbra/skins/velodrome2/img/appTab/ZSelected-ImgAppTab_L.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgAppTab_R{background:url("/zimbra/skins/velodrome2/img/appTab/ZSelected-ImgAppTab_R.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R3{background:url("/zimbra/skins/velodrome2/img/misc/ImgSkin_Chrome_R3.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R3_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgSkin_Chrome_R3_L.jpg?v=101123102159") 0px 0px no-repeat;width:9px !important;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R3_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgSkin_Chrome_R3_R.jpg?v=101123102159") 0px 0px no-repeat;width:8px !important;height:28px !important;overflow:hidden;}
+ .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ImgToolbarButton.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgToolbarButton_L.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgToolbarButton_R.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgToolbarButton.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgToolbarButton_L.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgToolbarButton_R.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_L.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_R.jpg?v=101123102159") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZmHtmlEditor .ZToolbar{background:url("/zimbra/skins/velodrome2/img/misc/ZmHtmlEditor-ZToolbar.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:27px !important;overflow:hidden;}
+ .overviewHeader{background:url("/zimbra/skins/velodrome2/img/misc/overviewHeader.repeatx.jpg?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgCalendarFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgCalendarFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgCalendarFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgContactsFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgContactsFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgContactsFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgEmailedContactsOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgEmailedContactsOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgEmailedContactsOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgInboxOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgInboxOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgInboxOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgMailFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgMailFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgMailFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgNotebookOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgNotebookOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgNotebookOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgRSSOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgRSSOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgRSSOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSectionOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSectionOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSectionOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSentFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSentFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSentFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedCalendarFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedCalendarFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedCalendarFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedContactsFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedContactsFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedContactsFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedMailFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedMailFolderOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedMailFolderOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedNotebookOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedNotebookOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedNotebookOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedSectionOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedSectionOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedSectionOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedTaskListOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedTaskListOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedTaskListOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgTagOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgTagOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgTagOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgTaskListOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgTaskListOverlay.png?v=101123102159',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgTaskListOverlay.png?v=101123102159') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgAddPhoto{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px 0px no-repeat;width:90px !important;height:90px !important;overflow:hidden;}
+ .ImgGoodmail{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -90px no-repeat;width:29px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgAppTab_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -29px -90px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgAppTab_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -35px -90px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/widgets/ZSelected-ImgToolbarButton_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZSelected .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -47px -90px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZFocused .ImgField_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -53px -90px no-repeat;width:8px !important;height:24px !important;overflow:hidden;}
+ .ZFocused .ImgField_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -61px -90px no-repeat;width:8px !important;height:24px !important;overflow:hidden;}
+ .ImgPanel_NE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -69px -90px no-repeat;width:6px !important;height:22px !important;overflow:hidden;}
+ .ImgPanel_NW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -75px -90px no-repeat;width:6px !important;height:22px !important;overflow:hidden;}
+ .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -81px -90px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -84px -90px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -87px -90px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZDefault .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -3px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZDefault .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -9px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -15px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -18px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgTab_L{background:url("/zimbra/skins/velodrome2/img/widgets/ZFocused-ImgTab_L.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgTab_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -27px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -33px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -36px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -39px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -42px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -45px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -51px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ImgSoundPlayer_Empty_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -57px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Empty_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -64px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Full_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -71px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Full_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -78px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -138px no-repeat;width:9px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -9px -138px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -27px -138px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -46px -138px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -71px -138px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -156px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -19px -156px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -44px -156px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -62px -156px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -174px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -25px -174px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -43px -174px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -62px -174px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ImgHSash_thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -192px no-repeat;width:4px !important;height:14px !important;overflow:hidden;}
+ .ImgOutset_NE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -4px -192px no-repeat;width:6px !important;height:14px !important;overflow:hidden;}
+ .ImgOutset_NW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -10px -192px no-repeat;width:6px !important;height:14px !important;overflow:hidden;}
+ .ImgPanel_SE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -16px -192px no-repeat;width:9px !important;height:10px !important;overflow:hidden;}
+ .ImgPanel_SW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -25px -192px no-repeat;width:9px !important;height:10px !important;overflow:hidden;}
+ .ImgVolumeSlider_Thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -34px -192px no-repeat;width:18px !important;height:9px !important;overflow:hidden;}
+ .ImgVSash_thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -52px -192px no-repeat;width:14px !important;height:8px !important;overflow:hidden;}
+ .ImgVolumeSlider_Empty_B{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -66px -192px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgVolumeSlider_Empty_T{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") 0px -206px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgVolumeSlider_Full_B{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -18px -206px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgVolumeSlider_Full_T{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -36px -206px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgOutset_SE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -54px -206px no-repeat;width:6px !important;height:4px !important;overflow:hidden;}
+ .ImgOutset_SW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123102159") -60px -206px no-repeat;width:6px !important;height:4px !important;overflow:hidden;}
+ .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -20px repeat-x;height:16px !important;overflow:hidden;}
+ .ImgMsgContactSeparator{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -36px repeat-x;height:10px !important;overflow:hidden;}
+ .ImgOutset_N{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -46px repeat-x;height:14px !important;overflow:hidden;}
+ .ImgOutset_S{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -60px repeat-x;height:3px !important;overflow:hidden;}
+ .ImgPanel_N{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -63px repeat-x;height:22px !important;overflow:hidden;}
+ .ImgPanel_S{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -85px repeat-x;height:10px !important;overflow:hidden;}
+ .ImgSoundPlayer_Empty{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -95px repeat-x;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Full{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -113px repeat-x;height:18px !important;overflow:hidden;}
+ .ImgToolbar{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -131px repeat-x;height:27px !important;overflow:hidden;}
+ .ImgVSash{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -158px repeat-x;height:8px !important;overflow:hidden;}
+ .ZActive .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -166px repeat-x;height:20px !important;overflow:hidden;}
+ .ZActive .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -186px repeat-x;height:16px !important;overflow:hidden;}
+ .ZDefault .ImgButton{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -202px repeat-x;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -222px repeat-x;height:16px !important;overflow:hidden;}
+ .ZFocused .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -238px repeat-x;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgAppTab{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -258px repeat-x;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgField{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -286px repeat-x;height:24px !important;overflow:hidden;}
+ .ZFocused .ImgTab{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -310px repeat-x;height:20px !important;overflow:hidden;}
+ .ZHover .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -330px repeat-x;height:20px !important;overflow:hidden;}
+ .ZHover .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -350px repeat-x;height:16px !important;overflow:hidden;}
+ .ZSelected .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -366px repeat-x;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgButton{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -386px repeat-x;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -406px repeat-x;height:16px !important;overflow:hidden;}
+ .ZSelected .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123102159") 0px -422px repeat-x;height:27px !important;overflow:hidden;}
+ .ImgHSash{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") 0px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgOutset_E{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") -6px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgOutset_W{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") -12px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgPanel_E{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") -18px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgPanel_W{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") -24px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgVolumeSlider_Empty{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") -30px 0px repeat-y;width:18px !important;overflow:hidden;}
+ .ImgVolumeSlider_Full{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123102159") -48px 0px repeat-y;width:18px !important;overflow:hidden;}
+ .ImgMsgContact{background:url("/zimbra/skins/velodrome2/img/widgets/ImgMsgContact.repeat.gif?v=101123102159") 0px 0px repeat;overflow:hidden;}
+ .ImgPanel_bg{background:url("/zimbra/skins/velodrome2/img/widgets/ImgPanel_bg.repeat.gif?v=101123102159") 0px 0px repeat;overflow:hidden;}
+ .skin_container_splash_logo{background:url("/zimbra/skins/velodrome2/img/splash/skin_container_splash_logo.gif?v=101123102159") 0px 0px no-repeat;width:197px !important;height:69px !important;overflow:hidden;}
+ .skin_container_splash_footer_logo{background:url("/zimbra/skins/velodrome2/img/splash/skin_container_splash_footer_logo.gif?v=101123102159") 0px 0px no-repeat;width:58px !important;height:33px !important;overflow:hidden;}
+ .ImgCancel{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCheck{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgClose{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCloseGray{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCompleted{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGlobe{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgListView{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMinus{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgQuestionMark{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRename{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSave{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSinglePane{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSpellCheck{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSwitchFormat{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTelephone{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgURL{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAdd{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -256px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ImgRemove{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -268px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZFocused .ImgAdd{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -280px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZFocused .ImgRemove{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -292px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZHover .ImgAdd{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -304px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZHover .ImgRemove{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123102159") 0px -316px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ImgAddImage{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAddSlide{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAddTextBox{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBarChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgColumnChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteSlide{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteTextBox{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLineChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPieChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRunSlides{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .icon_addevent{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:17px !important;overflow:hidden;}
+ .icon_addical{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -17px no-repeat;width:16px !important;height:17px !important;overflow:hidden;}
+ .icon_countdowns{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -34px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_day{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -50px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_month{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -66px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_quickadd{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -82px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .icon_settings{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -98px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .icon_upcoming{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -114px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_week{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -130px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_notes{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -146px no-repeat;width:15px !important;height:15px !important;overflow:hidden;}
+ .icon_tasks{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -161px no-repeat;width:13px !important;height:14px !important;overflow:hidden;}
+ .GreenPlusSign{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -175px no-repeat;width:13px !important;height:13px !important;overflow:hidden;}
+ .icon_print{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -188px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .invite{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -200px no-repeat;width:14px !important;height:12px !important;overflow:hidden;}
+ .icon_share{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -212px no-repeat;width:15px !important;height:11px !important;overflow:hidden;}
+ .icon_triangle{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123102159") 0px -223px no-repeat;width:7px !important;height:4px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_Toolbar_L{background:url("/zimbra/skins/velodrome2/img/skin.gif?v=101123102159") 0px 0px no-repeat;width:9px !important;height:29px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_Toolbar_R{background:url("/zimbra/skins/velodrome2/img/skin.gif?v=101123102159") -9px 0px no-repeat;width:9px !important;height:29px !important;overflow:hidden;}
+ .ImgSkin_Customer_Logo_Bottom{background:url("/zimbra/skins/velodrome2/img/skin/ImgSkin_Customer_Logo_Bottom.gif?v=101123102159") 0px 0px no-repeat;width:60px !important;height:20px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R4{background:url("/zimbra/skins/velodrome2/img/skin.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_Toolbar{background:url("/zimbra/skins/velodrome2/img/skin.repeatx.gif?v=101123102159") 0px -20px repeat-x;height:29px !important;overflow:hidden;}
+ .ImgSkin_Toolbar{background:url("/zimbra/skins/velodrome2/img/skin.repeatx.gif?v=101123102159") 0px -49px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_L{background:url("/zimbra/skins/velodrome2/img/skin.repeaty.gif?v=101123102159") 0px 0px repeat-y;width:9px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_R{background:url("/zimbra/skins/velodrome2/img/skin.repeaty.gif?v=101123102159") -9px 0px repeat-y;width:9px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB{background:url("/zimbra/skins/velodrome2/img/skin/ImgSkin_Chrome_SB.repeat.gif?v=101123102159") 0px 0px repeat;overflow:hidden;}
+ .ImgContact{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEmailedContacts{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGAL{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGroup{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewContact{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewContactsFolder{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSharedContactsFolder{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSkin_Chrome_Logo{background:url("/zimbra/skins/velodrome2/img/logos.gif?v=101123102159") 0px 0px no-repeat;width:191px !important;height:42px !important;overflow:hidden;}
+ .ImgAccordionClosed{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAccordionOpened{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDownArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLeftDoubleArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNextPage{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPreviousPage{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRedo{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRightDoubleArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUndo{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUpArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAnsweredCalls{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCallManager{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMissedCalls{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlacedCalls{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgVoicemail{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgVoicemailApp{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .TreeHeaderRow{background:url("/zimbra/skins/velodrome2/img/lite.gif?v=101123102159") 0px 0px no-repeat;width:2px !important;height:20px !important;overflow:hidden;}
+ .ImgGoodmailLogo{background:url("/zimbra/skins/velodrome2/img/goodmail/ImgGoodmailLogo.gif?v=101123102159") 0px 0px no-repeat;width:183px !important;height:45px !important;overflow:hidden;}
+ .ImgGoodmail{background:url("/zimbra/skins/velodrome2/img/goodmail/ImgGoodmail.gif?v=101123102159") 0px 0px no-repeat;width:17px !important;height:15px !important;overflow:hidden;}
+ .ImgCalListView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCalendarFolder{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDayView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMonthView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewAppointment{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgResource{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgWeekView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAddSignature{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCompose{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgConversation{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteConversation{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteMessage{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEmptyFolder{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEnvelope{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEnvelopeGray{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgJunkMail{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMailFolder{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMailRule{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewGroup{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityHigh{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityLow{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityNormal{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSend{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSendReceive{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123102159") 0px -256px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHome_Sidebar_Bottom{background:url("/zimbra/skins/velodrome2/img/portal.gif?v=101123102159") 0px 0px no-repeat;width:9px !important;height:9px !important;overflow:hidden;}
+ .ImgHome_Sidebar_Top{background:url("/zimbra/skins/velodrome2/img/portal.gif?v=101123102159") 0px -9px no-repeat;width:9px !important;height:8px !important;overflow:hidden;}
+ .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123102159") -6px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123102159") -12px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123102159") 0px -20px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ImgButton{background:url("/zimbra/skins/velodrome2/img/buttons.repeatx.gif?v=101123102159") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgSelect{background:url("/zimbra/skins/velodrome2/img/buttons.repeatx.gif?v=101123102159") 0px -20px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgCellProperties{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteCol{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteRow{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteTable{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertColAfter{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertColBefore{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertRowAfter{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertRowBefore{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertTable{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMergeCells{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitCells{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSpreadSheet{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSum{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTable{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTableProperties{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123102159") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlaxoLogo{background:url("/zimbra/skins/velodrome2/img/plaxo.gif?v=101123102159") 0px 0px no-repeat;width:80px !important;height:27px !important;overflow:hidden;}
+ .ImgTask{background:url("/zimbra/skins/velodrome2/img/tasks.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewCompleted{background:url("/zimbra/skins/velodrome2/img/tasks.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewInProgress{background:url("/zimbra/skins/velodrome2/img/tasks.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAnsweredCalls{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAppointment{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAttachment{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCalendarApp{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCallManager{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCancel{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCascade{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCheckboxChecked{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCheckboxUnchecked{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgContactsApp{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgConversationView{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDelete{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteTag{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDraftFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEdit{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEnvelopeOpen{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFlagDis{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -256px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -272px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgForward{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -288px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHelp{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -304px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgIMAPAccount{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -320px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgJunkMail{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -336px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLeftArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -352px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMailApp{background:url("/zimbra/skins/velodrome2/img/startup/ImgMailApp.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMenuRadio{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -384px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -400px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMessageView{background:url("/zimbra/skins/velodrome2/img/startup/ImgMessageView.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMissedCalls{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -432px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMoveToFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -448px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatus{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -464px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusDraft{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -480px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusForward{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -496px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusRead{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -512px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusReply{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -528px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusSent{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -544px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusTrash{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -560px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusUnread{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -576px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgNewFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -592px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -608px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNodeCollapsed{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -624px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNodeExpanded{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -640px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgOpenInNewWindow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -656px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPOPAccount{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -672px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlacedCalls{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -688px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlus{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -704px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPreferences{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -720px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPrint{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -736px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityHigh_list{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -752px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityLow_list{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -768px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRSS{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -784px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgReadMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -800px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRefresh{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -816px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgReply{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -832px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgReplyAll{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -848px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRightArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -864px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSearch{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -880px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -896px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrowHover{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -912px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSentFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -928px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSharedMailFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -944px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgShortcut{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -960px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSinglePane{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -976px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSpamFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -992px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitPane{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1008px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitPaneOff{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1024px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitPaneVertical{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1040px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskCheckboxCompleted{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1056px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskList{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1072px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewCompleted{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1088px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewInProgress{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1104px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTrash{background:url("/zimbra/skins/velodrome2/img/startup/ImgTrash.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUnreadMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1136px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgVoicemail{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1152px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMenuCheck{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1168px no-repeat;width:12px !important;height:12px !important;overflow:hidden;}
+ .ImgHeaderExpanded{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1180px no-repeat;width:11px !important;height:11px !important;overflow:hidden;}
+ .ImgFwdArrowSmall{background:url("/zimbra/skins/velodrome2/img/startup/ImgFwdArrowSmall.gif?v=101123102159") 0px 0px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgRevArrowSmall{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") 0px -1191px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgColumnDownArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123102159") -6px -1191px no-repeat;width:8px !important;height:7px !important;overflow:hidden;}
+ .ImgCritical_32{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px 0px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgInformation_32{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -32px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgWarning_32{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -64px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgCritical{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCritical_12{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -16px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInformation{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRoundMinus{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -16px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRoundPlus{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrowHover{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -16px -128px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrowSel{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -144px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullUpArrow{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -12px -144px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSuccess{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgWarning{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -16px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDisable{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -176px no-repeat;width:14px !important;height:14px !important;overflow:hidden;}
+ .ImgHeaderCollapsed{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -14px -176px no-repeat;width:11px !important;height:11px !important;overflow:hidden;}
+ .ImgClearSearch{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -190px no-repeat;width:10px !important;height:10px !important;overflow:hidden;}
+ .ImgFastFwdArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -10px -190px no-repeat;width:10px !important;height:9px !important;overflow:hidden;}
+ .ImgFastRevArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -20px -190px no-repeat;width:10px !important;height:9px !important;overflow:hidden;}
+ .ImgFwdArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -200px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgRevArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -6px -200px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgDropDown{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -12px -200px no-repeat;width:8px !important;height:8px !important;overflow:hidden;}
+ .ImgColumnUpArrow{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -20px -200px no-repeat;width:8px !important;height:7px !important;overflow:hidden;}
+ .ImgDownArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") 0px -209px no-repeat;width:7px !important;height:4px !important;overflow:hidden;}
+ .ImgUpArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123102159") -7px -209px no-repeat;width:7px !important;height:4px !important;overflow:hidden;}
+ .ImgDoc{background:url("/zimbra/skins/velodrome2/img/doctypes.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGenericDoc{background:url("/zimbra/skins/velodrome2/img/doctypes.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHtmlDoc{background:url("/zimbra/skins/velodrome2/img/doctypes.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewPage{background:url("/zimbra/skins/velodrome2/img/notes.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBold{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderAll{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBottom{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBottomDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBottomThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBox{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBoxDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBoxThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderCenter{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderH{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderHEdges{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderLeft{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderNone{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderRight{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTop{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopBottomDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopBottomThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -256px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopDoubleBottomDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -272px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopThickBottomThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -288px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderV{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -304px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderVEdges{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -320px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBulletedList{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -336px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCamelCase{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -352px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCenterJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -368px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFindReplace{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -384px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFontBackground{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -400px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFontBorder{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -416px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFontColor{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -432px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFullJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -448px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHorizRule{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -464px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHtmlTools{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -480px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgIndent{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -496px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertImage{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -512px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertWeblink{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -528px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgItalics{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -544px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLeftJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -560px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNumberedList{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -576px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgOutdent{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -592px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRightJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -608px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgStrikeThru{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -624px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSubscript{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -640px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSuperscript{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -656px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTextDirectionLTR{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -672px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTextDirectionRTL{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -688px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUnderline{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -704px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgWordCount{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123102159") 0px -720px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDndMultiNo_48{background:url("/zimbra/skins/velodrome2/img/large.gif?v=101123102159") 0px 0px no-repeat;width:48px !important;height:48px !important;overflow:hidden;}
+ .ImgDndMultiYes_48{background:url("/zimbra/skins/velodrome2/img/large.gif?v=101123102159") 0px -48px no-repeat;width:48px !important;height:48px !important;overflow:hidden;}
+ .ImgPerson_32{background:url("/zimbra/skins/velodrome2/img/large/ImgPerson_32.gif?v=101123102159") 0px 0px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgBuildAdBook{background:url("/zimbra/skins/velodrome2/img/misc/ImgBuildAdBook.gif?v=101123125008") 0px 0px no-repeat;width:215px !important;height:25px !important;overflow:hidden;}
+ .ImgButtonSearch{background:url("/zimbra/skins/velodrome2/img/misc/ImgButtonSearch.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ImgButtonSearch_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgButtonSearch_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ImgButtonSearch_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgButtonSearch_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ImgContactsFolder{background:url("/zimbra/skins/velodrome2/img/misc/ImgContactsFolder.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDialog_E{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_E.repeaty.gif?v=101123125008") 0px 0px repeat-y;width:2px !important;overflow:hidden;}
+ .ImgDialog_N{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_N.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:30px !important;overflow:hidden;}
+ .ImgDialog_NE{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_NE.gif?v=101123125008") 0px 0px no-repeat;width:2px !important;height:30px !important;overflow:hidden;}
+ .ImgDialog_NW{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_NW.gif?v=101123125008") 0px 0px no-repeat;width:2px !important;height:30px !important;overflow:hidden;}
+ .ImgDialog_S{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_S.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:35px !important;overflow:hidden;}
+ .ImgDialog_SE{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_SE.gif?v=101123125008") 0px 0px no-repeat;width:2px !important;height:35px !important;overflow:hidden;}
+ .ImgDialog_SW{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_SW.gif?v=101123125008") 0px 0px no-repeat;width:2px !important;height:35px !important;overflow:hidden;}
+ .ImgDialog_W{background:url("/zimbra/skins/velodrome2/img/misc/ImgDialog_W.repeaty.gif?v=101123125008") 0px 0px repeat-y;width:2px !important;overflow:hidden;}
+ .ImgInbox{background:url("/zimbra/skins/velodrome2/img/misc/ImgInbox.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPerson_48{background:url("/zimbra/skins/velodrome2/img/misc/ImgPerson_48.gif?v=101123125008") 0px 0px no-repeat;width:48px !important;height:48px !important;overflow:hidden;}
+ .ImgTab{background:url("/zimbra/skins/velodrome2/img/misc/ImgTab.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:30px !important;overflow:hidden;}
+ .ImgTab_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgTab_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ImgTab_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgTab_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ImgTaskCheckbox{background:url("/zimbra/skins/velodrome2/img/misc/ImgTaskCheckbox.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .Search_ImgButton{background:url("/zimbra/skins/velodrome2/img/misc/Search_ImgButton.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .Search_ImgButton_L{background:url("/zimbra/skins/velodrome2/img/misc/Search_ImgButton_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .Search_ImgButton_R{background:url("/zimbra/skins/velodrome2/img/misc/Search_ImgButton_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:23px !important;overflow:hidden;}
+ .ZActive .ImgSelect{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgSelect.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZActive .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgSelect_L.gif?v=101123125008") 0px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgSelect_R.gif?v=101123125008") 0px 0px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgToolbarButton.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZActive .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgToolbarButton_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZActive .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZActive-ImgToolbarButton_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgButton{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgButton.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgButton_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgButton_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgSelect{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgSelect.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgSelect_L.gif?v=101123125008") 0px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgSelect_R.gif?v=101123125008") 0px 0px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgTab{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgTab.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:30px !important;overflow:hidden;}
+ .ZFocused .ImgTab_L{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgTab_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ZFocused .ImgTab_R{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgTab_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:30px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:27px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZHover .ImgSelect{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgSelect.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ZHover .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgSelect_L.gif?v=101123125008") 0px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgSelect_R.gif?v=101123125008") 0px 0px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgToolbarButton.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZHover .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgToolbarButton_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZHover .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZHover-ImgToolbarButton_R.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ImgPause.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ImgPlay.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZActive-ImgPause.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZActive-ImgPlay.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZHover-ImgPause.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZHover-ImgPlay.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgPause{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZSelected-ImgPause.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgPlay{background:url("/zimbra/skins/velodrome2/img/misc/ZmSoundPlayer-ZSelected-ImgPlay.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:14px !important;overflow:hidden;}
+ .quotaUsed{background:url("/zimbra/skins/velodrome2/img/misc/quotaUsed.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:6px !important;overflow:hidden;}
+ .quotabar{background:url("/zimbra/skins/velodrome2/img/misc/quotabar.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:6px !important;overflow:hidden;}
+ .vertSep{background:url("/zimbra/skins/velodrome2/img/misc/vertSep.gif?v=101123125008") 0px 0px no-repeat;width:2px !important;height:26px !important;overflow:hidden;}
+ .ImgPrefsHeader{background:url("/zimbra/skins/velodrome2/img/prefs/ImgPrefsHeader.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:25px !important;overflow:hidden;}
+ .ImgPrefsHeader_L{background:url("/zimbra/skins/velodrome2/img/prefs/ImgPrefsHeader_L.gif?v=101123125008") 0px 0px no-repeat;width:9px !important;height:25px !important;overflow:hidden;}
+ .ImgPrefsHeader_R{background:url("/zimbra/skins/velodrome2/img/prefs/ImgPrefsHeader_R.gif?v=101123125008") 0px 0px no-repeat;width:9px !important;height:25px !important;overflow:hidden;}
+ .ImgAppTab{background:url("/zimbra/skins/velodrome2/img/appTab/ImgAppTab.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgAppTab_L{background:url("/zimbra/skins/velodrome2/img/appTab/ImgAppTab_L.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ImgAppTab_R{background:url("/zimbra/skins/velodrome2/img/appTab/ImgAppTab_R.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgAppTab{background:url("/zimbra/skins/velodrome2/img/appTab/ZSelected-ImgAppTab.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgAppTab_L{background:url("/zimbra/skins/velodrome2/img/appTab/ZSelected-ImgAppTab_L.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgAppTab_R{background:url("/zimbra/skins/velodrome2/img/appTab/ZSelected-ImgAppTab_R.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R3{background:url("/zimbra/skins/velodrome2/img/misc/ImgSkin_Chrome_R3.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R3_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgSkin_Chrome_R3_L.jpg?v=101123125008") 0px 0px no-repeat;width:9px !important;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R3_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgSkin_Chrome_R3_R.jpg?v=101123125008") 0px 0px no-repeat;width:8px !important;height:28px !important;overflow:hidden;}
+ .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ImgToolbarButton.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ImgToolbarButton_L.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ImgToolbarButton_R.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgToolbarButton.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgToolbarButton_L.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZDisabled .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZDisabled-ImgToolbarButton_R.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_L.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/misc/ZFocused-ImgToolbarButton_R.jpg?v=101123125008") 0px 0px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZmHtmlEditor .ZToolbar{background:url("/zimbra/skins/velodrome2/img/misc/ZmHtmlEditor-ZToolbar.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:27px !important;overflow:hidden;}
+ .overviewHeader{background:url("/zimbra/skins/velodrome2/img/misc/overviewHeader.repeatx.jpg?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgCalendarFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgCalendarFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgCalendarFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgContactsFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgContactsFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgContactsFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgEmailedContactsOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgEmailedContactsOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgEmailedContactsOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgInboxOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgInboxOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgInboxOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgMailFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgMailFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgMailFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgNotebookOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgNotebookOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgNotebookOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgRSSOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgRSSOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgRSSOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSectionOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSectionOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSectionOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSentFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSentFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSentFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedCalendarFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedCalendarFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedCalendarFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedContactsFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedContactsFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedContactsFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedMailFolderOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedMailFolderOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedMailFolderOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedNotebookOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedNotebookOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedNotebookOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedSectionOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedSectionOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedSectionOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgSharedTaskListOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgSharedTaskListOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgSharedTaskListOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgTagOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgTagOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgTagOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgTaskListOverlay{
+#IFDEF MSIE
+filter: progid:DXImageTransform.Microsoft.AlphaImageLoader(src='/zimbra/skins/velodrome2/img/overlays/ImgTaskListOverlay.png?v=101123125008',sizingMethod='image');
+#ELSE
+background: url('/zimbra/skins/velodrome2/img/overlays/ImgTaskListOverlay.png?v=101123125008') 0px 0px no-repeat;
+#ENDIF
+}
+ .ImgAddPhoto{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px 0px no-repeat;width:90px !important;height:90px !important;overflow:hidden;}
+ .ImgGoodmail{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -90px no-repeat;width:29px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgAppTab_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -29px -90px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgAppTab_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -35px -90px no-repeat;width:6px !important;height:28px !important;overflow:hidden;}
+ .ZSelected .ImgToolbarButton_L{background:url("/zimbra/skins/velodrome2/img/widgets/ZSelected-ImgToolbarButton_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZSelected .ImgToolbarButton_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -47px -90px no-repeat;width:6px !important;height:27px !important;overflow:hidden;}
+ .ZFocused .ImgField_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -53px -90px no-repeat;width:8px !important;height:24px !important;overflow:hidden;}
+ .ZFocused .ImgField_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -61px -90px no-repeat;width:8px !important;height:24px !important;overflow:hidden;}
+ .ImgPanel_NE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -69px -90px no-repeat;width:6px !important;height:22px !important;overflow:hidden;}
+ .ImgPanel_NW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -75px -90px no-repeat;width:6px !important;height:22px !important;overflow:hidden;}
+ .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -81px -90px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -84px -90px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -87px -90px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZActive .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZDefault .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -3px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZDefault .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -9px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -15px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -18px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgTab_L{background:url("/zimbra/skins/velodrome2/img/widgets/ZFocused-ImgTab_L.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgTab_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -27px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -33px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZHover .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -36px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgAccordion_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -39px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgAccordion_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -42px -118px no-repeat;width:3px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -45px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -51px -118px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ImgSoundPlayer_Empty_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -57px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Empty_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -64px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Full_L{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -71px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Full_R{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -78px -118px no-repeat;width:7px !important;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -138px no-repeat;width:9px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -9px -138px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -27px -138px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -46px -138px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -71px -138px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -156px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZActive .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -19px -156px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -44px -156px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -62px -156px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZHover .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -174px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgBack{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -25px -174px no-repeat;width:18px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgForward{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -43px -174px no-repeat;width:19px !important;height:18px !important;overflow:hidden;}
+ .ZmSoundPlayer .ZSelected .ImgVolume{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -62px -174px no-repeat;width:25px !important;height:18px !important;overflow:hidden;}
+ .ImgHSash_thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -192px no-repeat;width:4px !important;height:14px !important;overflow:hidden;}
+ .ImgOutset_NE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -4px -192px no-repeat;width:6px !important;height:14px !important;overflow:hidden;}
+ .ImgOutset_NW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -10px -192px no-repeat;width:6px !important;height:14px !important;overflow:hidden;}
+ .ImgPanel_SE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -16px -192px no-repeat;width:9px !important;height:10px !important;overflow:hidden;}
+ .ImgPanel_SW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -25px -192px no-repeat;width:9px !important;height:10px !important;overflow:hidden;}
+ .ImgVolumeSlider_Thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -34px -192px no-repeat;width:18px !important;height:9px !important;overflow:hidden;}
+ .ImgVSash_thumb{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -52px -192px no-repeat;width:14px !important;height:8px !important;overflow:hidden;}
+ .ImgVolumeSlider_Empty_B{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -66px -192px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgVolumeSlider_Empty_T{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") 0px -206px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgVolumeSlider_Full_B{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -18px -206px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgVolumeSlider_Full_T{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -36px -206px no-repeat;width:18px !important;height:7px !important;overflow:hidden;}
+ .ImgOutset_SE{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -54px -206px no-repeat;width:6px !important;height:4px !important;overflow:hidden;}
+ .ImgOutset_SW{background:url("/zimbra/skins/velodrome2/img/widgets.gif?v=101123125008") -60px -206px no-repeat;width:6px !important;height:4px !important;overflow:hidden;}
+ .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -20px repeat-x;height:16px !important;overflow:hidden;}
+ .ImgMsgContactSeparator{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -36px repeat-x;height:10px !important;overflow:hidden;}
+ .ImgOutset_N{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -46px repeat-x;height:14px !important;overflow:hidden;}
+ .ImgOutset_S{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -60px repeat-x;height:3px !important;overflow:hidden;}
+ .ImgPanel_N{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -63px repeat-x;height:22px !important;overflow:hidden;}
+ .ImgPanel_S{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -85px repeat-x;height:10px !important;overflow:hidden;}
+ .ImgSoundPlayer_Empty{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -95px repeat-x;height:18px !important;overflow:hidden;}
+ .ImgSoundPlayer_Full{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -113px repeat-x;height:18px !important;overflow:hidden;}
+ .ImgToolbar{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -131px repeat-x;height:27px !important;overflow:hidden;}
+ .ImgVSash{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -158px repeat-x;height:8px !important;overflow:hidden;}
+ .ZActive .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -166px repeat-x;height:20px !important;overflow:hidden;}
+ .ZActive .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -186px repeat-x;height:16px !important;overflow:hidden;}
+ .ZDefault .ImgButton{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -202px repeat-x;height:20px !important;overflow:hidden;}
+ .ZDisabled .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -222px repeat-x;height:16px !important;overflow:hidden;}
+ .ZFocused .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -238px repeat-x;height:20px !important;overflow:hidden;}
+ .ZFocused .ImgAppTab{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -258px repeat-x;height:28px !important;overflow:hidden;}
+ .ZFocused .ImgField{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -286px repeat-x;height:24px !important;overflow:hidden;}
+ .ZFocused .ImgTab{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -310px repeat-x;height:20px !important;overflow:hidden;}
+ .ZHover .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -330px repeat-x;height:20px !important;overflow:hidden;}
+ .ZHover .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -350px repeat-x;height:16px !important;overflow:hidden;}
+ .ZSelected .ImgAccordion{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -366px repeat-x;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgButton{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -386px repeat-x;height:20px !important;overflow:hidden;}
+ .ZSelected .ImgListHeader{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -406px repeat-x;height:16px !important;overflow:hidden;}
+ .ZSelected .ImgToolbarButton{background:url("/zimbra/skins/velodrome2/img/widgets.repeatx.gif?v=101123125008") 0px -422px repeat-x;height:27px !important;overflow:hidden;}
+ .ImgHSash{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") 0px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgOutset_E{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") -6px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgOutset_W{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") -12px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgPanel_E{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") -18px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgPanel_W{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") -24px 0px repeat-y;width:6px !important;overflow:hidden;}
+ .ImgVolumeSlider_Empty{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") -30px 0px repeat-y;width:18px !important;overflow:hidden;}
+ .ImgVolumeSlider_Full{background:url("/zimbra/skins/velodrome2/img/widgets.repeaty.gif?v=101123125008") -48px 0px repeat-y;width:18px !important;overflow:hidden;}
+ .ImgMsgContact{background:url("/zimbra/skins/velodrome2/img/widgets/ImgMsgContact.repeat.gif?v=101123125008") 0px 0px repeat;overflow:hidden;}
+ .ImgPanel_bg{background:url("/zimbra/skins/velodrome2/img/widgets/ImgPanel_bg.repeat.gif?v=101123125008") 0px 0px repeat;overflow:hidden;}
+ .skin_container_splash_logo{background:url("/zimbra/skins/velodrome2/img/splash/skin_container_splash_logo.gif?v=101123125008") 0px 0px no-repeat;width:197px !important;height:69px !important;overflow:hidden;}
+ .skin_container_splash_footer_logo{background:url("/zimbra/skins/velodrome2/img/splash/skin_container_splash_footer_logo.gif?v=101123125008") 0px 0px no-repeat;width:58px !important;height:33px !important;overflow:hidden;}
+ .ImgCancel{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCheck{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgClose{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCloseGray{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCompleted{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGlobe{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgListView{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMinus{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgQuestionMark{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRename{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSave{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSinglePane{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSpellCheck{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSwitchFormat{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTelephone{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgURL{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAdd{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -256px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ImgRemove{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -268px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZFocused .ImgAdd{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -280px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZFocused .ImgRemove{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -292px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZHover .ImgAdd{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -304px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ZHover .ImgRemove{background:url("/zimbra/skins/velodrome2/img/common.gif?v=101123125008") 0px -316px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .ImgAddImage{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAddSlide{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAddTextBox{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBarChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgColumnChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteSlide{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteTextBox{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLineChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPieChart{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRunSlides{background:url("/zimbra/skins/velodrome2/img/docs.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .icon_addevent{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:17px !important;overflow:hidden;}
+ .icon_addical{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -17px no-repeat;width:16px !important;height:17px !important;overflow:hidden;}
+ .icon_countdowns{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -34px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_day{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -50px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_month{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -66px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_quickadd{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -82px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .icon_settings{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -98px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .icon_upcoming{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -114px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_week{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -130px no-repeat;width:15px !important;height:16px !important;overflow:hidden;}
+ .icon_notes{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -146px no-repeat;width:15px !important;height:15px !important;overflow:hidden;}
+ .icon_tasks{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -161px no-repeat;width:13px !important;height:14px !important;overflow:hidden;}
+ .GreenPlusSign{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -175px no-repeat;width:13px !important;height:13px !important;overflow:hidden;}
+ .icon_print{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -188px no-repeat;width:16px !important;height:12px !important;overflow:hidden;}
+ .invite{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -200px no-repeat;width:14px !important;height:12px !important;overflow:hidden;}
+ .icon_share{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -212px no-repeat;width:15px !important;height:11px !important;overflow:hidden;}
+ .icon_triangle{background:url("/zimbra/skins/velodrome2/img/plaxo-calendar-icons.gif?v=101123125008") 0px -223px no-repeat;width:7px !important;height:4px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_Toolbar_L{background:url("/zimbra/skins/velodrome2/img/skin.gif?v=101123125008") 0px 0px no-repeat;width:9px !important;height:29px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_Toolbar_R{background:url("/zimbra/skins/velodrome2/img/skin.gif?v=101123125008") -9px 0px no-repeat;width:9px !important;height:29px !important;overflow:hidden;}
+ .ImgSkin_Customer_Logo_Bottom{background:url("/zimbra/skins/velodrome2/img/skin/ImgSkin_Customer_Logo_Bottom.gif?v=101123125008") 0px 0px no-repeat;width:60px !important;height:20px !important;overflow:hidden;}
+ .ImgSkin_Chrome_R4{background:url("/zimbra/skins/velodrome2/img/skin.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_Toolbar{background:url("/zimbra/skins/velodrome2/img/skin.repeatx.gif?v=101123125008") 0px -20px repeat-x;height:29px !important;overflow:hidden;}
+ .ImgSkin_Toolbar{background:url("/zimbra/skins/velodrome2/img/skin.repeatx.gif?v=101123125008") 0px -49px repeat-x;height:28px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_L{background:url("/zimbra/skins/velodrome2/img/skin.repeaty.gif?v=101123125008") 0px 0px repeat-y;width:9px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB_R{background:url("/zimbra/skins/velodrome2/img/skin.repeaty.gif?v=101123125008") -9px 0px repeat-y;width:9px !important;overflow:hidden;}
+ .ImgSkin_Chrome_SB{background:url("/zimbra/skins/velodrome2/img/skin/ImgSkin_Chrome_SB.repeat.gif?v=101123125008") 0px 0px repeat;overflow:hidden;}
+ .ImgContact{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEmailedContacts{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGAL{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGroup{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewContact{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewContactsFolder{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSharedContactsFolder{background:url("/zimbra/skins/velodrome2/img/contacts.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSkin_Chrome_Logo{background:url("/zimbra/skins/velodrome2/img/logos.gif?v=101123125008") 0px 0px no-repeat;width:191px !important;height:42px !important;overflow:hidden;}
+ .ImgAccordionClosed{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAccordionOpened{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDownArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLeftDoubleArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNextPage{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPreviousPage{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRedo{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRightDoubleArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUndo{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUpArrow{background:url("/zimbra/skins/velodrome2/img/arrows.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAnsweredCalls{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCallManager{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMissedCalls{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlacedCalls{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgVoicemail{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgVoicemailApp{background:url("/zimbra/skins/velodrome2/img/voicemail.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .TreeHeaderRow{background:url("/zimbra/skins/velodrome2/img/lite.gif?v=101123125008") 0px 0px no-repeat;width:2px !important;height:20px !important;overflow:hidden;}
+ .ImgGoodmailLogo{background:url("/zimbra/skins/velodrome2/img/goodmail/ImgGoodmailLogo.gif?v=101123125008") 0px 0px no-repeat;width:183px !important;height:45px !important;overflow:hidden;}
+ .ImgGoodmail{background:url("/zimbra/skins/velodrome2/img/goodmail/ImgGoodmail.gif?v=101123125008") 0px 0px no-repeat;width:17px !important;height:15px !important;overflow:hidden;}
+ .ImgCalListView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCalendarFolder{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDayView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMonthView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewAppointment{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgResource{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgWeekView{background:url("/zimbra/skins/velodrome2/img/calendar.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAddSignature{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCompose{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgConversation{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteConversation{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteMessage{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEmptyFolder{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEnvelope{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEnvelopeGray{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgJunkMail{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMailFolder{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMailRule{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewGroup{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityHigh{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityLow{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityNormal{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSend{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSendReceive{background:url("/zimbra/skins/velodrome2/img/mail.gif?v=101123125008") 0px -256px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHome_Sidebar_Bottom{background:url("/zimbra/skins/velodrome2/img/portal.gif?v=101123125008") 0px 0px no-repeat;width:9px !important;height:9px !important;overflow:hidden;}
+ .ImgHome_Sidebar_Top{background:url("/zimbra/skins/velodrome2/img/portal.gif?v=101123125008") 0px -9px no-repeat;width:9px !important;height:8px !important;overflow:hidden;}
+ .ImgButton_L{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ImgButton_R{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123125008") -6px 0px no-repeat;width:6px !important;height:20px !important;overflow:hidden;}
+ .ImgSelect_L{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123125008") -12px 0px no-repeat;width:8px !important;height:20px !important;overflow:hidden;}
+ .ImgSelect_R{background:url("/zimbra/skins/velodrome2/img/buttons.gif?v=101123125008") 0px -20px no-repeat;width:25px !important;height:20px !important;overflow:hidden;}
+ .ImgButton{background:url("/zimbra/skins/velodrome2/img/buttons.repeatx.gif?v=101123125008") 0px 0px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgSelect{background:url("/zimbra/skins/velodrome2/img/buttons.repeatx.gif?v=101123125008") 0px -20px repeat-x;height:20px !important;overflow:hidden;}
+ .ImgCellProperties{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteCol{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteRow{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteTable{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertColAfter{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertColBefore{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertRowAfter{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertRowBefore{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertTable{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMergeCells{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitCells{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSpreadSheet{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSum{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTable{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTableProperties{background:url("/zimbra/skins/velodrome2/img/table.gif?v=101123125008") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlaxoLogo{background:url("/zimbra/skins/velodrome2/img/plaxo.gif?v=101123125008") 0px 0px no-repeat;width:80px !important;height:27px !important;overflow:hidden;}
+ .ImgTask{background:url("/zimbra/skins/velodrome2/img/tasks.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewCompleted{background:url("/zimbra/skins/velodrome2/img/tasks.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewInProgress{background:url("/zimbra/skins/velodrome2/img/tasks.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAnsweredCalls{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAppointment{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgAttachment{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCalendarApp{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCallManager{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCancel{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCascade{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCheckboxChecked{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCheckboxUnchecked{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgContactsApp{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgConversationView{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDelete{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDeleteTag{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDraftFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEdit{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgEnvelopeOpen{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFlagDis{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -256px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -272px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgForward{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -288px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHelp{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -304px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgIMAPAccount{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -320px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgJunkMail{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -336px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLeftArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -352px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMailApp{background:url("/zimbra/skins/velodrome2/img/startup/ImgMailApp.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMenuRadio{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -384px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -400px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMessageView{background:url("/zimbra/skins/velodrome2/img/startup/ImgMessageView.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMissedCalls{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -432px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMoveToFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -448px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatus{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -464px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusDraft{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -480px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusForward{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -496px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusRead{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -512px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusReply{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -528px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusSent{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -544px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusTrash{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -560px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgMsgStatusUnread{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -576px no-repeat;width:20px !important;height:16px !important;overflow:hidden;}
+ .ImgNewFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -592px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -608px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNodeCollapsed{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -624px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNodeExpanded{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -640px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgOpenInNewWindow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -656px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPOPAccount{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -672px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlacedCalls{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -688px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPlus{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -704px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPreferences{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -720px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPrint{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -736px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityHigh_list{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -752px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgPriorityLow_list{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -768px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRSS{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -784px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgReadMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -800px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRefresh{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -816px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgReply{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -832px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgReplyAll{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -848px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRightArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -864px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSearch{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -880px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -896px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrowHover{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -912px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSentFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -928px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSharedMailFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -944px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgShortcut{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -960px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSinglePane{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -976px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSpamFolder{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -992px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitPane{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1008px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitPaneOff{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1024px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSplitPaneVertical{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1040px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskCheckboxCompleted{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1056px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskList{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1072px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewCompleted{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1088px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTaskViewInProgress{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1104px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTrash{background:url("/zimbra/skins/velodrome2/img/startup/ImgTrash.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUnreadMessage{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1136px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgVoicemail{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1152px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgMenuCheck{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1168px no-repeat;width:12px !important;height:12px !important;overflow:hidden;}
+ .ImgHeaderExpanded{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1180px no-repeat;width:11px !important;height:11px !important;overflow:hidden;}
+ .ImgFwdArrowSmall{background:url("/zimbra/skins/velodrome2/img/startup/ImgFwdArrowSmall.gif?v=101123125008") 0px 0px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgRevArrowSmall{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") 0px -1191px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgColumnDownArrow{background:url("/zimbra/skins/velodrome2/img/startup.gif?v=101123125008") -6px -1191px no-repeat;width:8px !important;height:7px !important;overflow:hidden;}
+ .ImgCritical_32{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px 0px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgInformation_32{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -32px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgWarning_32{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -64px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}
+ .ImgCritical{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCritical_12{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -16px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInformation{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRoundMinus{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -16px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRoundPlus{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrowHover{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -16px -128px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullDownArrowSel{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -144px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSelectPullUpArrow{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -12px -144px no-repeat;width:12px !important;height:16px !important;overflow:hidden;}
+ .ImgSuccess{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgWarning{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -16px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDisable{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -176px no-repeat;width:14px !important;height:14px !important;overflow:hidden;}
+ .ImgHeaderCollapsed{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -14px -176px no-repeat;width:11px !important;height:11px !important;overflow:hidden;}
+ .ImgClearSearch{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -190px no-repeat;width:10px !important;height:10px !important;overflow:hidden;}
+ .ImgFastFwdArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -10px -190px no-repeat;width:10px !important;height:9px !important;overflow:hidden;}
+ .ImgFastRevArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -20px -190px no-repeat;width:10px !important;height:9px !important;overflow:hidden;}
+ .ImgFwdArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -200px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgRevArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -6px -200px no-repeat;width:6px !important;height:9px !important;overflow:hidden;}
+ .ImgDropDown{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -12px -200px no-repeat;width:8px !important;height:8px !important;overflow:hidden;}
+ .ImgColumnUpArrow{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -20px -200px no-repeat;width:8px !important;height:7px !important;overflow:hidden;}
+ .ImgDownArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") 0px -209px no-repeat;width:7px !important;height:4px !important;overflow:hidden;}
+ .ImgUpArrowSmall{background:url("/zimbra/skins/velodrome2/img/dwt.gif?v=101123125008") -7px -209px no-repeat;width:7px !important;height:4px !important;overflow:hidden;}
+ .ImgDoc{background:url("/zimbra/skins/velodrome2/img/doctypes.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgGenericDoc{background:url("/zimbra/skins/velodrome2/img/doctypes.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHtmlDoc{background:url("/zimbra/skins/velodrome2/img/doctypes.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNewPage{background:url("/zimbra/skins/velodrome2/img/notes.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBold{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px 0px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderAll{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -16px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBottom{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -32px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBottomDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -48px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBottomThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -64px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBox{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -80px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBoxDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -96px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderBoxThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -112px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderCenter{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -128px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderH{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -144px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderHEdges{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -160px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderLeft{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -176px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderNone{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -192px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderRight{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -208px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTop{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -224px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopBottomDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -240px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopBottomThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -256px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopDoubleBottomDouble{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -272px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderTopThickBottomThick{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -288px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderV{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -304px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBorderVEdges{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -320px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgBulletedList{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -336px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCamelCase{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -352px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgCenterJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -368px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFindReplace{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -384px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFontBackground{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -400px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFontBorder{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -416px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFontColor{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -432px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgFullJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -448px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHorizRule{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -464px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgHtmlTools{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -480px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgIndent{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -496px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertImage{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -512px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgInsertWeblink{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -528px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgItalics{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -544px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgLeftJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -560px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgNumberedList{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -576px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgOutdent{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -592px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgRightJustify{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -608px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgStrikeThru{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -624px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSubscript{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -640px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgSuperscript{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -656px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTextDirectionLTR{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -672px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgTextDirectionRTL{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -688px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgUnderline{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -704px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgWordCount{background:url("/zimbra/skins/velodrome2/img/htmlEdit.gif?v=101123125008") 0px -720px no-repeat;width:16px !important;height:16px !important;overflow:hidden;}
+ .ImgDndMultiNo_48{background:url("/zimbra/skins/velodrome2/img/large.gif?v=101123125008") 0px 0px no-repeat;width:48px !important;height:48px !important;overflow:hidden;}
+ .ImgDndMultiYes_48{background:url("/zimbra/skins/velodrome2/img/large.gif?v=101123125008") 0px -48px no-repeat;width:48px !important;height:48px !important;overflow:hidden;}
+ .ImgPerson_32{background:url("/zimbra/skins/velodrome2/img/large/ImgPerson_32.gif?v=101123125008") 0px 0px no-repeat;width:32px !important;height:32px !important;overflow:hidden;}

@@ -88,7 +88,7 @@ public class DefangFilter extends DefaultFilter {
     private static final Pattern AV_SCRIPT_TAG = Pattern.compile("</?script/?>", Pattern.CASE_INSENSITIVE);
     
     // regex for URLs href. TODO: beef this up
-	private static final Pattern VALID_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|cid:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALID_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|cid:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
 
     //
     // Data
@@ -618,6 +618,24 @@ public class DefangFilter extends DefaultFilter {
         } else {
             attributes.addAttribute(new QName("", "target", "target", null), "CDATA", "_blank");
         }
+    }
+
+    /**
+     * Checks to see if an attr value should just be removed
+     * @param eName The element name
+     * @param aName The attribute name
+     * @param attributes The set of the attribtues
+     * @param i The index of the attribute
+     * @return true if the attr should be removed, false if not
+     */
+    private boolean removeAttrValue(String eName, String aName, XMLAttributes attributes, int i) {
+        String value = attributes.getValue(i);
+        if (aName.equalsIgnoreCase("href") || aName.equalsIgnoreCase("src") || aName.equalsIgnoreCase("longdesc") || aName.equalsIgnoreCase("usemap")){
+            if (!VALID_URL.matcher(value).find()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

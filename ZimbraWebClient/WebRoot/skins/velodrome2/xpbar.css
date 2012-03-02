@@ -1,0 +1,238 @@
+/* /base/standard.css from layout */
+body{font-family:arial,helvetica,verdana,sans-serif;font-size:12px;line-height:normal;margin:0;padding:0;behavior:url(#default#userData)}
+h1,h2,h3,h4,h5,h6{margin:0}
+p,blockquote{margin:1em 0;padding:0}
+ul,ol,dl{margin:0;padding:0;list-style:none;list-style-position:outside}
+li,dd{margin:0;padding:0}
+a{color:#13B5EA;text-decoration:none;outline:0}
+a:active,a:visited,a:hover{}
+a:hover{background-color:#FFE61E}
+a img{border:0}
+strong{font-weight:bold}
+em{font-style:normal}
+del,ins{text-decoration:none;font-weight:normal;content:""}
+abbr,acronym{border:0}
+fieldset{border:none}
+input,textarea,select{font-size:1.1em}
+input[type=submit],input[type=reset],input[type=button],button{cursor:pointer;font-family:Arial;font-size:12px;font-weight:bold;color:#313131;border:1px solid #d1d1d1;height:24px;width:130px;background-color:#f0f0f0}
+hr{display:none}
+table{border-collapse:collapse;border-spacing:0}
+.component h1,.component h2{font-family:'KlavikaMedium-Plain',arial,sans-serif;font-size:24px;color:#d71920;font-weight:normal}
+.component h1.title,.component h2.title{font-family:'KlavikaRegular-Plain',arial,sans-serif;font-size:34px;color:#fff;font-weight:normal;letter-spacing:0.1em}
+.component h4,.component h5{font-family:Arial;font-weight:bold;font-size:14px}
+.errorMsg{background-color:#fdd;color:#900}
+.missing-template{color:#903}
+.component{display:block;width:100%;clear:both}
+.clear{clear:both;float:none;height:1%;font-size:0}
+#scripts{position:absolute;top:-999px;left:-999px}
+.skip{position:absolute;top:0;left:-9999px}
+b.bfArrowSm{display:inline-block;width:8px;height:12px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat 0 -350px;position:relative;top:2px;left:7px}
+* html b.bfArrowSm{top:0}
+:first-child+html b.bfArrowLg{top:-1px}
+a:hover b.bfArrowSm,a:focus b.bfArrowSm{background-position:-30px -350px}
+b.bfArrowLg{display:inline-block;width:8px;height:12px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat 0 -500px;position:relative;top:2px;left:7px}
+* html b.bfArrowLg{top:0}
+:first-child+html b.bfArrowLg{top:-1px}
+a:hover b.bfArrowLg,a:focus b.bfArrowLg{background-position:-30px -500px}
+b.bfArrowNav{display:inline-block;width:6px;height:12px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat 0 -400px;position:relative;top:2px;left:5px}
+* html b.bfArrowNav{}
+:first-child+html b.bfArrowNav{top:-1px}
+li.selected b.bfArrowNav{background-position:-30px -400px}
+b.watchArrowNav{display:inline-block;width:11px;height:11px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -60px -400px;position:relative;top:1px;left:7px}
+* html b.watchArrowNav{top:3px}
+:first-child+html b.watchArrowNav{top:-2px}
+li.selected b.watchArrowNav{background-position:-90px -400px}
+b.arrow{display:inline-block;width:8px;height:10px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -60px -500px;position:relative;left:6px}
+a:hover b.arrow,a:focus b.arrow{background-position:-90px -500px}
+* html b.arrow{top:3px}
+:first-child+html b.arrow{top:-2px}
+b.play{display:inline-block;width:8px;height:10px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -120px -500px;position:relative;right:6px}
+a:hover b.play,a:focus b.play{background-position:-150px -500px}
+* html b.play{top:3px}
+:first-child+html b.play{top:-2px}
+a.button{font-family:Arial;font-size:12px;font-weight:bold;color:#313131;border:1px solid #d1d1d1;height:32px;width:174px;background-color:#f0f0f0}
+a.button:hover,a.button:focus{background-image:none;background-color:#FFE61E}
+input.text{color:#313131;font-size:12px;border:1px solid #b9b9b9;background-color:#fff;height:23px}
+button{cursor:pointer}
+button.search{color:#fff;text-shadow:0 1px 2px #666;font-size:13px;font-weight:bold;text-align:center;background:#0c8dce url(/layout/images/sprites/standard/gradient.png?rev=1732) repeat-x 0 -300px;height:27px;-webkit-border-top-right-radius:2px;-webkit-border-bottom-right-radius:2px;-moz-border-radius:0 2px 2px 0;border:0}
+button.search:hover,button.search:focus{color:#313131;background-color:#FFE61E;background-image:none;text-shadow:none}
+.cover-standard a{display:block;border:1px solid #d1d1d1;background:#e4e4e4 url(/layout/images/sprites/standard/gradient.png?rev=1732) repeat-x 0 -700px;color:#313131;font-size:12px;font-weight:bold;text-align:center;text-transform:uppercase;padding:5px 2px 4px 2px}
+.cover-standard a:hover,.cover-standard a:focus{color:#313131;background-color:#FFE61E;background-image:none}
+.cover-play a{display:block;background:#4f9b00 url(/layout/images/sprites/standard/gradient.png?rev=1732) repeat-x 0 -800px;color:#fff;font-size:12px;font-weight:bold;text-align:center;text-transform:uppercase;padding:6px 2px 5px 2px}
+.cover-play a:hover,.cover-play a:focus{color:#313131;background-color:#FFE61E;background-image:none}
+.button a,button.button{display:inline-block;border:1px solid #d1d1d1;background:#e3e3e3 url(/layout/images/sprites/standard/gradient.png?rev=1732) repeat-x 0 -600px;color:#313131;font-size:12px;font-weight:bold;text-transform:uppercase;padding:11px 15px 9px 15px;width:auto;height:auto}
+.button a:hover,.button a:focus,button.button:hover,button.button:focus{color:#313131;background-color:#FFE61E;background-image:none}
+div.module_error{border:1px solid red;background:#fff}
+div.module_error h1{font-size:1.2em;font-weight:bold;color:red}
+div.module_error dl dt{font-weight:bold}
+div.module_error dl dd{padding-left:1em}
+div.footer.disclaimer{color:#9e9e9e;font-size:11px;padding-bottom:20px;text-align:left}
+div.footer.disclaimer p{margin:0 0 1em 0}
+div.footer.disclaimer .disclaimer{padding:0}
+b.studio{display:block;width:20px;height:20px;overflow:hidden;float:left;background:transparent url(/layout/images/sprites/standard/studio.png?rev=1732) no-repeat 0 0;margin-right:13px}
+b.hbo{width:49px;height:20px;background-position:-100px 0}
+b.cinemax{width:49px;height:26px;background-position:-100px -50px}
+b.starz{width:55px;height:18px;background-position:-100px -100px}
+b.ae{width:44px;height:31px;background-position:-100px -150px}
+b.history{width:25px;height:23px;background-position:-100px -200px}
+b.cbs{width:51px;height:16px;background-position:-100px -250px}
+b.bbca{width:53px;height:20px;background-position:-100px -300px}
+b.e{width:12px;height:34px;background-position:-100px -350px}
+b.style{width:30px;height:32px;background-position:-100px -400px}
+b.g4{width:32px;height:32px;background-position:-100px -450px}
+b.hallmark{width:81px;height:35px;background-position:-100px -500px}
+b.impact{width:61px;height:18px;background-position:-100px -550px}
+b.rhi{width:44px;height:28px;background-position:-100px -600px}
+b.discovery{width:65px;height:14px;background-position:-100px -650px}
+b.dhealth{width:44px;height:23px;background-position:-100px -700px}
+b.science{width:26px;height:33px;background-position:-100px -750px}
+b.travel{width:34px;height:31px;background-position:-100px -800px}
+b.ovation{width:42px;height:30px;background-position:-100px -850px}
+b.tnt{width:32px;height:32px;background-position:-100px -900px}
+b.tbs{width:24px;height:27px;background-position:-100px -950px}
+b.cspan{width:48px;height:12px;background-position:-100px -1000px}
+b.musicchoice{width:49px;height:20px;background-position:-100px -1050px}
+b.rainbow{width:55px;height:25px;background-position:-100px -1100px}
+b.univision{width:61px;height:12px;background-position:-100px -1150px}
+b.scripps{width:97px;height:15px;background-position:-100px -1200px}
+b.fox{width:46px;height:25px;background-position:-100px -1250px}
+b.abc{width:33px;height:33px;background-position:-100px -1300px}
+b.nbc{width:41px;height:24px;background-position:-100px -1350px}
+b.showtime{width:47px;height:17px;background-position:-100px -1400px}
+b.encore{width:49px;height:18px;background-position:-100px -1450px}
+b.espn360{width:60px;height:9px;background-position:-100px -1500px}
+b.cw{width:48px;height:20px;background-position:-100px -1550px}
+b.bravo{width:37px;height:27px;background-position:-100px -1600px}
+b.comedy{width:30px;height:35px;background-position:-100px -1650px}
+b.usa{width:45px;height:20px;background-position:-100px -1700px}
+b.food{width:33px;height:32px;background-position:-100px -1750px}
+b.espn{width:37px;height:10px;background-position:-100px -1800px}
+b.mtv{width:31px;height:24px;background-position:-100px -1850px}
+b.fx{width:43px;height:23px;background-position:-100px -1900px}
+b.vh1{width:44px;height:24px;background-position:-100px -1950px}
+b.universal{width:61px;height:30px;background-position:-100px -2000px}
+b.warner{width:31px;height:28px;background-position:-100px -2050px}
+b.twentieth{width:33px;height:26px;background-position:-100px -2100px}
+b.columbia{width:49px;height:16px;background-position:-100px -2150px}
+b.sony{width:26px;height:41px;background-position:-100px -2200px}
+b.weinstein{width:61px;height:30px;background-position:-100px -2250px}
+b.universalpictures{width:42px;height:18px;background-position:-100px -2300px}
+b.paramount{width:49px;height:41px;background-position:-100px -2350px}
+b.lionsgate{width:59px;height:9px;background-position:-100px -2400px}
+b.nick{width:48px;height:49px;background-position:-100px -2450px}
+b.disney{width:38px;height:33px;background-position:-100px -2500px}
+b.cartoon{width:55px;height:16px;background-position:-100px -2550px}
+b.amc{width:39px;height:21px;background-position:-100px -2600px}
+b.tlc{width:46px;height:23px;background-position:-100px -2650px}
+b.msnbc{width:35px;height:24px;background-position:-100px -2700px}
+b.cnbc{width:37px;height:27px;background-position:-100px -2750px}
+b.cnn{width:49px;height:23px;background-position:-100px -2800px}
+b.nicktoons{width:31px;height:32px;background-position:-100px -2850px}
+b.cmt{width:61px;height:24px;background-position:-100px -2900px}
+b.abcfam{width:61px;height:18px;background-position:-100px -2950px}
+.flash .alt{display:none}
+.flash .alt p{display:none}
+.flash.flash-update .alt{display:block}
+.flash.flash-update embed,.flash.flash-update object{display:none}
+
+/* /grids/standard.css from layout */
+#container{width:100%}
+#shell{width:980px;margin:0 auto}
+#header{width:100%}
+#core{width:980px;clear:both}
+#columns{width:980px;min-height:340px;overflow:hidden;padding:21px 0 0 0;margin-bottom:25px}
+.column{float:left;padding:0 32px 0 25px;margin-bottom:-32000px;padding-bottom:32000px;border-right:2px solid #ededed}
+.layout1 .column{width:930px;margin-right:0;padding-left:25px;padding-right:25px;float:none;margin-bottom:0;padding-bottom:0}
+.layout2 .column{width:600px;margin-right:9px;padding-right:34px}
+.layout2 .lastcol{width:266px;margin-right:0;padding-right:0;padding-left:22px;border:0}
+.layout2a .column{width:171px;margin-right:9px;padding-right:25px;border:0;margin-bottom:0;padding-bottom:0}
+.layout2a .lastcol{width:720px;margin-right:0;padding-right:0;padding-left:0;border:0}
+.layout2b .column{width:430px}
+#columns .layout2b .lastcol{border:0}
+.layout3 .column{width:266px;margin-right:7px}
+.layout3 .lastcol{margin-right:0;padding-right:0;border:0}
+#footer{clear:both;width:100%}
+
+/* /themes/standard.css from layout */
+body{background-color:#ededed}
+#header{background-color:#fff}
+#header #nav{background:#252525 url(/layout/images/sprites/standard/gradient.png?rev=1732) repeat-x 0 -400px}
+#xpbar{background-color:#ededed}
+#core{background-color:#ededed}
+#columns{background-color:#fff;border-bottom:25px solid #fff}
+body.column_fade #columns{background:#ededed url(/layout/images/sprites/standard/gradient.png?rev=1732) repeat-x 0 -3600px;border-bottom:25px solid #ededed}
+#footer{background-color:#fff}
+
+/* /components/xpbar/standard.css from layout */
+body .component.xpbar .non-authed,body .component.xpbar .authed{display:none}
+body.non-authed .component.xpbar .non-authed{display:block}
+body.authed .component.xpbar .authed{display:block}
+* html .component.xpbar{overflow:hidden}
+.component.xpbar,.component.xpbar .wrapper,.component.xpbar ul{height:25px}
+.component.xpbar{background-color:#ededed}
+.component.xpbar .wrapper{position:relative;width:980px;margin:0 auto;font-weight:bold;font-size:11px;background-color:transparent}
+.component.xpbar li{float:left;margin:0}
+.component.xpbar .properties li,.component.xpbar .properties a,.component.xpbar .properties a span,.component.xpbar .dashboard li,.component.xpbar .dashboard a,.component.xpbar .dashboard a span{display:block}
+.component.xpbar .properties a,.component.xpbar .dashboard a{text-decoration:none;color:#313131;cursor:pointer}
+.component.xpbar .properties{float:left}
+.component.xpbar .properties li,.component.xpbar .properties a span{height:25px}
+.component.xpbar .properties .xfinity{width:62px}
+.component.xpbar .properties .xfinitytv{width:72px}
+.component.xpbar .properties .comcastcom{width:68px}
+.component.xpbar .properties .comcastnet{width:88px}
+.component.xpbar .properties a span{background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat scroll 0 0;text-indent:-999px}
+.component.xpbar .properties .xfinity a span{background-position:12px -5px}
+.component.xpbar .properties .xfinitytv a span{background-position:-48px -5px}
+.component.xpbar .properties .comcastcom a span{background-position:-111px -5px}
+.component.xpbar .properties .comcastnet a span{background-position:-169px -5px}
+.component.xpbar .properties a:hover,.component.xpbar .properties a:focus,.component.xpbar .properties a:hover span,.component.xpbar .properties a:focus span{background-color:transparent}
+.component.xpbar .properties a:hover span.active,.component.xpbar .properties a:focus span.active{background-color:#ededed}
+.component.xpbar .properties .xfinity a:hover span,.component.xpbar .properties .xfinity a:focus span{background-position:12px -105px}
+.component.xpbar .properties .xfinitytv a:hover span,.component.xpbar .properties .xfinitytv a:focus span{background-position:-48px -105px}
+.component.xpbar .properties .comcastcom a:hover span,.component.xpbar .properties .comcastcom a:focus span{background-position:-111px -105px}
+.component.xpbar .properties .comcastnet a:hover span,.component.xpbar .properties .comcastnet a:focus span{background-position:-169px -105px}
+.component.xpbar .properties .xfinity a span.active,.component.xpbar .properties .xfinity a:hover span.active{background-position:12px -55px}
+.component.xpbar .properties .xfinitytv a span.active,.component.xpbar .properties .xfinitytv a:hover span.active{background-position:-48px -55px}
+.component.xpbar .properties .comcastcom a span.active,.component.xpbar .properties .comcastcom a:hover span.active{background-position:-111px -55px}
+.component.xpbar .properties .comcastnet a span.active,.component.xpbar .properties .comcastnet a:hover span.active{background-position:-169px -55px}
+.component.xpbar div.misc{float:left;color:#636363;margin-left:110px}
+.component.xpbar div.misc ul{float:left}
+.component.xpbar .misc li{padding-top:5px;height:20px;text-align:center}
+.component.xpbar .misc .non-authed{width:380px}
+.component.xpbar .misc .authed{width:335px}
+.component.xpbar .misc a{color:#2ca4e3;display:inline}
+.component.xpbar .misc a:hover,.component.xpbar .misc a:focus{color:#313131;background-color:#FFE61E}
+.component.xpbar .dashboard{float:right}
+.component.xpbar .dashboard li{margin-left:-1px}
+.component.xpbar .dashboard a{display:block;padding:9px 12px 4px 12px;border:1px solid #bababa;border-top-width:0;border-bottom-width:4px;border-bottom-color:#2ca4e3;background-color:#fff}
+.component.xpbar .dashboard a:hover,.component.xpbar .dashboard a:focus{border-bottom-color:#FFE61E}
+.component.xpbar .dashboard li.open a.tab{background-color:#2ca4e3;color:#fff}
+.component.xpbar .dashboard a em{color:#2ca4e3;margin-left:7px}
+.component.xpbar .dashboard a:hover em,.component.xpbar .dashboard a:focus em{color:#313131}
+.component.xpbar .dashboard a b.service_voice{display:inline-block;height:20px;width:16px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -30px -650px;position:relative;top:-5px;margin-bottom:-10px}
+.component.xpbar .dashboard a b.service_email{display:inline-block;height:14px;width:24px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat 0 -650px;position:relative;top:-6px;margin-bottom:-10px}
+.component.xpbar .dashboard a b.service_tv{display:inline-block;height:16px;width:28px;background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -60px -650px;position:relative;top:-5px;margin-bottom:-10px}
+.component.xpbar .dashboard li.open a b.service_voice{background-position:-120px -650px}
+.component.xpbar .dashboard li.open a b.service_email{background-position:-90px -650px}
+.component.xpbar .dashboard li.open a b.service_tv{background-position:-150px -650px}
+.component.xpbar div.dropdown{background:#fff;border:2px solid #2ca4e3;position:absolute;right:0;z-index:10;display:none;margin-top:-4px}
+.component.xpbar div.dropdown div.dropdown-contents{border:3px solid #fff;overflow:hidden;width:520px}
+.component.xpbar li.open div.dropdown{display:block}
+.component.xpbar div.dropdown div.primary{background-color:#f3f3f3;float:left;width:230px;padding-bottom:1000px;margin-bottom:-1000px;overflow:hidden}
+.component.xpbar div.dropdown div.secondary{float:left;width:290px;overflow:hidden}
+.component.xpbar div.dropdown ul{height:auto;padding:10px 13px;overflow:hidden}
+.component.xpbar div.dropdown li{height:auto;float:left;clear:both;margin:0;white-space:nowrap;padding:3px}
+.component.xpbar div.dropdown li a{padding:3px;color:#2ca4e3;border:0 none;font-size:11px;background-color:transparent}
+.component.xpbar div.dropdown ul.secondary li a{display:inline}
+.component.xpbar div.dropdown li span.description{font-weight:normal;display:inline}
+.component.xpbar div.dropdown a:hover,.component.xpbar div.dropdown a:focus{color:#313131;background-color:#FFE61E}
+* html .component.xpbar div.dropdown li.button a{display:inline}
+.component.xpbar div.dropdown li.button a{color:#313131;padding-right:7px;padding-top:2px;padding-bottom:2px;border:1px solid #c1c1c1}
+.component.xpbar div.dropdown li.button a b{left:2px;top:1px;font-size:0}
+.component.xpbar div.dropdown li a span{display:inline;color:#313131;font-weight:normal}
+.component.xpbar div.dropdown li.last a{margin-bottom:0}
+.component.xpbar div.dropdown li.dashboard_email{background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -330px -650px;padding:0 0 0 40px}
+.component.xpbar div.dropdown li.dashboard_voice{background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -330px -700px;padding:3px 0 4px 20px}
+.component.xpbar div.dropdown li.dashboard_tv{background:transparent url(/zimbra/skins/velodrome2/xpbar.png?rev=1732) no-repeat -330px -750px;padding:2px 0 3px 40px}
+.component.xpbar div.dropdown li.copy{white-space:normal;font-weight:normal;margin-top:10px;font-size:12px;color:#626262;width:100%}
+

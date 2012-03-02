@@ -1496,6 +1496,8 @@ function(msg, callback) {
 			callback.run();
 		}
 		this._notifyRendered();
+
+		appCtxt.notifyZimlets('onMsgView', [msg, null, appCtxt.getCurrentView()], {waitUntilLoaded:true});
 	}
 };
 

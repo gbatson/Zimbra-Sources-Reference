@@ -63,7 +63,7 @@
     <value>false</value>
   </key>
   <key name="javamail_zsmtp">
-    <value>false</value>
+    <value>true</value>
   </key>
   <key name="mailboxd_output_filename">
     <value>zdesktop.out</value>
@@ -123,10 +123,10 @@
     <value>${zimbra_home}/../zd_backup</value>
   </key>
   <key name="zdesktop_sync_io_exception_limit">
-    <value>10</value>  
+    <value>10</value>
   </key>
   <key name="zdesktop_sync_io_exception_rate">
-    <value>50</value>  
+    <value>50</value>
   </key>
   <key name="zimbra_admin_service_port">
     <value>@port@</value>
@@ -250,5 +250,8 @@
   </key>
   <key name="zimbra_archive_formatter_search_chunk_size">
     <value>128</value>
+  </key>
+  <key name="zdesktop_heapdump_enabled">
+    <value>false</value>
   </key>
 </localconfig>

@@ -87,12 +87,24 @@
       <param-value>80, 443, 7070, 7443, 7071</param-value>
     </init-param>
   </filter>
-
   <filter-mapping>
     <filter-name>ZimletFilter</filter-name>
     <url-pattern>/zimlet/*</url-pattern>
   </filter-mapping>
-  
+
+  <filter>
+    <filter-name>Base64Filter</filter-name>
+    <filter-class>com.zimbra.common.filters.Base64Filter</filter-class>
+  </filter>
+  <filter-mapping>
+    <filter-name>Base64Filter</filter-name>
+    <url-pattern>/user/*</url-pattern>
+  </filter-mapping>
+  <filter-mapping>
+    <filter-name>Base64Filter</filter-name>
+    <url-pattern>/home/*</url-pattern>
+  </filter-mapping>
+
   <servlet>
     <servlet-name>FirstServlet</servlet-name>
     <servlet-class>com.zimbra.cs.servlet.FirstServlet</servlet-class>
@@ -203,6 +215,10 @@
     <init-param>
       <param-name>allowed.ports</param-name>
       <param-value>9443</param-value>
+    </init-param>
+    <init-param>
+      <param-name>errorpage.forbidden</param-name>
+      <param-value>/error/403.jsp</param-value>
     </init-param>
     <load-on-startup>5</load-on-startup>
   </servlet>

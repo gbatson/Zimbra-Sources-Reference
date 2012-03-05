@@ -827,7 +827,7 @@ class ImapFolderSync {
                     handleFetch(md, flagsByUid);
                     clearError(uid);
                 } catch (OutOfMemoryError e) {
-                    Zimbra.halt("Out of memory");
+                    Zimbra.halt("Out of memory", e);
                 } catch (Exception e) {
                     if (!IOExceptionHandler.getInstance().isRecoverable(mailbox, uid, "Exception syncing UID "+uid+" in folder "+remoteFolder.getPath(), e)) {
                         syncFailed("Fetch failed for uid " + uid, e);
@@ -915,6 +915,10 @@ class ImapFolderSync {
         Message msg;
         try {
             ParsedMessage pm = mc.getParsedMessage(receivedDate, mailbox.attachmentsIndexingEnabled());
+            if (pm == null) {
+                remoteFolder.warn("Empty message body for UID %d. Must be ignored.", uid);
+                return;
+            }
             msg = imapSync.addMessage(null, pm, mc.getSize(), folderId, zflags, mc.getDeliveryContext());
         } finally {
             mc.cleanup();

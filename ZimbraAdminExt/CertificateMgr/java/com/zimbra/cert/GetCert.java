@@ -16,6 +16,7 @@ package com.zimbra.cert;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.List;
@@ -48,17 +49,17 @@ public class GetCert extends AdminDocumentHandler {
     @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException{
         ZimbraSoapContext lc = getZimbraSoapContext(context);
-        
+
 
         
         Provisioning prov = Provisioning.getInstance();
         try {
-        	Server server = null;
+            Server server = null;
             String serverId = request.getAttribute("server") ;
             if (serverId != null && serverId.equals(ZimbraCertMgrExt.ALL_SERVERS)) {
-            	server = prov.getLocalServer() ;
+                server = prov.getLocalServer() ;
             }else { 
-            	server = prov.get(ServerBy.id, serverId);
+                server = prov.get(ServerBy.id, serverId);
             }
             
             if (server == null) {
@@ -95,7 +96,7 @@ public class GetCert extends AdminDocumentHandler {
                     ZimbraLog.security.debug("***** Executing the cmd = " + cmd) ;
                     addCertInfo(response, rmgr.execute(cmd), CERT_TYPES[i], server.getName()) ;
                 }
-            }else if (CERT_TYPES.toString().contains(certType)){
+            }else if (Arrays.asList(CERT_TYPES).contains(certType)){
                     //individual types
                 cmd = ZimbraCertMgrExt.GET_DEPLOYED_CERT_CMD + " " + certType;
                 ZimbraLog.security.debug("***** Executing the cmd = " + cmd) ;

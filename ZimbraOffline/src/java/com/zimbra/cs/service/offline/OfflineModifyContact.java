@@ -18,8 +18,6 @@ import java.util.Map;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.MailConstants;
-import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.service.mail.ModifyContact;
 import com.zimbra.cs.service.util.ItemId;
 
@@ -28,16 +26,7 @@ public class OfflineModifyContact extends ModifyContact {
     @Override
     protected Element proxyRequest(Element request, Map<String, Object> context, ItemId iidRequested, ItemId iidResolved)
             throws ServiceException {
-        Element eUpload = request.getElement(MailConstants.E_CONTACT);
-        if (eUpload != null && OfflineProvisioning.getOfflineInstance().isMountpointAccount(iidResolved.getAccountId())) {
-            Element attachment = eUpload.getElement(MailConstants.E_ATTRIBUTE);
-            if (attachment != null) {
-                String attachmentId = attachment.getAttribute(MailConstants.A_ATTACHMENT_ID);
-                String acctId = iidRequested.getAccountId();
-                attachment.addAttribute(MailConstants.A_ATTACHMENT_ID,
-                        OfflineDocumentHandlers.uploadOfflineDocument(attachmentId, acctId));
-            }
-        }
+        OfflineDocumentHandlers.uploadAttachmentToRemoteServer(request, iidRequested, iidResolved);
         return super.proxyRequest(request, context, iidRequested, iidResolved);
     }
 }

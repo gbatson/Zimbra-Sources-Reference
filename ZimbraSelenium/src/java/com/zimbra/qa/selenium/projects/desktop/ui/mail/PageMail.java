@@ -173,6 +173,9 @@ public class PageMail extends AbsTab {
 		public static final String zShowOriginalDraftMenuIconBtn = "id=zmi__CLV__Dra__SHOW_ORIG_left_icon";
 
 		public static final String zPreferencesTabIconBtn = "id=zb__App__Options_left_icon";
+
+		public static final String zRssFolderName = "id=zb__App__Options_left_icon";
+
 		//	public static final String zPreferencesMailIconBtn = "id=ztab__PREF__"
 		//			+ localize(locator.mail) + "_title";
 
@@ -197,7 +200,9 @@ public class PageMail extends AbsTab {
 	}
 
 
-
+   public String zGetFolderLocator(String folderName) throws HarnessException {
+      return "css=div[id$='main_Mail-parent-FOLDER'] div[class='DwtTreeItemLevel1ChildDiv'] div td:contains('" + folderName + "')";
+   }
 
 
 	public PageMail(AbsApplication application) {
@@ -1142,26 +1147,11 @@ public class PageMail extends AbsTab {
 		if ( folderItem == null )
 			throw new HarnessException("folderItem cannot be null");
 
-		String treeItemLocator = null;
+		String treeItemLocator = ((AppAjaxClient)MyApplication).zTreeMail.zGetTreeFolderLocator(folderItem);
 		boolean onRootFolder = false;
 
 		if (folderItem.getName().equals("USER_ROOT")) {
-			onRootFolder = true;
-			switch (ZimbraSeleniumProperties.getAppType()) {
-			case AJAX:
-				treeItemLocator = TreeMail.Locators.ztih_main_Mail__FOLDER_ITEM_ID.replace(
-						TreeMail.stringToReplace, "FOLDER");
-				break;
-
-			case DESKTOP:
-				treeItemLocator = TreeMail.Locators.zTreeItems.replace(TreeMail.stringToReplace,
-						AjaxCommonTest.defaultAccountName);
-				break;
-			default:
-				throw new HarnessException("Implement me!");
-			}
-		} else {
-			throw new HarnessException("Implement me!");
+		   onRootFolder = true;
 		}
 
 		AbsPage page = null;

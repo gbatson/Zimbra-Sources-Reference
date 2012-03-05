@@ -1020,10 +1020,7 @@ function(ev) {
 	else {
 		var callback = new AjxCallback(this, this._handleInviteReplySent);
 		var accountName = ac.multiAccounts && ac.accountList.mainAccount.name;
-		var resp = this._sendInviteReply(type, ev._inviteComponentId, null, accountName, null, ev._msg, ev._inviteReplyFolderId, callback);
-		if (resp && appCtxt.isChildWindow) {
-			window.close();
-		}
+		this._sendInviteReply(type, ev._inviteComponentId, null, accountName, null, ev._msg, ev._inviteReplyFolderId, callback);
 	}
 	return false;
 };
@@ -1185,6 +1182,7 @@ function(parent) {
 			var tooltip = inSpamFolder ? ZmMsg.notJunkTooltip : ZmMsg.junkTooltip;
 			item.setToolTipContent(ZmOperation.getToolTip(ZmOperation.SPAM, ZmKeyMap.MAP_NAME_R[this.getKeyMapName()], tooltip));
 		}
+		item.isMarkAsSpam = !inSpamFolder;
 	}
 };
 
@@ -1429,7 +1427,7 @@ function(type, componentId, instanceDate, accountName, ignoreNotify, origMsg, ac
 		msg.setSubject(subject);
 	}
 	var errorCallback = new AjxCallback(this, this._handleErrorInviteReply);
-	return msg.sendInviteReply(true, componentId, callback, errorCallback, instanceDate, accountName, ignoreNotify);
+	msg.sendInviteReply(true, componentId, callback, errorCallback, instanceDate, accountName, ignoreNotify);
 };
 
 ZmMailListController.prototype._handleErrorInviteReply =
@@ -1445,16 +1443,7 @@ function(result) {
 ZmMailListController.prototype._spamListener =
 function(ev) {
 	var items = this._listView[this._currentView].getSelection();
-	var searchFolderId = this._getSearchFolderId();
-	if (appCtxt.multiAccounts) {
-		var item = items[0];
-		if (item) {
-			searchFolderId = ZmOrganizer.getSystemId(searchFolderId, item.getAccount());
-		}
-	}
-	var folder = appCtxt.getById(searchFolderId);
-	var markAsSpam = !(folder && folder.nId == ZmFolder.ID_SPAM);
-	this._doSpam(items, markAsSpam);
+	this._doSpam(items, ev.item.isMarkAsSpam);
 };
 
 ZmMailListController.prototype._detachListener =

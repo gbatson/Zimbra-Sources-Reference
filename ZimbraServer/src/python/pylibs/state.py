@@ -452,12 +452,15 @@ class State:
 			totalservices += 1
 			if not self.lookUpConfig("SERVICE", service):
 				stoppedservices += 1
-				Log.logMsg(2, "service %s was disabled need to stop" % (service,))
-				self.curRestarts(service,0)
 
 
   		if (stoppedservices == totalservices) and (totalservices > 1):
 			raise Exception, "All services detected disabled."
+
+		for service in self.curServices():
+			if not self.lookUpConfig("SERVICE", service):
+				Log.logMsg(2, "service %s was disabled need to stop" % (service,))
+				self.curRestarts(service,0)
 
   		for service in self.serverconfig.getServices():
 			if self.curServices(service) is None:

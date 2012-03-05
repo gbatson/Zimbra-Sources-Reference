@@ -1612,13 +1612,15 @@ public class ZimbraAccount {
 			 }
 		 }
 
-		 Element parseSoapResponse(String envelopeStr, boolean raw) throws SoapParseException, SoapFaultException {
+		 protected Element parseSoapResponse(String envelopeStr, boolean raw) throws SoapParseException, SoapFaultException {
 			 Element env;
 			 try {
-				 if (envelopeStr.trim().startsWith("<"))
+				 if (envelopeStr.trim().startsWith("<")) {
+				    logger.debug("envelopeStr: " + envelopeStr);
 					 env = Element.parseXML(envelopeStr);
-				 else
+				 } else {
 					 env = Element.parseJSON(envelopeStr);
+				 }
 			 } catch (DocumentException de) {
 				 throw new SoapParseException("unable to parse response", envelopeStr);
 			 }

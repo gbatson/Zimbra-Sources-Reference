@@ -93,11 +93,16 @@ public class MyPKCS12Import
        char[] inphrase  = passIn.toCharArray() ;
        char[] outphrase  = passOut.toCharArray() ;
        
-       kspkcs12.load(new FileInputStream(fileIn), inphrase);
-    
-       ksjks.load(
-             (fileOut.exists())
-             ? new FileInputStream(fileOut) : null, outphrase);
+       FileInputStream input = new FileInputStream(fileIn);
+       kspkcs12.load(input, inphrase);
+
+       FileInputStream output = null;
+       if (fileOut.exists()) {
+    	   output = new FileInputStream(fileOut); 
+           ksjks.load(output, outphrase);
+       } else {
+           ksjks.load(null, outphrase);
+       }
     
        Enumeration eAliases = kspkcs12.aliases();
        int n = 0;
@@ -117,8 +122,12 @@ public class MyPKCS12Import
     
        OutputStream out = new FileOutputStream(fileOut);
        ksjks.store(out, outphrase);
-       out.close();
-    }
+       out.close(); 
+       input.close();
+       if (output != null) {
+    	   output.close();
+       }
+    } 
     
     static void dumpChain(Certificate[] chain)
     {

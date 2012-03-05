@@ -725,13 +725,78 @@ function(account) {
 		if(!account[ZaAccount.A2_publicMailURL]) {
 			account.load("id", accId);
 		}
-		if(!account[ZaAccount.A2_publicMailURL]) {
-			account[ZaAccount.A2_publicMailURL] = ["http://",ZaAccount.getDomain(account[ZaAccount.A_name]),":7070"].join("");
+		//guess mail port
+		var mailPort = "7070";
+		var proto = "http";
+		try {
+			var servers = ZaServer.getAllMBSs().getArray();
+			var found = false;
+			if(location.hostname != "localhost" && location.hostname != "127.0.0.1") {
+				for(var i=0;i<servers.length;i++) {
+					if(servers[i].attrs[ZaServer.A_ServiceHostname] == location.hostname) {
+						found = true;
+					} 
+					if(!found && servers[i].attrs[ZaServer.A_Pop3BindAddress]) {
+						for(var j=0;j<servers[i].attrs[ZaServer.A_Pop3BindAddress].length;j++) {
+							if(servers[i].attrs[ZaServer.A_Pop3BindAddress][j] == location.hostname) {
+								found = true;
+								break;
+							}
+						}
+					}	
+					if(found) {
+						
+						if(servers[i].attrs[ZaServer.A_zimbraMailMode] == "http") {
+							mailPort = servers[i].attrs[ZaServer.A_zimbraMailPort];
+							proto = "http";
+						} else {
+							mailPort = servers[i].attrs[ZaServer.A_zimbraMailSSLPort];
+							proto = "https";
+						}						
+						break;
+					}
+				}
+				if(!found) {
+					//try IP addresses
+					for(var i=0;i<servers.length;i++) {
+						servers[i].load();
+						if(servers[i].nifs) {
+							for(var j=0;j<servers[i].nifs.length;j++) {
+								if(location.hostname == servers[i].nifs[j].attrs.addr) {
+									found = true;
+									if(servers[i].attrs[ZaServer.A_zimbraMailMode] == "http") {
+										mailPort = servers[i].attrs[ZaServer.A_zimbraMailPort];
+										proto = "http";
+									} else {
+										mailPort = servers[i].attrs[ZaServer.A_zimbraMailSSLPort];
+										proto = "https";
+									}								
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+			if(!found && servers.length > 0) {
+				//we may not find a match if we are accessing the UI by IP, assume ports are the same system-wide
+				if(servers[0].attrs[ZaServer.A_zimbraMailMode] == "http") {
+					mailPort = servers[0].attrs[ZaServer.A_zimbraMailPort];
+					proto = "http";
+				} else {
+					mailPort = servers[0].attrs[ZaServer.A_zimbraMailSSLPort];
+					proto = "https";					
+				}
+			}
+		} catch (ex1) {
+			
 		}
+		var mServer = proto + "://" + location.hostname + (mailPort == "" ? "" : ":" + mailPort) + "/";
 		if(!obj.authToken || !obj.lifetime)
 			throw new AjxException(ZaMsg.ERROR_FAILED_TO_GET_CREDENTIALS, AjxException.UNKNOWN, "ZaAccountListController.prototype._viewMailListener");
 
-		var mServer = [account[ZaAccount.A2_publicMailURL], "/service/preauth?authtoken=",obj.authToken,"&isredirect=1&adminPreAuth=1"].join("");
+		AjxCookie.setCookie(document, "ZM_AUTH_TOKEN", obj.authToken, null, "/");
+		
 		mServer = AjxStringUtil.trim(mServer,true);
 		var win = window.open(mServer, "_blank");
 	} catch (ex) {

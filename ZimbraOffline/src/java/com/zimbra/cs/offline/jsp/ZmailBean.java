@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
@@ -25,6 +26,7 @@ import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.account.DataSource.ConnectionType;
 import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.cs.offline.common.OfflineConstants.SyncMsgOptions;
 import com.zimbra.cs.offline.jsp.JspConstants.JspVerb;
 
 public class ZmailBean extends MailBean {
@@ -55,7 +57,12 @@ public class ZmailBean extends MailBean {
         boolean ssl = account.getBooleanAttr(JspConstants.OFFLINE_REMOTE_SSL, false);
         connectionType = ssl ? DataSource.ConnectionType.ssl : DataSource.ConnectionType.cleartext;
         syncFreqSecs = account.getTimeIntervalSecs(OfflineConstants.A_offlineSyncFreq, 0);
+        syncFixedDate = account.getAttr(OfflineConstants.A_offlinesyncFixedDate);
+        syncRelativeDate = account.getAttr(OfflineConstants.A_offlinesyncRelativeDate);
+        syncEmailDate = account.getAttr(OfflineConstants.A_offlinesyncEmailDate);
+        syncFieldName = account.getAttr(OfflineConstants.A_offlinesyncFieldName);
         isDebugTraceEnabled = account.getBooleanAttr(OfflineConstants.A_offlineEnableTrace, false);
+        isExpireOldEmailsEnabled = account.getBooleanAttr(OfflineConstants.A_offlineEnableExpireOldEmails, true);
     }
 
     @Override
@@ -78,6 +85,23 @@ public class ZmailBean extends MailBean {
                     addInvalid("host");
                 if (!isEmpty(port) && !isValidPort(port))
                     addInvalid("port");
+
+
+                if(!isValidSyncEmailDate(syncEmailDate))
+                    addInvalid("syncEmailDate");
+                else {
+                    switch (SyncMsgOptions.getOption(syncEmailDate)) {
+                    case SYNCTOFIXEDDATE :
+                        if(!isValidSyncFixedDate(syncFixedDate))
+                            addInvalid("syncFixedDate");
+                        break;
+                    case SYNCTORELATIVEDATE :
+                        if(!isValidSyncRelativeDate(syncRelativeDate))
+                            addInvalid("syncRelativeDate");
+                        break;
+                    }
+                }
+
                 if (isAllOK()) {
                     attrs.put(OfflineConstants.A_offlineAccountSetup, Provisioning.TRUE);
 
@@ -86,8 +110,30 @@ public class ZmailBean extends MailBean {
                         getRemoteServerUri());
                     attrs.put(OfflineConstants.A_offlineSyncFreq,
                         Long.toString(syncFreqSecs));
+
+                    attrs.put(OfflineConstants.A_offlinesyncEmailDate, syncEmailDate);
+                    switch (SyncMsgOptions.getOption(syncEmailDate)) {
+                    case SYNCEVERYTHING:
+                        attrs.put(OfflineConstants.A_offlinesyncFixedDate, null);
+                        attrs.put(OfflineConstants.A_offlinesyncRelativeDate, null);
+                        attrs.put(OfflineConstants.A_offlinesyncFieldName, null);
+                        break;
+                    case SYNCTOFIXEDDATE :
+                        attrs.put(OfflineConstants.A_offlinesyncFixedDate, syncFixedDate);
+                        attrs.put(OfflineConstants.A_offlinesyncRelativeDate, null);
+                        attrs.put(OfflineConstants.A_offlinesyncFieldName, null);
+                        break;
+                    case SYNCTORELATIVEDATE :
+                        attrs.put(OfflineConstants.A_offlinesyncFixedDate, null);
+                        attrs.put(OfflineConstants.A_offlinesyncRelativeDate, syncRelativeDate);
+                        attrs.put(OfflineConstants.A_offlinesyncFieldName, syncFieldName);
+                        break;
+                    }
                     attrs.put(OfflineConstants.A_offlineEnableTrace,
                         isDebugTraceEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+                    //setting the expire old emails to true as default value
+                    attrs.put(OfflineConstants.A_offlineEnableExpireOldEmails,
+                            isExpireOldEmailsEnabled ? Provisioning.TRUE : Provisioning.FALSE);
                     if (!password.equals(JspConstants.MASKED_PASSWORD))
                         attrs.put(OfflineConstants.A_offlineRemotePassword, password);
                     if (sslCertAlias != null && sslCertAlias.length() > 0)
@@ -99,7 +145,7 @@ public class ZmailBean extends MailBean {
             }
 
             JspProvStub stub = JspProvStub.getInstance();
-            if (isAllOK()) {                
+            if (isAllOK()) {
                 attrs.put(OfflineConstants.A_offlineAccountFlavor, accountFlavor);
                 if (verb.isAdd()) {
                     stub.createOfflineAccount(accountName, email, attrs);
@@ -151,7 +197,7 @@ public class ZmailBean extends MailBean {
     public boolean isUsernameRequired() {
         return false;
     }
-    
+
     @Override
     public void setPassword(String input) {
         this.password = input;
@@ -170,7 +216,11 @@ public class ZmailBean extends MailBean {
         xb.port = "" + port;
         xb.connectionType = isSSL ? ConnectionType.ssl : ConnectionType.cleartext;
         xb.isDebugTraceEnabled = true;
-        xb.syncFreqSecs=-1;
+        xb.isExpireOldEmailsEnabled = true;
+        xb.syncFreqSecs = -1;
+        xb.syncFixedDate = "0";
+        xb.syncRelativeDate = "0";
+        xb.syncFieldName = "";
         xb.doRequest();
         if (xb.getError() != null)
             throw new RuntimeException(xb.getError());

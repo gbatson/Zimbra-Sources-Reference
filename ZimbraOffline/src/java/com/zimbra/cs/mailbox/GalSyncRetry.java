@@ -15,6 +15,7 @@
 package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -25,7 +26,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.DataSource;
+import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineGal;
+import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
 
@@ -39,12 +42,13 @@ public final class GalSyncRetry {
         static GalSyncRetry instance = new GalSyncRetry();
     }
 
-    private synchronized MailboxGalSyncRetry getRetry(ZcsMailbox mbox, Mailbox galMbox) {
+    private synchronized MailboxGalSyncRetry getRetry(OfflineAccount galAccount) throws ServiceException {
+        Mailbox galMbox = MailboxManager.getInstance().getMailboxByAccount(galAccount);
         if (!this.mboxRetryMap.containsKey(galMbox)) {
             try {
-                this.mboxRetryMap.put(galMbox, new MailboxGalSyncRetry(mbox, galMbox));
+                this.mboxRetryMap.put(galMbox, new MailboxGalSyncRetry(galMbox));
             } catch (ServiceException e) {
-                e.printStackTrace();
+                OfflineLog.offline.error("GAL retry get retry failed", e);
             }
         }
         return this.mboxRetryMap.get(galMbox);
@@ -54,14 +58,14 @@ public final class GalSyncRetry {
         return this.mboxRetryMap.get(galMbox);
     }
 
-    public static void checkpoint(ZcsMailbox mbox, Mailbox galMbox, List<String> retryContactIds)
+    public static void checkpoint(OfflineAccount galAccount, List<String> retryContactIds)
     throws ServiceException {
-        LazyHolder.instance.getRetry(mbox, galMbox).checkpoint(retryContactIds);
+        LazyHolder.instance.getRetry(galAccount).checkpoint(retryContactIds);
     }
 
-    public static void retry(ZcsMailbox mbox, Mailbox galMbox, List<String> retryContactIds)
+    public static void retry(OfflineAccount galAccount, List<String> retryContactIds)
     throws ServiceException, IOException {
-        LazyHolder.instance.getRetry(mbox, galMbox).retry(retryContactIds);
+        LazyHolder.instance.getRetry(galAccount).retry(retryContactIds);
     }
 
     public static boolean remove(Mailbox galMbox) throws ServiceException {
@@ -78,7 +82,6 @@ public final class GalSyncRetry {
         private static String OfflineGalSyncRetry = "offline_gal_retry";
         private Set<String> retryIds = new HashSet<String>();
 
-        private ZcsMailbox mbox;
         private Mailbox galMbox;
         private Metadata md;
         private long lastRetry;
@@ -86,12 +89,11 @@ public final class GalSyncRetry {
         private int syncFolder;
         private DataSource ds;
 
-        MailboxGalSyncRetry(ZcsMailbox mbox, Mailbox galMbox) throws ServiceException {
-            this.mbox = mbox;
+        MailboxGalSyncRetry(Mailbox galMbox) throws ServiceException {
             this.galMbox = galMbox;
             this.context = new OperationContext(this.galMbox);
             this.syncFolder = OfflineGal.getSyncFolder(this.galMbox, this.context, false).getId();
-            this.ds = GalSyncUtil.createDataSourceForAccount(this.galMbox.getAccount());
+            this.ds = OfflineProvisioning.getOfflineInstance().getDataSource(galMbox.getAccount());
             
             this.md = this.galMbox.getConfig(null, OfflineGalSyncRetry);
             if (this.md == null) {
@@ -100,6 +102,7 @@ public final class GalSyncRetry {
                 this.galMbox.setConfig(null, OfflineGalSyncRetry, md);
                 this.lastRetry = System.currentTimeMillis();
             } else {
+                //load
                 String retryIds = this.md.get(this.galMbox.getAccountId());
                 if (!StringUtil.isNullOrEmpty(retryIds)) {
                     this.retryIds.addAll(Arrays.asList(retryIds.split(",")));
@@ -125,10 +128,6 @@ public final class GalSyncRetry {
             return builder.toString();
         }
 
-        private void clearRetryItems() {
-            this.retryIds.clear();
-        }
-
         private boolean needsRetry() {
             boolean result = (this.retryIds.size() != 0);
             if (result && this.lastRetry == 0) {
@@ -142,27 +141,31 @@ public final class GalSyncRetry {
                     > OfflineLC.zdesktop_gal_sync_retry_interval_secs.longValue());
         }
 
-        void retry(List<String> retryIds) throws ServiceException, IOException {
+        void retry(List<String> retryingIds) throws ServiceException, IOException {
+            if (!retryingIds.isEmpty()) {
+                this.retryIds.addAll(retryingIds);
+                retryingIds.clear();
+            }
             if (needsRetry()) {
                 if (needsRetryNow()) {
-                    if (!retryIds.isEmpty()) {
-                        OfflineLog.offline.info("Offline GAL sync retry " + retryIds.size() + " items");
-                        String galAcctId = retryIds.get(0).split(":")[0];
-                        GalSyncUtil.fetchContacts(mbox, galMbox, context, syncFolder, getRetryItems(),
-                                false, ds, retryIds, "", galAcctId);
-                        clearRetryItems();
-                        addRetryIds(retryIds);
+                    if (!this.retryIds.isEmpty()) {
+                        OfflineLog.offline.debug("Offline GAL sync retry " + this.retryIds.size() + " items");
+                        List<String> newRetryIds = new ArrayList<String>();
+                        GalSyncUtil.fetchContacts(galMbox, context, syncFolder, getRetryItems(),
+                                false, ds, newRetryIds, "", this.galMbox.getAccountId());
+                        this.retryIds.clear();
+                        addRetryIds(newRetryIds);
                         checkpoint();
                         this.lastRetry = System.currentTimeMillis();
-                        OfflineLog.offline.info("Offline GAL sync retry finished");
+                        OfflineLog.offline.debug("Offline GAL sync retry finished");
                     } else {
-                        OfflineLog.offline.info("Offline GAL sync retry passed, no retry items");
+                        OfflineLog.offline.debug("Offline GAL sync retry passed, no retry items");
                     }
                 } else {
-                    OfflineLog.offline.info("Offline GAL sync retry skipped, not yet time to do it");
+                    OfflineLog.offline.debug("Offline GAL sync retry skipped, not yet time to do it");
                 }
             } else {
-                OfflineLog.offline.info("Offline GAL sync retry bypassed, no retry items");
+                OfflineLog.offline.debug("Offline GAL sync retry bypassed, no retry items");
             }
         }
 

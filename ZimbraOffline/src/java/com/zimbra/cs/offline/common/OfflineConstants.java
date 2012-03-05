@@ -18,6 +18,7 @@ import org.dom4j.Namespace;
 import org.dom4j.QName;
 
 import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.StringUtil;
 
 public interface OfflineConstants {
 
@@ -63,6 +64,29 @@ public interface OfflineConstants {
         unknown, offline, online, running, authfail, error
     }
 
+    public enum SyncMsgOptions {
+        SYNCEVERYTHING("0"), SYNCTOFIXEDDATE("1"), SYNCTORELATIVEDATE("2");
+
+        private String option;
+
+        SyncMsgOptions(String option) {
+            this.option = option;
+        }
+
+        public String getOption() {
+            return this.option;
+        }
+
+        public static SyncMsgOptions getOption(String value) {
+            for (SyncMsgOptions opt : SyncMsgOptions.values()) {
+                if (StringUtil.equalIgnoreCase(value, opt.option)) {
+                    return opt;
+                }
+            }
+            return SYNCEVERYTHING;
+          }
+    }
+
     public static final String A_offlineAccountsOrder = "offlineAccountsOrder";
     
     public static final String A_offlineRemoteServerVersion = "offlineRemoteServerVersion";
@@ -93,12 +117,16 @@ public interface OfflineConstants {
     
     public static final String A_offlineLastSync = "offlineLastSync";
     public static final String A_offlineEnableTrace = "offlineEnableTrace";
+    public static final String A_offlineEnableExpireOldEmails = "offlineEnableExpireOldEmails";
     
     public static final String A_offlineSslCertAlias = "offlineSslCertAlias";
     public static final String A_offlineAccountSetup = "offlineAccountSetup";
     
     public static final String A_offlineYContactTokenReady = "offlineYContactTokenReady";
-    
+    public static final String A_offlinesyncFieldName = "offlinesyncFieldName";
+    public static final String A_offlinesyncFixedDate = "offlinesyncFixedDate";
+    public static final String A_offlinesyncRelativeDate = "offlinesyncRelativeDate";
+    public static final String A_offlinesyncEmailDate = "offlinesyncEmailDate";
     public static final String A_zimbraDataSourceSmtpEnabled = "zimbraDataSourceSmtpEnabled";
     public static final String A_zimbraDataSourceSmtpHost = "zimbraDataSourceSmtpHost";
     public static final String A_zimbraDataSourceSmtpPort = "zimbraDataSourceSmtpPort";

@@ -26,14 +26,12 @@
  * @param {constant}      params.posStyle			the positioning style (see {@link DwtControl})
  * @param  {string}     params.content		the content (this can be HTML)
  * @param  {DwtHtmlEditor.HTML|DwtHtmlEditor.TEXT}     params.mode			the mode
- * @param  {string}     params.blankIframeSrc	the blank iframe source
- *        
+ *
  * @extends		DwtComposite
  */
 DwtHtmlEditor = function(params) {
 	if (arguments.length == 0) { return; }
 	params = Dwt.getParams(arguments, DwtHtmlEditor.PARAMS);
-	this.setBlankIframeSrc(params.blankIframeSrc);
 	params.className = params.className || "DwtHtmlEditor";
 	DwtComposite.call(this, params);
 
@@ -277,16 +275,6 @@ function(enable) {
 		document.getElementById(this._iFrameId).disabled = !enable;
 }
 
-/**
- * Sets the blank iframe source.
- * 
- * @param	{string}	src		the source
- */
-DwtHtmlEditor.prototype.setBlankIframeSrc =
-function(src) {
-	this._blankIframeSrc = src;
-};
-
 DwtHtmlEditor.prototype.isHtmlEditingSupported =
 function() {
 	return (!!(AjxEnv.isGeckoBased || AjxEnv.isIE || AjxEnv.isSafari3up));
@@ -385,6 +373,19 @@ function(src, dontExecCommand, width, height) {
     }
     else {
         this._execCommand(DwtHtmlEditor.IMAGE, src);
+    }
+};
+
+DwtHtmlEditor.prototype.replaceImage =
+function(id, src){
+    var doc = this._getIframeDoc();
+    if(doc){
+        var img = doc.getElementById(id);
+        if( img && img.getAttribute("data-zim-uri") === id ){
+            img.src = src;
+            img.removeAttribute("id");
+            img.removeAttribute("data-zim-uri");
+        }
     }
 };
 
@@ -898,7 +899,7 @@ function(content) {
         var pastecont = AjxCallback.simpleClosure(this._registerPasteEvent, this);
         iFrame.onload = pastecont;
     }
-	iFrame.src = this._blankIframeSrc || "";
+    iFrame.src = 'javascript:(function(d){d.open();d.write("<html><body></body></html>");d.close();})(document)';
 	htmlEl.appendChild(iFrame);
 
 	return iFrame;
@@ -1435,7 +1436,7 @@ function(ev) {
 				ke.setToDhtmlEvent(ev);
 				retVal = false;
 			}
-			else if (AjxEnv.isFirefox) { //Chrome/Safari/WebKit naturally does the tabs correctly
+			else if (AjxEnv.isFirefox || AjxEnv.isPrism) { //Chrome/Safari/WebKit naturally does the tabs correctly
 				if (!ev.shiftKey) {
 					this._insertHTML(DwtHtmlEditor.TAB, true);
 					DwtUiEvent.setDhtmlBehaviour(ev, true, false);
@@ -2268,3 +2269,46 @@ DwtHtmlEditor.prototype.setTextAreaId =
 function(textAreaId) {
     this._textAreaId = textAreaId;
 };
+
+DwtHtmlEditor._normalizeFontId = function(id, dontFallback) {
+    var oldid = id;
+	id = id.replace(/,\s/g,",").replace(/'/g,"").toLowerCase(); // Make sure all ids that are supposed to be found in DwtHtmlEditor.FONT_FAMILY are actually found
+    if (!dontFallback) {
+        var map = DwtHtmlEditor.FONT_FAMILY;
+        if (map && !map[id]) {
+            var keys = AjxUtil.keys(map);
+            if (keys.length) {
+                var splitId = id.split(","); // e.g. ["times new roman","helvetica"]
+                for (var i=0; i<splitId.length; i++) { // Loop over input font names
+                    for (var j=0; j<keys.length; j++) { // Loop over candidate styles, e.g. ["arial,sans-serif","times new roman,serif"]
+                        if (keys[j].indexOf(splitId[i]) != -1) {
+                            return keys[j];
+                        }
+                    }
+                }
+                return keys[0];
+            }
+        }
+    }
+    return id;
+};
+DwtHtmlEditor._normalizeFontName = function(fontId) {
+    return DwtHtmlEditor.FONT_FAMILY[DwtHtmlEditor._normalizeFontId(fontId)].name;
+};
+DwtHtmlEditor._normalizeFontValue = function(fontId) {
+    return DwtHtmlEditor.FONT_FAMILY[DwtHtmlEditor._normalizeFontId(fontId)].value;
+};
+
+DwtHtmlEditor.FONT_FAMILY = {};
+(function() {
+	var KEYS = [ "fontFamilyIntl", "fontFamilyBase" ];
+	var i, j, key, value, name;
+	for (j = 0; j < KEYS.length; j++) {
+		for (i = 1; value = AjxMsg[KEYS[j]+i+".css"]; i++) {
+			if (value.match(/^#+$/)) break;
+			value = DwtHtmlEditor._normalizeFontId(value,true);
+			name = AjxMsg[KEYS[j]+i+".display"];
+			DwtHtmlEditor.FONT_FAMILY[value] = {name:name, value:value};
+		}
+	}
+})();

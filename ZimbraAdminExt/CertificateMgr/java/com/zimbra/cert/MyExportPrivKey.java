@@ -17,6 +17,7 @@ package com.zimbra.cert;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.security.Key;
 import java.security.KeyPair;
 import java.security.KeyStore;
@@ -26,6 +27,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 
 import sun.misc.BASE64Encoder;
 
@@ -44,26 +46,28 @@ public class MyExportPrivKey {
                                 PublicKey publicKey=cert.getPublicKey();
                                 return new KeyPair(publicKey,(PrivateKey)key);
                         }
-                } catch (UnrecoverableKeyException e) {
-        } catch (NoSuchAlgorithmException e) {
-        } catch (KeyStoreException e) {
+                } catch (UnrecoverableKeyException e) { return null;
+        } catch (NoSuchAlgorithmException e) { return null;
+        } catch (KeyStoreException e) { return null;
         }
         return null;
         }
 
-        public void export() throws Exception{
-                KeyStore keystore=KeyStore.getInstance(keyStoreType);
-                BASE64Encoder encoder=new BASE64Encoder();
-                keystore.load(new FileInputStream(keystoreFile),password);
-                KeyPair keyPair=getPrivateKey(keystore,alias,password);
-                PrivateKey privateKey=keyPair.getPrivate();
-                String encoded=encoder.encode(privateKey.getEncoded());
-                FileWriter fw=new FileWriter(exportedFile);
-                fw.write("-----BEGIN PRIVATE KEY-----\n");
-                fw.write(encoded);
-                fw.write("\n");
-                fw.write("-----END PRIVATE KEY-----");
-                fw.close();
+        public void export() throws IOException, KeyStoreException, NoSuchAlgorithmException, CertificateException {
+            KeyStore keystore=KeyStore.getInstance(keyStoreType);
+            BASE64Encoder encoder=new BASE64Encoder();
+            FileInputStream input = new FileInputStream(keystoreFile);
+            keystore.load(input,password);
+            KeyPair keyPair=getPrivateKey(keystore,alias,password);
+            PrivateKey privateKey=keyPair.getPrivate();
+            String encoded=encoder.encode(privateKey.getEncoded());
+            FileWriter fw=new FileWriter(exportedFile);
+            fw.write("-----BEGIN PRIVATE KEY-----\n");
+            fw.write(encoded);
+            fw.write("\n");
+            fw.write("-----END PRIVATE KEY-----");
+            fw.close(); 
+            input.close();
         }
 
         /**

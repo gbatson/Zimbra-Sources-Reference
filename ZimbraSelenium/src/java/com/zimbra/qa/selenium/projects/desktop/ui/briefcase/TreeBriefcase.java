@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -25,6 +9,9 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.desktop.ui.DialogWarning;
+import com.zimbra.qa.selenium.projects.desktop.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.desktop.ui.briefcase.DialogCreateBriefcaseFolder;
 import com.zimbra.qa.selenium.projects.desktop.ui.*;
 
 /**
@@ -34,13 +21,24 @@ import com.zimbra.qa.selenium.projects.desktop.ui.*;
 
 public class TreeBriefcase extends AbsTree {
 
-	public static class Locators {
+   public final static String stringToReplace = "<TREE_ITEM>";
+
+   public static class Locators {
+	   public final static String zTreeItems = new StringBuffer("css=div[id='zovc__main_Briefcase'] td:contains('").
+            append(stringToReplace).append("')").toString();
 		public static final String briefcaseListView = "css=[id='zl__BDLV__rows']";
 		public static final String briefcaseTreeView = "css=[id*=zti__main_Briefcase__";
 		public static final String briefcaseTreeView_Desktop = "css=td[id*='main_Briefcase']";
 		public static final String zNewTagTreeMenuItem = "css=td[id$=_left_icon]>[class=ImgNewTag]";
+		public static final String zNewFolderTreeMenuItem = "css=tr[id=POPUP_NEW_BRIEFCASE]:contains('New Folder')";
+		public static final String zNewBriefcaseTreeMenuItem = "css=tr[id=POPUP_NEW_BRIEFCASE]:contains('New Briefcase')";
 		public static final String zRenameTagTreeMenuItem = "css=td[id$=_left_icon]>[class=ImgRename]";
 		public static final String zDeleteTreeMenuItem = "css=td[id$=_left_icon]>[class=ImgDelete]";
+		//public static final String zDeleteTreeMenuItem = "css=div[id='DELETE_WITHOUT_SHORTCUT'] tr[id^='POPUP_DELETE']:contains(Delete)";
+		public static final String treeExpandCollapseButton = "css=div[id='zovc__main_Briefcase'] div[id^='DWT'][class='DwtTreeItem'] [class^='ImgNode']";
+      public static final String multipleTrees = "css=div[id='zovc__main_Briefcase'] div[id^='zovc__main_Briefcase'][id$='__SECTION'][class^='DwtComposite ZmOverview']:nth-of-type(<NUM>)";
+      public static final String multipleTreesExpandCollapseButton = multipleTrees + " div[id^='DWT'] [class^='ImgNode']";
+      public static final String multipleLocalFolderTreesExpandCollapseButton = multipleTrees + " div[class='DwtTreeItemLevel1ChildDiv'] [class^='ImgNode']";
 	}
 
 	public TreeBriefcase(AbsApplication application) {
@@ -71,6 +69,26 @@ public class TreeBriefcase extends AbsTree {
 		   actionLocator = Locators.briefcaseTreeView_Desktop + "[id*='"
                + MyApplication.zGetActiveAccount().EmailAddress + "']"
                + ":contains('" + item.getName() + "')";
+		}else if (item instanceof FolderItem) {
+		   FolderItem folder = (FolderItem) item;
+
+		   String emailAddress = folder.isDesktopClientLocalFolder() ? 
+		         ZimbraAccount.clientAccountName :
+		            MyApplication.zGetActiveAccount().EmailAddress;
+
+		   if (folder.getName().equals("USER_ROOT")) {
+		      //TODO: Bug 65039
+		      actionLocator = Locators.zTreeItems.replace(TreeBriefcase.stringToReplace,
+		            "Local Folders");
+
+		   } else {
+		      actionLocator = Locators.briefcaseTreeView_Desktop + "[id*='"
+		            + emailAddress + "']"
+		            + "[id$='" + ((FolderItem) item).getId()
+		            + "_imageCell']";
+
+		   }
+
 		} else {
 			throw new HarnessException("Must use IItem as argument, but was "
 					+ item.getClass());
@@ -78,7 +96,7 @@ public class TreeBriefcase extends AbsTree {
 
 		if (action == Action.A_RIGHTCLICK) {
 
-			this.zRightClick(actionLocator);
+			this.zRightClickAt(actionLocator, "0,0");
 		} else {
 			throw new HarnessException("implement me! " + action
 					+ ": not implemented");
@@ -101,9 +119,22 @@ public class TreeBriefcase extends AbsTree {
 
 			optionLocator = Locators.zDeleteTreeMenuItem;
 
-			page = new DialogWarning(
-					DialogWarning.DialogWarningID.DeleteTagWarningMessage,
-					MyApplication,
+			if (item instanceof TagItem) {
+				page = new DialogWarning(
+						DialogWarning.DialogWarningID.DeleteTagWarningMessage,
+						MyApplication,
+						((AppAjaxClient) MyApplication).zPageBriefcase);
+			}
+		}else if (option == Button.B_TREE_NEWFOLDER) {
+		   FolderItem folder = (FolderItem) item;
+
+		   if (folder.getName().equals("USER_ROOT")) {
+		      optionLocator = Locators.zNewBriefcaseTreeMenuItem;
+		   } else {
+		      optionLocator = Locators.zNewFolderTreeMenuItem;		      
+		   }
+
+			page = new DialogCreateBriefcaseFolder(MyApplication,
 					((AppAjaxClient) MyApplication).zPageBriefcase);
 
 		} else {
@@ -124,7 +155,7 @@ public class TreeBriefcase extends AbsTree {
 
 		if (page != null) {
 			// Wait for the page to become active, if it was specified
-			page.zWaitForActive();
+			//page.zWaitForActive();
 		}
 		return (page);
 	}
@@ -176,8 +207,14 @@ public class TreeBriefcase extends AbsTree {
                + MyApplication.zGetActiveAccount().EmailAddress + "']"
                + ":contains('" + item.getName() + "')";
 		} else if (item instanceof FolderItem) {
+		   FolderItem folder = (FolderItem) item;
+
+		   String emailAddress = folder.isDesktopClientLocalFolder() ?
+		         ZimbraAccount.clientAccountName :
+		            MyApplication.zGetActiveAccount().EmailAddress;
+
 		   locator = Locators.briefcaseTreeView_Desktop + "[id*='"
-		         + MyApplication.zGetActiveAccount().EmailAddress + "']"
+		         + emailAddress + "']"
 		         + "[id$='" + ((FolderItem) item).getId()
 		         + "_imageCell']";
 
@@ -277,7 +314,15 @@ public class TreeBriefcase extends AbsTree {
 			// TODO: implement me
 
 			// FALL THROUGH
-		} else {
+		} else if(button== Button.O_NEW_BRIEFCASE){
+			
+			locator ="css=div[id='ztb__BDLV'] div[id='zb__BDLV__NEW_MENU'] td[id='zb__BDLV__NEW_MENU_dropdown'] >div";
+				if (!this.sIsElementPresent(locator)) {
+					throw new HarnessException("Unable to locate folder in tree "
+							+ locator);
+				}
+			sMouseDown(locator);
+		}else {
 			throw new HarnessException("no logic defined for button " + button);
 		}
 
@@ -313,7 +358,82 @@ public class TreeBriefcase extends AbsTree {
 		return (items);
 	}
 
-	public void zExpandFolders() throws HarnessException {
+	  /**
+    * Expand all the folders tree
+    * @return
+    * @throws HarnessException
+    */
+   public void zExpandAll() throws HarnessException {
+        // Browse all inventory in case of multiple accounts situation
+      int i = 1;
+      String locator = null;
+      String expandCollapseLocator = null;
+      String expandCollapseLocalFoldersLocator = null;
+      for (i = 1; i < 100; i++) {
+         locator = Locators.multipleTrees.replace("<NUM>",
+               Integer.toString(i));
+         if (!sIsElementPresent(locator)) {
+            break;
+         } else {
+            expandCollapseLocator = Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocator = expandCollapseLocator.replace(
+                  "ImgNode", "ImgNodeCollapsed");
+            expandCollapseLocalFoldersLocator = Locators.multipleLocalFolderTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocalFoldersLocator = expandCollapseLocalFoldersLocator.replace(
+                  "ImgNode", "ImgNodeCollapsed");
+            while (sIsElementPresent(expandCollapseLocator)) {
+               sMouseDownAt(expandCollapseLocator, "0,0");
+            }
+
+            while (sIsElementPresent(expandCollapseLocalFoldersLocator)) {
+               sMouseDownAt(expandCollapseLocalFoldersLocator, "0,0");
+            }
+         }
+      }
+
+   }
+
+   /**
+    * Collapse all the folders tree
+    * @return
+    * @throws HarnessException
+    */
+   public void zCollapseAll() throws HarnessException {
+      // Browse all inventory in case of multiple accounts situation
+      int i = 1;
+      String locator = null;
+      String expandCollapseLocator = null;
+      String expandCollapseLocalFoldersLocator = null;
+      for (i = 1; i < 100; i++) {
+         locator = Locators.multipleTrees.replace("<NUM>",
+               Integer.toString(i));
+         if (!sIsElementPresent(locator)) {
+            break;
+         } else {
+            expandCollapseLocator = Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocator = expandCollapseLocator.replace(
+                  "ImgNode", "ImgNodeExpanded");
+            expandCollapseLocalFoldersLocator = Locators.multipleLocalFolderTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocalFoldersLocator = expandCollapseLocalFoldersLocator.replace(
+                  "ImgNode", "ImgNodeExpanded");
+
+            while (sIsElementPresent(expandCollapseLocator)) {
+               sMouseDownAt(expandCollapseLocator, "0,0");
+            }
+
+            while (sIsElementPresent(expandCollapseLocalFoldersLocator)) {
+               sMouseDownAt(expandCollapseLocalFoldersLocator, "0,0");
+            }
+         }
+      }
+
+   }
+
+   public void zExpandFolders() throws HarnessException {
 		throw new HarnessException("implement me!");
 	}
 

@@ -73,8 +73,10 @@ public class OfflineService implements DocumentService {
         dispatcher.registerHandler(OfflineConstants.ACCOUNT_BACKUP_REQUEST, new OfflineAccountBackupService());
         dispatcher.registerHandler(OfflineConstants.ACCOUNT_RESTORE_REQUEST, new OfflineAccountRestoreService());
         dispatcher.registerHandler(OfflineConstants.ACCOUNT_BACKUP_ENUM_REQUEST, new OfflineBackupEnumService());
-        dispatcher.registerHandler(AccountConstants.GET_DISTRIBUTION_LIST_MEMBERS_REQUEST, new OfflineGetDistributionListMembers());
+        dispatcher.registerHandler(AccountConstants.GET_DISTRIBUTION_LIST_MEMBERS_REQUEST, OfflineServiceProxy.GetDLMembersRequest());
         dispatcher.registerHandler(MailConstants.MODIFY_CONTACT_REQUEST, new OfflineModifyContact());
+        dispatcher.registerHandler(MailConstants.CREATE_CONTACT_REQUEST, new OfflineCreateContact());
+        dispatcher.registerHandler(AccountConstants.MODIFY_PROPERTIES_REQUEST, new OfflineModifyProperties());
 
         // not the most suitable place to do this, but it's just too easy.
         SoapContextExtension.register(OfflineContextExtension.ZDSYNC, new OfflineContextExtension());

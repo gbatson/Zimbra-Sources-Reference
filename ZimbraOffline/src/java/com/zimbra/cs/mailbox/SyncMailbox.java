@@ -15,12 +15,17 @@
 package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.google.common.primitives.Ints;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.LruMap;
@@ -28,13 +33,20 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
+import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbOfflineMailbox;
 import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
+import com.zimbra.cs.mailbox.util.TypedIdList;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.OfflineSyncManager;
+import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.cs.offline.common.OfflineConstants.SyncMsgOptions;
 import com.zimbra.cs.offline.util.OfflineYAuth;
+import com.zimbra.cs.redolog.op.DeleteItem;
 import com.zimbra.cs.redolog.op.DeleteMailbox;
+import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.StoreManager;
@@ -44,7 +56,6 @@ import com.zimbra.cs.util.ZimbraApplication;
 public abstract class SyncMailbox extends DesktopMailbox {
     static final String DELETING_MID_SUFFIX = ":delete";
     static final long OPTIMIZE_INTERVAL = 48 * Constants.MILLIS_PER_HOUR;
-
     private String accountName;
     private volatile boolean isDeleting;
 
@@ -236,6 +247,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
     public synchronized void cancelCurrentTask() {
         if (currentTask != null)
             currentTask.cancel();
+
         currentTask = null;
     }
 
@@ -283,6 +295,69 @@ public abstract class SyncMailbox extends DesktopMailbox {
         timer = new Timer("sync-mbox-" + getAccount().getName());
         timer.schedule(currentTask, 10 * Constants.MILLIS_PER_SECOND,
             5 * Constants.MILLIS_PER_SECOND);
+    }
+
+    public boolean deleteMsginFolder(long cutoffTime, Folder folder, Set<Folder> visible)
+        throws ServiceException {
+
+            if (folder == null)
+                return false;
+
+            if (visible != null && visible.isEmpty())
+                return false;
+            boolean isVisible = visible == null || visible.remove(folder);
+
+            List<Folder> subfolders = folder.getSubfolders(null);
+            if (!isVisible && subfolders.isEmpty())
+                return false;
+
+            if (isVisible && folder.getType() == MailItem.TYPE_FOLDER) {
+                if (folder.getId() != Mailbox.ID_FOLDER_TAGS) {
+                    TypedIdList idlist;
+                    boolean success = false;
+                    synchronized (this) {
+                        try {
+                            beginTransaction("listMessageItemsforgivenDate", getOperationContext());
+                            idlist = DbMailItem.listMsgItems(folder, cutoffTime, true, true);
+                            success = true;
+                        } finally {
+                            endTransaction(success);
+                        }
+                    }
+
+                    List<Integer> items = idlist.getIds(MailItem.TYPE_MESSAGE);
+                    if (items != null && !items.isEmpty()) {
+                        for (int id : items) {
+                            MailItem item;
+                            success = false;
+                            DeleteItem redoRecorder = new DeleteItem(this.getId(), Ints.toArray(items), MailItem.TYPE_MESSAGE, getOperationTargetConstraint());
+                            synchronized (this) {
+                                try {
+                                    beginTransaction("delete", getOperationContext(), redoRecorder);
+                                    try {
+                                        item = getItemById(id, MailItem.TYPE_UNKNOWN);
+                                        item.delete(MailItem.DeleteScope.ENTIRE_ITEM, false);
+                                    } catch (NoSuchItemException nsie) {
+                                        continue;
+                                    }
+                                    success = true;
+                                }finally {
+                                    endTransaction(success);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (isVisible && visible != null && visible.isEmpty())
+                return true;
+
+            for (Folder subfolder : subfolders) {
+                if (subfolder != null)
+                    isVisible |= deleteMsginFolder(cutoffTime, subfolder, visible);
+            }
+            return isVisible;
     }
 
     protected abstract void syncOnTimer();

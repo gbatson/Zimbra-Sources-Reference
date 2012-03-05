@@ -30,7 +30,7 @@
 		    <c:choose>
 	        	<c:when test="${!empty cookie.ZM_TEST}">
 		            <zm:login username="${param.username}" password="${param.password}" varRedirectUrl="postLoginUrl" varAuthResult="authResult"
-		                      newpassword="${param.loginNewPassword}" rememberme="false"
+		                      varNeedRefer="needRefer" newpassword="${param.loginNewPassword}" rememberme="false"
 		                      prefs="${prefsToFetch}" attrs="${attrsToFetch}"
 							  requestedSkin="${param.skin}"/>
 		            <%-- continue on at not empty authResult test --%>

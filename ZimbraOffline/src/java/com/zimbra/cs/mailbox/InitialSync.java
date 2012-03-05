@@ -17,9 +17,15 @@ package com.zimbra.cs.mailbox;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -71,6 +77,8 @@ import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.offline.ab.SyncException;
+import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.cs.offline.common.OfflineConstants.SyncMsgOptions;
 import com.zimbra.cs.offline.util.ExtractData;
 import com.zimbra.cs.redolog.op.CreateChat;
 import com.zimbra.cs.redolog.op.CreateContact;
@@ -136,6 +144,7 @@ public class InitialSync {
     private DeltaSync dsync;
     private Element syncResponse;
     private boolean interrupted;
+    private boolean syncMsgCutoffReached = false;
 
     InitialSync(ZcsMailbox mbox) {
         ombx = mbox;
@@ -166,8 +175,51 @@ public class InitialSync {
         return new InitialSync(ombx).sync();
     }
 
+    public static String convertDateToLong(String input) {
+        DateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
+        Date date;
+        try {
+            date = (Date)formatter.parse(input);
+            return Long.toString(date.getTime() / 1000L);
+        } catch (ParseException e) {
+            return "-1";
+        }
+    }
+
+    public static String convertRelativeDatetoLong(String input, String syncFieldName) {
+        Calendar now = GregorianCalendar.getInstance();
+        if(syncFieldName.equals("Year")) {
+            now.add(Calendar.YEAR, Integer.parseInt(input) * -1);
+        }
+        else if(syncFieldName.equals("Month")) {
+            now.add(Calendar.MONTH, Integer.parseInt(input) * -1);
+        }
+        else if(syncFieldName.equals("Week")) {
+            now.add(Calendar.WEEK_OF_YEAR, Integer.parseInt(input) * -1);
+        }
+        return Long.toString(now.getTime().getTime() / 1000L);
+    }
+
     private String sync() throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.SYNC_REQUEST);
+
+        try {
+            switch (SyncMsgOptions.getOption(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncEmailDate))) {
+            case SYNCEVERYTHING:
+                request.addAttribute(MailConstants.A_MSG_CUTOFF, "0");
+                break;
+            case SYNCTOFIXEDDATE:
+                request.addAttribute(MailConstants.A_MSG_CUTOFF, convertDateToLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFixedDate)));
+                break;
+            case SYNCTORELATIVEDATE:
+                request.addAttribute(MailConstants.A_MSG_CUTOFF, convertRelativeDatetoLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncRelativeDate) ,
+                        ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFieldName)));
+                break;
+            }
+        } catch (NumberFormatException x) {
+                OfflineLog.offline.warn("unable to parse syncEmailDate", x);
+                return null;
+        }
         syncResponse = ombx.sendRequest(request);
         
         OfflineLog.offline.debug(syncResponse.prettyPrint());
@@ -224,7 +276,7 @@ public class InitialSync {
             lastPeek = System.currentTimeMillis();
         }
     }
-    
+
     private void checkpoint(int id) throws ServiceException {
         mMailboxSync.checkpointItem(id);
         peekForward();
@@ -386,6 +438,7 @@ public class InitialSync {
     public void syncMessagelikeItems(List<Integer> ids, int folderId, byte type, boolean isForceSync, boolean isDeltaSync) throws ServiceException {
         int counter = 0, lastItem = mMailboxSync.getLastSyncedItem();
         List<Integer> itemList = new ArrayList<Integer>();
+        syncMsgCutoffReached = false;
         for (int id : ids) {
             if (interrupted && lastItem > 0) {
                 if (id != lastItem)  continue;
@@ -393,7 +446,12 @@ public class InitialSync {
             }
             if (!isForceSync && isAlreadySynced(id, MailItem.TYPE_UNKNOWN))
                 continue;
-
+            if (syncMsgCutoffReached) {
+                //Sync Msg cut off time reached
+                //rest of the messages in the loop will have msg date < cutofftime
+                OfflineLog.offline.debug("Cut-Off time reached, ignoring rest of the messages");
+                break;
+            }
             int batchSize = OfflineLC.zdesktop_sync_batch_size.intValue();
             if (ombx.getRemoteServerVersion().getMajor() < 5 || batchSize == 1) {
                 ombx.recordItemSync(id);
@@ -1027,6 +1085,8 @@ public class InitialSync {
             throw new IOException("archive read err");
         return data;
     }
+    
+    private static final String IRONMAIDEN_TAG_DELIM = ":";
 
     private void syncMessagesAsTgz(List<Integer> ids, byte type) throws ServiceException {
         if (isAttachmentDownloadBlocked()) {
@@ -1064,13 +1124,12 @@ public class InitialSync {
             try {
                 int msgId = 0;
                 TarEntry te;
-
                 tin = new TarInputStream(new GZIPInputStream(in), "UTF-8");
                 while ((te = tin.getNextEntry()) != null) {
                     if (te.getName().endsWith(".meta")) {
                         ItemData itemData = new ItemData(readTarEntry(tin, te));
                         UnderlyingData ud = itemData.ud;
-                        
+
                         assert (ud.type == type);
                         assert (ud.getBlobDigest() != null);
                         msgId = ud.id;
@@ -1090,7 +1149,7 @@ public class InitialSync {
                                 long tagMask = ud.tags;
                                 if (getTagSync().isMappingRequired()) {
                                     String tagNames = itemData.tags;
-                                    tagMask = Tag.tagsToBitmask(getTagSync().localTagsFromNames(tagNames, "\u0000", ",")); 
+                                    tagMask = Tag.tagsToBitmask(getTagSync().localTagsFromNames(tagNames, IRONMAIDEN_TAG_DELIM, ",")); 
                                 }
                                 saveMessage(tin, te.getSize(), ud.id, ud.folderId,
                                     type, ud.date, Flag.flagsToBitmask(itemData.flags),
@@ -1271,7 +1330,30 @@ public class InitialSync {
             digest = blob.getDigest();
             pm = new ParsedMessage(new ParsedMessageOptions(blob, data,
                 received * 1000L, false));
-            
+            long cutOffTime = 0l;
+
+            switch (SyncMsgOptions.getOption(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncEmailDate))) {
+            case SYNCTOFIXEDDATE:
+                cutOffTime = Long.parseLong(convertDateToLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFixedDate)));
+                break;
+            case SYNCTORELATIVEDATE:
+                cutOffTime = Long.parseLong(convertRelativeDatetoLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncRelativeDate) ,
+                        ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFieldName)));
+                break;
+            }
+
+            if (cutOffTime > 0 && type == MailItem.TYPE_MESSAGE) {
+                long msgOrgTime = pm.getReceivedDate(); long now = System.currentTimeMillis();
+                if (msgOrgTime < 0 || msgOrgTime > now) {
+                    msgOrgTime = now;
+                }
+                if (( msgOrgTime / 1000) < cutOffTime) {
+                    syncMsgCutoffReached = true;
+                    StoreManager.getInstance().quietDelete(blob);
+                    return;
+                }
+            }
+
             if (type == MailItem.TYPE_CHAT)
                 redo = new CreateChat(ombx.getId(), digest, size, folderId, flags, tagStr);
             else
@@ -1562,7 +1644,7 @@ public class InitialSync {
                     long tagMask = doc.getTagBitmask();
                     if (getTagSync().isMappingRequired()) {
                         String tagNames = itemData.tags;
-                        tagMask = Tag.tagsToBitmask(getTagSync().localTagsFromNames(tagNames, "\u0000", ",")); 
+                        tagMask = Tag.tagsToBitmask(getTagSync().localTagsFromNames(tagNames, IRONMAIDEN_TAG_DELIM, ",")); 
                     }
                     ombx.setTags(sContext, id, doc.getType(), flags, tagMask);
                 }

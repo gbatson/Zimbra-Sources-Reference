@@ -103,6 +103,7 @@
   <property name="zimbra.index.dir" location="${zimbra.offline.data.dir}/index"/>
   <property name="zimbra.store.dir" location="${zimbra.offline.data.dir}/store"/>
   <property name="zimbra.sqlite.dir" location="${zimbra.offline.data.dir}/sqlite"/>
+  <property name="zimbra.heapdump.dir" location="${zimbra.offline.data.dir}/heapdump"/>
 
   <property name="build.zmprov" location="${build.dir}/data/zmprov.txt" />
 
@@ -731,6 +732,7 @@
         <copy tofile="${zimbra.offline.app.dir}/lib/libzimbra-native.so" file="../ZimbraServer/lib/libzimbra-native.so.Linux.i386" overwrite="true"/>
       </then>
     </if>
+    <mkdir dir="${zimbra.heapdump.dir}" />
   </target>
 
   <target name="offline-reset-the-world-part-2">
@@ -873,6 +875,8 @@
     <mkdir dir="${dist.data.dir}/data/tmp/jetty/zimbra"/>
     <mkdir dir="${dist.data.dir}/jetty/etc"/>
 
+    <mkdir dir="${dist.data.dir}/heapdump" />
+
     <copy file="${config.dir}/jetty.xml" todir="${dist.data.dir}/jetty/etc" overwrite="true"/>
     <copy tofile="${dist.data.dir}/bin/zdesktop" file="src/bin/zdesktop" overwrite="true"/>
 
@@ -897,12 +901,13 @@
     <chmod file="${dist.data.dir}/bin/zdesktop" perm="ugo+x" />
 
     <antcall target="offline-make-dist-ext"/>
-  	<!-- remove junit.jar -->
+  	<!-- remove unneeded -->
     <delete>
       <fileset dir="${dist.dir}" includes="**/junit*.jar"/>
       <fileset dir="${dist.dir}" includes="**/xpp3*.jar"/>
       <fileset dir="${dist.dir}" includes="**/whack*.jar"/>
       <fileset dir="${dist.dir}" includes="**/zimbraim.jar"/>
+      <fileset dir="${dist.dir}" includes="**/ehcache*.jar"/>
     </delete>
   </target>
 
@@ -939,6 +944,7 @@
 
     <copy todir="${dist.app.dir}" overwrite="true">
       <fileset dir="src/installer" includes="README.txt" />
+      <fileset dir="src/installer" includes="open_source_licenses.txt" />
     </copy>
         <copy todir="${dist.app.dir}/win32" file="src/installer/win32/zdrun.vbs" overwrite="true" />
         <copy todir="${dist.app.dir}/win32" file="src/installer/win32/zdesktop.exe" overwrite="true" />
@@ -1146,16 +1152,16 @@
   <target name="offline-jre" if="bundle-jre">
     <if><isset property="is-windows" /><then>
       <mkdir dir="${dist.app.dir}/win32/jre"/>
-      <gunzip src="../ThirdPartyBuilds/windows/java/jre/windows-x86-1.6.0_16.tar.gz" dest="${dist.app.dir}/win32/jre"/>
-      <untar src="${dist.app.dir}/win32/jre/windows-x86-1.6.0_16.tar" dest="${dist.app.dir}/win32/jre" overwrite="true"/>
-      <delete file="${dist.app.dir}/win32/jre/windows-x86-1.6.0_16.tar"/>
+      <gunzip src="../ThirdPartyBuilds/windows/java/jre/windows-x86-1.6.0_29.tar.gz" dest="${dist.app.dir}/win32/jre"/>
+      <untar src="${dist.app.dir}/win32/jre/windows-x86-1.6.0_29.tar" dest="${dist.app.dir}/win32/jre" overwrite="true"/>
+      <delete file="${dist.app.dir}/win32/jre/windows-x86-1.6.0_29.tar"/>
     </then></if>
 
     <if><isset property="is-unix" /><then>
       <mkdir dir="${dist.app.dir}/linux/jre"/>
-      <gunzip src="../ThirdPartyBuilds/i386/java/jre/linux-x86-1.6.0_16.tar.gz" dest="${dist.app.dir}/linux/jre"/>
-      <untar src="${dist.app.dir}/linux/jre/linux-x86-1.6.0_16.tar" dest="${dist.app.dir}/linux/jre" overwrite="true"/>
-      <delete file="${dist.app.dir}/linux/jre/linux-x86-1.6.0_16.tar"/>
+      <gunzip src="../ThirdPartyBuilds/i386/java/jre/linux-x86-1.6.0_29.tar.gz" dest="${dist.app.dir}/linux/jre"/>
+      <untar src="${dist.app.dir}/linux/jre/linux-x86-1.6.0_29.tar" dest="${dist.app.dir}/linux/jre" overwrite="true"/>
+      <delete file="${dist.app.dir}/linux/jre/linux-x86-1.6.0_29.tar"/>
       <chmod dir="${dist.app.dir}/linux/jre/bin" perm="ugo+rx" includes="*" />
     </then></if>
   </target>

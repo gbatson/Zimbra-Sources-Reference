@@ -49,7 +49,6 @@ import com.zimbra.common.soap.SoapHttpTransport;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ExceptionToString;
-import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.SystemUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
@@ -58,6 +57,7 @@ import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.offline.DirectorySync;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
+import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.GalSync;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -93,6 +93,8 @@ public class OfflineSyncManager implements FormatListener {
     private static final String A_ZDSYNC_UNREAD = "unread";
 
     private boolean pendingStatusChanges = false;
+
+    private OfflineSyncManager() {}
 
     public boolean hasPendingStatusChanges() {
         synchronized (syncStatusTable) {
@@ -136,7 +138,6 @@ public class OfflineSyncManager implements FormatListener {
         ZAuthToken authToken; //null for data sources
         long authExpires; //0 for data sources
         private Thread currentSyncThread = null;
-        private Map<String, Pair<Boolean, Object>> syncInfoMap = new ConcurrentHashMap<String, Pair<Boolean, Object>>();
 
         private void setCurrentSyncThread() {
             if (currentSyncThread == null) {
@@ -255,29 +256,6 @@ public class OfflineSyncManager implements FormatListener {
             if (mError != null) {
                 mError.encode(e);
             }
-            for (String key : this.syncInfoMap.keySet()) {
-                Pair<Boolean, Object> value = this.syncInfoMap.get(key);
-                if (value.getFirst()) {
-                    e.addAttribute(key, value.getSecond().toString());
-                }
-            }
-        }
-        
-        public boolean updateSyncInfo(String key, Object value, boolean isEnabled) {
-            try {
-                Pair<Boolean, Object> pair = null;
-                if (!this.syncInfoMap.containsKey(key)) {
-                    pair = new Pair<Boolean, Object>(isEnabled, value);
-                    this.syncInfoMap.put(key, pair);
-                } else {
-                    pair = this.syncInfoMap.get(key);
-                    pair.setFirst(isEnabled);
-                    pair.setSecond(value);
-                }
-                return true;
-            } catch (Exception e) {
-                return false;
-            }
         }
 
         SyncStatus getSyncStatus() {
@@ -287,6 +265,7 @@ public class OfflineSyncManager implements FormatListener {
         void clearErrorCode() {
             mCode = null;
             mError = null;
+            lastAuthFail = 0;
             if (mStatus == SyncStatus.authfail || mStatus == SyncStatus.error || mStatus == SyncStatus.offline)
                 mStatus = SyncStatus.unknown;
         }
@@ -401,13 +380,6 @@ public class OfflineSyncManager implements FormatListener {
         lock.unlock();
     }
 
-    public void syncInfoUpdate(NamedEntry entry, String key, String value, boolean isAvailalbe) {
-        synchronized (syncStatusTable) {
-            OfflineSyncStatus status = getStatus(entry);
-            status.updateSyncInfo(key, value, isAvailalbe);
-        }
-    }
-
     public void resetLastSyncTime(NamedEntry entry) {
         synchronized (syncStatusTable) {
             getStatus(entry).resetLastSyncTime();
@@ -422,7 +394,7 @@ public class OfflineSyncManager implements FormatListener {
         notifyStateChange();
     }
 
-    private void authFailed(NamedEntry entry, String code, String password) {
+    public void authFailed(NamedEntry entry, String code, String password) {
         synchronized (syncStatusTable) {
             pendingStatusChanges = true;
             getStatus(entry).authFailed(code, password);
@@ -874,6 +846,10 @@ public class OfflineSyncManager implements FormatListener {
         }
     }
 
+    //encode() needs to get the unreadCount of Inbox folder frequently, which requires Mailbox lock (mbox.getFolderById)
+    //we use this cache to prevent waiting for Mailbox lock. 
+    private Map<Mailbox, Folder> inboxFolderCache = new ConcurrentHashMap<Mailbox, Folder>();
+
     /*
         <zdsync xmlns="urn:zimbraOffline">
           <account name="foo@domain1.com" id="1234-5678" status="online" [code="{CODE}"] lastsync="1234567" unread="32">
@@ -892,9 +868,9 @@ public class OfflineSyncManager implements FormatListener {
         Element zdsync = context.addUniqueElement(ZDSYNC_ZDSYNC);
         List<Account> accounts = prov.getAllAccounts();
         for (Account account : accounts) {
-            Mailbox mb = null;
+            Mailbox mbox = null;
             try {
-                mb = MailboxManager.getInstance().getMailboxByAccount(account);
+                mbox = MailboxManager.getInstance().getMailboxByAccount(account);
             } catch (Exception e) {
                 OfflineLog.offline.error("exception fetching mailbox for account ["+account.getName()+"]",e);
                 markAccountSyncDisabled(account, e);
@@ -904,16 +880,44 @@ public class OfflineSyncManager implements FormatListener {
                 continue;
 
             Element e = zdsync.addElement(ZDSYNC_ACCOUNT).addAttribute(A_ZDSYNC_NAME, account.getName()).addAttribute(A_ZDSYNC_ID, account.getId());
-            if (prov.isZcsAccount(account))
+            if (prov.isZcsAccount(account)) {
                 getStatus(account).encode(e);
-            else if (OfflineProvisioning.isDataSourceAccount(account))
+            } else if (OfflineProvisioning.isDataSourceAccount(account)) {
                 getStatus(prov.getDataSource(account)).encode(e);
-            else {
+            } else {
                 e.detach();
                 OfflineLog.offline.warn("Invalid account: " + account.getName());
                 continue;
             }
-            e.addAttribute(A_ZDSYNC_UNREAD, mb.getFolderById(null, Mailbox.ID_FOLDER_INBOX).getUnreadCount());
+            if (inboxFolderCache.containsKey(mbox)) {
+                try {
+                    e.addAttribute(A_ZDSYNC_UNREAD, inboxFolderCache.get(mbox).getUnreadCount());
+                } catch (Exception e1) {
+                    inboxFolderCache.remove(mbox);
+                    continue;
+                }
+            } else {
+                Folder inboxFolder = mbox.getFolderById(null, Mailbox.ID_FOLDER_INBOX);
+                inboxFolderCache.put(mbox, inboxFolder);
+                e.addAttribute(A_ZDSYNC_UNREAD, inboxFolder.getUnreadCount());
+            }
+        }
+        maintainInboxFolderCache();
+    }
+
+    private int sweepCount = 0;
+
+    //remove cache item if mailbox no long exists
+    private void maintainInboxFolderCache() {
+        if (sweepCount++ > 10000) {
+            sweepCount = 0;
+            for (Mailbox mbox : inboxFolderCache.keySet()) {
+                try {
+                    MailboxManager.getInstance().getMailboxById(mbox.getId());
+                } catch (Exception e) {
+                    inboxFolderCache.remove(mbox);
+                }
+            }
         }
     }
 

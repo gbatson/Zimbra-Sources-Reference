@@ -179,6 +179,9 @@ public final class LC {
     public static final KnownKey zimbra_mailbox_inactive_cache = KnownKey.newKey(30);
 
     @Supported
+    public static final KnownKey zimbra_mailbox_galsync_cache = KnownKey.newKey(10000);
+
+    @Supported
     public static final KnownKey zimbra_mailbox_change_checkpoint_frequency = KnownKey.newKey(100);
 
     @Supported
@@ -296,6 +299,9 @@ public final class LC {
 
     @Supported
     public static final KnownKey zimbra_session_limit_imap = KnownKey.newKey(15);
+    
+    @Supported
+    public static final KnownKey zimbra_session_limit_sync = KnownKey.newKey(5);
 
     @Supported
     public static final KnownKey zimbra_session_timeout_soap = KnownKey.newKey(600);
@@ -319,7 +325,7 @@ public final class LC {
     public static final KnownKey stats_img_folder = KnownKey.newKey("${zimbra_home}/logger/db/work");
 
     @Reloadable
-    public static final KnownKey soap_fault_include_stack_trace = KnownKey.newKey(true);
+    public static final KnownKey soap_fault_include_stack_trace = KnownKey.newKey(false);
 
     @Supported
     public static final KnownKey soap_response_buffer_size = KnownKey.newKey("");

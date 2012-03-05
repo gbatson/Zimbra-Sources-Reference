@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -42,58 +43,102 @@ public class CertAuthServlet extends SSOServlet {
     // The regex here is to ensure that this servlet is only serving the URLs it recognizes,
     private static final Pattern allowedUrl = Pattern.compile("^(/service/certauth)(/|/(admin)(/)?)?$");
     
+    private static final String MSGPAGE_FORBIDDEN = "errorpage.forbidden";
+    private String forbiddenPage = null;
+    
     @Override
-    public void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    public void init() throws ServletException {
+        super.init();
+        forbiddenPage = getInitParameter(MSGPAGE_FORBIDDEN);
+    }
+    
+    @Override
+    public void doGet(HttpServletRequest req, HttpServletResponse resp) 
+    throws ServletException, IOException {
         ZimbraLog.clearContext();
         addRemoteIpToLoggingContext(req);
         addUAToLoggingContext(req);
         
-        try {
-            String url = req.getRequestURI();
-            Matcher matcher = allowedUrl.matcher(url);
-            boolean isAdminRequest = false;
-            if (!matcher.matches()) {
-                throw ServiceException.INVALID_REQUEST("resource not allowed for the certauth servlet: " + url, null);
-            } else {
-                if (matcher.groupCount() > 3 && "admin".equals(matcher.group(3))) {
-                    isAdminRequest = true;
-                }
-            }
+        String url = req.getRequestURI();
+        Matcher matcher = allowedUrl.matcher(url);
             
+        boolean isAdminRequest = false;
+        if (!matcher.matches()) {
+            String msg = "resource not allowed on the certauth servlet: " + url;
+            ZimbraLog.account.error(msg);
+            sendback403Message(req, resp, msg);
+            return;
+        } else {
+            if (matcher.groupCount() > 3 && "admin".equals(matcher.group(3))) {
+                isAdminRequest = true;
+            }
+        }
+        
+        try {
             SSOAuthenticator authenticator = new ClientCertAuthenticator(req, resp);
             ZimbraPrincipal principal = null;
-            try {
-                principal = authenticator.authenticate();
-            } catch (SSOAuthenticatorServiceException e) {
-                if (SSOAuthenticatorServiceException.NO_CLIENT_CERTIFICATE.equals(e.getCode())) {
-                    if (missingClientCertOK()) {
-                        redirectToErrorPage(req, resp, isAdminRequest, null);
-                        return;
-                    } else {
-                        throw e;
-                    }
-                }
-            }
             
+            principal = authenticator.authenticate();
             AuthToken authToken = authorize(req, AuthContext.Protocol.client_certificate, principal, isAdminRequest);
             setAuthTokenCookieAndRedirect(req, resp, principal.getAccount(), authToken);
+            return;
             
         } catch (ServiceException e) {
+            String reason = "";
             if (e instanceof AuthFailedServiceException) {
-                AuthFailedServiceException afe = (AuthFailedServiceException)e;
-                ZimbraLog.account.debug("client certificate auth failed: " + afe.getMessage() + afe.getReason(", %s"), e);
-            } else {
-                ZimbraLog.account.warn("client certificate auth failed: " + e.getMessage(), e);
+                reason = ((AuthFailedServiceException) e).getReason(", %s");
             }
-            ZimbraLog.account.debug("client certificate auth failed", e);
-            resp.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage());
+            ZimbraLog.account.debug("client certificate auth failed: " + e.getMessage() + reason, e);
+            
+            dispatchOnError(req, resp, isAdminRequest, e.getMessage());
+        }
+    }
+
+    
+    @Override
+    public void doPost(HttpServletRequest req, HttpServletResponse resp) 
+    throws ServletException, IOException {
+        doGet(req, resp);
+    }
+        
+    private void dispatchOnError(HttpServletRequest req, HttpServletResponse resp,
+            boolean isAdminRequest, String msg) 
+    throws ServletException, IOException {
+        if (missingClientCertOK()) {
+            try {
+                redirectToErrorPage(req, resp, isAdminRequest, null);
+            } catch (ServiceException e) {
+                ZimbraLog.account.error("failed to redirect to error page (" + msg + ")", e);
+                sendback403Message(req, resp, msg);
+            }
+        } else {
+            sendback403Message(req, resp, msg);
         }
     }
     
-    @Override
-    public void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        doGet(req, resp);
+    private void sendback403Message(HttpServletRequest req, HttpServletResponse resp,
+            String msg) 
+    throws ServletException, IOException {
+        
+        if (forbiddenPage != null) {
+            // try to send back a customizable/stylesheet-able page
+            try {
+                RequestDispatcher dispatcher = getServletContext().getRequestDispatcher(forbiddenPage);
+                if (dispatcher != null) {
+                    dispatcher.forward(req, resp);
+                    return;
+                }
+            } catch (IOException e) {
+                ZimbraLog.account.warn("unable to forward to forbidden page" + forbiddenPage, e);
+            } catch (ServletException e) {
+                ZimbraLog.account.warn("unable to forward to forbidden page" + forbiddenPage, e);
+            }
+        }
+        
+        // if not worked out, send back raw 403
+        resp.sendError(HttpServletResponse.SC_FORBIDDEN, msg);
     }
+    
     
     private boolean missingClientCertOK() {
         try {

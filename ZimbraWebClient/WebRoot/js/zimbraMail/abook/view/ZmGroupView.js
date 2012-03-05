@@ -329,7 +329,7 @@ function() {
 
     if (this._contactSource == ZmItem.CONTACT) {
         query = query.replace(/\"/g, '\\"');
-        query = "\"" + query + "\"";
+        query = query ? "\"" + query + "\"":"";
     }
 
 	var params = {
@@ -702,7 +702,7 @@ function() {
 		var tag = ta[j];
 		if (!tag) continue;
 		var icon = tag.getIconWithColor();
-		html[i++] = AjxImg.getImageSpanHtml(icon, null, null, tag.name);
+		html[i++] = AjxImg.getImageSpanHtml(icon, null, null, AjxStringUtil.htmlEncode(tag.name));
 		html[i++] = "&nbsp;";
 	}
 

@@ -387,6 +387,7 @@ public class Mailbox {
     // TODO: figure out correct caching strategy
     private static final int MAX_ITEM_CACHE_WITH_LISTENERS    = LC.zimbra_mailbox_active_cache.intValue();
     private static final int MAX_ITEM_CACHE_WITHOUT_LISTENERS = LC.zimbra_mailbox_inactive_cache.intValue();
+    private static final int MAX_ITEM_CACHE_FOR_GALSYNC_MAILBOX = LC.zimbra_mailbox_galsync_cache.intValue();
     private static final int MAX_MSGID_CACHE = 10;
 
     private int           mId;
@@ -404,6 +405,7 @@ public class Mailbox {
     private IMPersona      mPersona = null;
     private MailboxVersion mVersion = null;
     private volatile boolean open = false;
+    private boolean isGalSyncMailbox = false;
 
     protected Mailbox(MailboxData data) {
         mId   = data.id;
@@ -411,6 +413,10 @@ public class Mailbox {
         mData.lastChangeDate = System.currentTimeMillis();
         // version init done in finishInitialization()
         // index init done in finishInitialization()
+    }
+    
+    public void setGalSyncMailbox(boolean isGalSync) {
+    	isGalSyncMailbox = isGalSync;
     }
 
     boolean isOpen() {
@@ -3971,8 +3977,22 @@ public class Mailbox {
                             Invite currInv = calItem.getInvite(scid.mInv.getRecurId());
                             if (currInv == null)  // Inherit from series as fallback.
                                 currInv = currSeries;
-                            if (currInv != null && currInv.hasFreeBusy())
-                                scid.mInv.setFreeBusy(currInv.getFreeBusy());
+                            if (currInv != null && currInv.hasFreeBusy()) {
+                                if (scid.mInv.isTransparent()) {
+                                    // New invite is transparent.  New intended f/b must be free.
+                                    scid.mInv.setFreeBusy(IcalXmlStrMap.FBTYPE_FREE);
+                                } else {
+                                    // New invite is opaque.
+                                    if (IcalXmlStrMap.FBTYPE_FREE.equals(currInv.getFreeBusy())) {
+                                        // An opaque invite cannot have intended f/b value of free.  Make it busy.
+                                        scid.mInv.setFreeBusy(IcalXmlStrMap.FBTYPE_BUSY);
+                                    } else {
+                                        // Current intended f/b has a non-free value, so keep it.  It's better
+                                        // to preserve tentative or OOO value than to unconditionally change to busy.
+                                        scid.mInv.setFreeBusy(currInv.getFreeBusy());
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -7945,6 +7965,8 @@ public class Mailbox {
     private void trimItemCache() {
         try {
             int sizeTarget = mListeners.isEmpty() ? MAX_ITEM_CACHE_WITHOUT_LISTENERS : MAX_ITEM_CACHE_WITH_LISTENERS;
+            if (isGalSyncMailbox) 
+                sizeTarget = MAX_ITEM_CACHE_FOR_GALSYNC_MAILBOX;
             Map<Integer, MailItem> cache = mCurrentChange.itemCache;
             if (cache == null)
                 return;
@@ -8081,5 +8103,23 @@ public class Mailbox {
      */
     public boolean isNewItemIdValid(int id) {
         return id < 2<<29;
+    }
+
+    public TypedIdList listMessageItems(OperationContext octxt, int folderId, long messageSyncStart) throws ServiceException {
+        if (folderId == ID_AUTO_INCREMENT)
+            return new TypedIdList();
+
+        boolean success = false;
+        try {
+            beginTransaction("listMessageItemsforgivenDate", octxt);
+
+            // if they specified a folder, make sure it actually exists
+            Folder folder = getFolderById(folderId);
+            TypedIdList ids = DbMailItem.listMsgItems(folder, messageSyncStart, true, false);
+            success = true;
+            return ids;
+        } finally {
+            endTransaction(success);
+        }
     }
 }

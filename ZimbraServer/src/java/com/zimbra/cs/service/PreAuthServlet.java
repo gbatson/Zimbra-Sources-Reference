@@ -109,8 +109,11 @@ public class PreAuthServlet extends ZimbraServlet {
             AuthToken authToken = null;
             if (rawAuthToken != null) {
                 authToken = AuthProvider.getAuthToken(rawAuthToken);
-                if (authToken == null)
+                if (authToken == null) {
                     throw new AuthTokenException("unable to get auth token from " + PARAM_AUTHTOKEN);
+                } else if (authToken.isExpired()) {
+                    throw new AuthTokenException("auth token expired");
+                }
             }
             
             if (rawAuthToken != null) {

@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -25,22 +25,21 @@ import java.util.Set;
 import java.util.UUID;
 
 import javax.activation.DataHandler;
+import javax.mail.Message.RecipientType;
 import javax.mail.MessagingException;
 import javax.mail.Session;
-import javax.mail.Message.RecipientType;
-import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
-import com.zimbra.common.mime.shim.JavaMailMimeBodyPart;
-import com.zimbra.common.mime.shim.JavaMailMimeMultipart;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.zmime.ZMimeBodyPart;
+import com.zimbra.common.zmime.ZMimeMultipart;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DataSource;
@@ -52,14 +51,13 @@ import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineDataSource;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.datasource.DataSourceManager;
-import com.zimbra.cs.datasource.imap.ImapSync;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.mailbox.MailSender.SafeSendFailedException;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mime.MailboxBlobDataSource;
 import com.zimbra.cs.mime.Mime;
-import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.mime.Mime.FixedMimeMessage;
+import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.offline.LMailSender;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
@@ -356,14 +354,14 @@ public class DataSourceMailbox extends SyncMailbox {
             mm.setSubject("Delivery failed: " + error);
             mm.saveChanges(); //must call this to update the headers
 
-            MimeMultipart mmp = new JavaMailMimeMultipart();
+            MimeMultipart mmp = new ZMimeMultipart();
 
-            MimeBodyPart mbp = new JavaMailMimeBodyPart();
+            MimeBodyPart mbp = new ZMimeBodyPart();
             mbp.setText(error == null ?
                 "SEND FAILED. PLEASE CHECK RECIPIENT ADDRESSES AND SMTP SETTINGS" : error);
             mmp.addBodyPart(mbp);
 
-            mbp = new JavaMailMimeBodyPart();
+            mbp = new ZMimeBodyPart();
             mbp.setDataHandler(new DataHandler(new MailboxBlobDataSource(msg.getBlob())));
             mbp.setHeader("Content-Type", MimeConstants.CT_MESSAGE_RFC822);
             mbp.setHeader("Content-Disposition", "attachment");
@@ -456,6 +454,7 @@ public class DataSourceMailbox extends SyncMailbox {
         }
     }
 
+    @Override
     public void sync(boolean isOnRequest, boolean isDebugTraceOn) throws ServiceException {
         if (!OfflineSyncManager.getInstance().isServiceActive(isOnRequest)) {
             //ignore background sync
@@ -502,6 +501,7 @@ public class DataSourceMailbox extends SyncMailbox {
         }
     }
 
+    @Override
     Set<Folder> getAccessibleFolders(short rights) throws ServiceException {
         Set<Folder> accessable = super.getAccessibleFolders(rights);
         boolean all = true;

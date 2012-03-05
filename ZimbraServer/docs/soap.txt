@@ -2391,7 +2391,8 @@ NOTE: should we return modified attrs in response?
 
 ----------
 
-<GetContactsRequest [sortBy="nameAsc|nameDesc"] [sync="1"] [l="{folder-id}"] [returnHiddenAttrs="1"]>
+<GetContactsRequest [sortBy="nameAsc|nameDesc"] [sync="1"] [l="{folder-id}"] 
+                    [returnHiddenAttrs="1"] [maxMembers="{max-members}"]>
   <a n="..."/>*
   <cn id="{contact-id}[,{contact-id}...]"/>*
 </GetContactsRequest>
@@ -2402,11 +2403,15 @@ NOTE: should we return modified attrs in response?
   if <cn id="..."/> present, only get the specified contact(s).
 
 
-  {returnHiddenAttrs} : whether to return contact hidden attrs defined in zimbraContactHiddenAttributes.
-                        ignored if <a> is present.
+  returnHiddenAttrs : whether to return contact hidden attrs defined in zimbraContactHiddenAttributes.
+                      ignored if <a> is present.
+  {max-members} : numebr of max GAL group members to return.
+                  If number of members on a GAL group is greater than the specified max, 
+                  do not return any members under <cn> for the entry.  
+                  Instead, return a "tooManyMembers="1" on the <cn>.                    
 
 <GetContactsResponse>
-  <cn [md="{metadata-change-date}"]>...</cn>*
+  <cn [md="{metadata-change-date}"] [tooManyMembers="1"]>...</cn>*
 </GetContactsResponse>
 
 ----------
@@ -2750,7 +2755,7 @@ Actions:
   <actionReply>
     <content>{body-template}</content>
   </actionReply>
-  <actionNotify a="email-address" [su="subject-template"] [maxBodySize="{num-bytes}"] [origHeaders="{comma-separated-header-names}"]>
+  <actionNotify a="email-address" [su="subject-template"] [maxBodySize="{num-bytes}"] [origHeaders="{comma-separated-header-names}|*"]>
     <content>{body-template}</content> ?
   </actionNotify>
 
@@ -2773,9 +2778,8 @@ method values: anyrequest, anyreply, publish, request, reply, add, cancel, refre
 <currentDayOfWeekTest>: 0=Sunday, 6=Saturday
 body-template/subject-template: Can contain variables such as ${SUBJECT}, ${TO}, ${CC}, etc
   (basically ${any-header-name}; case not important), plus ${BODY} (text body of the message).
-origHeaders: Specifies the specific headers to be included in the notification message, and
-  that their values must be copied from the original message. If this attr not present, create
-  the notification message as normal.
+origHeaders: Specifies list of headers to be copied from the original message to the notification message.
+  Value "*" implies that all headers need to be copied.
 
 ---------------------------
 

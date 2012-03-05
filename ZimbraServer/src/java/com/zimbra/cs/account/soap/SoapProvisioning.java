@@ -49,7 +49,6 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zclient.ZClientException;
 import com.zimbra.cs.account.*;
 import com.zimbra.cs.account.NamedEntry.Visitor;
-import com.zimbra.cs.account.Provisioning.SetPasswordResult;
 import com.zimbra.cs.account.accesscontrol.Right;
 import com.zimbra.cs.account.accesscontrol.RightCommand;
 import com.zimbra.cs.account.accesscontrol.RightModifier;
@@ -70,6 +69,7 @@ public class SoapProvisioning extends Provisioning {
         private int mRetryCount = -1;
         private SoapTransport.DebugListener mDebugListener;  
         private boolean mLocalConfigAuth;
+        private boolean mNeedSession;
 
         public Options() {
         }
@@ -121,6 +121,9 @@ public class SoapProvisioning extends Provisioning {
 
         public boolean getLocalConfigAuth() { return mLocalConfigAuth; }
         public void setLocalConfigAuth(boolean auth) { mLocalConfigAuth = auth; }
+        
+        public boolean getNeedSession() { return mNeedSession; }
+        public void setNeedSession(boolean needSession) { mNeedSession = needSession; }
     }
 
 
@@ -132,9 +135,14 @@ public class SoapProvisioning extends Provisioning {
     private long mAuthTokenExpiration;
     private DebugListener mDebugListener;
     private HttpDebugListener mHttpDebugListener;
+    private final boolean mNeedSession;
 
     public SoapProvisioning() {
-
+        mNeedSession = false;
+    }
+    
+    public SoapProvisioning(boolean needSession) {
+        mNeedSession = needSession;
     }
 
     public SoapProvisioning(Options options) throws ServiceException {
@@ -142,6 +150,7 @@ public class SoapProvisioning extends Provisioning {
         mRetryCount = options.getRetryCount();
         mDebugListener = options.getDebugListener();
         mAuthToken = options.getAuthToken();
+        mNeedSession = options.getNeedSession();
         if (options.getUri() == null) options.setUri(getLocalConfigURI());
         soapSetURI(options.getUri());
 
@@ -181,6 +190,7 @@ public class SoapProvisioning extends Provisioning {
         return String.format("[%s %s]", getClass().getName(), mTransport == null ? "" : mTransport.getURI());
     }
     
+    
     /**
      * @param uri URI of server we want to talk to
      */
@@ -212,8 +222,14 @@ public class SoapProvisioning extends Provisioning {
      * @throws ServiceException
      */
     public static SoapProvisioning getAdminInstance() throws ServiceException {
+        return getAdminInstance(false);
+    }
+    
+    public static SoapProvisioning getAdminInstance(boolean needSession) 
+    throws ServiceException {
         Options opts = new Options();
         opts.setLocalConfigAuth(true);
+        opts.setNeedSession(needSession);
         return new SoapProvisioning(opts);
     }
 
@@ -318,12 +334,20 @@ public class SoapProvisioning extends Provisioning {
         if (mTransport == null)
             throw ServiceException.FAILURE("transport has not been initialized", null);
     }
+    
+    private Element invokeRequest(Element request) throws ServiceException, IOException {
+        if (mNeedSession) {
+            return mTransport.invoke(request);
+        } else {
+            return mTransport.invokeWithoutSession(request);
+        }
+    }
 
     public synchronized Element invoke(Element request) throws ServiceException {
         checkTransport();
 
         try {
-            return mTransport.invoke(request);
+            return invokeRequest(request);
         } catch (SoapFaultException e) {
             throw e; // for now, later, try to map to more specific exception
         } catch (IOException e) {
@@ -337,7 +361,7 @@ public class SoapProvisioning extends Provisioning {
         String oldTarget = mTransport.getTargetAcctId();
         try {
             mTransport.setTargetAcctId(targetId);
-            return mTransport.invoke(request);
+            return invokeRequest(request);
         } catch (SoapFaultException e) {
             throw e; // for now, later, try to map to more specific exception
         } catch (IOException e) {
@@ -355,7 +379,7 @@ public class SoapProvisioning extends Provisioning {
         boolean diff = !oldUri.equals(newUri);        
         try {
             if (diff) soapSetURI(newUri);
-            return mTransport.invoke(request);
+            return invokeRequest(request);
         } catch (SoapFaultException e) {
             throw e; // for now, later, try to map to more specific exception
         } catch (IOException e) {
@@ -755,7 +779,7 @@ public class SoapProvisioning extends Provisioning {
         return result;        
     }
     
-    public List<AccountLogger> addAccountLogger(Account account, String category, String level, String server)
+    public List<AccountLogger> addAccountLogger(Account account, String category, String level, String serverName)
     throws ServiceException {
         XMLElement req = new XMLElement(AdminConstants.ADD_ACCOUNT_LOGGER_REQUEST);
         
@@ -767,10 +791,12 @@ public class SoapProvisioning extends Provisioning {
         eLogger.addAttribute(AdminConstants.A_CATEGORY, category);
         eLogger.addAttribute(AdminConstants.A_LEVEL, level);
         
-        if (server == null) {
-            server = getServer(account).getName();
+        if (serverName == null) {
+            serverName = account.getServerName();
         }
-        return accountLoggersFromElement(invoke(req, server), account.getName());
+        
+        Element resp = serverName == null ? invoke(req) : invoke(req, serverName);
+        return accountLoggersFromElement(resp, account.getName());
     }
     
     private List<AccountLogger> accountLoggersFromElement(Element parent, String accountName)
@@ -784,15 +810,16 @@ public class SoapProvisioning extends Provisioning {
         return loggers;
     }
     
-    public List<AccountLogger> getAccountLoggers(Account account, String server) throws ServiceException {
+    public List<AccountLogger> getAccountLoggers(Account account, String serverName) throws ServiceException {
         XMLElement req = new XMLElement(AdminConstants.GET_ACCOUNT_LOGGERS_REQUEST);
         Element eAccount = req.addElement(AdminConstants.E_ACCOUNT);
         eAccount.addAttribute(AdminConstants.A_BY, AdminConstants.BY_ID);
         eAccount.setText(account.getId());
-        if (server == null) {
-            server = getServer(account).getName();
+        if (serverName == null) {
+            serverName = account.getServerName();
         }
-        return accountLoggersFromElement(invoke(req, server), account.getName());
+        Element resp = serverName == null ? invoke(req) : invoke(req, serverName);
+        return accountLoggersFromElement(resp, account.getName());
     }
     
     /**
@@ -822,9 +849,9 @@ public class SoapProvisioning extends Provisioning {
      * Removes one or more account loggers.
      * @param account the account, or {@code null} for all accounts on the given server
      * @param category the log category, or {@code null} for all log categories
-     * @param server the server name, or {@code null} for the local server
+     * @param serverName the server name, or {@code null} for the local server
      */
-    public void removeAccountLoggers(Account account, String category, String server) throws ServiceException {
+    public void removeAccountLoggers(Account account, String category, String serverName) throws ServiceException {
         XMLElement req = new XMLElement(AdminConstants.REMOVE_ACCOUNT_LOGGER_REQUEST);
         
         if (account != null) {
@@ -837,14 +864,15 @@ public class SoapProvisioning extends Provisioning {
             eLogger.addAttribute(AdminConstants.A_CATEGORY, category);
         }
 
-        if (server == null) {
+        if (serverName == null) {
             if (account == null) {
-                server = getLocalServer().getName();
+                serverName = getLocalServer().getName();
             } else {
-                server = getServer(account).getName();
+                serverName = account.getServerName();
             }
         }
-        invoke(req, server);
+        
+        Element resp = serverName == null ? invoke(req) : invoke(req, serverName);
     }
 
     public static class MailboxInfo {

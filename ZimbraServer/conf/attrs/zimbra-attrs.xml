@@ -1281,7 +1281,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 </attr>
 
 <attr id="226" name="zimbraMtaRestriction" type="string" max="2048" cardinality="multi" optionalIn="globalConfig" requiresRestart="mta">
-  <globalConfigValue>reject_invalid_hostname</globalConfigValue>
+  <globalConfigValue>reject_invalid_helo_hostname</globalConfigValue>
   <globalConfigValue>reject_non_fqdn_sender</globalConfigValue>
   <desc>restrictions to reject some suspect SMTP clients</desc>
 </attr>
@@ -1572,7 +1572,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>mapping to foreign principal identifier</desc>
 </attr>
 
-<attr id="296" name="zimbraZimletUserProperties" type="cstring" max="1024" cardinality="multi" optionalIn="account" flags="domainAdminModifiable">
+<attr id="296" name="zimbraZimletUserProperties" type="cstring" max="5120" cardinality="multi" optionalIn="account" flags="domainAdminModifiable">
   <desc>User properties for Zimlets</desc>
 </attr>
 
@@ -2903,11 +2903,11 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>An virtual IP address for this domain, used to determine domain based on an IP address</desc>
 </attr>
 
-<attr id="563" name="zimbraSSLCertificate" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited,domainInherited" since="5.0.0">
+<attr id="563" name="zimbraSSLCertificate" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited" since="5.0.0">
   <desc>SSL certificate</desc>
 </attr>
 
-<attr id="564" name="zimbraSSLPrivateKey" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited,domainInherited" since="5.0.0">
+<attr id="564" name="zimbraSSLPrivateKey" type="astring" cardinality="single" optionalIn="globalConfig,server,domain" flags="serverInherited" since="5.0.0">
   <desc>SSL private key</desc>
 </attr>
 
@@ -4638,7 +4638,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>whether to use gal sync account for autocomplete</desc>
 </attr>
 
-<attr id="1028" name="zimbraPrefAppleIcalDelegationEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="domainAdminModifiable" since="5.0.17">
+<attr id="1028" name="zimbraPrefAppleIcalDelegationEnabled" type="boolean" cardinality="single" optionalIn="account,cos" flags="accountInherited,domainAdminModifiable" since="5.0.17">
   <defaultCOSValue>FALSE</defaultCOSValue>
   <desc>Use the iCal style delegation model for shared calendars for CalDAV interface when set to TRUE.</desc>
 </attr>
@@ -5666,6 +5666,35 @@ TODO: delete them permerntly from here
 <attr id="1269" name="zimbraZimletDataSensitiveInMixedModeDisabled" type="boolean" cardinality="single" optionalIn="domain,globalConfig" flags="domainInfo,domainInherited" since="7.1.3">
   <globalConfigValue>TRUE</globalConfigValue>
   <desc>whether zimlets that send sensitive data are disabled in "mixed" zimbraMailMode</desc>
+</attr>
+
+<attr id="1335" name="zimbraReverseProxyUpstreamReadTimeout" type="duration" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="7.1.4">
+  <globalConfigValue>60s</globalConfigValue>
+  <desc>The read timeout for the response of upstream server, which determines how long nginx will wait to get the response
+        to a request.
+  </desc>
+</attr>
+
+<attr id="1336" name="zimbraReverseProxyUpstreamSendTimeout" type="duration" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="7.1.4">
+  <globalConfigValue>60s</globalConfigValue>
+  <desc>
+  	The send timeout of transfering a request to the upstream server. If after this time the upstream server doesn't take new data, proxy will close the connection.
+  </desc>
+</attr>
+
+<attr id="1337" name="zimbraReverseProxyUpstreamPollingTimeout" type="duration" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited"  since="7.1.4">
+  <globalConfigValue>1h</globalConfigValue>
+  <desc>
+  	The read timeout for long polling support by proxy, e.g. ActiveSync for mobile devices.
+  </desc>
+</attr>
+
+<attr id="1340" name="zimbraMessageIdDedupeCacheTimeout" type="duration" cardinality="single" optionalIn="globalConfig" since="7.1.4">
+  <globalConfigValue>0</globalConfigValue>
+  <desc>
+    Timeout for a Message-Id entry in the LMTP dedupe cache. A value of 0 indicates no timeout.
+    zimbraMessageIdDedupeCacheSize limit is ignored when this is set to a non-zero value.
+  </desc>
 </attr>
 
 </attrs>

@@ -68,9 +68,14 @@ public class TreeContacts extends AbsTree {
 		if ( action == Action.A_LEFTCLICK ) {
 			
 			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-			   locator = "css=td[id^='zti__" +
-			         MyApplication.zGetActiveAccount().EmailAddress +
-			         ":main_Contacts__'][id$=':" + folder.getId() +"_textCell']";
+			   String emailAddress = folder.isDesktopClientLocalFolder() ? 
+	               ZimbraAccount.clientAccountName :
+	                  MyApplication.zGetActiveAccount().EmailAddress;
+			   String folderIdSuffix = folder.isDesktopClientLocalFolder() ? 
+			         "_" + folder.getId() :
+			            ":" + folder.getId();
+			   locator = "css=td[id^='zti__" + emailAddress +
+			         ":main_Contacts__'][id$='" + folderIdSuffix +"_textCell']";
 			} else {
 			   locator = "id=zti__main_Contacts__"+ folder.getId() +"_textCell";
 			}

@@ -26,10 +26,12 @@ import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.ui.Shortcut;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.desktop.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.desktop.ui.Toaster;
 import com.zimbra.qa.selenium.projects.desktop.ui.briefcase.DialogConfirm;
 
 public class DeleteFile extends AjaxCommonTest {
@@ -86,7 +88,12 @@ public class DeleteFile extends AjaxCommonTest {
 		// Click OK on Confirmation dialog
 		deleteConfirm.zClickButton(Button.B_YES);
 
-		// refresh briefcase page
+		Toaster toast = app.zPageMain.zGetToaster();
+		String toastMsg = toast.zGetToastMessage();
+		ZAssert.assertStringContains(toastMsg, "1 file moved to Trash",
+		      "Verify toast message" );
+
+	   // refresh briefcase page
 		app.zTreeBriefcase
 				.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, false);
 
@@ -126,7 +133,7 @@ public class DeleteFile extends AjaxCommonTest {
 		String docId = account.soapSelectValue(
 				"//mail:SaveDocumentResponse//mail:doc", "id");
 
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
       app.zPageBriefcase.zWaitForDesktopLoadingSpinner(5000);
 
       // refresh briefcase page
@@ -141,6 +148,11 @@ public class DeleteFile extends AjaxCommonTest {
 
 		// Click OK on Confirmation dialog
 		deleteConfirm.zClickButton(Button.B_YES);
+
+	   Toaster toast = app.zPageMain.zGetToaster();
+	   String toastMsg = toast.zGetToastMessage();
+	   ZAssert.assertStringContains(toastMsg, "1 file moved to Trash",
+	         "Verify toast message" );
 
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
       app.zPageBriefcase.zWaitForDesktopLoadingSpinner(5000);
@@ -217,7 +229,12 @@ public class DeleteFile extends AjaxCommonTest {
 		// Click OK on Confirmation dialog
 		deleteConfirm.zClickButton(Button.B_YES);
 
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+      Toaster toast = app.zPageMain.zGetToaster();
+      String toastMsg = toast.zGetToastMessage();
+      ZAssert.assertStringContains(toastMsg, "1 file moved to Trash",
+            "Verify toast message" );
+
+      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
       app.zPageBriefcase.zWaitForDesktopLoadingSpinner(5000);
 
       // refresh briefcase page
@@ -245,13 +262,68 @@ public class DeleteFile extends AjaxCommonTest {
 				+ fileName + " id: " + id);		
 	}
 
-	@AfterMethod(alwaysRun=true)
-	public void deleteFileAfterMethod() throws HarnessException {
-	   // This step is necessary because next test may be uploading the same
-      // file
-      // if account is not reset, ZCS will be confused, and the next
-      // uploaded file
-      // will be deleted per previous command.
-	   ZimbraAccount.ResetAccountZWC();
-	}
+	  @Test(description = "Upload file through RestUtil - delete using Right Click context menu", groups = { "functional" })
+	  public void DeleteFile_04() throws HarnessException {
+	     ZimbraAccount account = app.zGetActiveAccount();
+
+	     FolderItem briefcaseFolder = FolderItem.importFromSOAP(account,
+	           SystemFolder.Briefcase);
+
+	     // Create file item
+	     String filePath = ZimbraSeleniumProperties.getBaseDirectory()
+	           + "/data/public/other/putty.log";
+
+	     FileItem fileItem = new FileItem(filePath);
+
+	     String fileName = fileItem.getName();
+
+	     // Upload file to server through RestUtil
+	     String attachmentId = account.uploadFile(filePath);
+
+	     // Save uploaded file to briefcase through SOAP
+	     account.soapSend("<SaveDocumentRequest xmlns='urn:zimbraMail'><doc l='"
+	           + briefcaseFolder.getId() + "'>" + "<upload id='"
+	           + attachmentId + "'/></doc></SaveDocumentRequest>");
+
+	     // String docId = account.soapSelectValue("//mail:SaveDocumentResponse//mail:doc", "id");
+
+	     // refresh briefcase page
+	     app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
+
+	     SleepUtil.sleepVerySmall();
+
+	     // Click on created file
+	     GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+	     app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+
+	     // Delete File using Right Click Context Menu
+	     DialogConfirm deleteConfirm = (DialogConfirm) app.zPageBriefcase
+	           .zListItem(Action.A_RIGHTCLICK, Button.O_DELETE, fileItem);
+
+	     // Click OK on Confirmation dialog
+	     deleteConfirm.zClickButton(Button.B_YES);
+
+	     Toaster toast = app.zPageMain.zGetToaster();
+	     String toastMsg = toast.zGetToastMessage();
+	     ZAssert.assertStringContains(toastMsg, "1 file moved to Trash",
+	           "Verify toast message" );
+
+	     // refresh briefcase page
+	     app.zTreeBriefcase
+	           .zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, false);
+
+	     // Verify file was deleted from the list
+	     ZAssert.assertFalse(app.zPageBriefcase.isPresentInListView(fileName),
+	           "Verify file was deleted through GUI");      
+	  }
+
+	  @AfterMethod(alwaysRun=true)
+	  public void deleteFileAfterMethod() throws HarnessException {
+	     // This step is necessary because next test may be uploading the same
+	     // file
+	     // if account is not reset, ZCS will be confused, and the next
+	     // uploaded file
+	     // will be deleted per previous command.
+	     ZimbraAccount.ResetAccountZWC();
+	  }
 }

@@ -313,7 +313,6 @@ if (application.getInitParameter("offlineMode") != null)  {
             </c:choose>
 
 				<c:if test="${errorCode != null}">
-				    <!-- ${fn:escapeXml(error.stackStrace)} -->
 				    <div id="ZLoginErrorPanel">
 				        <table><tr>
 				            <td><app:img id="ZLoginErrorIcon" altkey='ALT_ERROR' src="dwt/ImgCritical_32.png" /></td>
@@ -339,7 +338,7 @@ if (application.getInitParameter("offlineMode") != null)  {
                     </tr>
                     <tr>
                         <td><label for="password"><fmt:message key="password"/>:</label></td>
-                        <td><input id="password" class="zLoginField" name="password" type="password" value="${fn:escapeXml(param.password)}" size="40"/></td>
+                        <td><input id="password" class="zLoginField" name="password" type="password" value="" size="40"/></td>
                     </tr>
                     <c:if test="${errorCode eq 'account.CHANGE_PASSWORD' or !empty param.loginNewPassword }">
                     <tr>

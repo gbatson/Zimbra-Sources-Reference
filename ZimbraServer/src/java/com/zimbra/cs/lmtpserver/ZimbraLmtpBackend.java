@@ -2,18 +2,33 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 
 package com.zimbra.cs.lmtpserver;
+
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import javax.mail.MessagingException;
+import javax.mail.internet.MimeMessage;
 
 import com.google.common.base.Function;
 import com.google.common.base.Strings;
@@ -22,17 +37,17 @@ import com.google.common.collect.Multimap;
 import com.zimbra.common.lmtp.LmtpClient;
 import com.zimbra.common.lmtp.LmtpProtocolException;
 import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.mime.MimeParserInputStream;
 import com.zimbra.common.mime.Rfc822ValidationInputStream;
-import com.zimbra.common.mime.shim.JavaMailMimeMessage;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.BufferStream;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.CopyInputStream;
 import com.zimbra.common.util.LruMap;
 import com.zimbra.common.util.MapUtil;
+import com.zimbra.common.util.TimeoutMap;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.Server;
@@ -58,36 +73,21 @@ import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.Zimbra;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import javax.mail.MessagingException;
-import javax.mail.internet.MimeMessage;
-
 public class ZimbraLmtpBackend implements LmtpBackend {
 
-    private static List<LmtpCallback> sCallbacks = new CopyOnWriteArrayList<LmtpCallback>(); 
-    private static LruMap<String, Set<Integer>> sReceivedMessageIDs = MapUtil.newLruMap(0);
-    private static final Map<Integer, Object> sMailboxDeliveryLocks = createMailboxDeliveryLocks();
+    private static List<LmtpCallback> callbacks = new CopyOnWriteArrayList<LmtpCallback>();
+    private static Map<String, Set<Integer>> receivedMessageIDs;
+    private static final Map<Integer, Object> mailboxDeliveryLocks = createMailboxDeliveryLocks();
 
-    private LmtpConfig mConfig;
+    private final LmtpConfig config;
 
     public ZimbraLmtpBackend(LmtpConfig lmtpConfig) {
-        mConfig = lmtpConfig;
+        config = lmtpConfig;
     }
 
     /**
      * Adds an instance of an LMTP callback class that will be triggered
-     * before and after a message is added to a user mailbox. 
+     * before and after a message is added to a user mailbox.
      */
     public static void addCallback(LmtpCallback callback) {
         if (callback == null) {
@@ -95,7 +95,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
             return;
         }
         ZimbraLog.lmtp.info("Adding LMTP callback: %s", callback.getClass().getName());
-        sCallbacks.add(callback);
+        callbacks.add(callback);
     }
 
     static {
@@ -110,7 +110,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
                 return new Object();
             }
         };
-        return new MapMaker().makeComputingMap(objCreator);        
+        return new MapMaker().makeComputingMap(objCreator);
     }
 
     @Override public LmtpReply getAddressStatus(LmtpAddress address) {
@@ -157,7 +157,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
 
             if (acctStatus.equals(Provisioning.ACCOUNT_STATUS_ACTIVE) ||
                 acctStatus.equals(Provisioning.ACCOUNT_STATUS_LOCKOUT) ||
-                acctStatus.equals(Provisioning.ACCOUNT_STATUS_LOCKED)) 
+                acctStatus.equals(Provisioning.ACCOUNT_STATUS_LOCKED))
             {
                 return LmtpReply.RECIPIENT_OK;
             }
@@ -185,18 +185,18 @@ public class ZimbraLmtpBackend implements LmtpBackend {
         if (msgid == null || msgid.equals(""))
             return false;
 
-        synchronized (sReceivedMessageIDs) {
-            Set<Integer> mboxIds = sReceivedMessageIDs.get(msgid);
+        synchronized (ZimbraLmtpBackend.class) {
+            Set<Integer> mboxIds = receivedMessageIDs.get(msgid);
             if (mboxIds != null && mboxIds.contains(mbox.getId())) {
                 return true;
             }
         }
         return false;
     }
-    
+
     /**
      * Returns the value of the {@code Message-ID} header, or the most
-     * recent {@code Resent-Message-ID} header, if set. 
+     * recent {@code Resent-Message-ID} header, if set.
      */
     private String getMessageID(ParsedMessage pm) {
         try {
@@ -212,22 +212,45 @@ public class ZimbraLmtpBackend implements LmtpBackend {
         ZimbraLog.lmtp.debug("Resent-Message-ID not found.  Message-ID=%s", id);
         return id;
     }
-    
+
     /**
      * If the configured Message-ID cache size has changed, create a new cache and copy
      * values from the old one.
      */
     private void checkDedupeCacheSize() {
         try {
-            int cacheSize = Provisioning.getInstance().getConfig().getMessageIdDedupeCacheSize();
-            synchronized (sReceivedMessageIDs) {
-                if (sReceivedMessageIDs.getMaxSize() != cacheSize) {
+            Config config = Provisioning.getInstance().getConfig();
+            int cacheSize = config.getMessageIdDedupeCacheSize();
+            long entryTimeout = config.getMessageIdDedupeCacheTimeout();
+            synchronized (ZimbraLmtpBackend.class) {
+                Map<String, Set<Integer>> newMap = null;
+                if (receivedMessageIDs == null) {
+                    // if non-zero entry timeout is specified then use a timeout map, else use an lru map
+                    receivedMessageIDs = entryTimeout == 0 ?
+                            new LruMap<String, Set<Integer>>(cacheSize) :
+                            new TimeoutMap<String, Set<Integer>>(entryTimeout);
+                } else if (receivedMessageIDs instanceof LruMap) {
+                    if (entryTimeout != 0) {
+                        // change to a timeout map
+                        newMap = MapUtil.newTimeoutMap(entryTimeout);
+                    } else if (((LruMap) receivedMessageIDs).getMaxSize() != cacheSize) {
+                        // adjust lru map size
+                        newMap = MapUtil.newLruMap(cacheSize);
+                    }
+                } else if (receivedMessageIDs instanceof TimeoutMap) {
+                    if (entryTimeout == 0) {
+                        // change to a lru map
+                        newMap = MapUtil.newLruMap(cacheSize);
+                    } else {
+                        ((TimeoutMap) receivedMessageIDs).setTimeout(entryTimeout);
+                    }
+                }
+                if (newMap != null) {
                     // Copy entries from the old map to the new one.  The old map
                     // is iterated in order from least-recently accessed to last accessed.
                     // If the new map size is smaller, we'll get the latest entries.
-                    LruMap<String, Set<Integer>> newMap = MapUtil.newLruMap(cacheSize);
-                    newMap.putAll(sReceivedMessageIDs);
-                    sReceivedMessageIDs = newMap;
+                    newMap.putAll(receivedMessageIDs);
+                    receivedMessageIDs = newMap;
                 }
             }
         } catch (ServiceException e) {
@@ -242,11 +265,11 @@ public class ZimbraLmtpBackend implements LmtpBackend {
         if (msgid == null || msgid.equals(""))
             return;
 
-        synchronized (sReceivedMessageIDs) {
-            Set<Integer> mboxIds = sReceivedMessageIDs.get(msgid);
+        synchronized (ZimbraLmtpBackend.class) {
+            Set<Integer> mboxIds = receivedMessageIDs.get(msgid);
             if (mboxIds == null) {
                 mboxIds = new HashSet<Integer>();
-                sReceivedMessageIDs.put(msgid, mboxIds);
+                receivedMessageIDs.put(msgid, mboxIds);
             }
             mboxIds.add(mbox.getId());
         }
@@ -256,8 +279,8 @@ public class ZimbraLmtpBackend implements LmtpBackend {
         if (mbox == null || Strings.isNullOrEmpty(msgid))
             return;
 
-        synchronized (sReceivedMessageIDs) {
-            Set<Integer> mboxIds = sReceivedMessageIDs.get(msgid);
+        synchronized (ZimbraLmtpBackend.class) {
+            Set<Integer> mboxIds = receivedMessageIDs.get(msgid);
             if (mboxIds != null) {
                 mboxIds.remove(mbox.getId());
             }
@@ -295,11 +318,11 @@ public class ZimbraLmtpBackend implements LmtpBackend {
             cis = new CopyInputStream(in, sizeHint, bufLen, bufLen);
             in = cis;
 
-            MimeParserInputStream mpis = null;
-            if (JavaMailMimeMessage.usingZimbraParser()) {
-                mpis = new MimeParserInputStream(in);
-                in = mpis;
-            }
+//            MimeParserInputStream mpis = null;
+//            if (ZMimeMessage.usingZimbraParser()) {
+//                mpis = new MimeParserInputStream(in);
+//                in = mpis;
+//            }
 
             Rfc822ValidationInputStream validator = null;
             if (LC.zimbra_lmtp_validate_messages.booleanValue()) {
@@ -328,20 +351,20 @@ public class ZimbraLmtpBackend implements LmtpBackend {
 
             BlobInputStream bis = null;
             MimeMessage mm = null;
-            if (mpis != null) {
-                try {
-                    if (data == null) {
-                        bis = new BlobInputStream(blob);
-                        mpis.setSource(bis);
-                    } else {
-                        mpis.setSource(data);
-                    }
-                } catch (IOException ioe) {
-                    throw new UnrecoverableLmtpException("Error in accessing incoming message", ioe);
-                }
-
-                mm = new JavaMailMimeMessage(mpis.getMessage(null));
-            }
+//            if (mpis != null) {
+//                try {
+//                    if (data == null) {
+//                        bis = new BlobInputStream(blob);
+//                        mpis.setSource(bis);
+//                    } else {
+//                        mpis.setSource(data);
+//                    }
+//                } catch (IOException ioe) {
+//                    throw new UnrecoverableLmtpException("Error in accessing incoming message", ioe);
+//                }
+//
+//                mm = new ZMimeMessage(mpis.getMessage(null));
+//            }
 
             try {
                 deliverMessageToLocalMailboxes(blob, bis, data, mm, env);
@@ -359,7 +382,6 @@ public class ZimbraLmtpBackend implements LmtpBackend {
         } catch (ServiceException e) {
             ZimbraLog.lmtp.warn("Exception delivering mail (temporary failure)", e);
             setDeliveryStatuses(env.getRecipients(), LmtpReply.TEMPORARY_FAILURE);
-            return;
         } finally {
             if (cis != null) {
                 cis.release();
@@ -405,7 +427,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
 
                 Account account;
                 Mailbox mbox;
-                boolean attachmentsIndexingEnabled = true;
+                boolean attachmentsIndexingEnabled;
                 try {
                     account = Provisioning.getInstance().get(AccountBy.name, rcptEmail);
                     if (account == null) {
@@ -515,7 +537,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
                             Mailbox mbox = rd.mbox;
                             ParsedMessage pm = rd.pm;
                             List<ItemId> addedMessageIds = null;
-                            synchronized (sMailboxDeliveryLocks.get(mbox.getId())) {
+                            synchronized (mailboxDeliveryLocks.get(mbox.getId())) {
                                 if (dedupe(pm, mbox)) {
                                     // message was already delivered to this mailbox
                                     ZimbraLog.lmtp.info("Not delivering message with duplicate Message-ID %s", pm.getMessageID());
@@ -564,7 +586,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
 
                             if (addedMessageIds != null && addedMessageIds.size() > 0) {
                                 // Execute callbacks
-                                for (LmtpCallback callback : sCallbacks) {
+                                for (LmtpCallback callback : callbacks) {
                                     for (ItemId id : addedMessageIds) {
                                         if (id.belongsTo(mbox)) {
                                             // Message was added to the local mailbox, as opposed to a mountpoint.
@@ -601,7 +623,7 @@ public class ZimbraLmtpBackend implements LmtpBackend {
                 } catch (ServiceException se) {
                     if (se.getCode().equals(MailServiceException.QUOTA_EXCEEDED)) {
                         ZimbraLog.lmtp.info("rejecting message " + rcptEmail + ": overquota");
-                        if (mConfig.isPermanentFailureWhenOverQuota()) {
+                        if (config.isPermanentFailureWhenOverQuota()) {
                             reply = LmtpReply.PERMANENT_FAILURE_OVER_QUOTA;
                         } else {
                             reply = LmtpReply.TEMPORARY_FAILURE_OVER_QUOTA;

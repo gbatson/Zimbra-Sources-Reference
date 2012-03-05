@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -18,8 +18,10 @@ package com.zimbra.cs.util.tnef;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
@@ -38,20 +40,14 @@ import net.fortuna.ical4j.data.ContentHandler;
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.Property;
 
-import com.zimbra.common.mime.shim.JavaMailMimeMessage;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.util.tnef.DefaultTnefToICalendar;
-import com.zimbra.cs.util.tnef.PlainTextFinder;
-import com.zimbra.cs.util.tnef.TnefToICalendar;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.Log.Level;
-import com.zimbra.cs.util.tnef.TNEFtoIcalendarServiceException;
-import com.zimbra.cs.util.tnef.TNEFtoIcalendarServiceException.UnsupportedTnefCalendaringMsgException;
-import com.zimbra.cs.util.tnef.mapi.RecurrenceDefinition;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.common.zmime.ZMimeMessage;
+import com.zimbra.common.zmime.ZSharedFileInputStream;
 import com.zimbra.cs.mailbox.calendar.ZCalendar;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZCalendarBuilder;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
@@ -59,7 +55,8 @@ import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.util.JMSession;
-import java.io.FileOutputStream;
+import com.zimbra.cs.util.tnef.TNEFtoIcalendarServiceException.UnsupportedTnefCalendaringMsgException;
+import com.zimbra.cs.util.tnef.mapi.RecurrenceDefinition;
 
 public class TestMain {
 
@@ -300,16 +297,16 @@ public class TestMain {
         sLog.debug("Processing MIME file %s", mimeFile.getPath());
 
         // Prepare the input and output.
-        SharedFileInputStream sfisMime = null;
+        InputStream fisMime = null;
         ByteArrayOutputStream baos = new ByteArrayOutputStream(10240);
         Writer baosOut = null;
         boolean doneConversion = false;
         try {
-            sfisMime = new SharedFileInputStream(mimeFile);
+            fisMime = new ZSharedFileInputStream(mimeFile);
             baosOut = new OutputStreamWriter(baos, UTF8);
-    
+
             // Do the conversion.
-            MimeMessage mm = new JavaMailMimeMessage(JMSession.getSession(), sfisMime);
+            MimeMessage mm = new ZMimeMessage(JMSession.getSession(), fisMime);
             TnefToICalendar converter = getConverter();
             doneConversion = doConversion(mm, baosOut, converter, tnefFile, verbose);
             if (recurInfoFile != null) {
@@ -350,8 +347,8 @@ public class TestMain {
             return false;
         } finally {
             try {
-                if (sfisMime != null)
-                    sfisMime.close();
+                if (fisMime != null)
+                    fisMime.close();
             } catch (IOException e) {sLog.error("Problem closing mime stream", e);}
         }
         if (!doneConversion) {
@@ -449,6 +446,7 @@ public class TestMain {
 
         // ContentHandler methods
 
+        @Override
         public void startCalendar() {
             printDebug("<calendar>");
             ++mIndentLevel;
@@ -458,6 +456,7 @@ public class TestMain {
             mCals.add(mCurCal);
         }
 
+        @Override
         public void endCalendar() {
             --mIndentLevel;
             if (mIndentLevel < 0) {
@@ -472,6 +471,7 @@ public class TestMain {
         }
 
         // name = "VEVENT", "VALARM", "VTIMEZONE", "STANDARD", or "DAYLIGHT"
+        @Override
         public void startComponent(String name) {
             printDebug("<component:%s>", name);
             ++mIndentLevel;
@@ -480,11 +480,12 @@ public class TestMain {
             if (mComponents.size() > 0) {
                 mComponents.get(mComponents.size()-1).addComponent(newComponent);
             } else {
-                mCurCal.addComponent(newComponent); 
+                mCurCal.addComponent(newComponent);
             }
-            mComponents.add(newComponent);  
+            mComponents.add(newComponent);
         }
-        
+
+        @Override
         public void endComponent(String name) {
             --mIndentLevel;
             if (mIndentLevel < 0) {
@@ -496,12 +497,13 @@ public class TestMain {
             mComponents.remove(mComponents.size()-1);
         }
 
+        @Override
         public void startProperty(String name) {
             printDebug("<property:%s>", name);
             ++mIndentLevel;
 
             mCurProperty = new ZProperty(name);
-            
+
             if (mComponents.size() > 0) {
                 mComponents.get(mComponents.size()-1).addProperty(mCurProperty);
             } else {
@@ -510,6 +512,7 @@ public class TestMain {
         }
 
         // Value should not have any encoding/escaping.  Email address should be prefixed with "mailto:" or "MAILTO:".
+        @Override
         public void propertyValue(String value) throws ParserException {
             printDebug("<value>%s</value>", value);
 
@@ -523,6 +526,7 @@ public class TestMain {
             }
         }
 
+        @Override
         public void endProperty(String name) {
             --mIndentLevel;
             if (mIndentLevel < 0) {
@@ -535,6 +539,7 @@ public class TestMain {
         }
 
         // Value should not have any encoding/escaping.  Email address should be prefixed with "mailto:" or "MAILTO:".
+        @Override
         public void parameter(String name, String value) {
             printDebug("<parameter name=\"%s\">%s</parameter>", name, value);
 

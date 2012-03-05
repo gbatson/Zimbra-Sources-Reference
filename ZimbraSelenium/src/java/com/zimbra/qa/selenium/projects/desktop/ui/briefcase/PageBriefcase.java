@@ -26,6 +26,7 @@ import org.apache.commons.httpclient.HttpStatus;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.desktop.ui.*;
 import com.zimbra.qa.selenium.projects.desktop.ui.mail.FormMailNew;
@@ -765,6 +766,24 @@ public class PageBriefcase extends AbsTab {
 
 				page = new DialogConfirm(DialogConfirm.Confirmation.DELETE, MyApplication, this);
 
+			} else if (option == Button.O_MOVE) {
+
+            optionLocator = "css=td#zmi__Briefcase__MOVE_title:contains(Move)";
+
+            page = new DialogMove(MyApplication, this);
+
+			} else if (option == Button.O_SEND_AS_ATTACHMENT) {
+
+            optionLocator = "css=div#zmi__Briefcase__SEND_FILE_AS_ATT:contains(Send as attachment(s))";
+
+            page = new FormMailNew(this.MyApplication);
+
+			} else if (option == Button.O_SEND_LINK) {
+
+            optionLocator = "css=td#zmi__Briefcase__SEND_FILE_title:contains('Send link')";
+
+            page = new DialogConfirm(DialogConfirm.Confirmation.SENDLINK,
+                  this.MyApplication, this);
 			} else {
 				throw new HarnessException("implement action: " + action
 						+ " option:" + option);
@@ -787,6 +806,89 @@ public class PageBriefcase extends AbsTab {
 
 		// Default behavior
 		return (page);
+	}
+
+	public AbsPage zListItem(Action action, Button option, String subOption,
+	      IItem item) throws HarnessException {
+
+	   if (action == null)
+	      throw new HarnessException("action cannot be null");
+	   if (option == null)
+	      throw new HarnessException("button cannot be null");
+	   if (subOption == null)
+	      throw new HarnessException("subOption button cannot be null");
+	   if (item == null)
+	      throw new HarnessException("Item cannot be null or blank");
+
+	   String rowItem = item.getName();
+
+	   tracer.trace(action + " then " + option + " then " + subOption
+	         + " on briefcase item = " + rowItem);
+
+	   logger.info(myPageName() + " zListItem(" + action + ", " + option
+	         + ", " + subOption + ", " + rowItem + ")");
+
+	   AbsPage page = null;
+
+	   String listLocator = Locators.briefcaseListView.locator;
+
+	   String itemlocator = null;
+
+	   if (!this.sIsElementPresent(listLocator))
+	      throw new HarnessException("List View Rows is not present "
+	            + listLocator);
+
+	   itemlocator = listLocator + " div:contains(" + rowItem + ")";
+
+	   if (action == Action.A_RIGHTCLICK) {
+
+	      zWaitForElementPresent(itemlocator);
+
+	      // Right-Click on the item
+	      this.zRightClickAt(itemlocator, "0,0");
+
+	      // Now the ContextMenu is opened
+	      // Click on the specified option
+
+	      String optionLocator = null;
+
+	      if (option == Button.O_TAG_FILE) {
+
+	         optionLocator = "css=td#zmi__Briefcase__TAG_MENU_dropdown>div[class=ImgCascade]";
+
+	      } else {
+	         throw new HarnessException("implement action: " + action
+	               + " option:" + option);
+	      }
+
+	      // click on the option
+	      this.zClickAt(optionLocator, "0,0");
+
+	      // Now the ContextMenu option is opened
+	      // Click on the specified sub option
+
+	      String subOptionLocator = "css=div[id=zmi__Briefcase__TAG_MENU|MENU] [class=ZWidgetTitle]:contains("
+	         + subOption + ")";
+
+	      // click on the sub option
+	      this.zClickAt(subOptionLocator, "0,0");
+
+	      this.zWaitForBusyOverlay();
+
+	      page = null;
+
+	      // FALL THROUGH
+
+	   } else {
+	      throw new HarnessException("implement me!  action = " + action);
+	   }
+
+	   if (page != null) {
+	      page.zWaitForActive();
+	   }
+
+	   // Default behavior
+	   return (page);
 	}
 
 	@Override
@@ -960,29 +1062,93 @@ public class PageBriefcase extends AbsTab {
 		return true;
 	}
 
+	public boolean isLockIconPresent(IItem item) throws HarnessException {
+	   boolean present = false;
+	   String itemName = item.getName();
+
+	   String listLocator = Locators.briefcaseListView.locator;
+	   String itemLocator = listLocator
+	         + " div[id^='zli__BDLV__'][class^='Row']";
+	   String itemNameLocator = itemLocator + " div:contains(" + itemName
+	         + ")";
+
+	   zWaitForElementPresent(itemNameLocator);
+
+	   String lockIconLocator = "";
+
+	   int count = sGetCssCount(itemLocator);
+
+	   for (int i = 1; i <= count; i++) {
+	      if (sIsElementPresent(itemLocator + ":nth-child(" + i
+	            + "):contains(" + itemName + ")")) {
+	         lockIconLocator = itemLocator + ":nth-child(" + i
+	               + ") div[id^=zlif__BDLV__][id$=__loid][class^=Img]";
+	         break;
+	      }
+	   }
+	   
+	   if (!this.sIsElementPresent(lockIconLocator))
+	      throw new HarnessException("Lock icon locator is not present "
+	            + lockIconLocator);
+
+	   String image = this.sGetAttribute(lockIconLocator + "@class");
+
+	   if (image.equals("ImgPadLock"))
+	      present = true;
+
+	   return present;      
+	}
+
 	public void deleteFileByName(String docName) throws HarnessException {
+	   deleteFileByName(docName, SOAP_DESTINATION_HOST_TYPE.SERVER, null);
+	}
+
+	public void deleteFileByName(String docName,
+	      SOAP_DESTINATION_HOST_TYPE destType,
+         String accountName) throws HarnessException {
 		ZimbraAccount account = MyApplication.zGetActiveAccount();
 		account
 				.soapSend("<SearchRequest xmlns='urn:zimbraMail' types='document'>"
-						+ "<query>" + docName + "</query>" + "</SearchRequest>");
+						+ "<query>" + docName + "</query>" + "</SearchRequest>",
+						destType, accountName);
 		String id = account.soapSelectValue("//mail:doc", "id");
-		deleteFileById(id);
+		deleteFileById(id, destType, accountName);
 	}
 
 	public void deleteFileById(String docId) throws HarnessException {
+	   deleteFileById(docId, SOAP_DESTINATION_HOST_TYPE.SERVER, null);
+	}
+
+	public void deleteFileById(String docId,
+	      SOAP_DESTINATION_HOST_TYPE destType,
+         String accountName) throws HarnessException {
 		ZimbraAccount account = MyApplication.zGetActiveAccount();
 		account.soapSend("<ItemActionRequest xmlns='urn:zimbraMail'>"
 				+ "<action id='" + docId + "' op='trash'/>"
-				+ "</ItemActionRequest>");
+				+ "</ItemActionRequest>",
+				destType, accountName);
 	}
 
 	public EnumMap<Response.ResponsePart, String> displayFile(String filename,
-			Map<String, String> params) throws HarnessException {
+         Map<String, String> params) throws HarnessException {
+	   return displayFile(filename, params, SOAP_DESTINATION_HOST_TYPE.SERVER);
+	}
+
+	public EnumMap<Response.ResponsePart, String> displayFile(String filename,
+			Map<String, String> params,
+			SOAP_DESTINATION_HOST_TYPE destType) throws HarnessException {
 		ZimbraAccount account = MyApplication.zGetActiveAccount();
 		
 		RestUtil util = new RestUtil();
-	
-		util.setAuthentication(account);
+
+		switch (destType) {
+		case SERVER:
+		   util.setAuthentication(account);
+		   break;
+		case CLIENT:
+		   util.setZDAuthentication(account);
+		   break;
+		}
 		
 		util.setPath("/home/~/Briefcase/" + filename);
 

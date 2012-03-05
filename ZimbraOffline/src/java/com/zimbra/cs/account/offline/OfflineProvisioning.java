@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.mail.AuthenticationFailedException;
 import javax.mail.MessagingException;
@@ -35,6 +36,9 @@ import javax.mail.Transport;
 import javax.security.auth.login.LoginException;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.sun.mail.smtp.SMTPTransport;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
@@ -43,6 +47,7 @@ import com.zimbra.common.service.RemoteServiceException;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.SystemUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -76,6 +81,7 @@ import com.zimbra.cs.db.DbOfflineDirectory;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.mailbox.DesktopMailbox;
 import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.InitialSync;
 import com.zimbra.cs.mailbox.LocalJMSession;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -93,7 +99,6 @@ import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.offline.ab.gab.GDataServiceException;
 import com.zimbra.cs.offline.common.OfflineConstants;
-import com.zimbra.cs.offline.util.OfflineUtil;
 import com.zimbra.cs.offline.util.OfflineYAuth;
 import com.zimbra.cs.offline.util.yc.oauth.OAuthManager;
 import com.zimbra.cs.util.yauth.AuthenticationException;
@@ -122,6 +127,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public static final String A_zimbraPrefOfflineBackupPath = "zimbraPrefOfflineBackupPath";
     public static final String A_zimbraPrefOfflineBackupKeep = "zimbraPrefOfflineBackupKeep";
     public static final String A_offlineBackupLastSuccess = "offlineBackupLastSuccess";
+    public static final String A_zimbraPrefOfflineUpdateChannel = "zimbraPrefOfflineUpdateChannel";
     public static final String A_zimbraPrefOfflineAttrProxyMode = "zimbraPrefOfflineAttrProxyMode";
     public static final String A_zimbraPrefOfflineHttpProxyHost = "zimbraPrefOfflineHttpProxyHost";
     public static final String A_zimbraPrefOfflineHttpProxyPort = "zimbraPrefOfflineHttpProxyPort";
@@ -139,9 +145,15 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public static final String A_offlineYContactTokenSessionHandle = "offlineYahooContactTokenSessionHandle";
     public static final String A_offlineYContactGuid = "offlineYahooContactGuid";
     public static final String A_offlineYContactVerifier = "offlineYahooContactVerifier";
+    public static final String A_offlineUsingGalAccountId = "offlineUsingGalAccountId";
+    public static final String A_offlineGalRetryEnabled = "offlineGalRetryEnabled";
+
+    private static final String CHN_BETA = "beta";
 
     public enum EntryType {
-        ACCOUNT("acct"), DATASOURCE("dsrc", true), IDENTITY("idnt", true), SIGNATURE("sig", true), COS("cos"), CONFIG("conf"), ZIMLET("zmlt");
+        ACCOUNT("acct"), DATASOURCE("dsrc", true), IDENTITY("idnt", true),
+        SIGNATURE("sig", true), COS("cos"), CONFIG("conf"), ZIMLET("zmlt"),
+        GAL("gal");
 
         private String mAbbr;
         private boolean mLeafEntry;
@@ -160,12 +172,13 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             else if (e instanceof Cos)         return COS;
             else if (e instanceof Config)      return CONFIG;
             else if (e instanceof Zimlet)      return ZIMLET;
+            else if (e instanceof OfflineDomainGal)      return GAL;
             else                               return null;
         }
     }
 
-    public synchronized static OfflineProvisioning getOfflineInstance() {
-        return (OfflineProvisioning)getInstance();
+    public static OfflineProvisioning getOfflineInstance() {
+        return (OfflineProvisioning) getInstance();
     }
 
     private static String appId = OfflineLC.zdesktop_app_id.value();
@@ -182,7 +195,6 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return DataSource.decryptData(appId, crypt);
     }
 
-
     private final OfflineConfig mLocalConfig;
     private final Server mLocalServer;
     private final Cos mDefaultCos;
@@ -191,9 +203,10 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     private final NamedEntryCache<Account> mAccountCache;
     private final NamedEntryCache<Account> mGranterCache;
     private final Map<String, Server> mSyncServerCache;
+    private final Map<String, OfflineDomainGal> domainGals;
     private Account zimbraAdminAccount;
-
-    private boolean mHasDirtyAccounts = true;
+    private List<String> cachedAccountIds = new CopyOnWriteArrayList<String>();
+    private volatile boolean mHasDirtyAccounts = true;
 
     public OfflineProvisioning() {
         mLocalConfig  = OfflineConfig.instantiate(this);
@@ -201,6 +214,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         mDefaultCos   = OfflineCos.instantiate(this);
         mMimeTypes    = OfflineMimeType.instantiateAll();
         mZimlets      = OfflineZimlet.instantiateAll(this);
+        domainGals = OfflineDomainGal.instantiateAll(this);
         mSyncServerCache = new HashMap<String, Server>();
         mAccountCache = new NamedEntryCache<Account>(64, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
         mGranterCache = new NamedEntryCache<Account>(64, LC.ldap_cache_account_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
@@ -214,11 +228,30 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         mDefaultCos = null;
         mMimeTypes = null;
         mZimlets = null;
+        domainGals = null;
         mSyncServerCache = null;
         mAccountCache = null;
         mGranterCache = null;
     }
 
+    //load cachedAccountIds from directory following orders in offlineAccountsOrder
+    private void loadAccountIdsInOrder() {
+        Account localAccount;
+        try {
+            localAccount = getLocalAccount();
+            Iterable<String> idsInOrder = Splitter.on(",").split(localAccount.getAttr(A_offlineAccountsOrder, ""));
+            List<String> directoryIds = DbOfflineDirectory.listAllDirectoryEntries(EntryType.ACCOUNT);
+            List<String> ids = new ArrayList<String>();
+            for (String id : idsInOrder) {
+                if (directoryIds.contains(id)) {
+                    ids.add(id);
+                }
+            }
+            this.cachedAccountIds.addAll(ids);
+        } catch (ServiceException e) {
+            OfflineLog.offline.warn("load account Ids to cache failed.", e);
+        }
+    }
 
     public ZMailbox newZMailbox(OfflineAccount account, String serviceUri) throws ServiceException {
         ZMailbox.Options options;
@@ -283,10 +316,11 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         // only tracking changes on account entries
         markChanged &= e instanceof OfflineAccount;
 
+        Map<String, ? extends Object> old = e.getAttrs();
+        List<String> modattrs = new ArrayList<String>();
         if (markChanged) {
             attrs.remove(A_offlineModifiedAttrs);
 
-            List<String> modattrs = new ArrayList<String>();
             for (String attr : attrs.keySet()) {
                 if (attr.startsWith("-") || attr.startsWith("+"))
                     attr = attr.substring(1);
@@ -324,6 +358,65 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         reload(e);
         if (!skipAttrMgr)
             AttributeManager.getInstance().postModify(attrs, e, context, false, allowCallback);
+
+        long newTime = 0;
+        long oldTime = 0;
+        boolean syncEverything = false;
+        String syncEmailoption = (String) attrs.get(OfflineConstants.A_offlinesyncEmailDate);
+
+        if (syncEmailoption != null) {
+            try {
+                final ZcsMailbox mbox = (ZcsMailbox) MailboxManager.getInstance().getMailboxByAccount((OfflineAccount)e);
+                //get the new time
+                switch (SyncMsgOptions.getOption(syncEmailoption)) {
+                case SYNCEVERYTHING:
+                    if (!StringUtil.equalIgnoreCase((String)old.get(OfflineConstants.A_offlinesyncEmailDate), (String)attrs.get(OfflineConstants.A_offlinesyncEmailDate))) {
+                        syncEverything = true;
+                    }
+                    break;
+                case SYNCTOFIXEDDATE:
+                    if (!StringUtil.equalIgnoreCase((String)old.get(OfflineConstants.A_offlinesyncEmailDate), (String)attrs.get(OfflineConstants.A_offlinesyncEmailDate)) ||
+                            !StringUtil.equalIgnoreCase((String)old.get(OfflineConstants.A_offlinesyncFixedDate), (String)attrs.get(OfflineConstants.A_offlinesyncFixedDate))) {
+                        newTime = Long.parseLong(InitialSync.convertDateToLong((String)attrs.get(OfflineConstants.A_offlinesyncFixedDate)));
+                    }
+                    break;
+                case SYNCTORELATIVEDATE:
+                    if (!StringUtil.equalIgnoreCase((String)old.get(OfflineConstants.A_offlinesyncEmailDate), (String)attrs.get(OfflineConstants.A_offlinesyncEmailDate)) ||
+                            !StringUtil.equalIgnoreCase((String)old.get(OfflineConstants.A_offlinesyncRelativeDate), (String)attrs.get(OfflineConstants.A_offlinesyncRelativeDate)) ||
+                            !StringUtil.equalIgnoreCase((String)old.get(OfflineConstants.A_offlinesyncFieldName), (String)attrs.get(OfflineConstants.A_offlinesyncFieldName))) {
+                        newTime = Long.parseLong(InitialSync.convertRelativeDatetoLong((String)attrs.get(OfflineConstants.A_offlinesyncRelativeDate) ,
+                                    (String)attrs.get(OfflineConstants.A_offlinesyncFieldName)));
+                    }
+                    break;
+                }
+
+                if( newTime > 0) {
+                    //syncmail date is updated, get the old date/time
+                    switch (SyncMsgOptions.getOption((String) old.get(OfflineConstants.A_offlinesyncEmailDate))) {
+                    case SYNCTOFIXEDDATE:
+                        oldTime = Long.parseLong(InitialSync.convertDateToLong((String)old.get(OfflineConstants.A_offlinesyncFixedDate)));
+                        break;
+                    case SYNCTORELATIVEDATE:
+                        oldTime = Long.parseLong(InitialSync.convertRelativeDatetoLong((String)old.get(OfflineConstants.A_offlinesyncRelativeDate) ,
+                                (String)old.get(OfflineConstants.A_offlinesyncFieldName)));
+                        break;
+                    }
+                }
+
+                if (newTime > oldTime) {
+                    //reset the runInitSync variable if set to true
+                    if (mbox.isRunInitSync()) {
+                        mbox.setRunInitSync(false);
+                    }
+                } else if (syncEverything || (newTime < oldTime)) {
+                    if (!mbox.isRunInitSync()) {
+                        mbox.setRunInitSync(true);
+                    }
+                }
+            } catch (NumberFormatException x) {
+                OfflineLog.offline.warn("unable to parse syncEmailDate", x);
+            }
+        }
     }
 
     public void setAccountAttribute(Account account, String key, Object value) throws ServiceException {
@@ -524,7 +617,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             A_zimbraPrefOfflineSocksProxyHost,
             A_zimbraPrefOfflineSocksProxyPort,
             A_zimbraPrefOfflineSocksProxyUsername,
-            A_zimbraPrefOfflineSocksProxyPassword
+            A_zimbraPrefOfflineSocksProxyPassword,
+            A_zimbraPrefOfflineUpdateChannel
     ));
 
     @Override
@@ -536,7 +630,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         } else {
             account = createSyncAccount(emailAddress, password, attrs);
         }
-        fixAccountsOrder(true);
+        persistAccountsOrder();
         return account;
     }
 
@@ -606,8 +700,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
         attrs.put(A_zimbraJunkMessagesIndexingEnabled, TRUE);
         attrs.put(A_zimbraMailQuota, "0");
-        attrs.put(A_offlineGalAccountSyncToken, "");
-        
+
         Account account = createAccountInternal(emailAddress, zgi.getId(), attrs, true, false);
 
         try {
@@ -855,11 +948,13 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return "Xsync".equals(account.getAttr(A_offlineAccountFlavor, null));
     }
 
-    public synchronized OfflineAccount createGalAccount(OfflineAccount mainAcct) throws ServiceException {
-        deleteGalAccount(mainAcct); // cleanup any left-over entry, if any
+    public String getOfflineGalMailboxName(String domain) {
+        return "offline_gal@" + domain + OfflineConstants.GAL_ACCOUNT_SUFFIX;
+    }
 
+    public synchronized OfflineAccount createGalAccount(OfflineDomainGal domainGal) throws ServiceException {
         String id = UUID.randomUUID().toString();
-        String name = mainAcct.getName() + OfflineConstants.GAL_ACCOUNT_SUFFIX;
+        String name = getOfflineGalMailboxName(domainGal.getDomain());
 
         Map<String, Object> attrs = new HashMap<String, Object>();
         attrs.put(A_objectClass, new String[] { "organizationalPerson", "zimbraAccount" } );
@@ -876,8 +971,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
         OfflineAccount galAcct = (OfflineAccount)createAccountInternal(name, id, attrs, true, false);
         setAccountAttribute(galAcct, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.FALSE);
-        setAccountAttribute(mainAcct, OfflineConstants.A_offlineGalAccountSyncToken, "");
-        setAccountAttribute(mainAcct, OfflineConstants.A_offlineGalAccountId, galAcct.getId());
+        setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountSyncToken, "");
+        setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountId, galAcct.getId());
+        
         return galAcct;
     }
 
@@ -999,6 +1095,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         String webappUri = account.getAttr(A_offlineWebappUri, null);
         if (webappUri == null || !webappUri.equals(uri))
             setAccountAttribute(account, A_offlineWebappUri, uri);
+        if (OfflineLC.zdesktop_relabel.value().equalsIgnoreCase(CHN_BETA) && !CHN_BETA.equalsIgnoreCase(account.getAttr(A_zimbraPrefOfflineUpdateChannel, null))) {
+            setAccountAttribute(account, A_zimbraPrefOfflineUpdateChannel, CHN_BETA);
+        }
         return account;
     }
 
@@ -1013,9 +1112,27 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return clientId;
     }
 
+    /**
+     * For Gal migration. Before migration, sync token is in zcs account, last refresh is in gal account.
+     * @return Map of Account-which-has-gal -> Pair of (syncToken, lastRefresh)
+     * @throws ServiceException
+     */
+    public synchronized Map<Account, Pair<String, String>> getGalAccountTokens() throws ServiceException {
+        Map<Account, Pair<String, String>> map = new HashMap<Account, Pair<String, String>>();
+        for (Account account : getAllZcsAccounts()) {
+            String galAccountId = account.getAttr(OfflineConstants.A_offlineGalAccountId);
+            if (!Strings.isNullOrEmpty(galAccountId)) {
+                Account galAccount = get(AccountBy.id, galAccountId);
+                Pair<String, String> pair = new Pair<String, String>(account.getAttr(OfflineConstants.A_offlineGalAccountSyncToken),
+                        galAccount.getAttr(A_offlineGalAccountLastRefresh));
+                map.put(account, pair);
+            }
+        }
+        return map;
+    }
+
     public boolean isGalAccount(Account account) {
-        String flavor = account.getAttr(A_offlineAccountFlavor, null);
-        return flavor != null && flavor.equals("Gal");
+        return "Gal".equals(account.getAttr(A_offlineAccountFlavor, null));
     }
     
     public boolean isMountpointAccount(String accountId) throws ServiceException {
@@ -1043,7 +1160,21 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
         if (!skipAttrMgr) {
             context = new HashMap<String, Object>();
-            AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+            Map<String, Object> validAttrs = new HashMap<String, Object>(attrs);
+            //premodify modifies attrs; need a tmp copy in case we need to drop some attrs and try again
+            try {
+                AttributeManager.getInstance().preModify(validAttrs, null, context, true, true);
+                attrs = validAttrs;
+            } catch (ServiceException e) {
+                if (e.getMessage().contains(A_zimbraPrefMailSignature)) {
+                    OfflineLog.offline.warn("invalid signature exists in ZCS account. Perhaps server decreased limit after signature was created?");
+                    attrs.remove(A_zimbraPrefMailSignature);
+                    AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+                    OfflineLog.offline.debug("attrs otherwise valid; just ignoring signatures for now");
+                } else {
+                    throw e;
+                }
+            }
         }
 
         attrs.putAll(immutable);
@@ -1073,7 +1204,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                 throw e;
             }
         }
-        cachedaccountIds = null;
+
+        this.cachedAccountIds.add(accountId);
 
         return acct;
     }
@@ -1237,20 +1369,17 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
         try {
             Folder fldr;
-            Mailbox mbox = OfflineMailboxManager.getInstance().getMailboxByAccount(
-                localAccount);
-
-            fldr = mbox.getFolderByName(null, DesktopMailbox.ID_FOLDER_NOTIFICATIONS,
-                zimbraId);
+            Mailbox mbox = OfflineMailboxManager.getInstance().getMailboxByAccount(localAccount);
+            fldr = mbox.getFolderByName(null, DesktopMailbox.ID_FOLDER_NOTIFICATIONS, zimbraId);
             mbox.delete(null, fldr.getId(), MailItem.TYPE_MOUNTPOINT);
         } catch (Exception e) {
         }
-        deleteGalAccount(zimbraId);
+
         DbOfflineDirectory.deleteGranterByGrantee(zimbraId);
         deleteOfflineAccount(zimbraId);
-        synchronized (this) {
-            cachedaccountIds = null;
-        }
+        this.cachedAccountIds.remove(zimbraId);
+        //persists new order after updating cache.
+        persistAccountsOrder();
         if (localAccount.isFeatureNotebookEnabled() && getAllZcsAccounts().size() == 0)
             localAccount.setFeatureNotebookEnabled(false);
     }
@@ -1259,34 +1388,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         DbOfflineDirectory.deleteDirectoryEntry(EntryType.ACCOUNT, zimbraId);
         Account acct = mAccountCache.getById(zimbraId);
 
-        if (acct != null)
+        if (acct != null) {
             mAccountCache.remove(acct);
-        fixAccountsOrder(true);
-    }
-
-    public void deleteGalAccount(String mainAcctId) throws ServiceException {
-        OfflineAccount mainAcct = (OfflineAccount)get(AccountBy.id, mainAcctId);
-        if (mainAcct != null)
-            deleteGalAccount(mainAcct);
-    }
-
-    public void deleteGalAccount(OfflineAccount mainAcct) throws ServiceException {
-        OfflineAccount galAcct = null;
-        String galAcctId = mainAcct.getAttr(OfflineConstants.A_offlineGalAccountId, false);
-
-        if (galAcctId != null && galAcctId.length() > 0)
-            galAcct = (OfflineAccount)get(AccountBy.id, galAcctId);
-        if (galAcct == null)
-            galAcct = (OfflineAccount)get(AccountBy.name, mainAcct.getName() + OfflineConstants.GAL_ACCOUNT_SUFFIX);
-        if (galAcct != null) {
-            Mailbox mbox = OfflineMailboxManager.getInstance().getMailboxByAccount(galAcct, false);
-
-            if (mbox != null)
-                mbox.deleteMailbox();
-            deleteOfflineAccount(galAcct.getId());
         }
-        if (galAcctId != null && galAcctId.length() > 0)
-            setAccountAttribute(mainAcct, OfflineConstants.A_offlineGalAccountId, "");
     }
 
     @Override
@@ -1397,12 +1501,15 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         throw new UnsupportedOperationException();
     }
 
-    private List<String> cachedaccountIds;
-
-    public synchronized List<String> getAllAccountIds() throws ServiceException {
-        if (cachedaccountIds == null)
-            cachedaccountIds = DbOfflineDirectory.listAllDirectoryEntries(EntryType.ACCOUNT);
-        return cachedaccountIds;
+    public List<String> getAllAccountIds() throws ServiceException {
+        if (this.cachedAccountIds.isEmpty()) {
+            synchronized (this) {
+                if (this.cachedAccountIds.isEmpty()) {
+                    this.loadAccountIdsInOrder();        
+                }
+            }
+        }
+        return Collections.unmodifiableList(this.cachedAccountIds);
     }
 
     public List<Account> getAllAccounts() throws ServiceException {
@@ -1430,7 +1537,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return admins;
     }
 
-    synchronized boolean hasDirtyAccounts() {
+    boolean hasDirtyAccounts() {
         return mHasDirtyAccounts;
     }
 
@@ -1736,15 +1843,31 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (d == null || d.getAttr(A_zimbraDomainName) == null) {
             return getAllAccounts(true);
         }
+        String domainName = d.getAttr(A_zimbraDomainName);
+        if (d == null || domainName == null) {
+            return getAllAccounts(true);
+        }
+        return getAllAccounts(domainName);
+    }
 
+    private synchronized List<Account> getAllAccounts(String domain) throws ServiceException {
         List<Account> accts = new ArrayList<Account>();
-        List<String> ids = DbOfflineDirectory.searchDirectoryEntries(EntryType.ACCOUNT, A_offlineDn, "%@" + d.getAttr(A_zimbraDomainName));
+        List<String> ids = DbOfflineDirectory.searchDirectoryEntries(EntryType.ACCOUNT, A_offlineDn, "%@" + domain);
         for (String id : ids) {
             Account acct = get(AccountBy.id, id);
             if (acct != null)
                 accts.add(acct);
         }
         return accts;
+    }
+    
+    public synchronized Set<String> getAllAccountsByDomain(String domain) throws ServiceException {
+        List<Account> accounts = getAllAccounts(domain);
+        Set<String> result = new HashSet<String>();
+        for (Account account : accounts) {
+            result.add(account.getId());
+        }
+        return result;
     }
 
     @Override
@@ -2431,39 +2554,16 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     private String promoteAccount(String accountId) throws ServiceException {
-        String[] order = fixAccountsOrder(false);
-        for (int i = 0; i < order.length; ++i) {
-            if (order[i].equals(accountId) && i > 0) {
-            while (i > 0)
-                    order[i] = order[i-- - 1];
-                order[0] = accountId;
-                break;
-            }
-        }
-        return StringUtil.join(",", order);
+        this.cachedAccountIds.remove(accountId);
+        this.cachedAccountIds.add(0, accountId);
+        return Joiner.on(",").join(this.cachedAccountIds);
     }
 
-    //append unknown and remove missing
-    private String[] fixAccountsOrder(boolean commit) throws ServiceException {
+    private void persistAccountsOrder() throws ServiceException {
         Account localAccount = getLocalAccount();
-        String oldOrderStr = localAccount.getAttr(A_offlineAccountsOrder, "");
-        String[] oldOrder = oldOrderStr.length() > 0 ? oldOrderStr.split(",") : new String[0];
-
-        List<Account> accounts = getAllAccounts();
-        String[] newOrder = new String[accounts.size()];
-        for (int i = 0; i < newOrder.length; ++i) {
-            newOrder[i] = accounts.get(i).getId();
-        }
-
-        OfflineUtil.fixItemOrder(oldOrder, newOrder);
-        String newOrderStr = newOrder.length > 0 ? StringUtil.join(",", newOrder) : "";
-
-        if (commit && !newOrderStr.equals(oldOrderStr)) {
-            Map<String, Object> attrs = new HashMap<String, Object>(1);
-            attrs.put(A_offlineAccountsOrder, newOrderStr);
-            modifyAttrs(localAccount, attrs, false, false, false);
-        }
-        return newOrder;
+        Map<String, Object> attrs = new HashMap<String, Object>(1);
+        attrs.put(A_offlineAccountsOrder, Joiner.on(",").join(this.getAllAccountIds()));
+        modifyAttrs(localAccount, attrs, false, false, false);
     }
 
     protected void loadRemoteSyncServer(OfflineAccount granter, String granteeId) throws ServiceException {
@@ -2526,7 +2626,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (account != null && (isZcsAccount(account) || isMountpointAccount(account))) {
             String id = isMountpointAccount(account) ? account.getAttr(A_offlineMountpointProxyAccountId) : acctId;
             ZcsMailbox ombx = (ZcsMailbox)MailboxManager.getInstance().getMailboxByAccountId(id, false);
-            ZAuthToken at = ombx.getAuthToken(false);
+            ZAuthToken at = ombx.getAuthToken();
             return at == null ? null : at.getValue();
         } else {
             return null;
@@ -2546,9 +2646,87 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public boolean syncZimletProperties(String accountId) throws ServiceException {
         return accountId.equals(getZimletSyncAccountId());
     }
-    
+
     public String getZimletSyncAccountId() throws ServiceException {
         Account localAcct = getLocalAccount();
         return localAcct.getAttr(A_zimbraPrefOfflineZimletSyncAccountId);
+    }
+
+    public Set<String> listAllDomains() throws ServiceException {
+        return Collections.unmodifiableSet(domainGals.keySet());
+    }
+
+    public OfflineDomainGal getDomainGal(String domain) {
+        return domainGals.get(domain.toLowerCase());
+    }
+
+    public OfflineDomainGal createDomainGal(String domain, Map<String, Object> attrs) throws ServiceException {
+        domain = domain.toLowerCase();
+        Map<String, Object> context = new HashMap<String, Object>();
+        AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+        String zimbraId = UUID.randomUUID().toString();
+        attrs.put(A_zimbraId, zimbraId);
+        attrs.put(A_cn, domain);
+        attrs.put(A_objectClass, "domainGalEntry");
+        attrs.put(A_offlineGalRetryEnabled, TRUE);
+
+        DbOfflineDirectory.createDirectoryEntry(EntryType.GAL, domain, attrs, false);
+        OfflineDomainGal gal = new OfflineDomainGal(domain, zimbraId, attrs, this);
+        domainGals.put(domain, gal);
+        AttributeManager.getInstance().postModify(attrs, gal, context, true);
+        OfflineLog.offline.debug("created domain %s for offline GAL", domain);
+        return gal;
+    }
+
+    public void attachAccountToGal(String domain, String accountId) throws ServiceException {
+        OfflineDomainGal domainGal = getDomainGal(domain);
+        HashMap<String, String> attrs = new HashMap<String, String>();
+        attrs.put("+" + OfflineProvisioning.A_offlineUsingGalAccountId, accountId);
+        modifyAttrs(domainGal, attrs);
+    }
+
+    public void detachAccountFromGal(String domain, String accountId) throws ServiceException {
+        OfflineDomainGal domainGal = getDomainGal(domain);
+        HashMap<String, String> attrs = new HashMap<String, String>();
+        attrs.put("-" + OfflineProvisioning.A_offlineUsingGalAccountId, accountId);
+        modifyAttrs(domainGal, attrs);
+        String[] accountsUsingGal = getDomainGal(domain).getAttachedToGalAccountIds();
+        if (accountsUsingGal == null || accountsUsingGal.length == 0) {
+            deleteDomainGal(domain);
+        }
+    }
+
+    public void assignGalAccountToDomain(OfflineDomainGal domainGal, Account galAccount) throws ServiceException {
+        Map<String, Object> attrs = new HashMap<String, Object>();
+        attrs.put("+" + OfflineConstants.A_offlineGalAccountId, galAccount.getId());
+        modifyAttrs(domainGal, attrs);
+    }
+
+    public void deleteDomainGal(String domain) throws ServiceException {
+        domain = domain.toLowerCase();
+
+        OfflineDomainGal gal = domainGals.get(domain);
+        if (gal == null)
+            return;
+        String galAccount = gal.getGalAccountId();
+        DbOfflineDirectory.deleteDirectoryEntry(EntryType.GAL, gal.getId());
+        domainGals.remove(domain);
+        deleteGalAccount(galAccount);
+    }
+
+    public void deleteGalAccount(String galAccountId) throws ServiceException {
+        Mailbox mbox = OfflineMailboxManager.getInstance().getMailboxByAccountId(galAccountId);
+        if (mbox != null) {
+            mbox.deleteMailbox();
+        }
+        deleteOfflineAccount(galAccountId);
+    }
+
+    public Account getGalAccountByAccount(OfflineAccount account) throws ServiceException {
+        OfflineDomainGal gal = this.getDomainGal(account.getDomain());
+        if (gal != null) {
+            return gal.getGalAccount();    
+        }
+        return null;
     }
 }

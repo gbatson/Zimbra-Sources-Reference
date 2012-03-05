@@ -160,7 +160,8 @@ public class PushChanges {
         MailItem.TYPE_APPOINTMENT,
         MailItem.TYPE_TASK,
         MailItem.TYPE_WIKI,
-        MailItem.TYPE_DOCUMENT
+        MailItem.TYPE_DOCUMENT,
+        MailItem.TYPE_MOUNTPOINT
     ));
 
 
@@ -235,16 +236,17 @@ public class PushChanges {
 
         // do folder ops top-down so that we don't get dinged when folders switch places
         if (!changes.isEmpty()) {
-            if (changes.getIds(MailItem.TYPE_FOLDER) != null || changes.getIds(MailItem.TYPE_SEARCHFOLDER) != null) {
+            if (changes.getIds(MailItem.TYPE_FOLDER) != null || changes.getIds(MailItem.TYPE_SEARCHFOLDER) != null || changes.getIds(MailItem.TYPE_MOUNTPOINT) != null) {
                 for (Folder folder : ombx.getFolderById(sContext, Mailbox.ID_FOLDER_ROOT).getSubfolderHierarchy()) {
                     if (changes.remove(folder.getType(), folder.getId())) {
                         switch (folder.getType()) {
                             case MailItem.TYPE_SEARCHFOLDER:  syncSearchFolder(folder.getId());  break;
+                            case MailItem.TYPE_MOUNTPOINT:
                             case MailItem.TYPE_FOLDER:        syncFolder(folder.getId(), true, null);        break;
                         }
                     }
                 }
-                changes.remove(MailItem.TYPE_FOLDER);  changes.remove(MailItem.TYPE_SEARCHFOLDER);
+                changes.remove(MailItem.TYPE_SEARCHFOLDER);  changes.remove(MailItem.TYPE_MOUNTPOINT);  changes.remove(MailItem.TYPE_FOLDER);
             }
         }
 
@@ -525,6 +527,7 @@ public class PushChanges {
             // rename the conflicting item out of the way
             Element rename = null;
             switch (conflictType) {
+                case MailItem.TYPE_MOUNTPOINT:
                 case MailItem.TYPE_SEARCHFOLDER:
                 case MailItem.TYPE_FOLDER:  rename = new Element.XMLElement(MailConstants.FOLDER_ACTION_REQUEST);  break;
 
@@ -681,7 +684,15 @@ public class PushChanges {
             else {
                 colorStr = color.toString();
             }
-            int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_FOLDER);
+            int mask = 0;
+            switch (folder.getType()) {
+            case MailItem.TYPE_MOUNTPOINT:
+                mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_MOUNTPOINT);
+                break;
+            case MailItem.TYPE_FOLDER:
+                mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_FOLDER);
+                break;
+            }
             if ((mask & Change.MODIFIED_CONFLICT) != 0) {
                 // this is a new folder; need to push to the server
                 elementName = MailConstants.CREATE_FOLDER_REQUEST;
@@ -709,11 +720,27 @@ public class PushChanges {
         }
 
         try {
-            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_FOLDER, name, parentId);
+            Pair<Integer,Integer> createData = null;
+            switch (folder.getType()) {
+            case MailItem.TYPE_MOUNTPOINT:
+                createData = pushRequest(request, create, id, MailItem.TYPE_MOUNTPOINT, name, parentId);
+                break;
+            case MailItem.TYPE_FOLDER:
+                createData = pushRequest(request, create, id, MailItem.TYPE_FOLDER, name, parentId);
+                break;
+            }
             if (create) {
                 // make sure the old item matches the new item...
-                if (!ombx.renumberItem(sContext, id, MailItem.TYPE_FOLDER, createData.getFirst()))
-                    return true;
+                switch (folder.getType()) {
+                case MailItem.TYPE_MOUNTPOINT:
+                    if (!ombx.renumberItem(sContext, id, MailItem.TYPE_MOUNTPOINT, createData.getFirst()))
+                        return true;
+                    break;
+                case MailItem.TYPE_FOLDER:
+                    if (!ombx.renumberItem(sContext, id, MailItem.TYPE_FOLDER, createData.getFirst()))
+                        return true;
+                    break;
+                }
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
@@ -737,7 +764,14 @@ public class PushChanges {
             if (!url.equals(folder.getUrl()))              mask |= Change.MODIFIED_URL;
 
             // update or clear the change bitmask
-            ombx.setChangeMask(sContext, id, MailItem.TYPE_FOLDER, mask);
+            switch (folder.getType()) {
+            case MailItem.TYPE_MOUNTPOINT:
+                ombx.setChangeMask(sContext, id, MailItem.TYPE_MOUNTPOINT, mask);
+                break;
+            case MailItem.TYPE_FOLDER:
+                ombx.setChangeMask(sContext, id, MailItem.TYPE_FOLDER, mask);
+                break;
+            }
             return (mask == 0);
         }
     }
@@ -883,6 +917,7 @@ public class PushChanges {
         MailItem.Color color;
         boolean create = false;
         Contact cn = null;
+        int mask = 0;
         synchronized (ombx) {
             cn = ombx.getContactById(sContext, id);
             date = cn.getDate();    flags = cn.getFlagBitmask();  tags = cn.getTagBitmask();
@@ -894,7 +929,7 @@ public class PushChanges {
             else {
                 colorStr = color.toString();
             }
-            int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_CONTACT);
+            mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_CONTACT);
             if ((mask & Change.MODIFIED_CONFLICT) != 0) {
                 // this is a new contact; need to push to the server
                 request = new Element.XMLElement(MailConstants.CREATE_CONTACT_REQUEST);
@@ -959,6 +994,12 @@ public class PushChanges {
                 if (!ombx.renumberItem(sContext, id, MailItem.TYPE_CONTACT, createData.getFirst()))
                     return true;
                 id = createData.getFirst();
+            } else if ((mask & Change.MODIFIED_FOLDER) != 0) {
+                Element moveRequest = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+                moveRequest.addElement(MailConstants.E_ACTION)
+                    .addAttribute(MailConstants.A_OPERATION, ItemAction.OP_MOVE).addAttribute(MailConstants.A_ID, id)
+                    .addAttribute(MailConstants.A_FOLDER, folderId);
+                ombx.sendRequest(moveRequest);
             }
         } catch (SoapFaultException sfe) {
             if (!sfe.getCode().equals(MailServiceException.NO_SUCH_CONTACT))
@@ -971,7 +1012,7 @@ public class PushChanges {
         synchronized (ombx) {
             cn = ombx.getContactById(sContext, id);
             // check to see if the contact was changed while we were pushing the update...
-            int mask = 0;
+            mask = 0;
             if (flags != cn.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;
             if (tags != cn.getTagBitmask())            mask |= Change.MODIFIED_TAGS;
             if (folderId != cn.getFolderId())          mask |= Change.MODIFIED_FOLDER;
@@ -1235,6 +1276,12 @@ public class PushChanges {
                 //let it fall through so we clear the dirty bit so we don't try to push it up any more
             } else if (e.getCode().equals(MailServiceException.NO_SUCH_MSG)) {
                 OfflineLog.offline.info("push: remote message " + id + " has been deleted; skipping");
+            } else if (!StringUtil.equal(digest, msg.getDigest())) {
+                //message is still there but the attachment is changed
+                OfflineLog.offline.debug("push: message %d is still there but the attachment is removed", id);
+                //our intention is to just change lastChangeTime, so that the updated content/attachments is pushed
+                ombx.trackChangeModified(msg, Change.UNMODIFIED);
+                return false;
             } else {
                 throw e;
             }

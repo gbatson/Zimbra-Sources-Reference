@@ -38,6 +38,8 @@ ZaController.changeActionsStateMethods["ZaDomainController"] = new Array();
 ZaController.initToolbarMethods["ZaDomainController"] = new Array();
 ZaController.setViewMethods["ZaDomainController"] = new Array();
 ZaController.saveChangeCheckMethods["ZaDomainController"] = new Array();
+ZaController.postChangeMethods["ZaDomainController"] = new Array();
+
 /**
 *	@method show
 *	@param entry - isntance of ZaDomain class
@@ -208,6 +210,8 @@ function () {
     var catchAllChanged = false ;
 	var skinChanged = false;
 	
+	this._currentObject["mods"] = mods;
+
     if (!(AjxUtil.isEmpty(tmpObj[ZaAccount.A_zimbraMailCatchAllAddress]) && AjxUtil.isEmpty(this._currentObject[ZaAccount.A_zimbraMailCatchAllAddress])) 
     	&& (tmpObj[ZaAccount.A_zimbraMailCatchAllAddress] != this._currentObject[ZaAccount.A_zimbraMailCatchAllAddress])) {
          catchAllChanged = true ;
@@ -347,6 +351,9 @@ function () {
 			if(haveSmth) {
 				try {	
 					this._currentObject.modify(mods, tmpObj);
+					if(mods["zimbraSSLCertificate"] || mods["zimbraSSLPrivateKey"]) {
+						ZaApp.getInstance().getCurrentController().popupMsgDialog(ZaMsg.MSG_DOMAIN_CERT_UPLOADED);
+					}
 				} catch (ex) {
 					this._handleException(ex, "ZaAccountViewController.prototype._saveChanges", null, false);	
 					return false;
@@ -735,4 +742,15 @@ zimbraAdminTitle);
                         return false;
 	}
 	return true;
+}
+
+ZaDomainController.prototype.handleDomainChange =
+function (ev) {
+	var methods = ZaController.postChangeMethods["ZaDomainController"];
+	for (var i in methods) {
+		var method = methods[i];
+		if (typeof(method) == "function") {
+			method.call(this, ev);
+		}
+	}
 }

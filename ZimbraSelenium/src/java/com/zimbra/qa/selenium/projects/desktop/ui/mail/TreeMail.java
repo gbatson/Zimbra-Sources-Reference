@@ -34,8 +34,10 @@ import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.desktop.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.desktop.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.desktop.ui.ContextMenu;
 import com.zimbra.qa.selenium.projects.desktop.ui.DialogMove;
@@ -52,11 +54,15 @@ import com.zimbra.qa.selenium.projects.desktop.ui.DialogWarning;
  *
  */
 public class TreeMail extends AbsTree {
-	public final static String stringToReplace = "<TREE_ITEM_NAME>";
+   public final static String accountNameToReplace = "<ACCOUNT_NAME>";
+	public final static String stringToReplace = "<TREE_ITEM>";
+
 	public static class Locators {
 		// For desktop, Bug 56273:
 		public final static String zTreeItems = new StringBuffer("//td[text()='").
-		append(stringToReplace).append("']").toString();
+		      append(stringToReplace).append("']").toString();
+		public final static String zTreeFolders = new StringBuffer("css=div[id^='zti__").append(accountNameToReplace).
+            append(":main_Mail__").append(stringToReplace).append("']").toString();
 
 		public static final String createNewFolderButton = "css=div[class^='ImgNewFolder ZWidget']";
 		public static final String ztih__main_Mail__ZIMLET_ID = "ztih__main_Mail__ZIMLET";
@@ -68,8 +74,9 @@ public class TreeMail extends AbsTree {
 
 		// For mail folders tree
 		public static final String treeExpandCollapseButton = "css=div[id='zovc__main_Mail'] div[id^='DWT'][class='DwtTreeItem'] [class^='ImgNode']";
-		public static final String multipleTrees = "css=div[id='zovc__main_Mail'] div[id^='DWT'][class^='DwtComposite ZmOverview']:nth-of-type(<NUM>)";
+		public static final String multipleTrees = "css=div[id='zovc__main_Mail'] div[id^='zovc__main_Mail'][id$='__SECTION'][class^='DwtComposite ZmOverview']:nth-of-type(<NUM>)";
 		public static final String multipleTreesExpandCollapseButton = multipleTrees + " div[id^='DWT'] [class^='ImgNode']";
+		public static final String multipleLocalFolderTreesExpandCollapseButton = multipleTrees + " div[class='DwtTreeItemLevel1ChildDiv'] [class^='ImgNode']";
 
 		public static final String zDeleteTreeMenuItem = "//div[contains(@class,'ZMenuItem')]//tbody//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgDelete')]";
 		public static final String zRenameTreeMenuItem = "//div[contains(@class,'ZMenuItem')]//tbody//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgRename')]";
@@ -89,8 +96,7 @@ public class TreeMail extends AbsTree {
 		AbsPage page = null;
 		String actionLocator = null;
 		String optionLocator = null;
-		FolderItem f= (FolderItem) folder;
-		tracer.trace("processing " + f.getName());
+		tracer.trace("processing " + folder.getName());
 
 		if (action == Action.A_LEFTCLICK) {
 
@@ -98,8 +104,7 @@ public class TreeMail extends AbsTree {
 
 		} else if (action == Action.A_RIGHTCLICK) {
 
-		   actionLocator = "css=[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
-		   ":main_Mail__'] td:contains('" + f.getName() + "')";
+		   actionLocator = zGetTreeFolderLocator(folder);
 
 			GeneralUtility.waitForElementPresent(this, actionLocator);
 			this.zRightClick(actionLocator);
@@ -421,12 +426,17 @@ public class TreeMail extends AbsTree {
 	   return isCollapsed;
 	}
 
-	public boolean zExpandAll() throws HarnessException {
+	/**
+	 * Expand all the folders tree
+	 * @return
+	 * @throws HarnessException
+	 */
+	public void zExpandAll() throws HarnessException {
 	     // Browse all inventory in case of multiple accounts situation
       int i = 1;
       String locator = null;
       String expandCollapseLocator = null;
-      boolean isCollapsed = true;
+      String expandCollapseLocalFoldersLocator = null;
       for (i = 1; i < 100; i++) {
          locator = Locators.multipleTrees.replace("<NUM>",
                Integer.toString(i));
@@ -437,22 +447,33 @@ public class TreeMail extends AbsTree {
                   Integer.toString(i));
             expandCollapseLocator = expandCollapseLocator.replace(
                   "ImgNode", "ImgNodeCollapsed");
-            if (sIsElementPresent(expandCollapseLocator)) {
-               zClickAt(Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
-                     Integer.toString(i)), "0,0");
+            expandCollapseLocalFoldersLocator = Locators.multipleLocalFolderTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocalFoldersLocator = expandCollapseLocalFoldersLocator.replace(
+                  "ImgNode", "ImgNodeCollapsed");
+            while (sIsElementPresent(expandCollapseLocator)) {
+               sMouseDownAt(expandCollapseLocator, "0,0");
+            }
+
+            while (sIsElementPresent(expandCollapseLocalFoldersLocator)) {
+               sMouseDownAt(expandCollapseLocalFoldersLocator, "0,0");
             }
          }
       }
 
-      return isCollapsed;
 	}
 
-	public boolean zCollapseAll() throws HarnessException {
+	/**
+	 * Collapse all the folders tree
+	 * @return
+	 * @throws HarnessException
+	 */
+	public void zCollapseAll() throws HarnessException {
       // Browse all inventory in case of multiple accounts situation
 	   int i = 1;
 	   String locator = null;
 	   String expandCollapseLocator = null;
-	   boolean isCollapsed = true;
+	   String expandCollapseLocalFoldersLocator = null;
 	   for (i = 1; i < 100; i++) {
 	      locator = Locators.multipleTrees.replace("<NUM>",
 	            Integer.toString(i));
@@ -463,14 +484,21 @@ public class TreeMail extends AbsTree {
 	               Integer.toString(i));
 	         expandCollapseLocator = expandCollapseLocator.replace(
 	               "ImgNode", "ImgNodeExpanded");
-	         if (sIsElementPresent(expandCollapseLocator)) {
-	            zClickAt(Locators.multipleTreesExpandCollapseButton.replace("<NUM>",
-	                  Integer.toString(i)), "0,0");
-	         }
+	         expandCollapseLocalFoldersLocator = Locators.multipleLocalFolderTreesExpandCollapseButton.replace("<NUM>",
+                  Integer.toString(i));
+            expandCollapseLocalFoldersLocator = expandCollapseLocalFoldersLocator.replace(
+                  "ImgNode", "ImgNodeExpanded");
+
+            while (sIsElementPresent(expandCollapseLocator)) {
+               sMouseDownAt(expandCollapseLocator, "0,0");
+            }
+
+            while (sIsElementPresent(expandCollapseLocalFoldersLocator)) {
+               sMouseDownAt(expandCollapseLocalFoldersLocator, "0,0");
+            }
 	      }
 	   }
 
-	   return isCollapsed;
 	}
 
 	protected AbsPage zTreeItem(Action action, SavedSearchFolderItem savedSearch) throws HarnessException {
@@ -957,10 +985,40 @@ public class TreeMail extends AbsTree {
 		boolean loaded = this.sIsElementPresent(locator);
 		if ( !loaded )
 			return (false);
-
 		return (loaded);
 
 	}
 
+   public String zGetTreeFolderLocator(FolderItem folder) throws HarnessException {
+      return zGetTreeFolderLocator(folder, null);
+   }
 
+   public String zGetTreeFolderLocator(FolderItem folder, String accountName)
+   throws HarnessException {
+      String treeItemLocator = null;
+
+      if (folder.getName().equals("USER_ROOT")) {
+         String folderName = null;
+         if (folder.isDesktopClientLocalFolder()) {
+            folderName = "Local Folders";
+         } else {
+            folderName = AjaxCommonTest.defaultAccountName;
+         }
+         treeItemLocator = Locators.zTreeItems.replace(TreeMail.stringToReplace,
+               folderName);
+      } else {
+         if (accountName == null) {
+            if (folder.isDesktopClientLocalFolder()) {
+               accountName = ZimbraAccount.clientAccountName;
+            } else {
+               accountName = ((AppAjaxClient)MyApplication).zGetActiveAccount().EmailAddress;
+            }
+         }
+
+         treeItemLocator = Locators.zTreeFolders.replace(accountNameToReplace, accountName);
+         treeItemLocator = treeItemLocator.replace(stringToReplace, folder.getId());
+      }
+
+      return treeItemLocator;
+   }
 }

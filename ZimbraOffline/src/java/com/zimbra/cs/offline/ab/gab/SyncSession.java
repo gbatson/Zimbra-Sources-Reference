@@ -130,6 +130,7 @@ public class SyncSession {
         if(myContactsUrl == null) {
             myContactsUrl = state.getlastContactURL();
         }
+        LOG.debug("System group 'My Contacts' url = " + myContactsUrl);
         int seq = state.getLastModSequence();
         synchronized (mbox) {
             // Get local changes since last sync (none if resetting)
@@ -137,8 +138,8 @@ public class SyncSession {
                 new HashMap<Integer, Change>() : localData.getContactChanges(seq);
             remoteContacts = new HashMap<Integer, ContactEntry>(contacts.size());
             // Process any remote contact changes
-            if (!contacts.isEmpty()) {     
-                processRemoteContacts(contacts);
+            if (!contacts.isEmpty()) {
+                processRemoteContacts(contacts, groups);
             }
             // Process local changes and determine changes to push
             processLocalContactChanges(localChanges.values());
@@ -152,6 +153,7 @@ public class SyncSession {
             if (reset) {
                 localData.deleteMissingContacts(getRemoteIds(contacts));
             }
+            state.setLastContactURL(myContactsUrl);
             state.setLastModSequence(mbox.getLastChangeID());
         }
         localData.saveState(state);
@@ -203,11 +205,16 @@ public class SyncSession {
         Stats stats = new Stats();
         // Get all existing contact groups
         Map<String, ContactGroup> groups = new HashMap<String, ContactGroup>();
+        Map<String, ContactGroup> delgroups = new HashMap<String, ContactGroup>();
         for (ContactGroupEntry entry : entries) {
+            boolean deleted = entry.getDeleted() != null;
             // Ignore system groups...
-            if (entry.getSystemGroup() == null) {
+            if (entry.getSystemGroup() == null && !deleted) {
                 ContactGroup group = new ContactGroup(getName(entry));
                 groups.put(entry.getId(), group);
+            } else if (entry.getSystemGroup() == null && deleted) {
+                ContactGroup group = new ContactGroup(getName(entry));
+                delgroups.put(entry.getId(), group);
             }
         }
         // Get all contact mappings and update contact group dlist information
@@ -221,7 +228,12 @@ public class SyncSession {
                         if (!isDeleted(gmi)) {
                             ContactGroup group = groups.get(gmi.getHref());
                             if (group != null) {
-                                group.addEmail(email.getAddress());
+                                Contact localContact = localData.getContact(dsi.itemId);
+                                if(!localContact.getFileAsString().isEmpty()) {
+                                    group.addEmail("\""+localContact.getFileAsString()+"\" <"+email.getAddress()+">");
+                                } else {
+                                    group.addEmail(email.getAddress());
+                                }
                             }
                         }
                     }
@@ -246,7 +258,7 @@ public class SyncSession {
     private static boolean isDeleted(GroupMembershipInfo gmi) {
         return Boolean.TRUE.equals(gmi.getDeleted());
     }
-    
+
     private Email getPrimaryEmail(ContactEntry contact) {
         if (contact.hasEmailAddresses()) {
             for (Email email : contact.getEmailAddresses()) {
@@ -259,7 +271,7 @@ public class SyncSession {
         }
         return null;
     }
-    
+
     private void updateGroup(String remoteId, ContactGroup group, Stats stats)
         throws ServiceException {
         DataSourceItem dsi = localData.getReverseMapping(remoteId);
@@ -269,7 +281,9 @@ public class SyncSession {
                 stats.deleted++;
             } else {
                 ContactGroup oldGroup = localData.getContactGroup(dsi.itemId);
+                Set<String> tempStore = group.adjustEmail();
                 if (!group.equals(oldGroup)) {
+                    group.resetEmail(tempStore);
                     localData.modifyContactGroup(dsi.itemId, group);
                     stats.updated++;
                 }
@@ -307,17 +321,17 @@ public class SyncSession {
         throws ServiceException, IOException, com.google.gdata.util.ServiceException {
         boolean deleted = entry.getDeleted() != null;
         if (deleted) return null;
-        DataSourceItem dsi = localData.getReverseMapping(entry.getId());
+        /*DataSourceItem dsi = localData.getReverseMapping(entry.getId());
         if (dsi.itemId > 0) {
             // If existing contact then only retrieve photo if edit url has
             // changed (otherwise contact was just pushed).
             String url = getEditUrl(getEntry(dsi, ContactEntry.class));
             if (getEditUrl(entry).equals(url)) return null;
-        }
+        }*/
         return service.getPhoto(entry);
     }
-    
-    private void processRemoteContacts(List<ContactEntry> entries)
+
+    private void processRemoteContacts(List<ContactEntry> entries, List<ContactGroupEntry> groups)
         throws ServiceException, IOException {
         LOG.debug("Found %d remote contact change(s)", entries.size());
         remoteContacts = new HashMap<Integer, ContactEntry>(entries.size());
@@ -326,6 +340,7 @@ public class SyncSession {
             DataSourceItem dsi = localData.getReverseMapping(entry.getId());
             try {
                 processRemoteContact(entry, dsi, stats);
+                processContactGroups(entry, groups);
             } catch (ServiceException e) {
                 localData.syncContactFailed(e, dsi.itemId, service.pp(entry));
             }
@@ -377,6 +392,24 @@ public class SyncSession {
         }
     }
 
+    private void processContactGroups(ContactEntry entry, List<ContactGroupEntry> groups)
+    throws ServiceException, MalformedURLException, IOException {
+        if (entry.hasGroupMembershipInfos()) {
+            for (GroupMembershipInfo gmi : entry.getGroupMembershipInfos()) {
+                DataSourceItem dsi = localData.getReverseMapping(gmi.getHref());
+                //add groups that have a local mapping and new groups
+                if (dsi.itemId > 0 || !myContactsUrl.equals(gmi.getHref())) {
+                    for (ContactGroupEntry group : groups) {
+                        if (group.getId().equals(gmi.getHref())) {
+                            return;
+                        }
+                    }
+                    groups.add(service.getGroupFeed(new URL(gmi.getHref())));
+                }
+            }
+        }
+    }
+
     private boolean isChanged(DataSourceItem dsi, ContactEntry entry)
         throws ServiceException {
         ContactEntry oldEntry = getEntry(dsi, ContactEntry.class);
@@ -397,7 +430,7 @@ public class SyncSession {
     private static String getEditUrl(BaseEntry entry) {
         return entry.getEditLink().getHref();
     }
-    
+
     private boolean isGroup(int itemId) throws ServiceException {
         try {
             Contact contact = localData.getContact(itemId);
@@ -438,7 +471,7 @@ public class SyncSession {
             }
         }
     }
-    
+
     private void processLocalContactChange(Change change, List<SyncRequest> reqs)
         throws ServiceException {
         int id = change.getItemId();
@@ -487,7 +520,7 @@ public class SyncSession {
                     req = SyncRequest.update(this, id, entry);
                 }
                 Attachment photo = Ab.getPhoto(contact);
-                if (photo != null) {                                 
+                if (photo != null) {
                     LOG.debug("Photo added for contact id " + contact.getId());
                     req.setPhoto(Ab.getContent(contact, photo), photo.getContentType());
                 }
@@ -605,7 +638,7 @@ public class SyncSession {
         }
         LOG.debug("Contact changes pushed: " + stats);
     }
-    
+
     private boolean pushChange(SyncRequest req, Stats stats)
         throws ServiceException, IOException {
         int itemId = req.getItemId();
@@ -634,7 +667,7 @@ public class SyncSession {
         return entry != null ?
             entry : getEntry(localData.getMapping(itemId), ContactEntry.class);
     }
-    
+
     private <T extends BaseEntry> T getEntry(DataSourceItem dsi, Class<T> entryClass)
         throws ServiceException {
         // LOG.debug("Loading contact data for item id = %d", dsi.itemId);
@@ -650,7 +683,7 @@ public class SyncSession {
         return LOG.isDebugEnabled() &&
                (FORCE_TRACE || localData.getDataSource().isDebugTraceEnabled());
     }
-    
+
     public GabService getGabService() { return service; }
     public LocalData getLocalData() { return localData; }
 }

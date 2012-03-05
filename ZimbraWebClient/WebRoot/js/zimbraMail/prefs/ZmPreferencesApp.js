@@ -262,7 +262,8 @@ function() {
 				ZmSetting.OFFLINE_IS_MAILTO_HANDLER,
 				ZmSetting.OFFLINE_NOTEBOOK_SYNC_ENABLED, // offline
 				ZmSetting.SHORT_ADDRESS,
-				ZmSetting.USE_ADDR_BUBBLES
+				ZmSetting.USE_ADDR_BUBBLES,
+                ZmSetting.OFFLINE_UPDATE_NOTIFY //offline
 			]
 		},
 		COMPOSING: {
@@ -421,30 +422,26 @@ function() {
 		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED]
 	});
 
-	var keys = [ "fontFamilyIntl", "fontFamilyBase" ];
-	var i, j, key, value, name;
-	var names = [];
-	var styles = [];
-	for (j = 0; j < keys.length; j++) {
-		for (i = 1; value = AjxMsg[keys[j]+i+".css"]; i++) {
-			if (value.match(/^#+$/)) break;
-			value = value.replace(/,\s/g,",");
-			name = AjxMsg[keys[j]+i+".display"];
-			names.push(name);
-			styles.push(value);
-		}
+	var styles=[],names=[];
+	for (var key in DwtHtmlEditor.FONT_FAMILY) {
+		var obj = DwtHtmlEditor.FONT_FAMILY[key];
+		styles.push(obj.value);
+		names.push(obj.name);
 	}
 
 	ZmPref.registerPref("COMPOSE_INIT_FONT_FAMILY", {
 		displayName:		ZmMsg.defaultFontSettings,
 		displayContainer:	ZmPref.TYPE_SELECT,
 		displayOptions: 	names,
-		options: 		styles,
-		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED]
-	});
-
-    ZmPref.registerPref("QUICK_COMMAND_LIST", {
-		displayContainer:	ZmPref.TYPE_CUSTOM
+		options: 			styles,
+		precondition:		[ZmSetting.HTML_COMPOSE_ENABLED, ZmSetting.NOTEBOOK_ENABLED],
+		approximateFunction: function(id) {
+			// Choose the style that comes closest, or the first if none is found
+			if (AjxUtil.indexOf(styles, id) != -1) {
+				return id;
+			}
+			return DwtHtmlEditor._normalizeFontId(id);
+		}
 	});
 
 	// Yuck: Should add functionality in Pref. to add prefix/postfix to all options. Meanwhile...
@@ -654,6 +651,13 @@ function() {
             displayName:		ZmMsg.offlineBackUpKeep,
             displayContainer:	ZmPref.TYPE_SELECT,
             displayOptions:		["1", "2", "3", "4", "5"]
+        });
+
+        ZmPref.registerPref("OFFLINE_UPDATE_NOTIFY", {
+            displayName:		ZmMsg.offlineUpdateNotify,
+		    displayContainer:	ZmPref.TYPE_SELECT,
+            displayOptions:		[ZmMsg.offlineUpdateRelease, ZmMsg.offlineUpdateBeta],
+            options:    		["release", "beta"]
         });
 
 	}

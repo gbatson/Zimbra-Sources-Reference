@@ -24,6 +24,11 @@
       </New>
     </Set>
 
+     <Call class="java.lang.System" name="setProperty">
+       <Arg> org.mortbay.jetty.Request.maxFormContentSize</Arg>
+       <Arg> 4000 </Arg>
+    </Call>
+
     <Call class="com.zimbra.common.jetty.JettyMonitor" name="setThreadPool">
       <Arg><Ref id="pool"/></Arg>
     </Call>
@@ -61,6 +66,7 @@
           <Set name="useDirectBuffers">false</Set>
           <Set name="maxIdleTime">30000</Set>
           <Set name="lowResourcesMaxIdleTime">1000</Set>
+          <Set name="responseBufferSize">16384</Set>
           <Set name="Acceptors">2</Set>
           <Set name="keystore"><SystemProperty name="jetty.home" default="."/>/etc/keystore</Set>
           <Set name="password">zimbra</Set>
@@ -91,10 +97,20 @@
           <Set name="useDirectBuffers">false</Set>
           <Set name="maxIdleTime">30000</Set>
           <Set name="lowResourcesMaxIdleTime">1000</Set>
+          <Set name="responseBufferSize">16384</Set>
           <Set name="Acceptors">2</Set>
           <Set name="keystore"><SystemProperty name="jetty.home" default="."/>/etc/keystore</Set>
           <Set name="password">zimbra</Set>
           <Set name="KeyPassword">zimbra</Set>
+          <!-- 
+               uncomment following two lines when testing providing CAs from the trust store.
+               see https://bugzilla.zimbra.com/show_bug.cgi?id=64689#c4 and 
+               https://bugzilla.zimbra.com/show_bug.cgi?id=64689#c8
+          -->  
+          <!--    
+          <Set name="Truststore">/System/Library/Frameworks/JavaVM.framework/Versions/CurrentJDK/Home/lib/security/cacerts</Set>
+          <Set name="TrustPassword">changeit</Set>
+          -->
           <Set name="NeedClientAuth">false</Set>
           <Set name="WantClientAuth">true</Set>
           <Set name="ExcludeCipherSuites">
@@ -120,6 +136,7 @@
           <Set name="useDirectBuffers">false</Set>
           <Set name="maxIdleTime">0</Set>
           <Set name="lowResourcesMaxIdleTime">0</Set>
+          <Set name="responseBufferSize">16384</Set>
           <Set name="Acceptors">2</Set>
           <Set name="keystore"><SystemProperty name="jetty.home" default="."/>/etc/keystore</Set>
           <Set name="password">zimbra</Set>

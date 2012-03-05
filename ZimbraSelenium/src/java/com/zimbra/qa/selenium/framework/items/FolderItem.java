@@ -37,6 +37,16 @@ import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST
  */
 public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
+	private boolean _isDesktopClientFolder = false;
+	private boolean _isDesktopLocalFolder = false;
+
+	public boolean isDesktopClientFolder() {
+      return _isDesktopClientFolder;
+   }
+
+	public boolean isDesktopClientLocalFolder() {
+      return _isDesktopLocalFolder;
+   }
 
 	/**
 	 * Logical objects that represent the default system folders
@@ -58,6 +68,7 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		public static final SystemFolder Trash = new SystemFolder("Trash");
 				
 		private String name;
+
 		private SystemFolder(String foldername) {
 			name = foldername;
 		}
@@ -65,7 +76,7 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		public String getName() {
 			return name;
 		}
-		
+
 		@Override
 		public int hashCode() {
 			final int prime = 31;
@@ -168,16 +179,21 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
       GeneralUtility.waitFor(null,
             account, false, "soapSelectValue", params, WAIT_FOR_OPERAND.EQ, null, 30000, 1000);
    }
-	
+
 	/**
 	 * Import a FolderItem specified in a GetFolderResponse
 	 * <br>
 	 * The GetFolderResponse should only contain a single <folder/> element
 	 * @param response
+	 * @param isDesktopFolder Is this imported from desktop client through SOAP?
+	 * @param isDesktopLocalFolder Is this desktop client's local folder?
 	 * @return
 	 * @throws HarnessException
 	 */
-	public static FolderItem importFromSOAP(Element response) throws HarnessException {
+	public static FolderItem importFromSOAP(Element response,
+	      boolean isDesktopFolder,
+	      boolean isDesktopLocalFolder)
+	throws HarnessException {
 		if ( response == null )
 			throw new HarnessException("Element cannot be null");
 
@@ -205,6 +221,8 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 			item.setName(fElement.getAttribute("name"));
 			item.setParentId(fElement.getAttribute("l"));
 
+			item._isDesktopClientFolder = isDesktopFolder;
+			item._isDesktopLocalFolder = isDesktopLocalFolder;
 			return (item);
 			
 		} catch (NumberFormatException e) {
@@ -214,6 +232,11 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		} finally {
 			if ( item != null )	logger.info(item.prettyPrint());
 		}
+	}
+
+	public static FolderItem importFromSOAP(Element response)
+   throws HarnessException {
+	   return importFromSOAP(response, false, false);
 	}
 
 	/**
@@ -280,9 +303,34 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 				"</GetFolderRequest>",
 				destType, accountName);
 		Element response = account.soapSelectNode("//mail:GetFolderResponse", 1);
-				
-		return (importFromSOAP(response));
+
+		return (importFromSOAP(response,
+		      destType == SOAP_DESTINATION_HOST_TYPE.CLIENT,
+		      accountName!=null && accountName.equals(ZimbraAccount.clientAccountName)));
 	}
+
+	/**
+	 * Get the parent FolderItem
+	 * @param account 
+	 * @param destType Destination Host Type: CLIENT or SERVER
+	 * @param accountName Account Name to be added in SOAP context while importing
+	 * @return parent FolderItem
+	 * @throws HarnessException
+	 */
+	public FolderItem getParentFolder(ZimbraAccount account,
+	      SOAP_DESTINATION_HOST_TYPE destType, String accountName) throws HarnessException {
+	   // Get just the folder specified
+      account.soapSend(
+            "<GetFolderRequest xmlns='urn:zimbraMail'>" +
+               "<folder l='" + super.getParentId() + "'/>" +
+            "</GetFolderRequest>",
+            destType, accountName);
+      Element response = account.soapSelectNode("//mail:GetFolderResponse", 1);
+
+      return (importFromSOAP(response,
+            destType == SOAP_DESTINATION_HOST_TYPE.CLIENT,
+            (accountName !=null && accountName.equals(ZimbraAccount.clientAccountName))));
+	 }
 
 	@Override
 	public String prettyPrint() {

@@ -121,6 +121,8 @@ public class ExecuteHarnessMain {
 	protected String testoutputfoldername = null;
 	public void setTestOutputFolderName(String path) {
 		
+		System.setProperty("zimbraSelenium.output", path);
+		
 		// The Code Coverage report should exist at the root
 		File coverage = new File(path + "/coverage");
 		if ( !coverage.exists() )	coverage.mkdirs();
@@ -129,6 +131,7 @@ public class ExecuteHarnessMain {
 		String browser = ZimbraSeleniumProperties.getStringProperty(
 				ZimbraSeleniumProperties.getLocalHost() + ".browser",
 				ZimbraSeleniumProperties.getStringProperty("browser"));
+		
 		if (browser.charAt(0) == '*') {
 			browser = browser.substring(1);
 			if ((browser.indexOf(" ")) > 0) {
@@ -140,6 +143,11 @@ public class ExecuteHarnessMain {
 				browser = str;
 			}
 		}
+		
+		// Save the browser value (for logging)
+		ZimbraSeleniumProperties.setStringProperty("CalculatedBrowser", browser);
+		
+
 		// Append the app, browser, locale
 		path += "/"
 			+ ZimbraSeleniumProperties.getAppType()
@@ -375,14 +383,9 @@ public class ExecuteHarnessMain {
 		Date finish;
 
 		StringBuilder result = new StringBuilder();
-		FileAppender appender = new FileAppender(new PatternLayout("%-4r %-5p %c %x - %m%n"), testoutputfoldername + "/debug.txt", false);
-		PerfMetrics.setOutputFolder(testoutputfoldername);
 
 		try {
 
-			// Always add a file appender for all debugging
-			Logger.getRootLogger().addAppender(appender);
-			
 			// Each method handles different subsystem ...
 			// executeCodeCoverage() ... if configured, instrument/uninstrument server code
 			// executeSelenium() ... if configured, start/stop seleneium
@@ -391,13 +394,13 @@ public class ExecuteHarnessMain {
 			result.append(response).append('\n');
 			
 		} finally {
-			Logger.getRootLogger().removeAppender(appender);
 			finish = new Date();
 		}
 		
 		// calculate how long the tests took
 		long duration = finish.getTime() - start.getTime();
 		result.append("Duration: ").append(duration / 1000).append(" seconds\n");
+		result.append("Browser: ").append(ZimbraSeleniumProperties.getStringProperty("CalculatedBrowser", "unknown")).append('\n');
 		
 		return (result.toString());
 
@@ -804,13 +807,6 @@ public class ExecuteHarnessMain {
 	        CommandLineParser parser = new GnuParser();
 	        CommandLine cmd = parser.parse(options, arguments);
 	        
-	        // Processing log4j must come first so debugging can happen
-	        if ( cmd.hasOption('l') ) {
-	        	PropertyConfigurator.configure(cmd.getOptionValue('l'));
-	        } else {
-	        	BasicConfigurator.configure();
-	        }
-	        	        
 	        if ( cmd.hasOption('h') ) {
 	    		HelpFormatter formatter = new HelpFormatter();
 	    		formatter.printHelp("ExecuteTests", options);
@@ -877,6 +873,13 @@ public class ExecuteHarnessMain {
 	        }
 	        
 	        	
+	        // Processing log4j must come first so debugging can happen
+	        if ( cmd.hasOption('l') ) {
+	        	PropertyConfigurator.configure(cmd.getOptionValue('l'));
+	        } else {
+	        	BasicConfigurator.configure();
+	        }
+	        	        
 	        if ( cmd.hasOption('j') ) {
 	        	this.jarfilename = cmd.getOptionValue('j'); 
 	        }

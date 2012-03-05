@@ -19,14 +19,16 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.HeaderConstants;
 import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.ZimbraCookie;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.ZimbraAuthToken;
-import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.soap.SoapServlet;
 
 public class ZimbraAuthProvider extends AuthProvider{
@@ -39,13 +41,8 @@ public class ZimbraAuthProvider extends AuthProvider{
         super(name);
     }
 
-    // AP-TODO-6: dup in ZAuthToken, move to common?
-    public static String cookieName(boolean isAdminReq) {
-        return isAdminReq? ZimbraServlet.COOKIE_ZM_ADMIN_AUTH_TOKEN : ZimbraServlet.COOKIE_ZM_AUTH_TOKEN;
-    }
-    
-    protected AuthToken authToken(HttpServletRequest req, boolean isAdminReq) throws AuthProviderException, AuthTokenException {
-        String cookieName = cookieName(isAdminReq);
+    private String getEncodedAuthTokenFromCookie(HttpServletRequest req, boolean isAdminReq) {
+        String cookieName = ZimbraCookie.authTokenCookieName(isAdminReq);
         String encodedAuthToken = null;
         javax.servlet.http.Cookie cookies[] =  req.getCookies();
         if (cookies != null) {
@@ -56,16 +53,38 @@ public class ZimbraAuthProvider extends AuthProvider{
                 }
             }
         }
-        
+        return encodedAuthToken;
+    }
+    
+    @Override
+    protected AuthToken authToken(HttpServletRequest req, boolean isAdminReq) 
+    throws AuthProviderException, AuthTokenException {
+        String encodedAuthToken = getEncodedAuthTokenFromCookie(req, isAdminReq);
         return genAuthToken(encodedAuthToken);
     }
 
-    protected AuthToken authToken(Element soapCtxt, Map engineCtxt) throws AuthProviderException, AuthTokenException  {
-        String encodedAuthToken = (soapCtxt == null ? null : soapCtxt.getAttribute(HeaderConstants.E_AUTH_TOKEN, null));
+    @Override
+    protected AuthToken authToken(Element soapCtxt, Map engineCtxt) 
+    throws AuthProviderException, AuthTokenException  {
+        String encodedAuthToken = soapCtxt == null ? null : 
+            soapCtxt.getAttribute(HeaderConstants.E_AUTH_TOKEN, null);
         
-        // check for auth token in engine context if not in header  
-        if (encodedAuthToken == null)
+        // check for auth token in engine context if not in soap header  
+        if (encodedAuthToken == null) {
             encodedAuthToken = (String) engineCtxt.get(SoapServlet.ZIMBRA_AUTH_TOKEN);
+        }
+        
+        // if still not found, see if it is in the servlet request
+        if (encodedAuthToken == null) {
+            HttpServletRequest req = (HttpServletRequest) engineCtxt.get(SoapServlet.SERVLET_REQUEST);
+            if (req != null) {
+                Boolean isAdminReq = (Boolean) engineCtxt.get(SoapServlet.IS_ADMIN_REQUEST);
+                if (isAdminReq != null) {
+                    // get auth token from cookie only if we can determine if this is an admin request
+                    encodedAuthToken = getEncodedAuthTokenFromCookie(req, isAdminReq);
+                }
+            }
+        }
         
         return genAuthToken(encodedAuthToken);
     }
@@ -75,8 +94,9 @@ public class ZimbraAuthProvider extends AuthProvider{
     }
     
     protected AuthToken genAuthToken(String encodedAuthToken) throws AuthProviderException, AuthTokenException {
-        if (StringUtil.isNullOrEmpty(encodedAuthToken))
+        if (StringUtil.isNullOrEmpty(encodedAuthToken)) {
             throw AuthProviderException.NO_AUTH_DATA();
+        }
         
         return ZimbraAuthToken.getAuthToken(encodedAuthToken);
     }

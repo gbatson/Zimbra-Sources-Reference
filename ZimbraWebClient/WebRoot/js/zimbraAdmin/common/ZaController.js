@@ -89,9 +89,11 @@ ZaController.changeActionsStateMethods = new Object();
 
 ZaController.saveChangeCheckMethods = new Object();
 
+ZaController.postChangeMethods = new Object();
+
 ZaController.helpURL = location.pathname + ZaUtil.HELP_URL + "administration_console_help.htm?locid="+AjxEnv.DEFAULT_LOCALE;
 // Public methods
-ZaController.prototype.toString = 
+ZaController.prototype.toString =
 function() {
 	return "ZaController";
 }
@@ -354,10 +356,12 @@ function(ex, method, params, restartOnError, obj) {
 	{
 		try {
 			if (ZaApp.getInstance() != null && (ex.code == ZmCsfeException.SVC_AUTH_EXPIRED ||
-							    ex.code == ZmCsfeException.AUTH_TOKEN_CHANGED
+							    ex.code == ZmCsfeException.AUTH_TOKEN_CHANGED ||
+								ex.code == ZmCsfeException.NO_AUTH_TOKEN
 							   )) 
 			{
-				ZmCsfeCommand._curAuthToken = null;
+				// Must clear Cookie in browser
+				ZmCsfeCommand.setAuthToken(null);
 
 				var dlgs = ZaApp.getInstance().dialogs;
 				for (var dlg in dlgs) {
@@ -366,7 +370,13 @@ function(ex, method, params, restartOnError, obj) {
 				this._execFrame = {obj: obj, func: method, args: params, restartOnError: restartOnError};
 				this._loginDialog.registerCallback(this.loginCallback, this);
 				this._loginDialog.setError(ZaMsg.ERROR_SESSION_EXPIRED);
-//				this._loginDialog.disableUnameField();
+				/*
+ 				 * Sometimes, users will clear cookie manually, that will cause security issue. see: bug 67427
+ 				 * But in the process of login, we use this exception to popup login dialog if user doesn't 
+ 				 * login. We shouldn't disable the username field in the first soap request if an exception is thrown.
+ 				 */
+				if (!(ZaZimbraAdmin.isFirstRequest &&  ex.code == ZmCsfeException.NO_AUTH_TOKEN))
+					this._loginDialog.disableUnameField();
 				this._loginDialog.clearPassword();
 			} else {
 				this._loginDialog.setError(null);

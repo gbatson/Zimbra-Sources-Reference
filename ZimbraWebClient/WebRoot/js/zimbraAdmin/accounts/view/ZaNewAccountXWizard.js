@@ -985,7 +985,7 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 				}
 			);
 		};
-                if(ZAWizTopGrouper_XFormItem.isGroupVisible(entry,[ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, ZaAccount.A_zimbraFeatureSMIMEEnabled],[])) {
+                if(ZAWizTopGrouper_XFormItem.isGroupVisible(entry,[ZaAccount.A_zimbraFeatureSMIMEEnabled],[])) {
                         featuresCase.items.push(
                                 {type:_ZAWIZ_TOP_GROUPER_, label:ZaMsg.NAD_zimbraSMIMEFeature, id:"account_wiz_features_smime",
                                         colSizes:["auto"],numCols:1,                                        
@@ -994,13 +994,7 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
                                                 resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
                                                 msgName:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,
                                                 checkBoxLabel:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,
-                                                trueValue:"TRUE", falseValue:"FALSE"},
-
-                                                {ref:ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, type:_SUPER_WIZ_CHECKBOX_,
- 						resetToSuperLabel:ZaMsg.NAD_ResetToCOS, 
-						msgName:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled, 
-						checkBoxLabel:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled,  
-						trueValue:"TRUE", falseValue:"FALSE"}
+                                                trueValue:"TRUE", falseValue:"FALSE"}
                                         ]
                                 }
                         );
@@ -1128,17 +1122,19 @@ ZaNewAccountXWizard.myXFormModifier = function(xFormObject, entry) {
 						{type:_ZAWIZ_TOP_GROUPER_, id:"account_prefs_mail_receiving",
 							label:ZaMsg.NAD_MailOptionsReceiving,
 							items :[
-								{ref:ZaAccount.A_zimbraPrefMailPollingInterval, type:_SUPER_LIFETIME_, 
-									colSizes:["200px","130px","120px","150px"],
-									msgName:ZaMsg.MSG_zimbraPrefMailPollingInterval,
-									txtBoxLabel:ZaMsg.LBL_zimbraPrefMailPollingInterval, 
-									resetToSuperLabel:ZaMsg.NAD_ResetToCOS,colSpan:2,
+								{ref:ZaAccount.A_zimbraPrefMailPollingInterval, type:_SUPER_SELECT1_,
+									colSizes:["250px","130px","120px","150px"],
+                                                                        msgName:ZaMsg.MSG_zimbraPrefMailPollingInterval,
+									label:ZaMsg.LBL_zimbraPrefMailPollingInterval, 
+									resetToSuperLabel:ZaMsg.NAD_ResetToCOS, colSpan:2,
+                                    					onChange:ZaAccountXFormView.validatePollingInterval,
 									nowrap:false,labelWrap:true									
 								},							
 								{ref:ZaAccount.A_zimbraMailMinPollingInterval, 
 									type:_SUPER_LIFETIME_, colSizes:["200px","130px","120px","150px"],
 									msgName:ZaMsg.MSG_zimbraMailMinPollingInterval,
-									txtBoxLabel:ZaMsg.LBL_zimbraMailMinPollingInterval, 
+									txtBoxLabel:ZaMsg.LBL_zimbraMailMinPollingInterval,
+ 									onChange:ZaAccountXFormView.validatePollingInterval,
 									resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
 									colSpan:2,nowrap:false,labelWrap:true	
 								},

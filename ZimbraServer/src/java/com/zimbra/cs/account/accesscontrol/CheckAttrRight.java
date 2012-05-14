@@ -69,7 +69,7 @@ public class CheckAttrRight extends CheckRight {
         
         mGrantee = grantee;
         mTargetType = TargetType.getTargetType(mTarget);
-        mAttrRightNeeded = rightNeeded;  // just to save a casting
+        mAttrRightNeeded = rightNeeded;
     }
     
     private AllowedAttrs computeAccessibleAttrs() throws ServiceException {
@@ -131,8 +131,8 @@ public class CheckAttrRight extends CheckRight {
                     
                     // don't check yet, collect all acls on all target groups
                     if (groupACLs == null)
-                        groupACLs = new GroupACLs();
-                    groupACLs.collectACL(grantedOn, skipPositiveGrants);
+                        groupACLs = new GroupACLs(mTarget);
+                    groupACLs.collectACL((DistributionList)grantedOn, skipPositiveGrants);
                     
                 } else {
                     // end of group targets, put all collected denied and allowed grants into 

@@ -196,7 +196,7 @@ function(id, key, account) {
 
 	// for offline, global settings always come from the "local" parent account
 	var acct = (context.multiAccounts && ZmSetting.IS_GLOBAL[id])
-		? context.accountList.mainAccount : account;
+		? context.accountList.mainAccount : (account || context.accountList.mainAccount);
 	return context.getSettings(acct).get(id, key);
 };
 
@@ -1788,5 +1788,5 @@ function() {
 ZmAppCtxt.prototype.isZDOnline =
 function() {
     var ac = window["appCtxt"].getAppController();
-    return ac._isPrismOnline && ac._isUserOnline;
+    return !AjxEnv.isPrism || (ac._isPrismOnline && ac._isUserOnline);
 };

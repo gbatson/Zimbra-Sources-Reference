@@ -333,6 +333,9 @@ function(params) {
 			request.offset = this.offset = (this.offset || 0);
 			request.limit = this._getLimit();
 
+			// bug 15878: see same in ZmSearch.prototype._getStandardMethodJson
+			request.locale = { _content: AjxEnv.DEFAULT_LOCALE };
+
 			if (this.lastId) { // add lastSortVal and lastId for cursor-based paging
 				request.cursor = {id:this.lastId, sortVal:(this.lastSortVal || "")};
 			}
@@ -617,7 +620,8 @@ function() {
 			where = folder.getName(true, ZmOrganizer.MAX_DISPLAY_NAME_LENGTH, true);
 		}
 	} else if (this.tagId) {
-		where = appCtxt.getById(this.tagId).getName(true, ZmOrganizer.MAX_DISPLAY_NAME_LENGTH, true);
+		var tag = appCtxt.getById(this.tagId);
+		where = tag && tag.getName(true, ZmOrganizer.MAX_DISPLAY_NAME_LENGTH, true);
 	}
 	return where
 		? ([ZmMsg.zimbraTitle, where].join(": "))

@@ -63,7 +63,7 @@
     <value>false</value>
   </key>
   <key name="javamail_zsmtp">
-    <value>true</value>
+    <value>false</value>
   </key>
   <key name="mailboxd_output_filename">
     <value>zdesktop.out</value>
@@ -95,8 +95,9 @@
   <key name="zdesktop_gal_refresh_interval_days">
     <value>30</value>
   </key>
+  <!-- 5 min -->
   <key name="zdesktop_gal_sync_request_timeout">
-    <value>60000</value>
+    <value>300000</value>
   </key>
   <key name="zdesktop_installation_key">
     <value>@install.key@</value>
@@ -129,7 +130,7 @@
     <value>50</value>
   </key>
   <key name="zimbra_admin_service_port">
-    <value>@port@</value>
+    <value>7733</value>
   </key>
   <key name="zimbra_admin_service_scheme">
     <value>http://</value>
@@ -221,9 +222,6 @@
   <key name="zimbra_mailbox_inactive_cache">
     <value>10</value>
   </key>
-  <key name="zimbra_mailbox_manager_hardref_cache">
-    <value>250</value>
-  </key>
   <key name="zimbra_minimize_resources">
     <value>true</value>
   </key>
@@ -252,6 +250,9 @@
     <value>128</value>
   </key>
   <key name="zdesktop_heapdump_enabled">
+    <value>true</value>
+  </key>
+  <key name="check_dl_membership_enabled">
     <value>false</value>
   </key>
 </localconfig>

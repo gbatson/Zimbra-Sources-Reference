@@ -15,6 +15,7 @@
 package com.zimbra.common.util;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.mortbay.jetty.HttpOnlyCookie;
@@ -48,6 +49,10 @@ public class ZimbraCookie {
         cookie.setPath(path);
     }
     
+    public static boolean secureCookie(HttpServletRequest request) {
+        return "https".equalsIgnoreCase(request.getScheme());
+    }
+    
     public static void addHttpOnlyCookie(HttpServletResponse response, String name, String value, 
             String path, Integer maxAge, boolean secure) {
         addCookie(response, name, value, path, maxAge, true, secure);
@@ -58,8 +63,8 @@ public class ZimbraCookie {
         Cookie cookie;
         
         if (httpOnly) {
-            // httpOnly code will be activated after bug 64052 is fixed
-            cookie = new Cookie(name, value);  // new HttpOnlyCookie(name, value); 
+            // jetty-6 only: jetty specific HttpOnlyCookie class that extends Cookie.
+            cookie = new HttpOnlyCookie(name, value); 
         } else {
             cookie = new Cookie(name, value);
         }
@@ -70,6 +75,13 @@ public class ZimbraCookie {
         ZimbraCookie.setAuthTokenCookieDomainPath(cookie, ZimbraCookie.PATH_ROOT);
 
         cookie.setSecure(secure);
+        response.addCookie(cookie);
+    }
+
+    public static void clearCookie(HttpServletResponse response, String cookieName) {
+        Cookie cookie = new Cookie(cookieName, "");
+        cookie.setMaxAge(0);
+        setAuthTokenCookieDomainPath(cookie, PATH_ROOT);
         response.addCookie(cookie);
     }
 

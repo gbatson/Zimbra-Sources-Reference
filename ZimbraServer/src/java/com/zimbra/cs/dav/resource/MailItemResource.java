@@ -174,11 +174,16 @@ public abstract class MailItemResource extends DavResource {
 	    return mbox.getItemById(ctxt.getOperationContext(), mId, MailItem.TYPE_UNKNOWN);
 	}
 	
-	/* Deletes this resource by moving to Trash folder. */
+	/* Deletes this resource by moving to Trash folder. Hard deletes if the item is in Trash folder.*/
 	public void delete(DavContext ctxt) throws DavException {
 		if (mId == 0) 
 			throw new DavException("cannot delete resource", HttpServletResponse.SC_FORBIDDEN, null);
-		try {
+        try {
+            // hard delete if the item is in Trash.
+            if (getMailItem(ctxt).inTrash()) {
+                hardDelete(ctxt);
+                return;
+            }
 			Mailbox mbox = getMailbox(ctxt);
 			mbox.move(ctxt.getOperationContext(), mId, MailItem.TYPE_UNKNOWN, Mailbox.ID_FOLDER_TRASH);
 		} catch (ServiceException se) {
@@ -364,8 +369,11 @@ public abstract class MailItemResource extends DavResource {
 	 */
 	@Override
     public void patchProperties(DavContext ctxt, java.util.Collection<Element> set, java.util.Collection<QName> remove) throws DavException, IOException {
-		for (QName n : remove)
-				mDeadProps.remove(n);
+	    List<QName> reqProps = new ArrayList<QName>();
+	    for (QName n : remove) {
+	        mDeadProps.remove(n);
+	        reqProps.add(n);
+	    }		
 		for (Element e : set) {
 			QName name = e.getQName();
 			if (name.equals(DavElements.E_DISPLAYNAME) &&
@@ -402,6 +410,7 @@ public abstract class MailItemResource extends DavResource {
 				continue;
 			}
 			mDeadProps.put(name, e);
+			reqProps.add(name);
 		}
 		String configVal = "";
 		if (mDeadProps.size() > 0) {
@@ -429,9 +438,10 @@ public abstract class MailItemResource extends DavResource {
 				data.put(Integer.toString(mId), configVal);
 				mbox.setConfig(ctxt.getOperationContext(), CONFIG_KEY, data);
 			}
-		} catch (ServiceException se) {
-			throw new DavException("unable to patch properties", HttpServletResponse.SC_FORBIDDEN, se);
-		}
+	    } catch (ServiceException se) {
+	        for (QName qname : reqProps)
+	            ctxt.getResponseProp().addPropError(qname, new DavException(se.getMessage(), HttpServletResponse.SC_FORBIDDEN));
+	    }    
 	}
 	
 	public ResourceProperty getProperty(QName prop) {

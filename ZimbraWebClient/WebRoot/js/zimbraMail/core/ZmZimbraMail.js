@@ -34,7 +34,6 @@
  * @extends	ZmController
  */
 ZmZimbraMail = function(params) {
-	this._startTime = new Date().getTime(); //time we started up
 	ZmController.call(this, null);
 
     appCtxt.setAppController(this);
@@ -209,7 +208,7 @@ function() {
 			window._zimbraMail.setSessionTimer(false);
 		}
 
-		ZmCsfeCommand.clearAuthToken();
+		ZmCsfeCommand.noAuth = true;
 	}
 
 	var childWinList = window._zimbraMail ? window._zimbraMail._childWinList : null;
@@ -309,13 +308,7 @@ function(params) {
 	for (var i in ZmSearch.TYPE) {
 		ZmSearch.TYPE_MAP[ZmSearch.TYPE[i]] = i;
 	}
-	// organizer types based on view
-	for (var i in ZmOrganizer.VIEWS) {
-		var list = ZmOrganizer.VIEWS[i];
-		for (var j = 0; j < list.length; j++) {
-			ZmOrganizer.TYPE[list[j]] = i;
-		}
-	}
+	ZmZimbraMail.registerViewsToTypeMap();
 
 	this._getStartApp(params);
 
@@ -356,6 +349,16 @@ function(params) {
         var updatePref = appCtxt.get(ZmSetting.OFFLINE_UPDATE_NOTIFY);
         this._offlineUpdateChannelPref(updatePref)
     }
+};
+
+ZmZimbraMail.registerViewsToTypeMap = function() {
+	// organizer types based on view
+	for (var i in ZmOrganizer.VIEWS) {
+		var list = ZmOrganizer.VIEWS[i];
+		for (var j = 0; j < list.length; j++) {
+			ZmOrganizer.TYPE[list[j]] = i;
+		}
+	}
 };
 
 ZmZimbraMail.prototype._createSettings = function(params) {
@@ -689,11 +692,9 @@ function(params, result) {
 ZmZimbraMail.prototype.handleTaskComponents =
 function() {
     // reminder controlled by calendar preferences setting
-	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
-		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
-		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
-		AjxTimedAction.scheduleAction(reminderAction, delay);
-	}
+    var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
+    var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
+    AjxTimedAction.scheduleAction(reminderAction, delay);
 };
 
 /**
@@ -710,11 +711,9 @@ function() {
 	}
 
 	// reminder controlled by calendar preferences setting
-	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
-		var reminderAction = new AjxTimedAction(this, this.showReminder);
-		var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
-		AjxTimedAction.scheduleAction(reminderAction, delay);
-	}
+    var reminderAction = new AjxTimedAction(this, this.showReminder);
+    var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
+    AjxTimedAction.scheduleAction(reminderAction, delay);
 
 };
 
@@ -756,7 +755,6 @@ function(params) {
 	this.getKeyMapMgr();	// make sure keyboard handling is initialized
 
 	this.setSessionTimer(true);
-	ZmZimbraMail.setAuthTokenEndTime(this._startTime);
 	ZmZimbraMail.killSplash();
 
 	// Give apps a chance to add their own ui components.
@@ -1999,6 +1997,9 @@ function(appName, view, isTabView) {
 		this._evt.item = this._apps[appName];
 		this._evtMgr.notifyListeners(ZmAppEvent.ACTIVATE, this._evt);
 	}
+	else if (this._activeApp && this._apps[this._activeApp]) {
+		this._apps[this._activeApp].stopAlert();
+	}
 };
 
 /**
@@ -2231,7 +2232,7 @@ function() {
 	var login = appCtxt.get(ZmSetting.USERNAME);
 	var username = (appCtxt.get(ZmSetting.DISPLAY_NAME)) || login;
 	if (username) {
-		this._userNameField.getHtmlElement().innerHTML =  AjxStringUtil.clipByLength(username, 24);
+		this._userNameField.getHtmlElement().innerHTML =  AjxStringUtil.htmlEncode(AjxStringUtil.clipByLength(username, 24));
 		if (AjxEnv.isLinux) {	// bug fix #3355
 			this._userNameField.getHtmlElement().style.lineHeight = "13px";
 		}
@@ -2454,24 +2455,6 @@ function(bStartTimer) {
 };
 
 /**
- * Sets the ZmSetting.TOKEN_ENDTIME
- * @param {int} startTime   auth token creation time in milliseconds; uses current time if not specified
- */
-ZmZimbraMail.setAuthTokenEndTime =
-function(startTime) {
-	if(!startTime) {
-		startTime = new Date().getTime();
-	}
-	var authTokenLifetime = appCtxt.get(ZmSetting.TOKEN_LIFETIME);
-	if (authTokenLifetime) {
-		var authTokenEndTime = startTime + authTokenLifetime;
-		appCtxt.set(ZmSetting.TOKEN_ENDTIME, authTokenEndTime);
-		DBG.println(AjxDebug.DBG1, "Setting authTokenEndTime to " + new Date(authTokenEndTime).toLocaleString());
-
-	}
-};
-
-/**
  * Adds a child window.
  * 
  * @private
@@ -2563,7 +2546,7 @@ function(ex, continuation) {
 ZmZimbraMail._confirmExitMethod =
 function() {
 
-	if (ZmCsfeCommand.getAuthToken()) {
+	if (!ZmCsfeCommand.noAuth) {
 		appCtxt.accountList.saveImplicitPrefs();
 
 		if (appCtxt.get(ZmSetting.WARN_ON_EXIT) && !ZmZimbraMail._isOkToExit()) {

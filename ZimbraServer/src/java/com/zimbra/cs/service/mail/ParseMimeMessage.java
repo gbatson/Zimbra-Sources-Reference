@@ -40,7 +40,6 @@ import com.google.common.collect.ImmutableSet;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.ContentDisposition;
 import com.zimbra.common.mime.ContentType;
-import com.zimbra.common.mime.DataSourceWrapper;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.MimeHeader;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
@@ -128,8 +127,9 @@ public final class ParseMimeMessage {
             throw ServiceException.FAILURE("encoding error", e);
         }
         long maxSize = Provisioning.getInstance().getConfig().getLongAttr(Provisioning.A_zimbraMtaMaxMessageSize, DEFAULT_MAX_SIZE);
-        if (content.length > maxSize)
+        if (content.length > maxSize) {
             throw ServiceException.INVALID_REQUEST("inline message too large", null);
+        }
 
         ByteArrayInputStream messageStream = new ByteArrayInputStream(content);
         try {
@@ -209,19 +209,26 @@ public final class ParseMimeMessage {
 
     // Recursively find and return the content of the first part with the specified content type.
     private static String getFirstContentByType(Element elem, String contentType) {
-        if (elem == null) return null;
+        if (elem == null) {
+            return null;
+        }
+
         if (MailConstants.E_MSG.equals(elem.getName())) {
             elem = elem.getOptionalElement(MailConstants.E_MIMEPART);
-            if (elem == null) return null;
+            if (elem == null) {
+                return null;
+            }
         }
+
         String type = elem.getAttribute(MailConstants.A_CONTENT_TYPE, contentType).trim().toLowerCase();
         if (type.equals(contentType)) {
             return elem.getAttribute(MailConstants.E_CONTENT, null);
         } else if (type.startsWith(MimeConstants.CT_MULTIPART_PREFIX)) {
             for (Element childElem : elem.listElements(MailConstants.E_MIMEPART)) {
                 String text = getFirstContentByType(childElem, contentType);
-                if (text != null)
+                if (text != null) {
                     return text;
+                }
             }
         }
         return null;
@@ -293,7 +300,7 @@ public final class ParseMimeMessage {
         }
 
         try {
-            MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession());
+            MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSmtpSession(target));
             MimeMultipart mmp = null;
 
             Element partElem   = msgElem.getOptionalElement(MailConstants.E_MIMEPART);
@@ -366,8 +373,7 @@ public final class ParseMimeMessage {
             // <m> attributes: id, f[lags], s[ize], d[ate], cid(conv-id), l(parent folder)
             // <m> child elements: <e> (email), <s> (subject), <f> (fragment), <mp>, <attach>
             MessageAddresses maddrs = new MessageAddresses(out.newContacts);
-            Set<String> headerNames = ImmutableSet.copyOf(
-                    Provisioning.getInstance().getConfig().getCustomMimeHeaderNameAllowed());
+            Set<String> headerNames = ImmutableSet.copyOf(Provisioning.getInstance().getConfig().getCustomMimeHeaderNameAllowed());
             for (Element elem : msgElem.listElements()) {
                 String eName = elem.getName();
                 if (eName.equals(MailConstants.E_ATTACH)) {
@@ -451,8 +457,9 @@ public final class ParseMimeMessage {
         if (attachIds != null) {
             for (String uploadId : attachIds.split(FileUploadServlet.UPLOAD_DELIMITER)) {
                 Upload up = FileUploadServlet.fetchUpload(ctxt.zsc.getAuthtokenAccountId(), uploadId, ctxt.zsc.getAuthToken());
-                if (up == null)
+                if (up == null) {
                     throw MailServiceException.NO_SUCH_UPLOAD(uploadId);
+                }
                 attachUpload(mmp, up, contentID, ctxt, null);
                 ctxt.out.addUpload(up);
             }
@@ -579,8 +586,9 @@ public final class ParseMimeMessage {
             }
 
             // add each part in turn (recursively) below
-            for (Element subpart : elem.listElements())
+            for (Element subpart : elem.listElements()) {
                 setContent(mm, mmpNew, subpart, null, ctxt);
+            }
 
             // finally, add the alternatives if there are any...
             if (alternatives != null) {
@@ -619,18 +627,20 @@ public final class ParseMimeMessage {
         // scan upload for viruses
         StringBuffer info = new StringBuffer();
         UploadScanner.Result result = UploadScanner.accept(up, info);
-        if (result == UploadScanner.REJECT)
+        if (result == UploadScanner.REJECT) {
             throw MailServiceException.UPLOAD_REJECTED(up.getName(), info.toString());
-        if (result == UploadScanner.ERROR)
+        } else if (result == UploadScanner.ERROR) {
             throw MailServiceException.SCAN_ERROR(up.getName());
+        }
         String filename = up.getName();
 
         // create the part and override the DataSource's default ctype, if required
         MimeBodyPart mbp = new ForceBase64MimeBodyPart();
 
         UploadDataSource uds = new UploadDataSource(up);
-        if (ctypeOverride != null && !ctypeOverride.equals(""))
+        if (ctypeOverride != null && !ctypeOverride.equals("")) {
             uds.setContentType(ctypeOverride);
+        }
         mbp.setDataHandler(new DataHandler(uds));
 
         // set headers -- ctypeOverride non-null has magical properties that I'm going to regret tomorrow
@@ -643,8 +653,9 @@ public final class ParseMimeMessage {
         }
         mbp.setHeader("Content-Type", ctype.setCharset(ctxt.defaultCharset).toString());
         mbp.setHeader("Content-Disposition", cdisp.setCharset(ctxt.defaultCharset).toString());
-        if (ctype.getContentType().equals(MimeConstants.CT_APPLICATION_PDF))
+        if (ctype.getContentType().equals(MimeConstants.CT_APPLICATION_PDF)) {
             mbp.setHeader("Content-Transfer-Encoding", "base64");
+        }
         mbp.setContentID(contentID);
 
         // add to the parent part
@@ -656,8 +667,8 @@ public final class ParseMimeMessage {
     throws ServiceException, MessagingException {
         try {
             Upload up = UserServlet.getRemoteResourceAsUpload(ctxt.zsc.getAuthToken(), iid, params);
-            attachUpload(mmp, up, contentID, ctxt, ctypeOverride);
             ctxt.out.addFetch(up);
+            attachUpload(mmp, up, contentID, ctxt, ctypeOverride);
             return;
         } catch (IOException ioe) {
             throw ServiceException.FAILURE("can't serialize remote item", ioe);
@@ -744,8 +755,9 @@ public final class ParseMimeMessage {
         if (item == null) {
             // on a miss, check for a mountpoint and, if so, fetch via UserServlet
             Pair<Folder, String> match = ctxt.mbox.getFolderByPathLongestMatch(ctxt.octxt, Mailbox.ID_FOLDER_USER_ROOT, path);
-            if (!(match.getFirst() instanceof Mountpoint))
+            if (!(match.getFirst() instanceof Mountpoint)) {
                 throw MailServiceException.NO_SUCH_DOC(path);
+            }
 
             Map<String, String> params = new HashMap<String, String>(3);
             params.put(UserServlet.QP_NAME, match.getSecond());
@@ -793,43 +805,22 @@ public final class ParseMimeMessage {
             mm = mbox.getMessageById(ctxt.octxt, iid.getId()).getMimeMessage();
         }
         MimePart mp = Mime.getMimePart(mm, part);
-        if (mp == null)
+        if (mp == null) {
             throw MailServiceException.NO_SUCH_PART(part);
+        }
 
         String filename = Mime.getFilename(mp);
-        ctxt.incrementSize("part " + filename, mp.getSize());
-
-        MimeBodyPart mbp = new ForceBase64MimeBodyPart();
-
-        String ctypeHdr = mp.getContentType();
+        String ctypeHdr = mp.getContentType(), contentType = null;
         if (ctypeHdr != null) {
-            // Clean up the content type and pass it to the new MimeBodyPart via DataSourceWrapper.
-            // If we don't do this, JavaMail ignores the Content-Type header.  See bug 42452,
-            // JavaMail bug 1650154.
-            ContentType ctype = (ContentType) new ContentType(ctypeHdr, ctxt.use2231).cleanup().setCharset(ctxt.defaultCharset).setParameter("name", filename);
-            String contentType = ctype.toString();
-            DataHandler originalHandler = mp.getDataHandler();
-            DataSourceWrapper wrapper = new DataSourceWrapper(originalHandler.getDataSource());
-            wrapper.setContentType(contentType);
-            mbp.setDataHandler(new DataHandler(wrapper));
-
-            mbp.setHeader("Content-Type", contentType);
-            if (ctype.getContentType().equals(MimeConstants.CT_APPLICATION_PDF))
-                mbp.setHeader("Content-Transfer-Encoding", "base64");
-        } else {
-            mbp.setDataHandler(mp.getDataHandler());
+            contentType = new ContentType(ctypeHdr, ctxt.use2231).cleanup().setCharset(ctxt.defaultCharset).setParameter("name", filename).toString();
         }
 
-        mbp.setHeader("Content-Disposition", new ContentDisposition(Part.ATTACHMENT, ctxt.use2231).setCharset(ctxt.defaultCharset).setParameter("filename", filename).toString());
-
-        String desc = mp.getDescription();
-        if (desc != null) {
-            mbp.setHeader("Content-Description", desc);
-        }
-
-        mbp.setContentID(contentID);
-
-        mmp.addBodyPart(mbp);
+        // bug 70015: two concurrent SaveDrafts each reference the same attachment in the original draft
+        //   -- avoid race condition by copying attached part to FileUploadServlet, so
+        //      deleting original blob doesn't lead to stale BlobInputStream references
+        Upload up = FileUploadServlet.saveUpload(mp.getInputStream(), filename, contentType, DocumentHandler.getRequestedAccount(ctxt.zsc).getId());
+        ctxt.out.addFetch(up);
+        attachUpload(mmp, up, contentID, ctxt, null);
     }
 
 

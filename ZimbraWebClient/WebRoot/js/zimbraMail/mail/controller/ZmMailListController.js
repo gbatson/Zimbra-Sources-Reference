@@ -386,6 +386,7 @@ function(msg) {
 		dlg.setMessage(ZmMsg.readReceiptSend, DwtMessageDialog.WARNING_STYLE);
 		dlg.popup();
 	} else if (rrPref == ZmMailApp.SEND_RECEIPT_ALWAYS) {
+		msg.readReceiptSent = true;
 		this._sendReadReceipt(msg);
 	}
 };
@@ -398,14 +399,15 @@ function(msg, dlg) {
 	var jsonObj = {SendDeliveryReportRequest:{_jsns:"urn:zimbraMail"}};
 	request = jsonObj.SendDeliveryReportRequest;
 	request.mid = msg.id;
-	var callback = new AjxCallback(this, this._handleSendReadReceipt);
+	var callback = new AjxCallback(this, this._handleSendReadReceipt,[msg]);
 	var ac = window.parentAppCtxt || window.appCtxt;
 	ac.getRequestMgr().sendRequest({jsonObj:jsonObj, asyncMode:true, callback:callback});
 };
 
 ZmMailListController.prototype._handleSendReadReceipt =
-function() {
+function(msg) {
 	appCtxt.setStatusMsg(ZmMsg.readReceiptSent);
+    this._sendReadReceiptNotified(msg);
 };
 
 ZmMailListController.prototype._sendReadReceiptNotified =
@@ -1443,7 +1445,9 @@ function(result) {
 ZmMailListController.prototype._spamListener =
 function(ev) {
 	var items = this._listView[this._currentView].getSelection();
-	this._doSpam(items, ev.item.isMarkAsSpam);
+	var button = this.getCurrentToolbar().getButton(ZmOperation.SPAM);
+
+	this._doSpam(items, button.isMarkAsSpam);
 };
 
 ZmMailListController.prototype._detachListener =

@@ -232,6 +232,53 @@ zimbraSpnegoAuthPrincipal   : {zimbraSpnegoAuthTargetName}@{zimbraSpnegoAuthReal
     e.g. 
     zmprov md zimbra.com zimbraAuthKerberos5Realm VMWARE.COM
     
+    Principal mapping:
+    ------------------
+    The SPNEGO token carries a user's kerberos principal.  After a user's SPNEGO token 
+    is authenticated, ZCS servers need to identify the user in Zimbra's LDAP.   
+    A kerberos principal is mapped to a Zimbra account by the following mechanism:
+    
+    Method 1. domain basis
+         
+              Requires the localpart of the kerberos principal be identical to the localpart 
+              of one the user's Zimbra email address (primary or alaises).
+            
+              A kerberos principal: 
+                   {localpart-of-kerberos-principal}@{kerberos-realm}
+              is mapped to Zimbra account: 
+                   {localpart-of-kerberos-principal}@{zimbra-domain-with-zimbraAuthKerberos5Realm-set-to-the-kerberos-realm}
+              
+              For example, 
+              The setting: zmprov md zimbra.com zimbraAuthKerberos5Realm VMWARE.COM
+              will map kerberos princiapl: user1@VMWARE.COM 
+              to Zimbra account: user1@zimbra.com
+              
+              It is a config error if multiple domains have zimbraAuthKerberos5Realm set to 
+              the same realm.  In that case a MULTIPLE_ENTRIES_MATCHED exception will be thrown.
+              
+    or
+    
+    Method 2. account basis
+              If method1 cannot fulfill all possible mappings, per-account basis mapping 
+              is also supported.   This can map a Zimbra user to any kerberos principal, it 
+              also allows uzers in the same Zimbra domain to be mapped to different kerberos 
+              realms.
+              
+              Account level mapping is configured by setting zimbraForeignPrincipal to 
+              "kerberos5:{kerberos-principal}"
+              
+              For example, 
+              zmrpov ma user1@zimbra.com zimbraForeignPrincipal kerberos5:foo@REALM1.COM
+              zmrpov ma user2@zimbra.com zimbraForeignPrincipal kerberos5:bar@REALM2.COM
+              
+              It is a config error if multple accounts have he same zimbraForeignPrincipal.
+              In that case a MULTIPLE_ENTRIES_MATCHED exception will be thrown.
+              
+              
+    Method 1 and 2 can co-exist.  The lookup will first try to find the account by 
+    zimbraForeignPrincipal (method 2).  If no account is found, it will fallback to use 
+    domain based mapping (method 1).
+    
     
 (B) Setup virtual host for the domain
     zmprov md {domain} +zimbraVirtualHostname {virtual-hostname-1} +zimbraVirtualHostname {virtual-hostname-2} ...
@@ -241,15 +288,16 @@ zimbraSpnegoAuthPrincipal   : {zimbraSpnegoAuthTargetName}@{zimbraSpnegoAuthReal
     zmprov md zimbra.com +zimbraVirtualHostname dogfood.zimbra.com +zimbraVirtualHostname catfood.zimbra.com
     
     
-(C) Setup web client login URL and UAs allowed for the login URL on the domain
+(C) Setup web client login URL and UAs/IP addresses allowed for the login URL on the domain
     - Set login URL.  Login URL is the URL to redirect to for logging in and when
       Zimbra auth token is expired.  Set it to the spnego authentication servlet.
       zmprov md {domain} zimbraWebClientLoginURL '../../service/spnego'
     
     - Honor only supported platforms and browsers.  
       zimbraWebClientLoginURLAllowedUA is a multi-valued attribute, values are regex.
-      If not set, all UAs are allowed. If multiple values are set, an UA is allowed 
-      as long as it matches any one of the values.  
+      If not set, all UAs are honored. If multiple values are set, an UA is honored  
+      as long as it matches any one of the values.  If UA is not honored, the request 
+      will not be redirected to zimbraWebClientLoginURL.
       zmprov md {domain} +zimbraWebClientLoginURLAllowedUA {UA-regex-1} +zimbraWebClientLoginURLAllowedUA {UA-regex-2} ...
       
       e.g. honor zimbraWebClientLoginURL only for Firefox/IE/Chrome/Safari on Windows, and Safari on Mac)
@@ -259,15 +307,23 @@ zimbraSpnegoAuthPrincipal   : {zimbraSpnegoAuthTargetName}@{zimbraSpnegoAuthReal
       zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*Windows.*Safari.*'
       zmprov md {domain} +zimbraWebClientLoginURLAllowedUA '.*Macintosh.*Safari.*'
 
-
+    - Honor only seletced client IP addresses
+      zimbraWebClientLoginURLAllowedIP is a multi-valued attribute, values are regex.
+      If not set, any client IP address is honored. If multiple values are set, an IP address is honored  
+      as long as it matches any one of the values.  If client IP is not honored, the request 
+      will not be redirected to zimbraWebClientLoginURL.
+      zmprov md {domain} +zimbraWebClientLoginURLAllowedIP '10\.112\.205\.[1-9][0-9]'
+      
+      
 (D) Setup web client logout URL and UAs allowed for the logout URL on the domain
     - Set logout URL.  Logout URL is the URL to redirect to when user clicks on "Logout".
       zmprov md {domain} zimbraWebClientLogoutURL '../?sso=1'
     
     - Honor only supported platforms and browsers.  
       zimbraWebClientLogoutURLAllowedUA is a multi-valued attribute, values are regex.
-      If not set, all UAs are allowed. If multiple values are set, an UA is allowed 
-      as long as it matches any one of the values.  
+      If not set, all UAs are honored. If multiple values are set, an UA is honored  
+      as long as it matches any one of the values.  If UA is not honored, user will not be 
+      redirected to zimbraWebClientLogoutURL when logged out.
       zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA {UA-regex-1} +zimbraWebClientLogoutURLAllowedUA {UA-regex-2} ...
       
       e.g. honor zimbraWebClientLogoutURL only for Firefox/IE/Chrome/Safari on Windows, and Safari on Mac)
@@ -277,6 +333,12 @@ zimbraSpnegoAuthPrincipal   : {zimbraSpnegoAuthTargetName}@{zimbraSpnegoAuthReal
       zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*Windows.*Safari.*'
       zmprov md {domain} +zimbraWebClientLogoutURLAllowedUA '.*Macintosh.*Safari.*'
 
+    - Honor only seletced client IP addresses
+      zimbraWebClientLogoutURLAllowedIP is a multi-valued attribute, values are regex.
+      If not set, any client IP address is honored. If multiple values are set, an IP address is honored  
+      as long as it matches any one of the values.  If client IP is not honored, user will not be 
+      redirected to zimbraWebClientLogoutURL when logged out.
+      zmprov md {domain} +zimbraWebClientLogoutURLAllowedIP '10\.112\.205\.[1-9][0-9]'
 
 ===========================
 3. Configure Your Browser
@@ -388,6 +450,73 @@ What happens behind the scene in ZCS server:
     * One of the error at this stage could be because of clock skew on the jetty server.  
       If this is the case, it should be shown in zmmailboxd.out.  Fix the clock skew and try again.
 
+
+===========================================
+5. Configure kerberos auth with SPNEGO auth
+===========================================
+Kerberos auth and SPNEGO can co-exists on a domain.   Use case is using kerberos as the 
+mechanism for verifying user principal/password against a KDC, instead of the native 
+Zimbra LDAP, when user cannot get in by SPNEGO.
+
+When SPNEGO auth fails, user is redirected to the Zimbra login screen if browser is 
+configured properly.   Users can enter their Zimbra username/password on the login screen to 
+login manually.  Domain attribute zimbraAuthMech controls the mechanism for verifying  
+password.   If zimbraAuthMech is set to "kerberos5", user entered username is used to first 
+identify a valid Zimbra user (must be provisionined in Zimbra LDAP), then from Zimbra user 
+is mapped to a kerberos principal, the kerberos principal + password is then validated 
+against a KDC.   This KDC could be different from, or the same as the KDC that Active Directory 
+domain controller(for SPNEGO auth) is running as.    
+
+Note, Every Microsoft Active Directory domain controller acts as Kerberos KDC.  
+For SPNEGO auth, KDC is not contacted from mailbox server.  The kerberos token sent from the 
+Authorization http header along with jetty's keytab file can identify/authenticate the 
+user.
+
+For kerberos auth (zimbraAuthMech="kerberos5"), mailbox server needs to contact KDC to 
+validate principal+password.   For java kerberos client (i.e. Zimbra mailbox server), 
+the default realm and KDC for the realm is specify in a kerberos config file.  Location of 
+this config file can be specified in JVM argument java.security.krb5.conf. If not specified,
+default is /etc/krb5.conf.   When SPNEGO is enabled in Zimbra, java.security.krb5.conf 
+for mailbox server is set to "/opt/zimbra/jetty/etc/krb5.ini".   Therefore, that is the 
+effective file for configuring kerberos auth.
+
+/opt/zimbra/jetty/etc/krb5.ini is rewritten from /opt/zimbra/jetty/etc/krb5.ini.in 
+each time when mailbox server restarts.  To configure, you need to modify the 
+/opt/zimbra/jetty/etc/krb5.ini.in file, not /opt/zimbra/jetty/etc/krb5.ini.
+
+Under [realms] section, kdc and admin_server are not set for SPNEGO auth, but they are 
+required for kerberos auth.   
+
+To configure:
+
+(1) Edit /opt/zimbra/jetty/etc/krb5.ini.in
+
+change:
+
+[realms]
+%%zimbraSpnegoAuthRealm%% = {
+                default_domain = %%zimbraSpnegoAuthRealm%%
+}
+
+to:
+
+%%zimbraSpnegoAuthRealm%% = {
+                kdc = YOUR-KDC
+                admin_server = YOUR-ADMIN-SERVER
+                default_domain = %%zimbraSpnegoAuthRealm%%
+}
+
+
+replace YOUR-KDC and YOUR-ADMIN-SERVER to the hostname on which the 
+kdc/admin_server for kerberos auth is running.
+
+(2) save the file and restart mailbox server.
+
+
+The restriction is, the realm for SPNEGO and kerberos auth must be the same.  
+For SPNEGO auth, the kerberos principal in the Authorization header is mapped to a 
+unique Zimbra account.  For kerberos auth, the Zimbra account is mapped to a unique kerberos 
+principal.  The mapping (by domain attribute zimbraAuthKerberos5Realm) is the same for both.
 
 
 =======================

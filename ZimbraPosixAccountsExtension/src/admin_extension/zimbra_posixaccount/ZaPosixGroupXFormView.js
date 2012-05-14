@@ -79,7 +79,7 @@ ZaPosixGroupXFormView.myXFormModifier = function(xFormObject,entry) {
 			items: [
 				{type:_GROUP_,	numCols:4,colSizes:["32px","350px","100px","250px"],
 					items: [
-						{type:_AJX_IMAGE_, src:"Domain_32", label:null},
+						{type:_AJX_IMAGE_, src:"COS_32", label:null},
 						{type:_OUTPUT_, ref:ZaPosixGroup.A_PosixGroupName, label:null,cssClass:"AdminTitle", rowSpan:2},				
 						{type:_OUTPUT_, ref:ZaPosixGroup.A_sambaSID, label:"sambaSID"}
 					]

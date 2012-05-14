@@ -181,6 +181,7 @@ ZmShareSearchDialog.prototype._doGroupSearch = function() {
 };
 
 ZmShareSearchDialog.prototype._doUserSearch = function(emails) {
+    this._resetTree();
     // collect unique email addresses
     emails = emails.split(/\s*[;,]\s*/);
     var emailMap = {};
@@ -209,7 +210,7 @@ ZmShareSearchDialog.prototype._doUserSearch = function(emails) {
         }
         var text = this._loadingUserFormatter.format([email]);
         var loadingId = [ZmShareProxy.ID_LOADING,Dwt.getNextId("share")].join(":");
-        this._appendInfoNode(ZmOrganizer.ID_ROOT, loadingId, text);
+        this._appendInfoNode(ZmOrganizer.ID_ROOT, loadingId, AjxStringUtil.htmlEncode(text));
 
         // remember the placeholder nodes
         emailMap[emailId] = loadingId;
@@ -283,7 +284,7 @@ ZmShareSearchDialog.prototype._handleGroupSearchError = function(resp) {
 
 ZmShareSearchDialog.prototype._handleUserSearchResults = function(emailMap, requestIdMap, resp) {
     this._setSearching(false);
-
+	
     // remove placeholder nodes
     for (var email in emailMap) {
         this._removeNode(emailMap[email]);

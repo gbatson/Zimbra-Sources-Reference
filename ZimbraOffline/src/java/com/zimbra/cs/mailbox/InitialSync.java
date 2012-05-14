@@ -17,15 +17,10 @@ package com.zimbra.cs.mailbox;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Date;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -52,6 +47,7 @@ import com.zimbra.common.util.BufferStream;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.CopyInputStream;
+import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.tar.TarEntry;
@@ -175,31 +171,6 @@ public class InitialSync {
         return new InitialSync(ombx).sync();
     }
 
-    public static String convertDateToLong(String input) {
-        DateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
-        Date date;
-        try {
-            date = (Date)formatter.parse(input);
-            return Long.toString(date.getTime() / 1000L);
-        } catch (ParseException e) {
-            return "-1";
-        }
-    }
-
-    public static String convertRelativeDatetoLong(String input, String syncFieldName) {
-        Calendar now = GregorianCalendar.getInstance();
-        if(syncFieldName.equals("Year")) {
-            now.add(Calendar.YEAR, Integer.parseInt(input) * -1);
-        }
-        else if(syncFieldName.equals("Month")) {
-            now.add(Calendar.MONTH, Integer.parseInt(input) * -1);
-        }
-        else if(syncFieldName.equals("Week")) {
-            now.add(Calendar.WEEK_OF_YEAR, Integer.parseInt(input) * -1);
-        }
-        return Long.toString(now.getTime().getTime() / 1000L);
-    }
-
     private String sync() throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.SYNC_REQUEST);
 
@@ -209,10 +180,10 @@ public class InitialSync {
                 request.addAttribute(MailConstants.A_MSG_CUTOFF, "0");
                 break;
             case SYNCTOFIXEDDATE:
-                request.addAttribute(MailConstants.A_MSG_CUTOFF, convertDateToLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFixedDate)));
+                request.addAttribute(MailConstants.A_MSG_CUTOFF, DateUtil.getFixedDateSecs(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFixedDate)));
                 break;
             case SYNCTORELATIVEDATE:
-                request.addAttribute(MailConstants.A_MSG_CUTOFF, convertRelativeDatetoLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncRelativeDate) ,
+                request.addAttribute(MailConstants.A_MSG_CUTOFF, DateUtil.getRelativeDateSecs(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncRelativeDate) ,
                         ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFieldName)));
                 break;
             }
@@ -221,15 +192,11 @@ public class InitialSync {
                 return null;
         }
         syncResponse = ombx.sendRequest(request);
-        
         OfflineLog.offline.debug(syncResponse.prettyPrint());
-        
         String token = syncResponse.getAttribute(MailConstants.A_TOKEN);
-
         lastPeek = System.currentTimeMillis();
-        
         OfflineSyncManager.getInstance().continueOK();
-        
+
         OfflineLog.offline.debug("starting initial sync");
         mMailboxSync.saveSyncTree(syncResponse, token);
         initialFolderSync(syncResponse.getElement(MailConstants.E_FOLDER));
@@ -320,15 +287,7 @@ public class InitialSync {
                 Element eContactIds = elt.getOptionalElement(MailConstants.E_CONTACT);
                 if (eContactIds != null) {
                     String ids = eContactIds.getAttribute(MailConstants.A_IDS);
-                    for (Element eContact : fetchContacts(ombx, ids)) {
-                        int contactId = (int)eContact.getAttributeLong(MailConstants.A_ID);
-                        if (OfflineSyncManager.getInstance().isInSkipList(contactId)) {
-                            OfflineLog.offline.warn("Skipped contact id=%d per zdesktop_sync_skip_idlist", contactId);
-                            continue;
-                        }
-                        if (!isAlreadySynced(contactId, MailItem.TYPE_CONTACT))
-                            syncContact(eContact, folderId);
-                    }
+                    syncContacts(Arrays.asList(ids.split(",")), folderId);
                 }
             }
 
@@ -1024,6 +983,26 @@ public class InitialSync {
         }
     }
 
+    void syncContacts(Collection<String> contactIds, int folderId) throws ServiceException {
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        for (String contactId : contactIds) {
+            if (OfflineSyncManager.getInstance().isInSkipList(Integer.valueOf(contactId))) {
+                OfflineLog.offline.warn("Skipped contact id=%d per zdesktop_sync_skip_idlist", contactId);
+                continue;
+            }
+            sb.append(contactId).append(",");
+            count++;
+            if (count %  OfflineLC.zdesktop_sync_batch_size.intValue() == 0 || count == contactIds.size()) {
+                sb.setLength(sb.length() - 1);
+                for (Element eContact : fetchContacts(ombx, sb.toString())) {
+                    syncContact(eContact, folderId);
+                }
+                sb = new StringBuilder();
+            }
+        }
+    }
+
 
     private static final Map<String, String> USE_SYNC_FORMATTER = new HashMap<String, String>();
         static {
@@ -1334,11 +1313,11 @@ public class InitialSync {
 
             switch (SyncMsgOptions.getOption(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncEmailDate))) {
             case SYNCTOFIXEDDATE:
-                cutOffTime = Long.parseLong(convertDateToLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFixedDate)));
+                cutOffTime = DateUtil.getFixedDateSecs(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFixedDate));
                 break;
             case SYNCTORELATIVEDATE:
-                cutOffTime = Long.parseLong(convertRelativeDatetoLong(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncRelativeDate) ,
-                        ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFieldName)));
+                cutOffTime = DateUtil.getRelativeDateSecs(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncRelativeDate) ,
+                        ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncFieldName));
                 break;
             }
 
@@ -1413,16 +1392,18 @@ public class InitialSync {
                     redo2 = new SaveDraft(ombx.getId(), id, digest, size);
                 redo2.start(received * 1000L);
 
-                synchronized (ombx) {
-                    int change_mask = ombx.getChangeMask(sContext, id, type);
-                    if ((change_mask & Change.MODIFIED_CONTENT) == 0) {
-                        if (type == MailItem.TYPE_CHAT)
-                            ombx.updateChat(new TracelessContext(redo2), pm, id);
-                        else
-                            ombx.saveDraft(new TracelessContext(redo2), pm, id, null, null, null, null, draftInfo != null ? draftInfo.autoSendTime : 0);
-                        OfflineLog.offline.debug("initial: updated " + MailItem.getNameForType(type) + " content (" + id + "): " + msg.getSubject());
-                    } else {
-                        OfflineLog.offline.debug("initial: %s %d (%s) content updated locally, will overwrite remote change", MailItem.getNameForType(type), id, msg.getSubject());
+                synchronized (ombx.getOfflineSaveDraftGuard()) {
+                    synchronized (ombx) {
+                        int change_mask = ombx.getChangeMask(sContext, id, type);
+                        if ((change_mask & Change.MODIFIED_CONTENT) == 0) {
+                            if (type == MailItem.TYPE_CHAT)
+                                ombx.updateChat(new TracelessContext(redo2), pm, id);
+                            else
+                                ombx.saveDraft(new TracelessContext(redo2), pm, id, null, null, null, null, draftInfo != null ? draftInfo.autoSendTime : 0);
+                            OfflineLog.offline.debug("initial: updated " + MailItem.getNameForType(type) + " content (" + id + "): " + msg.getSubject());
+                        } else {
+                            OfflineLog.offline.debug("initial: %s %d (%s) content updated locally, will overwrite remote change", MailItem.getNameForType(type), id, msg.getSubject());
+                        }
                     }
                 }
             }

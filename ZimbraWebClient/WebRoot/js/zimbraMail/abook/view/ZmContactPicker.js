@@ -45,6 +45,7 @@ ZmContactPicker = function(buttonInfo) {
 	this._list = new AjxVector();
 	this._detailed = appCtxt.get(ZmSetting.DETAILED_CONTACT_SEARCH_ENABLED);
 	this._searchCleared = {};
+	this._ignoreSetDragBoundries = true;
 
 	this._searchErrorCallback = new AjxCallback(this, this._handleErrorSearch);
 };
@@ -149,6 +150,14 @@ function(buttonId, addrs, str, account) {
 	this.search(null, null, true);
 
 	DwtDialog.prototype.popup.call(this);
+	if ((this.getLocation().x < 0 ||  this.getLocation().y < 0) ){
+		// parent window size is smaller than Dialog size
+		this.setLocation(0,30);
+		var size = Dwt.getWindowSize();
+		var currentSize = this.getSize();
+		var dragElement = document.getElementById(this._dragHandleId);
+		DwtDraggable.setDragBoundaries(dragElement, 100 - currentSize.x, size.x - 100, 0, size.y - 100);
+	}
 };
 
 /**
@@ -243,7 +252,7 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
 		query = this._defaultQuery;
 	}
 
-    if (this._contactSource == ZmItem.CONTACT) {
+    if (this._contactSource == ZmItem.CONTACT && query != "") {
         query = query.replace(/\"/g, '\\"');
         query = "\"" + query + "\"";
     }
@@ -276,22 +285,24 @@ function(colItem, ascending, firstTime, lastId, lastSortVal) {
 ZmContactPicker.prototype._contentHtml =
 function(account) {
 	var showSelect;
-	if (appCtxt.multiAccounts) {
-		var list = appCtxt.accountList.visibleAccounts;
+	var context = appCtxt.isChildWindow ? parentAppCtxt : appCtxt;
+
+	if (context.multiAccounts) {
+		var list = context.accountList.visibleAccounts;
 		for (var i = 0; i < list.length; i++) {
 			var account = list[i];
-			if (appCtxt.get(ZmSetting.CONTACTS_ENABLED, null, account) &&
-				(appCtxt.get(ZmSetting.GAL_ENABLED, null, account) ||
-				 appCtxt.get(ZmSetting.SHARING_ENABLED, null, account)))
+			if (context.get(ZmSetting.CONTACTS_ENABLED, null, account) &&
+				(context.get(ZmSetting.GAL_ENABLED, null, account) ||
+				 context.get(ZmSetting.SHARING_ENABLED, null, account)))
 			{
 				showSelect = true;
 				break;
 			}
 		}
 	} else {
-		showSelect = (appCtxt.get(ZmSetting.CONTACTS_ENABLED) &&
-					  (appCtxt.get(ZmSetting.GAL_ENABLED) ||
-					   appCtxt.get(ZmSetting.SHARING_ENABLED)));
+		showSelect = (context.get(ZmSetting.CONTACTS_ENABLED) &&
+					  (context.get(ZmSetting.GAL_ENABLED) ||
+					   context.get(ZmSetting.SHARING_ENABLED)));
 	}
 
 	var subs = {

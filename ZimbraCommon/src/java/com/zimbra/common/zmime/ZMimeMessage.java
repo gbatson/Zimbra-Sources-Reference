@@ -61,7 +61,7 @@ public class ZMimeMessage extends MimeMessage implements ZMimePart {
     }
 
     public ZMimeMessage(MimeMessage source) throws MessagingException {
-        super(source instanceof ZMimeMessage ? ((ZMimeMessage) source).getSession() : Session.getInstance(new Properties()));
+        super(source instanceof ZMimeMessage ? ((ZMimeMessage) source).getSession() : Session.getDefaultInstance(new Properties()));
 
         this.size = -1;
         this.lines = -1;
@@ -315,7 +315,7 @@ public class ZMimeMessage extends MimeMessage implements ZMimePart {
     public String getDisposition() throws MessagingException {
         if (ZPARSER) {
             String s = getHeader("Content-Disposition", null);
-            return s == null ? null : new ZContentDisposition(s).getDisposition();
+            return s == null || s.isEmpty() ? null : new ZContentDisposition(s).getDisposition();
         } else {
             return super.getDisposition();
         }

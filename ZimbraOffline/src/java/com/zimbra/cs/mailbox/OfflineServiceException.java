@@ -35,7 +35,9 @@ public class OfflineServiceException extends ServiceException {
     public static final String YCALDAV_NEED_UPGRADE = "offline.YCALDAV_NEED_UPGRADE";
     public static final String GCALDAV_NEED_ENABLE = "offline.GCALDAV_NEED_ENABLE";
     public static final String YCONTACT_NEED_VERIFY = "offline.YCONTACT_NEED_VERIFY";
-    
+    public static final String MUST_RESYNC = "offline.MUST_RESYNC";
+    public static final String GAL_NOT_READY = "offline.GAL_NOT_READY";
+
     public static final String ITEM_ID = "itemId";
 
     private OfflineServiceException(String message, String code, boolean isReceiversFault, Argument... args) {
@@ -96,6 +98,14 @@ public class OfflineServiceException extends ServiceException {
     
     public static OfflineServiceException YCONTACT_NEED_VERIFY() {
         return new OfflineServiceException("must grant access to yahoo contact API", YCONTACT_NEED_VERIFY, RECEIVERS_FAULT);
+    }
+
+    public static OfflineServiceException MUST_RESYNC() {
+        return new OfflineServiceException("must resync mailbox", MUST_RESYNC, RECEIVERS_FAULT);
+    }
+
+    public static OfflineServiceException GAL_NOT_READY() {
+        return new OfflineServiceException("GAL is not yet ready", GAL_NOT_READY, RECEIVERS_FAULT);
     }
 }
 

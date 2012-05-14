@@ -1,4 +1,4 @@
-<%@ page buffer="8kb" session="false" autoFlush="true" pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
+<%@ page buffer="8kb" session="true" autoFlush="true" pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
 <%@ page import="java.util.*,javax.naming.*,com.zimbra.cs.zclient.ZAuthResult" %>
 <%@ page import="com.zimbra.cs.taglib.bean.BeanUtils" %>
 <%@ taglib prefix="zm" uri="com.zimbra.zm" %>
@@ -100,11 +100,14 @@
     boolean isScriptErrorOn = getParameter(request, "scripterrors", "0").equals("1");
     boolean isNotifyDebugOn = getParameter(request, "notifydebug", "0").equals("1");
 	String debug = getParameter(request, "debug", getAttribute(request, "debug", null));
+    debug = BeanUtils.cook(debug);
 	String debugLogTarget = getParameter(request, "log", getAttribute(request, "log", null));
-	String extraPackages = getParameter(request, "packages", getAttribute(request, "packages", null));
+    debugLogTarget = BeanUtils.cook(debugLogTarget);
+    String extraPackages = getParameter(request, "packages", getAttribute(request, "packages", null));
 	String startApp = getParameter(request, "app", "");
 	String noSplashScreen = getParameter(request, "nss", null);
-	boolean isLeakDetectorOn = getParameter(request, "leak", "0").equals("1");
+	noSplashScreen = BeanUtils.cook(noSplashScreen);
+    boolean isLeakDetectorOn = getParameter(request, "leak", "0").equals("1");
 
 	String mode = getAttribute(request, "mode", null);
 	boolean isDevMode = mode != null && mode.equalsIgnoreCase("mjsf");
@@ -134,7 +137,6 @@
 			locale = new Locale(language, country);
 		}
     }
-
 	// make variables available in page context (e.g. ${foo})
 	pageContext.setAttribute("contextPath", contextPath);
 	pageContext.setAttribute("skin", skin);
@@ -150,13 +152,21 @@
 	pageContext.setAttribute("isDebug", isSkinDebugMode || isDevMode);
 	pageContext.setAttribute("isLeakDetectorOn", isLeakDetectorOn);
 	pageContext.setAttribute("editor", editor);
-    pageContext.setAttribute("isCoverage", isCoverage);
-    pageContext.setAttribute("isPerfMetric", isPerfMetric);
+        pageContext.setAttribute("isCoverage", isCoverage);
+        pageContext.setAttribute("isPerfMetric", isPerfMetric);
+        pageContext.setAttribute("isLocaleId", localeId != null);
 %>
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 <meta http-equiv="cache-control" content="no-cache"/>
 <meta http-equiv="Pragma" content="no-cache"/>
 <fmt:setLocale value='${locale}' scope='request' />
+<c:if test="${not isLocaleId}">
+<zm:getValidLocale locale='${locale}' var='validLocale'/>
+  <c:if test="${not validLocale}">
+    <% pageContext.setAttribute("locale", Locale.US); //unsupported locale being set default to US%>
+   </c:if>
+</c:if>
+	
 <fmt:setBundle basename="/messages/ZmMsg" scope="request" force="true" />
 <title><fmt:message key="zimbraTitle"/></title>
 <link href="<c:url value="/css/images,common,dwt,msgview,login,zm,spellcheck,wiki,skin.css">

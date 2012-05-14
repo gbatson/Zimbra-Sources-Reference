@@ -24,10 +24,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.SoapFaultException;
+import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.mailbox.ChangeTrackingMailbox.TracelessContext;
 import com.zimbra.cs.mime.ParsedContact;
@@ -38,6 +42,7 @@ import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.offline.util.ExtractData;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.mail.Sync;
+import com.zimbra.cs.service.offline.OfflineDialogAction;
 import com.zimbra.cs.session.PendingModifications.Change;
 
 public class DeltaSync {
@@ -80,34 +85,50 @@ public class DeltaSync {
         return ombx.getTagSync();
     }
 
-    public static String sync(ZcsMailbox ombx) throws ServiceException {
-        return new DeltaSync(ombx).sync();
+    public static void sync(ZcsMailbox ombx) throws ServiceException {
+        new DeltaSync(ombx).sync();
     }
 
-    String sync() throws ServiceException {
+    void sync() throws ServiceException {
         String oldToken = mMailboxSync.getSyncToken();
         assert (oldToken != null);
 
-        Element response;
+        Element response = null;
         String newToken;
         // keep delta sync'ing until the server tells us the delta sync is complete ("more=0")
         do {
             Element request = new Element.XMLElement(MailConstants.SYNC_REQUEST).addAttribute(MailConstants.A_TOKEN,
                     oldToken).addAttribute(MailConstants.A_TYPED_DELETES, true);
-            response = ombx.sendRequestWithNotification(request);
+            try {
+                response = ombx.sendRequestWithNotification(request);
+            } catch (SoapFaultException e) {
+                //TODO use MailServiceException.MUST_RESYNC when branched from main
+                if ("mail.MUST_RESYNC".equals(e.getCode())) {
+                    OfflineLog.offline.warn("sync token is too old, must resync");
+                    this.ombx.cancelCurrentTask();
+                    OfflineSyncManager.getInstance().registerDialog(this.ombx.getAccountId(),
+                            new Pair<String, String>(OfflineDialogAction.DIALOG_TYPE_RESYNC,
+                                    OfflineDialogAction.DIALOG_RESYNC_MSG));
+                    throw OfflineServiceException.MUST_RESYNC();
+                } else {
+                    throw e;
+                }
+            }
+
             newToken = response.getAttribute(MailConstants.A_TOKEN);
 
-            OfflineLog.offline.debug("starting delta sync [token " + oldToken + ']');
-            deltaSync(response);
-            SyncExceptionHandler.checkIOExceptionRate(ombx);
-            // update the stored sync progress and loop again with new token if sync was incomplete
-            if (!newToken.equals(oldToken))
+            if (StringUtil.equal(newToken, oldToken) && !response.getAttributeBool(MailConstants.A_QUERY_MORE, false)) {
+                OfflineLog.offline.debug("skipping delta sync [token " + oldToken + "] unchanged");
+            } else {
+                OfflineLog.offline.debug("starting delta sync [token " + oldToken + ']');
+                deltaSync(response);
+                SyncExceptionHandler.checkIOExceptionRate(ombx);
+                // update the stored sync progress and loop again with new token if sync was incomplete
                 mMailboxSync.recordSyncComplete(newToken);
-            oldToken = newToken;
-            OfflineLog.offline.debug("ending delta sync [token " + newToken + ']');
+                oldToken = newToken;
+                OfflineLog.offline.debug("ending delta sync [token " + newToken + ']');
+            }
         } while (response.getAttributeBool(MailConstants.A_QUERY_MORE, false));
-
-        return newToken;
     }
 
     private void deltaSync(Element response) throws ServiceException {
@@ -129,7 +150,7 @@ public class DeltaSync {
         Map<Integer, List<Integer>> modchats = new HashMap<Integer, List<Integer>>();
         Map<Integer, Integer> deltamsgs = new HashMap<Integer, Integer>();
         Map<Integer, Integer> deltachats = new HashMap<Integer, Integer>();
-        Map<Integer, Integer> contacts = new HashMap<Integer, Integer>();
+        Multimap<Integer, String> contacts = ArrayListMultimap.create(); //<folderId, contactId>
         Map<Integer, Integer> appts = new HashMap<Integer, Integer>();
         Map<Integer, Integer> tasks = new HashMap<Integer, Integer>();
         List<Integer> documents = new ArrayList<Integer>();
@@ -191,7 +212,7 @@ public class DeltaSync {
     private void syncItems(boolean isInitSyncDone, Set<Integer> foldersToDelete, Map<Integer, List<Integer>> messages,
             Map<Integer, List<Integer>> modmsgs, Map<Integer, List<Integer>> chats,
             Map<Integer, List<Integer>> modchats, Map<Integer, Integer> deltamsgs, Map<Integer, Integer> deltachats,
-            Map<Integer, Integer> contacts, Map<Integer, Integer> appts, Map<Integer, Integer> tasks,
+            Multimap<Integer, String> contacts, Map<Integer, Integer> appts, Map<Integer, Integer> tasks,
             List<Integer> documents) throws ServiceException {
         // for messages, chats, and contacts that are created or had their content modified, fetch new content
         if (OfflineLC.zdesktop_sync_messages.booleanValue() && !deltamsgs.isEmpty()) {
@@ -240,8 +261,9 @@ public class DeltaSync {
         }
 
         if (OfflineLC.zdesktop_sync_contacts.booleanValue() && !contacts.isEmpty()) {
-            for (Element elt : InitialSync.fetchContacts(ombx, StringUtil.join(",", contacts.keySet())))
-                getInitialSync().syncContact(elt, contacts.get((int) elt.getAttributeLong(MailConstants.A_ID)));
+            for (Integer folderId: contacts.keySet()) {
+                getInitialSync().syncContacts(contacts.get(folderId), folderId);
+            }
         }
 
         if (isInitSyncDone && OfflineLC.zdesktop_sync_documents.booleanValue() && !documents.isEmpty())
@@ -266,7 +288,7 @@ public class DeltaSync {
 
     private void prepareSync(Map<Integer, List<Integer>> messages, Map<Integer, List<Integer>> modmsgs,
             Map<Integer, List<Integer>> chats, Map<Integer, List<Integer>> modchats, Map<Integer, Integer> deltamsgs,
-            Map<Integer, Integer> deltachats, Map<Integer, Integer> contacts, Map<Integer, Integer> appts,
+            Map<Integer, Integer> deltachats, Multimap<Integer, String> contacts, Map<Integer, Integer> appts,
             Map<Integer, Integer> tasks, List<Integer> documents, Element change, int folderId) throws ServiceException {
         int id = (int) change.getAttributeLong(MailConstants.A_ID);
         String type = change.getName();
@@ -315,7 +337,7 @@ public class DeltaSync {
                 return;
 
             if (create) {
-                contacts.put(id, folderId);
+                contacts.put(folderId, id+"");
             } else {
                 syncContact(change, folderId);
             }

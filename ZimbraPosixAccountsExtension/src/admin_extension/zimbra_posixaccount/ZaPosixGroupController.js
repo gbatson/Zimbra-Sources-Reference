@@ -144,6 +144,20 @@ function () {
 	this._UICreated = true;
 }
 
+ZaPosixGroupController.prototype.saveButtonListener = 
+function(ev) {
+	try {
+		if(this._saveChanges()) {
+			this._view.setDirty(false);
+			if(this._toolbar)
+				this._toolbar.getButton(ZaOperation.SAVE).setEnabled(false);		
+		}
+	} catch (ex) {
+		this._handleException(ex, "ZaDomainController.prototype.saveButtonListener", null, false);
+	}
+	return;
+}
+
 ZaPosixGroupController.prototype._saveChanges =
 function () {
 	//check if the XForm has any errors
@@ -216,7 +230,7 @@ function () {
 		return false;
 	}
 		
-	this._contentView.setDirty(false);	
+	this._view.setDirty(false);	
 	return true;
 }
 

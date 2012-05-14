@@ -195,6 +195,7 @@ ZaCos.A_zimbraPasswordLockoutMaxFailures = "zimbraPasswordLockoutMaxFailures";
 ZaCos.A_zimbraPasswordLockoutFailureLifetime = "zimbraPasswordLockoutFailureLifetime";
 
 // right
+ZaCos.RIGHT_LIST_COS = "listCos";
 ZaCos.RIGHT_LIST_ZIMLET = "listZimlet";
 ZaCos.RIGHT_GET_ZIMLET = "getZimlet";
 ZaCos.RIGHT_GET_HOSTNAME = "zimbraVirtualHostname";
@@ -253,6 +254,12 @@ function (by, val) {
 		}
 	var resp = ZaRequestMgr.invoke(params, reqMgrParams).Body.GetCosResponse;
 	this.initFromJS(resp.cos[0]);
+
+	if(this.attrs[ZaAccount.A_zimbraPrefMailPollingInterval]) {
+    	var poIntervalInS = ZaUtil.getLifeTimeInSeconds(this.attrs[ZaAccount.A_zimbraPrefMailPollingInterval]);
+        if (poIntervalInS >= 1)
+            this.attrs[ZaAccount.A_zimbraPrefMailPollingInterval] = poIntervalInS + "s";
+    }
 }
 ZaItem.loadMethods["ZaCos"].push(ZaCos.loadMethod);
 
@@ -628,7 +635,7 @@ ZaCos.myXModel = {
         {id:ZaCos.A_zimbraPrefShowSearchString, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefShowSearchString, type:_ENUM_},
         //{id:ZaCos.A_zimbraPrefMailSignatureStyle, choices:ZaModel.SIGNATURE_STYLE_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefMailSignatureStyle, type:_ENUM_,defaultValue:"internet"},
         {id:ZaCos.A_zimbraPrefUseTimeZoneListInCalendar, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaCos.A_zimbraPrefUseTimeZoneListInCalendar, type:_ENUM_},
-        {id:ZaCos.A_zimbraPrefMailPollingInterval, ref:"attrs/"+ZaCos.A_zimbraPrefMailPollingInterval, type:_MLIFETIME_},
+        {id:ZaCos.A_zimbraPrefMailPollingInterval, ref:"attrs/"+ZaCos.A_zimbraPrefMailPollingInterval, type:_ENUM_, choices: ZaSettings.mailPollingIntervalChoices},
 	{id:ZaCos.A_zimbraPrefAutoSaveDraftInterval, ref:"attrs/"+ZaCos.A_zimbraPrefAutoSaveDraftInterval, type:_MLIFETIME_},
         {id:ZaCos.A_zimbraDataSourceMinPollingInterval, ref:"attrs/"+ZaCos.A_zimbraDataSourceMinPollingInterval, type:_MLIFETIME_},
         {id:ZaCos.A_zimbraDataSourcePop3PollingInterval, ref:"attrs/"+ZaCos.A_zimbraDataSourcePop3PollingInterval, type:_MLIFETIME_},
@@ -758,7 +765,7 @@ function () {
 	}	
 	
 }
-
+ZaCos.globalRights = {};
 ZaCos.getEffectiveCosList = function(adminId) {
 
     var soapDoc = AjxSoapDoc.create("GetAllEffectiveRightsRequest", ZaZimbraAdmin.URN, null);
@@ -783,11 +790,22 @@ ZaCos.getEffectiveCosList = function(adminId) {
         for(var i = 0; i < targets.length; i++) {
             if(targets[i].type != ZaItem.COS)
                 continue;
-            if(!targets[i].entries) continue;
-            for(var j = 0; j < targets[i].entries.length; j++) {
-                var entry = targets[i].entries[j].entry;
-                for(var k = 0; k < entry.length; k++)
-                    cosNameList.push(entry[k].name);
+            if(!targets[i].entries && !targets[i].all) continue;
+            
+            if(targets[i].all) { 
+            	//we have access to all domains
+            	if(targets[i].all.length && targets[i].all[0] && targets[i].all[0].right && targets[i].all[0].right.length) {
+            		for(var j=0;j<targets[i].all[0].right.length;j++) {
+            			ZaCos.globalRights[targets[i].all[0].right[j].n] = true;
+            		}
+            	}
+            }
+            if(targets[i].entries) {   
+                 for(var j = 0; j < targets[i].entries.length; j++) {
+                    var entry = targets[i].entries[j].entry;
+                    for(var k = 0; k < entry.length; k++)
+                         cosNameList.push(entry[k].name);
+		 }
             }
             break;
         }

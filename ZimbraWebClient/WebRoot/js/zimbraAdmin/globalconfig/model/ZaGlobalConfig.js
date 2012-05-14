@@ -201,7 +201,8 @@ function(by, val) {
 	}	
 	//var command = new ZmCsfeCommand();
 	var params = new Object();
-	params.soapDoc = soapDoc;	
+	params.soapDoc = soapDoc;
+	params.noAuthToken = true;	
 	var reqMgrParams = {
 		controller : ZaApp.getInstance().getCurrentController(),
 		busyMsg : ZaMsg.BUSY_GET_ALL_CONFIG
@@ -327,7 +328,8 @@ ZaGlobalConfig.modifyMethod = function (tmods, tmpObj) {
 
 	var command = new ZmCsfeCommand();
 	var params = new Object();
-	params.soapDoc = soapDoc;	
+	params.soapDoc = soapDoc;
+	params.noAuthToken = true;	
 	command.invoke(params);
 	ZaGlobalConfig.isDirty = true;
 }

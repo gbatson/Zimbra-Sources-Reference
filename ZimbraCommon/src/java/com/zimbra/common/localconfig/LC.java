@@ -189,6 +189,9 @@ public final class LC {
 
     @Supported
     public static final KnownKey zimbra_index_lru_size = KnownKey.newKey(100);
+    
+    @Supported
+    public static final KnownKey zimbra_index_lru_threshold_size = KnownKey.newKey(80);
 
     @Supported
     public static final KnownKey zimbra_index_idle_flush_time = KnownKey.newKey(600);
@@ -197,7 +200,8 @@ public final class LC {
     public static final KnownKey zimbra_index_sweep_frequency = KnownKey.newKey(30);
 
     public static final KnownKey zimbra_index_completed_pool_size = KnownKey.newKey(5);
-    public static final KnownKey zimbra_index_flush_pool_size = KnownKey.newKey(10);
+    public static final KnownKey zimbra_index_flush_pool_size = KnownKey.newKey(20);
+    public static final KnownKey zimbra_index_flush_queue_size = KnownKey.newKey(100);
     public static final KnownKey zimbra_index_reindex_pool_size = KnownKey.newKey(10);
 
     @Supported
@@ -362,7 +366,7 @@ public final class LC {
     public static final KnownKey ldap_connect_timeout = KnownKey.newKey(30000);
 
     @Supported
-    public static final KnownKey ldap_read_timeout = KnownKey.newKey(30000);
+    public static final KnownKey ldap_read_timeout = KnownKey.newKey(0);
 
     @Supported
     public static final KnownKey ldap_deref_aliases = KnownKey.newKey("always");
@@ -728,6 +732,9 @@ public final class LC {
     public static final KnownKey text_attachments_base64 = KnownKey.newKey(true);
 
     public static final KnownKey imap_max_request_size = KnownKey.newKey(10 * 1024);
+    @Supported
+    public static final KnownKey imap_inactive_session_cache_size = KnownKey.newKey(10000);
+    public static final KnownKey imap_use_ehcache = KnownKey.newKey(true);
     public static final KnownKey imap_max_idle_time = KnownKey.newKey(60);
     public static final KnownKey imap_authenticated_max_idle_time = KnownKey.newKey(1800);
     public static final KnownKey pop3_max_idle_time = KnownKey.newKey(60);
@@ -1122,10 +1129,15 @@ public final class LC {
     public static final KnownKey zimbra_vami_password = KnownKey.newKey("vmware").protect();
     public static final KnownKey zimbra_vami_installmode = KnownKey.newKey("single");
 
+    @Supported
     public static final KnownKey http_store_local_cache_max_bytes = KnownKey.newKey(1024 * 1024 * 1024); // 1GB
+
+    @Supported
     public static final KnownKey http_store_local_cache_max_files = KnownKey.newKey(10000);
 
     public static final KnownKey http_store_local_cache_min_lifetime = KnownKey.newKey(Constants.MILLIS_PER_MINUTE);
+
+    public static final KnownKey check_dl_membership_enabled = KnownKey.newKey(true);
 
     static {
         // Automatically set the key name with the variable name.

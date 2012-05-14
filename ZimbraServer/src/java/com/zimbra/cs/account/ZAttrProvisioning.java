@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 administrator 20111108-1035 */
+    /* build: 7.0.0_BETA1_1111 pshao 20120319-1235 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -1410,7 +1410,18 @@ public class ZAttrProvisioning {
     public static final String A_zimbraAccountExtraObjectClass = "zimbraAccountExtraObjectClass";
 
     /**
-     * account status
+     * account status. active - active lockout - no login until lockout
+     * duration is over, mail delivery OK. locked - no login, mail delivery
+     * OK. maintenance - no login, no delivery(lmtp server returns 4.x.x
+     * Persistent Transient Failure). pending - no login, no delivery(lmtp
+     * server returns 5.x.x Permanent Failure), Account behavior is like
+     * closed, except that when the status is being set to pending, account
+     * addresses are not removed from distribution lists. The use case is for
+     * hosted. New account creation based on invites that are not completed
+     * until user accepts TOS on account creation confirmation page. closed -
+     * no login, no delivery(lmtp server returns 5.x.x Permanent Failure),
+     * all addresses (account main email and all aliases) of the account are
+     * removed from all distribution lists.
      */
     @ZAttr(id=2)
     public static final String A_zimbraAccountStatus = "zimbraAccountStatus";
@@ -2903,33 +2914,25 @@ public class ZAttrProvisioning {
 
     /**
      * domain status. enum values are akin to those of zimbraAccountStatus
-     * zimbraAccountStatus values: active - active lockout - no login until
-     * lockout duration is over locked - no login maintenance - no login, no
-     * delivery(try again, no bouncing) pending - no login, no
-     * delivery(bouncing mails), Account behavior is like closed, except that
-     * when the status is being set to pending, account addresses are not
-     * removed from distribution lists. The use case is for hosted. New
-     * account creation based on invites that are not completed until user
-     * accepts TOS on account creation confirmation page. closed - no login,
-     * no delivery(bouncing mails) all addresses (account main email and all
-     * aliases) of the account are removed from all distribution lists.
-     * zimbraDomainStatus values: all values for zimbraAccountStatus (except
-     * for lockout, see mapping below) suspended - maintenance + no
-     * creating/deleting/modifying accounts/DLs under the domain. shutdown -
-     * suspended + cannot modify domain attrs + cannot delete the domain
-     * Indicating server is doing major and lengthy maintenance work on the
-     * domain, e.g. renaming the domain and moving LDAP enteries.
-     * Modification and deletion of the domain can only be done internally by
-     * the server when it is safe to release the domain, they cannot be done
-     * in admin console or zmprov. How zimbraDomainStatus affects account
-     * behavior : ------------------------------------- zimbraDomainStatus
-     * account behavior ------------------------------------- active
-     * zimbraAccountStatus locked zimbraAccountStatus if it is maintenance or
-     * pending or closed, else locked maintenance zimbraAccountStatus if it
-     * is pending or closed, else maintenance suspended zimbraAccountStatus
-     * if it is pending or closed, else maintenance shutdown
-     * zimbraAccountStatus if it is pending or closed, else maintenance
-     * closed closed
+     * but the status affects all accounts on the domain. See table below for
+     * how zimbraDomainStatus affects account status. active - see
+     * zimbraAccountStatus maintenance - see zimbraAccountStatus locked - see
+     * zimbraAccountStatus closed - see zimbraAccountStatus suspended -
+     * maintenance + no creating/deleting/modifying accounts/DLs under the
+     * domain. shutdown - suspended + cannot modify domain attrs + cannot
+     * delete the domain Indicating server is doing major and lengthy
+     * maintenance work on the domain, e.g. renaming the domain and moving
+     * LDAP entries. Modification and deletion of the domain can only be done
+     * internally by the server when it is safe to release the domain, they
+     * cannot be done in admin console or zmprov. How zimbraDomainStatus
+     * affects account behavior : -------------------------------------
+     * zimbraDomainStatus account behavior
+     * ------------------------------------- active zimbraAccountStatus
+     * locked zimbraAccountStatus if it is maintenance or pending or closed,
+     * else locked maintenance zimbraAccountStatus if it is pending or
+     * closed, else maintenance suspended zimbraAccountStatus if it is
+     * pending or closed, else maintenance shutdown zimbraAccountStatus if it
+     * is pending or closed, else maintenance closed closed
      *
      * @since ZCS 5.0.0
      */
@@ -5318,7 +5321,7 @@ public class ZAttrProvisioning {
      * hours, m - minutes, s - seconds, d - days, ms - milliseconds. If time
      * unit is not specified, the default is s(seconds).
      *
-     * @since ZCS 8.0.0
+     * @since ZCS 7.1.4
      */
     @ZAttr(id=1340)
     public static final String A_zimbraMessageIdDedupeCacheTimeout = "zimbraMessageIdDedupeCacheTimeout";
@@ -5415,7 +5418,7 @@ public class ZAttrProvisioning {
     /**
      * whether to allow simple password; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5425,7 +5428,7 @@ public class ZAttrProvisioning {
     /**
      * whether to require alpha-numeric password as device pin; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5453,7 +5456,7 @@ public class ZAttrProvisioning {
     /**
      * number of days before device pin must expire; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5463,7 +5466,7 @@ public class ZAttrProvisioning {
     /**
      * number of previously used password stored in history; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE or
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE or
      * zimbraMobilePolicyDevicePasswordExpiration=0
      *
      * @since ZCS 6.0.0_BETA1
@@ -5474,7 +5477,7 @@ public class ZAttrProvisioning {
     /**
      * number of consecutive incorrect pin input before device is wiped;
      * ignored if zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5484,7 +5487,7 @@ public class ZAttrProvisioning {
     /**
      * max idle time in minutes before device is locked; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5494,7 +5497,7 @@ public class ZAttrProvisioning {
     /**
      * least number of complex characters must be included in device pin;
      * ignored if zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5504,7 +5507,7 @@ public class ZAttrProvisioning {
     /**
      * min length for device pin; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -5514,7 +5517,7 @@ public class ZAttrProvisioning {
     /**
      * support device pin recovery; ignored if
      * zimbraFeatureMobilePolicyEnabled=FALSE or
-     * zimbraMobileDevicePasswordEnabled=FALSE
+     * zimbraMobilePolicyDevicePasswordEnabled=FALSE
      *
      * @since ZCS 6.0.0_BETA1
      */
@@ -6650,9 +6653,8 @@ public class ZAttrProvisioning {
     public static final String A_zimbraPrefForwardReplyFormat = "zimbraPrefForwardReplyFormat";
 
     /**
-     * Deprecated since: 4.5. Deprecated in favor of
-     * zimbraPrefForwardReplyFormat. Orig desc: whether or not to use same
-     * format (text or html) of message we are replying to
+     * whether or not to use same format (text or html) of message we are
+     * replying to
      */
     @ZAttr(id=218)
     public static final String A_zimbraPrefForwardReplyInOriginalFormat = "zimbraPrefForwardReplyInOriginalFormat";
@@ -7812,6 +7814,18 @@ public class ZAttrProvisioning {
     public static final String A_zimbraReverseProxyDomainNameSearchBase = "zimbraReverseProxyDomainNameSearchBase";
 
     /**
+     * Control whether to generate per virtual hostname nginx configuration.
+     * This would be helpful when multiple virtual host names are defined,
+     * but they are actually share the same configuration (like ssl cert,
+     * client CA, ...). This attr has to be set as &quot;TRUE&quot; to enable
+     * the features like cert per domain.
+     *
+     * @since ZCS 7.2.0
+     */
+    @ZAttr(id=1374)
+    public static final String A_zimbraReverseProxyGenConfigPerVirtualHostname = "zimbraReverseProxyGenConfigPerVirtualHostname";
+
+    /**
      * Whether to enable HTTP proxy
      *
      * @since ZCS 5.0.3
@@ -8122,7 +8136,7 @@ public class ZAttrProvisioning {
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
      *
-     * @since ZCS 8.0.0
+     * @since ZCS 7.1.4
      */
     @ZAttr(id=1337)
     public static final String A_zimbraReverseProxyUpstreamPollingTimeout = "zimbraReverseProxyUpstreamPollingTimeout";
@@ -8135,7 +8149,7 @@ public class ZAttrProvisioning {
      * milliseconds. If time unit is not specified, the default is
      * s(seconds).
      *
-     * @since ZCS 8.0.0
+     * @since ZCS 7.1.4
      */
     @ZAttr(id=1335)
     public static final String A_zimbraReverseProxyUpstreamReadTimeout = "zimbraReverseProxyUpstreamReadTimeout";
@@ -8148,7 +8162,7 @@ public class ZAttrProvisioning {
      * minutes, s - seconds, d - days, ms - milliseconds. If time unit is not
      * specified, the default is s(seconds).
      *
-     * @since ZCS 8.0.0
+     * @since ZCS 7.1.4
      */
     @ZAttr(id=1336)
     public static final String A_zimbraReverseProxyUpstreamSendTimeout = "zimbraReverseProxyUpstreamSendTimeout";
@@ -8919,36 +8933,42 @@ public class ZAttrProvisioning {
     public static final String A_zimbraTextAnalyzer = "zimbraTextAnalyzer";
 
     /**
-     * Start date for daylight time
+     * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc: Start
+     * date for daylight time
      */
     @ZAttr(id=232)
     public static final String A_zimbraTimeZoneDaylightDtStart = "zimbraTimeZoneDaylightDtStart";
 
     /**
-     * Offset in daylight time
+     * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc: Offset
+     * in daylight time
      */
     @ZAttr(id=233)
     public static final String A_zimbraTimeZoneDaylightOffset = "zimbraTimeZoneDaylightOffset";
 
     /**
+     * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc:
      * iCalendar recurrence rule for onset of daylight time
      */
     @ZAttr(id=234)
     public static final String A_zimbraTimeZoneDaylightRRule = "zimbraTimeZoneDaylightRRule";
 
     /**
-     * Start date for standard time
+     * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc: Start
+     * date for standard time
      */
     @ZAttr(id=229)
     public static final String A_zimbraTimeZoneStandardDtStart = "zimbraTimeZoneStandardDtStart";
 
     /**
-     * Offset in standard time
+     * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc: Offset
+     * in standard time
      */
     @ZAttr(id=230)
     public static final String A_zimbraTimeZoneStandardOffset = "zimbraTimeZoneStandardOffset";
 
     /**
+     * Deprecated since: 5.0. Deprecated as of bug 12416. Orig desc:
      * iCalendar recurrence rule for onset of standard time
      */
     @ZAttr(id=231)
@@ -9130,6 +9150,17 @@ public class ZAttrProvisioning {
     public static final String A_zimbraWebClientLoginURL = "zimbraWebClientLoginURL";
 
     /**
+     * regex for allowed client IP addresses for honoring
+     * zimbraWebClientLoginURL. If not set, all IP addresses are allowed. If
+     * multiple values are set, an IP address is allowed as long as it
+     * matches any one of the values.
+     *
+     * @since ZCS 7.1.5
+     */
+    @ZAttr(id=1352)
+    public static final String A_zimbraWebClientLoginURLAllowedIP = "zimbraWebClientLoginURLAllowedIP";
+
+    /**
      * regex to be matched for allowed user agents for honoring
      * zimbraWebClientLoginURL. If not set, all UAs are allowed. If multiple
      * values are set, an UA is allowed as long as it matches any one of the
@@ -9147,6 +9178,17 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=507)
     public static final String A_zimbraWebClientLogoutURL = "zimbraWebClientLogoutURL";
+
+    /**
+     * regex for allowed client IP addresses for honoring
+     * zimbraWebClientLogoutURL. If not set, all IP addresses are allowed. If
+     * multiple values are set, an IP address is allowed as long as it
+     * matches any one of the values.
+     *
+     * @since ZCS 7.1.5
+     */
+    @ZAttr(id=1353)
+    public static final String A_zimbraWebClientLogoutURLAllowedIP = "zimbraWebClientLogoutURLAllowedIP";
 
     /**
      * regex to be matched for allowed user agents for honoring
@@ -9307,6 +9349,18 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=281)
     public static final String A_zimbraZimletKeyword = "zimbraZimletKeyword";
+
+    /**
+     * Whether to load zimlets synchronously in the web client. If set to
+     * TRUE, users are not allowed to use the core app before zimlets are
+     * loaded. If set to FALSE, zimlets are loaded in the background and
+     * users are allowed to use the core app before all zimlets finish
+     * loading.
+     *
+     * @since ZCS 7.2.0
+     */
+    @ZAttr(id=1391)
+    public static final String A_zimbraZimletLoadSynchronously = "zimbraZimletLoadSynchronously";
 
     /**
      * The panel item section in the Zimlet description

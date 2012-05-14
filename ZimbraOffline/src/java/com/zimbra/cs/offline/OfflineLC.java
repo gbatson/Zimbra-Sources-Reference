@@ -129,7 +129,9 @@ public class OfflineLC {
     public static final KnownKey zdesktop_heapdump_enabled;
     public static final KnownKey zdesktop_heapdump_ftp_user;
     public static final KnownKey zdesktop_heapdump_ftp_psw;
-    
+    public static final KnownKey zdesktop_mailbox_cache;
+    public static final KnownKey zdesktop_archive_dir;
+
     static void init() {
         // This method is there to guarantee static initializer of this
         // class is run.
@@ -186,34 +188,34 @@ public class OfflineLC {
         // "Minimum delay in milliseconds to reauth after auth failure. Default 3600000 (1 hour).
         zdesktop_reauth_delay = new KnownKey("zdesktop_reauth_delay");
         zdesktop_reauth_delay.setDefault(Long.toString(Constants.MILLIS_PER_HOUR));
-        
+
         // Minimum delay in milliseconds to retry after becoming offline or encountering error. Default 60000 (1 minute).
         zdesktop_retry_delay_min = new KnownKey("zdesktop_retry_delay_min");
         zdesktop_retry_delay_min.setDefault(Long.toString(Constants.MILLIS_PER_MINUTE));
-        
+
         // "Maximum delay in milliseconds to retry after becoming offline or encountering error. Default 600000 (10 minutes).
         zdesktop_retry_delay_max = new KnownKey("zdesktop_retry_delay_max");
         zdesktop_retry_delay_max.setDefault(Long.toString(10 * Constants.MILLIS_PER_MINUTE));
-        
+
         // Number of times to retry if sync fails. Default 2.
         zdesktop_retry_limit = new KnownKey("zdesktop_retry_limit");
         zdesktop_retry_limit.setDefault("2");
-        
+
         // How often offline GAL is delta-sync'ed. Default every 12 hours.
         zdesktop_gal_sync_interval_secs = new KnownKey("zdesktop_gal_sync_interval_seconds");
         zdesktop_gal_sync_interval_secs.setDefault("43200");
-        
+
         // How often offline GAL retry for failed items. Default every 1 hours.
         zdesktop_gal_sync_retry_interval_secs = new KnownKey("zdesktop_gal_sync_retry_interval_seconds");
         zdesktop_gal_sync_retry_interval_secs.setDefault("3600");
-        
+
         // How often offline GAL timer fires. Default every 5 minutes.
         zdesktop_gal_sync_timer_frequency = new KnownKey("zdesktop_gal_sync_timer_frequency");
         zdesktop_gal_sync_timer_frequency.setDefault("300000");
 
-        // HTTP GAL sync request timeout in milliseconds while waiting for response. A value of zero means no timeout. Default 60 seconds.
+        // HTTP GAL sync request timeout in milliseconds while waiting for response. A value of zero means no timeout. Default 5 minutes.
         zdesktop_gal_sync_request_timeout = new KnownKey("zdesktop_galsync_request_timeout");
-        zdesktop_gal_sync_request_timeout.setDefault("60000");
+        zdesktop_gal_sync_request_timeout.setDefault("300000");
 
         // Whether to enable GAL sync trace logging. Default false
         zdesktop_gal_sync_trace_enabled = new KnownKey("zdesktop_gal_sync_trace_enabled");
@@ -222,23 +224,23 @@ public class OfflineLC {
         // Number of entries to fetch in each GetContactsRequest in GAL sync
         zdesktop_gal_sync_group_size = new KnownKey("zdesktop_gal_sync_group_size");
         zdesktop_gal_sync_group_size.setDefault("500");
-        
+
         // Number of milliseconds between each GetContactsRequest in GAL sync
         zdesktop_gal_sync_group_interval = new KnownKey("zdesktop_gal_sync_group_interval");
         zdesktop_gal_sync_group_interval.setDefault("5000");
-        
+
         // How often offline GAL is full-sync'ed. Default every 30 days.
         zdesktop_gal_refresh_interval_days = new KnownKey("zdesktop_gal_refresh_interval_days");
         zdesktop_gal_refresh_interval_days.setDefault("30");
-        
+
         // Max number of messages to download in each transaction. Default 25.
         zdesktop_sync_batch_size = new KnownKey("zdesktop_sync_batch_size");
         zdesktop_sync_batch_size.setDefault("25");
-        
+
         // Zip compression level for batch message sync. Default 0 (NO_COMPRESSION).
         zdesktop_sync_zip_level = new KnownKey("zdesktop_sync_zip_level");
         zdesktop_sync_zip_level.setDefault("0");
-        
+
         // Whether to sync messages. Default true
         zdesktop_sync_messages = new KnownKey("zdesktop_sync_messages");
         zdesktop_sync_messages.setDefault("true");
@@ -421,15 +423,19 @@ public class OfflineLC {
         zdesktop_heapdump_ftp = new KnownKey("zdesktop_heapdump_ftp", "ftp.zimbra.com");
         zdesktop_heapdump_ftp_user = new KnownKey("zdesktop_heapdump_ftp_user", "zdthrdump");
         zdesktop_heapdump_ftp_psw = new KnownKey("zdesktop_heapdump_ftp_psw", "kvlprG");
+        //mailbox cache size for LRU used in OfflineMailboxMananer
+        zdesktop_mailbox_cache = new KnownKey("zdesktop_mailbox_cache", "50");
+        //archive dir
+        zdesktop_archive_dir = new KnownKey("zdesktop_archive_dir", "${zimbra_tmp_directory}/archive");
     }
-    
+
     public static String getFullVersion() {
-    	return zdesktop_version.value() + "_" + zdesktop_buildid.value() + "_" + getOSShortName();
+        return zdesktop_version.value() + "_" + zdesktop_buildid.value() + "_" + getOSShortName();
     }
-    
+
     private static String getOSShortName() {
-    	String os = System.getProperty("os.name");
-    	int sp = os.indexOf(' ');
-    	return sp > 0 ? os.substring(0, sp) : os;
+        String os = System.getProperty("os.name");
+        int sp = os.indexOf(' ');
+        return sp > 0 ? os.substring(0, sp) : os;
     }
 }

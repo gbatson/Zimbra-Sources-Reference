@@ -85,6 +85,24 @@ ZaMigrationWizView.myXFormModifier = function(xFormObject) {
 			{type:_SPACER_, colSpan:"*"},
 			{type:_GROUP_, numCols:1, colSpan:"*", zName:"DownloadsForAdmin",
 				items: [
+                    // bug 70664, new genaral migration tool that will replace the original exchange/domino migration tool
+                    /*
+ 					 * Remove it for bug 71962 in 7.2.0 
+				    {type:_GROUP_, numCols:3,
+				    	items: [
+				    	    {type:_OUTPUT_, value:AjxImg.getImageHtml("Migration")},
+				    	    {type:_OUTPUT_, cssStyle:"front-size:12px", labelLocation:_NONE_, label:null,
+				    	     id:"general_migration_x86_link",
+				    	     value: ZaMigrationWizView.getDownloadLink(ZaMsg.GENERAL_MIG_WIZ_X86_DOWNLOAD_LINK, ZaMsg.GENERAL_MIG_WIZ_X86_DOWNLOAD_LINK_MSG)
+				    	    },
+				    	    {type:_OUTPUT_, cssStyle:"front-size:12px", labelLocation:_NONE_, label:null,
+				    	     id:"general_migration_x64_link",
+				    	     value: ZaMigrationWizView.getDownloadLink(ZaMsg.GENERAL_MIG_WIZ_X64_DOWNLOAD_LINK, ZaMsg.GENERAL_MIG_WIZ_X64_DOWNLOAD_LINK_MSG)
+				    	    }
+				    	]
+				    },
+				    {type:_OUTPUT_, cssClass:"ZaDownloadText", label: null, value:ZaMsg.GENERAL_MIG_WIZ_DOWNLOAD_TEXT},
+					*/
 					//Exchange Mig Wiz
 					{type:_GROUP_,numCols:2,
 						items: [

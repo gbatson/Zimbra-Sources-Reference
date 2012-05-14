@@ -14,6 +14,7 @@
  */
 package com.zimbra.common.util;
 
+import java.text.DateFormat;
 import java.text.DateFormatSymbols;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -659,4 +660,43 @@ public final class DateUtil {
         }
     }
 
+    /**
+     * Returns the seconds specified by the Fixed date value otherwise -1
+     * The format of the date is MM/dd/yyyy
+     *
+     * @param date of the fixed date in Mail Sync
+     */
+
+    public static long getFixedDateSecs(String date) {
+        DateFormat formatter = new SimpleDateFormat("MM/dd/yyyy");
+        Date formatDate;
+        try {
+            formatDate = (Date)formatter.parse(date);
+            return formatDate.getTime()/Constants.MILLIS_PER_SECOND;
+        } catch (ParseException e) {
+            return -1;
+        }
+    }
+
+    /**
+     * Returns the relative time in seconds specified by the time value
+     * The relative time format is specified by the user, it can be
+     * Year, Month, Week
+     *
+     * @param value of the relative time interval specified by the user in Mail Sync
+     * @param syncFieldName signifies the relative time in Years, months, weeks
+     */
+    public static long getRelativeDateSecs(String value, String syncFieldName) {
+        Calendar now = GregorianCalendar.getInstance();
+        if(syncFieldName.equals("Year")) {
+            now.add(Calendar.YEAR, Integer.parseInt(value) * -1);
+        }
+        else if(syncFieldName.equals("Month")) {
+            now.add(Calendar.MONTH, Integer.parseInt(value) * -1);
+        }
+        else if(syncFieldName.equals("Week")) {
+            now.add(Calendar.WEEK_OF_YEAR, Integer.parseInt(value) * -1);
+        }
+        return now.getTime().getTime()/Constants.MILLIS_PER_SECOND;
+    }
 }

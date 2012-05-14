@@ -418,6 +418,11 @@ public class AdminConstants {
     public static final QName NO_OP_REQUEST = QName.get("NoOpRequest", NAMESPACE);
     public static final QName NO_OP_RESPONSE = QName.get("NoOpResponse", NAMESPACE);
     
+    // cookie
+    // noop
+    public static final QName CLEAR_COOKIE_REQUEST = QName.get("ClearCookieRequest", NAMESPACE);
+    public static final QName CLEAR_COOKIE_RESPONSE = QName.get("ClearCookieResponse", NAMESPACE);
+    
     // SMIME config
     public static final QName GET_SMIME_CONFIG_REQUEST = QName.get("GetSMIMEConfigRequest", NAMESPACE);
     public static final QName GET_SMIME_CONFIG_RESPONSE = QName.get("GetSMIMEConfigResponse", NAMESPACE);
@@ -456,6 +461,7 @@ public class AdminConstants {
     public static final String E_CACHE = "cache";
     public static final String E_CODE = "code";
     public static final String E_CONFIG = "config";
+    public static final String E_COOKIE = "cookie";
     public static final String E_COS = "cos";
     public static final String E_CN = "cn";
     public static final String E_DOMAIN = "domain";
@@ -711,6 +717,7 @@ public class AdminConstants {
     public static final String A_ALLOW       = "allow";
     public static final String A_CAN_DELEGATE= "canDelegate";
     public static final String A_DENY        = "deny";
+    public static final String A_DISINHERIT_SUB_GROUPS = "disinheritSubGroups";
     public static final String A_SUB_DOMAIN  = "subDomain";
     public static final String A_EXPAND_ALL_ATTRS = "expandAllAttrs";
     public static final String A_INHERITED   = "inherited";

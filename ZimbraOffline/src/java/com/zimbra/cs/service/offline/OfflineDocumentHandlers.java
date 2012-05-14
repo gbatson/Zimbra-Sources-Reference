@@ -39,6 +39,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.ZimbraAuthTokenEncoded;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
+import com.zimbra.cs.mailbox.OfflineServiceException;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.service.FileUploadServlet;
 import com.zimbra.cs.service.util.ItemId;
@@ -107,7 +108,7 @@ public class OfflineDocumentHandlers {
             throw ServiceException.FAILURE("not a zimbra account: " + account.getName(), null);
         url += "/service/upload";
         
-        String authToken = prov.getProxyAuthToken(acctId);
+        String authToken = prov.getProxyAuthToken(acctId, null);
         BufferStreamRequestEntity bsre = null;
         String newId;
         PostMethod post = new PostMethod(url);
@@ -157,7 +158,13 @@ public class OfflineDocumentHandlers {
             throws ServiceException {
         Element eUpload = request.getElement(MailConstants.E_CONTACT);
         if (eUpload != null && OfflineProvisioning.getOfflineInstance().isMountpointAccount(iidResolved.getAccountId())) {
-            Element attachment = eUpload.getElement(MailConstants.E_ATTRIBUTE);
+            Element attachment = null;
+            for (Element element : eUpload.listElements(MailConstants.E_ATTRIBUTE)) {
+                if ("image".equals(element.getAttribute(MailConstants.A_ATTRIBUTE_NAME))) {
+                    attachment = element;
+                    break;
+                }
+            }
             if (attachment != null) {
                 String attachmentId = attachment.getAttribute(MailConstants.A_ATTACHMENT_ID);
                 String acctId = iidRequested.getAccountId();

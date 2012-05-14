@@ -60,6 +60,7 @@ public class Get extends DavMethod {
 		//resp.setContentLength(resource.getContentLength());
 		if (!returnContent() || !resource.hasContent(ctxt))
 			return;
+		resp.setHeader("Content-Disposition", "attachment");
 		if (ZimbraLog.dav.isDebugEnabled()) {
 			ZimbraLog.dav.debug("GET "+ctxt.getUri());
 			if (contentType != null && contentType.startsWith("text"))

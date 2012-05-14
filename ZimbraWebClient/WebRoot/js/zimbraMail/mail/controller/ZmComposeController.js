@@ -333,8 +333,7 @@ ZmComposeController.prototype._preHideCallback =
 function(view, force) {
 
 	if (this._autoSaveTimer) {
-		clearInterval(this._autoSaveTimer);
-		this._autoSaveTimer = null;
+        this._autoSaveTimer.kill();
 
 		//the following is a bit suspicous to me. I assume maybe this method might be called with force == true
 		//in a way that is not after the popShield was activated? That would be the only explanation to have this.
@@ -473,6 +472,7 @@ function(attId, docIds, draftType, callback, contactId) {
 	var isTimed = Boolean(this._sendTime);
 	draftType = draftType || (isTimed ? ZmComposeController.DRAFT_TYPE_DELAYSEND : ZmComposeController.DRAFT_TYPE_NONE);
 	var isDraft = draftType != ZmComposeController.DRAFT_TYPE_NONE;
+    var isAutoSave = draftType == ZmComposeController.DRAFT_TYPE_AUTO;
 
 	// bug fix #38408 - briefcase attachments need to be set *before* calling
 	// getMsg() but we cannot do that without having a ZmMailMsg to store it in.
@@ -488,10 +488,9 @@ function(attId, docIds, draftType, callback, contactId) {
 		return;
 	}
 
-	if (!isDraft && this._autoSaveTimer) {
-		//kill the timer so draft is not saved while message is sent.
-		clearInterval(this._autoSaveTimer);
-		this._autoSaveTimer = null;
+	if (this._autoSaveTimer) {
+		//kill the timer, no save is attempted while message is pending
+        this._autoSaveTimer.kill();
 	}
 
 	var origMsg = msg._origMsg;
@@ -559,15 +558,19 @@ function(attId, docIds, draftType, callback, contactId) {
 	var requestReadReceipt = this.isRequestReadReceipt();
 
 	var respCallback = new AjxCallback(this, this._handleResponseSendMsg, [draftType, msg, callback]);
-	var errorCallback = new AjxCallback(this, this._handleErrorSendMsg, msg);
-	msg.send(isDraft, respCallback, errorCallback, acctName, null, requestReadReceipt, null, this._sendTime);
+	var errorCallback = new AjxCallback(this, this._handleErrorSendMsg, [draftType, msg]);
+	msg.send(isDraft, respCallback, errorCallback, acctName, null, requestReadReceipt, null, this._sendTime, isAutoSave);
 	this._resetDelayTime();
 };
 
 ZmComposeController.prototype._handleResponseSendMsg =
 function(draftType, msg, callback, result) {
 	var resp = result.getResponse();
-	this._processSendMsg(draftType, msg, resp);
+	// Reset the autosave interval to the default
+	delete(this._autoSaveInterval);
+	// Re-enable autosave
+	this._initAutoSave();
+	var needToPop = this._processSendMsg(draftType, msg, resp);
 
 	this._msg = msg;
 
@@ -580,6 +583,11 @@ function(draftType, msg, callback, result) {
     }
 
 	appCtxt.notifyZimlets("onSendMsgSuccess", [this, msg]);//notify Zimlets on success
+
+	if (needToPop) {
+		this._app.popView(true, this._currentView);
+	}
+
 };
 
 ZmComposeController.prototype._handleResponseCancelOrModifyAppt =
@@ -591,49 +599,69 @@ function() {
 };
 
 ZmComposeController.prototype._handleErrorSendMsg =
-function(msg, ex) {
-	this.resetToolbarOperations();
-	this._composeView.enableInputs(true);
+function(draftType, msg, ex) {
+    var retVal = false;
+    this.resetToolbarOperations();
+    this._composeView.enableInputs(true);
 
-	if (!this._autoSaveTimer) { //I assume in all the different exit points from this method, the user stays on the compose view so we need the timer (it was canceled when send was called)
-		this._initAutoSave();
-	}
+    appCtxt.notifyZimlets("onSendMsgFailure", [this, ex, msg]);//notify Zimlets on failure
+    if (ex && ex.code) {
 
-	appCtxt.notifyZimlets("onSendMsgFailure", [this, ex, msg]);//notify Zimlets on failure
-	if (!(ex && ex.code)) { return false; }
-	
-	var msg = null;
-	if (ex.code == ZmCsfeException.MAIL_SEND_ABORTED_ADDRESS_FAILURE) {
-		var invalid = ex.getData ? ex.getData(ZmCsfeException.MAIL_SEND_ADDRESS_FAILURE_INVALID) : null;
-		var invalidMsg = (invalid && invalid.length)
-			? AjxMessageFormat.format(ZmMsg.sendErrorInvalidAddresses, AjxStringUtil.htmlEncode(invalid.join(", ")))
-			: null;
-		msg = ZmMsg.sendErrorAbort + "<br/>" + invalidMsg;
-		this.popupErrorDialog(msg, ex, true, true);
-		return true;
-	} else if (ex.code == ZmCsfeException.MAIL_SEND_PARTIAL_ADDRESS_FAILURE) {
-		var invalid = ex.getData ? ex.getData(ZmCsfeException.MAIL_SEND_ADDRESS_FAILURE_INVALID) : null;
-		msg = (invalid && invalid.length)
-			? AjxMessageFormat.format(ZmMsg.sendErrorPartial, AjxStringUtil.htmlEncode(invalid.join(", ")))
-			: ZmMsg.sendErrorAbort;
-	} else if (ex.code == AjxException.CANCELED) {
-		msg = ZmMsg.cancelSendMsgWarning;
-		this._composeView.setBackupForm();
-		return true;
-	} else if (ex.code == ZmCsfeException.MAIL_QUOTA_EXCEEDED) {
-		if (this._composeView._attachDialog) {
-			msg = ZmMsg.errorQuotaExceeded;
-			this._composeView._attachDialog.setFooter('You have exceeded your mail quota. Please remove some attachments and try again.' );
-		}
-	}
-	if (msg) {
-		var msgDialog = appCtxt.getMsgDialog();
-		msgDialog.setMessage(msg, DwtMessageDialog.CRITICAL_STYLE);
-		msgDialog.popup();
-		return true;
-	} else {
-		return false;
-	}
+        var msg = null;
+        var showMsg = false;
+        if (ex.code == ZmCsfeException.MAIL_SEND_ABORTED_ADDRESS_FAILURE) {
+            var invalid = ex.getData ? ex.getData(ZmCsfeException.MAIL_SEND_ADDRESS_FAILURE_INVALID) : null;
+            var invalidMsg = (invalid && invalid.length)
+                ? AjxMessageFormat.format(ZmMsg.sendErrorInvalidAddresses, AjxStringUtil.htmlEncode(invalid.join(", ")))
+                : null;
+            msg = ZmMsg.sendErrorAbort + "<br/>" + invalidMsg;
+            this.popupErrorDialog(msg, ex, true, true);
+            retVal = true;
+        } else if (ex.code == ZmCsfeException.MAIL_SEND_PARTIAL_ADDRESS_FAILURE) {
+            var invalid = ex.getData ? ex.getData(ZmCsfeException.MAIL_SEND_ADDRESS_FAILURE_INVALID) : null;
+            msg = (invalid && invalid.length)
+                ? AjxMessageFormat.format(ZmMsg.sendErrorPartial, AjxStringUtil.htmlEncode(invalid.join(", ")))
+                : ZmMsg.sendErrorAbort;
+            showMsg = true;
+        } else if (ex.code == AjxException.CANCELED) {
+            if (draftType == ZmComposeController.DRAFT_TYPE_AUTO) {
+                if (!this._autoSaveInterval) {
+                    // Request was cancelled due to a ZmRequestMgr send timeout.
+                    // The server can either be hung or this particular message is taking
+                    // too long to process. Backoff the send interval - restored to
+                    // default upon first successful save
+                    this._autoSaveInterval = appCtxt.get(ZmSetting.AUTO_SAVE_DRAFT_INTERVAL);
+                }
+                if (this._autoSaveInterval) {
+                    this._autoSaveInterval *= 2;
+                    if (this._autoSaveInterval > 300) {
+                        // Cap the save attempt interval at 5 minutes
+                        this._autoSaveInterval = 300;
+                    }
+                }
+            }
+            msg = ZmMsg.cancelSendMsgWarning;
+            this._composeView.setBackupForm();
+            retVal = true;
+        } else if (ex.code == ZmCsfeException.MAIL_QUOTA_EXCEEDED) {
+            if (this._composeView._attachDialog) {
+                msg = ZmMsg.errorQuotaExceeded;
+                this._composeView._attachDialog.setFooter('You have exceeded your mail quota. Please remove some attachments and try again.' );
+                showMsg = true;
+            }
+        }
+        if (msg && showMsg) {
+            var msgDialog = appCtxt.getMsgDialog();
+            msgDialog.setMessage(msg, DwtMessageDialog.CRITICAL_STYLE);
+            msgDialog.popup();
+            retVal = true;
+        }
+    }
+
+    // Assume the user stays on the compose view, so we need the timer.
+    // (it was canceled when send was called)
+    this._initAutoSave();
+    return retVal;
 };
 
 /**
@@ -891,8 +919,7 @@ ZmComposeController.prototype._setView =
 function(params) {
 
 	if (this._autoSaveTimer) {
-		window.clearInterval(this._autoSaveTimer);
-		this._autoSaveTimer = null;
+		this._autoSaveTimer.kill();
 	}
 
 	// save args in case we need to re-display (eg go from Reply to Reply All)
@@ -913,7 +940,7 @@ function(params) {
 	this._composeMode = params.composeMode || this._getComposeMode(msg, identity);
 	AjxDebug.println(AjxDebug.REPLY, "ZmComposeController::_setView - Compose mode: " + this._composeMode);
 
-	if (this._needComposeViewRefresh) {
+	if (this._needComposeViewRefresh || (this._composeView && appCtxt.get(ZmSetting.SHOW_MAIL_CONFIRM))) {
 		this._composeView.dispose();
 		this._composeView = null;
 		this._needComposeViewRefresh = false;
@@ -1076,13 +1103,16 @@ ZmComposeController.prototype._initAutoSave =
 function() {
 	if (!this._canSaveDraft()) { return; }
 
-	var autoSaveInterval = appCtxt.get(ZmSetting.AUTO_SAVE_DRAFT_INTERVAL);
-	if (autoSaveInterval) {
-		if (!this._autoSaveTimer) {
-			this._autoSaveTimer = window.setInterval(AjxCallback.simpleClosure(this._autoSaveCallback, this, true), autoSaveInterval * 1000);
-		}
+    var defaultAutoSaveInterval = appCtxt.get(ZmSetting.AUTO_SAVE_DRAFT_INTERVAL);
+	if (defaultAutoSaveInterval) {
+        var interval = this._autoSaveInterval ? this._autoSaveInterval: defaultAutoSaveInterval
+        if (!this._autoSaveTimer) {
+            this._autoSaveTimer = new DwtIdleTimer(interval * 1000, new AjxCallback(this, this._autoSaveCallback, true));
+        }
+        else {
+            this._autoSaveTimer.resurrect(interval * 1000);
+        }
 	}
-
 };
 
 ZmComposeController.prototype._setAddSignatureVisibility =
@@ -1323,18 +1353,23 @@ function(mode) {
 	return false;
 };
 
+/**
+ *
+ * @return {Boolean} needToPop - whether we need to pop the view
+ */
 ZmComposeController.prototype._processSendMsg =
 function(draftType, msg, resp) {
 
 	this._msgSent = true;
 	var isScheduled = draftType == ZmComposeController.DRAFT_TYPE_DELAYSEND;
 	var isDraft = (draftType != ZmComposeController.DRAFT_TYPE_NONE && !isScheduled);
+	var needToPop = false;
 	if (!isDraft) {
-		var popped = false;
+		needToPop = true;
 		if (appCtxt.get(ZmSetting.SHOW_MAIL_CONFIRM)) {
 			var confirmController = AjxDispatcher.run("GetMailConfirmController");
 			confirmController.showConfirmation(msg, this.viewId, this.tabId);
-			popped = true;	// don't pop confirm page
+			needToPop = false;	// don't pop confirm page
 		} else {
 			if (appCtxt.isChildWindow && window.parentController) {
 				window.onbeforeunload = null;
@@ -1351,7 +1386,6 @@ function(draftType, msg, resp) {
 					appCtxt.setStatusMsg(ZmMsg.messageSent);
 				}
 			}
-			popped = this._app.popView(true, this._currentView);
 		}
 
 		if (resp || !appCtxt.get(ZmSetting.SAVE_TO_SENT)) {
@@ -1402,10 +1436,6 @@ function(draftType, msg, resp) {
 					}
 				}
 			}
-
-			if (!popped) {
-				this._app.popView(true, this._currentView);
-			}
 		}
 	} else {
 		if (draftType != ZmComposeController.DRAFT_TYPE_AUTO) {
@@ -1446,6 +1476,7 @@ function(draftType, msg, resp) {
 			}
 		}
 	}
+	return needToPop;
 };
 
 
@@ -1615,7 +1646,7 @@ function(ev) {
 
 ZmComposeController.prototype._autoSaveCallback =
 function(idle) {
-	if (idle && !DwtBaseDialog.getActiveDialog() && this._composeView.isDirty()) {
+	if (idle && !DwtBaseDialog.getActiveDialog() && !this._composeView.getHtmlEditor().isSpellCheckMode() && this._composeView.isDirty()) {
 		this.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO);
 	}
 };
@@ -1962,6 +1993,7 @@ function() {
 	if (op) {
 		op.setVisible(appCtxt.get(ZmSetting.HTML_COMPOSE_ENABLED));
 	}
+	appCtxt.notifyZimlets("resetToolbarOperations", [this._toolbar, 1]);
 };
 
 ZmComposeController.prototype._canSaveDraft =

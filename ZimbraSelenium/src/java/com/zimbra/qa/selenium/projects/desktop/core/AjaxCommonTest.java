@@ -37,6 +37,7 @@ import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.framework.util.OperatingSystem.OsType;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.framework.util.staf.StafServicePROCESS;
 import com.zimbra.qa.selenium.framework.util.staf.Stafzmtlsctl;
 import com.zimbra.qa.selenium.framework.util.staf.Stafzmtlsctl.SERVER_ACCESS;
 import com.zimbra.qa.selenium.projects.desktop.ui.*;
@@ -179,6 +180,21 @@ public class AjaxCommonTest {
       // which is usually down for 1 - 2 minutes after restart.
       Stafzmtlsctl stafzmtlsctl = new Stafzmtlsctl();
       stafzmtlsctl.setServerAccess(SERVER_ACCESS.BOTH);
+      StafServicePROCESS stafServiceProcess = new StafServicePROCESS();
+
+      // Disable the zimbraMtaTlsAuthOnly if it is true
+      stafServiceProcess.execute("zmprov gs `zmhostname` zimbraMtaTlsAuthOnly");
+      String mode = stafServiceProcess.getStafResponse().split("zimbraMtaTlsAuthOnly:")[1].trim();
+
+      logger.debug("==================> Current zimbraMtaTlsAuthOnly: " + mode);
+
+      if (mode.contains("TRUE")) {
+         logger.debug("Setting zimbraMtaTlsAuthOnly to false");
+         String serverName = ZimbraSeleniumProperties.getStringProperty("server.host", "localhost");
+         stafServiceProcess.execute("zmprov ms " + serverName + " zimbraMtaTlsAuthOnly FALSE");
+         logger.debug("Restarting zmmtactl...");
+         stafServiceProcess.execute("zmmtactl restart");
+      }
 
       //Racetrack
       String DbHostURL = ZimbraSeleniumProperties.getStringProperty("racetrack.dbUrl",
@@ -218,7 +234,7 @@ public class AjaxCommonTest {
             resultId);
 
       // Make sure there is a new default account
-      ZimbraAccount.ResetAccountZWC();
+      ZimbraAccount.ResetAccountZDC();
 
 		osType = OperatingSystem.getOSType();
 
@@ -339,7 +355,7 @@ public class AjaxCommonTest {
 				}
 
 
-				GeneralUtility.waitFor(null, ZimbraAccount.AccountZWC(), false,
+				GeneralUtility.waitFor(null, ZimbraAccount.AccountZDC(), false,
 						"authenticateToMailClientHost", null, WAIT_FOR_OPERAND.NEQ, null, 60000, 3000);
 
 			} else {
@@ -450,8 +466,8 @@ public class AjaxCommonTest {
 		.append(zdp.getSerialNumber()).append("&accountId=&verb=add&accountFlavor=")
 		.append(accountFlavor).append("&accountName=")
 		.append(defaultAccountName).append("&email=")
-		.append(ZimbraAccount.AccountZWC().EmailAddress).append("&password=")
-		.append(ZimbraAccount.AccountZWC().Password).append("&host=") 
+		.append(ZimbraAccount.AccountZDC().EmailAddress).append("&password=")
+		.append(ZimbraAccount.AccountZDC().Password).append("&host=") 
 		.append(emailServerName).append("&port=")
 		.append(emailServerPort).append("&syncFreqSecs=900&debugTraceEnabled=on")
 		.append(securityType)
@@ -527,7 +543,7 @@ public class AjaxCommonTest {
 		case DESKTOP:
 			destType = SOAP_DESTINATION_HOST_TYPE.CLIENT;
 
-			if (_currentAccount != ZimbraAccount.AccountZWC()) {
+			if (_currentAccount != ZimbraAccount.AccountZDC()) {
 				app.zPageLogin.zNavigateTo();
 
 				if  (app.zPageLogin.sIsElementPresent(PageLogin.Locators.zBtnLoginDesktop)) {
@@ -539,7 +555,7 @@ public class AjaxCommonTest {
 					// If this is the first time checking, then cleaning up all the pre-existing user
 					// Otherwise, only cleans the non-default users, which is second user and so on...
 					// Second user is located in row 3.
-					if (_currentAccount != ZimbraAccount.AccountZWC()) {
+					if (_currentAccount != ZimbraAccount.AccountZDC()) {
 						deleteButtonLocator = PageLogin.Locators.zDeleteButton;
 					} else {
 						String[] temp = PageLogin.Locators.zDeleteButton.trim().split(" ");
@@ -586,13 +602,13 @@ public class AjaxCommonTest {
 				}
 				if (startingPage != app.zPageAddNewAccount) {
 					addDefaultAccount();
-					_currentAccount = ZimbraAccount.AccountZWC();               
+					_currentAccount = ZimbraAccount.AccountZDC();               
 				}
 			}
 
 			if (startingPage != app.zPageAddNewAccount) {
 			   ZimbraAdminAccount.GlobalAdmin().authenticateToMailClientHost();
-				ZimbraAccount.AccountZWC().authenticateToMailClientHost();
+				ZimbraAccount.AccountZDC().authenticateToMailClientHost();
 			}
 
 			break;
@@ -606,7 +622,7 @@ public class AjaxCommonTest {
 		//
 		if ( (startingAccountPreferences != null) && (!startingAccountPreferences.isEmpty()) ) {
 			logger.debug("commonTestBeforeMethod: startingAccountPreferences are defined");
-         ZimbraAccount.AccountZWC().modifyPreferences(startingAccountPreferences, destType);
+         ZimbraAccount.AccountZDC().modifyPreferences(startingAccountPreferences, destType);
 
          /**StringBuilder settings = new StringBuilder();
 			for (Map.Entry<String, String> entry : startingAccountPreferences.entrySet()) {
@@ -620,7 +636,7 @@ public class AjaxCommonTest {
 
 */
 			// Set the flag so the account is reset for the next test
-			ZimbraAccount.AccountZWC().accountIsDirty = true;
+			ZimbraAccount.AccountZDC().accountIsDirty = true;
 		}
 
 		// If test account zimlet preferences are defined, then make sure the test account
@@ -628,7 +644,7 @@ public class AjaxCommonTest {
 		//
 		if ( (startingAccountZimletPreferences != null) && (!startingAccountZimletPreferences.isEmpty()) ) {
 			logger.debug("commonTestBeforeMethod: startingAccountPreferences are defined");
-			ZimbraAccount.AccountZWC().modifyZimletPreferences(startingAccountZimletPreferences,
+			ZimbraAccount.AccountZDC().modifyZimletPreferences(startingAccountZimletPreferences,
 					destType);
 		}
 

@@ -34,6 +34,7 @@ import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.imap.ImapCredentials.EnabledHack;
 import com.zimbra.cs.imap.ImapFlagCache.ImapFlag;
 import com.zimbra.cs.imap.ImapMessage.ImapMessageSet;
+import com.zimbra.cs.imap.ImapPartSpecifier.BinaryDecodingException;
 import com.zimbra.cs.imap.ImapSessionManager.InitialFolderValues;
 import com.zimbra.cs.index.SearchParams;
 import com.zimbra.cs.index.SortBy;
@@ -993,10 +994,13 @@ abstract class ImapHandler extends ProtocolHandler {
         return CONTINUE_PROCESSING;
     }
 
-    private void setIDFields(Map<String, String> fields) {
-        if (fields == null) {
+    private void setIDFields(Map<String, String> paramFields) {
+        if (paramFields == null) {
             return;
         }
+        //RFC 2971 section 3.3; fields are not case sensitive
+        Map<String, String> fields = new TreeMap<String, String>(String.CASE_INSENSITIVE_ORDER);
+        fields.putAll(paramFields);
         String ip = fields.get(IDInfo.X_ORIGINATING_IP);
         if (ip != null) {
             if (origRemoteIp == null) {
@@ -1015,19 +1019,20 @@ abstract class ImapHandler extends ProtocolHandler {
         }
 
         String xvia = fields.get(IDInfo.X_VIA);
-        if (via == null) {
-            via = xvia;
-            ZimbraLog.addViaToContext(via);
-        } else {
-            if (xvia.equals(via)) {
-                ZimbraLog.imap.warn("IMAP ID with %s is allowed only once per session, command ignored", IDInfo.X_VIA);
+        if (xvia != null) {
+            if (via == null) {
+                via = xvia;
+                ZimbraLog.addViaToContext(via);
             } else {
-                ZimbraLog.imap.error("IMAP ID with %s is allowed only once per session, received different value: %s, command ignored",
-                        IDInfo.X_VIA, xvia);
+                if (via.equals(xvia)) {
+                    ZimbraLog.imap.warn("IMAP ID with %s is allowed only once per session, command ignored", IDInfo.X_VIA);
+                } else {
+                    ZimbraLog.imap.error("IMAP ID with %s is allowed only once per session, received different value: %s, command ignored",
+                            IDInfo.X_VIA, xvia);
+                }
+                return;
             }
-            return;
         }
-
         String ua = fields.get(IDInfo.NAME);
         if (ua != null) {
             String version = fields.get(IDInfo.VERSION);
@@ -3333,92 +3338,16 @@ abstract class ImapHandler extends ProtocolHandler {
                     continue;
                 }
 
+                
+                
                 boolean markMessage = markRead && (i4msg.flags & Flag.BITMASK_UNREAD) != 0;
-                boolean empty = true;
-                MailItem item = null;
-                MimeMessage mm;
-
                 if (!fullMessage.isEmpty() || (parts != null && !parts.isEmpty()) || (attributes & ~FETCH_FROM_CACHE) != 0) {
-                    try {
-                        item = mbox.getItemById(getContext(), i4msg.msgId, i4msg.getType());
-                    } catch (NoSuchItemException nsie) {
-                        // just in case we're out of sync, force this message back into sync
-                        i4folder.markMessageExpunged(i4msg);
-                        fetchStub(i4msg, i4folder, attributes, parts, fullMessage, result);
-                        continue;
+                    synchronized (mbox) {
+                        writeMessage(fullMessage, parts, attributes, i4msg, i4folder, mbox, result, os, markMessage, modseqEnabled);
                     }
-                }
-
-                if ((attributes & FETCH_UID) != 0) {
-                    result.print((empty ? "" : " ") + "UID " + i4msg.imapUid);  empty = false;
-                }
-                if ((attributes & FETCH_INTERNALDATE) != 0) {
-                    result.print((empty ? "" : " ") + "INTERNALDATE \"" + DateUtil.toImapDateTime(new Date(item.getDate())) + '"');  empty = false;
-                }
-                if ((attributes & FETCH_RFC822_SIZE) != 0) {
-                    result.print((empty ? "" : " ") + "RFC822.SIZE " + i4msg.getSize(item));  empty = false;
-                }
-                if ((attributes & FETCH_BINARY_SIZE) != 0) {
-                    result.print((empty ? "" : " ") + "BINARY.SIZE[] " + i4msg.getSize(item));  empty = false;
-                }
-
-                if (!fullMessage.isEmpty()) {
-                    for (ImapPartSpecifier pspec : fullMessage) {
-                        result.print(empty ? "" : " ");
-                        pspec.write(result, os, item);
-                        empty = false;
-                    }
-                }
-
-                if ((parts != null && !parts.isEmpty()) || (attributes & FETCH_FROM_MIME) != 0) {
-                    mm = ImapMessage.getMimeMessage(item);
-                    if ((attributes & FETCH_BODY) != 0) {
-                        result.print(empty ? "" : " ");
-                        result.print("BODY ");
-                        ImapMessage.serializeStructure(result, mm, false);
-                        empty = false;
-                    }
-                    if ((attributes & FETCH_BODYSTRUCTURE) != 0) {
-                        result.print(empty ? "" : " ");
-                        result.print("BODYSTRUCTURE ");
-                        ImapMessage.serializeStructure(result, mm, true);
-                        empty = false;
-                    }
-                    if ((attributes & FETCH_ENVELOPE) != 0) {
-                        result.print(empty ? "" : " ");
-                        result.print("ENVELOPE ");
-                        ImapMessage.serializeEnvelope(result, mm);
-                        empty = false;
-                    }
-                    if (parts != null) {
-                        for (ImapPartSpecifier pspec : parts) {
-                            result.print(empty ? "" : " ");
-                            pspec.write(result, os, mm);
-                            empty = false;
-                        }
-                    }
-                }
-
-                // 6.4.5: "The \Seen flag is implicitly set; if this causes the flags to
-                //         change, they SHOULD be included as part of the FETCH responses."
-                // FIXME: optimize by doing a single mark-read op on multiple messages
-                if (markMessage) {
-                    mbox.alterTag(getContext(), i4msg.msgId, i4msg.getType(), Flag.ID_FLAG_UNREAD, false, null);
-                }
-                ImapFolder.DirtyMessage unsolicited = i4folder.undirtyMessage(i4msg);
-                if ((attributes & FETCH_FLAGS) != 0 || unsolicited != null) {
-                    result.print(empty ? "" : " ");
-                    result.print(i4msg.getFlags(i4folder));
-                    empty = false;
-                }
-
-                // RFC 4551 3.2: "Once the client specified the MODSEQ message data item in a
-                //                FETCH request, the server MUST include the MODSEQ fetch response
-                //                data items in all subsequent unsolicited FETCH responses."
-                if ((attributes & FETCH_MODSEQ) != 0 || (modseqEnabled && unsolicited != null)) {
-                    int modseq = unsolicited == null ? i4msg.getModseq(item, i4folder.getTagset()) : unsolicited.modseq;
-                    result.print((empty ? "" : " ") + "MODSEQ (" + modseq + ')');  empty = false;
-                }
+                } else {
+                    writeMessage(fullMessage, parts, attributes, i4msg, i4folder, mbox, result, os, markMessage, modseqEnabled);
+                }                    
             } catch (ImapPartSpecifier.BinaryDecodingException e) {
                 // don't write this response line if we're returning NO
                 os = baosDebug = null;
@@ -3447,7 +3376,96 @@ abstract class ImapHandler extends ProtocolHandler {
         }
         return CONTINUE_PROCESSING;
     }
+    
+    private void writeMessage(List<ImapPartSpecifier> fullMessage, List<ImapPartSpecifier> parts,  int attributes,
+            ImapMessage i4msg, ImapFolder i4folder, Mailbox mbox, PrintStream result, OutputStream os, boolean markMessage,
+            boolean modseqEnabled) throws IOException, BinaryDecodingException, ServiceException, MessagingException {
+        boolean empty = true;
+        MailItem item = null;
+        MimeMessage mm;
+        if (!fullMessage.isEmpty() || (parts != null && !parts.isEmpty()) || (attributes & ~FETCH_FROM_CACHE) != 0) {
+            try {
+                item = mbox.getItemById(getContext(), i4msg.msgId, i4msg.getType());
+            } catch (NoSuchItemException nsie) {
+                // just in case we're out of sync, force this message back into sync
+                i4folder.markMessageExpunged(i4msg);
+                fetchStub(i4msg, i4folder, attributes, parts, fullMessage, result);
+                return;
+            }
+        }
 
+        if ((attributes & FETCH_UID) != 0) {
+            result.print((empty ? "" : " ") + "UID " + i4msg.imapUid);  empty = false;
+        }
+        if ((attributes & FETCH_INTERNALDATE) != 0) {
+            result.print((empty ? "" : " ") + "INTERNALDATE \"" + DateUtil.toImapDateTime(new Date(item.getDate())) + '"');  empty = false;
+        }
+        if ((attributes & FETCH_RFC822_SIZE) != 0) {
+            result.print((empty ? "" : " ") + "RFC822.SIZE " + i4msg.getSize(item));  empty = false;
+        }
+        if ((attributes & FETCH_BINARY_SIZE) != 0) {
+            result.print((empty ? "" : " ") + "BINARY.SIZE[] " + i4msg.getSize(item));  empty = false;
+        }
+
+        if (!fullMessage.isEmpty()) {
+            for (ImapPartSpecifier pspec : fullMessage) {
+                result.print(empty ? "" : " ");
+                pspec.write(result, os, item);
+                empty = false;
+            }
+        }
+
+        if ((parts != null && !parts.isEmpty()) || (attributes & FETCH_FROM_MIME) != 0) {
+            mm = ImapMessage.getMimeMessage(item);
+            if ((attributes & FETCH_BODY) != 0) {
+                result.print(empty ? "" : " ");
+                result.print("BODY ");
+                ImapMessage.serializeStructure(result, mm, false);
+                empty = false;
+            }
+            if ((attributes & FETCH_BODYSTRUCTURE) != 0) {
+                result.print(empty ? "" : " ");
+                result.print("BODYSTRUCTURE ");
+                ImapMessage.serializeStructure(result, mm, true);
+                empty = false;
+            }
+            if ((attributes & FETCH_ENVELOPE) != 0) {
+                result.print(empty ? "" : " ");
+                result.print("ENVELOPE ");
+                ImapMessage.serializeEnvelope(result, mm);
+                empty = false;
+            }
+            if (parts != null) {
+                for (ImapPartSpecifier pspec : parts) {
+                    result.print(empty ? "" : " ");
+                    pspec.write(result, os, mm);
+                    empty = false;
+                }
+            }
+        }
+        
+        // 6.4.5: "The \Seen flag is implicitly set; if this causes the flags to
+        //         change, they SHOULD be included as part of the FETCH responses."
+        // FIXME: optimize by doing a single mark-read op on multiple messages
+        if (markMessage) {
+            mbox.alterTag(getContext(), i4msg.msgId, i4msg.getType(), Flag.ID_FLAG_UNREAD, false, null);
+        }
+        ImapFolder.DirtyMessage unsolicited = i4folder.undirtyMessage(i4msg);
+        if ((attributes & FETCH_FLAGS) != 0 || unsolicited != null) {
+            result.print(empty ? "" : " ");
+            result.print(i4msg.getFlags(i4folder));
+            empty = false;
+        }
+
+        // RFC 4551 3.2: "Once the client specified the MODSEQ message data item in a
+        //                FETCH request, the server MUST include the MODSEQ fetch response
+        //                data items in all subsequent unsolicited FETCH responses."
+        if ((attributes & FETCH_MODSEQ) != 0 || (modseqEnabled && unsolicited != null)) {
+            int modseq = unsolicited == null ? i4msg.getModseq(item, i4folder.getTagset()) : unsolicited.modseq;
+            result.print((empty ? "" : " ") + "MODSEQ (" + modseq + ')');  empty = false;
+        }
+    }
+    
     private void fetchStub(ImapMessage i4msg, ImapFolder i4folder, int attributes, List<ImapPartSpecifier> parts, List<ImapPartSpecifier> fullMessage, PrintStream result)
     throws ServiceException {
         // RFC 2180 4.1.3: "The server MAY allow the EXPUNGE of a multi-accessed mailbox, and

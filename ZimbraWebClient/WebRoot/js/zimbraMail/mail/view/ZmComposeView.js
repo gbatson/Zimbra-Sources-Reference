@@ -2379,7 +2379,7 @@ function(action, msg, extraBodyText) {
 		this._msgAttId = this._msg.id;
 	} else {
 		var preface = this._preface = this._getPreface();
-		var divider = !body ? "" : htmlMode ? preface : preface + crlf;
+		var divider = (!body && !headers) ? "" : htmlMode ? preface : preface + crlf;
 		AjxDebug.println(AjxDebug.REPLY, "divider: " + AjxStringUtil.htmlEncode(divider));
 		var leadingSpace = preText ? "" : crlf2;
 		var wrapParams = ZmHtmlEditor.getWrapParams(htmlMode, incOptions);
@@ -3371,9 +3371,10 @@ function(ev, addrType) {
 		? this._field[curType].value : "";
 
 	var account;
+	var context = appCtxt.isChildWindow ? parentAppCtxt : appCtxt;
 	if (appCtxt.multiAccounts && this._fromSelect) {
 		var addr = this._fromSelect.getSelectedOption().addr;
-		account = appCtxt.accountList.getAccountByEmail(addr.address);
+		account = context.accountList.getAccountByEmail(addr.address);
 	}
 	this._contactPicker.popup(curType, addrList, str, account);
 };

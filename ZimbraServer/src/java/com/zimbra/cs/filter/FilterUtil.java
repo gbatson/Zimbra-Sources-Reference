@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -31,11 +31,9 @@ import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
-import com.google.common.collect.Sets;
-import com.zimbra.common.util.CharsetUtil;
-import com.zimbra.common.util.L10nUtil;
 import org.apache.jsieve.mail.Action;
 
+import com.google.common.collect.Sets;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
@@ -43,10 +41,13 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ArrayUtil;
+import com.zimbra.common.util.CharsetUtil;
 import com.zimbra.common.util.DateParser;
+import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.common.zmime.ZInternetHeader;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
@@ -415,14 +416,14 @@ public class FilterUtil {
             ZimbraLog.filter.warn("Envelope sender will be set to the default value.", e);
         }
     }
-    
+
     private static boolean isDeliveryStatusNotification(MimeMessage msg)
     throws MessagingException {
         String envelopeSender = msg.getHeader("Return-Path", null);
         String ct = Mime.getContentType(msg, "text/plain");
         ZimbraLog.filter.debug("isDeliveryStatusNotification(): Return-Path=%s, Auto-Submitted=%s, Content-Type=%s.",
             envelopeSender, msg.getHeader("Auto-Submitted", null), ct);
-        
+
         if (StringUtil.isNullOrEmpty(envelopeSender) || envelopeSender.equals("<>")) {
             return true;
         }
@@ -436,7 +437,7 @@ public class FilterUtil {
     }
 
     public static void reply(OperationContext octxt, Mailbox mailbox, ParsedMessage parsedMessage, String bodyTemplate)
-            throws MessagingException, ServiceException {
+    throws MessagingException, ServiceException {
         MimeMessage mimeMessage = parsedMessage.getMimeMessage();
         if (isMailLoop(mailbox, mimeMessage)) {
             String error = String.format("Detected a mail loop for message %s.", Mime.getMessageID(mimeMessage));
@@ -447,8 +448,8 @@ public class FilterUtil {
             return;
         }
 
-        MimeMessage replyMsg = new Mime.FixedMimeMessage(JMSession.getSession());
         Account account = mailbox.getAccount();
+        MimeMessage replyMsg = new Mime.FixedMimeMessage(JMSession.getSmtpSession(account));
         replyMsg.setHeader(HEADER_FORWARDED, account.getName());
 
         String to = mimeMessage.getHeader("Reply-To", null);
@@ -485,15 +486,15 @@ public class FilterUtil {
 
     public static void notify(OperationContext octxt, Mailbox mailbox, ParsedMessage parsedMessage,
             String emailAddr, String subjectTemplate, String bodyTemplate, int maxBodyBytes, List<String> origHeaders)
-        throws MessagingException, ServiceException {
+    throws MessagingException, ServiceException {
         MimeMessage mimeMessage = parsedMessage.getMimeMessage();
         if (isMailLoop(mailbox, mimeMessage)) {
             String error = String.format("Detected a mail loop for message %s.", Mime.getMessageID(mimeMessage));
             throw ServiceException.FAILURE(error, null);
         }
 
-        MimeMessage notification = new Mime.FixedMimeMessage(JMSession.getSession());
         Account account = mailbox.getAccount();
+        MimeMessage notification = new Mime.FixedMimeMessage(JMSession.getSmtpSession(account));
         notification.setHeader(HEADER_FORWARDED, account.getName());
         MailSender mailSender = mailbox.getMailSender().setSaveToSent(false);
 
@@ -601,7 +602,8 @@ public class FilterUtil {
         Enumeration enumeration = mimeMessage.getAllHeaders();
         while (enumeration.hasMoreElements()) {
             Header header = (Header) enumeration.nextElement();
-            vars.put(header.getName().toLowerCase(), mimeMessage.getHeader(header.getName(), ","));
+            vars.put(header.getName().toLowerCase(),
+                    ZInternetHeader.decode(mimeMessage.getHeader(header.getName(), ",")));
         }
         // raw subject could be encoded, so get the parsed subject
         vars.put("subject", parsedMessage.getSubject());

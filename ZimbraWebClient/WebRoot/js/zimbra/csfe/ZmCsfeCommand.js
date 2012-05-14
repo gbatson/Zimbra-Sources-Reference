@@ -382,6 +382,9 @@ function(params) {
 		}
 		context.authToken = ZmCsfeCommand._curAuthToken = authToken;
 	}
+	else if (ZmCsfeCommand.noAuth) {
+		throw new ZmCsfeException("Auth required", ZmCsfeException.NO_AUTH_TOKEN, params.methodNameStr);
+	}
 
 	AjxDebug.logSoapMessage(params);
 	DBG.dumpObj(AjxDebug.DBG1, obj);
@@ -444,7 +447,11 @@ function(params) {
 				acc.setAttribute("by", "name");
 			}
 		}
-		
+	
+		if (params.skipExpiredToken) {
+			var tokenControl = soapDoc.set("authTokenControl", null, context);
+			tokenControl.setAttribute("voidOnExpired", "1");
+		}	
 		// Tell server what kind of response we want
 		if (!params.useXml) {
 			var js = soapDoc.set("format", null, context);
@@ -484,6 +491,9 @@ function(params) {
 		} else if (!params.resend){
 			soapDoc.set("authToken", authToken, context);
 		}
+	}
+	else if (ZmCsfeCommand.noAuth && !params.ignoreAuthToken) {
+		throw new ZmCsfeException("Auth required", ZmCsfeException.NO_AUTH_TOKEN, params.methodNameStr);
 	}
 
 	AjxDebug.logSoapMessage(params);

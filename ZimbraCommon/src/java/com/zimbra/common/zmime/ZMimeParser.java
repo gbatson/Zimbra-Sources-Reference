@@ -24,9 +24,11 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import javax.mail.MessagingException;
 import javax.mail.Session;
+import javax.mail.internet.MimePartDataSource;
 import javax.mail.internet.SharedInputStream;
 import javax.mail.util.SharedByteArrayInputStream;
 
@@ -56,15 +58,38 @@ class ZMimeParser {
         if (is instanceof SharedInputStream) {
             return (SharedInputStream) is;
         } else {
-            if (!(is instanceof ByteArrayInputStream) && !(is instanceof BufferedInputStream)) {
-                is = new BufferedInputStream(is);
+            InputStream source = is;
+            if (!(source instanceof ByteArrayInputStream) && !(source instanceof BufferedInputStream)) {
+                source = new BufferedInputStream(source);
             }
+
             try {
-                return new SharedByteArrayInputStream(ASCIIUtility.getBytes(is));
+                return new SharedByteArrayInputStream(ASCIIUtility.getBytes(source));
             } catch (IOException ioex) {
                 throw new MessagingException("IOException", ioex);
             }
         }
+    }
+
+    public static ZMimeMessage parse(Session session, SharedInputStream sis) throws IOException {
+        return (ZMimeMessage) new ZMimeParser(ZMimeMessage.newMessage(session, null), session, sis).parse().getPart();
+    }
+
+    public static ZMimeMultipart parseMultipart(ZMimeMultipart multi, InputStream is) throws MessagingException, IOException {
+        ZMimeParser parser = new ZMimeParser(new ZMimeBodyPart(), Session.getDefaultInstance(new Properties()), is);
+
+        PartInfo proot = parser.parts.get(0);
+        proot.setContentType(new ZContentType(multi.getContentType()));
+        proot.bodyStart = 0;
+        proot.firstLine = 0;
+        proot.multi = multi;
+
+        parser.parts.add(parser.new PartInfo(ZMimeBodyPart.newBodyPart(null), PartLocation.PREAMBLE));
+        parser.state = ParserState.BODY_LINESTART;
+        parser.bodyStart(0);
+        parser.parse();
+
+        return multi;
     }
 
 
@@ -321,10 +346,6 @@ class ZMimeParser {
     }
 
 
-    public static ZMimeMessage parse(Session session, SharedInputStream sis) throws IOException {
-        return (ZMimeMessage) new ZMimeParser(ZMimeMessage.newMessage(session, null), session, sis).parse().getPart();
-    }
-
     ZMimeParser parse() throws IOException {
         InputStream is = (InputStream) sis;
         final byte[] buffer = new byte[8192];
@@ -542,14 +563,22 @@ class ZMimeParser {
 
         // close the current part
         PartInfo pcurrent = currentPart();
-        if (pcurrent.bodyStart <= 0) {
+        if (pcurrent.bodyStart < 0) {
             // case where the boundary came in the middle of the headers (?!)
             bodyStart(lineStart);
         }
-        while (!bnd.equals(pcurrent.boundary) && parts.size() > 1) {
-            if ("".equals(pcurrent.boundary) && (boundaries == null || !boundaries.contains(bnd)))
+        // figure out which multipart matched this boundary
+        int matchIndex;
+        for (matchIndex = parts.size() - 1; matchIndex >= 0; matchIndex--) {
+            PartInfo pinfo = parts.get(matchIndex);
+            if (bnd.equals(pinfo.boundary))
                 break;
-            pcurrent = endPart(partEnd);
+            if ("".equals(pinfo.boundary) && (boundaries == null || !boundaries.contains(bnd)))
+                break;
+        }
+        // close all parts up to that matching part (note: size() is 1-based and matchIndex is 0-based)
+        while (parts.size() > Math.max(matchIndex + 1, 1)) {
+            pcurrent = endPart(partEnd, matchIndex == parts.size() - 2);
         }
         if ("".equals(pcurrent.boundary)) {
             // "" meant that the multipart Content-Type didn't specify a boundary
@@ -590,9 +619,9 @@ class ZMimeParser {
 
     /** Records the endpoint of a MIME part.  Stores both the byte offset of
      *  the end of the part as well as the line count of the part body.  If
-     *  the part being ended was a multipart preamble or epilogue and was of
-     *  nonzero length, associates the part with its parent appropriately. */
-    private PartInfo endPart(long end) {
+     *  the part being ended was a multipart preamble and was of nonzero
+     *  length, associates the part with its parent appropriately. */
+    private PartInfo endPart(long end, boolean clean) {
         PartInfo pinfo = parts.remove(parts.size() - 1);
 
         ZMimePart mp = pinfo.part;
@@ -600,6 +629,16 @@ class ZMimeParser {
         SharedInputStream bodyStream = (SharedInputStream) sis.newStream(pinfo.bodyStart, bodyEnd);
 
         if (pinfo.location == PartLocation.PREAMBLE) {
+            if (!clean && !parts.isEmpty()) {
+                PartInfo pcurrent = currentPart();
+                String enc = pcurrent.part.getEncoding();
+                if (enc != null && !ZMimeBodyPart.RAW_ENCODINGS.contains(enc)) {
+                    // supposedly-encoded multipart and no boundary hit -- defer decoding and parsing
+                    pcurrent.multi.setDataSource(new MimePartDataSource(pcurrent.part));
+                    // don't save this as a preamble!
+                    length = 0;
+                }
+            }
             if (length > 0) {
                 try {
                     if (length > MAXIMUM_HEADER_LENGTH) {
@@ -699,7 +738,6 @@ class ZMimeParser {
             parts.add(pcurrent = new PartInfo(ZMimeMessage.newMessage(session, pcurrent.part)));
             state = ParserState.HEADER_LINESTART;
             return true;
-        } else {
         }
 
         return false;
@@ -742,7 +780,7 @@ class ZMimeParser {
 
         // record the end position and length in lines for all open parts
         while (!parts.isEmpty()) {
-            endPart(position);
+            endPart(position, parts.size() == 1);
         }
 
         // and ignore all subsequent calls to this method

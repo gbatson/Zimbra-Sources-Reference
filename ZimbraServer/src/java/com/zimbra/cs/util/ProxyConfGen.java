@@ -26,6 +26,7 @@ import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -760,7 +761,7 @@ class TimeInSecVarWrapper extends ProxyConfVar {
 class DomainAttrItem {
     public String domainName;
     public String virtualHostname;
-    public InetAddress virtualIPAddress;
+    public String virtualIPAddress;
     public String sslCertificate;
     public String sslPrivateKey;
     public Boolean useDomainServerCert;
@@ -768,7 +769,7 @@ class DomainAttrItem {
     public String clientCertMode;
     public String clientCertCa;
 
-    public DomainAttrItem(String dn, String vhn, InetAddress vip, String scrt, String spk, 
+    public DomainAttrItem(String dn, String vhn, String vip, String scrt, String spk, 
             String ccm, String cca) {
         this.domainName = dn;
         this.virtualHostname = vhn;
@@ -780,8 +781,24 @@ class DomainAttrItem {
     }
 }
 
+/** The visit of LdapProvisioning can't throw the exception out.
+ *  Therefore uses this special item to indicate exception.
+ * @author jiankuan
+ *
+ */
+class DomainAttrExceptionItem extends DomainAttrItem {
+    public DomainAttrExceptionItem(ProxyConfException e) {
+        super(null, null, null, null, null, null, null);
+        this.exception = e;
+    }
+
+    public ProxyConfException exception;
+}
+
 public class ProxyConfGen
 {
+    private static final int DEFAULT_SERVERS_NAME_HASH_MAX_SIZE = 512;
+    private static final int DEFAULT_SERVERS_NAME_HASH_BUCKET_SIZE = 64;
     private static Log mLog = LogFactory.getLog (ProxyConfGen.class);
     private static Options mOptions = new Options();
     private static boolean mDryRun = false;
@@ -803,6 +820,7 @@ public class ProxyConfGen
     private static Provisioning mProv = null;
     private static String mHost = null;
     private static Server mServer = null;
+    private static boolean mGenConfPerVhn = false;
     private static Map<String, ProxyConfVar> mConfVars = new HashMap<String, ProxyConfVar>();
     private static Map<String, String> mVars = new HashMap<String, String>();
     static List<DomainAttrItem> mDomainReverseProxyAttrs;
@@ -891,7 +909,9 @@ public class ProxyConfGen
      */
     private static List<DomainAttrItem> loadDomainReverseProxyAttrs()
             throws ServiceException {
-
+        if (!mGenConfPerVhn) {
+            return Collections.emptyList();
+        }
         if (!(mProv instanceof LdapProvisioning))
             throw ServiceException.INVALID_REQUEST(
                 "The method can work only when LDAP is available", null);
@@ -935,22 +955,15 @@ public class ProxyConfGen
                 //Here assume virtualHostnames and virtualIPAddresses are
                 //same in number
                 int i = 0;
-                try {
 
-                    for( ; i < virtualHostnames.length; i++) {
-                        InetAddress vip = InetAddress.getByName(virtualHostnames[i]);
-                        if (!ProxyConfUtil.isEmptyString(clientCertCA)){
+                for( ; i < virtualHostnames.length; i++) {
+                    if (!ProxyConfUtil.isEmptyString(clientCertCA)){
 
-                            createDomainSSLDirIfNotExists();
-                        }
-                        result.add(new DomainAttrItem(domainName,
-                                virtualHostnames[i], vip, certificate, privateKey, 
-                                clientCertMode, clientCertCA));
-
+                        createDomainSSLDirIfNotExists();
                     }
-                } catch (UnknownHostException e) {
-                    throw ServiceException.
-                        FAILURE("Cannot find the IP of " + virtualHostnames[i], e);
+                    result.add(new DomainAttrItem(domainName,
+                            virtualHostnames[i], null, certificate, privateKey, 
+                            clientCertMode, clientCertCA));
                 }
             }
         };
@@ -1095,6 +1108,10 @@ public class ProxyConfGen
                 //command selection can be extracted if more commands are introduced
                 if(cmd_arg.length == 2 && 
                    cmd_arg[0].compareTo("explode") == 0) {
+                    if (!mGenConfPerVhn) {  // explode only when GenConfPerVhn is enabled
+                        return;
+                    }
+
                     if (cmd_arg[1].compareTo("vhn_vip_ssl") == 0) {
                         expandTemplateExplodeSSLConfigsForAllVhnsAndVIPs(r, w);
                     } else {
@@ -1140,11 +1157,17 @@ public class ProxyConfGen
         List<String> cache = null;
         if (size > 0) {
             Iterator<DomainAttrItem> it = mDomainReverseProxyAttrs.iterator();
-            DomainAttrItem item = it.next();
-            fillVarsWithDomainAttrs(item);
+            DomainAttrItem item;
+            while(cache == null && it.hasNext()) {
+                item = it.next();
+                if (item instanceof DomainAttrExceptionItem) {
+                    throw ((DomainAttrExceptionItem)item).exception;
+                }
 
-            cache = expandTemplateAndCache(temp, conf);
-            conf.newLine();
+                fillVarsWithDomainAttrs(item);
+                cache = expandTemplateAndCache(temp, conf);
+                conf.newLine();
+            }
 
             while (it.hasNext()) {
                 item = it.next();
@@ -1156,31 +1179,39 @@ public class ProxyConfGen
     }
     private static void fillVarsWithDomainAttrs(DomainAttrItem item)
             throws UnknownHostException, ProxyConfException {
-        String defaultVal = null;;
+        String defaultVal = null;
         mVars.put("vhn", item.virtualHostname);
+        
+        //resolve the virtual host name
+        InetAddress vip = null;
+        try {
+            vip = InetAddress.getByName(item.virtualHostname);
+        } catch (UnknownHostException e) {
+            throw new ProxyConfException("virtual host name \"" + item.virtualHostname + "\" is not resolvable", e);
+        }
         if (getZimbraIPMode() != IPMode.BOTH) {
             if (getZimbraIPMode() == IPMode.IPV4_ONLY &&
-                    item.virtualIPAddress instanceof Inet6Address) {
-                String msg = item.virtualIPAddress +
+                    vip instanceof Inet6Address) {
+                String msg = vip +
                         " is an IPv6 address but zimbraIPMode is 'ipv4'";
                 mLog.error(msg);
                 throw new ProxyConfException(msg);
             }
 
             if (getZimbraIPMode() == IPMode.IPV6_ONLY &&
-                    item.virtualIPAddress instanceof Inet4Address) {
-                String msg = item.virtualIPAddress +
+                    vip instanceof Inet4Address) {
+                String msg = vip.getHostAddress() +
                         " is an IPv4 address but zimbraIPMode is 'ipv6'";
                 mLog.error(msg);
                 throw new ProxyConfException(msg);
             }
         }
-        if (item.virtualIPAddress instanceof Inet6Address) {
+        if (vip instanceof Inet6Address) {
             //ipv6 address has to be enclosed with [ ]
-            mVars.put("vip", "[" + item.virtualIPAddress.getHostAddress() + "]");
+            mVars.put("vip", "[" + vip.getHostAddress() + "]");
 
         } else {
-            mVars.put("vip", item.virtualIPAddress.getHostAddress());
+            mVars.put("vip", vip.getHostAddress());
         }
 
 
@@ -1372,6 +1403,8 @@ public class ProxyConfGen
         mConfVars.put("web.mailmode", new ProxyConfVar("web.mailmode", Provisioning.A_zimbraReverseProxyMailMode, "both", ProxyConfValueType.STRING, ProxyConfOverride.SERVER,"Reverse Proxy Mail Mode - can be http|https|both|redirect|mixed"));
         mConfVars.put("web.upstream.name", new ProxyConfVar("web.upstream.name", null, "zimbra", ProxyConfValueType.STRING, ProxyConfOverride.CONFIG,"Symbolic name for HTTP upstream cluster"));
         mConfVars.put("web.upstream.:servers", new ProxyConfVar("web.upstream.:servers", "zimbraReverseProxyLookupTarget", new ArrayList<String>(), ProxyConfValueType.CUSTOM, ProxyConfOverride.CONFIG,"List of upstream HTTP servers used by Web Proxy (i.e. servers for which zimbraReverseProxyLookupTarget is true, and whose mail mode is http|mixed|both)"));
+        mConfVars.put("web.server_names.max_size", new ProxyConfVar("web.server_names.max_size", "proxy_server_names_hash_max_size", DEFAULT_SERVERS_NAME_HASH_MAX_SIZE, ProxyConfValueType.INTEGER, ProxyConfOverride.LOCALCONFIG, "the server names hash max size, needed to be increased if too many virtual host names are added"));
+        mConfVars.put("web.server_names.bucket_size", new ProxyConfVar("web.server_names.bucket_size", "proxy_server_names_hash_bucket_size", DEFAULT_SERVERS_NAME_HASH_BUCKET_SIZE, ProxyConfValueType.INTEGER, ProxyConfOverride.LOCALCONFIG, "the server names hash bucket size, needed to be increased if too many virtual host names are added"));
         mConfVars.put("web.:routehandlers", new ProxyConfVar("web.:routehandlers", "zimbraReverseProxyLookupTarget", new ArrayList<String>(), ProxyConfValueType.CUSTOM, ProxyConfOverride.CUSTOM,"List of web route lookup handlers (i.e. servers for which zimbraReverseProxyLookupTarget is true)"));
         mConfVars.put("web.routetimeout", new ProxyConfVar("web.routetimeout", "zimbraReverseProxyRouteLookupTimeout", new Long(15000), ProxyConfValueType.TIME, ProxyConfOverride.SERVER,"Time interval (ms) given to web route lookup handler to respond to route lookup request (after this time elapses, Proxy fails over to next handler, or fails the request if there are no more lookup handlers)"));
         mConfVars.put("web.uploadmax", new ProxyConfVar("web.uploadmax", "zimbraFileUploadMaxSize", new Long(10485760), ProxyConfValueType.LONG, ProxyConfOverride.SERVER,"Maximum accepted client request body size (indicated by Content-Length) - if content length exceeds this limit, then request fails with HTTP 413"));
@@ -1547,10 +1580,12 @@ public class ProxyConfGen
             }
         }
 
+        mGenConfPerVhn = ProxyConfVar.serverSource.getBooleanAttr("zimbraReverseProxyGenConfigPerVirtualHostname", false);
+
         /* upgrade the variable map from the config in force */
         mLog.debug("Loading Attrs in Domain Level");
         mDomainReverseProxyAttrs = loadDomainReverseProxyAttrs();
-        
+
         mLog.debug("Updating Default Variable Map");
         updateDefaultVars();
 
@@ -1620,18 +1655,43 @@ public class ProxyConfGen
             expandTemplate(new File(mTemplateDir, getWebHttpSModeConfTemplate("mixed")), new File(mConfIncludesDir, getWebHttpSModeConf("mixed")));
         } catch (ProxyConfException pe) {
             mLog.error("Error while expanding templates: " + pe.getMessage());
+            appendConfGenResultToConf("__CONF_GEN_ERROR__:" + pe.getMessage());
             exitCode = 1;
         } catch (SecurityException se) {
             mLog.error("Error while expanding templates: " + se.getMessage());
+            appendConfGenResultToConf("__CONF_GEN_ERROR__:" + se.getMessage());
             exitCode = 1;
         }
         if (exitCode != 1) {
             mLog.info("Proxy configuration files are generated successfully");
+            appendConfGenResultToConf("__SUCCESS__");
         } else {
             mLog.info("Proxy configuration files generation is interrupted by errors");
         }
         
         return (exitCode);
+    }
+
+    /**
+     * bug 66072#c3, always append the conf generation result
+     * to <zimbr home>/conf/nginx.conf. In this way, zmnginxctl
+     * restart can detect the problem.
+     * @param text
+     */
+    private static void appendConfGenResultToConf(String text) {
+        File conf = new File(mConfDir, getCoreConf());
+        if (!conf.exists()) {
+            return;
+        }
+
+        FileWriter writer;
+        try {
+            writer = new FileWriter(conf, true);
+            writer.write("\n#" + text + "\n");
+            writer.close();
+        } catch (IOException e) {
+            //do nothing
+        }
     }
 
     private static void writeClientCAtoFile(String clientCA)

@@ -256,23 +256,65 @@ public abstract class Provisioning extends ZAttrProvisioning {
 
     private static Provisioning sProvisioning;
 
+    public static enum CacheMode {
+        DEFAULT,  // use the Provisioning implementation's default caching mode
+        ON,
+        OFF
+    }
+    
     public synchronized static Provisioning getInstance() {
+        return getInstance(CacheMode.DEFAULT);
+    }
+    
+    /**
+     * This signature allows callsites to specify whether cache should be used in the 
+     * Provisioning instance returned.  
+     * 
+     * !!!Note!!!: setting useCache to false will hurt performance badly, as ***nothing*** 
+     * is cached.  For LdapProvisionig, each LDAP related method will cost one or more LDAP 
+     * trips.  The only usage for useCache=false is zmconfigd. (bug 70975 and 71267)
+     * 
+     * @param useCache 
+     * @return
+     */
+    public synchronized static Provisioning getInstance(CacheMode cacheMode) {
         if (sProvisioning == null) {
+            if (cacheMode == null) {
+                cacheMode = CacheMode.DEFAULT;
+            }
+            
             String className = LC.zimbra_class_provisioning.value();
+            
             if (className != null && !className.equals("")) {
+                Class<?> klass = null;
                 try {
                     try {
-                        sProvisioning = (Provisioning) Class.forName(className).newInstance();
+                        klass = Class.forName(className);
                     } catch (ClassNotFoundException cnfe) {
                         // ignore and look in extensions
-                        sProvisioning = (Provisioning) ExtensionUtil.findClass(className).newInstance();
+                        klass = ExtensionUtil.findClass(className);
+                    }
+                    
+                    if (cacheMode != CacheMode.DEFAULT) {
+                        try {
+                            sProvisioning = (Provisioning) klass.getConstructor(CacheMode.class).newInstance(cacheMode);
+                        } catch (NoSuchMethodException e) {
+                            ZimbraLog.account.error("could not find constructor with CacheMode parameter '" + 
+                                    className + "'; defaulting to LdapProvisioning", e);
+                        }
+                    } else {
+                        sProvisioning = (Provisioning) klass.newInstance();
                     }
                 } catch (Exception e) {
-                    ZimbraLog.account.error("could not instantiate Provisioning interface of class '" + className + "'; defaulting to LdapProvisioning", e);
+                    ZimbraLog.account.error("could not instantiate Provisioning interface of class '" + 
+                            className + "'; defaulting to LdapProvisioning", e);
                 }
             }
-            if (sProvisioning == null)
-                sProvisioning = new LdapProvisioning();
+            
+            if (sProvisioning == null) {
+                sProvisioning = new com.zimbra.cs.account.ldap.LdapProvisioning(cacheMode);
+                ZimbraLog.account.error("defaulting to " + sProvisioning.getClass().getCanonicalName());
+            }
         }
         return sProvisioning;
     }
@@ -448,6 +490,12 @@ public abstract class Provisioning extends ZAttrProvisioning {
      * @throws ServiceException
      */
     public abstract Set<String> getDistributionLists(Account acct) throws ServiceException;
+    
+    /**
+     * @return set of all the zimbraId's of direct lists this account belongs to
+     * @throws ServiceException
+     */
+    public abstract Set<String> getDirectDistributionLists(Account acct) throws ServiceException;
 
     /**
      *
@@ -2025,7 +2073,12 @@ public abstract class Provisioning extends ZAttrProvisioning {
         return false;
     }
 
-    public String getProxyAuthToken(String acctId) throws ServiceException {
+    /**
+     * Get auth token for proxying. Only implemented in OfflineProvisioning
+     * @param targetAcctId - the account we are proxying to
+     * @param originalContext - the original request context. Used internally to ensure proxy token is obtained for correct mountpoint account
+     */
+    public String getProxyAuthToken(String targetAcctId, Map<String,Object> originalContext) throws ServiceException {
         return null;
     }
 

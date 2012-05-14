@@ -44,7 +44,8 @@ import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.session.Session;
 
 public class ImapSession extends Session {
-
+    private static final ImapSessionManager MANAGER = ImapSessionManager.getInstance();
+    
     interface ImapFolderData {
         int getId();
         int getSize();
@@ -224,12 +225,14 @@ public class ImapSession extends Session {
         }
     }
 
-    /** Serializes this <code>ImapSession</code> to the session manager's
-     *  current {@link ImapSessionManager.FolderSerializer} if it's not
-     *  already serialized there.
-     * @return The cachekey under which we serialized the folder, or
-     *         <tt>null</tt> if the folder was already serialized. */
-    synchronized String serialize() throws IOException, ServiceException {
+    /**
+     * Serializes this {@link ImapSession} to the session manager's current {@link ImapSessionManager.FolderSerializer}
+     * if it's not already serialized there.
+     *
+     * @param mem true to use memcached if available, otherwise false
+     * @return the cachekey under which we serialized the folder, or {@code null} if the folder was already serialized
+     */
+    private String serialize(boolean active) throws ServiceException {
         // if the data's already paged out, we can short-circuit
         ImapFolder i4folder = mFolder instanceof ImapFolder ? (ImapFolder) mFolder : null;
         if (i4folder == null) {
@@ -245,17 +248,46 @@ public class ImapSession extends Session {
             i4folder.collapseExpunged(false);
         }
 
-        String cachekey = ImapSessionManager.cacheKey(this);
-        ImapSessionManager.serialize(cachekey, i4folder);
+        String cachekey = MANAGER.cacheKey(this, active);
+        MANAGER.serialize(cachekey, i4folder);
         return cachekey;
     }
 
-    synchronized void unload() throws IOException, ServiceException {
-        // if the data's already paged out, we can short-circuit
-        if (mMailbox != null && mFolder instanceof ImapFolder) {
-            mFolder = new PagedFolderData(serialize(), (ImapFolder) mFolder);
+    /**
+     * Unload this session data into cache.
+     *
+     * @param active true to use active session cache, otherwise use inactive session cache
+     */
+    void unload(boolean active) throws ServiceException {
+        Mailbox mbox = mMailbox;
+        if (mbox == null) {
+            return;
+        }
+        synchronized (mbox) {
+            synchronized (this) {
+                if (mFolder instanceof ImapFolder) { // if the data's already paged out, we can short-circuit
+                    mFolder = new PagedFolderData(serialize(active), (ImapFolder) mFolder);
+                } else if (mFolder instanceof PagedFolderData) {
+                    PagedFolderData paged = (PagedFolderData) mFolder;
+                    if (paged.getCacheKey() == null || !paged.getCacheKey().equals(MANAGER.cacheKey(this, active))) {
+                        //currently cached to wrong cache need to move it so it doesn't get expired or LRU'd
+                        ZimbraLog.imap.trace("relocating cached item to %s already unloaded but cache key mismatched", (active ? "active" : "inactive"));
+                        ImapFolder folder = null;
+                        try {
+                            folder = reload();
+                            mFolder = new PagedFolderData(serialize(active), folder);
+                        } catch (ImapSessionClosedException e) {
+                            throw ServiceException.FAILURE("Session closed while relocating paged item", e);
+                        } catch (IOException e) {
+                            throw ServiceException.FAILURE("IOException while relocating paged item", e);
+                        }
+                    }
+                }
+            }
         }
     }
+
+    public static final String CACHE_MISS = "cache miss deserializing folder state";
 
     ImapFolder reload() throws IOException, ImapSessionClosedException {
         Mailbox mbox = mMailbox;
@@ -268,7 +300,17 @@ public class ImapSession extends Session {
             synchronized (this) {
                 PagedFolderData paged = mFolder instanceof PagedFolderData ? (PagedFolderData) mFolder : null;
                 if (paged != null) { // if the data's already paged in, we can short-circuit
-                    ImapFolder i4folder = ImapSessionManager.deserialize(paged.getCacheKey());
+                    ImapFolder i4folder = MANAGER.deserialize(paged.getCacheKey());
+                    if (i4folder == null) {
+                        //IOException expected up the stack when cache miss occurs
+                        //for now, keep it that way. 
+                        //TODO: refactor later (in 8.0) once we've shaken out any other bugs w/ new cache impl.
+                        if (ImapSessionManager.isActiveKey(paged.getCacheKey())) {
+                            ZimbraLog.imap.debug("cache miss in active cache with key %s",paged.getCacheKey());
+                        }
+                        throw new IOException(CACHE_MISS + " from "+(ImapSessionManager.isActiveKey(paged.getCacheKey()) ? "active" : "inactive")+ " cache");
+                    }
+
                     try {
                         paged.restore(i4folder);
                     } catch (ServiceException e) {
@@ -416,6 +458,23 @@ public class ImapSession extends Session {
                 return;
             }
             mFolder.handleItemUpdate(changeId, chg, added);
+        }
+    }
+
+    @Override
+    public void updateAccessTime() {
+        super.updateAccessTime();
+        Mailbox mbox = mMailbox;
+        if (mbox == null) {
+            return;
+        }
+        synchronized (mbox) { 
+            synchronized (this) {
+                PagedFolderData paged = mFolder instanceof PagedFolderData ? (PagedFolderData) mFolder : null;
+                if (paged != null) { // if the data's already paged in, we can short-circuit
+                    MANAGER.updateAccessTime(paged.getCacheKey());
+                }
+            }
         }
     }
 

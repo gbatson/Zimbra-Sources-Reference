@@ -53,6 +53,8 @@ public class OfflineService implements DocumentService {
         dispatcher.registerHandler(MailConstants.CHECK_RECUR_CONFLICTS_REQUEST, OfflineServiceProxy.CheckRecurConflictsRequest());
         dispatcher.registerHandler(MailConstants.CREATE_APPOINTMENT_REQUEST, new OfflineCreateAppointment());
         dispatcher.registerHandler(MailConstants.MODIFY_APPOINTMENT_REQUEST, new OfflineModifyAppointment());
+        dispatcher.registerHandler(MailConstants.CREATE_APPOINTMENT_EXCEPTION_REQUEST, new OfflineCreateAppointmentException());
+        dispatcher.registerHandler(MailConstants.CANCEL_APPOINTMENT_REQUEST, new OfflineCancelAppointment());
         dispatcher.registerHandler(MailConstants.CREATE_TASK_REQUEST, new OfflineCreateTask());
         dispatcher.registerHandler(MailConstants.MODIFY_TASK_REQUEST, new OfflineModifyTask());
         dispatcher.registerHandler(MailConstants.CONV_ACTION_REQUEST, new OfflineConvAction());
@@ -77,6 +79,7 @@ public class OfflineService implements DocumentService {
         dispatcher.registerHandler(MailConstants.MODIFY_CONTACT_REQUEST, new OfflineModifyContact());
         dispatcher.registerHandler(MailConstants.CREATE_CONTACT_REQUEST, new OfflineCreateContact());
         dispatcher.registerHandler(AccountConstants.MODIFY_PROPERTIES_REQUEST, new OfflineModifyProperties());
+        dispatcher.registerHandler(OfflineConstants.DIALOG_ACTION_REQUEST, new OfflineDialogAction());
 
         // not the most suitable place to do this, but it's just too easy.
         SoapContextExtension.register(OfflineContextExtension.ZDSYNC, new OfflineContextExtension());

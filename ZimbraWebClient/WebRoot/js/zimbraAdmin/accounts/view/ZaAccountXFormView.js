@@ -960,8 +960,7 @@ ZaAccountXFormView.FEATURE_TAB_ATTRS = [ZaAccount.A_zimbraFeatureManageZimlets,
 	ZaAccount.A_zimbraFeatureImportFolderEnabled,
     ZaAccount.A_zimbraFeatureExportFolderEnabled,
 	ZaAccount.A_zimbraDumpsterEnabled,
-	ZaAccount.A_zimbraFeatureSMIMEEnabled,
-	ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled
+	ZaAccount.A_zimbraFeatureSMIMEEnabled
 ];
 
 ZaAccountXFormView.FEATURE_TAB_RIGHTS = [];
@@ -1202,6 +1201,32 @@ ZaAccountXFormView.getAccountNameInfoItem = function(){
         return accountNameFormItems;
 }
 
+ZaAccountXFormView.validatePollingInterval = function(value, event, form) {
+    var instance = form.getInstance ();
+	this.setInstanceValue(value);
+    var prefPollingInterval = instance.attrs[ZaAccount.A_zimbraPrefMailPollingInterval];
+	if (!prefPollingInterval) {
+		prefPollingInterval = instance._defaultValues.attrs[ZaAccount.A_zimbraPrefMailPollingInterval];
+	}
+	var minPollingInterval = instance.attrs[ZaAccount.A_zimbraMailMinPollingInterval];
+	if (!minPollingInterval) {
+		minPollingInterval = instance._defaultValues.attrs[ZaAccount.A_zimbraMailMinPollingInterval];
+	}
+	var prefPollingIntervalItem = form.getItemsById (ZaAccount.A_zimbraPrefMailPollingInterval)[0];
+	try {
+		if (ZaUtil.getLifeTimeInSeconds(prefPollingInterval) < ZaUtil.getLifeTimeInSeconds(minPollingInterval)){
+			prefPollingIntervalItem.setError (ZaMsg.tt_mailPollingIntervalError + minPollingInterval) ;
+			form.parent.setDirty(false);	
+		}else{
+			prefPollingIntervalItem.clearError();	
+			form.parent.setDirty(true);	
+		}
+	}catch (e){
+		prefPollingIntervalItem.setError (e.message);
+		form.parent.setDirty(false);
+	}
+}
+
 /**
 * This method is added to the map {@link ZaTabView#XFormModifiers}
 * @param xFormObject {Object} a definition of the form. This method adds/removes/modifies xFormObject to construct
@@ -1224,7 +1249,10 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 	var emptyAlias = " @" + domainName;
 	var headerItems = [{type:_AJX_IMAGE_, src:"Person_32", label:null, rowSpan:3},
         {type:_OUTPUT_, ref:ZaAccount.A_displayname, label:null,cssClass:"AdminTitle", height: 32, rowSpan:3,
-        visibilityChecks:[ZaItem.hasReadPermission]}];
+        visibilityChecks:[ZaItem.hasReadPermission],
+            getDisplayValue:function(newValue) {
+                return AjxStringUtil.htmlEncode(newValue);
+            }}];
 	/*headerItems.push({type:_OUTPUT_, ref:ZaAccount.A_COSId,valueChangeEventSources:[ZaAccount.A_COSId], labelLocation:_LEFT_, label:ZaMsg.NAD_ClassOfService, choices:this.cosChoices,getDisplayValue:function(newValue) {
 			if(ZaItem.ID_PATTERN.test(newValue)) {
 				var cos = ZaCos.getCosById(newValue, this.getForm().parent._app);
@@ -1265,19 +1293,24 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 					label:ZaMsg.LBL_quota,
 					getDisplayValue:function() {
 						var usedVal = this.getInstanceValue();
-						if(!usedVal) 
+						var formatter = AjxNumberFormat.getNumberInstance();
+						if(!usedVal)
 							usedVal = "0";
 						else {
 							usedVal = Number(usedVal / 1048576).toFixed(3);
-						}		
-						
+							usedVal = formatter.format(usedVal);
+						}
+
 						var quotaLimit = this.getInstanceValue(ZaAccount.A_zimbraMailQuota);
-						if(!quotaLimit || quotaLimit == "0")
+						if(!quotaLimit || quotaLimit == "0") {
 							quotaLimit = ZaMsg.Unlimited;
-							
+						} else {
+							quotaLimit = formatter.format(quotaLimit);
+						}
+
 						if(quotaLimit == ZaMsg.Unlimited) {
 							return AjxMessageFormat.format (ZaMsg.unlimitedQuotaValueTemplate,[usedVal,quotaLimit]);
-						} else {							
+						} else {
 							return AjxMessageFormat.format (ZaMsg.quotaValueTemplate,[usedVal,quotaLimit]);
 						}
 					},
@@ -1969,21 +2002,14 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 					},
                                         {type:_ZA_TOP_GROUPER_, label: ZaMsg.NAD_zimbraSMIMEFeature, id:"account_form_features_smime", colSizes:["auto"],numCols:1,
                                                 visibilityChecks:[[ZATopGrouper_XFormItem.isGroupVisible,             
-                                      		[ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, ZaAccount.A_zimbraFeatureSMIMEEnabled]]],
+                                      		[ ZaAccount.A_zimbraFeatureSMIMEEnabled]]],
                                                 items:[
                                                  {ref:ZaAccount.A_zimbraFeatureSMIMEEnabled,
                                                         type:_SUPER_CHECKBOX_,
                                                         resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
                                                         msgName:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,
                                                         checkBoxLabel:ZaMsg.LBL_zimbraFeatureSMIMEEnabled,
-                                                        trueValue:"TRUE", falseValue:"FALSE"},
-
-                                                 {ref:ZaAccount.A_zimbraFeatureManageSMIMECertificateEnabled, 
-							type:_SUPER_CHECKBOX_, 
-							resetToSuperLabel:ZaMsg.NAD_ResetToCOS, 
-							msgName:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled,
-							checkBoxLabel:ZaMsg.LBL_zimbraFeatureManageSMIMECertificateEnabled, 
-							trueValue:"TRUE", falseValue:"FALSE"}
+                                                        trueValue:"TRUE", falseValue:"FALSE"}
                                                 ]
                                         }
 				]
@@ -2169,18 +2195,21 @@ ZaAccountXFormView.myXFormModifier = function(xFormObject, entry) {
 								ZaAccount.A_zimbraPrefReadReceiptsToAddress]]
 							],							
 							items :[
-								{ref:ZaAccount.A_zimbraPrefMailPollingInterval, type:_SUPER_LIFETIME_, 
-									colSizes:["195px","80px","295px","190px"],
+								{ref:ZaAccount.A_zimbraPrefMailPollingInterval, type:_SUPER_SELECT1_, 
+                                    labelCssStyle:"width:195px",
+									colSizes:["375px", "190px"],
 									msgName:ZaMsg.MSG_zimbraPrefMailPollingInterval,
-									txtBoxLabel:ZaMsg.LBL_zimbraPrefMailPollingInterval, 
-									resetToSuperLabel:ZaMsg.NAD_ResetToCOS,colSpan:2,
+									label:ZaMsg.LBL_zimbraPrefMailPollingInterval, 
+									resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
+                                    onChange:ZaAccountXFormView.validatePollingInterval,
 									nowrap:false,labelWrap:true									
 								},							
 								{ref:ZaAccount.A_zimbraMailMinPollingInterval, 
 									type:_SUPER_LIFETIME_, 
 									colSizes:["195px","80px","295px","190px"],
 									msgName:ZaMsg.MSG_zimbraMailMinPollingInterval,
-									txtBoxLabel:ZaMsg.LBL_zimbraMailMinPollingInterval, 
+									txtBoxLabel:ZaMsg.LBL_zimbraMailMinPollingInterval,
+                                    onChange:ZaAccountXFormView.validatePollingInterval,
 									resetToSuperLabel:ZaMsg.NAD_ResetToCOS,
 									colSpan:2
 								},

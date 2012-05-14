@@ -38,6 +38,7 @@ import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
@@ -264,25 +265,57 @@ public class GalSync {
             GalSyncCheckpointUtil.removeCheckpoint(MailboxManager.getInstance().getMailboxByAccount(galAccount));
         } catch (Exception e) {
             syncMan.processSyncException(galAccount, "", e, galAccount.isDebugTraceEnabled());
-            OfflineLog.offline.info("Offline GAL sync failed for " + domainGal.getDomain() + ": " + e.getMessage());
+            if (e instanceof ServiceException) {
+                OfflineLog.offline.info("gal sync req timeout is set to %d ms.", OfflineLC.zdesktop_gal_sync_request_timeout.intValue());
+            }
+            OfflineLog.offline.info("Offline GAL sync failed for " + domainGal.getDomain(), e);
         }
     }
 
     private OfflineAccount ensureGalAccountExists(OfflineDomainGal domainGal) throws ServiceException {
         String galAcctId = domainGal.getGalAccountId();
         OfflineAccount galAcct = null;
-        if (galAcctId == null || galAcctId.length() == 0
-                || (galAcct = (OfflineAccount) prov.get(AccountBy.id, galAcctId)) == null) {
-            try {
+        if (StringUtil.isNullOrEmpty(galAcctId)) {
+            OfflineLog.offline.warn("domain %s exists with no offlineGalAccountId yet", domainGal.getDomain());
+            //check if there is existing but not referenced gal account
+            List<Account> domainGalAccounts = prov.getAllGalAccounts(domainGal.getDomain());
+            if (!domainGalAccounts.isEmpty()) {
+                if (domainGalAccounts.size() > 1) {
+                    OfflineLog.offline.warn("has %d gal accounts for domain %s, not referenced. Only need one.", domainGalAccounts.size(), domainGal.getDomain());
+                }
+                galAcct = (OfflineAccount) domainGalAccounts.get(0);
+                prov.assignGalAccountToDomain(domainGal, galAcct);
+                OfflineLog.offline.info("existing Offline GAL mailbox " + galAcct.getName() + " assigned to domain");
+            } else {
                 galAcct = prov.createGalAccount(domainGal);
                 prov.assignGalAccountToDomain(domainGal, galAcct);
-                OfflineLog.offline.info("Offline GAL mailbox created: " + galAcct.getName());
-            } catch (Exception e) {
-                OfflineLog.offline.debug("Offline Gal mailbox create failed", e);
+                OfflineLog.offline.info("Offline GAL mailbox created: " + galAcct.getName() + " and assigned");
             }
         } else {
-            galAcct = (OfflineAccount) prov.getAccountById(galAcctId);
+            galAcct = (OfflineAccount) prov.get(AccountBy.id, galAcctId);
+            String[] gals = domainGal.getMultiAttr(OfflineConstants.A_offlineGalAccountId);
+            while (galAcct == null && gals != null && gals.length > 0) {
+                OfflineLog.offline.warn("Offline Gal account is null in prov: %s, domain: %s", galAcctId, domainGal.getDomain());
+                //bug 70395, we saw two entries of offlineGalAccountId for one GAL directory, the obsolete entry needs to be deleted
+                OfflineLog.offline.debug("Removing obsolete Gal account Id for domain GAL...");
+                Map<String, Object> attrs = new HashMap<String, Object>();
+                attrs.put("-" + OfflineConstants.A_offlineGalAccountId, galAcctId);
+                OfflineProvisioning.getInstance().modifyAttrs(domainGal, attrs);
+                galAcctId = domainGal.getGalAccountId();
+                galAcct = (OfflineAccount) prov.get(AccountBy.id, galAcctId);
+                gals = domainGal.getMultiAttr(OfflineConstants.A_offlineGalAccountId);
+            }
+            if (galAcct == null) {
+                try {
+                    galAcct = prov.createGalAccount(domainGal);
+                    prov.assignGalAccountToDomain(domainGal, galAcct);
+                    OfflineLog.offline.info("Offline GAL mailbox created: " + galAcct.getName());
+                } catch (Exception e) {
+                    OfflineLog.offline.debug("Offline Gal mailbox create failed", e);
+                }
+            }
         }
+
         return galAcct;
     }
 
@@ -327,7 +360,7 @@ public class GalSync {
                 else
                     throw (IOException) e;
             } else if ((token = handler.getToken()) == null) {
-                throw ServiceException.FAILURE("unable to search GAL", null);
+                throw ServiceException.FAILURE("gal sync token is null", null);
             }
             GalSyncCheckpointUtil.persistItemIds(galMbox, handler.getItemIds());
         }
@@ -337,6 +370,10 @@ public class GalSync {
         mbox = GalSyncUtil.getGalEnabledZcsMailbox(domain);
         if (mbox == null) {
             OfflineLog.offline.debug("No gal enabled account for domain %s, but full sync finished", domain);
+        }
+        if (StringUtil.isNullOrEmpty(token)) {
+            OfflineLog.offline.warn("gal sync token is null");
+            return;
         }
         if (fullSync) { // after a full sync, reset maintenance timer
             prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountLastRefresh,

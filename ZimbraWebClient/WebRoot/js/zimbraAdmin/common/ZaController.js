@@ -335,7 +335,7 @@ function() {
 		this._loginDialog.setError(AjxMessageFormat.format(ZaMsg.ERROR_BROWSER_UNSUPORTED, [navigator.userAgent]));
 	*/	
 	try {
-		var uname = "";
+		var uname = null; // don't change current display username
 		this._loginDialog.setFocus(uname);
 	} catch (ex) {
 		// something is out of whack... just make the user relogin
@@ -355,13 +355,13 @@ function(ex, method, params, restartOnError, obj) {
 		) 
 	{
 		try {
+			ZmCsfeCommand.noAuth = true;
 			if (ZaApp.getInstance() != null && (ex.code == ZmCsfeException.SVC_AUTH_EXPIRED ||
 							    ex.code == ZmCsfeException.AUTH_TOKEN_CHANGED ||
 								ex.code == ZmCsfeException.NO_AUTH_TOKEN
 							   )) 
 			{
 				// Must clear Cookie in browser
-				ZmCsfeCommand.setAuthToken(null);
 
 				var dlgs = ZaApp.getInstance().dialogs;
 				for (var dlg in dlgs) {
@@ -461,7 +461,7 @@ function(ex, method, params, restartOnError, obj) {
 
 ZaController.prototype._doAuth = 
 function(username, password) {
-	ZmCsfeCommand.clearAuthToken();
+	ZmCsfeCommand.noAuth = true;
 	try {
 		//hide login dialog
 		this._hideLoginDialog();
@@ -547,6 +547,11 @@ function (resp) {
 			this._showLoginDialog(false);
 			this._loginDialog.setError(ZaMsg.ERROR_ACC_IN_MAINTENANCE_MODE);
 			this._loginDialog.clearPassword();
+        } else if(ex.code == ZmCsfeException.SVC_AUTH_EXPIRED) {
+            this._showLoginDialog(true);
+            this._loginDialog.setError(ZaMsg.ERROR_SESSION_EXPIRED);
+			this._loginDialog.disableUnameField(true);
+            this._loginDialog.clearPassword();		
 		} else {
 			if(this._msgDialog) {
 				this.popupMsgDialog(ZaMsg.SERVER_ERROR, ex);
@@ -567,8 +572,8 @@ function (resp) {
 	 		var response = resp.getResponse();
 	 		var body = response.Body;		
 	 		
-	 		ZmCsfeCommand.setAuthToken(body.AuthResponse.authToken[0]._content, -1, body.AuthResponse.session.id, true);
-	 		
+	 		ZmCsfeCommand.noAuth = false;
+
 			//Instrumentation code start
 			if(ZaAuthenticate.processResponseMethods) {
 				var cnt = ZaAuthenticate.processResponseMethods.length;

@@ -98,6 +98,9 @@ public class VersionCheck extends AdminDocumentHandler {
         	//perform the version check
         	String lastAttempt = checkVersion();
         	String resp = config.getAttr(Provisioning.A_zimbraVersionCheckLastResponse);
+        	if(resp == null) {
+        		throw VersionCheckException.EMPTY_VC_RESPONSE(null);
+        	}
         	Element respDoc;
 			try {	
 				respDoc = Element.parseXML(resp);
@@ -297,6 +300,8 @@ public class VersionCheck extends AdminDocumentHandler {
 			resp = method.getResponseBodyAsString();
 			if(!StringUtil.isNullOrEmpty(resp)) {
 				checkSuccess = true;
+			} else {
+				throw VersionCheckException.FAILED_TO_GET_RESPONSE(url,null);
 			}
 
 /**

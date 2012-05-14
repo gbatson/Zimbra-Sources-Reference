@@ -66,10 +66,12 @@ public class Zimbra {
      *  servlet faults in classes or references properties before they're set
      *  here. */
     private static void setSystemProperties() {
-        System.setProperty("mail.mime.decodetext.strict",   "false");
-        System.setProperty("mail.mime.encodefilename",      "true");
-        System.setProperty("mail.mime.charset",             "utf-8");
-        System.setProperty("mail.mime.base64.ignoreerrors", "true");
+        System.setProperty("mail.mime.decodetext.strict",       "false");
+        System.setProperty("mail.mime.encodefilename",          "true");
+        System.setProperty("mail.mime.charset",                 "utf-8");
+        System.setProperty("mail.mime.base64.ignoreerrors",     "true");
+        System.setProperty("mail.mime.ignoremultipartencoding", "false");
+        System.setProperty("mail.mime.multipart.allowempty",    "true");
     }
 
     private static void checkForClass(String clzName, String jarName) {
@@ -209,6 +211,9 @@ public class Zimbra {
         if (app.supports(MemcachedConnector.class.getName())) {
             MemcachedConnector.startup();
         }
+        if (app.supports(EhcacheManager.class.getName())) {
+            EhcacheManager.getInstance().startup();
+        }
 
         ExtensionUtil.initAll();
 
@@ -333,6 +338,9 @@ public class Zimbra {
 
         if (app.supports(MemcachedConnector.class.getName())) {
             MemcachedConnector.shutdown();
+        }
+        if (app.supports(EhcacheManager.class.getName())) {
+            EhcacheManager.getInstance().shutdown();
         }
 
         MailboxManager.getInstance().shutdown();

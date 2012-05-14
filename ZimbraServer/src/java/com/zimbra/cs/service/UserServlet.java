@@ -124,6 +124,8 @@ public class UserServlet extends ZimbraServlet {
     public static final String QP_AUTHTOKEN = "authToken";
 
     public static final String QP_FMT = "fmt"; // format query param
+    
+    public static final String QP_NOHIERARCHY = "nohierarchy"; // nohierarchy query param
 
     public static final String QP_ZLV = "zlv"; // zip level query param
 
@@ -328,7 +330,7 @@ public class UserServlet extends ZimbraServlet {
     }
 
     private static AuthToken getProxyAuthToken(UserServletContext context) throws ServiceException {
-        String encoded = Provisioning.getInstance().getProxyAuthToken(context.targetAccount.getId());
+        String encoded = Provisioning.getInstance().getProxyAuthToken(context.targetAccount.getId(), null);
         if (encoded != null) {
             return new ZimbraAuthTokenEncoded(encoded);
         } else if (context.basicAuthHappened) {

@@ -1,8 +1,8 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011, 2012 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
@@ -24,6 +24,8 @@ import com.google.common.base.Strings;
 
 /**
  * Unit test for {@link ContactCSV}.
+ * Note that successful imports for ContactCSV will require /opt/zimbra/conf/zimbra-contact-fields.xml
+ * Better to have any tests requiring that in com.zimbra.qa.unittest.TestContactCSV
  *
  * @author ysasaki
  */
@@ -36,7 +38,7 @@ public final class ContactCSVTest {
             ContactCSV.getContacts(new BufferedReader(reader), null);
             Assert.fail();
         } catch (ContactCSV.ParseException e) {
-            Assert.assertEquals("invalid format", e.getMessage());
+            Assert.assertEquals("invalid format - header field 1 of 1 is too long (length=500)", e.getMessage());
         }
     }
 

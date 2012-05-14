@@ -96,6 +96,22 @@ function() {
 	return "ZaZimbraAdmin";
 }
 
+ZaZimbraAdmin.clearCookie = function () {
+	try {
+		var soapDoc = AjxSoapDoc.create("ClearCookieRequest", ZaZimbraAdmin.URN, null);
+		var cookieBy = soapDoc.set("cookie");
+		cookieBy.setAttribute("name", ZaZimbraAdmin._COOKIE_NAME);
+		var clearCookieCommand = new ZmCsfeCommand();
+		var params = new Object();
+		params.soapDoc = soapDoc;
+		params.skipExpiredToken = true;	
+		params.asyncMode = false;
+		params.noAuthToken = true;
+		clearCookieCommand.invoke(params);
+	} catch (ex) {
+		this._handleException(ex, "ZaZimbraAdmin.clearCookie", null, true);
+	}
+}
 /**
 * Sets up ZimbraMail, and then starts it by calling its constructor. It is assumed that the
 * CSFE is on the same host.
@@ -128,8 +144,23 @@ function(domain) {
 	var params = new Object();
 	params.soapDoc = soapDoc;	
 	params.noAuthToken = true;
-	var resp = command.invoke(params).Body.BatchResponse;		
-	
+	var resp;
+    var isResend = false;
+    try {
+    	resp = command.invoke(params).Body.BatchResponse;		
+	} catch (ex) {
+        if (ex.code == ZmCsfeException.SVC_AUTH_EXPIRED) {
+          isResend = true;
+        } else {
+			throw ex;
+        }
+	}
+    if (isResend) {
+    	ZaZimbraAdmin.clearCookie();
+		params.resend = true;
+        resp = command.invoke(params).Body.BatchResponse;
+    }
+
 	if(resp.GetVersionInfoResponse && resp.GetVersionInfoResponse[0]) {
 		var versionResponse = resp.GetVersionInfoResponse[0];
 		ZaServerVersionInfo.buildDate = ZaServerVersionInfo._parseDateTime(versionResponse.info[0].buildDate);
@@ -271,7 +302,7 @@ function(appName) {
 
 ZaZimbraAdmin.logOff =
 function() {
-	ZmCsfeCommand.clearAuthToken();
+	ZmCsfeCommand.noAuth = true;
 	window.onbeforeunload = null;
 	
 	// NOTE: Mozilla sometimes handles UI events while the page is
@@ -286,6 +317,11 @@ function() {
             + location.pathname
             //we want to add the query string as well
             + location.search;
+	if (location.search) {
+		locationStr = locationStr + "&logoff=1";
+	} else {
+		locationStr = locationStr + "?logoff=1";
+	}
 
     var act = new AjxTimedAction(null, ZaZimbraAdmin.redir, [locationStr]);
 	AjxTimedAction.scheduleAction(act, 100);
@@ -322,6 +358,7 @@ function() {
 		var params = new Object();
 		params.soapDoc = soapDoc;	
 		params.noSession = true;
+		params.noAuthToken = true;
 		ZaZimbraAdmin.isFirstRequest = true;
 		var resp = command.invoke(params);
 		ZaZimbraAdmin.isFirstRequest = false;
@@ -536,15 +573,16 @@ function () {
 	var dwLabel = new DwtLabel(this._shell, "", "", Dwt.RELATIVE_STYLE);	
 	var containerWidth = Dwt.getSize(userNameContainer).x;
 	var innerContent = null;
+	var tmpName = AjxStringUtil.htmlEncode(ZaZimbraAdmin.currentUserName);
 	if(containerWidth <= 20) {
 		// if there are not enough space, just follow skin's setting
-		innerContent = ( String(ZaZimbraAdmin.currentUserName).length>(skin.maxAdminName+1)) ? String(ZaZimbraAdmin.currentUserName).substr(0,skin.maxAdminName) : ZaZimbraAdmin.currentUserName;
+		innerContent = ( String(tmpName).length>(skin.maxAdminName+1)) ? String(tmpName).substr(0,skin.maxAdminName) : tmpName;
 	}
 	else {
 		// reserve 20px for estimation error. 
 		// here we assume 5.5px for one word, just follow the apptab.
 		var maxNumberOfLetters = Math.floor((containerWidth - 20)/5.5);
-		innerContent = ZaZimbraAdmin.currentUserName;
+		innerContent = tmpName;
 		if (maxNumberOfLetters < innerContent.length) {
 			innerContent = innerContent.substring(0, (maxNumberOfLetters - 3)) + "..."
 		}	
@@ -553,7 +591,7 @@ function () {
 	dwLabel.setText(innerContent);	
 	if(innerContent != ZaZimbraAdmin.currentUserName){
 		dwLabel._setMouseEvents();
-		dwLabel.setToolTipContent( ZaZimbraAdmin.currentUserName );
+		dwLabel.setToolTipContent( tmpName );
 	}	
 	userNameContainer.innerHTML = ""; // clean the "Administrator" inherited from the skin's raw html code	
 	dwLabel.reparentHtmlElement (ZaSettings.SKIN_USER_NAME_ID) ;
@@ -867,6 +905,7 @@ ZaZimbraAdmin.prototype.sendNoOp = function () {
 		var params = new Object();
 		params.soapDoc = soapDoc;	
 		params.asyncMode = false;
+		params.noAuthToken = true;
 		noOpCommand.invoke(params);
 		this.scheduleNoOp();
 	} catch (ex) {
@@ -929,6 +968,13 @@ ZaZimbraAdmin.isGlobalAdmin = function () {
             && (ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE'));
 }
 
+ZaZimbraAdmin.hasGlobalDomainListAccess = function () {
+    return (ZaZimbraAdmin.isGlobalAdmin() || ZaDomain.globalRights[ZaDomain.RIGHT_LIST_DOMAIN]);
+}
+
+ZaZimbraAdmin.hasGlobalCOSSListAccess = function () {
+	return (ZaZimbraAdmin.isGlobalAdmin() || ZaCos.globalRights[ZaCos.RIGHT_LIST_COS]);
+}
 
 ZaAboutDialog = function(parent, className, title, w, h) {
 	if (arguments.length == 0) return;

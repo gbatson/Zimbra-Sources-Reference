@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 
 import javax.mail.Message.RecipientType;
 import javax.mail.internet.InternetAddress;
@@ -40,14 +39,15 @@ import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.util.BigByteBuffer;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zclient.ZClientException;
+import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -74,14 +74,15 @@ import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class PushChanges {
-    
+
     private static class LocalInviteMimeLocator implements InviteMimeLocator {
         ZcsMailbox ombx;
-        
+
         public LocalInviteMimeLocator(ZcsMailbox ombx) {
             this.ombx = ombx;
         }
-        
+
+        @Override
         public Pair<Integer, InputStream> getInviteMime(int calendarItemId, int inviteId) throws ServiceException {
             CalendarItem cal = ombx.getCalendarItemById(PushChanges.sContext, calendarItemId);
             MimeMessage mm = cal.getSubpartMessage(inviteId);
@@ -127,11 +128,11 @@ public class PushChanges {
 
     /** The bitmask of all tag changes that we propagate to the server. */
     static final int TAG_CHANGES = Change.MODIFIED_NAME | Change.MODIFIED_COLOR;
-    
+
     /** The bitmask of all appointment changes that we propagate to the server. */
     static final int APPOINTMENT_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS | Change.MODIFIED_FOLDER |
                                            Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT | Change.MODIFIED_INVITE;
-    
+
     /** The bitmask of all document changes that we propagate to the server. */
     static final int DOCUMENT_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS | Change.MODIFIED_FOLDER |
                                         Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT | Change.MODIFIED_NAME;
@@ -139,10 +140,10 @@ public class PushChanges {
     /** A list of all the "leaf types" (i.e. non-folder types) that we
      *  synchronize with the server. */
     private static final byte[] PUSH_LEAF_TYPES = new byte[] {
-        MailItem.TYPE_TAG, 
-        MailItem.TYPE_CONTACT, 
-        MailItem.TYPE_MESSAGE, 
-        MailItem.TYPE_CHAT, 
+        MailItem.TYPE_TAG,
+        MailItem.TYPE_CONTACT,
+        MailItem.TYPE_MESSAGE,
+        MailItem.TYPE_CHAT,
         MailItem.TYPE_APPOINTMENT,
         MailItem.TYPE_TASK,
         MailItem.TYPE_WIKI,
@@ -151,12 +152,12 @@ public class PushChanges {
 
     /** The set of all the MailItem types that we synchronize with the server. */
     static final Set<Byte> PUSH_TYPES_SET = new HashSet<Byte>(Arrays.asList(
-        MailItem.TYPE_FOLDER, 
+        MailItem.TYPE_FOLDER,
         MailItem.TYPE_SEARCHFOLDER,
-        MailItem.TYPE_TAG, 
-        MailItem.TYPE_CONTACT, 
-        MailItem.TYPE_MESSAGE, 
-        MailItem.TYPE_CHAT, 
+        MailItem.TYPE_TAG,
+        MailItem.TYPE_CONTACT,
+        MailItem.TYPE_MESSAGE,
+        MailItem.TYPE_CHAT,
         MailItem.TYPE_APPOINTMENT,
         MailItem.TYPE_TASK,
         MailItem.TYPE_WIKI,
@@ -166,7 +167,7 @@ public class PushChanges {
 
 
     private static final TracelessContext sContext = new TracelessContext();
-    
+
     private final ZcsMailbox ombx;
     private ZMailbox mZMailbox = null;
 
@@ -197,7 +198,7 @@ public class PushChanges {
     public static boolean syncFolder(ZcsMailbox ombx, int id, boolean suppressRssFailure, ZimbraSoapContext zsc) throws ServiceException {
         return new PushChanges(ombx).syncFolder(id, suppressRssFailure, zsc);
     }
-    
+
     private boolean sync(boolean isOnRequest) throws ServiceException {
         int limit;
         TypedIdList changes, tombstones;
@@ -218,7 +219,7 @@ public class PushChanges {
         }
 
         OfflineSyncManager.getInstance().continueOK();
-        
+
         OfflineLog.offline.debug("starting change push");
 
         boolean hasDeletes = !tombstones.isEmpty();
@@ -257,19 +258,19 @@ public class PushChanges {
                 syncTag(id);
             changes.remove(MailItem.TYPE_TAG);
         }
-        
+
         // Do simple change batch push first
         Set<Integer> batched = new HashSet<Integer>();
         if (simpleReadChanges != null && simpleReadChanges.size() > 0) {
             OfflineSyncManager.getInstance().continueOK();
             pushSimpleChanges(simpleReadChanges, Change.MODIFIED_UNREAD, false, 0, batched);
         }
-        
+
         if (simpleUnreadChanges != null && simpleUnreadChanges.size() > 0) {
             OfflineSyncManager.getInstance().continueOK();
             pushSimpleChanges(simpleUnreadChanges, Change.MODIFIED_UNREAD, true, 0, batched);
         }
-        
+
         if (simpleFolderMoveChanges != null && simpleFolderMoveChanges.size() > 0) {
             Set<Integer> folders = simpleFolderMoveChanges.keySet();
             for (int folderId : folders) {
@@ -292,12 +293,12 @@ public class PushChanges {
                         OfflineLog.offline.debug("skipped push transient item id=%d", id);
                         continue;
                     }
-                    
+
                     if (batched.contains(id)) //already done
                         continue;
-                    
+
                     OfflineSyncManager.getInstance().continueOK();
-                    
+
                     try {
                         switch (type) {
                             case MailItem.TYPE_TAG:         syncTag(id);          break;
@@ -321,7 +322,7 @@ public class PushChanges {
         // folder deletes need to come after moves are processed, else we'll be deleting items we shouldn't
         if (!tombstones.isEmpty()) {
             OfflineSyncManager.getInstance().continueOK();
-            
+
             String ids = concatenateIds(tombstones.getAll());
             Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
             request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_HARD_DELETE).addAttribute(MailConstants.A_ID, ids);
@@ -331,7 +332,7 @@ public class PushChanges {
 
         if (hasDeletes)
             ombx.clearTombstones(sContext, limit);
-        
+
         OfflineLog.offline.debug("ending change push");
 
         return true;
@@ -340,12 +341,12 @@ public class PushChanges {
     /** Tracks messages that we've called SendMsg on but never got back a
      *  response.  This should help avoid duplicate sends when the connection
      *  goes away in the process of a SendMsg.<p>
-     *  
+     *
      *  key: a String of the form <tt>account-id:message-id</tt><p>
      *  value: a Pair containing the content change ID and the "send UID"
      *         used when the message was previously sent. */
     private static final Map<String, Pair<Integer, String>> sSendUIDs = new HashMap<String, Pair<Integer, String>>();
-    
+
     /** For each message in the Outbox, uploads it to the remote server, calls
      *  SendMsg to dispatch it appropriately, and deletes it from the local
      *  store.  As a side effect, removes the corresponding (now-deleted)
@@ -403,23 +404,24 @@ public class PushChanges {
 
                         ombx.move(sContext, id, MailItem.TYPE_MESSAGE, Mailbox.ID_FOLDER_DRAFTS); //move message back to drafts folder;
 
-                        //we need to tell user of the failure
+                        // we need to tell user of the failure
                         try {
-                            MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession());
+                            Account account = ombx.getAccount();
+                            MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSmtpSession(account));
                             mm.setSentDate(new Date());
                             mm.setFrom(new InternetAddress("donotreply@host.local", "Desktop Notifier"));
-                            mm.setRecipient(RecipientType.TO, new JavaMailInternetAddress(ombx.getAccount().getName()));
+                            mm.setRecipient(RecipientType.TO, new JavaMailInternetAddress(account.getName()));
 
                             String sentDate = new SimpleDateFormat("MMMMM d, yyyy").format(msg.getDate());
                             String sentTime = new SimpleDateFormat("h:mm a").format(msg.getDate());
 
                             String text = "Your message \"" + msg.getSubject() + "\" sent on " + sentDate + " at " + sentTime + " to \"" + msg.getRecipients() + "\" can't be delivered.  None of the recipients will receive the message.  It has been returned to Drafts folder for your review.\n";
                             String subject = null;
-                            if (x.getCode().equals(ZClientException.UPLOAD_SIZE_LIMIT_EXCEEDED))
+                            if (x.getCode().equals(ZClientException.UPLOAD_SIZE_LIMIT_EXCEEDED)) {
                                 subject = "message size exceeds server limit";
-                            else if (x.getCode().equals(MailServiceException.SEND_ABORTED_ADDRESS_FAILURE))
+                            } else if (x.getCode().equals(MailServiceException.SEND_ABORTED_ADDRESS_FAILURE)) {
                                 subject = x.getMessage();
-                            else {
+                            } else {
                                 text += "\n----------------------------------------------------------------------------\n\n" +
                                 SyncExceptionHandler.sendMailFailed(ombx, id, x);
                                 subject = x.getCode();
@@ -451,16 +453,16 @@ public class PushChanges {
         }
         return totalSent;
     }
-    
+
     public static int sendPendingMessages(ZcsMailbox ombx, boolean isOnRequest) throws ServiceException {
         return new PushChanges(ombx).sendPendingMessages(isOnRequest);
     }
-    
+
     /**
      * Before 5.0.8 there's a bug that makes simply streaming up message content broken
      */
     private static final OfflineAccount.Version minServerVersionForUploadStreaming = new OfflineAccount.Version("5.0.9");
-    
+
     /** Uploads the given message to the remote server using file upload.
      *  We scale the allowed timeout with the size of the message -- a base
      *  of 5 seconds, plus 1 second per 25K of message size. */
@@ -488,7 +490,7 @@ public class PushChanges {
      *  mailbox.  If there's a naming conflict, attempts to discover the remote
      *  item and rename it out of the way.  If that fails, renames the local
      *  item and throws the original <tt>mail.ALREADY_EXISTS</tt> exception.
-     * 
+     *
      * @param request   The SOAP request to be executed remotely.
      * @param create    Whether the request is a create or update operation.
      * @param id        The id of the created/updated item.
@@ -559,7 +561,7 @@ public class PushChanges {
     /** Dispatches a push request (either a create or an update) to the remote
      *  mailbox.  Merely sends the request and logs; does not perform any
      *  conflict resolution.
-     * 
+     *
      * @param request  The SOAP request to be executed remotely.
      * @param create   Whether the request is a create or update operation.
      * @param id       The id of the created/updated item (for logging).
@@ -851,10 +853,10 @@ public class PushChanges {
     private void pushSimpleChanges(List<Pair<Integer, Integer>> changes, int changeMask, boolean isUnread, int folderId, Set<Integer> doneSet) throws ServiceException {
         assert (changes != null && changes.size() > 0);
         assert (changeMask == Change.MODIFIED_UNREAD || changeMask == Change.MODIFIED_FOLDER); //only these two are considered simple
-        
+
         Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
         Element action = request.addElement(MailConstants.E_ACTION);
-        
+
         switch (changeMask) {
             case Change.MODIFIED_FOLDER:
                 action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_MOVE);
@@ -884,7 +886,7 @@ public class PushChanges {
             OfflineLog.offline.warn("push: failed batch update of " + sb.toString() + "; fall back to itemized push", sfe);
             return;
         }
-        
+
         synchronized (ombx) {
             Map<Integer, Integer> refresh = ombx.getItemModSequences(sContext, ids);
             for (Pair<Integer, Integer> pair : changes) {
@@ -987,7 +989,7 @@ public class PushChanges {
                     cnElem.addKeyValuePair(attach.getName(), null).addAttribute(MailConstants.A_ATTACHMENT_ID, aid);
                 }
             }
-            
+
             Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_CONTACT, null, folderId);
             if (create) {
                 // make sure the old item matches the new item...
@@ -1036,7 +1038,7 @@ public class PushChanges {
         }
         w.addAttribute(MailConstants.A_FOLDER, item.getFolderId());
         try {
-            w.setText(new String(((WikiItem)item).getContent(), "UTF-8"));
+            w.setText(new String((item).getContent(), "UTF-8"));
         } catch (IOException e) {}
         Element response = null;
         boolean retry = false;
@@ -1078,7 +1080,7 @@ public class PushChanges {
         ombx.setSyncedVersionForMailItem("" + id, ver);
         return true;
     }
-    
+
     private boolean syncDocument(int id, TypedIdList tombstones) throws ServiceException {
         if (!OfflineLC.zdesktop_sync_documents.booleanValue() ||
                 !ombx.getRemoteServerVersion().isAtLeast(InitialSync.sMinDocumentSyncVersion)) {
@@ -1096,13 +1098,13 @@ public class PushChanges {
         String digest = item.getDigest();
         String name = item.getName();
         byte type = item.getType();
-        
+
         if (!ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
                 type == MailItem.TYPE_WIKI) {
             syncWikiItem((WikiItem)item, create);
         } else {
             RevisionInfo lastRev = null;
-            if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) && 
+            if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
                     !create) {
                 List<RevisionInfo> revInfo = checkDocumentSyncConflict(item);
                 if (revInfo.size() > 0) {
@@ -1111,7 +1113,7 @@ public class PushChanges {
                 }
             }
             //only upload document if we have a newer revision or modified content
-            if (lastRev == null || !(lastRev.getVersion() == item.getVersion() && lastRev.getTimestamp() == item.getDate())) { 
+            if (lastRev == null || !(lastRev.getVersion() == item.getVersion() && lastRev.getTimestamp() == item.getDate())) {
                 Pair<Integer,Integer> resp = ombx.sendMailItem(item);
                 if (create) {
                     if (!ombx.renumberItem(sContext, id, type, resp.getFirst()))
@@ -1132,11 +1134,11 @@ public class PushChanges {
             Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
             Element action = request.addElement(MailConstants.E_ACTION);
             action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
-            action = getTagSync().addOutboundTagsAttr(action, item.getTagString()); 
+            action = getTagSync().addOutboundTagsAttr(action, item.getTagString());
             action.addAttribute(MailConstants.A_ID, id);
             ombx.sendRequest(request);
         }
-        
+
         synchronized (ombx) {
             item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
             int mask = 0;
@@ -1146,7 +1148,7 @@ public class PushChanges {
             return (mask == 0);
         }
     }
-    
+
     private List<RevisionInfo> checkDocumentSyncConflict(MailItem item) throws ServiceException {
         int id = item.getId();
         int lastSyncVersion = ombx.getLastSyncedVersionForMailItem(id);
@@ -1177,7 +1179,7 @@ public class PushChanges {
         }
         return revInfo;
     }
-    
+
     private boolean syncMessage(int id) throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.MSG_ACTION_REQUEST);
         Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
@@ -1221,7 +1223,7 @@ public class PushChanges {
                     action.addAttribute(MailConstants.A_DATE, msg.getDate());
                 upload = true;
                 create = true;
-            } else if ((mask & Change.MODIFIED_CONTENT) != 0) {                
+            } else if ((mask & Change.MODIFIED_CONTENT) != 0) {
                 // for draft message content changes, need to go through the SaveDraft door instead of the MsgAction door
                 if (!msg.isDraft())
                     throw MailServiceException.IMMUTABLE_OBJECT(id);
@@ -1253,7 +1255,7 @@ public class PushChanges {
                 String attachId = uploadMessage(msg);
                 action.addAttribute(MailConstants.A_ATTACHMENT_ID, attachId);
             }
-            
+
             Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_MESSAGE, null, folderId);
             if (create) {
                 // make sure the old item matches the new item...
@@ -1262,7 +1264,7 @@ public class PushChanges {
                 id = createData.getFirst();
             }
         } catch (ServiceException e) {
-            //bug 54080 
+            //bug 54080
             //rather than synchronizing whole method on mbox (thereby blocking mailbox while potentially long upload occurs)
             //lets see if the message still exists
             try {
@@ -1370,7 +1372,7 @@ public class PushChanges {
                 //Since we are using SetAppointment for both new and existing appointments we always need to sync ids
                 Element response = ombx.sendRequest(request);
                 int serverItemId = (int)response.getAttributeLong(MailConstants.A_CAL_ID);
-                  
+
                 //We are not processing the invIds from the SetAppointment response.
                 //Instead, we just let it bounce back as a calendar update from server.
                 //mod sequence will always be bounced back in the next sync so we'll set there.
@@ -1378,7 +1380,7 @@ public class PushChanges {
                     try {
                         CalendarItem calItem = ombx.getCalendarItemById(sContext, serverItemId);
                         OfflineLog.offline.debug("New calendar item %d has been mapped to existing calendar item %d during push", id, serverItemId);
-                        boolean uidSame = (calItem.getUid() == null && uid == null) || (calItem.getUid() != null && (calItem.getUid().equals(uid) || (Invite.isOutlookUid(calItem.getUid()) && calItem.getUid().equalsIgnoreCase(uid)))); 
+                        boolean uidSame = (calItem.getUid() == null && uid == null) || (calItem.getUid() != null && (calItem.getUid().equals(uid) || (Invite.isOutlookUid(calItem.getUid()) && calItem.getUid().equalsIgnoreCase(uid))));
                         if (!uidSame) {
                             OfflineLog.offline.warn("calendar item %d UID %s differs from server-mapped item %d UID %s", id, uid, calItem.getId(), calItem.getUid());
                             assert(uidSame);

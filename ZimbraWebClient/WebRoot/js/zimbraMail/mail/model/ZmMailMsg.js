@@ -861,6 +861,19 @@ function() {
                 }
                 break;
             }
+            else if (line.match(/^COMMENT:/)) {
+                //DESCRIPTION is sent as COMMENT in Lotus notes.
+                desc.push(line.substr(8));
+                for (var j = i + 1; j < lines.length; j++) {
+                    line = lines[j];
+                    if (line.match(/^\s+/)) {
+                        desc.push(line.replace(/^\s+/, " "));
+                        continue;
+                    }
+                    break;
+                }
+                break;
+            }
         }
         if (desc.length > 0) {
             content = desc.join("");
@@ -1214,9 +1227,10 @@ function(nfolder, resp) {
  * @param {Boolean}	requestReadReceipt	if set, a read receipt is sent to *all* recipients
  * @param {ZmBatchCommand} batchCmd		if set, request gets added to this batch command
  * @param {Date} sendTime				if set, tell server that this message should be sent at the specified time
+ * @param {Boolean} isAutoSave          if <code>true</code>, this an auto-save draft
  */
 ZmMailMsg.prototype.send =
-function(isDraft, callback, errorCallback, accountName, noSave, requestReadReceipt, batchCmd, sendTime) {
+function(isDraft, callback, errorCallback, accountName, noSave, requestReadReceipt, batchCmd, sendTime, isAutoSave) {
 
 	var aName = accountName;
 	if (!aName) {
@@ -1251,6 +1265,7 @@ function(isDraft, callback, errorCallback, accountName, noSave, requestReadRecei
 			jsonObj: jsonObj,
 			isInvite: false,
 			isDraft: isDraft,
+            isAutoSave: isAutoSave,
 			accountName: aName,
 			callback: (new AjxCallback(this, this._handleResponseSend, [isDraft, callback])),
 			errorCallback: errorCallback,
@@ -1577,7 +1592,7 @@ function(params) {
 	} else {
 		appCtxt.getAppController().sendRequest({jsonObj:params.jsonObj,
 												asyncMode:true,
-												noBusyOverlay:params.isDraft,
+												noBusyOverlay:params.isDraft && params.isAutoSave,
 												callback:respCallback,
 												errorCallback:params.errorCallback,
 												accountName:params.accountName,
@@ -1741,12 +1756,18 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 				if (attach.s < 1024)		props.size = numFormater.format(attach.s) + " "+ZmMsg.b;//" B";
 				else if (attach.s < (1024*1024) )	props.size = numFormater.format(Math.round((attach.s / 1024) * 10) / 10) + " "+ZmMsg.kb;//" KB";
 				else						props.size = numFormater.format(Math.round((attach.s / (1024*1024)) * 10) / 10) + " "+ZmMsg.mb;//" MB";
+
+				// use content location for generated attachments,
+				// such as from S/MIME messages
+				if (!attach.part)
+					useCL = true;
+
 			} else {
 				useCL = attach.cl && (attach.relativeCl || ZmMailMsg.URL_RE.test(attach.cl));
 			}
 
 			// handle rfc/822 attachments differently
-			if (attach.ct == ZmMimeTable.MSG_RFC822) {
+			if (attach.part && attach.ct == ZmMimeTable.MSG_RFC822) {
 				var html = [];
 				var j = 0;
 				html[j++] = "<a href='javascript:;' onclick='ZmMailMsgView.rfc822Callback(";
@@ -1778,9 +1799,16 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 				}
 
                 props.attachmentLinkId = Dwt.getNextId();
-				props.link = "<a target='_blank' class='AttLink'" +
-                        AjxStringUtil.buildAttribute("href", url) +
-                        AjxStringUtil.buildAttribute("id", props.attachmentLinkId) + ">";
+                props.attachmentId = attach.cachekey;
+
+                props.link = "<a class='AttLink'";
+                if (url.indexOf('javascript:') != 0)
+                    props.link += " target='_blank'";
+                props.link += AjxStringUtil.buildAttribute("href", url);
+                props.link +=
+                    AjxStringUtil.buildAttribute("id", props.attachmentLinkId);
+                props.link += ">";
+
 				if (!useCL) {
 					props.download = [
 						"<a style='text-decoration:underline' class='AttLink' href='",
@@ -1794,6 +1822,7 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 				var folder = appCtxt.getById(this.folderId);
 				if ((attach.name || attach.filename) &&
 					appCtxt.get(ZmSetting.BRIEFCASE_ENABLED) &&
+					attach.part &&
 					(folder && !folder.isRemote()))
 				{
 					var partLabel = props.label;
@@ -1834,9 +1863,11 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 					props.url = url;
 				}
 
-				// bug: 233 - remove attachment
-				var onclickStr = "ZmMailMsgView.removeAttachmentCallback(" + "\"" + this.id + "\"" +  ",\"" + attach.part + "\");";
-				props.removeLink = "<a style='text-decoration:underline' class='AttLink' href='javascript:;' onclick='" + onclickStr + "'>";
+				if (attach.part) {
+					// bug: 233 - remove attachment
+					var onclickStr = "ZmMailMsgView.removeAttachmentCallback(" + "\"" + this.id + "\"" +  ",\"" + attach.part + "\");";
+					props.removeLink = "<a style='text-decoration:underline' class='AttLink' href='javascript:;' onclick='" + onclickStr + "'>";
+				}
 			}
 
 			// set the link icon

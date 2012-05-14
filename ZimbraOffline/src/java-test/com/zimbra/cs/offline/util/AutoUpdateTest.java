@@ -36,8 +36,8 @@ import com.zimbra.cs.offline.OfflineLog;
 
 public class AutoUpdateTest {
 
-    static final String BASE_UPDATE_URL = "http://localhost/zd-update.php"; //for local testing
-//    static final String BASE_UPDATE_URL = "https://www.zimbra.com/aus/zdesktop2/update.php"; //real update site; only updated once build is RTM
+//    static final String BASE_UPDATE_URL = "http://localhost/update-new.php"; //for local testing
+    static final String BASE_UPDATE_URL = "https://www.zimbra.com/aus/zdesktop2/update.php"; //real update site; only updated once build is RTM
 
     static HttpClient httpClient = ZimbraHttpConnectionManager.getExternalHttpConnMgr().newHttpClient();
 
@@ -80,7 +80,7 @@ public class AutoUpdateTest {
         UpdateInfo(int expectedBuild, String expectedFileVersion, String expectedAttrVersion, String expectedType) {
             this.expectedBuild = expectedBuild;
             this.expectedFileVersion = expectedFileVersion;
-            this.expectedAttrVersion = expectedAttrVersion;
+            this.expectedAttrVersion = expectedAttrVersion + " build " + expectedBuild;
             this.expectedType = expectedType;
             this.expectedFilePrefix = "zdesktop_"+expectedFileVersion+"_b"+expectedBuild;
         }
@@ -137,16 +137,11 @@ public class AutoUpdateTest {
     @BeforeClass
     public static void setUp()
     {
-        UpdateInfo gaUpdateInfo = new UpdateInfo(10978, "7_1_2_ga", "7.1.2", "minor");
-        gaUpdateInfo.addPlatform(new PlatformInfo("macos", "0204af2635a4a6444b0f7e880ccce7c9", 75922756));
-        gaUpdateInfo.addPlatform(new PlatformInfo("win32", "d9943a891b194fdeea18ff1c7c908b50", 95958528));
-        gaUpdateInfo.addPlatform(new PlatformInfo("linux", "2add86bf0469e9e0b3f1e66d2507e064", 110755660));
+        UpdateInfo gaUpdateInfo = new UpdateInfo(11299, "7_1_4_ga", "7.1.4", "minor");
+        gaUpdateInfo.addPlatform(new PlatformInfo("macos", "8530e2c9a003a4dd66efac2bd217f12f", 76599623));
+        gaUpdateInfo.addPlatform(new PlatformInfo("win32", "7eed5033f5088f6b0d7eff6f1723c5ae", 96885760));
+        gaUpdateInfo.addPlatform(new PlatformInfo("linux", "872ae3039ee376a96e0e763f5a876b46", 148836285));
         updateInfo.put(CHN_RELEASE, gaUpdateInfo);
-//        UpdateInfo betaUpdateInfo = new UpdateInfo(12978, "7_1_3_beta", "7.1.3", "minor");
-//        betaUpdateInfo.addPlatform(new PlatformInfo("macos", "0204af2635a4a6444b0f7e880ccce7c91", 759227569));
-//        betaUpdateInfo.addPlatform(new PlatformInfo("win32", "d9943a891b194fdeea18ff1c7c908b501", 959585289));
-//        betaUpdateInfo.addPlatform(new PlatformInfo("linux", "2add86bf0469e9e0b3f1e66d2507e0641", 1107556609));
-//        updateInfo.put(CHN_BETA, betaUpdateInfo);
     }
     
     static final String PARAM_CHN = "chn";
@@ -203,7 +198,7 @@ public class AutoUpdateTest {
         nvp[2] = new NameValuePair(PARAM_BID, bid+"");
         nvp[3] = new NameValuePair(PARAM_BOS, os);
         String response = send(nvp);
-//        OfflineLog.offline.info("\r\n"+response);
+        OfflineLog.offline.info("\r\n"+response);
         UpdateInfo update = updateInfo.get(chn);
         if (chn.equalsIgnoreCase(CHN_BETA)) {
             //if GA is newer it should be published
@@ -215,10 +210,10 @@ public class AutoUpdateTest {
         
         if (bid < update.getExpectedBuild()) {
             verifyExpectedUpdate(response, os, update);
-            OfflineLog.offline.info("Expected update received for %s %s %d", os, ver, bid);
+            OfflineLog.offline.info("Expected update received for %s %s %s build %d", os, ver, chn, bid);
         } else {
             verifyNoUpdate(response);
-            OfflineLog.offline.info("No update expected for %s %s %d", os, ver, bid);
+            OfflineLog.offline.info("No update expected for %s %s %s build %d", os, ver, chn, bid);
         }
     }
     
@@ -249,6 +244,27 @@ public class AutoUpdateTest {
     public void ga711() throws HttpException, IOException, DocumentException, ServiceException {
         for (String platform: platforms) {
             sendAndVerify(CHN_RELEASE, "7.1.1", 10917, platform);
+        }
+    }
+
+    @Test
+    public void ga712() throws HttpException, IOException, DocumentException, ServiceException {
+        for (String platform: platforms) {
+            sendAndVerify(CHN_RELEASE, "7.1.2", 10978, platform);
+        }
+    }
+
+    @Test
+    public void beta713() throws HttpException, IOException, DocumentException, ServiceException {
+        for (String platform: platforms) {
+            sendAndVerify(CHN_BETA, "7.1.3", 11139, platform);
+        }
+    }
+
+    @Test
+    public void beta714() throws HttpException, IOException, DocumentException, ServiceException {
+        for (String platform: platforms) {
+            sendAndVerify(CHN_BETA, "7.1.4", 11234, platform);
         }
     }
 

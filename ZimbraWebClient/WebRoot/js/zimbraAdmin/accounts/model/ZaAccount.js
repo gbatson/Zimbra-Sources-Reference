@@ -1096,7 +1096,8 @@ function(callback) {
 	
 	this.deleteCommand = new ZmCsfeCommand();
 	var params = new Object();
-	params.soapDoc = soapDoc;	
+	params.soapDoc = soapDoc;
+	params.noAuthToken = true;	
 	if(callback) {
 		params.asyncMode = true;
 		params.callback = callback;
@@ -1114,7 +1115,8 @@ function (mbxId, callback) {
 	try {
 		var command = new ZmCsfeCommand();
 		var params = new Object();
-		params.soapDoc = soapDoc;	
+		params.soapDoc = soapDoc;
+		params.noAuthToken = true;	
 		if(callback) {
 			params.asyncMode = true;
 			params.callback = callback;
@@ -1144,7 +1146,8 @@ function (mbxId, callback) {
 	try {
 		var command = new ZmCsfeCommand();
 		var params = new Object();
-		params.soapDoc = soapDoc;	
+		params.soapDoc = soapDoc;
+		params.noAuthToken = true;	
 		if(callback) {
 			params.asyncMode = true;
 			params.callback = callback;
@@ -1169,7 +1172,8 @@ function (mbxId, callback) {
 	try {
 		var command = new ZmCsfeCommand();
 		var params = new Object();
-		params.soapDoc = soapDoc;	
+		params.soapDoc = soapDoc;
+		params.noAuthToken = true;	
 		if(callback) {
 			params.asyncMode = true;
 			params.callback = callback;
@@ -1556,7 +1560,19 @@ function(by, val) {
 			
 	    autoDispName += this.attrs[ZaAccount.A_lastName];
 	} 	
-	
+     
+	if(this.attrs[ZaAccount.A_zimbraPrefMailPollingInterval]) {
+        var poIntervalInS = ZaUtil.getLifeTimeInSeconds(this.attrs[ZaAccount.A_zimbraPrefMailPollingInterval]);
+        if (poIntervalInS >= 1)
+            this.attrs[ZaAccount.A_zimbraPrefMailPollingInterval] = poIntervalInS + "s";
+	}
+
+	if(this._defaultValues.attrs[ZaAccount.A_zimbraPrefMailPollingInterval]) {
+        var dePoIntervalInS = ZaUtil.getLifeTimeInSeconds(this._defaultValues.attrs[ZaAccount.A_zimbraPrefMailPollingInterval]);
+        if (dePoIntervalInS  >= 1)
+            this._defaultValues.attrs[ZaAccount.A_zimbraPrefMailPollingInterval] = dePoIntervalInS  + "s";
+	}
+
 	if( autoDispName == this.attrs[ZaAccount.A_displayname]) {
 		this[ZaAccount.A2_autodisplayname] = "TRUE";
 	} else {
@@ -1595,7 +1611,8 @@ function (newName) {
 	soapDoc.set("newName", newName);	
 	var command = new ZmCsfeCommand();
 	var params = new Object();
-	params.soapDoc = soapDoc;	
+	params.soapDoc = soapDoc;
+	params.noAuthToken = true;	
 	command.invoke(params);
 }
 ZaAccount.renameMethods.push(ZaAccount.renameMethod);
@@ -1611,7 +1628,8 @@ function (newPassword) {
 	soapDoc.set("newPassword", newPassword);	
 	var command = new ZmCsfeCommand();
 	var params = new Object();
-	params.soapDoc = soapDoc;	
+	params.soapDoc = soapDoc;
+	params.noAuthToken = true;	
 	command.invoke(params);	
 }
 /**
@@ -1778,7 +1796,7 @@ ZaAccount.myXModel = {
         {id:ZaAccount.A_zimbraPrefMailInitialSearch, type:_COS_STRING_, ref:"attrs/"+ZaAccount.A_zimbraPrefMailInitialSearch},
         {id:ZaAccount.A_zimbraMaxMailItemsPerPage, type:_COS_NUMBER_, ref:"attrs/"+ZaAccount.A_zimbraMaxMailItemsPerPage,maxInclusive:2147483647, minInclusive:0},
         {id:ZaAccount.A_zimbraPrefMailItemsPerPage, type:_COS_NUMBER_, ref:"attrs/"+ZaAccount.A_zimbraPrefMailItemsPerPage, choices:[10,25,50,100]},
-        {id:ZaAccount.A_zimbraPrefMailPollingInterval, type:_COS_MLIFETIME_, ref:"attrs/"+ZaAccount.A_zimbraPrefMailPollingInterval},
+        {id:ZaAccount.A_zimbraPrefMailPollingInterval, type:_COS_ENUM_, ref:"attrs/"+ZaAccount.A_zimbraPrefMailPollingInterval, choices: ZaSettings.mailPollingIntervalChoices},
         {id:ZaAccount.A_zimbraMailMinPollingInterval, type:_COS_MLIFETIME_, ref:"attrs/"+ZaAccount.A_zimbraMailMinPollingInterval},
         {id:ZaAccount.A_zimbraPrefMailFlashIcon, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaAccount.A_zimbraPrefMailFlashIcon, type:_COS_ENUM_},
         {id:ZaAccount.A_zimbraPrefMailFlashTitle, choices:ZaModel.BOOLEAN_CHOICES, ref:"attrs/"+ZaAccount.A_zimbraPrefMailFlashTitle, type:_COS_ENUM_},
@@ -2581,5 +2599,6 @@ function (accountId, domainName) {
     var command = new ZmCsfeCommand();
 	var params = new Object();
 	params.soapDoc = soapDoc;
+	params.noAuthToken = true;
 	command.invoke(params);
 }

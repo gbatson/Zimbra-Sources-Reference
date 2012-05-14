@@ -193,7 +193,8 @@ function(bEnableInputs) {
 		}
 		this._attendeesInputField.setEnabled(bEnableAttendees);
 		this._optAttendeesInputField.setEnabled(bEnableAttendees);
-        this.enablePickers(bEnableAttendees);        
+		this._locationInputField.setEnabled(bEnableAttendees); //this was a small bug - the text field of that was not disabled!
+        this.enablePickers(bEnableAttendees);
 	}else {
         //bug 57083 - disabling group calendar should disable attendee pickers
         this.enablePickers(false);
@@ -516,7 +517,6 @@ function(calItem, mode) {
 
 	this._showAsSelect.setSelectedValue(calItem.freeBusy);
     this._showAsSelect.setEnabled(enableApptDetails);
-    this._privateCheckbox.checked = (calItem.privacy == ZmApptEditView.PRIVACY_OPTION_PRIVATE);
 
 	// reset the date/time values based on current time
 	var sd = new Date(calItem.startDate.getTime());
@@ -630,7 +630,7 @@ function(calItem, mode) {
     var isPrivacyEnabled = ((!isRemote || (cal && cal.hasPrivateAccess())) && enableApptDetails);
     var defaultPrivacyOption = (appCtxt.get(ZmSetting.CAL_APPT_VISIBILITY) == ZmSetting.CAL_VISIBILITY_PRIV);
 
-    this._privateCheckbox.checked = (isPrivacyEnabled ? ((calItem.privacy == ZmApptEditView.PRIVACY_OPTION_PRIVATE) || defaultPrivacyOption) : false);
+    this._privateCheckbox.checked = (calItem.privacy == ZmApptEditView.PRIVACY_OPTION_PRIVATE);
     this._privateCheckbox.disabled = !isPrivacyEnabled;
 
 	if (this.GROUP_CALENDAR_ENABLED) {
@@ -1459,6 +1459,12 @@ function() {
     if(this._calItem && this._calItem.organizer != this._calendarOrgs[calId]) {
         this._calItem.setOrganizer(this._calendarOrgs[calId]);
     }
+
+	//Should we do this only if appCtxt.isOffline (i.e. inside the next if block)? Not sure.
+	this._calItem.setFolderId(calId); //I have no IDEA how _folderListener here did not actually set the folder on the cal item. Does ANYTHING work here?
+	if (appCtxt.isOffline) {
+		this.enableInputs(true); //enableInputs enables or disables the attendees/location/etc inputs based on the selected folder (calendar) - if it's local it will be disabled, and if remote - enabled.
+	}
 };
 
 ZmApptEditView.prototype.setSchedulerVisibility =
@@ -1958,6 +1964,26 @@ function() {
 			}
 		}
 	}
+};
+
+ZmApptEditView.prototype.removeAttendees =
+function(attendees, type) {
+    attendees = (attendees instanceof AjxVector) ? attendees.getArray() :
+				(attendees instanceof Array) ? attendees : [attendees];
+
+    for (var i = 0; i < attendees.length; i++) {
+        var attendee = attendees[i];
+        var idx = -1;
+        if (attendee instanceof ZmContact) {
+            idx = this._attendees[type].indexOfLike(attendee, attendee.getAttendeeKey);
+            if (idx !== -1) {
+                this._attendees[type].removeAt(idx);
+            }
+        }
+        else {
+            this._attendees[type].remove(attendee);
+        }
+    }
 };
 
 ZmApptEditView.prototype.setApptLocation =

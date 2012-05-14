@@ -261,7 +261,6 @@ function() {
 
 	var subs = { id:this._htmlElId, isAppt: true, showTZSelector: appCtxt.get(ZmSetting.CAL_SHOW_TIMEZONE) };
 	this.getHtmlElement().innerHTML = AjxTemplate.expand("calendar.Appointment#InlineScheduleView", subs);
-    this._navToolbarContainerId = this._htmlElId + "_navToolbar";
 };
 
 ZmFreeBusySchedulerView.prototype._initAutocomplete =
@@ -671,6 +670,7 @@ function(inputEl, attendee, useException) {
 
         if(this.isComposeMode) {
             this._editView.parent.updateAttendees(curAttendee, type, ZmApptComposeView.MODE_REMOVE);
+            this._editView.removeAttendees(curAttendee, type);
             this._editView._setAttendees();
         }
 
@@ -763,7 +763,7 @@ function() {
 
 	if (uids.length) {
         //all attendees status need to be update even for unshown attendees
-		var emails = this._allAttendeeEmails ? this._allAttendeeEmails.join(",") : uids.join(",");
+		var emails = uids.join(",");
 		this._getFreeBusyInfo(this._getStartTime(), emails);
 	}
 };
@@ -1851,7 +1851,7 @@ function(email) {
     var organizer = this._schedTable[this._organizerIndex] ? this._schedTable[this._organizerIndex].attendee : null,
         organizerEmail = organizer ? this.getEmail(organizer) : "";
 
-    if(!email || email == organizerEmail) {
+    if(!email || email == organizerEmail || email == appCtxt.getUsername()) {
         return [];
     }
     if(this._sharedCalIds && this._sharedCalIds[email]) {
@@ -1861,7 +1861,8 @@ function(email) {
 	var request = jsonObj.GetShareInfoRequest;
 	if (email) {
 		request.owner = {by:"name", _content:email};
-	}
+    }
+
 	var result = appCtxt.getAppController().sendRequest({jsonObj:	jsonObj});
 
     //parse the response

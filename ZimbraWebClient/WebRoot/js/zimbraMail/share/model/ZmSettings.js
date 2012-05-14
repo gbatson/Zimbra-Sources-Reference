@@ -274,7 +274,6 @@ ZmSettings.prototype.setUserSettings = function(params) {
         ZmSetting.QUOTA_USED,               info.used,
         ZmSetting.RECENT_MESSAGES,          info.recent,
         ZmSetting.REST_URL,                 info.rest,
-        ZmSetting.TOKEN_LIFETIME,           info.lifetime,
         ZmSetting.USERNAME,                 info.name,
 		ZmSetting.EMAIL_VALIDATION_REGEX, 	info.zimbraMailAddressValidationRegex,
 		ZmSetting.DISABLE_SENSITIVE_ZIMLETS_IN_MIXED_MODE, 	(info.domainSettings && info.domainSettings.zimbraZimletDataSensitiveInMixedModeDisabled ? info.domainSettings.zimbraZimletDataSensitiveInMixedModeDisabled : "FALSE")
@@ -352,12 +351,13 @@ ZmSettings.prototype.setUserSettings = function(params) {
 	// load zimlets *only* for the main account
 	if (!accountName) {
 		if (info.zimlets && info.zimlets.zimlet) {
-			var listener = new AjxListener(this,
-				function() {
-					var zimletsCallback = new AjxCallback(this, this._loadZimlets, [info.zimlets.zimlet, info.props.prop]);
-					AjxDispatcher.require("Zimlet", false, zimletsCallback);
-				});
-			appCtxt.getAppController().addListener(ZmAppEvent.POST_STARTUP, listener);
+            if (this.get(ZmSetting.ZIMLETS_SYNCHRONOUS)) {
+                var action = new AjxTimedAction(this, this._beginLoadZimlets, [info.zimlets.zimlet, info.props.prop, true]);
+                AjxTimedAction.scheduleAction(action, 0);
+            } else {
+                var listener = new AjxListener(this, this._beginLoadZimlets, [info.zimlets.zimlet, info.props.prop, false]);
+                appCtxt.getAppController().addListener(ZmAppEvent.POST_STARTUP, listener);
+            }
 		} else {
 			appCtxt.allZimletsLoaded();
 		}
@@ -413,11 +413,22 @@ ZmSettings.prototype.setUserSettings = function(params) {
 
 };
 
+ZmSettings.prototype._beginLoadZimlets =
+function(zimlet, prop, sync) {
+    var zimletsCallback = new AjxCallback(this, this._loadZimletPackage, [zimlet, prop, sync]);
+    AjxDispatcher.require(["Startup2"], false, zimletsCallback);
+};
+
+ZmSettings.prototype._loadZimletPackage = 
+function(zimlet, prop, sync) {
+	var zimletsCallback = new AjxCallback(this, this._loadZimlets, [zimlet, prop, sync]);
+	AjxDispatcher.require("Zimlet", false, zimletsCallback);
+}
 /**
  * @private
  */
 ZmSettings.prototype._loadZimlets =
-function(allZimlets, props) {
+function(allZimlets, props, sync) {
 
 	allZimlets = allZimlets || [];
 	this.registerSetting("ZIMLETS",		{type:ZmSetting.T_CONFIG, defaultValue:allZimlets, isGlobal:true});
@@ -427,7 +438,7 @@ function(allZimlets, props) {
 
 	DBG.println(AjxDebug.DBG1, "Zimlets - Loading " + zimlets.length + " Zimlets");
 	var zimletMgr = appCtxt.getZimletMgr();
-	zimletMgr.loadZimlets(zimlets, props);
+	zimletMgr.loadZimlets(zimlets, props, null, null, sync);
 
 	if (zimlets && zimlets.length) {
 		var activeApp = appCtxt.getCurrentApp();
@@ -851,14 +862,12 @@ function() {
 	// user metadata (included with COS since the user can't change them)
 	this.registerSetting("LICENSE_STATUS",					{type:ZmSetting.T_COS, defaultValue:ZmSetting.LICENSE_GOOD});
 	this.registerSetting("QUOTA_USED",						{type:ZmSetting.T_COS, dataType:ZmSetting.D_INT});    
-    this.registerSetting("TOKEN_LIFETIME",					{type:ZmSetting.T_COS, dataType:ZmSetting.D_INT});
 	this.registerSetting("USERID",							{name:"zimbraId", type:ZmSetting.T_COS});
 	this.registerSetting("USERNAME",						{type:ZmSetting.T_COS});
 	this.registerSetting("CN",								{name:"cn", type:ZmSetting.T_COS});
 	this.registerSetting("LAST_ACCESS",						{type:ZmSetting.T_COS, dataType:ZmSetting.D_INT});
 	this.registerSetting("PREVIOUS_SESSION",				{type:ZmSetting.T_COS, dataType:ZmSetting.D_INT});
 	this.registerSetting("RECENT_MESSAGES",					{type:ZmSetting.T_COS, dataType:ZmSetting.D_INT});
-	this.registerSetting("TOKEN_ENDTIME",                   {type:ZmSetting.T_COS, dataType:ZmSetting.D_INT});
 	this.registerSetting("REST_URL",						{name:"rest" , type:ZmSetting.T_COS});
 	this.registerSetting("IS_ADMIN",						{name:"zimbraIsAdminAccount", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue: false});
 	this.registerSetting("IS_DELEGATED_ADMIN",				{name:"zimbraIsDelegatedAdminAccount", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue: false});
@@ -945,6 +954,8 @@ function() {
 	this.registerSetting("CHECKED_ZIMLETS_ENABLED",			{name:"zimbraFeatureManageZimlets", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true, isGlobal:true});
 	this.registerSetting("CHECKED_ZIMLETS",					{name:"zimbraPrefZimlets", type:ZmSetting.T_PREF, dataType:ZmSetting.D_LIST, isGlobal:true});
     this.registerSetting("MANDATORY_ZIMLETS",		        {name:"zimbraZimletMandatoryZimlets", type:ZmSetting.T_COS, dataType:ZmSetting.D_LIST});
+    this.registerSetting("ZIMLETS_SYNCHRONOUS",		        {name:"zimbraZimletLoadSynchronously", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
+
 };
 
 /**

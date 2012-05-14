@@ -32,15 +32,17 @@ public abstract class StoreManager {
     public static StoreManager getInstance() {
         if (sInstance == null) {
             synchronized (StoreManager.class) {
-                if (sInstance != null)
+                if (sInstance != null) {
                     return sInstance;
+                }
 
                 String className = LC.zimbra_class_store.value();
                 try {
-                    if (className != null && !className.equals(""))
+                    if (className != null && !className.equals("")) {
                         sInstance = (StoreManager) Class.forName(className).newInstance();
-                    else
+                    } else {
                         sInstance = new FileBlobStore();
+                    }
                 } catch (Throwable t) {
                     Zimbra.halt("unable to initialize blob store", t);
                 }
@@ -66,6 +68,22 @@ public abstract class StoreManager {
      * Shuts down the blob store.
      */
     public abstract void shutdown();
+
+    public enum StoreFeature {
+        /** The store has the ability to delete all {@code MailboxBlob}s
+         *  associated with a given {@code Mailbox}, <u>without</u> having
+         *  a list of those blobs provided to it. */
+        BULK_DELETE,
+        /** The store is reachable from any {@code mailboxd} host.  When
+         *  moving mailboxes between hosts, the store should be left untouched,
+         *  as there is no need to move the blobs along with the metadata. */
+        CENTRALIZED
+    };
+
+    /**
+     * Returns whether the store supports a given {@link StoreFeature}.
+     */
+    public abstract boolean supports(StoreFeature feature);
 
     /**
      * Returns a 'BlobBuilder' which can be used to store a blob in incoming
@@ -216,8 +234,9 @@ public abstract class StoreManager {
      * @return true if blob was actually deleted
      */
     public boolean quietDelete(Blob blob) {
-        if (blob == null)
+        if (blob == null) {
             return true;
+        }
 
         try {
             return delete(blob);
@@ -243,8 +262,9 @@ public abstract class StoreManager {
      * @return true if blob was actually deleted
      */
     public boolean quietDelete(StagedBlob staged) {
-        if (staged == null)
+        if (staged == null) {
             return true;
+        }
 
         try {
             return delete(staged);
@@ -270,8 +290,9 @@ public abstract class StoreManager {
      * @return true if blob was actually deleted
      */
     public boolean quietDelete(MailboxBlob mblob) {
-        if (mblob == null)
+        if (mblob == null) {
             return true;
+        }
 
         try {
             return delete(mblob);
@@ -282,16 +303,16 @@ public abstract class StoreManager {
     }
 
     /**
-     * Find the MailboxBlob in mailbox mbox with matching message ID.
+     * Find the MailboxBlob in mailbox mbox with matching item ID.
      * @param mbox
-     * @param msgId mail_item.id value for message
-     * @param revision mail_item.mod_content value for message
+     * @param itemId mail_item.id value for item
+     * @param revision mail_item.mod_content value for item
      * @return the <code>MailboxBlob</code>, or <code>null</code> if the file
      * does not exist
      *
      * @throws ServiceException
      */
-    public abstract MailboxBlob getMailboxBlob(Mailbox mbox, int msgId, int revision, String locator)
+    public abstract MailboxBlob getMailboxBlob(Mailbox mbox, int itemId, int revision, String locator)
     throws ServiceException;
 
     /**
@@ -304,8 +325,9 @@ public abstract class StoreManager {
      */
     public MailboxBlob getMailboxBlob(MailItem item) throws ServiceException {
         MailboxBlob mblob = getMailboxBlob(item.getMailbox(), item.getId(), item.getSavedSequence(), item.getLocator());
-        if (mblob != null)
+        if (mblob != null) {
             mblob.setDigest(item.getDigest()).setSize(item.getSize());
+        }
         return mblob;
     }
 
@@ -330,10 +352,14 @@ public abstract class StoreManager {
     /**
      * Deletes a user's entire store.  SHOULD BE CALLED CAREFULLY.  No going back.
      * @param mbox
+     * @param blobs If the store returned {@code true} to {@link #supports(StoreFeature)}
+     *              when passed {@link StoreFeature#BULK_DELETE}, {@code blobs} will be
+     *              {@code null}.  If it returned {@code false}, {@code blobs} will be
+     *              an {@code Iterable} that contains every blob in the {@code Mailbox}.
      * @return true if store was actually deleted
      * @throws IOException
      * @throws ServiceException
      */
-    public abstract boolean deleteStore(Mailbox mbox)
+    public abstract boolean deleteStore(Mailbox mbox, Iterable<MailboxBlob> blobs)
     throws IOException, ServiceException;
 }

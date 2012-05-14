@@ -127,15 +127,15 @@ ZaSearchListController.prototype._downloadAccountsListener =
      if (window.console && window.console.log) window.console.log("Download all the search result accounts ...") ;
      var queryString = "?action=getSR";
      if (this._currentQuery) {
-        queryString += "&q=" + AjxStringUtil.urlEncode(this._currentQuery) ;
+        queryString += "&q=" + AjxStringUtil.urlComponentEncode(this._currentQuery) ;
      }
 
      if (ZaSearch._domain && AjxUtil.isDomainName(ZaSearch._domain)) {
-        queryString += "&domain=" + AjxStringUtil.urlEncode(ZaSearch._domain) ;        
+        queryString += "&domain=" + AjxStringUtil.urlComponentEncode(ZaSearch._domain) ;        
      }
 
      if (this.searchTypes) {
-         queryString +="&types=" + AjxStringUtil.urlEncode(this.searchTypes.join(","));
+         queryString +="&types=" + AjxStringUtil.urlComponentEncode(this.searchTypes.join(","));
      }
 
      window.open("/service/afd/" + queryString);

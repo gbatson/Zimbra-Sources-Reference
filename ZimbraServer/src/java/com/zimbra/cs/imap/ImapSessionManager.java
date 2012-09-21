@@ -241,6 +241,10 @@ final class ImapSessionManager {
                 // no matching session means we next check for serialized folder data
                 if (i4list == null) {
                     i4list = duplicateSerializedFolder(folder);
+                } else if (CONSISTENCY_CHECK) {
+                    Collections.sort(i4list);
+                    //sort only if using list from duplicated session which may be out of order
+                    //if loaded from serialized folder order _should_ already be OK since no changes have occurred
                 }
                 // do the consistency check, if requested
                 if (CONSISTENCY_CHECK) {
@@ -361,11 +365,12 @@ final class ImapSessionManager {
                     } catch (ImapSessionClosedException e) {
                         return null;
                     } catch (IOException e) {
-                        if (!ImapSession.CACHE_MISS.equals(e.getMessage())) {
+                        if (e.getMessage() == null || !e.getMessage().startsWith(ImapSession.CACHE_MISS)) {
                             ZimbraLog.imap.warn("skipping error while trying to page in for copy (%s)",
                                 i4listener.getPath(), e);
                         } else {
-                            ZimbraLog.imap.warn("cache miss during duplicateExistingSession");
+                            ZimbraLog.imap.warn("cache miss during duplicateExistingSession;" +
+                                " if this occurs frequently consider increasing LC.imap_inactive_session_cache_size");
                             //if many of these are seen, increase inactive cache size
                         }
                     }
@@ -404,11 +409,10 @@ final class ImapSessionManager {
         try {
             List<ImapMessage> actual = mbox.openImapFolder(octxt, folder.getId());
             Collections.sort(actual);
-
             if (i4list.size() != actual.size()) {
                 ZimbraLog.imap.error("IMAP session cache consistency check failed: inconsistent list lengths " +
-                        "folder=%s,cache=%d,db=%d,diff={cache:%s,db:%s}", fid, i4list.size(), actual.size(),
-                        diff(i4list, actual), diff(actual, i4list));
+                        "folder=%s,cache=%d,db=%d,diff={cache:%s,db:%s},dupes=%s", fid, i4list.size(), actual.size(),
+                        diff(i4list, actual), diff(actual, i4list), dupeCheck(i4list));
                 clearCache(folder);
                 return actual;
             }
@@ -441,6 +445,17 @@ final class ImapSessionManager {
         Set<ImapMessage> diff = Sets.newHashSet(list1);
         diff.removeAll(list2);
         return diff;
+    }
+
+    private List<ImapMessage> dupeCheck(List<ImapMessage> list) {
+        List<ImapMessage> dupes = new ArrayList<ImapMessage>();
+        for (int i = 0; i < list.size(); i++) {
+            ImapMessage current = list.get(i);
+            if (dupes.contains(current) || list.lastIndexOf(current) != i) {
+                dupes.add(current);
+            }
+        }
+        return dupes;
     }
 
     private static void renumberMessages(OperationContext octxt, Mailbox mbox, List<ImapMessage> i4sorted)

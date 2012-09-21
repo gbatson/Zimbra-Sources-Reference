@@ -209,13 +209,23 @@ HRESULT Zimbra::MAPI::Util::GetmsExchHomeServerName(LPCWSTR lpszServer, LPCWSTR 
     HRESULT hr = ADsOpenObject(strADServer.c_str(),
         /*lpszUser*/ NULL, lpszPwd /*NULL*/, ADS_SECURE_AUTHENTICATION, IID_IDirectorySearch,
         (void **)&pDirSearch);
-
-    if (((FAILED(hr))))
-    {
-        throw MapiUtilsException(hr, L"Util::GetmsExchHomeServerName(): ADsOpenObject Failed.",
+	if (FAILED(hr))
+	{
+		if (hr == 0x8007052e)                   // credentials are not valid
+		{
+			hr = ADsOpenObject(strADServer.c_str(), lpszUser, lpszPwd,
+				ADS_SECURE_AUTHENTICATION, IID_IDirectorySearch, (void **)&pDirSearch);
+			if (FAILED(hr)||(pDirSearch==NULL))
+				throw MapiUtilsException(hr, L"Util::GetmsExchHomeServerName(): ADsOpenObject Failed.(with credentials)",
+				 __LINE__, __FILE__);
+		}
+		else
+		{
+			throw MapiUtilsException(hr, L"Util::GetmsExchHomeServerName(): ADsOpenObject Failed.(w/o credentials)",
             __LINE__, __FILE__);
-    }
-
+		}
+	}
+    
     wstring strFilter = _T("(&(objectClass=organizationalPerson)(cn=");
 
     strFilter += lpszUser;
@@ -293,16 +303,26 @@ HRESULT Zimbra::MAPI::Util::GetUserDNAndLegacyName(LPCWSTR lpszServer, LPCWSTR l
 
     strADServer += lpszServer;
 
-    HRESULT hr = ADsOpenObject(strADServer.c_str(),
+	HRESULT hr = ADsOpenObject(strADServer.c_str(),
         /*lpszUser*/ NULL, lpszPwd /*NULL*/, ADS_SECURE_AUTHENTICATION, IID_IDirectorySearch,
         (void **)&pDirSearch);
-
-    if (((FAILED(hr))))
-    {
-        throw MapiUtilsException(hr, L"Util::GetUserDNAndLegacyName(): ADsOpenObject Failed.",
-            __LINE__, __FILE__);
-    }
-
+	if (FAILED(hr))
+	{
+		if (hr == 0x8007052e)                   // credentials are not valid
+		{
+			hr = ADsOpenObject(strADServer.c_str(), lpszUser, lpszPwd,
+				ADS_SECURE_AUTHENTICATION, IID_IDirectorySearch, (void **)&pDirSearch);
+			if (FAILED(hr)||(pDirSearch==NULL))
+				throw MapiUtilsException(hr, L"Util::GetUserDNAndLegacyName(): ADsOpenObject Failed(With credentials).",
+				__LINE__, __FILE__);
+		}
+		else
+		{
+			throw MapiUtilsException(hr, L"Util::GetUserDNAndLegacyName(): ADsOpenObject Failed.(W/o credentials)",
+				__LINE__, __FILE__);
+		}
+	}
+   
     wstring strFilter = _T("(&(objectClass=organizationalPerson)(cn=");
 
     strFilter += lpszUser;
@@ -669,7 +689,8 @@ HRESULT Zimbra::MAPI::Util::GetExchangeUsersUsingObjectPicker(
     HRESULT hr = S_OK;
     wstring wstrExchangeDomainAddress;
 
-    MAPIInitialize(NULL);
+    hr=MAPIInitialize(NULL);
+    
     CComPtr<IDsObjectPicker> pDsObjectPicker = NULL;
     hr = CoCreateInstance(CLSID_DsObjectPicker, NULL, CLSCTX_INPROC_SERVER, IID_IDsObjectPicker,
         (LPVOID *)&pDsObjectPicker);
@@ -1249,38 +1270,6 @@ void Zimbra::MAPI::Util::AddBodyToPart(mimepp::BodyPart *pPart, LPSTR pStr, size
         delete[] pBuf;
 }
 
-void GetContentTypeFromExtension(LPSTR pExt, LPSTR &pContentType)
-{
-    pContentType = NULL;
-    if (pExt == NULL)
-        return;
-
-    HKEY hExtKey;
-
-    if (RegOpenKeyA(HKEY_CLASSES_ROOT, pExt, &hExtKey) != ERROR_SUCCESS)
-        return;
-
-    DWORD type;
-    DWORD nBytes;
-
-    if ((RegQueryValueExA(hExtKey, "Content Type", NULL, &type, NULL, &nBytes) !=
-        ERROR_SUCCESS) || (type != REG_SZ))
-    {
-        RegCloseKey(hExtKey);
-        return;
-    }
-    pContentType = new CHAR[nBytes];
-    if (RegQueryValueExA(hExtKey, "Content Type", NULL, &type, (LPBYTE)pContentType, &nBytes) !=
-        ERROR_SUCCESS)
-    {
-        RegCloseKey(hExtKey);
-        delete[] pContentType;
-        pContentType = NULL;
-        return;
-    }
-    RegCloseKey(hExtKey);
-}
-
 BYTE OID_MAC_BINARY[] = { 0x2A, 0x86, 0x48, 0x86, 0xf7, 0x14, 0x03, 0x0B, 0x01 };
 mimepp::BodyPart *Zimbra::MAPI::Util::AttachPartFromIAttach(MAPISession &session, LPATTACH
     pAttach, LPSTR pCharset, LONG codepage)
@@ -1359,10 +1348,13 @@ mimepp::BodyPart *Zimbra::MAPI::Util::AttachPartFromIAttach(MAPISession &session
 
         mimepp::String AttStr(pMimeAttName);
 
-        pAttachPart->headers().contentDisposition().setFilename(AttStr);
+		pAttachPart->headers().contentDisposition().setFilename(AttStr); 
         pAttachPart->headers().contentDisposition().assemble();
         if (pMimeAttName != NULL)
+		{
+			WtoA(pAttname,pAttachFilename);
             delete[] pMimeAttName;
+		}
     }
     else if (pProps[ATTACH_LONG_FILENAME].ulPropTag == PR_ATTACH_LONG_FILENAME_A)
     {
@@ -1559,6 +1551,8 @@ mimepp::BodyPart *Zimbra::MAPI::Util::AttachPartFromIAttach(MAPISession &session
         strContentType += ";";
         pAttachPart->headers().contentType().setString(strContentType);
         pAttachPart->headers().contentType().parse();
+		delete[] pAttachFilename;
+		pAttachFilename = NULL;
     }
     MAPIFreeBuffer(pProps);
     return pAttachPart;
@@ -2580,7 +2574,7 @@ BOOL Zimbra::MAPI::Util::DeleteAlikeProfiles(LPCSTR lpstrProfileName)
     HRESULT hr = S_OK;
     Zimbra::Util::ScopedInterface<IMAPITable> proftable;
     Zimbra::Util::ScopedInterface<IProfAdmin> iprofadmin;
-
+        
     // Get IProfAdmin interface pointer
     if (FAILED(hr = MAPIAdminProfiles(0, iprofadmin.getptr())))
     {
@@ -2846,6 +2840,39 @@ LPWSTR WriteUnicodeToFile(LPTSTR pBody)
     return lpwstrFQFileName;
 }
 
+bool Zimbra::MAPI::Util::DumpContentsToFile(LPTSTR pBody, string strFilePath,bool isAscii)
+{
+	LPSTR pTemp = NULL;
+    int nBytesToBeWritten;
+
+    pTemp = (isAscii) ? (LPSTR)pBody : Zimbra::Util::UnicodeToAnsii(pBody);
+    nBytesToBeWritten = (int)strlen(pTemp);
+	Zimbra::Util::ScopedInterface<IStream> pStream;
+    ULONG nBytesWritten = 0;
+    ULONG nTotalBytesWritten = 0;
+    HRESULT hr = S_OK;
+
+	// Open stream on file
+    if (FAILED(hr = OpenStreamOnFile(MAPIAllocateBuffer, MAPIFreeBuffer, STGM_CREATE |
+            STGM_READWRITE, (LPTSTR)strFilePath.c_str(), NULL, pStream.getptr())))
+    {
+		return false;
+    }
+    // write to file
+    while (!FAILED(hr) && nBytesToBeWritten > 0)
+    {
+
+	hr = pStream->Write(pTemp, nBytesToBeWritten, &nBytesWritten);
+	pTemp += nBytesWritten;
+        nBytesToBeWritten -= nBytesWritten;
+        nTotalBytesWritten += nBytesWritten;
+        nBytesWritten = 0;
+    }
+    if (FAILED(hr = pStream->Commit(0)))
+        return false;
+
+	return true;
+}
 
 LPWSTR WriteContentsToFile(LPTSTR pBody, bool isAscii)
 {
@@ -3054,4 +3081,58 @@ LPWSTR Zimbra::MAPI::Util::EscapeCategoryName(LPCWSTR pwszOrigCategoryName)
     delete[] pwszString ;
 
     return pwszNoLeadTrailSpace;
+}
+
+CString Zimbra::MAPI::Util::GetGUID()
+{
+	GUID guid;
+	HRESULT hr=CoCreateGuid(&guid);
+	if(hr!=S_OK)
+	{
+            return L"";
+	}
+	BYTE * str;
+	hr=UuidToString((UUID*)&guid, (RPC_WSTR*)&str);
+	if(hr!=RPC_S_OK)
+	{
+            return L"";
+	}
+	CString unique((LPTSTR)str);
+	RpcStringFree((RPC_WSTR*)&str);
+	unique.Replace(_T("-"), _T("_"));
+	unique += "_migwiz";
+
+	return unique;
+}
+
+void Zimbra::MAPI::Util::GetContentTypeFromExtension(LPSTR pExt, LPSTR &pContentType)
+{
+    pContentType = NULL;
+    if (pExt == NULL)
+        return;
+
+    HKEY hExtKey;
+
+    if (RegOpenKeyA(HKEY_CLASSES_ROOT, pExt, &hExtKey) != ERROR_SUCCESS)
+        return;
+
+    DWORD type;
+    DWORD nBytes;
+
+    if ((RegQueryValueExA(hExtKey, "Content Type", NULL, &type, NULL, &nBytes) !=
+        ERROR_SUCCESS) || (type != REG_SZ))
+    {
+        RegCloseKey(hExtKey);
+        return;
+    }
+    pContentType = new CHAR[nBytes];
+    if (RegQueryValueExA(hExtKey, "Content Type", NULL, &type, (LPBYTE)pContentType, &nBytes) !=
+        ERROR_SUCCESS)
+    {
+        RegCloseKey(hExtKey);
+        delete[] pContentType;
+        pContentType = NULL;
+        return;
+    }
+    RegCloseKey(hExtKey);
 }

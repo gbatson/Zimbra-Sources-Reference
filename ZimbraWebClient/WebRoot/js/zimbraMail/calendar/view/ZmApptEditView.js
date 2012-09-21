@@ -1460,9 +1460,8 @@ function() {
         this._calItem.setOrganizer(this._calendarOrgs[calId]);
     }
 
-	//Should we do this only if appCtxt.isOffline (i.e. inside the next if block)? Not sure.
-	this._calItem.setFolderId(calId); //I have no IDEA how _folderListener here did not actually set the folder on the cal item. Does ANYTHING work here?
 	if (appCtxt.isOffline) {
+        this._calItem.setFolderId(calId);
 		this.enableInputs(true); //enableInputs enables or disables the attendees/location/etc inputs based on the selected folder (calendar) - if it's local it will be disabled, and if remote - enabled.
 	}
 };
@@ -2470,3 +2469,4 @@ function(textarea) {
 		}
 	}
 };
+

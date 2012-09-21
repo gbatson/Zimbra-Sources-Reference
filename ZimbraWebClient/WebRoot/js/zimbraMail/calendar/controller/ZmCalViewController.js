@@ -723,11 +723,10 @@ function(item, isShiftKey, folder) {
 ZmCalViewController.prototype._moveCallback =
 function(folder) {
 	if (this.isMovingBetwAccounts(this._pendingActionData, folder.id)) {
-		var dlg = appCtxt.getYesNoMsgDialog();
-		dlg.registerCallback(DwtDialog.YES_BUTTON, this._changeOrgCallback, this, [dlg, folder]);
-		var msg = AjxMessageFormat.format(ZmMsg.orgChange, folder.getOwner());
-		dlg.setMessage(msg, DwtMessageDialog.WARNING_STYLE);
-		dlg.popup();
+        var dlg = appCtxt.getMsgDialog();
+        dlg.setMessage(ZmMsg.orgChange, DwtMessageDialog.WARNING_STYLE);
+        dlg.popup();
+        return false;
     }else if (this.isMovingBetwAcctsAsAttendee(this._pendingActionData, folder.id)) {
 		var dlg = appCtxt.getMsgDialog();
 		dlg.setMessage(ZmMsg.apptInviteOnly, DwtMessageDialog.WARNING_STYLE);
@@ -1394,7 +1393,7 @@ function(startDate, duration, folderId, mailItem) {
 				}
 			} else if (appCtxt.multiAccounts) {
 				// calendar app has no notion of "active" app, so always set to default calendar
-				this.defaultAccount = appCtxt.isFamilyMbox ? this.mainAccount : this.visibleAccounts[1];
+				var calId = appCtxt.accountList.defaultAccount.getDefaultCalendar().id;
 				newAppt.setFolderId(calId);
 			}
 		}
@@ -2363,9 +2362,7 @@ function(isValid, appt, action, closeCallback, errorCallback, cancelCallback) {
                 // Create a compose controller, used for saving the quick add
                 // appt and modifications made via ZmCalColView drag and drop, in
                 // order to trigger permission and resource checks.
-                this._simpleComposeController =
-                    this._app.getSessionController(ZmId.VIEW_SIMPLE_ADD_APPOINTMENT,
-                                                   "ZmSimpleApptComposeController");
+                this._simpleComposeController = this._app.getSimpleApptComposeController();
             }
             this._simpleComposeController.doSimpleSave(appt, action, closeCallback,
                                                        errorCallback, cancelCallback);

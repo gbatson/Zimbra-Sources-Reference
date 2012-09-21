@@ -1210,7 +1210,7 @@ abstract class ImapHandler extends ProtocolHandler {
             // for some authenticators, actually do the authentication here
             // for others (e.g. GSSAPI), auth is already done -- this is just a lookup and authorization check
             Account acct = auth.authenticate(username, authenticateId, password, AuthContext.Protocol.imap,
-                    origRemoteIp, userAgent);
+                    origRemoteIp, getRemoteIp(), userAgent);
             if (acct == null) {
                 // auth failure was represented by Authenticator.authenticate() returning null
                 sendNO(tag, command + " failed");
@@ -1865,6 +1865,11 @@ abstract class ImapHandler extends ProtocolHandler {
                     continue;
                 ImapPath path = relativeTo == null ? new ImapPath(owner, folder, mCredentials) : new ImapPath(owner, folder, relativeTo);
                 if (path.isVisible()) {
+                    if (userAgent != null && userAgent.startsWith(IDInfo.DATASOURCE_IMAP_CLIENT_NAME)
+                        && folder.isTagged(Flag.ID_FLAG_SYNCFOLDER)) {
+                        //bug 72577 - do not display folders synced with IMAP datasource to downstream IMAP datasource connections
+                        continue;
+                    }
                     boolean alreadyTraversed = paths.put(path, path.asItemId()) != null;
                     if (folder instanceof Mountpoint && !alreadyTraversed)
                         accumulatePaths(path.getOwnerMailbox(), owner, path, paths);
@@ -3341,23 +3346,24 @@ abstract class ImapHandler extends ProtocolHandler {
                 
                 
                 boolean markMessage = markRead && (i4msg.flags & Flag.BITMASK_UNREAD) != 0;
-                if (!fullMessage.isEmpty() || (parts != null && !parts.isEmpty()) || (attributes & ~FETCH_FROM_CACHE) != 0) {
-                    synchronized (mbox) {
-                        writeMessage(fullMessage, parts, attributes, i4msg, i4folder, mbox, result, os, markMessage, modseqEnabled);
-                    }
-                } else {
-                    writeMessage(fullMessage, parts, attributes, i4msg, i4folder, mbox, result, os, markMessage, modseqEnabled);
-                }                    
+                writeMessage(fullMessage, parts, attributes, i4msg, i4folder, mbox, result, os, markMessage, modseqEnabled);
             } catch (ImapPartSpecifier.BinaryDecodingException e) {
                 // don't write this response line if we're returning NO
                 os = baosDebug = null;
                 throw new ImapParseException(tag, "UNKNOWN-CTE", command + "failed: unknown content-type-encoding", false);
             } catch (ServiceException e) {
-                ZimbraLog.imap.warn("ignoring error during " + command + ": ", e);
-                continue;
+                Throwable cause = e.getCause();
+                if (cause instanceof IOException) {
+                    fetchException(cause);
+                } else {
+                    ZimbraLog.imap.warn("ignoring error during " + command + ": ", e);
+                    continue;
+                }
             } catch (MessagingException e) {
                 ZimbraLog.imap.warn("ignoring error during " + command + ": ", e);
                 continue;
+            } catch (IOException ioe) {
+                fetchException(ioe);
             } finally {
                 if (os != null) {
                     result.write(')');
@@ -3377,6 +3383,15 @@ abstract class ImapHandler extends ProtocolHandler {
         return CONTINUE_PROCESSING;
     }
     
+    private void fetchException(Throwable cause) throws ImapIOException {
+        if (ZimbraLog.imap.isDebugEnabled()) {
+            ZimbraLog.imap.debug("IOException fetching IMAP message, closing connection",cause);
+        } else {
+            ZimbraLog.imap.warn("IOException fetching IMAP message, closing connection");
+        }
+        throw new ImapIOException("IOException during message fetch", cause);
+    }
+
     private void writeMessage(List<ImapPartSpecifier> fullMessage, List<ImapPartSpecifier> parts,  int attributes,
             ImapMessage i4msg, ImapFolder i4folder, Mailbox mbox, PrintStream result, OutputStream os, boolean markMessage,
             boolean modseqEnabled) throws IOException, BinaryDecodingException, ServiceException, MessagingException {

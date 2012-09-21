@@ -546,22 +546,22 @@ ZaMTAXFormView.myXFormModifier = function(xFormObject) {
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1, width: "100%", label:ZaMsg.PQV_GroupSenderDomain,items: [
 								    {ref:ZaMTA.A_DeferredQ+"/"+ZaMTA.A_sdomain, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},	
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupReceiverAddress,items: [
 								    {ref:ZaMTA.A_DeferredQ+"/"+ZaMTA.A_raddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupSenderAddress,items: [
 								    {ref:ZaMTA.A_DeferredQ+"/"+ZaMTA.A_saddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1, width: "100%", label:ZaMsg.PQV_GroupError,items: [
 								    {ref:ZaMTA.A_DeferredQ+"/"+ZaMTA.A_error, type:_DWT_LIST_, height:"150", width:"96%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							}						
 						]},
@@ -584,8 +584,8 @@ ZaMTAXFormView.myXFormModifier = function(xFormObject) {
 									{type:_DWT_BUTTON_, label:ZaMsg.Next,toolTipContent:ZaMsg.NextPage_tt, width:86, id:"fwdButton", icon:"RightArrow", disIcon:"RightArrowDis",
 										ref:ZaMTA.A_DeferredQ,labelLocation:(DwtLabel.IMAGE_RIGHT | DwtLabel.ALIGN_CENTER),
 										enableDisableChangeEventSources:[ZaMTA.A_DeferredQ + "/" + ZaMTA.A_more],
-										enableDisableChecks:[[ZaMTAXFormView.shouldEnableMsgsForwardButton,ZaMTA.A_DeferredQ]]										
-										//onActivate:"ZaMTAXFormView.fwdMsgsButtonHndlr.call(this,event)", 
+										enableDisableChecks:[[ZaMTAXFormView.shouldEnableMsgsForwardButton,ZaMTA.A_DeferredQ]],										
+										onActivate:"ZaMTAXFormView.fwdMsgsButtonHndlr.call(this,event)" 
 								    }]
 								 }
 							]},			
@@ -627,17 +627,17 @@ ZaMTAXFormView.myXFormModifier = function(xFormObject) {
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1, width: "100%", label:ZaMsg.PQV_GroupSenderDomain,items: [
 								    {ref:ZaMTA.A_IncomingQ+"/"+ZaMTA.A_sdomain, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},	
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupReceiverAddress,items: [
 								    {ref:ZaMTA.A_IncomingQ+"/"+ZaMTA.A_raddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupSenderAddress,items: [
 								    {ref:ZaMTA.A_IncomingQ+"/"+ZaMTA.A_saddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							}						
 						]},
@@ -704,17 +704,17 @@ ZaMTAXFormView.myXFormModifier = function(xFormObject) {
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1, width: "100%", label:ZaMsg.PQV_GroupSenderDomain,items: [
 								    {ref:ZaMTA.A_ActiveQ+"/"+ZaMTA.A_sdomain, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},	
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupReceiverAddress,items: [
 								    {ref:ZaMTA.A_ActiveQ+"/"+ZaMTA.A_raddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupSenderAddress,items: [
 								    {ref:ZaMTA.A_ActiveQ+"/"+ZaMTA.A_saddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							}						
 						]},
@@ -781,17 +781,17 @@ ZaMTAXFormView.myXFormModifier = function(xFormObject) {
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1, width: "100%", label:ZaMsg.PQV_GroupSenderDomain,items: [
 								    {ref:ZaMTA.A_HoldQ+"/"+ZaMTA.A_sdomain, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},	
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupReceiverAddress,items: [
 								    {ref:ZaMTA.A_HoldQ+"/"+ZaMTA.A_raddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupSenderAddress,items: [
 								    {ref:ZaMTA.A_HoldQ+"/"+ZaMTA.A_saddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							}						
 						]},
@@ -861,17 +861,17 @@ ZaMTAXFormView.myXFormModifier = function(xFormObject) {
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1, width: "100%", label:ZaMsg.PQV_GroupSenderDomain,items: [
 								    {ref:ZaMTA.A_CorruptQ+"/"+ZaMTA.A_sdomain, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},	
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupReceiverAddress,items: [
 								    {ref:ZaMTA.A_CorruptQ+"/"+ZaMTA.A_raddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							},		
 							{type:_ZASMALL_CENTER_GROUPER_, numCols:1,width: "100%", label:ZaMsg.PQV_GroupSenderAddress,items: [
 								    {ref:ZaMTA.A_CorruptQ+"/"+ZaMTA.A_saddress, type:_DWT_LIST_, height:"150", width:"97%", cssClass: "DLSource", 
-							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
+							   		forceUpdate: false,createPopupMenu:ZaMTAXFormView.createPopupMenu,preserveSelection:true,multiselect:true, onSelection:ZaMTAXFormView.filterListSelectionListener, widgetClass:ZaQSummaryListView, headerList:headerList}								
 								]
 							}						
 						]},

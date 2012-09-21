@@ -1431,7 +1431,8 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             }
         }
 
-        boolean organizerChanged = organizerChangeCheck(newInvite, isCancel);
+        // Do not allow organizer to be changed. (bug 74400)
+        boolean organizerChanged = organizerChangeCheck(newInvite, true);
         ZOrganizer newOrganizer = newInvite.getOrganizer();
 
         // If we got a cancel request, check if this cancel will result in canceling the entire appointment.
@@ -3758,13 +3759,6 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             }
         }
         return super.canAccess(rightsNeeded, authuser, asAdmin);
-    }
-
-    public void checkCancelPermission(Account authAccount, boolean asAdmin, Invite cancelInv)
-    throws ServiceException {
-        boolean requirePrivateCheck = requirePrivateCheck(cancelInv);
-        if (!canAccess((short) (ACL.RIGHT_DELETE | ACL.RIGHT_WRITE), authAccount, asAdmin, requirePrivateCheck))
-            throw ServiceException.PERM_DENIED("you do not have sufficient permissions to cancel this calendar item");
     }
 
     // If we're adding a private invite, we must make sure the authenticated user has permission to

@@ -325,4 +325,20 @@ public class DefangFilterTest {
         String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
         Assert.assertTrue(result.contains("style=\"color: rgb(255, 0, 0);\""));
     }
+
+    @Test
+    public void testBug74715() throws Exception {
+        String html = "<DIV STYLE=\"width: expression(alert('XSS'));\">";
+        InputStream htmlStream = new ByteArrayInputStream(html.getBytes());
+        String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertFalse(result.contains("XSS"));
+    }
+
+    @Test
+    public void testBug76500() throws Exception {
+        String html = "<blockquote style=\"border-left:2px solid rgb(16, 16, 255);\">";
+        InputStream htmlStream = new ByteArrayInputStream(html.getBytes());
+        String result = DefangFactory.getDefanger(MimeConstants.CT_TEXT_HTML).defang(htmlStream, true);
+        Assert.assertTrue(result.contains("rgb(16, 16, 255)"));
+    }
 }

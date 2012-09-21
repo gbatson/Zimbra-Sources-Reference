@@ -136,6 +136,7 @@ import com.zimbra.cs.redolog.op.CreateContact;
 import com.zimbra.cs.redolog.op.CreateFolder;
 import com.zimbra.cs.redolog.op.CreateFolderPath;
 import com.zimbra.cs.redolog.op.CreateInvite;
+import com.zimbra.cs.redolog.op.CreateMailbox;
 import com.zimbra.cs.redolog.op.CreateMessage;
 import com.zimbra.cs.redolog.op.CreateMountpoint;
 import com.zimbra.cs.redolog.op.CreateNote;
@@ -1261,7 +1262,7 @@ public class Mailbox {
         if (conn != null)
             setOperationConnection(conn);
 
-        boolean needRedo = needRedo(octxt);
+        boolean needRedo = needRedo(octxt, recorder);
         // have a single, consistent timestamp for anything affected by this operation
         mCurrentChange.setTimestamp(time);
         if (recorder != null && needRedo)
@@ -1707,12 +1708,12 @@ public class Mailbox {
                 throw e;
         }
 
-        boolean needRedo = needRedo(null);
         DeleteMailbox redoRecorder = new DeleteMailbox(mId);
+        boolean needRedo = needRedo(null, redoRecorder);
 
         StoreManager sm = StoreManager.getInstance();
         boolean deleteStore = deleteBlobs == DeleteBlobs.ALWAYS || (deleteBlobs == DeleteBlobs.UNLESS_CENTRALIZED && !sm.supports(StoreFeature.CENTRALIZED));
-        SpoolingCache<MailboxBlob> blobs = null;
+        SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs = null;
 
         boolean success = false;
         try {
@@ -2371,47 +2372,9 @@ public class Mailbox {
         return item;
     }
 
-    /**
-     * Executes the callback within a mailbox transaction.
-     * <p>
-     * This method is intented to be used by search code. The search code
-     * directly fetch item data from DB. When it converts those bare data to
-     * {@link MailItem}, it must be within a mailbox transaction because they
-     * access {@link MailItem} cache.
-     *
-     * @param cb callback
-     */
-    public synchronized void execute(TransactionCallback cb) throws ServiceException {
-        cb.mailbox = this;
-        boolean success = false;
-        try {
-            beginTransaction("callback", null);
-            cb.doInTransaction(this);
-            success = true;
-        } finally {
-            endTransaction(success);
-        }
-    }
-
-    /**
-     * @see #doInTransaction(Mailbox)
-     */
-    public static abstract class TransactionCallback {
-        private Mailbox mailbox;
-
-        protected abstract void doInTransaction(Mailbox mbox) throws ServiceException;
-
-        /**
-         * Translates the DB representation to a {@link MailItem} object.
-         *
-         * @param data DB representation of {@link MailItem}
-         * @return item
-         * @throws ServiceException if an error occurred
-         */
-        protected final MailItem toItem(MailItem.UnderlyingData data)  throws ServiceException {
-            assert(mailbox.mCurrentChange.isActive());
-            return mailbox.getItem(data);
-        }
+    protected final MailItem toItem(MailItem.UnderlyingData data)  throws ServiceException {
+        assert(mCurrentChange.isActive());
+        return getItem(data);
     }
 
     /** translate from the DB representation of an item to its Mailbox abstraction */
@@ -4432,9 +4395,11 @@ public class Mailbox {
 
                 if (redoPlayer == null || redoPlayer.getCalendarItemId() == 0) {
                     int currId = inv.getMailItemId();
-                    if (currId <= 0)
-                        currId = Mailbox.ID_AUTO_INCREMENT;
-                    inv.setInviteId(getNextItemId(currId));
+                    if (currId <= 0) {
+                        inv.setInviteId(getNextItemId(Mailbox.ID_AUTO_INCREMENT));
+                    } else {
+                        inv.setInviteId(currId);
+                    }
                 }
 
                 boolean calItemIsNew = false;
@@ -4873,8 +4838,8 @@ public class Mailbox {
             conversationId = ID_AUTO_INCREMENT;
         }
 
-        boolean needRedo = needRedo(octxt);
         CreateMessage redoPlayer = (octxt == null ? null : (CreateMessage) octxt.getPlayer());
+        boolean needRedo = needRedo(octxt, redoPlayer);
         boolean isRedo = redoPlayer != null;
 
         Blob blob = dctxt.getIncomingBlob();
@@ -7635,10 +7600,11 @@ public class Mailbox {
         }
     }
 
-    protected boolean needRedo(OperationContext octxt) {
+    protected boolean needRedo(OperationContext octxt, RedoableOp recorder) {
         // Don't generate redo data for changes made during mailbox version migrations.
-        if (!open)
+        if (!open && !(recorder instanceof CreateMailbox)) {
             return false;
+        }
         return octxt == null || octxt.needRedo();
     }
 
@@ -7685,8 +7651,8 @@ public class Mailbox {
             return;
         }
 
-        boolean needRedo = needRedo(mCurrentChange.octxt);
         RedoableOp redoRecorder = mCurrentChange.recorder;
+        boolean needRedo = needRedo(mCurrentChange.octxt, mCurrentChange.recorder);
         // 1. Log the change redo record for main transaction.
         if (redoRecorder != null && needRedo)
             redoRecorder.log(true);

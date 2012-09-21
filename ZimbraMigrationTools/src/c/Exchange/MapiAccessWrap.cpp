@@ -538,6 +538,13 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                 }
                 if (ret == NULL)	// 71630
                 {
+                    if (apptData.Uid.length() == 0)     // FBS bug 72893 -- 4/12/12
+                    {
+                        apptData.Uid = Zimbra::MAPI::Util::GetGUID();
+                    }
+                    int numAttendees = (int)apptData.vAttendees.size();     // cast it because in delete loop, we'll go negative
+                    wstring attendeeData = L"";
+
                     pIt[L"ptst"] = SysAllocString((apptData.PartStat).c_str());
                     pIt[L"fb"] = SysAllocString((apptData.FreeBusy).c_str());
                     pIt[L"allDay"] = SysAllocString((apptData.AllDay).c_str());
@@ -558,10 +565,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                     pIt[L"contentType1"] = SysAllocString(
 	                    (apptData.vMessageParts[1].contentType).c_str());
                     pIt[L"content1"] = SysAllocString((apptData.vMessageParts[1].content).c_str());
-
-                    // attendees
-                    wstring attendeeData;
-                    int numAttendees = (int)apptData.vAttendees.size();     // cast it because in delete loop, we'll go negative
+                   
                     if (numAttendees > 0)
                     {
                         for (int i = 0; i < numAttendees; i++)
@@ -577,11 +581,6 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 	                            attendeeData += L"~";
                         }
                         pIt[L"attendees"] = SysAllocString(attendeeData.c_str());
-                        // now clean up
-                        for (int i = (numAttendees - 1); i >= 0; i--)
-                        {
-                            delete (apptData.vAttendees[i]);
-                        }
                     }
 
                     // attachments
@@ -671,6 +670,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                             pIt[L"numExceptions"] = SysAllocString(pwszNumExceptions);
                             for (int i = 0; i < numExceptions; i++)
                             {
+                                attendeeData = L"";
                                 CreateExceptionAttrs(attrs, i);
                                 pIt[attrs[0]] =  SysAllocString((apptData.vExceptions[i]->GetExceptionType()).c_str());
                                 pIt[attrs[1]]  = SysAllocString((apptData.vExceptions[i]->GetResponseStatus()).c_str());
@@ -681,13 +681,30 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                                 pIt[attrs[6]]  = SysAllocString((apptData.vExceptions[i]->GetLocation()).c_str());
                                 pIt[attrs[7]]  = SysAllocString((apptData.vExceptions[i]->GetReminderMinutes()).c_str());
                                 pIt[attrs[8]]  = SysAllocString((apptData.vExceptions[i]->GetStartDate()).c_str());
-                                pIt[attrs[9]]  = SysAllocString((apptData.vExceptions[i]->GetEndDate()).c_str());
-                                pIt[attrs[10]] = SysAllocString((apptData.vExceptions[i]->GetOrganizerAddr()).c_str());
-                                pIt[attrs[11]] = SysAllocString((apptData.vExceptions[i]->GetOrganizerName()).c_str());
-                                pIt[attrs[12]] = SysAllocString(L"text/plain");
-                                pIt[attrs[13]] = SysAllocString((apptData.vExceptions[i]->GetPlainTextFileAndContent()).c_str());
-                                pIt[attrs[14]] = SysAllocString(L"text/html");
-                                pIt[attrs[15]] = SysAllocString((apptData.vExceptions[i]->GetHtmlFileAndContent()).c_str());
+                                pIt[attrs[9]]  = SysAllocString((apptData.vExceptions[i]->GetStartDateForRecID()).c_str());
+                                pIt[attrs[10]] = SysAllocString((apptData.vExceptions[i]->GetEndDate()).c_str());
+                                pIt[attrs[11]] = SysAllocString((apptData.vExceptions[i]->GetOrganizerAddr()).c_str());
+                                pIt[attrs[12]] = SysAllocString((apptData.vExceptions[i]->GetOrganizerName()).c_str());
+                                pIt[attrs[13]] = SysAllocString(L"text/plain");
+                                pIt[attrs[14]] = SysAllocString((apptData.vExceptions[i]->GetPlainTextFileAndContent()).c_str());
+                                pIt[attrs[15]] = SysAllocString(L"text/html");
+                                pIt[attrs[16]] = SysAllocString((apptData.vExceptions[i]->GetHtmlFileAndContent()).c_str());
+                                if (numAttendees > 0)
+                                {
+                                    for (int j = 0; j < numAttendees; j++)
+                                    {                                       
+                                        attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->nam;
+                                        attendeeData += L"~";
+                                        attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->addr;
+                                        attendeeData += L"~";
+                                        attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->role;
+                                        attendeeData += L"~";
+                                        attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->partstat;
+                                        if (j < (numAttendees - 1))     // don't write comma after last attendee
+	                                        attendeeData += L"~";
+                                    }
+                                }
+                                pIt[attrs[17]] = SysAllocString(attendeeData.c_str());
                             }
 
                             // clean up any exceptions
@@ -696,6 +713,14 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                                 delete (apptData.vExceptions[i]);
                             }
                             //
+                        }
+                    }
+                    if (numAttendees > 0)
+                    {
+                        // clean up attendees if any
+                        for (int i = (numAttendees - 1); i >= 0; i--)
+                        {
+                            delete (apptData.vAttendees[i]);
                         }
                     }
                 }
@@ -1058,9 +1083,9 @@ void CMapiAccessWrap::CreateExceptionAttrs(BSTR attrs[], int num)
     dlog.trace(L" Begin MapiAccessWrap::CreateExceptionAttrs");
     WCHAR pwszNum[10];
     LPWSTR names[] = {L"exceptionType", L"ptst", L"fb", L"allDay",
-                      L"name", L"su", L"loc", L"m", L"s", L"e",                      
+                      L"name", L"su", L"loc", L"m", L"s", L"rid", L"e",                      
                       L"orAddr", L"orName", L"contentType0", L"content0",
-                      L"contentType1", L"content1"};
+                      L"contentType1", L"content1", L"attendees"};
                      
     WCHAR pwszAttr[30];
 

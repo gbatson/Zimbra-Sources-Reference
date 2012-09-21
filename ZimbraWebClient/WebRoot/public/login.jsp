@@ -24,13 +24,22 @@
 <c:set var="useMobile" value="${ua.isiPhone or ua.isiPod or ua.isOsAndroid}"/>
 <c:set var="trimmedUserName" value="${fn:trim(param.username)}"/>
 
+<c:if test="${param.loginOp eq 'relogin' and not empty loginException}">
+    <zm:getException var="error" exception="${loginException}"/>
+    <c:if test="${error.code eq 'service.AUTH_EXPIRED'}">
+        <c:set var="errorCode" value="${error.code}"/>
+        <fmt:message bundle="${zmsg}" var="errorMessage" key="${errorCode}"/>
+        <zm:logout/>
+    </c:if>
+</c:if>
+
 <c:catch var="loginException">
     <c:choose>
         <c:when test="${(not empty param.loginNewPassword or not empty param.loginConfirmNewPassword) and (param.loginNewPassword ne param.loginConfirmNewPassword)}">
             <c:set var="errorCode" value="errorPassChange"/>
             <fmt:message var="errorMessage" key="bothNewPasswordsMustMatch"/>
         </c:when>
-        <c:when test="${param.loginOp eq 'relogin'}">
+        <c:when test="${param.loginOp eq 'relogin' and not empty param.loginErrorCode}">
             <zm:logout/>
             <c:set var="errorCode" value="${param.loginErrorCode}"/>
             <fmt:message bundle="${zmsg}" var="errorMessage" key="${errorCode}"/>
@@ -265,6 +274,7 @@ if (application.getInitParameter("offlineMode") != null)  {
         <c:set var="client" value="${useMobile ? 'mobile' : useStandard ? 'standard' : 'preferred' }"/>
     </c:if>
     <c:set var="smallScreen" value="${client eq 'mobile'}"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE9" />    
     <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
     <title><fmt:message key="zimbraLoginTitle"/></title>
     <c:set var="version" value="${initParam.zimbraCacheBusterVersion}"/>
@@ -393,11 +403,17 @@ if (application.getInitParameter("offlineMode") != null)  {
 
     function onLoad() {
         var loginForm = document.loginForm;
-        if(loginForm.username){
-            loginForm.username.focus();
-        }
+		if (loginForm.username) {
+			if (loginForm.username.value != "") {
+				loginForm.password.focus(); //if username set, focus on password
+			}
+			else {
+				loginForm.username.focus();
+			}
+		}
         clientChange("${zm:cook(client)}");
     }
+
 	document.write("<a href='#' onclick='showWhatsThis()' id='ZLoginWhatsThisAnchor'><fmt:message key="whatsThis"/><"+"/a>");
 </script>
 							<div id="ZLoginWhatsThis" class="ZLoginInfoMessage" style="display:none;"><fmt:message key="clientWhatsThisMessage"/></div>

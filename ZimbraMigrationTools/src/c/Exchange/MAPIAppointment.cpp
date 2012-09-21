@@ -50,6 +50,7 @@ MAPIAppointment::MAPIAppointment(Zimbra::MAPI::MAPISession &session,  Zimbra::MA
 
     m_pSubject = L"";
     m_pStartDate = L"";
+    m_pStartDateForRecID = L"";
     m_pEndDate = L"";
     m_pInstanceUID = L"";
     m_pLocation = L"";
@@ -476,20 +477,40 @@ void MAPIAppointment::SetExceptions()
 void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::COutlookRecurrenceException* lpException)
 {
     // PST seems to find the MAPI message, thereby eventually filling in the pEx.  Server does not, but the
-    // info is in the lpException
+    // info is in the lpException.  Note that for allday, PST seems to MAPI msg set right -- just need to truncate end
+
+    // FBS 4/12/12 -- set this up no matter what (so exceptId will be set)
+    // FBS bug 71050 -- 4/9/12 -- recurrence id needs the original occurrence date
+    Zimbra::Mapi::CRecurrenceTime rtOriginalDate = lpException->GetOriginalDateTime();  
+    Zimbra::Mapi::CFileTime ftOriginalDate = (FILETIME)rtOriginalDate;
+    pEx->m_pStartDateForRecID = MakeDateFromExPtr(rtOriginalDate);
+    //
+
     if (pEx->m_pStartDate.length() == 0)
     {
         Zimbra::Mapi::CRecurrenceTime rtStartDate = lpException->GetStartDateTime();
         Zimbra::Mapi::CFileTime ftStartDate = (FILETIME)rtStartDate;
         pEx->m_pStartDate = MakeDateFromExPtr(ftStartDate);
         pEx->m_pStartDateCommon = Zimbra::MAPI::Util::CommonDateString(ftStartDate);
-
     }
     if (pEx->m_pEndDate.length() == 0)
     {
         Zimbra::Mapi::CRecurrenceTime rtEndDate = lpException->GetEndDateTime();
+        if (lpException->GetAllDay())
+        {
+            rtEndDate = rtEndDate - 1440;  // for Zimbra
+        }
         Zimbra::Mapi::CFileTime ftEndDate = (FILETIME)rtEndDate;
         pEx->m_pEndDate = MakeDateFromExPtr(ftEndDate);
+    }
+    if (lpException->GetAllDay())   // FBS bug 71053 -- 4/12/12
+    {
+        pEx->m_pStartDate = pEx->m_pStartDate.substr(0, 8);
+        pEx->m_pEndDate = pEx->m_pEndDate.substr(0, 8);
+        if (pEx->m_pStartDateForRecID.length() > 0)
+        {
+            pEx->m_pStartDateForRecID = pEx->m_pStartDateForRecID.substr(0, 8);
+        }
     }
     if (pEx->m_pSubject.length() == 0)
     {
@@ -534,7 +555,7 @@ void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::CO
         pEx->m_pOrganizerAddr = m_pOrganizerAddr;
     }
 
-    // attendees?
+    pEx->m_vAttendees = m_vAttendees;   // FBS bug 71054 -- 4/12/12
 
     if (pEx->m_pReminderMinutes.length() == 0)
     {
@@ -862,6 +883,7 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
 wstring MAPIAppointment::GetSubject() { return m_pSubject; }
 wstring MAPIAppointment::GetStartDate() { return m_pStartDate; }
 wstring MAPIAppointment::GetStartDateCommon() { return m_pStartDateCommon; }
+wstring MAPIAppointment::GetStartDateForRecID() { return m_pStartDateForRecID; }
 wstring MAPIAppointment::GetEndDate() { return m_pEndDate; }
 wstring MAPIAppointment::GetInstanceUID() { return m_pInstanceUID; }
 wstring MAPIAppointment::GetLocation() { return m_pLocation; }

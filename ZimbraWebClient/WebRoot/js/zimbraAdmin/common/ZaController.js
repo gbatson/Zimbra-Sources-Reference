@@ -356,35 +356,35 @@ function(ex, method, params, restartOnError, obj) {
 	{
 		try {
 			ZmCsfeCommand.noAuth = true;
-			if (ZaApp.getInstance() != null && (ex.code == ZmCsfeException.SVC_AUTH_EXPIRED ||
-							    ex.code == ZmCsfeException.AUTH_TOKEN_CHANGED ||
-								ex.code == ZmCsfeException.NO_AUTH_TOKEN
-							   )) 
+			if (ZaApp.getInstance() != null) 
 			{
-				// Must clear Cookie in browser
-
 				var dlgs = ZaApp.getInstance().dialogs;
 				for (var dlg in dlgs) {
 					dlgs[dlg].popdown();
 				}
-				this._execFrame = {obj: obj, func: method, args: params, restartOnError: restartOnError};
-				this._loginDialog.registerCallback(this.loginCallback, this);
-				this._loginDialog.setError(ZaMsg.ERROR_SESSION_EXPIRED);
+			}
+
+			this._execFrame = {obj: obj, func: method, args: params, restartOnError: restartOnError};
+			this._loginDialog.registerCallback(this.loginCallback, this);
 				/*
  				 * Sometimes, users will clear cookie manually, that will cause security issue. see: bug 67427
  				 * But in the process of login, we use this exception to popup login dialog if user doesn't 
  				 * login. We shouldn't disable the username field in the first soap request if an exception is thrown.
  				 */
-				if (!(ZaZimbraAdmin.isFirstRequest &&  ex.code == ZmCsfeException.NO_AUTH_TOKEN))
-					this._loginDialog.disableUnameField();
-				this._loginDialog.clearPassword();
-			} else {
-				this._loginDialog.setError(null);
+			if ((!ZaZimbraAdmin.isFirstRequest &&  
+				  (ex.code == ZmCsfeException.NO_AUTH_TOKEN ||
+				   ex.code == ZmCsfeException.SVC_AUTH_REQUIRED ||
+				   ex.code == ZmCsfeException.SVC_AUTH_EXPIRED	
+				 ))
+			   ) {
+				this._loginDialog.disableUnameField();
+				this._loginDialog.setError(ZaMsg.ERROR_SESSION_EXPIRED);
 			}
+			this._loginDialog.clearPassword();
 			this._showLoginDialog();
 		} catch (ex2) {
 			if(window.console && window.console.log)
-				console.log(ex2.code);
+				window.console.log(ex2.code);
 		}
 	} 
 	else 
@@ -422,8 +422,10 @@ function(ex, method, params, restartOnError, obj) {
 			this.popupErrorDialog(ZaMsg.ERROR_INVALID_VOLUME_PATH, ex);
 		} else if(ex.code == ZmCsfeException.NO_SUCH_VOLUME) {
 			this.popupErrorDialog(ZaMsg.ERROR_NO_SUCH_VOLUME, ex);
-		}else if (ex.code == ZmCsfeException.CANNOT_CHANGE_VOLUME) {
-                	this.popupErrorDialog(ZaMsg.ERROR_CANNOT_CHANGE_VOLUME, ex);
+		} else if (ex.code == ZmCsfeException.CANNOT_CHANGE_VOLUME) {
+        	this.popupErrorDialog(ZaMsg.ERROR_CANNOT_CHANGE_VOLUME, ex);
+		} else if (ex.code == ZmCsfeException.CANNOT_DELETE_VOLUME_IN_USE) {
+        	this.popupErrorDialog(ZaMsg.CANNOT_DELETE_VOLUME_IN_USE, ex);
 		} else if(ex.code == ZmCsfeException.ALREADY_EXISTS) {
 			this.popupErrorDialog(ZaMsg.ERROR_VOLUME_ALREADY_EXISTS, ex);
 		} else if(ex.code == ZmCsfeException.LICENSE_ERROR) {
@@ -434,7 +436,7 @@ function(ex, method, params, restartOnError, obj) {
 			this.popupErrorDialog(ZaMsg.ERROR_TOO_MANY_SEARCH_RESULTS, ex);
 		} else if (ex.code == ZmCsfeException.NO_SUCH_DOMAIN) {
 			this.popupErrorDialog(ZaMsg.ERROR_NO_SUCH_DOMAIN, ex);
-		}else if (ex.code == ZmCsfeException.CSFE_SVC_ERROR || 
+		} else if (ex.code == ZmCsfeException.CSFE_SVC_ERROR || 
 					ex.code == ZmCsfeException.SVC_FAILURE || 
 						(typeof(ex.code) == 'string' && ex.code && ex.code.match(/^(service|account|mail)\./))
 
@@ -536,7 +538,7 @@ function (resp) {
 			var msg = ex.code == ZmCsfeException.ACCT_PASS_RECENTLY_USED ? ZaMsg.errorPassRecentlyUsed : (ZaMsg.errorPassChangeTooSoon);
 			this._loginDialog.setError(msg);
 			this._loginDialog.clearPassword();
-			this._loginDialog.setFocus();
+			this._loginDialog.setFocus(null);
 		} else if (ex.code == ZmCsfeException.PASSWORD_LOCKED) {
 			this._showLoginDialog(true);
 			// re-enable username and password fields
@@ -622,9 +624,13 @@ function(uname, oldPass, newPass, conPass) {
     		return;
     		
 		ZaController.changePwdCommand = new ZmCsfeCommand();
-		resp = ZaController.changePwdCommand.invoke({soapDoc: soapDoc, noAuthToken: true, noSession: true}).Body.ChangePasswordResponse;
-	
+		resp = ZaController.changePwdCommand.invoke({soapDoc: soapDoc, noAuthToken: true, ignoreAuthToken: true,  noSession: true}).Body.ChangePasswordResponse;
+		
 		if (resp) {
+			this._loginDialog.clearError();
+ 			this._loginDialog.enableUnameField();
+			this._loginDialog.enablePasswordField();
+        	this._loginDialog.hideNewPasswordFields();
 			ZaZimbraAdmin.showSplash(this._shell);
 			var callback = new AjxCallback(this, this.authCallback);	
 			this.auth = new ZaAuthenticate(this._appCtxt);
@@ -640,7 +646,7 @@ function(uname, oldPass, newPass, conPass) {
 				? ZaMsg.errorPassRecentlyUsed
 				: (ZaMsg.errorPassChangeTooSoon);
 			this._loginDialog.setError(msg);
-			this._loginDialog.setFocus();
+			this._loginDialog.setFocus(null);
 		} else if (ex.code == ZmCsfeException.ACCT_PASS_LOCKED)	{
 			// re-enable username and password fields
 			this._loginDialog.disablePasswordField(false);

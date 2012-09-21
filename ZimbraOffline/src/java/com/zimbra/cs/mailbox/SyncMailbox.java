@@ -187,7 +187,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
 
         StoreManager sm = StoreManager.getInstance();
         boolean deleteStore = deleteBlobs == DeleteBlobs.ALWAYS || (deleteBlobs == DeleteBlobs.UNLESS_CENTRALIZED && !sm.supports(StoreFeature.CENTRALIZED));
-        SpoolingCache<MailboxBlob> blobs = null;
+        SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs = null;
 
         boolean success = false;
         synchronized (this) {

@@ -154,6 +154,21 @@ public class ScheduleViewModel: BaseViewModel
         m_isPreview = false;
         DoMigrate(m_isPreview);
     }
+
+    private int AvailableThread()
+    {
+        int iThreadNum = -1;
+        for (int i = 0; i < bgwlist.Count; i++)
+        {
+            if (!bgwlist[i].IsBusy)
+            {
+                iThreadNum = i;
+                break;
+            }
+        }
+        return iThreadNum;
+    }
+
     public void DoMigrate(bool isPreview)
     {
         bgwlist.Clear();
@@ -208,33 +223,34 @@ public class ScheduleViewModel: BaseViewModel
                         }
 
                         string cosID = CosList[CurrentCOSSelection].CosID;
-                        ZimbraAPI zimbraAPI = new ZimbraAPI();
+                        ZimbraAPI zimbraAPI = new ZimbraAPI(isServer);
 
                         // FBS bug 71646 -- 3/26/12
                         string displayName = "";
                         string givenName = "";
                         string sn = "";
                         string zfp = "";
-                        if (usersViewModel.OPInfoList.Count > 0)
+
+                        // FBS bug 73395 -- 4/25/12
+                        ObjectPickerInfo opinfo = usersViewModel.GetOPInfo();
+                        if (opinfo.DisplayName.Length > 0)
                         {
-                            if (usersViewModel.OPInfoList[i].DisplayName.Length > 0)
-                            {
-                                displayName = usersViewModel.OPInfoList[i].DisplayName;
-                            }
-                            if (usersViewModel.OPInfoList[i].GivenName.Length > 0)
-                            {
-                                givenName = usersViewModel.OPInfoList[i].GivenName;
-                            }
-                            if (usersViewModel.OPInfoList[i].Sn.Length > 0)
-                            {
-                                sn = usersViewModel.OPInfoList[i].Sn;
-                            }
-                            if (usersViewModel.OPInfoList[i].Zfp.Length > 0)
-                            {
-                                zfp = usersViewModel.OPInfoList[i].Zfp;
-                            }
+                            displayName = opinfo.DisplayName;
                         }
-                        //////////////
+                        if (opinfo.GivenName.Length > 0)
+                        {
+                            givenName = opinfo.GivenName;
+                        }
+                        if (opinfo.Sn.Length > 0)
+                        {
+                            sn = opinfo.Sn;
+                        }
+                        if (opinfo.Zfp.Length > 0)
+                        {
+                            zfp = opinfo.Zfp;
+                        }
+                        // end 73395
+                        // end 71646
 
                         if (zimbraAPI.CreateAccount(accountName, displayName, givenName, sn, zfp, defaultPWD, cosID) == 0)
                         {
@@ -290,30 +306,52 @@ public class ScheduleViewModel: BaseViewModel
                 accountResultsViewModel.EnableStop));
         }
         accountResultsViewModel.OpenLogFileEnabled = true;
-        num = 0;
-        foreach (SchedUser su in SchedList)
-        {
-            BackgroundWorker bgw = new System.ComponentModel.BackgroundWorker();
 
-            bgw.DoWork += new System.ComponentModel.DoWorkEventHandler(worker_DoWork);
-            bgw.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(
-                worker_ProgressChanged);
-            bgw.WorkerReportsProgress = true;
-            bgw.WorkerSupportsCancellation = true;
-            bgw.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(
-                worker_RunWorkerCompleted);
-            bgw.RunWorkerAsync(num++);
-            bgwlist.Add(bgw);
-        }
+        // FBS bug 71048 -- 4/16/12 -- use the correct number of threads.
+        // If MaxThreadCount not specified, default to 4.  If fewer users than MaxThreadCount, numThreads = numUsers
+        OptionsViewModel ovm = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]);
+        int maxThreads = (ovm.MaxThreadCount > 0) ? ovm.MaxThreadCount : 4;
+        maxThreads = Math.Min(maxThreads, 8);   // let's make 8 the limit for now
+        int numUsers = SchedList.Count;
+        int numThreads = Math.Min(numUsers, maxThreads);
+        for (int i = 0; i < numUsers; i++)
+        {
+            if (i < numThreads)
+            {
+                UserBW bgw = new UserBW(i);
+                bgw.DoWork += new System.ComponentModel.DoWorkEventHandler(worker_DoWork);
+                bgw.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(
+                    worker_ProgressChanged);
+                bgw.WorkerReportsProgress = true;
+                bgw.WorkerSupportsCancellation = true;
+                bgw.RunWorkerCompleted += new System.ComponentModel.RunWorkerCompletedEventHandler(
+                    worker_RunWorkerCompleted);
+                bgw.usernum = i;
+                bgw.RunWorkerAsync(i);
+                bgwlist.Add(bgw);
+            }
+            else
+            {
+                overflowList.Add(i);
+            }
+        }; 
     }
 
     // //////////////////////
 
-    private ObservableCollection<BackgroundWorker> bgwlist =
-        new ObservableCollection<BackgroundWorker>();
-    public ObservableCollection<BackgroundWorker> BGWList {
+    private ObservableCollection<UserBW> bgwlist =
+        new ObservableCollection<UserBW>();
+    public ObservableCollection<UserBW> BGWList
+    {
         get { return bgwlist; }
         set { bgwlist = value; }
+    }
+    private ObservableCollection<int> overflowList =
+        new ObservableCollection<int>();
+    public ObservableCollection<int> OverflowList
+    {
+        get { return overflowList; }
+        set { overflowList = value; }
     }
     private ObservableCollection<DoWorkEventArgs> eventArglist =
         new ObservableCollection<DoWorkEventArgs>();
@@ -597,26 +635,14 @@ public class ScheduleViewModel: BaseViewModel
         return retval;
     }
 
-    private string FormatTheLastMsg(string existingMsg, bool isOOOorRules)
-    // A bit of the hack -- take the existing msg, add 1 to the first part
-    // i.e. if it's 13 of 14, make it 14 of 14
-    // if it's Out of Office, just say 1 of 1
+    private string FormatTheLastMsg(MigrationFolder lastFolder, bool isOOOorRules)
+    // FBS 4/13/12 -- rewrite to fix bug 71048
     {
-        string retval = (isOOOorRules) ? "1 of 1" : "";
+        string retval = (isOOOorRules) ? "1 of 1" : ""; // if it's Out of Office or Rules, just say 1 of 1
         if (!isOOOorRules)
         {
-            int len = existingMsg.Length;
-            int idx = existingMsg.IndexOf(" of");
-            if (idx == -1)  // never happen
-            {
-                return retval;
-            }
-            string strNum = existingMsg.Substring(0, idx);
-            int num = Int32.Parse(strNum);
-            num++;
-            strNum = num.ToString();
-            string endOfMsg = existingMsg.Substring(idx, (len - idx));
-            retval = strNum + endOfMsg;
+            string msg = "{0} of {1}";
+            retval = String.Format(msg, lastFolder.CurrentCountOfItems, lastFolder.TotalCountOfItems);
         }
         return retval;
     }
@@ -675,6 +701,7 @@ public class ScheduleViewModel: BaseViewModel
         CSMigrationWrapper mw = ((IntroViewModel)ViewModelPtrs[(int)ViewType.INTRO]).mw;
         MigrationOptions importOpts = SetOptions();
         bool isVerbose = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]).LoggingVerbose;
+        bool doRulesAndOOO = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]).OEnableRulesAndOOO;
 
         if (isVerbose)
         {
@@ -686,7 +713,7 @@ public class ScheduleViewModel: BaseViewModel
         }
 
         //mw.StartMigration(MyAcct, importOpts, isServer, (isVerbose ? (LogLevel.Debug):(LogLevel.Info)), m_isPreview);
-        mw.StartMigration(MyAcct, importOpts, isServer, importOpts.VerboseOn, m_isPreview);
+        mw.StartMigration(MyAcct, importOpts, isServer, importOpts.VerboseOn, m_isPreview, doRulesAndOOO);
 
         // special case to format last user progress message
         int count = accountResultsViewModel.AccountResultsList[num].UserResultsList.Count;
@@ -697,7 +724,7 @@ public class ScheduleViewModel: BaseViewModel
                 string lastmsg = accountResultsViewModel.AccountResultsList[num].UserResultsList[count - 1].UserProgressMsg;
                 int len = lastmsg.Length;
                 bool isOOOorRules = ((MyFolder.FolderView == "OOO") || (MyFolder.FolderView == "All Rules"));
-                accountResultsViewModel.AccountResultsList[num].UserResultsList[count - 1].UserProgressMsg = FormatTheLastMsg(accountResultsViewModel.AccountResultsList[num].AcctProgressMsg, isOOOorRules);
+                accountResultsViewModel.AccountResultsList[num].UserResultsList[count - 1].UserProgressMsg = FormatTheLastMsg(MyFolder, isOOOorRules);
                 accountResultsViewModel.AccountResultsList[num].PBValue = 100;  // to make sure
             }
             else
@@ -757,12 +784,12 @@ public class ScheduleViewModel: BaseViewModel
             if (!m_isPreview)
             {
                 accountResultsViewModel.PBMsgValue = "Migration complete";
-                SchedList.Clear();
-
-                UsersViewModel usersViewModel =
-                    ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]);
-
-                usersViewModel.UsersList.Clear();
+                if (overflowList.Count == 0)
+                {
+                    SchedList.Clear();
+                    UsersViewModel usersViewModel = ((UsersViewModel)ViewModelPtrs[(int)ViewType.USERS]);
+                    usersViewModel.UsersList.Clear();
+                }
             }
             accountResultsViewModel.EnableStop = false;
         }
@@ -771,6 +798,30 @@ public class ScheduleViewModel: BaseViewModel
             m_isComplete = true;
         }
         EnablePreview = EnableMigrate = !m_isComplete;
+        if (overflowList.Count > 0)
+        {
+            int usernum = overflowList[0];
+            int threadnum = AvailableThread();
+            if (threadnum != -1)
+            {
+                bgwlist[threadnum].usernum = usernum;
+                bgwlist[threadnum].RunWorkerAsync(usernum);
+            }
+            overflowList.RemoveAt(0);
+        }
+    }
+
+    public int GetThreadNum(int usernum)
+    {
+        int ct = bgwlist.Count;
+        for (int i = 0; i < ct; i++)
+        {
+            if (bgwlist[i].usernum == usernum)
+            {
+                return bgwlist[i].threadnum;
+            }
+        }
+        return -1;
     }
 
     public void Acct_OnAcctChanged(object sender, MigrationObjectEventArgs e)
@@ -810,7 +861,8 @@ public class ScheduleViewModel: BaseViewModel
             ((AccountResultsViewModel)ViewModelPtrs[(int)ViewType.RESULTS]);    // main one
         AccountResultsViewModel ar = accountResultsViewModel.AccountResultsList[f.AccountNum];
 
-        if (bgwlist[f.AccountNum].CancellationPending)
+        int tnum = GetThreadNum(f.AccountNum);
+        if (bgwlist[tnum].CancellationPending)
         {
             eventArglist[f.AccountNum].Cancel = true;
             return;
@@ -832,7 +884,7 @@ public class ScheduleViewModel: BaseViewModel
                     ar.CurrentItemNum++;
                     ar.PBValue = (int)Math.Round(((Decimal)ar.CurrentItemNum /
                         (Decimal)ar.TotalItemsToMigrate) * 100);
-                    bgwlist[f.AccountNum].ReportProgress(ar.PBValue, f.AccountNum);
+                    bgwlist[tnum].ReportProgress(ar.PBValue, f.AccountNum);
                 }
             }
         }
@@ -877,7 +929,7 @@ public class ScheduleViewModel: BaseViewModel
                     msg3 = "{0} ({1} items)";
                     ar.PBMsgValue = String.Format(msg3, folderName, f.TotalCountOfItems);
                     accountResultsViewModel.PBMsgValue = String.Format(msg3, folderName, f.TotalCountOfItems);   // for the user results window
-                    System.Threading.Thread.Sleep(1000);    // to see the message
+                    System.Threading.Thread.Sleep(500);    // to see the message
                 }
 
                 f.LastFolderInfo = new FolderInfo(e.NewValue.ToString(), folderType,

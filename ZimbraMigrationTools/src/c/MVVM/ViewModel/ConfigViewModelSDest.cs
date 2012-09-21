@@ -125,9 +125,18 @@ public class ConfigViewModelSDest: BaseViewModel
             return;
         }
 
-        ZimbraAPI zimbraAPI = new ZimbraAPI();
-        int stat = zimbraAPI.Logon(this.ZimbraServerHostName, this.ZimbraPort, this.ZimbraAdmin,
-            this.ZimbraAdminPasswd, true);
+        ZimbraAPI zimbraAPI = new ZimbraAPI(true);
+        int stat = -1;
+        try
+        {
+            stat = zimbraAPI.Logon(this.ZimbraServerHostName, this.ZimbraPort, this.ZimbraAdmin,
+                this.ZimbraAdminPasswd, this.ZimbraSSL, true);
+        }
+        catch (Exception e)
+        {
+            MessageBox.Show(e.Message, "Logon", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
 
         if (stat == 0)
         {

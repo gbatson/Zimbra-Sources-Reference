@@ -671,16 +671,18 @@ function() {
  */
 DwtListView.prototype.deselectAll =
 function() {
-	var a = this._selectedItems.getArray();
-	var sz = this._selectedItems.size();
-	for (var i = 0; i < sz; i++) {
-        Dwt.delClass(a[i], this._styleRe);
-    }
-    this._selectedItems.removeAll();
-	this._rightSelItem = this._selAnchor = null;
-
-	if (this._kbAnchor != null && this.hasFocus()) {
-		Dwt.addClass(this._kbAnchor, this._kbFocusClass);
+	if(this._selectedItems) {
+		var a = this._selectedItems.getArray();
+		var sz = this._selectedItems.size();
+		for (var i = 0; i < sz; i++) {
+	        Dwt.delClass(a[i], this._styleRe);
+	    }
+	    this._selectedItems.removeAll();
+		this._rightSelItem = this._selAnchor = null;
+	
+		if (this._kbAnchor != null && this.hasFocus()) {
+			Dwt.addClass(this._kbAnchor, this._kbFocusClass);
+		}
 	}
 };
 
@@ -1448,7 +1450,9 @@ function(colIdx, params) {
 	var width = headerList[colIdx]._width;
 	if (width) {
 		if (AjxEnv.isIE)		return (width + 2);
-		if (AjxEnv.isSafari)	return (width + 5);
+		if (AjxEnv.isSafari && !AjxEnv.isChrome19up) {
+			return (width + 5);
+		}
 		return width;
 	}
 	return null;

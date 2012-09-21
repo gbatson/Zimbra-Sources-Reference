@@ -25,7 +25,7 @@ MAPIMessage::MessagePropTags MAPIMessage::m_messagePropTags = {
     NMSGPROPS, {
         PR_MESSAGE_CLASS, PR_MESSAGE_FLAGS, PR_CLIENT_SUBMIT_TIME, PR_SENDER_ADDRTYPE,
         PR_SENDER_EMAIL_ADDRESS, PR_SENDER_NAME, PR_SENDER_ENTRYID, PR_SUBJECT, PR_BODY,
-        PR_BODY_HTML, PR_INTERNET_CPID, PR_MESSAGE_CODEPAGE, PR_LAST_VERB_EXECUTED,
+        PR_HTML, PR_INTERNET_CPID, PR_MESSAGE_CODEPAGE, PR_LAST_VERB_EXECUTED,
         PR_FLAG_STATUS, PR_ENTRYID, PR_SENT_REPRESENTING_ADDRTYPE,
         PR_SENT_REPRESENTING_ENTRYID, PR_SENT_REPRESENTING_EMAIL_ADDRESS,
         PR_SENT_REPRESENTING_NAME, PR_REPLY_RECIPIENT_NAMES, PR_REPLY_RECIPIENT_ENTRIES,
@@ -267,7 +267,7 @@ BOOL MAPIMessage::IsUnsent()
 
 bool MAPIMessage::HasHtmlPart()
 {
-    if ((m_pMessagePropVals[HTML_BODY].ulPropTag == PR_BODY_HTML) || ((PROP_TYPE(
+    if ((m_pMessagePropVals[HTML_BODY].ulPropTag == PR_HTML) || ((PROP_TYPE(
         m_pMessagePropVals[HTML_BODY].ulPropTag) == PT_ERROR) &&
         (m_pMessagePropVals[HTML_BODY].Value.l == E_OUTOFMEMORY)))
         return true;
@@ -829,7 +829,7 @@ bool MAPIMessage::DecodeRTF2HTML(char *buf, unsigned int *len)
 
 bool MAPIMessage::HtmlBody(LPVOID *ppBody, unsigned int &nHtmlBodyLen)
 {
-    if (m_pMessagePropVals[HTML_BODY].ulPropTag == PR_BODY_HTML)
+    if (m_pMessagePropVals[HTML_BODY].ulPropTag == PR_HTML)
     {
         LPVOID pBody = m_pMessagePropVals[HTML_BODY].Value.bin.lpb;
 
@@ -849,7 +849,7 @@ bool MAPIMessage::HtmlBody(LPVOID *ppBody, unsigned int &nHtmlBodyLen)
     HRESULT hr;
     IStream *pIStream;
 
-    hr = m_pMessage->OpenProperty(PR_BODY_HTML, &IID_IStream, STGM_READ, 0, (LPUNKNOWN
+    hr = m_pMessage->OpenProperty(PR_HTML, &IID_IStream, STGM_READ, 0, (LPUNKNOWN
         FAR *)&pIStream);
     if (SUCCEEDED(hr))
     {
@@ -1493,8 +1493,7 @@ void MAPIMessage::ToMimePPMessage(mimepp::Message &msg)
         ct += ";";
 
         pHtmlPart->headers().contentType().setString(ct);
-
-        Zimbra::MAPI::Util::AddBodyToPart(pHtmlPart, (LPSTR)pHtmlBody, nHtmlLen);
+		Zimbra::MAPI::Util::AddBodyToPart(pHtmlPart, (LPSTR)pHtmlBody, nHtmlLen);
 
         pHtmlPart->body().assemble();
     }
@@ -1628,7 +1627,7 @@ void MAPIMessage::ToMimePPMessage(mimepp::Message &msg)
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 // MessageIterator
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-MessageIterator::MIRestriction MessageIterator::m_restriction;
+MIRestriction MessageIterator::m_restriction;
 MessageIterator::MessageIterPropTags MessageIterator::m_props = {
     NMSGPROPS, { PR_ENTRYID, PR_LONGTERM_ENTRYID_FROM_TABLE, PR_CLIENT_SUBMIT_TIME,
                  PR_MESSAGE_CLASS }
@@ -1687,7 +1686,7 @@ BOOL MessageIterator::GetNext(__int64 &date, SBinary &bin)
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 // MessageIterator::MIRestriction
 // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-Zimbra::MAPI::MessageIterator::MIRestriction::MIRestriction()
+Zimbra::MAPI::MIRestriction::MIRestriction()
 {
     // Task
     _pTaskClass = new WCHAR[10];
@@ -1838,7 +1837,7 @@ Zimbra::MAPI::MessageIterator::MIRestriction::MIRestriction()
     // pR[23].res.resProperty.lpProp will be set in GetRestriction
 }
 
-MessageIterator::MIRestriction::~MIRestriction()
+MIRestriction::~MIRestriction()
 {
     delete[] _pContactClass;
     delete[] _pMailClass;
@@ -1848,7 +1847,7 @@ MessageIterator::MIRestriction::~MIRestriction()
     delete[] _pDistListClass;
 }
 
-LPSRestriction MessageIterator::MIRestriction::GetRestriction(ULONG TypeMask, FILETIME
+LPSRestriction MIRestriction::GetRestriction(ULONG TypeMask, FILETIME
     startDate)
 {
     int iCounter = 13;

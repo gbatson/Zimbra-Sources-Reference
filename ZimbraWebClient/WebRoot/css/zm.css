@@ -4658,3 +4658,48 @@ If you feel compelled to have a background color, please do so on a per skin lev
 .Icon{
 	width: 25px;
 }
+
+
+RUBY, RUBY RT {
+	text-indent:0;
+}
+
+#IFNDEF GECKO
+RUBY RT, 
+RUBY RP {
+	font-size:70%; 
+	font-weight:normal;
+}
+RUBY RT,
+RUBY RB {
+	margin-right:.7em;
+}
+#ENDIF
+
+#IFDEF GECKO
+RUBY {
+	display:inline-block;
+}
+RUBY RP {
+	display:none;
+}
+
+RUBY RT {
+	display:table-caption;
+	line-height:normal;
+	font-size:70%;
+	font-weight:normal;
+	text-align:center;
+}
+RUBY RB {
+	display:table-cell;
+	line-height:1em;
+}
+RUBY RBC {
+	display:table-row;
+}
+RB, RT, 
+RBC, RTC { 
+	white-space:nowrap;
+}
+#ENDIF

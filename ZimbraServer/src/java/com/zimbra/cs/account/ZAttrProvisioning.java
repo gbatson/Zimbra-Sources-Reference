@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20120319-1235 */
+    /* build: 7.0.0_BETA1_1111 rgadipuuri 20120726-0313 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -4158,6 +4158,16 @@ public class ZAttrProvisioning {
     public static final String A_zimbraHsmAge = "zimbraHsmAge";
 
     /**
+     * Maximum number of items to move during a single HSM operation. If the
+     * limit is exceeded, the HSM operation is repeated until all qualifying
+     * items are moved.
+     *
+     * @since ZCS 7.2.1
+     */
+    @ZAttr(id=1316)
+    public static final String A_zimbraHsmBatchSize = "zimbraHsmBatchSize";
+
+    /**
      * The policy that determines which mail items get moved to secondary
      * storage during HSM. Each value specifies a comma-separated list of
      * item types and the search query used to select items to move. See the
@@ -5606,7 +5616,8 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMtaDnsLookupsEnabled = "zimbraMtaDnsLookupsEnabled";
 
     /**
-     * Value for postconf message_size_limit
+     * Maximum total size of a mail message. Enforced in mailbox server and
+     * also used as value for postconf message_size_limit
      */
     @ZAttr(id=198)
     public static final String A_zimbraMtaMaxMessageSize = "zimbraMtaMaxMessageSize";
@@ -7523,7 +7534,8 @@ public class ZAttrProvisioning {
     public static final String A_zimbraProxyAllowedDomains = "zimbraProxyAllowedDomains";
 
     /**
-     * Content types that can be cached by proxy servlet
+     * Deprecated since: 7.2.1. Deprecated per bug 74769. Orig desc: Content
+     * types that can be cached by proxy servlet
      */
     @ZAttr(id=303)
     public static final String A_zimbraProxyCacheableContentTypes = "zimbraProxyCacheableContentTypes";

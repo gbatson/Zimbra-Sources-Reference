@@ -265,8 +265,16 @@ public class CSMigrationWrapper
         }
         catch (Exception e)
         {
+            // FBS bug 73020 -- 4/18/12
+            string tmp = msg;
             msg = string.Format("GetListofMapiProfiles Exception: {0}", e.Message);
-
+            if (tmp.Length > 0)
+            {
+                if (tmp.Substring(0, 11) == "No profiles")
+                {
+                    msg = "No profiles";
+                }
+            }
             s[0]= msg;
         }
         return s;
@@ -465,6 +473,9 @@ public class CSMigrationWrapper
                             Log.err("exception in ProcessItems->itemobject.GetDataForItemID", e.Message);
                             continue;
                         }
+                        //check if data is valid
+                        if (data == null)
+                            continue;
 
                         int bound0 = data.GetUpperBound(0);
                         if (bound0 > 0)
@@ -550,6 +561,13 @@ public class CSMigrationWrapper
                                     try
                                     {
                                         stat = api.AddMessage(dict);
+                                        if (stat != 0)
+                                        {
+                                            Acct.LastProblemInfo = new ProblemInfo(dict["Subject"], api.LastError,
+                                                                                   ProblemInfo.TYPE_ERR);
+                                            Acct.TotalErrors++;
+                                            bError = true;
+                                        }
                                     }
                                     catch (Exception e)
                                     {
@@ -605,6 +623,14 @@ public class CSMigrationWrapper
                                     {
                                         dict.Add("accountNum", Acct.AccountNum.ToString());
                                         stat = api.AddAppointment(dict, path);
+                                        if (stat != 0)
+                                        {
+                                            Acct.LastProblemInfo = new ProblemInfo(dict["su"], api.LastError,
+                                                                                   ProblemInfo.TYPE_ERR);
+                                            Acct.TotalErrors++;
+                                            bError = true;
+                                        }
+
                                     }
                                     catch(Exception e)
                                     {
@@ -667,8 +693,8 @@ public class CSMigrationWrapper
         }
     }
 
-    public void StartMigration(MigrationAccount Acct, MigrationOptions options, bool
-        isServer = true, LogLevel isVerbose=LogLevel.Info, bool isPreview = false)
+    public void StartMigration(MigrationAccount Acct, MigrationOptions options, bool isServer = true,
+        LogLevel isVerbose = LogLevel.Info, bool isPreview = false, bool doRulesAndOOO = true)      
     {
         string accountName = "";
         dynamic[] folders = null;
@@ -771,7 +797,7 @@ public class CSMigrationWrapper
         }
         Log.info("Acct.TotalItems=", Acct.TotalItems.ToString());
 
-        ZimbraAPI api = new ZimbraAPI();
+        ZimbraAPI api = new ZimbraAPI(isServer);
 
         foreach (dynamic folder in folders)
         {
@@ -822,7 +848,7 @@ public class CSMigrationWrapper
         }
 
         // now do Rules
-        if (options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Rules))
+        if ((options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.Rules)) && (doRulesAndOOO))
         {
             string[,] data  = null;
             try
@@ -866,7 +892,7 @@ public class CSMigrationWrapper
         }
 
         // now do OOO
-        if (options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.OOO))
+        if ((options.ItemsAndFolders.HasFlag(ItemsAndFoldersOptions.OOO)) && (doRulesAndOOO))
         {
             bool isOOO = false;
             string ooo ="";

@@ -21,7 +21,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.EnumSet;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -295,6 +294,8 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
             return firmtResp.getFolders()
                 .getFolderOrCalendarFolderOrContactsFolder()
                 .get(0);
+        } else {
+            ZimbraLog.fb.error("Could not find the folder in Exchange : " + distinguishedFolderId.toString());
         }
 
         return null;
@@ -495,9 +496,11 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
     }
 
     public boolean handleMailboxChange(String accountId) {
+        ZimbraLog.fb.debug("Entering handleMailboxChange() for account : " + accountId);
         String email = getEmailAddress(accountId);
 		ServerInfo serverInfo = getServerInfo(email);
 		if (email == null || !serverInfo.enabled) {
+		    ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
 			return true;  // no retry
 		}
 		
@@ -506,18 +509,21 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
             fb = getFreeBusy(accountId, FreeBusyQuery.CALENDAR_FOLDER_ALL);
         } catch (ServiceException se) {
             ZimbraLog.fb.warn("can't get freebusy for account " + accountId, se);
+            ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
             // retry the request if it's receivers fault.
             return !se.isReceiversFault();
         }
         if (email == null || fb == null) {
             ZimbraLog.fb.warn("account not found / incorrect / wrong host: " +
                 accountId);
+            ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
             return true; // no retry
         }
 
         if (serverInfo == null || serverInfo.org == null ||
             serverInfo.cn == null) {
             ZimbraLog.fb.warn("no exchange server info for user " + email);
+            ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
             return true; // no retry
         }
         if (null == service) {
@@ -525,23 +531,27 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
                 if (!Initialize(serverInfo)) {
                     ZimbraLog.fb.error("failed to initialize exchange service object " +
                         serverInfo.url);
+                    ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
                     return true;
                 }
             } catch (MalformedURLException e) {
                 ZimbraLog.fb.error("exception while trying to initialize exchange service object " +
                     serverInfo.url);
+                ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
                 return true;
             }
         }
         ExchangeEWSMessage msg =
             new ExchangeEWSMessage(serverInfo.org, serverInfo.cn, email);
-        String url = serverInfo.url + msg.getUrl();
 
         try {
-            ZimbraLog.fb.debug("POST " + url);
             FolderType publicFolderRoot =
                 (FolderType)bindFolder(DistinguishedFolderIdNameType.PUBLICFOLDERSROOT,
                     DefaultShapeNamesType.ALL_PROPERTIES);
+            if (publicFolderRoot == null) {
+                ZimbraLog.fb.error("Could not find the public root folder on exchange");
+                return true;
+            }
             List<BaseFolderType> resultsNonIpm =
                 findFolderByProp(publicFolderRoot.getParentFolderId(),
                     UnindexedFieldURIType.FOLDER_DISPLAY_NAME,
@@ -718,16 +728,23 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
                                     .getValue();
 
                         }
-
+                    } else {
+                        ZimbraLog.fb.error("Could not find the Exchange folder containing '" + serverInfo.org + 
+                                "'. Make sure zimbraFreebusyExchangeUserOrg is configured correctly and it exists on Exchange");
                     }
+                } else {
+                    ZimbraLog.fb.error("Could not find the Exchange folder 'SCHEDULE+ FREE BUSY'");
                 }
-
+            } else {
+                ZimbraLog.fb.error("Could not find the Exchange folder 'NON_IPM_SUBTREE'");
             }
 
             return true;
 
         } catch (Exception e) {
             ZimbraLog.fb.error("error commucating to " + serverInfo.url, e);
+        } finally {
+            ZimbraLog.fb.debug("Exiting handleMailboxChange() for account : " + accountId);
         }
 
         return false;// retry
@@ -763,14 +780,12 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
             Duration duration = new Duration();
             DatatypeFactory datatypeFactory = DatatypeFactory.newInstance();
 
-            Date start = new Date(req.get(0).start);
-            GregorianCalendar gregorianCalStart = new GregorianCalendar();
-            gregorianCalStart.setTime(start);
+            GregorianCalendar gregorianCalStart = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
+            gregorianCalStart.setTimeInMillis(req.get(0).start);
             duration.setStartTime(datatypeFactory.newXMLGregorianCalendar(gregorianCalStart));
 
-            Date end = new Date(req.get(0).end);
-            GregorianCalendar gregorianCalEnd = new GregorianCalendar();
-            gregorianCalEnd.setTime(end);
+            GregorianCalendar gregorianCalEnd = new GregorianCalendar(TimeZone.getTimeZone("GMT"));
+            gregorianCalEnd.setTimeInMillis(req.get(0).end);
             duration.setEndTime(datatypeFactory.newXMLGregorianCalendar(gregorianCalEnd));
 
             FreeBusyViewOptionsType availabilityOpts =
@@ -783,8 +798,7 @@ public class ExchangeEWSFreeBusyProvider extends FreeBusyProvider {
                 new GetUserAvailabilityRequestType();
             // TODO: check if we need to set request timezone
             SerializableTimeZone timezone = new SerializableTimeZone();
-            timezone.setBias(TimeZone.getDefault().getRawOffset() / 1000 / 60 *
-                -1);
+            timezone.setBias(0);
             SerializableTimeZoneTime standardTime =
                 new SerializableTimeZoneTime();
             standardTime.setTime("00:00:00");

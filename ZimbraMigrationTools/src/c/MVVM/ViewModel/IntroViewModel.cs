@@ -80,6 +80,7 @@ public class IntroViewModel: BaseViewModel
             {
                 m_scheduleViewModel.SchedList.Clear();
             }
+            m_optionsViewModel.OEnableRulesAndOOO = m_configViewModelU.Isprofile;
             m_optionsViewModel.OEnableNext = !m_scheduleViewModel.IsComplete();
         }
     }
@@ -98,6 +99,7 @@ public class IntroViewModel: BaseViewModel
             BaseViewModel.isServer = true;
             IsServerMigration = true;
             IsUserMigration = false;
+            m_optionsViewModel.OEnableRulesAndOOO = true;
             Application.Current.Properties["migrationmode"] = "server";
             AddViews(m_isBrowser);
         }
@@ -127,22 +129,43 @@ public class IntroViewModel: BaseViewModel
 
         // Get data to initialize the profile combo boxes
         string[] profiles = mw.GetListofMapiProfiles();
-        foreach (string s in profiles)
+        if (profiles[0].IndexOf("No profiles") != -1)
         {
-            if (s.IndexOf("GetListofMapiProfiles Exception") != -1)
+            string msg = "No Exchange profiles exist.  ";
+            if (isServer)
             {
-                MessageBox.Show(s, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);                               
-                return;
+                msg += "Please enter the Exchange Server information manually.";
+                m_configViewModelS.Isprofile = false;
+                m_configViewModelS.IsmailServer = true;
+            }
+            else
+            {
+                msg += "Please enter a PST file.";
+                m_configViewModelU.Isprofile = false;
+                m_configViewModelU.IspST = true;
+            }
+            MessageBox.Show(msg, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Information);
+            m_configViewModelS.CSEnableNext = true;
+        }
+        else
+        {
+            foreach (string s in profiles)
+            {
+                if (s.IndexOf("GetListofMapiProfiles Exception") != -1)
+                {
+                    MessageBox.Show(s, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                if (isServer)
+                    m_configViewModelS.ProfileList.Add(s);
+                else
+                    m_configViewModelU.ProfileList.Add(s);
             }
             if (isServer)
-                m_configViewModelS.ProfileList.Add(s);
+                m_configViewModelS.CSEnableNext = (m_configViewModelS.ProfileList.Count > 0);
             else
-                m_configViewModelU.ProfileList.Add(s);
+                m_configViewModelU.CSEnableNext = (m_configViewModelU.ProfileList.Count > 0);
         }
-        if (isServer)
-            m_configViewModelS.CSEnableNext = (m_configViewModelS.ProfileList.Count > 0);
-        else
-            m_configViewModelU.CSEnableNext = (m_configViewModelU.ProfileList.Count > 0);
         lb.SelectedIndex = 1;
     }
     public string BuildNum {
@@ -274,9 +297,12 @@ public class IntroViewModel: BaseViewModel
         m_optionsViewModel.ImportSentOptions = false;
         m_optionsViewModel.LoggingVerbose = false;
         m_optionsViewModel.LogLevel = LogLevel.Info.ToString();
+        m_optionsViewModel.MaxThreadCount = 0;
+        m_optionsViewModel.OEnableRulesAndOOO = true;
         m_optionsViewModel.OEnableNext = true;
         m_optionsViewModel.MigrateONRAfter = (DateTime.Now.AddMonths(-3)).ToShortDateString();
         m_optionsViewModel.IsMaxMessageSize = false;
+        m_optionsViewModel.IsSkipPrevMigratedItems = false;
         m_optionsViewModel.MaxMessageSize = "";
         m_optionsViewModel.IsSkipFolders = false;
 

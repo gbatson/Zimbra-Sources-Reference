@@ -231,6 +231,12 @@ public abstract class ArchiveFormatter extends Formatter {
             if (types != null && !types.equals("")) {
                 Arrays.sort(searchTypes = MailboxIndex.parseTypesString(types));
                 sysTypes = new byte[0];
+                // remove the conversation if specified.
+                int idx = Arrays.binarySearch(searchTypes, MailItem.TYPE_CONVERSATION);
+                if (idx >= 0) {
+                    System.arraycopy(searchTypes, idx+1, searchTypes, idx, searchTypes.length-1-idx);
+                    searchTypes = Arrays.copyOf(searchTypes, searchTypes.length-1);
+                }
             }
             if (lock != null && (lock.equals("1") || lock.equals("t") ||
                     lock.equals("true"))) {
@@ -503,6 +509,15 @@ public abstract class ArchiveFormatter extends Formatter {
             }
             if (aos == null)
                 aos = getOutputStream(context, charsetEncoder.charset().name());
+
+            if ((mi instanceof CalendarItem) &&
+                    (context.getStartTime() != TIME_UNSPECIFIED || context.getEndTime() != TIME_UNSPECIFIED)) {
+                Collection<Instance> instances = ((CalendarItem)mi).expandInstances(
+                        context.getStartTime(), context.getEndTime(), false);
+                if (instances.isEmpty())
+                    return aos;
+            }
+
             aoe = aos.newOutputEntry(path + ".meta",
                 MailItem.getNameForType(mi), mi.getType(), mi.getDate());
             if (mi instanceof Message && (mi.getFlagBitmask() &
@@ -525,23 +540,17 @@ public abstract class ArchiveFormatter extends Formatter {
                 aos.closeEntry();
             } else if (mi instanceof CalendarItem) {
                 Browser browser = HttpUtil.guessBrowser(context.req);
-                CalendarItem ci = (CalendarItem)mi;
                 List<CalendarItem> calItems = new ArrayList<CalendarItem>();
-                Collection<Instance> instances = ci.expandInstances(
-                    context.getStartTime(), context.getEndTime(), false);
                 boolean needAppleICalHacks = Browser.APPLE_ICAL.equals(browser);
                 boolean useOutlookCompatMode = Browser.IE.equals(browser);
                 OperationContext octxt = new OperationContext(
                         context.getAuthAccount(), context.isUsingAdminPrivileges());
                 StringWriter writer = new StringWriter();
-
-                if (!instances.isEmpty()) {
-                    calItems.add(ci);
-                    context.targetMailbox.writeICalendarForCalendarItems(
+                calItems.add((CalendarItem)mi);
+                context.targetMailbox.writeICalendarForCalendarItems(
                         writer, octxt, calItems, useOutlookCompatMode, true,
                         needAppleICalHacks, true);
-                    data = writer.toString().getBytes(charsetEncoder.charset());
-                }
+                data = writer.toString().getBytes(charsetEncoder.charset());
             } else if (mi instanceof Contact) {
                 VCard vcf = VCard.formatContact((Contact)mi);
 
@@ -713,6 +722,10 @@ public abstract class ArchiveFormatter extends Formatter {
     @Override
     public void saveCallback(UserServletContext context, String contentType, Folder fldr,
             String file) throws IOException, ServiceException {
+
+        // Disable the jetty timeout
+        disableJettyTimeout();
+
         Exception ex = null;
         ItemData id = null;
         Map<String, Integer> digestMap = new HashMap<String, Integer>();
@@ -761,8 +774,10 @@ public abstract class ArchiveFormatter extends Formatter {
             try {
                 ais = getInputStream(context, charset.name());
             } catch (Exception e) {
+                if (e instanceof UserServletException && ((UserServletException) e).getHttpStatusCode() == HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE) {
+                    throw FormatterServiceException.UNKNOWN_ERROR(e);
+                }
                 String filename = context.params.get(UserServlet.UPLOAD_NAME);
-
                 throw FormatterServiceException.INVALID_FORMAT(filename == null ?
                     "unknown" : filename);
             }

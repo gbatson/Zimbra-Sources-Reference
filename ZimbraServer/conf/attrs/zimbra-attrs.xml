@@ -1172,7 +1172,7 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
 
 <attr id="198" name="zimbraMtaMaxMessageSize" type="long" min="0" cardinality="single" optionalIn="globalConfig" flags="accountInfo" requiresRestart="mta">
   <globalConfigValue>10240000</globalConfigValue>
-  <desc>Value for postconf message_size_limit</desc>
+  <desc>Maximum total size of a mail message. Enforced in mailbox server and also used as value for postconf message_size_limit</desc>
 </attr>
 
 <attr id="199" name="zimbraMtaRelayHost" type="astring" max="256" cardinality="multi" optionalIn="globalConfig,server" flags="serverInherited" requiresRestart="mta" callback="MtaRelayHost">
@@ -1620,10 +1620,11 @@ TODO - add support for multi-line values in globalConfigValue and defaultCOSValu
   <desc>Object match priority</desc>
 </attr>
 
-<attr id="303" name="zimbraProxyCacheableContentTypes" type="string" max="256" cardinality="multi" optionalIn="cos">
+<attr id="303" name="zimbraProxyCacheableContentTypes" type="string" max="256" cardinality="multi" optionalIn="cos" deprecatedSince="7.2.1">
   <defaultCOSValue>text/javascript</defaultCOSValue>
   <defaultCOSValue>application/x-javascript</defaultCOSValue>
   <desc>Content types that can be cached by proxy servlet</desc>
+  <deprecateDesc>Deprecated per bug 74769</deprecateDesc>
 </attr>
 
 <attr id="304" name="zimbraZimletIsExtension" type="boolean" cardinality="single" optionalIn="zimletEntry">
@@ -5673,6 +5674,11 @@ TODO: delete them permerntly from here
 <attr id="1269" name="zimbraZimletDataSensitiveInMixedModeDisabled" type="boolean" cardinality="single" optionalIn="domain,globalConfig" flags="domainInfo,domainInherited" since="7.1.3">
   <globalConfigValue>TRUE</globalConfigValue>
   <desc>whether zimlets that send sensitive data are disabled in "mixed" zimbraMailMode</desc>
+</attr>
+
+<attr id="1316" name="zimbraHsmBatchSize" type="integer" min="1" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="7.2.1">
+  <globalConfigValue>10000</globalConfigValue>
+  <desc>Maximum number of items to move during a single HSM operation.  If the limit is exceeded, the HSM operation is repeated until all qualifying items are moved.</desc>
 </attr>
 
 <attr id="1335" name="zimbraReverseProxyUpstreamReadTimeout" type="duration" min="0" cardinality="single" optionalIn="globalConfig,server" flags="serverInherited" since="7.1.4">

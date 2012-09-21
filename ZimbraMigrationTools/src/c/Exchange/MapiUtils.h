@@ -197,6 +197,8 @@ wstring SetHtml(LPMESSAGE pMessage, LPSPropValue lpv);
 wstring CommonDateString(FILETIME ft);
 
 LPWSTR EscapeCategoryName(LPCWSTR pwszOrigCategoryName);
+CString GetGUID();
+void GetContentTypeFromExtension(LPSTR pExt, LPSTR &pContentType);
 
 namespace CharsetUtil
 {
@@ -249,9 +251,10 @@ BOOL GetAppTemporaryDirectory(wstring &wstrTempAppDirPath);
 wstring GetUniqueName();
 bool GetDomainName(wstring &wstrDomain);
 LONG GetOutlookVersion(int &iVersion);
-BOOL CreatePSTProfile(LPSTR lpstrProfileName, LPSTR lpstrPSTFQPathName, bool bNoUI = true);
+BOOL CreatePSTProfile(LPSTR lpstrProfileName, LPSTR lpstrPSTFQPathName, bool bNoUI = false);
 BOOL DeleteAlikeProfiles(LPCSTR lpstrProfileName);
 bool SetOLProfileRegistryEntries(LPCWSTR strProfileName);
+bool DumpContentsToFile(LPTSTR pBody, string strFilePath,bool isAscii);
 }                                               // end Util
 }                                               // end MAPI
 }                                               // end Zimbra

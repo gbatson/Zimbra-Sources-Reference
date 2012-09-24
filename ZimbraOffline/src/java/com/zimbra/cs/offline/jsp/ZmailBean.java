@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,22 +17,22 @@ package com.zimbra.cs.offline.jsp;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.offline.OfflineLog;
-import com.zimbra.cs.account.DataSource.ConnectionType;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.offline.common.OfflineConstants.SyncMsgOptions;
 import com.zimbra.cs.offline.jsp.JspConstants.JspVerb;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 public class ZmailBean extends MailBean {
     public ZmailBean() {
         port = "443";
-        connectionType = DataSource.ConnectionType.ssl;
+        connectionType = ConnectionType.ssl;
         syncFreqSecs = 0;
         type = "zimbra";
     }
@@ -55,7 +55,7 @@ public class ZmailBean extends MailBean {
         host = account.getAttr(JspConstants.OFFLINE_REMOTE_HOST);
         port = account.getAttr(JspConstants.OFFLINE_REMOTE_PORT);
         boolean ssl = account.getBooleanAttr(JspConstants.OFFLINE_REMOTE_SSL, false);
-        connectionType = ssl ? DataSource.ConnectionType.ssl : DataSource.ConnectionType.cleartext;
+        connectionType = ssl ? ConnectionType.ssl : ConnectionType.cleartext;
         syncFreqSecs = account.getTimeIntervalSecs(OfflineConstants.A_offlineSyncFreq, 0);
         syncFixedDate = account.getAttr(OfflineConstants.A_offlinesyncFixedDate);
         syncRelativeDate = account.getAttr(OfflineConstants.A_offlinesyncRelativeDate);
@@ -103,7 +103,7 @@ public class ZmailBean extends MailBean {
                 }
 
                 if (isAllOK()) {
-                    attrs.put(OfflineConstants.A_offlineAccountSetup, Provisioning.TRUE);
+                    attrs.put(OfflineConstants.A_offlineAccountSetup, ProvisioningConstants.TRUE);
 
                     attrs.put(Provisioning.A_zimbraPrefLabel, accountName);
                     attrs.put(OfflineConstants.A_offlineRemoteServerUri,
@@ -130,17 +130,17 @@ public class ZmailBean extends MailBean {
                         break;
                     }
                     attrs.put(OfflineConstants.A_offlineEnableTrace,
-                        isDebugTraceEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+                        isDebugTraceEnabled ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
                     //setting the expire old emails to true as default value
                     attrs.put(OfflineConstants.A_offlineEnableExpireOldEmails,
-                            isExpireOldEmailsEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+                            isExpireOldEmailsEnabled ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
                     if (!password.equals(JspConstants.MASKED_PASSWORD))
                         attrs.put(OfflineConstants.A_offlineRemotePassword, password);
                     if (sslCertAlias != null && sslCertAlias.length() > 0)
                         attrs.put(OfflineConstants.A_offlineSslCertAlias, sslCertAlias);
                     attrs.put(JspConstants.OFFLINE_REMOTE_HOST, host);
                     attrs.put(JspConstants.OFFLINE_REMOTE_PORT, port);
-                    attrs.put(JspConstants.OFFLINE_REMOTE_SSL, isSsl() ? Provisioning.TRUE : Provisioning.FALSE);
+                    attrs.put(JspConstants.OFFLINE_REMOTE_SSL, isSsl() ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
                 }
             }
 
@@ -157,7 +157,6 @@ public class ZmailBean extends MailBean {
                     } else if (verb.isReset()) {
                         stub.resetOfflineAccount(accountId);
                     } else if (verb.isDelete()) {
-                        OfflineLog.offline.debug("deleting account %s",accountId);
                         stub.deleteOfflineAccount(accountId);
                     } else if (verb.isReindex()) {
                         stub.reIndex(accountId);

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,7 +22,7 @@ import java.util.HashMap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.ldap.LdapUtil;
 
 public class GalSyncToken {
 	public GalSyncToken(String token) {
@@ -94,6 +94,10 @@ public class GalSyncToken {
 	
 	public boolean doMailboxSync() {
 		return mLdapTimestamp.length() == 0 || mChangeIdMap.size() > 0;
+	}
+	
+	public boolean isEmpty() {
+	    return mLdapTimestamp.length() == 0 && mChangeIdMap.size() == 0;
 	}
 	
 	public void merge(GalSyncToken that) {

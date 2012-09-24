@@ -1,26 +1,20 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on Apr 10, 2004
- *
- * TODO To change the template for this generated file go to
- * Window - Preferences - Java - Code Generation - Code and Comments
- */
 package com.zimbra.cs.db;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 
@@ -29,10 +23,11 @@ import org.apache.commons.dbcp.PoolingDataSource;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.Mailbox;
 
 /**
+ * @since Apr 10, 2004
  * @author schemers
  */
 public abstract class Db {
@@ -44,7 +39,11 @@ public abstract class Db {
         FOREIGN_KEY_NO_PARENT,
         NO_SUCH_DATABASE,
         NO_SUCH_TABLE,
-        TOO_MANY_SQL_PARAMS;
+        TOO_MANY_SQL_PARAMS,
+        BUSY,
+        LOCKED,
+        CANTOPEN,
+        TABLE_FULL;
     }
 
     public static enum Capability {
@@ -67,10 +66,9 @@ public abstract class Db {
         AVOID_OR_IN_WHERE_CLAUSE, // if set, then try to avoid ORs in WHERE clauses, run them as separate queries and mergesort in memory
         REQUEST_UTF8_UNICODE_COLLATION, // for mysql
         FORCE_INDEX_EVEN_IF_NO_SORT, // for derby
-        SQL_PARAM_LIMIT
-        ;
+        SQL_PARAM_LIMIT,
+        DUMPSTER_TABLES;
     }
-
 
     private static Db sDatabase;
 
@@ -90,7 +88,6 @@ public abstract class Db {
         return sDatabase;
     }
 
-
     /** Returns whether the currently-configured database supports the given
      *  {@link Db.Capability}. */
     public static boolean supports(Db.Capability capability) {
@@ -99,7 +96,6 @@ public abstract class Db {
 
     abstract boolean supportsCapability(Db.Capability capability);
 
-
     /** Returns whether the given {@link SQLException} is an instance of the
      *  specified {@link Db.Error}. */
     public static boolean errorMatches(SQLException e, Db.Error error) {
@@ -107,7 +103,6 @@ public abstract class Db {
     }
 
     abstract boolean compareError(SQLException e, Db.Error error);
-
 
     /** Returns the set of configuration settings necessary to initialize the
      *  appropriate database connection pool.
@@ -118,6 +113,7 @@ public abstract class Db {
      *  connection pool.  Permits the DB implementation to iterate over
      *  the connections or to operate on the pool itself before any
      *  connections are returned to callers. */
+    @SuppressWarnings("unused")
     void startup(PoolingDataSource pool, int poolSize) throws SQLException {
         // default is to do nothing
     }
@@ -129,16 +125,31 @@ public abstract class Db {
         // default is to do nothing
     }
 
-    /** Callback invoked immediately after a new connection is created for
-     *  the pool. */
-    void postCreate(java.sql.Connection conn) throws SQLException {
+    /** Callback invoked immediately after a new connection is created for the pool. */
+    @SuppressWarnings("unused")
+    void postCreate(Connection conn) throws SQLException {
         // default is to do nothing
     }
 
     /** Callback invoked immediately before a connection is fetched from
      *  the pool and returned to the user. */
-    void postOpen(Connection conn) throws SQLException {
+    @SuppressWarnings("unused")
+    void postOpen(DbConnection conn) throws SQLException {
         // default is to do nothing
+    }
+
+    /**
+     * Called before opening a connection; used to enforce any preconditions the database may require
+     */
+    void preOpen(Integer mboxId) {
+        //default do nothing
+    }
+    
+    /**
+     * Called when connection attempt is aborted, so shared resources can be released
+     */
+    void abortOpen(Integer mboxId) {
+        //default do nothing
     }
 
     /** optimize and optionally compact a database
@@ -146,12 +157,13 @@ public abstract class Db {
      * level 1: quick file optimization and analysis
      * level 2: full file optimization and analysis
      */
-    public void optimize(Connection conn, String name, int level) throws ServiceException {}
+    @SuppressWarnings("unused")
+    public void optimize(DbConnection conn, String name, int level) throws ServiceException {}
 
     /** Indicates that the connection will be accessing the given Mailbox's
      *  database in the scope of the current transaction.  Must be called
      *  <em>before</em> any SQL commands are executed in the transaction. */
-    public static void registerDatabaseInterest(Connection conn, Mailbox mbox) throws ServiceException {
+    public static void registerDatabaseInterest(DbConnection conn, Mailbox mbox) throws ServiceException {
         try {
             getInstance().registerDatabaseInterest(conn, DbMailbox.getDatabaseName(mbox));
         } catch (SQLException e) {
@@ -159,30 +171,31 @@ public abstract class Db {
         }
     }
 
-    void registerDatabaseInterest(Connection conn, String dbname) throws SQLException, ServiceException {
+    @SuppressWarnings("unused")
+    void registerDatabaseInterest(DbConnection conn, String dbname) throws SQLException, ServiceException {
         // default is to do nothing
     }
 
     /** Callback invoked immediately before a connection is returned to the
      *  pool by the user.  Note that <tt>COMMIT</tt>/<tt>ROLLBACK</tt> must
      *  already have been called before this method is invoked. */
-    void preClose(Connection conn) throws SQLException {
+    @SuppressWarnings("unused")
+    void preClose(DbConnection conn) throws SQLException {
         // default is to do nothing
     }
 
 
     /** Returns <tt>true</tt> if the database with the given name exists. */
-    abstract public boolean databaseExists(Connection conn, String dbname)
+    abstract public boolean databaseExists(DbConnection conn, String dbname)
     throws ServiceException;
 
     /** Callback executed immediately before creating a user database. */
     void precreateDatabase(String dbname)  { }
 
-    void deleteDatabaseFile(Connection conn, String dbname) {
+    void deleteDatabaseFile(DbConnection conn, String dbname) {
         // not supported by default
         throw new UnsupportedOperationException("DB is not file-per-database");
     }
-
 
     /** Generates the correct SQL to direct the current database engine to use
      *  a particular index to perform a SELECT query.  This string should come
@@ -206,7 +219,7 @@ public abstract class Db {
     }
 
     private static final int DEFAULT_IN_CLAUSE_BATCH_SIZE = 400;
-    
+
     protected int getInClauseBatchSize() { return DEFAULT_IN_CLAUSE_BATCH_SIZE; }
 
     /** Returns the maximum number of items to include in an "IN (?, ?, ...)"
@@ -221,10 +234,11 @@ public abstract class Db {
      *  clause that evaluates to 1 when the given BOOLEAN clause is true and
      *  0 when it's false. */
     static String selectBOOLEAN(String clause) {
-        if (supports(Capability.BOOLEAN_DATATYPE))
+        if (supports(Capability.BOOLEAN_DATATYPE)) {
             return clause;
-        else
+        } else {
             return "CASE WHEN " + clause + " THEN 1 ELSE 0 END";
+        }
     }
 
     /** Generates a WHERE-type clause that evaluates to true when the given
@@ -233,10 +247,11 @@ public abstract class Db {
      *  pass an upcased version of the comparison string in the subsequent
      *  call to <tt>stmt.setString()</tt>. */
     static String equalsSTRING(String column) {
-        if (supports(Capability.CASE_SENSITIVE_COMPARISON))
+        if (supports(Capability.CASE_SENSITIVE_COMPARISON)) {
             return "UPPER(" + column + ") = UPPER(?)";
-        else
+        } else {
             return column + " = ?";
+        }
     }
 
     /** Generates a WHERE-type clause that evaluates to true when the given
@@ -245,37 +260,23 @@ public abstract class Db {
      *  the caller *MUST NOT* pass an upcased version of the comparison string in
      *  the subsequent call to <tt>stmt.setString()</tt>. */
     static String likeSTRING(String column) {
-        if (supports(Capability.CASE_SENSITIVE_COMPARISON))
+        if (supports(Capability.CASE_SENSITIVE_COMPARISON)) {
             return "UPPER(" + column + ") LIKE UPPER(?)";
-        else
+        } else {
             return column + " LIKE ?";
+        }
     }
 
+    /**
+     * Generates a bitwise AND on two values.
+     */
+    public abstract String bitAND(String expr1, String expr2);
 
-    /** Generates a WHERE-type clause that evaluates to true when the given
-     *  column matches a bitmask later specified by <tt>stmt.setLong()</tt>.
-     *  Note that this is only valid when the bitmask has only 1 bit set. */
-    static String bitmaskAND(String column) {
-        if (supports(Capability.BITWISE_OPERATIONS))
-            return column + " & ?";
-        else
-            return "MOD(" + column + " / ?, 2) = 1";
-    }
-
-    /** Generates a WHERE-type clause that evaluates to true when the given
-     *  column matches the given bitmask.  Note that this is only valid when
-     *  the bitmask has only 1 bit set. */
-    static String bitmaskAND(String column, long bitmask) {
-        if (supports(Capability.BITWISE_OPERATIONS))
-            return column + " & " + bitmask;
-        else
-            return "MOD(" + column + " / " + bitmask + ", 2) = 1";
-    }
-    
+    @SuppressWarnings("unused")
     public void enableStreaming(Statement stmt) throws SQLException {}
 
-    /** Generates a WHERE-type clause that evaluates to <code>expr1</code> if
-     *  its value is non-<tt>NULL</tt> and <code>expr2</code> otherwise. */
+    /** Generates a WHERE-type clause that evaluates to {@code expr1} if
+     *  its value is non-<tt>NULL</tt> and {@code expr2} otherwise. */
     public static String clauseIFNULL(String expr1, String expr2) {
         return getInstance().getIFNULLClause(expr1, expr2);
     }
@@ -292,5 +293,42 @@ public abstract class Db {
      * @param numParams
      */
     public void checkParamLimit(int numParams) throws ServiceException {
+    }
+    
+    /**
+     * Concatenates two or more fields.
+     */
+    public abstract String concat(String... fieldsToConcat);
+    
+    /**
+     * Generates the sign value of the field.
+     */
+    public abstract String sign(String field);
+    
+    /**
+     * Pads to the left end of the field.
+     */
+    public abstract String lpad(String field, int padSize, String padString);
+    
+    /** Returns a {@code LIMIT} clause that is appended to a {@code SELECT}
+     *  statement to limit the number of rows in the result set.  If the
+     *  database does not support this feature, returns an empty string.
+     * 
+     * @param limit number of rows to return */
+    public String limit(int limit) {
+        return limit(0, limit);
+    }
+    
+    /**
+     * Returns a {@code LIMIT} clause that is appended to a {@code SELECT} statement
+     * to limit the number of rows in the result set.  If the database does not support
+     * this feature, returns an empty string.
+     * 
+     * @param offset number of rows at the beginning of the result set that will be skipped
+     * @param limit number of rows to return
+     * @return
+     */
+    public String limit(int offset, int limit) {
+        return "";
     }
 }

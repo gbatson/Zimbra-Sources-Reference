@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@
  */
 package com.zimbra.cs.service.admin;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
@@ -25,9 +26,11 @@ import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.cs.account.SearchDirectoryOptions;
+import com.zimbra.cs.account.SearchDirectoryOptions.SortOpt;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 import com.zimbra.cs.session.AdminSession;
 import com.zimbra.cs.session.Session;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -64,17 +67,12 @@ public class SearchAccounts extends AdminDocumentHandler {
         String types = request.getAttribute(AdminConstants.A_TYPES, "accounts");
         boolean sortAscending = request.getAttributeBool(AdminConstants.A_SORT_ASCENDING, true);
 
-        int flags = Provisioning.searchAccountStringToMask(types);
-
         String[] attrs = attrsStr == null ? null : attrsStr.split(",");
 
         // if we are a domain admin only, restrict to domain
         //
         // Note: isDomainAdminOnly *always* returns false for pure ACL based AccessManager 
         if (isDomainAdminOnly(zsc)) {
-            if ((flags & Provisioning.SA_DOMAIN_FLAG) == Provisioning.SA_DOMAIN_FLAG)
-                throw ServiceException.PERM_DENIED("can not search for domains");
-
             if (domain == null) {
                 domain = getAuthTokenAccountDomain(zsc).getName();
             } else {
@@ -84,7 +82,7 @@ public class SearchAccounts extends AdminDocumentHandler {
 
         Domain d = null;
         if (domain != null) {
-            d = prov.get(DomainBy.name, domain);
+            d = prov.get(Key.DomainBy.name, domain);
             if (d == null)
                 throw AccountServiceException.NO_SUCH_DOMAIN(domain);
         }
@@ -93,16 +91,19 @@ public class SearchAccounts extends AdminDocumentHandler {
         AdminAccessControl.SearchDirectoryRightChecker rightChecker = 
             new AdminAccessControl.SearchDirectoryRightChecker(aac, prov, null);
         
+        
+        SearchDirectoryOptions searchOpts = new SearchDirectoryOptions(d, attrs);
+        searchOpts.setTypes(types);
+        searchOpts.setSortOpt(sortAscending ? SortOpt.SORT_ASCENDING : SortOpt.SORT_DESCENDING);
+        searchOpts.setSortAttr(sortBy);
+        searchOpts.setFilterString(FilterId.ADMIN_SEARCH, query);
+            
         List accounts;
         AdminSession session = (AdminSession) getSession(zsc, Session.Type.ADMIN);
         if (session != null) {
-            accounts = session.searchAccounts(d, query, attrs, sortBy, sortAscending, flags, offset, 0, rightChecker);
+            accounts = session.searchDirectory(searchOpts, offset, rightChecker);
         } else {
-            if (d != null) {
-                accounts = prov.searchAccounts(d, query, attrs, sortBy, sortAscending, flags);
-            } else {
-                accounts = prov.searchAccounts(query, attrs, sortBy, sortAscending, flags);
-            }
+            accounts = prov.searchDirectory(searchOpts);
             accounts = rightChecker.getAllowed(accounts);
         }
 

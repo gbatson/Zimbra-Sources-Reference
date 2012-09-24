@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,20 +14,42 @@
  */
 package com.zimbra.cs.account;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
+import com.google.common.base.Strings;
+import com.sun.mail.smtp.SMTPMessage;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants.ShareConstants;
+import com.zimbra.common.soap.SoapProtocol;
+import com.zimbra.common.util.BlobMetaData;
+import com.zimbra.common.util.L10nUtil;
+import com.zimbra.common.util.L10nUtil.MsgKey;
+import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.common.zmime.ZMimeBodyPart;
+import com.zimbra.common.zmime.ZMimeMultipart;
+import com.zimbra.cs.account.Provisioning.GroupMembership;
+import com.zimbra.cs.account.Provisioning.PublishedShareInfoVisitor;
+import com.zimbra.cs.ldap.ZLdapFilterFactory;
+import com.zimbra.cs.mailbox.ACL;
+import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.Mailbox.FolderNode;
+import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MetadataList;
+import com.zimbra.cs.mailbox.Mountpoint;
+import com.zimbra.cs.mailbox.OperationContext;
+import com.zimbra.cs.mailbox.acl.AclPushSerializer;
+import com.zimbra.cs.servlet.ZimbraServlet;
+import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.JMSession;
+import com.zimbra.soap.mail.message.SendShareNotificationRequest.Action;
+import org.apache.commons.codec.binary.Hex;
+import org.dom4j.QName;
 
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
@@ -38,59 +60,26 @@ import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
-
-import com.sun.mail.smtp.SMTPMessage;
-import com.zimbra.common.mime.MimeConstants;
-import com.zimbra.common.mime.shim.JavaMailInternetAddress;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.L10nUtil;
-import com.zimbra.common.util.L10nUtil.MsgKey;
-import com.zimbra.common.util.Pair;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.zmime.ZMimeBodyPart;
-import com.zimbra.common.zmime.ZMimeMultipart;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.AclGroups;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.PublishedShareInfoVisitor;
-import com.zimbra.cs.mailbox.ACL;
-import com.zimbra.cs.mailbox.ACL.Grant;
-import com.zimbra.cs.mailbox.Folder;
-import com.zimbra.cs.mailbox.MailItem;
-import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.Mailbox.FolderNode;
-import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.MetadataList;
-import com.zimbra.cs.mailbox.Mountpoint;
-import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.util.JMSession;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 
 public class ShareInfo {
 
-    private static String S_DELIMITER = ";";
-
-    // these two keys are set on our owne Metadata object
-    private static final String MD_OWNER_EMAIL = "e";
-    private static final String MD_OWNER_DISPLAY_NAME = "d";
-    private static final String MD_FOLDER_PATH  = "f";
-    private static final String MD_FOLDER_DEFAULT_VIEW  = "v";
-
-    /*
-     * note: these two keys are set on the same Metadata object as the
-     *       one set by ACL.  make sure name is not clashed.
-     */
-    // for usr/group/guest grantees, this would be the email,
-    // for other grantees e.g. cos, domain, this would be name of the cos/domain
-    // currently, we can only publish on DL(group), so MD_GRANTEE_NAME will
-    // contain the email address of the DL, and MD_GRANTEE_DISPLAY_NAME will
-    // contain the displayName of the DL if set, otherwise empty.
-    private static final String MD_GRANTEE_NAME = "gn";
-    private static final String MD_GRANTEE_DISPLAY_NAME = "gd";
+//    private static String S_DELIMITER = ";";
 
     protected ShareInfoData mData;
 
@@ -117,61 +106,59 @@ public class ShareInfo {
         mData = new ShareInfoData();
     }
 
-    private ShareInfo(ShareInfoData shareInfoData) {
-        mData = shareInfoData;
-    }
-
-
     public boolean hasGrant() {
         return (mGrants != null);
     }
 
-    /**
-     * serialize this ShareInfo into String persisted in LDAP
-     *
-     * The format is:
-     * owner-zimbraId:itemId:btencoded-metadata
-     *
-     * @return
-     */
-    protected String serialize() throws ServiceException {
-        // callsites should *not* call this if validateAndDiscoverGrants return false.
-        if (mGrants == null)
-            throw ServiceException.FAILURE("internal error, no matching grants", null);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(serializeOwnerAndFolder());
-        sb.append(S_DELIMITER);
-        sb.append(mGrants.toString());
-
-        return sb.toString();
-    }
-
-    protected String serializeOwnerAndFolder() throws ServiceException {
-        if (mGrants == null)
-            throw ServiceException.FAILURE("internal error, no matching grants", null);
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(mData.getOwnerAcctId());
-        sb.append(S_DELIMITER);
-        sb.append(mData.getFolderId());
-
-        return sb.toString();
-    }
-
-    protected void deserialize(String encodedShareInfo) throws ServiceException {
-
-        String[] parts = encodedShareInfo.split(S_DELIMITER);
-        if (parts.length != 3) {
-            throw ServiceException.FAILURE("malformed share info: " + encodedShareInfo, null);
-        }
-
-        mData.setOwnerAcctId(parts[0]);
-        mData.setFolderId(Integer.valueOf(parts[1]));
-
-        String encodedMetadata = parts[2];
-        mGrants = new MetadataList(encodedMetadata);
-    }
+//    /**
+//     * serialize this ShareInfo into String persisted in LDAP
+//     *
+//     * The format is:
+//     * owner-zimbraId:itemId:btencoded-metadata
+//     *
+//     * @return
+//     */
+//    protected String serialize() throws ServiceException {
+//        // callsites should *not* call this if validateAndDiscoverGrants return false.
+//        if (mGrants == null)
+//            throw ServiceException.FAILURE("internal error, no matching grants", null);
+//
+//        StringBuilder sb = new StringBuilder();
+//        sb.append(serializeOwnerAndFolder());
+//        sb.append(S_DELIMITER);
+//        sb.append(mGrants.toString());
+//
+//        return sb.toString();
+//    }
+//
+//    protected String serializeOwnerAndFolder() throws ServiceException {
+//        if (mGrants == null)
+//            throw ServiceException.FAILURE("internal error, no matching grants", null);
+//
+//        StringBuilder sb = new StringBuilder();
+//        sb.append(mData.getOwnerAcctId());
+//        sb.append(S_DELIMITER);
+//        sb.append(mData.getItemId());
+//        sb.append(S_DELIMITER);
+//        sb.append(mData.getItemUuid());
+//
+//        return sb.toString();
+//    }
+//
+//    protected void deserialize(String encodedShareInfo) throws ServiceException {
+//
+//        String[] parts = encodedShareInfo.split(S_DELIMITER);
+//        if (parts.length != 4) {   // <----------------------------------------- EDITED: 3 -> 4
+//            throw ServiceException.FAILURE("malformed share info: " + encodedShareInfo, null);
+//        }
+//
+//        mData.setOwnerAcctId(parts[0]);
+//        mData.setItemId(Integer.valueOf(parts[1]));
+//        mData.setItemUuid(parts[2]);  // <-------------------------------------- NEW LINE
+//
+//        String encodedMetadata = parts[3];  // <-------------------------------- EDITED: 2 -> 3
+//        mGrants = new MetadataList(encodedMetadata);
+//    }
 
     private static boolean matchesGranteeType(byte onTheGrant, byte wanted) {
         return (wanted == 0 ) || (onTheGrant == wanted);
@@ -192,15 +179,15 @@ public class ShareInfo {
             if (acct != null)
                 granteeName = acct.getName();
         } else if (granteeType == ACL.GRANTEE_GROUP) {
-            DistributionList dl = prov.getGroup(DistributionListBy.id, granteeId);
-            if (dl != null)
-                granteeName = dl.getName();
+            Group group = prov.getGroupBasic(Key.DistributionListBy.id, granteeId);
+            if (group != null)
+                granteeName = group.getName();
         } else if (granteeType == ACL.GRANTEE_COS) {
-            Cos cos = prov.get(CosBy.id, granteeId);
+            Cos cos = prov.get(Key.CosBy.id, granteeId);
             if (cos != null)
                 granteeName = cos.getName();
         } else if (granteeType == ACL.GRANTEE_DOMAIN) {
-            Domain domain = prov.get(DomainBy.id, granteeId);
+            Domain domain = prov.get(Key.DomainBy.id, granteeId);
             if (domain != null)
                 granteeName = domain.getName();
         } else {
@@ -220,15 +207,15 @@ public class ShareInfo {
             if (acct != null)
                 granteeDisplay = acct.getDisplayName();
         } else if (granteeType == ACL.GRANTEE_GROUP) {
-            DistributionList dl = prov.getGroup(DistributionListBy.id, granteeId);
-            if (dl != null)
-                granteeDisplay = dl.getDisplayName();
+            Group group = prov.getGroupBasic(Key.DistributionListBy.id, granteeId);
+            if (group != null)
+                granteeDisplay = group.getDisplayName();
         } else if (granteeType == ACL.GRANTEE_COS) {
-            Cos cos = prov.get(CosBy.id, granteeId);
+            Cos cos = prov.get(Key.CosBy.id, granteeId);
             if (cos != null)
                 granteeDisplay = cos.getName();
         } else if (granteeType == ACL.GRANTEE_DOMAIN) {
-            Domain domain = prov.get(DomainBy.id, granteeId);
+            Domain domain = prov.get(Key.DomainBy.id, granteeId);
             if (domain != null)
                 granteeDisplay = domain.getName();
         } else {
@@ -306,7 +293,7 @@ public class ShareInfo {
          *     value: {local-folder-id}
          *
          * @param octxt
-         * @param mbox
+         * @param acct
          * @return
          * @throws ServiceException
          */
@@ -326,7 +313,8 @@ public class ShareInfo {
 
             Map<String, Integer> mountpoints = new HashMap<String, Integer>();
 
-            synchronized (mbox) {
+            mbox.lock.lock();
+            try {
                 // get the root node...
                 int folderId = Mailbox.ID_FOLDER_USER_ROOT;
                 Folder folder = mbox.getFolderById(octxt, folderId);
@@ -334,6 +322,8 @@ public class ShareInfo {
                 // for each subNode...
                 Set<Folder> visibleFolders = mbox.getVisibleFolders(octxt);
                 getLocalMountpoints(folder, visibleFolders, mountpoints);
+            } finally {
+                mbox.lock.release();
             }
 
             return mountpoints;
@@ -344,11 +334,6 @@ public class ShareInfo {
             if (!isVisible)
                 return;
 
-            // short-circuit if we know that this won't be in the output
-            List<Folder> subfolders = folder.getSubfolders(null);
-            if (!isVisible && subfolders.isEmpty())
-                return;
-
             if (folder instanceof Mountpoint) {
                 Mountpoint mpt = (Mountpoint)folder;
                 String mid =  getKey(mpt.getOwnerId(), mpt.getRemoteId());
@@ -356,11 +341,11 @@ public class ShareInfo {
             }
 
             // if this was the last visible folder overall, no need to look at children
-            if (isVisible && visible != null && visible.isEmpty())
+            if (visible != null && visible.isEmpty())
                 return;
 
             // write the subfolders' data to the response
-            for (Folder subfolder : subfolders) {
+            for (Folder subfolder : folder.getSubfolders(null)) {
                 getLocalMountpoints(subfolder, visible, mountpoints);
             }
         }
@@ -403,8 +388,9 @@ public class ShareInfo {
                     si.mData.setOwnerAcctId(ownerAcct.getId());
                     si.mData.setOwnerAcctEmail(ownerAcct.getName());
                     si.mData.setOwnerAcctDisplayName(ownerAcct.getDisplayName());
-                    si.mData.setFolderId(folder.getId());
-                    si.mData.setFolderPath(folder.getPath());
+                    si.mData.setItemId(folder.getId());
+                    si.mData.setItemUuid(folder.getUuid());
+                    si.mData.setPath(folder.getPath());
                     si.mData.setFolderDefaultView(folder.getDefaultView());
                     si.mData.setRights(grant.getGrantedRights());
                     si.mData.setGranteeType(grant.getGranteeType());
@@ -421,526 +407,132 @@ public class ShareInfo {
 
     /*
      * ===========================
-     *          Publishing
-     * ===========================
-     */
-    public static class Publishing extends ShareInfo {
-
-        public static void publish(Provisioning prov, OperationContext octxt,
-                NamedEntry publishingOnEntry,
-                Account ownerAcct, Folder folder) throws ServiceException {
-
-            if (folder == null) {
-                // no folder descriptor, do the entire folder tree
-
-                Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(ownerAcct, false);
-                if (mbox == null)
-                    throw ServiceException.FAILURE("mailbox not found for account " + ownerAcct.getId(), null);
-
-                Set<Folder> folders = getVisibleFolders(octxt, mbox);
-                for (Folder f : folders)
-                    doPublish(prov, publishingOnEntry,  ownerAcct, f);
-            } else {
-                doPublish(prov, publishingOnEntry, ownerAcct, folder);
-            }
-        }
-
-        private static void doPublish(Provisioning prov,
-                NamedEntry publishingOnEntry,
-                Account ownerAcct, Folder folder) throws ServiceException {
-
-            ShareInfo.Publishing si = new ShareInfo.Publishing(ownerAcct, folder);
-            si.discoverGrants(folder, publishingOnEntry);
-            if (si.hasGrant())
-                si.persist(prov, publishingOnEntry);
-        }
-
-        private Publishing(Account ownerAcct, Folder folder) {
-            mData.setOwnerAcctId(ownerAcct.getId());
-            mData.setOwnerAcctEmail(ownerAcct.getName());
-            mData.setOwnerAcctDisplayName(ownerAcct.getDisplayName());
-            mData.setFolderId(folder.getId());
-        }
-
-        /**
-         * discover all grants on the folder that matches the publishingOnEntry.
-         * for each matched grant, add it to the MetadataList
-         *
-         * @param folder
-         * @param publishingOnEntry
-         * @throws ServiceException
-         */
-        private void discoverGrants(Folder folder, NamedEntry publishingOnEntry) throws ServiceException {
-            Provisioning prov = Provisioning.getInstance();
-
-            ACL acl = folder.getEffectiveACL();
-
-            if (acl == null)
-                return;
-
-            for (ACL.Grant grant : acl.getGrants()) {
-                if (matches(grant, publishingOnEntry)) {
-                    if (mGrants == null) {
-                        mGrants = new MetadataList();
-
-                        /*
-                         * we have:
-                         *     owner's zimbraId
-                         *     folder id
-                         *
-                         * when reporting the share info, we will need:
-                         *     owner email
-                         *     owner displayName
-                         *     folder path
-                         *
-                         * we put owner email/displayName and folder path in the first item of our metadata list,
-                         * because it is not convenient (too much LDAP hits if there are lots of published shares
-                         * on the entry, and owner accounts are no in cache; for folder name, will need a GetFoler
-                         * if the owner mailbox is on differernt server) to get owner name/display from owner id
-                         * and get folder path from folder id when we need them.
-                         *
-                         * cons: if the owner email/display or folder path is renamed, we will have
-                         *       stale metadata, but taht be be fixed by letting the admin know and re-publish
-                         *       for the owner.
-                         *
-                         * pros: we save excessive LDAP searches for finding the owner
-                         *       name from owner id if the owner is not in cache; and saves
-                         *       proxying to other host just to find the folder from folder id.
-                         */
-                        Metadata md = new Metadata();
-                        md.put(MD_OWNER_EMAIL, mData.getOwnerAcctEmail());
-                        md.put(MD_OWNER_DISPLAY_NAME, mData.getOwnerAcctDisplayName());
-
-                        // We record the folder path of the folder we are discovering shars for.
-                        // It would be nice if we can know the folder id/path on the folder of
-                        // the grant (matters when the folder arg came to this method is a sub folder
-                        // of the folder of the grant), but there is no convenient way to get it.
-                        md.put(MD_FOLDER_PATH, folder.getPath());
-
-                        // for the same reason, we encode the default view for the folder in our metadata
-                        md.put(MD_FOLDER_DEFAULT_VIEW, folder.getDefaultView());
-
-                        mGrants.add(md);
-                    }
-
-                    Metadata metadata = grant.encode();
-
-                    // ouch, ACL.Grant does not set the grantee name
-                    // we do our own here
-                    metadata.put(MD_GRANTEE_NAME, granteeName(prov, grant));
-                    metadata.put(MD_GRANTEE_DISPLAY_NAME, granteeDisplay(prov, grant));
-
-                    mGrants.add(metadata);
-                }
-            }
-        }
-
-
-        private boolean matches(ACL.Grant grant, NamedEntry publishingOnEntry) throws ServiceException {
-            String granteeId = grant.getGranteeId();  // note: granteeId can be null if this is a pub or all grant!
-            byte granteeType = grant.getGranteeType();
-
-            if (publishingOnEntry instanceof DistributionList) {
-                if (granteeType != ACL.GRANTEE_GROUP || granteeId == null)
-                    return false;
-
-                return (granteeId.equals(publishingOnEntry.getId()) ||
-                        Provisioning.getInstance().inDistributionList((DistributionList)publishingOnEntry, granteeId));
-            } else
-                throw ServiceException.FAILURE("internal", null); // can only publish on group for now
-
-            /*
-             * else if (publishingOnEntry instanceof Cos)
-             *     return grant.getGranteeId().equals(cos.getId());
-             * else if (publishingOnEntry instanceof domain)
-             *     return grant.getGranteeId().equals(domain.getId());
-             */
-        }
-
-        /**
-         * persists shareInfo in LDAP on the publishingOnEntry entry
-         *
-         * @param prov
-         * @param publishingOnEntry
-         * @param shareInfo
-         * @throws ServiceException
-         */
-        public void persist(Provisioning prov, NamedEntry publishingOnEntry)
-            throws ServiceException {
-
-            Set<String> curShareInfo = publishingOnEntry.getMultiAttrSet(Provisioning.A_zimbraShareInfo);
-            String addKey    = "+" + Provisioning.A_zimbraShareInfo;
-            String removeKey = "-" + Provisioning.A_zimbraShareInfo;
-
-            Map<String, Object> attrs = new HashMap<String, Object>();
-            String value = serialize();
-            attrs.put(addKey, value);
-
-            /*
-             * replace existing share info for the same owner:folder
-             * we remove any value that starts with the same owner:folder
-             * (there should only be one, but we go through all in case
-             *  the data got in via some unexpected way)
-             *
-             * one caveat: if we are adding an existing owner:folder and the share info have not
-             * changed since last published, we do not want to put a - in the mod map, because
-             * that will remove the value put in above.
-             */
-            Set<String> toRemove = new HashSet<String>();
-            String ownerAndFoler = serializeOwnerAndFolder();
-            for (String curSi : curShareInfo) {
-                if (curSi.startsWith(ownerAndFoler) && !curSi.equals(value))
-                    toRemove.add(curSi);
-            }
-            if (!toRemove.isEmpty())
-                attrs.put(removeKey, toRemove);
-
-            prov.modifyAttrs(publishingOnEntry, attrs);
-        }
-    }
-
-
-    /*
-     * ===========================
      *          Published
      * ===========================
      */
     public static class Published extends ShareInfo {
 
-
-        private String mDigest; // for deduping
-
-        /*
-         * returns a list of Published from an encoded string
-         *
-         * each zimbraShareInfo value can expand to *multiple* Published share info, because
-         * for each owner:folder, there could be multiple matched grantees
-         * e.g.
-         *    - group dl2 is a member of group dl1
-         *    - owner shares /inbox to dl2 for rw rights
-         *    - owner shares /inbox to dl1 for aid rights
-         */
-        private static List<Published> decodeMetadata(String encoded) throws ServiceException {
-            List<Published> siList = new ArrayList<Published>();
-
-            // deserialize encoded to a dummy Published first
-            Published si = new Published(encoded);
-
-            //
-            // split the dummy to multiple, see comments on
-            // "It is a list(MetadataList) instead of a single object(Metadata) because ..."
-            //
-
-            // data not btencoded in metadata
-            String ownerAcctId = si.mData.getOwnerAcctId();
-            int folderId = si.mData.getFolderId();
-
-            // data btencoded in metadata by us (ShareInfo.Publishing)
-            Metadata metadata = si.mGrants.getMap(0);
-            String ownerAcctEmail = metadata.get(MD_OWNER_EMAIL);
-            String ownerAcctDisplayName = metadata.get(MD_OWNER_DISPLAY_NAME, null);
-            String folderPath = metadata.get(MD_FOLDER_PATH);
-            byte folderDefaultView = (byte)metadata.getLong(MD_FOLDER_DEFAULT_VIEW);
-
-            // data encoded by ACL.grant
-            for (int i = 1; i < si.mGrants.size(); i++) {
-                metadata = si.mGrants.getMap(i);
-
-                Grant grant = new Grant(metadata);
-
-                short rights = grant.getGrantedRights();
-                byte granteeType = grant.getGranteeType();
-                String granteeId = grant.getGranteeId();
-
-                // Mailbox.ACL never sets it, get it from our key in the metadata
-                String granteeName = metadata.get(MD_GRANTEE_NAME);
-
-                // get display name from our metadata too
-                String granteeDisplayName = metadata.get(MD_GRANTEE_DISPLAY_NAME, null);
-
-                Published p = new Published(ownerAcctId, ownerAcctEmail, ownerAcctDisplayName,
-                                            folderId, folderPath, folderDefaultView,
-                                            rights, granteeType, granteeId, granteeName, granteeDisplayName);
-                siList.add(p);
-            }
-
-            return siList;
-        }
-
-        // only used for the constructing the dummy for spliting
-        private Published(String encodedShareInfo) throws ServiceException {
-            deserialize(encodedShareInfo);
-        }
-
-        private Published() {
-        }
-
-        private Published(String ownerAcctId, String ownerAcctEmail, String ownerAcctDisplayName,
-                int folderId, String folderPath, byte folderDefaultView,
-                short rights, byte granteeType, String granteeId, String granteeName, String granteeDisplayName) {
-
-            mData.setOwnerAcctId(ownerAcctId);
-            mData.setOwnerAcctEmail(ownerAcctEmail);
-            mData.setOwnerAcctDisplayName(ownerAcctDisplayName);
-            mData.setFolderId(folderId);
-            mData.setFolderPath(folderPath);
-            mData.setFolderDefaultView(folderDefaultView);
-            mData.setRights(rights);
-            mData.setGranteeType(granteeType);
-            mData.setGranteeId(granteeId);
-            mData.setGranteeName(granteeName);
-            mData.setGranteeDisplayName(granteeDisplayName);
-
-            mDigest = mData.getOwnerAcctEmail() +
-                      mData.getFolderPath() +
-                      mData.getRightsCode() +
-                      mData.getGranteeType() +
-                      mData.getGranteeId() +
-                      mData.getGranteeName();
-        }
-
-
-
-        private String getDigest() {
-            return mDigest;
-        }
-
         /**
-         *
+         * @param prov
          * @param acct
          * @param granteeType  if not null, return only shares granted to the granteeType
-         * @param owner        if not null, return only shares granted to the owner
+         * @param owner        if not null, return only shares granted by the owner
          * @param visitor
          * @throws ServiceException
          */
-        public static void get(Provisioning prov, Account acct, byte granteeType, Account owner, PublishedShareInfoVisitor visitor)
+        public static void get(
+                Provisioning prov, Account acct, byte granteeType, Account owner, PublishedShareInfoVisitor visitor)
             throws ServiceException {
 
-            Set<String> visited = new HashSet<String>();
-
+            List<String> granteeIds = new LinkedList<String>();
+            boolean includePublicShares = false;
+            boolean includeAllAuthedShares = false;
+            String guestAcctDomainId = null;
             if (granteeType == 0) {
-                // no grantee type specified, return all published shares
-
-                // only group shares can be published for now, so just
-                // retrieve the group shares
-                AclGroups aclGroups = prov.getAclGroups(acct, false);
-                getSharesPublishedOnGroups(prov, visitor, aclGroups, owner, visited);
-
-                /*
-                 * if we support publishing cos and domain shares, include them here
-                 */
-                // cos
-                // getSharesPublishedOnCos(...);
-
-                // domain
-                // getSharesPublishedOnDomain(...);
+                // no grantee type specified, return all accessible shares
+                granteeIds.add(acct.getId());
+                GroupMembership aclGroups = prov.getGroupMembership(acct, false);
+                granteeIds.addAll(aclGroups.groupIds());
+                granteeIds.add(prov.getDomain(acct).getId());
+                Cos cos = prov.getCOS(acct);
+                if (cos != null) {
+                    granteeIds.add(cos.getId());
+                }
+                includePublicShares = true;
+                includeAllAuthedShares = true;
 
             } else if (granteeType == ACL.GRANTEE_USER) {
-                // cannot publish on account, be tolerant just return instead of throw
+                granteeIds.add(acct.getId());
 
             } else if (granteeType == ACL.GRANTEE_GROUP) {
-                AclGroups aclGroups = prov.getAclGroups(acct, false);
-                getSharesPublishedOnGroups(prov, visitor, aclGroups, owner, visited);
+                GroupMembership aclGroups = prov.getGroupMembership(acct, false);
+                granteeIds.addAll(aclGroups.groupIds());
+
+            } else if (granteeType == ACL.GRANTEE_GUEST && acct.isIsExternalVirtualAccount()) {
+                granteeIds.add(acct.getExternalUserMailAddress());
+                guestAcctDomainId = prov.getDomain(acct).getId();
+
+            } else if (granteeType == ACL.GRANTEE_PUBLIC) {
+                includePublicShares = true;
+
+            } else if (granteeType == ACL.GRANTEE_DOMAIN) {
+                granteeIds.add(prov.getDomain(acct).getId());
+
+            } else if (granteeType == ACL.GRANTEE_COS) {
+                Cos cos = prov.getCOS(acct);
+                if (cos != null) {
+                    granteeIds.add(cos.getId());
+                }
+
+            } else if (granteeType == ACL.GRANTEE_AUTHUSER) {
+                includeAllAuthedShares = true;
 
             } else {
-                throw ServiceException.INVALID_REQUEST("unsupported grantee type", null);
+                throw ServiceException.INVALID_REQUEST(
+                        "unsupported grantee type: " + ACL.typeToString(granteeType), null);
             }
+
+            getSharesPublished(prov, visitor, owner, granteeIds, includePublicShares, includeAllAuthedShares,
+                    guestAcctDomainId);
         }
 
-        // for admin only, like the above, also called for sending emails
-        public static void getPublished(Provisioning prov, DistributionList dl, boolean directOnly, Account owner, PublishedShareInfoVisitor visitor)
+        public static void getPublished(Provisioning prov, DistributionList dl, boolean directOnly, Account owner,
+                                        PublishedShareInfoVisitor visitor)
             throws ServiceException {
 
-            Set<String> visited = new HashSet<String>();
-
-            // get shares published on the dl
-            getPublishedShares(visitor, dl, owner, visited);
-
+            List<String> granteeIds = new LinkedList<String>();
+            granteeIds.add(dl.getId());
             if (!directOnly) {
-                // call prov.getAclGroups instead of prov.getDistributionLists
-                // because getAclGroups returns cached data, while getDistributionLists
-                // does LDAP searches each time
-
-                // get shares published on parents of this dl
-                if (!dl.isAclGroup()) {
-                    dl = prov.getAclGroup(DistributionListBy.id, dl.getId());
-                }
-                AclGroups aclGroups = prov.getAclGroups(dl, false);
-                getSharesPublishedOnGroups(prov, visitor, aclGroups, owner, visited);
+                granteeIds.addAll(prov.getGroupMembership(dl, false).groupIds());
             }
+            getSharesPublished(prov, visitor, owner, granteeIds, false, false, null);
         }
 
-        /**
-         * We should allow removing (un-publishing) share info even when the owner
-         * account/mailbox/folder does not exist.  They could've been deleted.
-         *
-         * We match the request with published as much as we can.
-         * For perf reason, owner email and folder name is also persisted in the
-         * published share info.
-         *
-         * @param prov
-         * @param unpublishingOnEntry
-         * @param ownerAcctId
-         * @param ownerAcctEmail
-         * @param allOwners
-         * @param folderId
-         * @param folderPath
-         * @param allFolders
-         * @throws ServiceException
-         */
-        public static void unpublish(Provisioning prov,
-                DistributionList dl,
-                String ownerAcctId, String ownerAcctEmail, boolean allOwners,
-                String folderId, String folderPath, boolean allFolders) throws ServiceException {
+        private static void getSharesPublished(Provisioning prov, PublishedShareInfoVisitor visitor, Account owner,
+                List<String> granteeIds, boolean includePublicShares, boolean includeAllAuthedShares,
+                String guestAcctDomainId)
+                throws ServiceException {
 
-            Matcher matcher = new Matcher(ownerAcctId, ownerAcctEmail, allOwners,
-                     folderId,  folderPath,  allFolders);
+            if (granteeIds.isEmpty() && !includePublicShares && !includeAllAuthedShares) {
+                return;
+            }
 
-            Set<String> publishedShareInfo = dl.getMultiAttrSet(Provisioning.A_zimbraShareInfo);
-            String removeKey = "-" + Provisioning.A_zimbraShareInfo;
+            SearchAccountsOptions searchOpts = new SearchAccountsOptions(
+                    new String[] {
+                           Provisioning.A_zimbraId,
+                           Provisioning.A_displayName,
+                           Provisioning.A_zimbraSharedItem });
+           searchOpts.setFilter(ZLdapFilterFactory.getInstance().accountsByGrants(
+                   granteeIds, includePublicShares, includeAllAuthedShares));
+           List<NamedEntry> accounts = prov.searchDirectory(searchOpts);
 
-            Set<String> toRemove = new HashSet<String>();
-
-            for (String psi : publishedShareInfo) {
-
-                try {
-                    // each zimbraShareInfo value can expand to *multiple* Published share info,
-                    // see comments for decodeMetadata
-                    List<Published> siList = decodeMetadata(psi);
-
-                    for (Published si : siList) {
-                        if (matcher.matches(si.mData)) {
-                            toRemove.add(psi);
-                            break;
-                        }
+            //TODO - check for dups
+            for (NamedEntry ne : accounts) {
+                Account account = (Account) ne;
+                if (owner != null) {
+                    if (!owner.getId().equals(account.getId())) {
+                        continue;
                     }
-
-                } catch (ServiceException e) {
-                    // probably encountered malformed share info, log and ignore
-                    // should remove the value from LDAP?
-                    ZimbraLog.account.warn("unable to process share info", e);
                 }
-            }
-
-            Map<String, Object> attrs = new HashMap<String, Object>();
-            attrs.put(removeKey, toRemove);
-            prov.modifyAttrs(dl, attrs);
-        }
-
-        /*
-         * matcher for unpublishing
-         */
-        private static class Matcher {
-
-            private final String mOwnerAcctId;
-            private final String mOwnerAcctEmail;
-            private final boolean mAllOwners;
-            private final String mFolderId;
-            private final String mFolderPath;
-            private final boolean mAllFolders;
-
-            private Matcher(String ownerAcctId, String ownerAcctEmail, boolean allOwners,
-                    String folderId, String folderPath, boolean allFolders) {
-                mOwnerAcctId = ownerAcctId;
-                mOwnerAcctEmail = ownerAcctEmail;
-                mAllOwners = allOwners;
-                mFolderId = folderId;
-                mFolderPath = folderPath;
-                mAllFolders = allFolders;
-            }
-
-            private boolean matches(ShareInfoData sid) {
-                return matchOwner(sid) && matchFolder(sid);
-            }
-
-            private boolean matchOwner(ShareInfoData sid) {
-                if (mAllOwners)
-                    return true;
-
-                // match id if provided
-                if (mOwnerAcctId != null)
-                    return mOwnerAcctId.equals(sid.getOwnerAcctId());
-
-                // match email if provided
-                if (mOwnerAcctEmail != null)
-                    return mOwnerAcctEmail.equals(sid.getOwnerAcctEmail());
-
-                // not matched
-                return false;
-            }
-
-            private boolean matchFolder(ShareInfoData sid) {
-                if (mAllFolders)
-                    return true;
-
-                // match folder id if provided
-                if (mFolderId != null)
-                    return mFolderId.equals(String.valueOf(sid.getFolderId()));
-
-                // match folder path if provided
-                if (mFolderPath != null)
-                    return mFolderPath.equals(sid.getFolderPath());
-
-                // not matched
-                return false;
-            }
-        }
-
-        private static void getSharesPublishedOnGroups(Provisioning prov, PublishedShareInfoVisitor visitor,
-                AclGroups aclGroups, Account owner, Set<String> visited)
-            throws ServiceException {
-
-            for (String groupId : aclGroups.groupIds()) {
-                DistributionList group = prov.getGroup(DistributionListBy.id, groupId);
-                getPublishedShares(visitor, group, owner, visited);
-            }
-        }
-
-        /**
-         * get shares published on the entry
-         *
-         * @param visitor
-         * @param entry
-         * @param owner if not null, include only shares owned by the owner
-         *              if null, include all shares published on the entry
-         */
-        private static void getPublishedShares(PublishedShareInfoVisitor visitor, NamedEntry entry, Account owner, Set<String> visited) {
-            Set<String> publishedShareInfo = entry.getMultiAttrSet(Provisioning.A_zimbraShareInfo);
-
-            for (String psi : publishedShareInfo) {
-
-                try {
-                    // each zimbraShareInfo value can expand to *multiple* Published share info,
-                    // see comments for decodeMetadata
-                    List<Published> siList = decodeMetadata(psi);
-
-                    for (Published si : siList) {
-                        if (owner != null) {
-                            if (!owner.getId().equals(si.mData.getOwnerAcctId()))
-                                continue;
-                        }
-
-                        /*
-                         * dedup
-                         *
-                         * It is possible that the same share is published on a group, and
-                         * again on a sub group.  We return only  one instance of all the
-                         * identical shares.
-                         */
-                        if (visited.contains(si.getDigest()))
-                            continue;
-
-                        visitor.visit(si.mData);
-                        visited.add(si.getDigest());
+                if (guestAcctDomainId != null && !guestAcctDomainId.equals(prov.getDomain(account).getId())) {
+                    continue;
+                }
+                String[] sharedItems = account.getSharedItem();
+                for (String sharedItem : sharedItems) {
+                    ShareInfoData shareData = AclPushSerializer.deserialize(sharedItem);
+                    if (!shareData.isExpired() &&
+                            (granteeIds.contains(shareData.getGranteeId()) ||
+                            (includePublicShares && shareData.getGranteeTypeCode() == ACL.GRANTEE_PUBLIC) ||
+                            (includeAllAuthedShares && shareData.getGranteeTypeCode() == ACL.GRANTEE_AUTHUSER))) {
+                        shareData.setOwnerAcctId(account.getId());
+                        shareData.setOwnerAcctEmail(account.getName());
+                        shareData.setOwnerAcctDisplayName(account.getDisplayName());
+                        visitor.visit(shareData);
                     }
-
-                } catch (ServiceException e) {
-                    // probably encountered malformed share info, log and ignore
-                    // should remove the value from LDAP?
-                    ZimbraLog.account.warn("unable to process share info", e);
                 }
             }
         }
+
     }
 
     /*
@@ -964,155 +556,181 @@ public class ShareInfo {
                                                   ACL.RIGHT_ACTION;
 
 
-        public static MimeMultipart genNotifBody(ShareInfoData sid, MsgKey intro, String notes, Locale locale) throws MessagingException {
+        public static MimeMultipart genNotifBody(ShareInfoData sid, String notes,
+                Locale locale, Action action, String externalGroupMember)
+        throws MessagingException, ServiceException {
 
             // Body
             MimeMultipart mmp = new ZMimeMultipart("alternative");
 
+            String extUserShareAcceptUrl = null;
+            String extUserLoginUrl = null;
+            String externalGranteeName = null;
+            if (sid.getGranteeTypeCode() == ACL.GRANTEE_GUEST) {
+                externalGranteeName = sid.getGranteeName();
+            } else if (sid.getGranteeTypeCode() == ACL.GRANTEE_GROUP && externalGroupMember != null) {
+                externalGranteeName = externalGroupMember;
+            }
+            // this mail will go to external email address
+            boolean goesToExternalAddr = (externalGranteeName != null);
+            if (action == null && goesToExternalAddr) {
+                Account owner = Provisioning.getInstance().getAccountById(sid.getOwnerAcctId());
+                extUserShareAcceptUrl = getShareAcceptURL(owner, sid.getItemId(), externalGranteeName);
+                extUserLoginUrl = getExtUserLoginURL(owner);
+            }
+
             // TEXT part (add me first!)
+            String mimePartText;
+            if (action == Action.revoke) {
+                mimePartText = genRevokePart(sid, locale, false);
+            } else if (action == Action.expire) {
+                mimePartText = genExpirePart(sid, locale, false);
+            } else {
+                mimePartText = genPart(sid, action == Action.edit, notes, extUserShareAcceptUrl, extUserLoginUrl,
+                        locale, null, false);
+            }
             MimeBodyPart textPart = new ZMimeBodyPart();
-            textPart.setText(genTextPart(sid, intro, notes, locale, null), MimeConstants.P_CHARSET_UTF8);
+            textPart.setText(mimePartText, MimeConstants.P_CHARSET_UTF8);
             mmp.addBodyPart(textPart);
 
             // HTML part
+            if (action == Action.revoke) {
+                mimePartText = genRevokePart(sid, locale, true);
+            } else if (action == Action.expire) {
+                mimePartText = genExpirePart(sid, locale, true);
+            } else {
+                mimePartText = genPart(sid, action == Action.edit, notes, extUserShareAcceptUrl, extUserLoginUrl,
+                        locale, null, true);
+            }
             MimeBodyPart htmlPart = new ZMimeBodyPart();
-            htmlPart.setDataHandler(new DataHandler(new HtmlPartDataSource(genHtmlPart(sid, intro, notes, locale, null))));
+            htmlPart.setDataHandler(new DataHandler(new HtmlPartDataSource(mimePartText)));
             mmp.addBodyPart(htmlPart);
 
             // XML part
-            MimeBodyPart xmlPart = new ZMimeBodyPart();
-            xmlPart.setDataHandler(new DataHandler(new XmlPartDataSource(genXmlPart(sid, notes, locale, null))));
-            mmp.addBodyPart(xmlPart);
+            if (!goesToExternalAddr) {
+                MimeBodyPart xmlPart = new ZMimeBodyPart();
+                xmlPart.setDataHandler(
+                        new DataHandler(new XmlPartDataSource(genXmlPart(sid, notes, null, action))));
+                mmp.addBodyPart(xmlPart);
+            }
 
             return mmp;
         }
 
+        private static String getExtUserLoginURL(Account owner) throws ServiceException {
+            return ZimbraServlet.getServiceUrl(
+                    owner.getServer(),
+                    Provisioning.getInstance().getDomain(owner),
+                    "?virtualacctdomain=" + owner.getDomainName());
+        }
 
-        private static String genTextPart(ShareInfoData sid, MsgKey intro, String senderNotes, Locale locale, StringBuilder sb) {
-            if (sb == null)
+        private static String getShareAcceptURL(Account account, int folderId, String externalUserEmail)
+                throws ServiceException {
+            StringBuilder encodedBuff = new StringBuilder();
+            BlobMetaData.encodeMetaData("aid", account.getId(), encodedBuff);
+            BlobMetaData.encodeMetaData("fid", folderId, encodedBuff);
+            BlobMetaData.encodeMetaData("email", externalUserEmail, encodedBuff);
+            Domain domain = Provisioning.getInstance().getDomain(account);
+            if (domain != null) {
+                long urlExpiration = domain.getExternalShareInvitationUrlExpiration();
+                if (urlExpiration != 0) {
+                    BlobMetaData.encodeMetaData("exp", System.currentTimeMillis() + urlExpiration, encodedBuff);
+                }
+            }
+            String data = new String(Hex.encodeHex(encodedBuff.toString().getBytes()));
+            AuthTokenKey key = AuthTokenKey.getCurrentKey();
+            String hmac = ZimbraAuthToken.getHmac(data, key.getKey());
+            String encoded = key.getVersion() + "_" + hmac + "_" + data;
+            String path = "/service/extuserprov/?p=" + encoded;
+            return ZimbraServlet.getServiceUrl(
+                    account.getServer(), Provisioning.getInstance().getDomain(account), path);
+        }
+
+
+        private static String genPart(ShareInfoData sid, boolean shareModified, String senderNotes,
+                String extUserShareAcceptUrl, String extUserLoginUrl, Locale locale, StringBuilder sb, boolean html) {
+            if (sb == null) {
                 sb = new StringBuilder();
-
-            sb.append("\n");
-            if (intro != null) {
-                sb.append(L10nUtil.getMessage(intro, locale));
-                sb.append("\n\n");
             }
-
-            sb.append(formatTextShareInfo(MsgKey.shareNotifBodySharedItem, sid.getFolderName(), locale, formatFolderDesc(locale, sid)));
-            sb.append(formatTextShareInfo(MsgKey.shareNotifBodyOwner, sid.getOwnerNotifName(), locale, null));
-            sb.append("\n");
-            sb.append(formatTextShareInfo(MsgKey.shareNotifBodyGrantee, sid.getGranteeNotifName(), locale, null));
-            sb.append(formatTextShareInfo(MsgKey.shareNotifBodyRole, getRoleFromRights(sid, locale), locale, null));
-            sb.append(formatTextShareInfo(MsgKey.shareNotifBodyAllowedActions, getRightsText(sid, locale), locale, null));
-            sb.append("\n");
-
-            String notes = null;
-            if (sid.getGranteeTypeCode() == ACL.GRANTEE_GUEST) {
-                StringBuilder guestNotes = new StringBuilder();
-                guestNotes.append("URL: " + sid.getUrl() + "\n");
-                guestNotes.append("Username: " + sid.getGranteeName() + "\n");
-                guestNotes.append("Password: " + sid.getGuestPassword() + "\n");
-                guestNotes.append("\n");
-                notes = guestNotes + (senderNotes==null?"":senderNotes) + "\n";
-            } else
-                notes = senderNotes;
-
-            if (notes != null) {
-                sb.append("*~*~*~*~*~*~*~*~*~*\n");
-                sb.append(notes +  "\n");
+            String externalShareInfo = null;
+            if (extUserShareAcceptUrl != null) {
+                assert(extUserLoginUrl != null);
+                externalShareInfo = L10nUtil.getMessage(
+                        html ? MsgKey.shareNotifBodyExternalShareHtml : MsgKey.shareNotifBodyExternalShareText,
+                        locale, extUserShareAcceptUrl, extUserLoginUrl);
             }
-
-            return sb.toString();
+            if (!Strings.isNullOrEmpty(senderNotes)) {
+                senderNotes = L10nUtil.getMessage(
+                        html ? MsgKey.shareNotifBodyNotesHtml : MsgKey.shareNotifBodyNotesText, locale, senderNotes);
+            }
+            MsgKey msgKey;
+            if (shareModified) {
+                msgKey = html ? MsgKey.shareModifyBodyHtml : MsgKey.shareModifyBodyText;
+            } else {
+                msgKey = html ? MsgKey.shareNotifBodyHtml : MsgKey.shareNotifBodyText;
+            }
+            return sb.append(L10nUtil.getMessage(
+                    msgKey, locale,
+                    sid.getName(),
+                    formatFolderDesc(locale, sid),
+                    sid.getOwnerNotifName(),
+                    sid.getGranteeNotifName(),
+                    getRoleFromRights(sid, locale),
+                    getRightsText(sid, locale),
+                    Strings.nullToEmpty(externalShareInfo),
+                    Strings.nullToEmpty(senderNotes))).
+                    toString();
         }
 
-        private static String genHtmlPart(ShareInfoData sid, MsgKey intro, String senderNotes, Locale locale, StringBuilder sb) {
-            if (sb == null)
+        private static String genRevokePart(ShareInfoData sid, Locale locale, boolean html) {
+            return L10nUtil.getMessage(html ? MsgKey.shareRevokeBodyHtml : MsgKey.shareRevokeBodyText,
+                    sid.getName(),
+                    formatFolderDesc(locale, sid),
+                    sid.getOwnerNotifName());
+        }
+
+        private static String genExpirePart(ShareInfoData sid, Locale locale, boolean html) {
+            return L10nUtil.getMessage((html ? MsgKey.shareExpireBodyHtml : MsgKey.shareExpireBodyText),
+                    sid.getName(),
+                    formatFolderDesc(locale, sid),
+                    sid.getOwnerNotifName());
+        }
+
+        private static String genXmlPart(ShareInfoData sid, String senderNotes, StringBuilder sb, Action action)
+                throws ServiceException {
+            if (sb == null) {
                 sb = new StringBuilder();
-
-            if (intro != null) {
-                sb.append("<h3>" + L10nUtil.getMessage(intro, locale) + "</h3>\n");
             }
-
-            sb.append("<p>\n");
-            sb.append("<table border=\"0\">\n");
-            sb.append(formatHtmlShareInfo(MsgKey.shareNotifBodySharedItem, sid.getFolderName(), locale, formatFolderDesc(locale, sid)));
-            sb.append(formatHtmlShareInfo(MsgKey.shareNotifBodyOwner, sid.getOwnerNotifName(), locale, null));
-            sb.append("</table>\n");
-            sb.append("</p>\n");
-
-            sb.append("<table border=\"0\">\n");
-            sb.append(formatHtmlShareInfo(MsgKey.shareNotifBodyGrantee, sid.getGranteeNotifName(), locale, null));
-            sb.append(formatHtmlShareInfo(MsgKey.shareNotifBodyRole, getRoleFromRights(sid, locale), locale, null));
-            sb.append(formatHtmlShareInfo(MsgKey.shareNotifBodyAllowedActions, getRightsText(sid, locale), locale, null));
-            sb.append("</table>\n");
-
-            if (sid.getGranteeTypeCode() == ACL.GRANTEE_GUEST) {
-                sb.append("<p>\n");
-                sb.append("<table border=\"0\">\n");
-                sb.append("<tr valign=\"top\"><th align=\"left\">" +
-                        L10nUtil.getMessage(MsgKey.shareNotifBodyNotes) + ":" + "</th><td>" +
-                        "URL: " + sid.getUrl() + "<br>" +
-                        "Username: " + sid.getGranteeName() + "<br>" +
-                        "Password: " + sid.getGuestPassword() + "<br><br>");
-                if (senderNotes != null)
-                    sb.append(senderNotes);
-                sb.append("</td></tr></table>\n");
-                sb.append("</p>\n");
-            } else if (senderNotes != null) {
-                sb.append("<p>\n");
-                sb.append("<table border=\"0\">\n");
-                sb.append("<tr valign=\"top\"><th align=\"left\">" +
-                        L10nUtil.getMessage(MsgKey.shareNotifBodyNotes) + ":" + "</th><td>" +
-                        senderNotes + "</td></tr></table>\n");
-                sb.append("</p>\n");
+            Element share;
+            if (action == null || action == Action.edit) {
+                share = Element.create(SoapProtocol.Soap12, ShareConstants.SHARE).
+                        addAttribute(ShareConstants.A_VERSION, ShareConstants.VERSION).
+                        addAttribute(ShareConstants.A_ACTION, action == null ?
+                                ShareConstants.ACTION_NEW : ShareConstants.ACTION_EDIT);
+            } else {
+                share = Element.create(SoapProtocol.Soap12, ShareConstants.REVOKE).
+                        addAttribute(ShareConstants.A_VERSION, ShareConstants.VERSION);
+                if (action == Action.expire) {
+                    share.addAttribute(ShareConstants.A_EXPIRE, true);
+                }
             }
-
+            share.addElement(ShareConstants.E_GRANTEE).
+                    addAttribute(ShareConstants.A_ID, sid.getGranteeId()).
+                    addAttribute(ShareConstants.A_EMAIL, sid.getGranteeName()).
+                    addAttribute(ShareConstants.A_NAME, sid.getGranteeNotifName());
+            share.addElement(ShareConstants.E_GRANTOR).
+                    addAttribute(ShareConstants.A_ID, sid.getOwnerAcctId()).
+                    addAttribute(ShareConstants.A_EMAIL, sid.getOwnerAcctEmail()).
+                    addAttribute(ShareConstants.A_NAME, sid.getOwnerNotifName());
+            Element link = share.addElement(ShareConstants.E_LINK);
+            link.addAttribute(ShareConstants.A_ID, sid.getItemId()).
+                    addAttribute(ShareConstants.A_NAME, sid.getName()).
+                    addAttribute(ShareConstants.A_VIEW, sid.getFolderDefaultView());
+            if (action == null || action == Action.edit) {
+                link.addAttribute(ShareConstants.A_PERM, ACL.rightsToString(sid.getRightsCode()));
+            }
+            sb.append(share.prettyPrint());
             return sb.toString();
-        }
-
-        private static String genXmlPart(ShareInfoData sid, String senderNotes, Locale locale, StringBuilder sb) {
-            if (sb == null)
-                sb = new StringBuilder();
-            /*
-             * from ZimbraWebClient/WebRoot/js/zimbraMail/share/model/ZmShare.js
-
-               ZmShare.URI = "urn:zimbraShare";
-               ZmShare.VERSION = "0.1";
-               ZmShare.NEW     = "new";
-            */
-            final String URI = "urn:zimbraShare";
-            final String VERSION = "0.1";
-
-            String notes = null;
-            if (sid.getGranteeTypeCode() == ACL.GRANTEE_GUEST) {
-                StringBuilder guestNotes = new StringBuilder();
-                guestNotes.append("URL: " + sid.getUrl() + "\n");
-                guestNotes.append("Username: " + sid.getGranteeName() + "\n");
-                guestNotes.append("Password: " + sid.getGuestPassword() + "\n");
-                guestNotes.append("\n");
-                notes = guestNotes + (senderNotes==null?"":senderNotes) + "\n";
-            } else
-                notes = senderNotes;
-
-            sb.append("<share xmlns=\"" + URI + "\" version=\"" + VERSION + "\" action=\"new\">\n");
-            sb.append("  <grantee id=\"" + sid.getGranteeId() + "\" email=\"" + sid.getGranteeName() + "\" name=\"" + sid.getGranteeNotifName() +"\"/>\n");
-            sb.append("  <grantor id=\"" + sid.getOwnerAcctId() + "\" email=\"" + sid.getOwnerAcctEmail() + "\" name=\"" + sid.getOwnerNotifName() +"\"/>\n");
-            sb.append("  <link id=\"" + sid.getFolderId() + "\" name=\"" + sid.getFolderName() + "\" view=\"" + sid.getFolderDefaultView() + "\" perm=\"" + ACL.rightsToString(sid.getRightsCode()) + "\"/>\n");
-            sb.append("  <notes>" + (notes==null?"":notes) + "</notes>\n");
-            sb.append("</share>\n");
-
-            return sb.toString();
-        }
-
-        private static String formatTextShareInfo(MsgKey key, String value, Locale locale, String extra) {
-            return L10nUtil.getMessage(key, locale) + ": " + value + (extra==null?"":" "+extra) + "\n";
-        }
-
-        private static String formatHtmlShareInfo(MsgKey key, String value, Locale locale, String extra) {
-            return "<tr>" +
-                   "<th align=\"left\">" + L10nUtil.getMessage(key, locale) + ":" + "</th>" +
-                   "<td align=\"left\">" + value + (extra==null?"":" "+extra) + "</td>" +
-                   "</tr>\n";
         }
 
         private static void appendCommaSeparated(StringBuffer sb, String s) {
@@ -1122,15 +740,16 @@ public class ShareInfo {
         }
 
         private static String getRoleFromRights(ShareInfoData sid, Locale locale) {
-            short rights = sid.getRightsCode();
-            if (ROLE_VIEW == rights)
-                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleViewer, locale);
-            else if (ROLE_ADMIN == rights)
-                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleAdmin, locale);
-            else if (ROLE_MANAGER == rights)
-                return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleManager, locale);
-            else
-                return "";
+            switch (sid.getRightsCode()) {
+                case ROLE_VIEW:
+                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleViewer, locale);
+                case ROLE_ADMIN:
+                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleAdmin, locale);
+                case ROLE_MANAGER:
+                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleManager, locale);
+                default:
+                    return L10nUtil.getMessage(MsgKey.shareNotifBodyGranteeRoleNone, locale);
+            }
         }
 
         private static String getRightsText(ShareInfoData sid, Locale locale) {
@@ -1140,33 +759,45 @@ public class ShareInfo {
             if ((rights & ACL.RIGHT_WRITE) != 0)     appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionWrite, locale));
             if ((rights & ACL.RIGHT_INSERT) != 0)    appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionInsert, locale));
             if ((rights & ACL.RIGHT_DELETE) != 0)    appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionDelete, locale));
-            if ((rights & ACL.RIGHT_ACTION) != 0)    appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionAction, locale));
             if ((rights & ACL.RIGHT_ADMIN) != 0)     appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionAdmin, locale));
-            if ((rights & ACL.RIGHT_PRIVATE) != 0)   appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionPrivate, locale));
-            if ((rights & ACL.RIGHT_FREEBUSY) != 0)  appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionFreebusy, locale));
-            if ((rights & ACL.RIGHT_SUBFOLDER) != 0) appendCommaSeparated(r, L10nUtil.getMessage(MsgKey.shareNotifBodyActionSubfolder, locale));
-
-            return r.toString();
+            if (r.toString().isEmpty()) {
+                return L10nUtil.getMessage(MsgKey.shareNotifBodyActionNone, locale);
+            } else {
+                return r.toString();
+            }
         }
 
         private static String formatFolderDesc(Locale locale, ShareInfoData sid) {
-            byte view = sid.getFolderDefaultViewCode();
-
-            String folderView;  // need to L10N these?
-            if (view == MailItem.TYPE_MESSAGE)
-                folderView = "Mail";
-            else if (view == MailItem.TYPE_APPOINTMENT)
-                folderView = "Calendar";
-            else if (view == MailItem.TYPE_TASK)
-                folderView = "Task";
-            else if (view == MailItem.TYPE_CONTACT)
-                folderView = "Addres";
-            else if (view == MailItem.TYPE_WIKI)
-                folderView = "Notebook";
-            else
-                folderView = sid.getFolderDefaultView();
-
-            return L10nUtil.getMessage(MsgKey.shareNotifBodyFolderDesc, locale, folderView);
+            MailItem.Type view = sid.getFolderDefaultViewCode();
+            String folderView;
+            switch (view) {
+                case MESSAGE:
+                    folderView = L10nUtil.getMessage(MsgKey.mail, locale);
+                    break;
+                case APPOINTMENT:
+                    folderView = L10nUtil.getMessage(MsgKey.calendar, locale);
+                    break;
+                case TASK:
+                    folderView = L10nUtil.getMessage(MsgKey.task, locale);
+                    break;
+                case CONTACT:
+                    folderView = L10nUtil.getMessage(MsgKey.addressBook, locale);
+                    break;
+                case DOCUMENT:
+                    folderView = L10nUtil.getMessage(MsgKey.briefcase, locale);
+                    break;
+                default:
+                    folderView = sid.getFolderDefaultView();
+            }
+            MsgKey key = MsgKey.shareNotifBodyFolderDesc;
+            try {
+                if (Provisioning.getInstance().isOctopus()) {
+                    key = MsgKey.octopus_share_notification_email_bodyFolderDesc;
+                }
+            } catch (ServiceException e) {
+                ZimbraLog.account.warn("failed to retrieve Octopus info from LDAP " + e);
+            }
+            return L10nUtil.getMessage(key, locale, folderView);
         }
 
         private static class MailSenderVisitor implements PublishedShareInfoVisitor {
@@ -1193,10 +824,10 @@ public class ShareInfo {
 
                 if (idx == null) {
                     for (ShareInfoData sid : mShares) {
-                        genTextPart(sid, null, null, locale, sb);
+                        genPart(sid, false, null, null, null, locale, sb, false);
                     }
                 } else
-                    genTextPart(mShares.get(idx.intValue()), null, null, locale, sb);
+                    genPart(mShares.get(idx), false, null, null, null, locale, sb, false);
 
                 sb.append("\n\n");
                 return sb.toString();
@@ -1214,24 +845,24 @@ public class ShareInfo {
 
                 if (idx == null) {
                     for (ShareInfoData sid : mShares) {
-                        genHtmlPart(sid, null, null, locale, sb);
+                        genPart(sid, false, null, null, null, locale, sb, true);
                     }
                 } else
-                    genHtmlPart(mShares.get(idx.intValue()), null, null, locale, sb);
+                    genPart(mShares.get(idx), false, null, null, null, locale, sb, true);
 
                 return sb.toString();
             }
 
-            private String genXml(String dlName, Locale locale, Integer idx) {
+            private String genXml(Integer idx) throws ServiceException {
                 StringBuilder sb = new StringBuilder();
 
-                 if (idx == null) {
+                if (idx == null) {
                     for (ShareInfoData sid : mShares) {
-                        genXmlPart(sid, null, locale, sb);
+                        genXmlPart(sid, null, sb, null);
                     }
-                } else
-                    genXmlPart(mShares.get(idx.intValue()), null, locale, sb);
-
+                } else {
+                    genXmlPart(mShares.get(idx), null, sb, null);
+                }
                 return sb.toString();
             }
         }
@@ -1265,12 +896,15 @@ public class ShareInfo {
             if (visitor.getNumShareInfo() == 0)
                 return;
 
-            try {
-                // send a separate mail to each member being added instead of sending one mail to all members being added
-                for (String member : members)
+            for (String member : members) {
+                try {
+                    // send a separate mail to each member being added instead of sending one mail to all members being added
                     sendMessage(prov, authedAcct, dl, member, visitor);
-            } catch (ServiceException e) {
-                ZimbraLog.account.warn("failed to send share info message", e);
+                } catch (MessagingException e) {
+                    ZimbraLog.account.warn("failed to send share info message", e);
+                } catch (ServiceException e) {
+                    ZimbraLog.account.warn("failed to send share info message", e);
+                }
             }
         }
 
@@ -1292,7 +926,8 @@ public class ShareInfo {
          * 2. otherwise if the authed admin has a valid email address, use that.
          * 3. otherwise use the DL's address.
          */
-        private static Pair<Address, Address> getFromAndReplyToAddr(Provisioning prov, Account fromAcct, DistributionList dl) throws AddressException {
+        private static Pair<Address, Address> getFromAndReplyToAddr(Account fromAcct, DistributionList dl)
+                throws AddressException {
 
             InternetAddress addr;
 
@@ -1323,7 +958,7 @@ public class ShareInfo {
                     if (replyTo != null)
                         replyToAddr = new JavaMailInternetAddress(replyTo);
                     return new Pair<Address, Address>(addr, replyToAddr);
-                } catch (AddressException e) {
+                } catch (AddressException ignored) {
                 }
             }
 
@@ -1333,14 +968,14 @@ public class ShareInfo {
         }
 
         private static MimeMultipart buildMailContent(DistributionList dl, MailSenderVisitor visitor, Locale locale, Integer idx)
-            throws MessagingException {
+            throws MessagingException, ServiceException {
 
             String shareInfoText = visitor.genText(dl.getName(), locale, idx);
             String shareInfoHtml = visitor.genHtml(dl.getName(), locale, idx);
             String shareInfoXml = null;
-            if (idx != null)
-                shareInfoXml = visitor.genXml(dl.getName(), locale, idx);
-
+            if (idx != null) {
+                shareInfoXml = visitor.genXml(idx);
+            }
             // Body
             MimeMultipart mmp = new ZMimeMultipart("alternative");
 
@@ -1365,9 +1000,9 @@ public class ShareInfo {
         }
 
         private static void buildContentAndSend(SMTPMessage out, DistributionList dl, MailSenderVisitor visitor, Locale locale, Integer idx)
-            throws MessagingException {
+            throws MessagingException, ServiceException {
 
-            MimeMultipart mmp = buildMailContent(dl, visitor, locale, Integer.valueOf(idx));
+            MimeMultipart mmp = buildMailContent(dl, visitor, locale, idx);
             out.setContent(mmp);
             Transport.send(out);
 
@@ -1381,46 +1016,41 @@ public class ShareInfo {
 
         private static void sendMessage(Provisioning prov,
                                         Account fromAcct, DistributionList dl, String toAddr,
-                                        MailSenderVisitor visitor) throws ServiceException {
-            try {
-                SMTPMessage out = new SMTPMessage(JMSession.getSmtpSession());
+                                        MailSenderVisitor visitor) throws MessagingException, ServiceException {
+            SMTPMessage out = new SMTPMessage(JMSession.getSmtpSession());
 
-                Pair<Address, Address> senderAddrs = getFromAndReplyToAddr(prov, fromAcct, dl);
-                Address fromAddr = senderAddrs.getFirst();
-                Address replyToAddr = senderAddrs.getSecond();
+            Pair<Address, Address> senderAddrs = getFromAndReplyToAddr(fromAcct, dl);
+            Address fromAddr = senderAddrs.getFirst();
+            Address replyToAddr = senderAddrs.getSecond();
 
-                // From
-                out.setFrom(fromAddr);
+            // From
+            out.setFrom(fromAddr);
 
-                // Reply-To
-                out.setReplyTo(new Address[]{replyToAddr});
+            // Reply-To
+            out.setReplyTo(new Address[]{replyToAddr});
 
-                // To
-                out.setRecipient(javax.mail.Message.RecipientType.TO, new JavaMailInternetAddress(toAddr));
+            // To
+            out.setRecipient(javax.mail.Message.RecipientType.TO, new JavaMailInternetAddress(toAddr));
 
-                // Date
-                out.setSentDate(new Date());
+            // Date
+            out.setSentDate(new Date());
 
-                // Subject
-                Locale locale = getLocale(prov, fromAcct, toAddr);
-                String subject = L10nUtil.getMessage(MsgKey.shareNotifSubject, locale);
-                out.setSubject(subject);
+            // Subject
+            Locale locale = getLocale(prov, fromAcct, toAddr);
+            String subject = L10nUtil.getMessage(MsgKey.shareNotifSubject, locale);
+            out.setSubject(subject);
 
-                if (sendOneMailPerShare()) {
-                    // send a separate message per share
-                    // each message will have text/html/xml parts
-                    int numShareInfo = visitor.getNumShareInfo();
-                    for (int idx = 0; idx < numShareInfo; idx++) {
-                        buildContentAndSend(out, dl, visitor, locale, Integer.valueOf(idx));
-                    }
-                } else {
-                    // send only one message that includes all shares
-                    // the message will have only text/html parts, no xml part
-                    buildContentAndSend(out, dl, visitor, locale, null);
+            if (sendOneMailPerShare()) {
+                // send a separate message per share
+                // each message will have text/html/xml parts
+                int numShareInfo = visitor.getNumShareInfo();
+                for (int idx = 0; idx < numShareInfo; idx++) {
+                    buildContentAndSend(out, dl, visitor, locale, idx);
                 }
-
-            } catch (MessagingException e) {
-                ZimbraLog.account.warn("send share info notification failed rcpt='" + toAddr +"'", e);
+            } else {
+                // send only one message that includes all shares
+                // the message will have only text/html parts, no xml part
+                buildContentAndSend(out, dl, visitor, locale, null);
             }
         }
 
@@ -1446,8 +1076,7 @@ public class ShareInfo {
                         mBuf = buf.toByteArray();
                     }
                 }
-                ByteArrayInputStream in = new ByteArrayInputStream(mBuf);
-                return in;
+                return new ByteArrayInputStream(mBuf);
             }
 
             @Override
@@ -1496,62 +1125,6 @@ public class ShareInfo {
             }
         }
     }
-
-    /*
-     * for debugging/unittest
-     */
-    public static class DumpShareInfoVisitor implements PublishedShareInfoVisitor {
-
-        private static final String mFormat =
-            "%-36.36s %-15.15s %-15.15s %-5.5s %-20.20s %-10.10s %-10.10s %-5.5s %-5.5s %-36.36s %-15.15s %-15.15s\n";
-
-        public static void printHeadings() {
-            System.out.printf(mFormat,
-                              "owner id",
-                              "owner email",
-                              "owner display",
-                              "fid",
-                              "folder path",
-                              "view",
-                              "rights",
-                              "mid",
-                              "gt",
-                              "grantee id",
-                              "grantee name",
-                              "grantee display");
-
-            System.out.printf(mFormat,
-                              "------------------------------------",      // owner id
-                              "---------------",                           // owner email
-                              "---------------",                           // owner display
-                              "-----",                                     // folder id
-                              "--------------------",                      // folder path
-                              "----------",                                // default view
-                              "----------",                                // rights
-                              "-----",                                     // mountpoint id if mounted
-                              "-----",                                     // grantee type
-                              "------------------------------------",      // grantee id
-                              "---------------",                           // grantee name
-                              "---------------");                          // grantee display
-        }
-
-        @Override
-        public void visit(ShareInfoData shareInfoData) throws ServiceException {
-            System.out.printf(mFormat,
-                    shareInfoData.getOwnerAcctId(),
-                    shareInfoData.getOwnerAcctEmail(),
-                    shareInfoData.getOwnerAcctDisplayName(),
-                    String.valueOf(shareInfoData.getFolderId()),
-                    shareInfoData.getFolderPath(),
-                    shareInfoData.getFolderDefaultView(),
-                    shareInfoData.getRights(),
-                    shareInfoData.getMountpointId_zmprov_only(),
-                    shareInfoData.getGranteeType(),
-                    shareInfoData.getGranteeId(),
-                    shareInfoData.getGranteeName(),
-                    shareInfoData.getGranteeDisplayName());
-        }
-    };
 }
 
 

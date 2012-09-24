@@ -176,7 +176,7 @@ On the Windows Server AD domain controller:
     
     
 (D) Place the Keytab File on Zimbraserver   
-    copy jetty.keytab created in step (C) to the zimbra server (e.g. dogfood.zimbra.com) under /opt/zimbra/jetty/etc.
+    copy jetty.keytab created in step (C) to the zimbra server (e.g. dogfood.zimbra.com) as /opt/zimbra/data/mailboxd/spnego/jetty.keytab
     
     Note: Do not rename the keytab file, the name(jetty.keytab) is referenced from various configuration files.
 
@@ -291,7 +291,7 @@ zimbraSpnegoAuthPrincipal   : {zimbraSpnegoAuthTargetName}@{zimbraSpnegoAuthReal
 (C) Setup web client login URL and UAs/IP addresses allowed for the login URL on the domain
     - Set login URL.  Login URL is the URL to redirect to for logging in and when
       Zimbra auth token is expired.  Set it to the spnego authentication servlet.
-      zmprov md {domain} zimbraWebClientLoginURL '../../service/spnego'
+      zmprov md {domain} zimbraWebClientLoginURL '/service/spnego'
     
     - Honor only supported platforms and browsers.  
       zimbraWebClientLoginURLAllowedUA is a multi-valued attribute, values are regex.
@@ -637,7 +637,7 @@ zmprov ms catfood.zimbra.com zimbraSpnegoAuthPrincipal HTTP/catfood.zimbra.com@V
 
 zmprov md zimbra.com zimbraAuthKerberos5Realm VMWARE.COM
 zmprov md zimbra.com +zimbraVirtualHostname dogfood.zimbra.com +zimbraVirtualHostname catfood.zimbra.com
-zmprov md zimbra.com zimbraWebClientLoginURL '../../service/spnego'
+zmprov md zimbra.com zimbraWebClientLoginURL '/service/spnego'
 zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*Windows.*Firefox/3.*'
 zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*MSIE.*Windows.*'
 zmprov md zimbra.com +zimbraWebClientLoginURLAllowedUA '.*Windows.*Chrome.*'

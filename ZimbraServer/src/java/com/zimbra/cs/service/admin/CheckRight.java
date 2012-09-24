@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -33,14 +33,14 @@ import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.GranteeBy;
-import com.zimbra.cs.account.Provisioning.ServerBy;
-import com.zimbra.cs.account.Provisioning.TargetBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.CalendarResourceBy;
+import com.zimbra.common.account.Key.CosBy;
+import com.zimbra.common.account.Key.DistributionListBy;
+import com.zimbra.common.account.Key.DomainBy;
+import com.zimbra.common.account.Key.GranteeBy;
+import com.zimbra.common.account.Key.ServerBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.Right;
@@ -49,6 +49,7 @@ import com.zimbra.cs.account.accesscontrol.RightManager;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.TargetBy;
 
 public class CheckRight extends RightDocumentHandler {
     
@@ -66,9 +67,10 @@ public class CheckRight extends RightDocumentHandler {
             
         Element eGrantee = request.getElement(AdminConstants.E_GRANTEE);
         String granteeType = eGrantee.getAttribute(AdminConstants.A_TYPE, GranteeType.GT_USER.getCode());
-        if (GranteeType.fromCode(granteeType) != GranteeType.GT_USER)
+        if (GranteeType.fromCode(granteeType) != GranteeType.GT_USER) {
             throw ServiceException.INVALID_REQUEST("invalid grantee type " + granteeType, null);
-        GranteeBy granteeBy = GranteeBy.fromString(eGrantee.getAttribute(AdminConstants.A_BY));
+        }
+        Key.GranteeBy granteeBy = Key.GranteeBy.fromString(eGrantee.getAttribute(AdminConstants.A_BY));
         String grantee = eGrantee.getText();
 
         Element eRight = request.getElement(AdminConstants.E_RIGHT);
@@ -81,8 +83,9 @@ public class CheckRight extends RightDocumentHandler {
         GuestAccount guest = null;
         if (!grantee.equals(zsc.getAuthtokenAccountId())) {
             boolean checked = checkCheckRightRight(zsc, GranteeType.GT_USER, granteeBy, grantee, true);
-            if (!checked)
+            if (!checked) {
                 guest = new GuestAccount(grantee, null);
+            }
         }
         
         ViaGrant via = new ViaGrant();

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,11 +29,11 @@ import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapHttpTransport;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.ldap.LdapUtil;
-import com.zimbra.cs.zclient.ZAuthResult;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.cs.ldap.LdapConstants;
+import com.zimbra.client.ZAuthResult;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
 
 public class TestSoap
 extends TestCase {
@@ -81,12 +81,12 @@ extends TestCase {
         Element request = Element.create(transport.getRequestProtocol(), AccountConstants.GET_VERSION_INFO_REQUEST);
         
         // Test with version exposed
-        TestUtil.setServerAttr(Provisioning.A_zimbraSoapExposeVersion, LdapUtil.LDAP_TRUE);
+        TestUtil.setServerAttr(Provisioning.A_zimbraSoapExposeVersion, LdapConstants.LDAP_TRUE);
         Element response = transport.invoke(request);
         validateSoapVersionResponse(response);
         
         // Test with version not exposed
-        TestUtil.setServerAttr(Provisioning.A_zimbraSoapExposeVersion, LdapUtil.LDAP_FALSE);
+        TestUtil.setServerAttr(Provisioning.A_zimbraSoapExposeVersion, LdapConstants.LDAP_FALSE);
         request = Element.create(transport.getRequestProtocol(), AccountConstants.GET_VERSION_INFO_REQUEST);
         try {
             response = transport.invoke(request);

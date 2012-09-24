@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,12 +20,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
@@ -36,12 +38,14 @@ import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.cs.db.DbBlobConsistency;
 import com.zimbra.cs.db.DbPool;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.store.StoreManager;
+import com.zimbra.cs.volume.Volume;
+import com.zimbra.cs.volume.VolumeManager;
 
-public class BlobConsistencyChecker {
+public final class BlobConsistencyChecker {
 
     public static class BlobInfo {
         public int itemId;
@@ -50,22 +54,22 @@ public class BlobConsistencyChecker {
         public long dbSize;
         public String path;
         public short volumeId;
-        
+
         public int fileModContent;
         public Long fileDataSize;
         public Long fileSize;
     }
-    
+
     public static class Results {
         public int mboxId;
-        public Collection<BlobInfo> missingBlobs = new ArrayList<BlobInfo>();
-        public Collection<BlobInfo> incorrectSize = new ArrayList<BlobInfo>();
-        public Collection<BlobInfo> unexpectedBlobs = new ArrayList<BlobInfo>();
-        public Collection<BlobInfo> incorrectModContent = new ArrayList<BlobInfo>();
+        public Multimap<Integer, BlobInfo> missingBlobs = HashMultimap.create();
+        public Multimap<Integer, BlobInfo> incorrectSize = HashMultimap.create();
+        public Multimap<Integer, BlobInfo> unexpectedBlobs = HashMultimap.create();
+        public Multimap<Integer, BlobInfo> incorrectModContent = HashMultimap.create();
 
         public Results() {
         }
-        
+
         public Results(Element mboxElement)
         throws ServiceException {
             if (!mboxElement.getName().equals(AdminConstants.E_MAILBOX)) {
@@ -79,7 +83,7 @@ public class BlobConsistencyChecker {
                 blob.dbSize = item.getAttributeLong(AdminConstants.A_SIZE);
                 blob.volumeId = (short) item.getAttributeLong(AdminConstants.A_VOLUME_ID);
                 blob.path = item.getAttribute(AdminConstants.A_BLOB_PATH);
-                missingBlobs.add(blob);
+                missingBlobs.put(blob.itemId, blob);
             }
             for (Element itemEl : mboxElement.getElement(AdminConstants.E_INCORRECT_SIZE).listElements(AdminConstants.E_ITEM)) {
                 BlobInfo blob = new BlobInfo();
@@ -87,19 +91,19 @@ public class BlobConsistencyChecker {
                 blob.modContent = (int) itemEl.getAttributeLong(AdminConstants.A_REVISION);
                 blob.dbSize = itemEl.getAttributeLong(AdminConstants.A_SIZE);
                 blob.volumeId = (short) itemEl.getAttributeLong(AdminConstants.A_VOLUME_ID);
-                
+
                 Element blobEl = itemEl.getElement(AdminConstants.E_BLOB);
                 blob.path = blobEl.getAttribute(AdminConstants.A_PATH);
                 blob.fileDataSize = blobEl.getAttributeLong(AdminConstants.A_SIZE);
                 blob.fileSize = blobEl.getAttributeLong(AdminConstants.A_FILE_SIZE);
-                incorrectSize.add(blob);
+                incorrectSize.put(blob.itemId, blob);
             }
             for (Element blobEl : mboxElement.getElement(AdminConstants.E_UNEXPECTED_BLOBS).listElements(AdminConstants.E_BLOB)) {
                 BlobInfo blob = new BlobInfo();
                 blob.volumeId = (short) blobEl.getAttributeLong(AdminConstants.A_VOLUME_ID);
                 blob.path = blobEl.getAttribute(AdminConstants.A_PATH);
                 blob.fileSize = blobEl.getAttributeLong(AdminConstants.A_FILE_SIZE);
-                unexpectedBlobs.add(blob);
+                unexpectedBlobs.put(blob.itemId, blob);
             }
             for (Element itemEl : mboxElement.getElement(AdminConstants.E_INCORRECT_REVISION).listElements(AdminConstants.E_ITEM)) {
                 BlobInfo blob = new BlobInfo();
@@ -107,27 +111,27 @@ public class BlobConsistencyChecker {
                 blob.modContent = (int) itemEl.getAttributeLong(AdminConstants.A_REVISION);
                 blob.dbSize = itemEl.getAttributeLong(AdminConstants.A_SIZE);
                 blob.volumeId = (short) itemEl.getAttributeLong(AdminConstants.A_VOLUME_ID);
-                
+
                 Element blobEl = itemEl.getElement(AdminConstants.E_BLOB);
                 blob.path = blobEl.getAttribute(AdminConstants.A_PATH);
                 blob.fileSize = blobEl.getAttributeLong(AdminConstants.A_FILE_SIZE);
                 blob.fileModContent = (int) blobEl.getAttributeLong(MailConstants.A_REVISION);
-                incorrectModContent.add(blob);
+                incorrectModContent.put(blob.itemId, blob);
             }
         }
-        
+
         public boolean hasInconsistency() {
             return !(missingBlobs.isEmpty() && incorrectSize.isEmpty() &&
                 unexpectedBlobs.isEmpty() && incorrectModContent.isEmpty());
         }
-        
+
         public void toElement(Element parent) {
             Element missingEl = parent.addElement(AdminConstants.E_MISSING_BLOBS);
             Element incorrectSizeEl = parent.addElement(AdminConstants.E_INCORRECT_SIZE);
             Element unexpectedBlobsEl = parent.addElement(AdminConstants.E_UNEXPECTED_BLOBS);
             Element incorrectRevisionEl = parent.addElement(AdminConstants.E_INCORRECT_REVISION);
-            
-            for (BlobInfo blob : missingBlobs) {
+
+            for (BlobInfo blob : missingBlobs.values()) {
                 missingEl.addElement(AdminConstants.E_ITEM)
                     .addAttribute(AdminConstants.A_ID, blob.itemId)
                     .addAttribute(AdminConstants.A_REVISION, blob.modContent)
@@ -135,7 +139,7 @@ public class BlobConsistencyChecker {
                     .addAttribute(AdminConstants.A_VOLUME_ID, blob.volumeId)
                     .addAttribute(AdminConstants.A_BLOB_PATH, blob.path);
             }
-            for (BlobInfo blob : incorrectSize) {
+            for (BlobInfo blob : incorrectSize.values()) {
                 Element itemEl = incorrectSizeEl.addElement(AdminConstants.E_ITEM)
                     .addAttribute(AdminConstants.A_ID, blob.itemId)
                     .addAttribute(MailConstants.A_REVISION, blob.modContent)
@@ -146,13 +150,13 @@ public class BlobConsistencyChecker {
                     .addAttribute(AdminConstants.A_SIZE, blob.fileDataSize)
                     .addAttribute(AdminConstants.A_FILE_SIZE, blob.fileSize);
             }
-            for (BlobInfo blob : unexpectedBlobs) {
+            for (BlobInfo blob : unexpectedBlobs.values()) {
                 unexpectedBlobsEl.addElement(AdminConstants.E_BLOB)
                     .addAttribute(AdminConstants.A_VOLUME_ID, blob.volumeId)
                     .addAttribute(AdminConstants.A_PATH, blob.path)
                     .addAttribute(AdminConstants.A_FILE_SIZE, blob.fileSize);
             }
-            for (BlobInfo blob : incorrectModContent) {
+            for (BlobInfo blob : incorrectModContent.values()) {
                 Element itemEl = incorrectRevisionEl.addElement(AdminConstants.E_ITEM)
                     .addAttribute(AdminConstants.A_ID, blob.itemId)
                     .addAttribute(MailConstants.A_REVISION, blob.modContent)
@@ -170,10 +174,10 @@ public class BlobConsistencyChecker {
     private Results mResults;
     private int mMailboxId;
     private boolean mCheckSize = true;
-    
+
     public BlobConsistencyChecker() {
     }
-    
+
     public Results check(Collection<Short> volumeIds, int mboxId, boolean checkSize)
     throws ServiceException {
         StoreManager sm = StoreManager.getInstance();
@@ -185,13 +189,13 @@ public class BlobConsistencyChecker {
         mCheckSize = checkSize;
         mResults = new Results();
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(mMailboxId);
-        Connection conn = null;
+        DbConnection conn = null;
 
         try {
             conn = DbPool.getConnection();
-            
+
             for (short volumeId : volumeIds) {
-                Volume vol = Volume.getById(volumeId);
+                Volume vol = VolumeManager.getInstance().getVolume(volumeId);
                 if (vol.getType() == Volume.TYPE_INDEX) {
                     sLog.warn("Skipping index volume %d.  Only message volumes are supported.", vol.getId());
                     continue;
@@ -205,12 +209,13 @@ public class BlobConsistencyChecker {
                 // of id's if we wrap from group 255 back to group 0.
                 int minId = 0; // Minimum id for the current block
                 int group = 0; // Current group number
-                
+                int maxId = 0;
                 while (minId <= mailboxMaxId && group < numGroups) {
-                    Map<Integer, BlobInfo> blobsById = new HashMap<Integer, BlobInfo>();
-                    int maxId = minId + filesPerGroup - 1; // Maximum id for the current block
+                    // We used Multimap to make sure we store multiple BlobInfo objects for the same itemId
+                    // multiple BlobInfo objects are created when there are multiple revisions of the same file
+                    Multimap<Integer, BlobInfo> blobsById = HashMultimap.create();
                     String blobDir = vol.getBlobDir(mbox.getId(), minId);
-                    
+
                     while (minId <= mailboxMaxId) {
                         maxId = minId + filesPerGroup - 1; // Maximum id for the current block
                         for (BlobInfo blob : DbBlobConsistency.getBlobInfo(conn, mbox, minId, maxId, volumeId)) {
@@ -223,7 +228,7 @@ public class BlobConsistencyChecker {
                     } catch (IOException e) {
                         throw ServiceException.FAILURE("Unable to check " + blobDir, e);
                     }
-                    
+
                     group++;
                     minId = group * filesPerGroup; // Set minId to the smallest id in the next group
                 }
@@ -233,15 +238,16 @@ public class BlobConsistencyChecker {
         }
         return mResults;
     }
-    
+
     private static final Pattern PAT_BLOB_FILENAME = Pattern.compile("([0-9]+)-([0-9]+)\\.msg");
-    
+
     /**
      * Reconciles blobs against the files in the given directory and adds any inconsistencies
      * to the current result set.
      */
-    private void check(short volumeId, String blobDirPath, Map<Integer, BlobInfo> blobsById)
+    private void check(short volumeId, String blobDirPath, Multimap<Integer, BlobInfo> blobsById)
     throws IOException {
+        Multimap<Integer, BlobInfo> revisions = HashMultimap.create();
         File blobDir = new File(blobDirPath);
         File[] files = blobDir.listFiles();
         if (files == null) {
@@ -257,38 +263,71 @@ public class BlobConsistencyChecker {
                 itemId = Integer.parseInt(matcher.group(1));
                 modContent = Integer.parseInt(matcher.group(2));
             }
-            
-            BlobInfo blob = blobsById.remove(itemId);
+
+            BlobInfo blob = null;
+            if (blobsById.containsKey(itemId)) {
+                for (BlobInfo tempBlob : blobsById.get(itemId)) {
+                    if (tempBlob.modContent == modContent) {
+                        blob = tempBlob;
+                        revisions.put(itemId, tempBlob);
+                        blobsById.remove(itemId, tempBlob);
+                        break;
+                    }
+                }
+            }
+
             if (blob == null) {
                 BlobInfo unexpected = new BlobInfo();
                 unexpected.volumeId = volumeId;
                 unexpected.path = file.getAbsolutePath();
                 unexpected.fileSize = file.length();
-                mResults.unexpectedBlobs.add(unexpected);
+                mResults.unexpectedBlobs.put(itemId, unexpected);
             } else {
                 blob.fileSize = file.length();
                 blob.fileModContent = modContent;
-                
+
                 if (mCheckSize) {
                     blob.fileDataSize = getDataSize(file, blob.dbSize);
                     if (blob.dbSize != blob.fileDataSize) {
-                        mResults.incorrectSize.add(blob);
+                        mResults.incorrectSize.put(blob.itemId, blob);
                     }
-                }
-
-                if (blob.modContent != blob.fileModContent) {
-                    blob.path = file.getAbsolutePath();
-                    mResults.incorrectModContent.add(blob);
                 }
             }
         }
-        
+
         // Any remaining items have missing blobs.
         for (BlobInfo blob : blobsById.values()) {
-            mResults.missingBlobs.add(blob);
+            mResults.missingBlobs.put(blob.itemId, blob);
+        }
+
+        // Redefining incorrect revisions for all items that support single revision
+        // If there exists a single item with the same itemID in both missingBlobs and unexpectedBlobs
+        // and if there aren't any items with same itemId in revisions then it is categorised as incorrect revision
+        Iterator<Integer> keyIterator = mResults.missingBlobs.keySet().iterator();
+        while (keyIterator.hasNext()) {
+            int itemId = (Integer) keyIterator.next();
+            List<BlobInfo> missingBlobs = new ArrayList<BlobInfo>(mResults.missingBlobs.get(itemId));
+            List<BlobInfo> unexpectedBlobs = new ArrayList<BlobInfo>(mResults.unexpectedBlobs.get(itemId));
+            if (missingBlobs.size() == 1 && unexpectedBlobs.size() == 1 && revisions.get(itemId).size() == 0) {
+                BlobInfo incorrectRevision = new BlobInfo();
+                BlobInfo missingBlob = missingBlobs.get(0);
+                incorrectRevision.itemId = missingBlob.itemId;
+                incorrectRevision.modContent = missingBlob.modContent;
+                incorrectRevision.dbSize = missingBlob.dbSize;
+                incorrectRevision.volumeId = missingBlob.volumeId;
+
+                BlobInfo unexpectedBlob = unexpectedBlobs.get(0);
+                incorrectRevision.path = unexpectedBlob.path;
+                incorrectRevision.fileSize = unexpectedBlob.fileSize;
+                incorrectRevision.fileModContent = unexpectedBlob.fileModContent;
+
+                mResults.incorrectModContent.put(incorrectRevision.itemId, incorrectRevision);
+                keyIterator.remove();
+                mResults.unexpectedBlobs.removeAll(itemId);
+            }
         }
     }
-    
+
     private static long getDataSize(File file, long expected)
     throws IOException {
         long fileLen = file.length();

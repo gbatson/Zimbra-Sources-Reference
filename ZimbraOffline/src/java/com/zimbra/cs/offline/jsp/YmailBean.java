@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,7 @@ import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.util.yc.YContactException;
 import com.zimbra.cs.offline.util.yc.oauth.OAuthManager;
 import com.zimbra.cs.offline.util.yc.oauth.OAuthToken;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 public class YmailBean extends ImapBean {
 
@@ -45,7 +46,7 @@ public class YmailBean extends ImapBean {
             }
         }
         host = email.endsWith("@yahoo.co.jp") ? "zimbra.imap.mail.yahoo.co.jp" : "zimbra.imap.mail.yahoo.com";
-        connectionType = DataSource.ConnectionType.ssl;
+        connectionType = ConnectionType.ssl;
         port = "993";
         if (this.contactSyncEnabled && (verb.isAdd() || verb.isModify())) {
             try {

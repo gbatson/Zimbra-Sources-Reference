@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -241,6 +241,27 @@ ZmCalItem.prototype.getOrigStartDate 	= function() { return this._origStartDate 
 ZmCalItem.prototype.getOrigStartTime 	= function() { return this.getOrigStartDate().getTime(); };
 
 /**
+ * Gets the original end date.
+ *
+ * @return	{Date}	the original end date
+ */
+ZmCalItem.prototype.getOrigEndDate 	= function() { return this._origEndDate || this.endDate; };
+
+/**
+ * Gets the original end time.
+ *
+ * @return	{Date}	the original end time
+ */
+ZmCalItem.prototype.getOrigEndTime 	= function() { return this.getOrigEndDate().getTime(); };
+
+/**
+ * Gets the original calendar item.
+ *
+ * @return	{ZmCalItem}	the original calendar item
+ */
+ZmCalItem.prototype.getOrig 	        = function() { return this._orig; };
+
+/**
  * Gets the original timezone.
  * 
  * @return	{Date}	the original timezone
@@ -407,6 +428,9 @@ function() {
  */
 ZmCalItem.prototype.setEndDate =
 function(endDate, keepCache) {
+    if (this._origEndDate == null && this.endDate != null && this.endDate != "") {
+        this._origEndDate = new Date(this.endDate.getTime());
+    }
 	this.endDate = new Date(endDate instanceof Date ? endDate.getTime(): endDate);
 	if (!keepCache)
 		this._resetCached();
@@ -502,7 +526,7 @@ function(contentType) {
 		var content = this.notesTopPart.getContentForType(ct);
 
 		// if requested content type not found, try the other
-		if (content == null || content == "") {
+		if (!content) {
 			if (ct == ZmMimeTable.TEXT_PLAIN) {
 				var div = document.createElement("div");
 				content = this.notesTopPart.getContentForType(ZmMimeTable.TEXT_HTML);
@@ -513,7 +537,7 @@ function(contentType) {
 				content = AjxStringUtil.convertToHtml(this.notesTopPart.getContentForType(ZmMimeTable.TEXT_PLAIN));
 			}
 		}
-		return AjxUtil.isString(content) ? content : content.content;
+		return content;
 	} else {
 		return this.fragment;
 	}
@@ -678,10 +702,10 @@ ZmCalItem.prototype.parseAlarmData =
 function() {
 	if (!this.alarmData) { return; }
 
-	for (var i in this.alarmData) {
+	for (var i = 0; i < this.alarmData.length; i++) {
 		var alarm = this.alarmData[i].alarm;
 		if (alarm) {
-			for (var j in alarm) {
+			for (var j = 0; j < alarm.length; j++) {
 				this.parseAlarm(alarm[j]);
 			}
 		}
@@ -793,8 +817,9 @@ function(ids) {
 
 	if (ids && ids.length > 0) {
 		var split = ids.split(',');
-		for (var i = 0 ; i < split.length; i++)
+		for (var i = 0 ; i < split.length; i++) {
 			this.attachments[i] = { id:split[i] };
+		}
 	}
 };
 
@@ -810,8 +835,9 @@ function() {
 		if (this._validAttachments == null) {
 			this._validAttachments = [];
 			for (var i = 0; i < attachs.length; ++i) {
-				if (this.message.isRealAttachment(attachs[i]) || attachs[i].ct == ZmMimeTable.TEXT_CAL)
+				if (this.message.isRealAttachment(attachs[i]) || attachs[i].contentType == ZmMimeTable.TEXT_CAL) {
 					this._validAttachments.push(attachs[i]);
+				}
 			}
 		}
 		return this._validAttachments.length > 0 ? this._validAttachments : null;
@@ -992,6 +1018,14 @@ function(mode, callback, errorCallback, ex) {
 		appCtxt.getAppController().sendRequest(params);
 		return true;
 	}
+	if (ex.code == "account.ACCOUNT_INACTIVE") {
+        var msg = ex.msg ? ex.msg.split(':') : null;
+        var acctEmailId = msg ? msg[1] : '';
+        var msgDlg = appCtxt.getMsgDialog();
+        msgDlg.setMessage(AjxMessageFormat.format(ZmMsg.accountInactiveError, acctEmailId), DwtMessageDialog.CRITICAL_STYLE);
+        msgDlg.popup();
+		return true;
+	}
 	if (errorCallback) {
 		return errorCallback.run(ex);
 	}
@@ -1032,6 +1066,7 @@ function(message, viewMode) {
         this.recurring =  message.invite.isRecurring();
         this.location = message.invite.getLocation();
         this.seq = message.invite.getSequenceNo();
+        this.allDayEvent = message.invite.isAllDayEvent();
         if(message.invite.id) {
             this.invId = this.id + "-" + message.invite.id;
         }
@@ -1168,7 +1203,7 @@ function(message) {
 	this._reminderMinutes = 0;
 	var alarm = message.invite.getAlarm();
 	if (alarm) {
-		for (var i in alarm) {
+		for (var i = 0; i < alarm.length; i++) {
             var alarmInst = alarm[i];
             if (!alarmInst) continue;
 
@@ -1244,27 +1279,24 @@ function(dwtIframe) {
  */
 ZmCalItem.prototype._setNotes =
 function(message) {
-	var text = message.getBodyPart(ZmMimeTable.TEXT_PLAIN);
-	var html = message.getBodyPart(ZmMimeTable.TEXT_HTML);
 
+    if(!(message instanceof ZmMailMsg)) { return; }
 	this.notesTopPart = new ZmMimePart();
-	var htmlContent = "";
-	var textContent = "";
 
-	if (html) {
-		var notes = AjxUtil.isString(html) ? html : html.content;
-		var htmlContent = notes.replace(/<title\s*>.*\/title>/ig,"");
+	var htmlContent = message.getBodyContent(ZmMimeTable.TEXT_HTML);
+	if (htmlContent) {
+		htmlContent = htmlContent.replace(/<title\s*>.*\/title>/ig,"");
 		if (!this._includeEditReply) {
 			htmlContent = this._trimNotesSummary(htmlContent, true);
 		}
 	}
 
-	if (html && htmlContent) {
+	if (htmlContent) {
 		// create a temp iframe to create a proper DOM tree
 		var params = {parent:appCtxt.getShell(), hidden:true, html:htmlContent};
 		var dwtIframe = new DwtIframe(params);
 		if (dwtIframe) {
-			textContent = this._getCleanHtml2Text(dwtIframe);
+			var textContent = this._getCleanHtml2Text(dwtIframe);
 			// bug: 23034 this hidden iframe under shell is adding more space
 			// which breaks calendar column view
 			var iframe = dwtIframe.getIframe();
@@ -1287,7 +1319,7 @@ function(message) {
 		this.notesTopPart.children.add(textPart);
 		this.notesTopPart.children.add(htmlPart);
 	} else {
-        textContent = (text && text.content) || "";
+		var textContent = message.getBodyContent(ZmMimeTable.TEXT_PLAIN);
 		if (!this._includeEditReply) {
 			textContent = this._trimNotesSummary(textContent);
 		}
@@ -1470,7 +1502,7 @@ function(alarmInst, soapDoc, alarmNode)  {
 	// bug 28924: preserve x props
 	xprops = (xprops instanceof Array) ? xprops : [xprops];
 
-	for (var i in xprops) {
+	for (var i = 0; i < xprops.length; i++) {
 		var xprop = xprops[i];
 		if (xprop && xprop.name) {
 			var x = soapDoc.set("xprop", null, alarmNode);
@@ -1547,11 +1579,11 @@ function(mode, msg, callback, errorCallback, batchCmd) {
 		// ZmComposeView#getMsg only sets topPart on new message that's returned.
 		// And ZmCalItem#_setNotes calls ZmMailMsg#getBodyPart.
 		var bodyParts = [];
-		var childParts = msg._topPart.node.ct == ZmMimeTable.MULTI_ALT
+		var childParts = (msg._topPart.contentType == ZmMimeTable.MULTI_ALT)
 			? msg._topPart.children.getArray()
 			: [msg._topPart];
 		for (var i = 0; i < childParts.length; i++) {
-			bodyParts.push(childParts[i].node);
+			bodyParts.push(childParts[i]);
 		}
 		msg.setBodyParts(bodyParts);
 		this._setNotes(msg);
@@ -1680,8 +1712,10 @@ function(mode, callback, msg, batchCmd, result) {
 					for (var i = 0; i < ZmMailMsg.ADDRS.length; i++) {
 						var type = ZmMailMsg.ADDRS[i];
 	
-						// if on-behalf-of, dont set the from address
-						if (accountName && type == AjxEmailAddress.FROM) { continue; }
+						// if on-behalf-of, dont set the from address and
+                        // don't set the reset-from (only valid when receiving a message)
+						if ((accountName && type == AjxEmailAddress.FROM) ||
+                            (type == AjxEmailAddress.RESENT_FROM)) { continue; }
 	
 						var vector = msg.getAddresses(type);
 						var count = vector.size();
@@ -1755,96 +1789,6 @@ function() {
 	return this.getSummary(true);
 };
 
-/**
- * Gets the attach list as HTML.
- * 
- * @param {Object}		attach		a generic Object contain meta info about the attachment
- * @param {Boolean}		hasCheckbox		<code>true</code> to insert a checkbox prior to the attachment
- * @return	{String}	the HTML
- */
-ZmCalItem.prototype.getAttachListHtml =
-function(attach, hasCheckbox) {
-	var msgFetchUrl = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI);
-
-	// gather meta data for this attachment
-	var mimeInfo = ZmMimeTable.getInfo(attach.ct);
-	var icon = mimeInfo ? mimeInfo.image : "GenericDoc";
-	var size = attach.s;
-	var sizeText;
-	if (size != null) {
-		if (size < 1024)		sizeText = size + " B";
-		else if (size < 1024^2)	sizeText = Math.round((size/1024) * 10) / 10 + " KB";
-		else 					sizeText = Math.round((size / (1024*1024)) * 10) / 10 + " MB";
-	}
-
-	var html = [];
-	var i = 0;
-
-	// start building html for this attachment
-	html[i++] = "<table border=0 cellpadding=0 cellspacing=0><tr>";
-	if (hasCheckbox) {
-		html[i++] = "<td width=1%><input type='checkbox' checked value='";
-		html[i++] = attach.part;
-		html[i++] = "' name='";
-		html[i++] = ZmCalItem.ATTACHMENT_CHECKBOX_NAME;
-		html[i++] = "'></td>";
-	}
-
-	var hrefRoot = ["href='", msgFetchUrl, "&id=", this.invId, "&amp;part="].join("");
-	html[i++] = "<td width=20><a target='_blank' class='AttLink' ";
-	html[i++] = hrefRoot;
-	html[i++] = attach.part;
-	html[i++] = "'>";
-	html[i++] = AjxImg.getImageHtml(icon);
-	html[i++] = "</a></td><td><a target='_blank' class='AttLink' ";
-	if (appCtxt.get(ZmSetting.MAIL_ENABLED) && attach.ct == ZmMimeTable.MSG_RFC822) {
-		html[i++] = " href='javascript:;' onclick='ZmCalItemView.rfc822Callback(";
-		html[i++] = '"';
-		html[i++] = this.invId;
-		html[i++] = '"';
-		html[i++] = ",\"";
-		html[i++] = attach.part;
-		html[i++] = "\"); return false;'";
-	} else {
-		html[i++] = hrefRoot;
-		html[i++] = attach.part;
-		html[i++] = "'";
-	}
-	html[i++] = ">";
-	html[i++] = attach.filename;
-	html[i++] = "</a>";
-
-	var addHtmlLink = (appCtxt.get(ZmSetting.VIEW_ATTACHMENT_AS_HTML) &&
-					   attach.body == null && ZmMimeTable.hasHtmlVersion(attach.ct));
-
-	if (sizeText || addHtmlLink) {
-		html[i++] = "&nbsp;(";
-		if (sizeText) {
-			html[i++] = sizeText;
-			html[i++] = ") ";
-		}
-		if (addHtmlLink) {
-			html[i++] = "<a style='text-decoration:underline' target='_blank' class='AttLink' ";
-			html[i++] = hrefRoot;
-			html[i++] = attach.part;
-			html[i++] = "&view=html'>";
-			html[i++] = ZmMsg.preview;
-			html[i++] = "</a>&nbsp;";
-		}
-		if (attach.ct != ZmMimeTable.MSG_RFC822) {
-			html[i++] = "<a style='text-decoration:underline' class='AttLink' onclick='ZmZimbraMail.unloadHackCallback();' ";
-			html[i++] = hrefRoot;
-			html[i++] = attach.part;
-			html[i++] = "&disp=a'>";
-			html[i++] = ZmMsg.download;
-			html[i++] = "</a>";
-		}
-	}
-
-	html[i++] = "</td></tr></table>";
-
-	return html.join("");
-};
 
 
 // Private / Protected methods
@@ -1902,10 +1846,15 @@ function(notes, isHtml) {
 		var idx = notes.indexOf(ZmItem.NOTES_SEPARATOR);
 		if (idx != -1) {
 			notes = notes.substr(idx + ZmItem.NOTES_SEPARATOR.length);
-			var junk = isHtml ? "</div><br>" : "\n\n";
-			if (notes.indexOf(junk) == 0) {
-				notes = notes.replace(junk, "");
-			}
+            if (isHtml) {
+                // If HTML content is generated from text content \n are replaced with br
+                // Remove the leading <br> added
+                notes = notes.replace(/^<br><br>/i, "");
+                notes = notes.replace(/^<\/div><br>/i, "");
+            }
+            else {
+                notes = notes.replace(/^\n\n/i, "");
+            }
 		}
 	}
 	return AjxStringUtil.trim(notes);
@@ -2214,7 +2163,7 @@ function(soapDoc, inv, comp) {
 	// bug 16024: preserve x props
 	xprops = (xprops instanceof Array) ? xprops : [xprops];
 
-	for (var i in xprops) {
+	for (var i = 0; i < xprops.length; i++) {
 		var xprop = xprops[i];
 		if (xprop && xprop.name) {
 			var x = soapDoc.set("xprop", null, comp);
@@ -2236,7 +2185,7 @@ function(soapDoc, xprop, xparams) {
 
 	xparams = (xparams instanceof Array) ? xparams : [xparams];
 
-	for (var j in xparams) {
+	for (var j = 0; j < xparams.length; j++) {
 		var xparam = xparams[j];
 		if (xparam && xparam.name) {
 			var x = soapDoc.set("xparam", null, xprop);
@@ -2254,7 +2203,7 @@ function(soapDoc, xprop, xparams) {
 ZmCalItem.prototype._addDateTimeToSoap =
 function(soapDoc, inv, comp) {
 	// always(?) set all day
-	comp.setAttribute("allDay", this.allDayEvent);
+	comp.setAttribute("allDay", this.allDayEvent + ""); // XML attribute value can contain only text
 
 	// timezone
 	var tz;
@@ -2310,7 +2259,7 @@ ZmCalItem.prototype._addAttendeesToSoap =
 function(soapDoc, inv, m, notifyList, accountName) {
 	// if this appt is on-behalf-of, set the from address to that person
     if (this.isOrganizer() && accountName) {
-        e = soapDoc.set("e", null, m);
+        var e = soapDoc.set("e", null, m);
         e.setAttribute("a", accountName);
         e.setAttribute("t", AjxEmailAddress.toSoapType[AjxEmailAddress.FROM]);
     }
@@ -2345,17 +2294,20 @@ function(soapDoc, m, cancel) {
 			soapDoc.set("content", content, partNode);
 		}
 	} else {
-		var tcontent = this.notesTopPart ? this.notesTopPart.getContent() : "";
-		var textPart = soapDoc.set("mp", null, mp);
-		textPart.setAttribute("ct", ZmMimeTable.TEXT_PLAIN);
-		soapDoc.set("content", (this._includeEditReply ? tcontent : AjxBuffer.concat(tprefix, tcontent)), textPart);
-
-		//bug fix #9592 - html encode the text before setting it as the "HTML" part
-		var hcontent = AjxStringUtil.nl2br(AjxStringUtil.htmlEncode(tcontent));
-		var htmlPart = soapDoc.set("mp", null, mp);
-	    htmlPart.setAttribute("ct", ZmMimeTable.TEXT_HTML);
-		var html = "<html><body>" + (this._includeEditReply ? hcontent : AjxBuffer.concat(hprefix, hcontent)) + "</body></html>";
-		soapDoc.set("content", html, htmlPart);
+        var ntp = this.notesTopPart;
+		var tcontent = ntp ? ntp.getContent() : "";
+        var pct = ntp ? ntp.getContentType() : ZmMimeTable.TEXT_PLAIN;
+		var contentPart = soapDoc.set("mp", null, mp);
+        contentPart.setAttribute("ct", pct);
+        if (pct == ZmMimeTable.TEXT_HTML) {
+            //bug fix #9592 - html encode the text before setting it as the "HTML" part
+            var hcontent = AjxStringUtil.nl2br(AjxStringUtil.htmlEncode(tcontent));
+            var html = "<html><body>" + (this._includeEditReply ? hcontent : AjxBuffer.concat(hprefix, hcontent)) + "</body></html>";
+            soapDoc.set("content", html, contentPart);
+        }
+        else {
+		    soapDoc.set("content", (this._includeEditReply ? tcontent : AjxBuffer.concat(tprefix, tcontent)), contentPart);
+        }
 	}
 };
 
@@ -2411,8 +2363,8 @@ function(calItemNode, instNode) {
 	this.seriesInvId	= this.recurring ? calItemNode.invId : null;
 	this.ridZ 			= instNode && instNode.ridZ;
 
-	if (calItemNode.t) {
-		this._parseTags(calItemNode.t);
+	if (calItemNode.tn) {
+		this._parseTagNames(calItemNode.tn);
 	}
 	if (calItemNode.f) {
 		this._parseFlags(calItemNode.f);
@@ -2467,6 +2419,46 @@ function(respName, callback, result) {
 	}
 };
 
+ZmCalItem.prototype.processErrorSave =
+function(ex) {
+	// TODO: generalize error message for calItem instead of just Appt
+    var status = {
+        continueSave: false,
+        errorMessage: ""
+    };
+	if (ex.code == ZmCsfeException.MAIL_SEND_ABORTED_ADDRESS_FAILURE) {
+		var invalid = ex.getData(ZmCsfeException.MAIL_SEND_ADDRESS_FAILURE_INVALID);
+		var invalidMsg = (invalid && invalid.length)
+			? AjxMessageFormat.format(ZmMsg.apptSendErrorInvalidAddresses, AjxStringUtil.htmlEncode(invalid.join(", "))) : null;
+		status.errorMessage = ZmMsg.apptSendErrorAbort + "<br/>" + invalidMsg;
+	} else if (ex.code == ZmCsfeException.MAIL_SEND_PARTIAL_ADDRESS_FAILURE) {
+		var invalid = ex.getData(ZmCsfeException.MAIL_SEND_ADDRESS_FAILURE_INVALID);
+		status.errorMessage = (invalid && invalid.length)
+			? AjxMessageFormat.format(ZmMsg.apptSendErrorPartial, AjxStringUtil.htmlEncode(invalid.join(", ")))
+			: ZmMsg.apptSendErrorAbort;
+	} else if(ex.code == ZmCsfeException.MAIL_MESSAGE_TOO_BIG) {
+        status.errorMessage = (this.type == ZmItem.TASK) ? ZmMsg.taskSaveErrorToobig : ZmMsg.apptSaveErrorToobig;
+    } else if (ex.code == ZmCsfeException.MAIL_INVITE_OUT_OF_DATE) {
+        if(!this.isVersionIgnored()){
+            this.setIgnoreVersion(true);
+            status.continueSave = true;
+        }
+        else{
+            status.errorMessage = ZmMsg.inviteOutOfDate;
+            this.setIgnoreVersion(false);
+        }
+    } else if (ex.code == ZmCsfeException.MAIL_NO_SUCH_CALITEM) {
+        status.errorMessage = ex.getErrorMsg([ex.getData("itemId")]);
+    } else if (ex.code == ZmCsfeException.MAIL_QUOTA_EXCEEDED) {
+    		if(this.type == ZmItem.APPT){
+                status.errorMessage=ZmMsg.errorQuotaExceededAppt;
+            } else if(this.type == ZmItem.TASK){
+                status.errorMessage=ZmMsg.errorQuotaExceededTask;
+            }
+    }
+
+    return status;
+};
 
 ZmCalItem.prototype.setProposedTimeCallback =
 function(callback) {

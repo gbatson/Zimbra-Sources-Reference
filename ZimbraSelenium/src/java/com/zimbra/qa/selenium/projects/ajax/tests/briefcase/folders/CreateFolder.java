@@ -1,30 +1,15 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.folders;
 
 import org.testng.annotations.*;
+import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DialogCreateBriefcaseFolder;
 
-public class CreateFolder extends AjaxCommonTest {
+public class CreateFolder extends FeatureBriefcaseTest {
 
 	private boolean _folderIsCreated = false;
 	private String _folderName = null;
@@ -34,7 +19,8 @@ public class CreateFolder extends AjaxCommonTest {
 
 		// test starts at the briefcase tab
 		super.startingPage = app.zPageBriefcase;
-		super.startingAccountPreferences = null;
+		
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");
 	}
 
 	@Test(description = "Create a new folder by clicking 'Create a new briefcase' on folders tree", groups = { "sanity" })
@@ -48,7 +34,7 @@ public class CreateFolder extends AjaxCommonTest {
 		_folderName = "folder" + ZimbraSeleniumProperties.getUniqueString();
 
 		DialogCreateBriefcaseFolder createFolderDialog = (DialogCreateBriefcaseFolder) app.zTreeBriefcase
-				.zPressButton(Button.B_TREE_NEWBRIEFCASE);
+				.zPressPulldown(Button.B_TREE_FOLDERS_OPTIONS, Button.B_TREE_NEWFOLDER);
 
 		createFolderDialog.zEnterFolderName(_folderName);
 		createFolderDialog.zClickButton(Button.B_OK);
@@ -68,8 +54,8 @@ public class CreateFolder extends AjaxCommonTest {
 		ZAssert.assertEquals(folder.getName(), _folderName,
 				"Verify the server and client folder names match");
 	}
-
-	@Test(description = "Create a new folder using 'nf' keyboard shortcut", groups = { "functional" })
+	@Bugs(ids = "67061")
+	@Test(description = "According to Comment#1 in the bug 67061 Create a new folder using 'nf' keyboard shortcut is for mail only", groups = { "skip" })
 	public void CreateFolder_02() throws HarnessException {
 		ZimbraAccount account = app.zGetActiveAccount();
 
@@ -152,6 +138,9 @@ public class CreateFolder extends AjaxCommonTest {
 		// Set the new folder name
 		_folderName = "folder" + ZimbraSeleniumProperties.getUniqueString();
 
+		// refresh briefcase page
+		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseRootFolder,false);
+				
 		// Create a new briefcase folder using right click context menu + New Briefcase
 		DialogCreateBriefcaseFolder dialog = (DialogCreateBriefcaseFolder) app.zPageBriefcase
 				.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_BRIEFCASE, null);
@@ -187,8 +176,7 @@ public class CreateFolder extends AjaxCommonTest {
 				FolderItem
 						.deleteUsingSOAP(app.zGetActiveAccount(), _folderName);
 			} catch (Exception e) {
-				logger.info("Failed while removing the folder.");
-				e.printStackTrace();
+				logger.warn("Failed while removing the folder.", e);
 			} finally {
 				_folderName = null;
 				_folderIsCreated = false;

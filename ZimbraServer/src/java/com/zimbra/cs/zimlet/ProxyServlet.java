@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,6 +26,8 @@ import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.zimbra.cs.account.AuthTokenException;
+import com.zimbra.cs.service.AuthProvider;
 import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -34,8 +36,10 @@ import org.apache.commons.httpclient.HttpState;
 import org.apache.commons.httpclient.UsernamePasswordCredentials;
 import org.apache.commons.httpclient.auth.AuthScope;
 import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
+import org.apache.commons.httpclient.methods.DeleteMethod;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
+import org.apache.commons.httpclient.methods.PutMethod;
 
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.mime.ContentDisposition;
@@ -48,7 +52,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.httpclient.HttpProxyUtil;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.service.FileUploadServlet;
@@ -60,12 +64,15 @@ import com.zimbra.common.localconfig.LC;
  */
 @SuppressWarnings("serial")
 public class ProxyServlet extends ZimbraServlet {
+
     private static final String TARGET_PARAM = "target";
+
     private static final String UPLOAD_PARAM = "upload";
+    private static final String FILENAME_PARAM = "filename";
+    private static final String FORMAT_PARAM = "fmt";
+
     private static final String USER_PARAM = "user";
     private static final String PASS_PARAM = "pass";
-    private static final String FORMAT_PARAM = "fmt";
-    private static final String FILENAME_PARAM = "filename";
     private static final String AUTH_PARAM = "auth";
     private static final String AUTH_BASIC = "basic";
    
@@ -83,7 +90,7 @@ public class ProxyServlet extends ZimbraServlet {
         return allowedDomains;
     }
     
-    private boolean checkPermissionOnTarget(HttpServletRequest req, URL target, AuthToken auth) {
+    private boolean checkPermissionOnTarget(URL target, AuthToken auth) {
         String host = target.getHost().toLowerCase();
         ZimbraLog.zimlet.debug("checking allowedDomains permission on target host: "+host);
         Set<String> domains;
@@ -157,6 +164,16 @@ public class ProxyServlet extends ZimbraServlet {
         doProxy(req, resp);
     }
 
+    @Override
+    protected void doPut(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        doProxy(req, resp);
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        doProxy(req, resp);
+    }
+
     protected boolean isAdminRequest(HttpServletRequest req) {
         return req.getServerPort() == LC.zimbra_admin_service_port.intValue();
     }
@@ -166,9 +183,31 @@ public class ProxyServlet extends ZimbraServlet {
     private void doProxy(HttpServletRequest req, HttpServletResponse resp) throws IOException {
         ZimbraLog.clearContext();
         boolean isAdmin = isAdminRequest(req);
-        AuthToken authToken = isAdmin ? getAdminAuthTokenFromCookie(req, resp) : getAuthTokenFromCookie(req, resp);      
-        if (authToken == null)
+        AuthToken authToken = isAdmin ?
+                getAdminAuthTokenFromCookie(req, resp, true) : getAuthTokenFromCookie(req, resp, true);
+        if (authToken == null) {
+            String zAuthToken = req.getParameter(QP_ZAUTHTOKEN);
+            if (zAuthToken != null) {
+                try {
+                    authToken = AuthProvider.getAuthToken(zAuthToken);
+                    if (authToken.isExpired()) {
+                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "authtoken expired");
+                        return;
+                    }
+                    if (isAdmin && !authToken.isAdmin()) {
+                        resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "permission denied");
+                        return;
+                    }
+                } catch (AuthTokenException e) {
+                    resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "unable to parse authtoken");
+                    return;
+                }
+            }
+        }
+        if (authToken == null) {
+            resp.sendError(HttpServletResponse.SC_UNAUTHORIZED, "no authtoken cookie");
             return;
+        }
 
         // get the posted body before the server read and parse them.
         byte[] body = copyPostedData(req);
@@ -182,7 +221,7 @@ public class ProxyServlet extends ZimbraServlet {
 
         // check for permission
         URL url = new URL(target);
-        if (!isAdmin && !checkPermissionOnTarget(req, url, authToken)) {
+        if (!isAdmin && !checkPermissionOnTarget(url, authToken)) {
             resp.sendError(HttpServletResponse.SC_FORBIDDEN);
             return;
         }
@@ -193,16 +232,23 @@ public class ProxyServlet extends ZimbraServlet {
 
         HttpMethod method = null;
         try {
-            HttpClient client = ZimbraHttpConnectionManager.getInternalHttpConnMgr().newHttpClient();
+            HttpClient client = ZimbraHttpConnectionManager.getExternalHttpConnMgr().newHttpClient();
             HttpProxyUtil.configureProxy(client);
             String reqMethod = req.getMethod();
-            if (reqMethod.equalsIgnoreCase("GET"))
+            if (reqMethod.equalsIgnoreCase("GET")) {
                 method = new GetMethod(target);
-            else if (reqMethod.equalsIgnoreCase("POST")) {
+            } else if (reqMethod.equalsIgnoreCase("POST")) {
                 PostMethod post = new PostMethod(target);
                 if (body != null)
                     post.setRequestEntity(new ByteArrayRequestEntity(body, req.getContentType()));
                 method = post;
+            } else if (reqMethod.equalsIgnoreCase("PUT")) {
+                PutMethod put = new PutMethod(target);
+                if (body != null)
+                    put.setRequestEntity(new ByteArrayRequestEntity(body, req.getContentType()));
+                method = put;
+            } else if (reqMethod.equalsIgnoreCase("DELETE")) {
+                method = new DeleteMethod(target);
             } else {
                 ZimbraLog.zimlet.info("unsupported request method: " + reqMethod);
                 resp.sendError(HttpServletResponse.SC_METHOD_NOT_ALLOWED);

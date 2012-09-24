@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,7 +16,7 @@ package com.zimbra.cs.index;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.Collection;
 
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
@@ -24,7 +24,13 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockFactory;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.store.SimpleFSDirectory;
+import org.apache.lucene.store.SingleInstanceLockFactory;
 
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.stats.ZimbraPerf;
 
 /**
@@ -37,56 +43,60 @@ import com.zimbra.cs.stats.ZimbraPerf;
  */
 public final class LuceneDirectory extends Directory {
     private final FSDirectory directory;
-    private final AtomicLong rcount = new AtomicLong();
-    private final AtomicLong wcount = new AtomicLong();
 
     private LuceneDirectory(FSDirectory dir) {
         directory = dir;
     }
 
     /**
-     * Creates a new {@link LuceneDirectory} with {@code NativeFSLockFactory}.
-     *
-     * @see #open(File, LockFactory)
-     */
-    public static LuceneDirectory open(File path) throws IOException {
-        return new LuceneDirectory(FSDirectory.open(path));
-    }
-
-    /**
-     * Creates a new {@link LuceneDirectory}.
+     * Creates a new {@link LuceneDirectory} with {@code SingleInstanceLockFactory}.
      * <p>
-     * Lucene will try to pick the best {@link FSDirectory} implementation given
-     * the current environment. Currently this returns {@code NIOFSDirectory} on
-     * non-Windows JREs and {@code SimpleFSDirectory} on Windows.
+     * You can switch Lucene's {@link FSDirectory} implementation by {@link LC#zimbra_index_lucene_io_impl}.
+     * <ul>
+     *  <li>{@code null} -Lucene will try to pick the best {@link FSDirectory} implementation given the current
+     *      environment. Currently this returns {@link MMapDirectory} for most Solaris and Windows 64-bit JREs,
+     *      {@link NIOFSDirectory} for other non-Windows JREs, and {@link SimpleFSDirectory} for other JREs on Windows.
+     *  <li>{@code simple} - straightforward implementation using java.io.RandomAccessFile. However, it has poor
+     *      concurrent performance (multiple threads will bottleneck) as it synchronizes when multiple threads read from
+     *      the same file.
+     *  <li>{@code nio} - uses java.nio's FileChannel's positional io when reading to avoid synchronization when reading
+     *      from the same file. Unfortunately, due to a Windows-only Sun JRE bug this is a poor choice for Windows, but
+     *      on all other platforms this is the preferred choice.
+     *  <li>{@code mmap} - uses memory-mapped IO when reading. This is a good choice if you have plenty of virtual
+     *      memory relative to your index size, eg if you are running on a 64 bit JRE, or you are running on a 32 bit
+     *      JRE but your index sizes are small enough to fit into the virtual memory space. Java has currently the
+     *      limitation of not being able to unmap files from user code. The files are unmapped, when GC releases the
+     *      byte buffers. Due to this bug in Sun's JRE, MMapDirectory's IndexInput.close() is unable to close the
+     *      underlying OS file handle. Only when GC finally collects the underlying objects, which could be quite some
+     *      time later, will the file handle be closed. This will consume additional transient disk usage: on Windows,
+     *      attempts to delete or overwrite the files will result in an exception; on other platforms, which typically
+     *      have a "delete on last close" semantics, while such operations will succeed, the bytes are still consuming
+     *      space on disk. For many applications this limitation is not a problem (e.g. if you have plenty of disk
+     *      space, and you don't rely on overwriting files on Windows) but it's still an important limitation to be
+     *      aware of. This class supplies a (possibly dangerous) workaround mentioned in the bug report, which may fail
+     *      on non-Sun JVMs.
+     * </ul>
      *
      * @param path directory path
-     * @param lockFactory lock factory
-     * @return wrapped {@link FSDirectory}
-     * @throws IOException failed to access the directory
      */
-    public static LuceneDirectory open(File path, LockFactory lockFactory) throws IOException {
-        return new LuceneDirectory(FSDirectory.open(path, lockFactory));
+    public static LuceneDirectory open(File path) throws IOException {
+        String impl = LC.zimbra_index_lucene_io_impl.value();
+        FSDirectory dir;
+        if ("nio".equals(impl)) {
+            dir = new NIOFSDirectory(path, new SingleInstanceLockFactory());
+        } else if ("mmap".equals(impl)) {
+            dir = new MMapDirectory(path, new SingleInstanceLockFactory());
+        } else if ("simple".equals(impl)) {
+            dir = new SimpleFSDirectory(path, new SingleInstanceLockFactory());
+        } else {
+            dir = FSDirectory.open(path, new SingleInstanceLockFactory());
+        }
+        ZimbraLog.index.info("OpenLuceneIndex impl=%s,dir=%s", dir.getClass().getSimpleName(), path);
+        return new LuceneDirectory(dir);
     }
 
-    long getBytesRead() {
-        return rcount.get();
-    }
-
-    void resetBytesRead() {
-        rcount.set(0);
-    }
-
-    long getBytesWritten() {
-        return wcount.get();
-    }
-
-    void resetBytesWritten() {
-        wcount.set(0);
-    }
-
-    public File getFile() {
-        return directory.getFile();
+    public File getDirectory() {
+        return directory.getDirectory();
     }
 
     @Override
@@ -105,6 +115,7 @@ public final class LuceneDirectory extends Directory {
     }
 
     @Override
+    @Deprecated
     public void touchFile(String name) throws IOException {
         directory.touchFile(name);
     }
@@ -126,8 +137,8 @@ public final class LuceneDirectory extends Directory {
     }
 
     @Override
-    public void sync(String name) throws IOException {
-        directory.sync(name);
+    public void sync(Collection<String> names) throws IOException {
+        directory.sync(names);
     }
 
     @Override
@@ -156,7 +167,7 @@ public final class LuceneDirectory extends Directory {
     }
 
     @Override
-    public void setLockFactory(LockFactory lockFactory) {
+    public void setLockFactory(LockFactory lockFactory) throws IOException {
         directory.setLockFactory(lockFactory);
     }
 
@@ -175,8 +186,9 @@ public final class LuceneDirectory extends Directory {
         return directory.toString();
     }
 
-    private final class LuceneIndexInput extends IndexInput {
+    private static final class LuceneIndexInput extends IndexInput {
         private final IndexInput input;
+        private boolean disableCounters = LC.zimbra_index_disable_perf_counters.booleanValue();
 
         LuceneIndexInput(IndexInput in) {
             input = in;
@@ -184,23 +196,26 @@ public final class LuceneDirectory extends Directory {
 
         @Override
         public byte readByte() throws IOException {
-            ZimbraPerf.COUNTER_IDX_BYTES_READ.increment(1);
-            rcount.addAndGet(1);
+            if (!disableCounters) {
+                ZimbraPerf.COUNTER_IDX_BYTES_READ.increment(1);
+            }
             return input.readByte();
         }
 
         @Override
         public void readBytes(byte[] b, int offset, int len) throws IOException {
-            ZimbraPerf.COUNTER_IDX_BYTES_READ.increment(len);
-            rcount.addAndGet(len);
+            if (!disableCounters) {
+                ZimbraPerf.COUNTER_IDX_BYTES_READ.increment(len);
+            }
             input.readBytes(b, offset, len);
         }
 
         @Override
         public void readBytes(byte[] b, int offset, int len, boolean useBuffer)
             throws IOException {
-            ZimbraPerf.COUNTER_IDX_BYTES_READ.increment(len);
-            rcount.addAndGet(len);
+            if (!disableCounters) {
+                ZimbraPerf.COUNTER_IDX_BYTES_READ.increment(len);
+            }
             input.readBytes(b, offset, len, useBuffer);
         }
 
@@ -235,8 +250,9 @@ public final class LuceneDirectory extends Directory {
         }
     }
 
-    private final class LuceneIndexOutput extends IndexOutput {
+    private static final class LuceneIndexOutput extends IndexOutput {
         private final IndexOutput output;
+        private boolean disableCounters = LC.zimbra_index_disable_perf_counters.booleanValue();
 
         LuceneIndexOutput(IndexOutput out) {
             output = out;
@@ -244,22 +260,25 @@ public final class LuceneDirectory extends Directory {
 
         @Override
         public void writeByte(byte b) throws IOException {
-            ZimbraPerf.COUNTER_IDX_BYTES_WRITTEN.increment(1);
-            wcount.addAndGet(1);
+            if (!disableCounters) {
+                ZimbraPerf.COUNTER_IDX_BYTES_WRITTEN.increment(1);
+            }
             output.writeByte(b);
         }
 
         @Override
         public void writeBytes(byte[] b, int len) throws IOException {
-            ZimbraPerf.COUNTER_IDX_BYTES_WRITTEN.increment(len);
-            wcount.addAndGet(len);
+            if (!disableCounters) {
+                ZimbraPerf.COUNTER_IDX_BYTES_WRITTEN.increment(len);
+            }
             output.writeBytes(b, len);
         }
 
         @Override
         public void writeBytes(byte[] b, int offset, int len) throws IOException {
-            ZimbraPerf.COUNTER_IDX_BYTES_WRITTEN.increment(len);
-            wcount.addAndGet(len);
+            if (!disableCounters) {
+                ZimbraPerf.COUNTER_IDX_BYTES_WRITTEN.increment(len);
+            }
             output.writeBytes(b, offset, len);
         }
 

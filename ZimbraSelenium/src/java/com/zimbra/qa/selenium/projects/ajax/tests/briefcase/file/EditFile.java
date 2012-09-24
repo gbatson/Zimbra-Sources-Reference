@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import java.util.EnumMap;
@@ -33,17 +17,21 @@ import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
 
-public class EditFile extends AjaxCommonTest {
+public class EditFile extends FeatureBriefcaseTest {
 
-	public EditFile() {
+	public EditFile() throws HarnessException {
 		logger.info("New " + EditFile.class.getCanonicalName());
 
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = null;
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
+		    super.startingAccountPreferences.put("zimbraPrefShowSelectionCheckbox","TRUE");
+		}
+	
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");				
 	}
 
 	@Test(description = "Upload file through RestUtil - Rename File using Right Click Context Menu & verify through GUI", groups = { "smoke" })
@@ -80,9 +68,14 @@ public class EditFile extends AjaxCommonTest {
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
-		// Click on created document
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Right click on File, select Rename
 		app.zPageBriefcase.zListItem(Action.A_RIGHTCLICK, Button.B_RENAME,
 				fileItem);
@@ -191,9 +184,14 @@ public class EditFile extends AjaxCommonTest {
 		// refresh briefcase page
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
-		// Click on created document
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Verify 'Edit' tool-bar button is disabled
 		ZAssert.assertTrue(app.zPageBriefcase
 				.isOptionDisabled(PageBriefcase.Locators.zEditFileBtn),

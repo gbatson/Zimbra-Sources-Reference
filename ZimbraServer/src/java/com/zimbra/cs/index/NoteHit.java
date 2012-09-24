@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,6 +15,7 @@
 
 package com.zimbra.cs.index;
 
+import com.google.common.base.Objects;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Note;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -25,21 +26,13 @@ import com.zimbra.cs.mailbox.MailItem;
  * @author tim
  */
 public final class NoteHit extends ZimbraHit {
-    private Note mNote = null;
-    private int mMailItemId;
+    private Note note ;
+    private final int itemId;
 
-    NoteHit(ZimbraQueryResultsImpl results, Mailbox mbx, int mailItemId, Note note) {
-        super(results, mbx);
-        mMailItemId = mailItemId;
-        mNote = note;
-    }
-
-    @Override
-    public long getDate() throws ServiceException {
-        if (mCachedDate == -1) {
-            mCachedDate = getNote().getDate();
-        }
-        return mCachedDate;
+    NoteHit(ZimbraQueryResultsImpl results, Mailbox mbx, int id, Note note, Object sortValue) {
+        super(results, mbx, sortValue);
+        itemId = id;
+        this.note = note;
     }
 
     @Override
@@ -48,36 +41,28 @@ public final class NoteHit extends ZimbraHit {
     }
 
     public Note getNote() throws ServiceException {
-        if (mNote == null) {
-            mNote = getMailbox().getNoteById(null, getItemId());
+        if (note == null) {
+            note = getMailbox().getNoteById(null, getItemId());
         }
-        return mNote;
+        return note;
     }
 
     @Override
     void setItem(MailItem item) {
-        mNote = (Note) item;
+        note = (Note) item;
     }
 
     @Override
     boolean itemIsLoaded() {
-        return mNote != null;
-    }
-
-    @Override
-    public String getSubject() throws ServiceException {
-        if (mCachedSubj == null) {
-            mCachedSubj = getNote().getSubject();
-        }
-        return mCachedSubj;
+        return note != null;
     }
 
     @Override
     public String getName() throws ServiceException {
-        if (mCachedName == null) {
-            mCachedName = getNote().getSubject();
+        if (cachedName == null) {
+            cachedName = getNote().getSubject();
         }
-        return mCachedName;
+        return cachedName;
     }
 
     @Override
@@ -87,30 +72,21 @@ public final class NoteHit extends ZimbraHit {
 
     @Override
     public int getItemId() {
-        return mMailItemId;
-    }
-
-    public byte getItemType() {
-        return MailItem.TYPE_NOTE;
-    }
-
-    @Override
-    public long getSize() throws ServiceException {
-        return getNote().getSize();
+        return itemId;
     }
 
     @Override
     public String toString() {
-        int convId = getConversationId();
-        String msgStr = "";
-        String noteStr = "";
         try {
-            msgStr = Integer.toString(getItemId());
-            noteStr = getNote().toString();
-        } catch(Exception e) {
-            e.printStackTrace();
+            return Objects.toStringHelper(this)
+                .add("id", getItemId())
+                .add("conv", getConversationId())
+                .add("note", getNote())
+                .addValue(super.toString())
+                .toString();
+        } catch (ServiceException e) {
+            return e.toString();
         }
-        return "NT: " + super.toString() + " C" + convId + " M" + msgStr + " " + noteStr;
     }
 
     public int getHitType() {

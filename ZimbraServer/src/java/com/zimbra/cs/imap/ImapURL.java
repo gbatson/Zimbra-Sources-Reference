@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -27,7 +27,7 @@ import javax.mail.internet.MimeMessage;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.imap.ImapPartSpecifier.BinaryDecodingException;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -101,7 +101,9 @@ final class ImapURL {
         }
     }
 
-    String getURL() { return mURL; }
+    String getURL() {
+        return mURL;
+    }
 
     private void parse(String tag, ImapCredentials creds, String url) throws ImapParseException {
         String lcurl = url.toLowerCase();
@@ -112,8 +114,9 @@ final class ImapURL {
             // iserver = [iuserauth "@"] hostport
             pos += 7;
             int slash = url.indexOf('/', pos), ampersand = url.indexOf('@', pos);
-            if (slash == -1 || slash == pos)
+            if (slash == -1 || slash == pos) {
                 throw new ImapUrlException(tag, url, "malformed IMAP URL");
+            }
             if (ampersand != -1 && ampersand < slash) {
                 // iuserauth = enc_user [iauth] / [enc_user] iauth
                 // iauth     = ";AUTH=" ( "*" / enc_auth_type )
@@ -124,15 +127,19 @@ final class ImapURL {
             }
             // hostport = host [ ":" port ]
             int colon = url.indexOf(':', pos);
-            if (colon != -1 && colon < slash)
+            if (colon != -1 && colon < slash) {
                 try {
                     mPort = Short.parseShort(url.substring(colon + 1, slash));
-                } catch (NumberFormatException nfe) { throw new ImapUrlException(tag, url, "invalid port: " + url.substring(colon + 1, slash)); }
+                } catch (NumberFormatException nfe) {
+                    throw new ImapUrlException(tag, url, "invalid port: " + url.substring(colon + 1, slash));
+                }
+            }
             mHostname = url.substring(pos, colon != -1 && colon < slash ? colon : slash);
             pos = slash + 1;
         } else {
-            if (url.charAt(0) != '/')
+            if (url.charAt(0) != '/') {
                 throw new ImapUrlException(tag, url, "relative IMAP URLs must begin with '/'");
+            }
         }
 
         // icommand     = imailboxlist / imessagelist / imessagepart
@@ -141,8 +148,9 @@ final class ImapURL {
         // iuid         = "/;UID=" nz_number
         // isection     = "/;SECTION=" enc_section
         int iuid = lcurl.indexOf("/;uid=", pos), uvv = lcurl.indexOf(";uidvalidity=", pos);
-        if (iuid == -1)
+        if (iuid == -1) {
             throw new ImapUrlException(tag, url, "only \"imessagepart\"-type IMAP URLs supported");
+        }
         mPath = new ImapPath(urlDecode(url.substring(pos, uvv != -1 && uvv < iuid ? uvv : iuid)), creds);
         pos = iuid + 6;
 
@@ -158,8 +166,9 @@ final class ImapURL {
                 try {
                     ImapRequest req = new ParserImapRequest(tag, section);
                     mPart = req.readPartSpecifier(false, false);
-                    if (!req.eof())
+                    if (!req.eof()) {
                         throw new ImapUrlException(tag, url, "extra chars at end of IMAP URL SECTION");
+                    }
                 } catch (ImapParseException ipe) {
                     throw new ImapUrlException(tag, url, ipe.getMessage());
                 } catch (IOException ioe) {
@@ -170,23 +179,25 @@ final class ImapURL {
     }
 
     private static class ParserImapRequest extends ImapRequest {
+
         public ParserImapRequest(String tag, String section) {
             super(null);
-            mTag = tag;
+            this.tag = tag;
             addPart(section);
         }
 
         private Literal getNextBuffer() throws ImapParseException {
-            if ((mIndex + 1) >= mParts.size()) {
-                throw new ImapParseException(mTag, "no next literal");
+            if ((index + 1) >= parts.size()) {
+                throw new ImapParseException(tag, "no next literal");
             }
-            Literal literal = mParts.get(mIndex + 1).getLiteral();
-            mIndex += 2;
-            mOffset = 0;
+            Literal literal = parts.get(index + 1).getLiteral();
+            index += 2;
+            offset = 0;
             return literal;
         }
 
-        @Override Literal readLiteral() throws ImapParseException {
+        @Override
+        Literal readLiteral() throws ImapParseException {
             return getNextBuffer();
         }
     }
@@ -285,7 +296,8 @@ final class ImapURL {
         throw new ImapUrlException(tag, mURL, "error fetching IMAP URL content");
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         try {
             return "imap://" + URLEncoder.encode(mUsername, "utf-8") + '@' + mHostname + (mPort > 0 ? ":" + mPort : "") +
                    '/' + URLEncoder.encode(mPath.asImapPath(), "utf-8") + "/;UID=" + mUid +
@@ -294,6 +306,76 @@ final class ImapURL {
             return "imap://" + mUsername + '@' + mHostname + (mPort > 0 ? ":" + mPort : "") +
                    '/' + mPath + "/;UID=" + mUid + (mPart != null ? "/;SECTION=" + mPart.getSectionSpec() : "");
         }
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mHostname == null) ? 0 : mHostname.hashCode());
+        result = prime * result + ((mPart == null) ? 0 : mPart.hashCode());
+        result = prime * result + ((mPath == null) ? 0 : mPath.hashCode());
+        result = prime * result + mPort;
+        result = prime * result + ((mURL == null) ? 0 : mURL.hashCode());
+        result = prime * result + mUid;
+        result = prime * result + ((mUsername == null) ? 0 : mUsername.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ImapURL other = (ImapURL) obj;
+        if (mHostname == null) {
+            if (other.mHostname != null) {
+                return false;
+            }
+        } else if (!mHostname.equals(other.mHostname)) {
+            return false;
+        }
+        if (mPart == null) {
+            if (other.mPart != null) {
+                return false;
+            }
+        } else if (!mPart.equals(other.mPart)) {
+            return false;
+        }
+        if (mPath == null) {
+            if (other.mPath != null) {
+                return false;
+            }
+        } else if (!mPath.equals(other.mPath)) {
+            return false;
+        }
+        if (mPort != other.mPort) {
+            return false;
+        }
+        if (mURL == null) {
+            if (other.mURL != null) {
+                return false;
+            }
+        } else if (!mURL.equals(other.mURL)) {
+            return false;
+        }
+        if (mUid != other.mUid) {
+            return false;
+        }
+        if (mUsername == null) {
+            if (other.mUsername != null) {
+                return false;
+            }
+        } else if (!mUsername.equals(other.mUsername)) {
+            return false;
+        }
+        return true;
     }
 
     public static void main(String[] args) throws ImapParseException, ServiceException, IOException {

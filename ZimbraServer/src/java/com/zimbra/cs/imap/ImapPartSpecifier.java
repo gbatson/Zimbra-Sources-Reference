@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -329,5 +329,72 @@ class ImapPartSpecifier {
 
     public boolean isIgnoredExchangeHeader() {
         return (mHeaders != null && mHeaders.size() == 1 && StringUtil.equalIgnoreCase(mHeaders.get(0), "CONTENT-CLASS") && StringUtil.equalIgnoreCase("BODY", mCommand) && StringUtil.equalIgnoreCase("HEADER.FIELDS", mModifier));
+    }
+
+    @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((mCommand == null) ? 0 : mCommand.hashCode());
+        result = prime * result + ((mHeaders == null) ? 0 : mHeaders.hashCode());
+        result = prime * result + ((mModifier == null) ? 0 : mModifier.hashCode());
+        result = prime * result + mOctetEnd;
+        result = prime * result + mOctetStart;
+        result = prime * result + ((mPart == null) ? 0 : mPart.hashCode());
+        return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        ImapPartSpecifier other = (ImapPartSpecifier) obj;
+        if (mCommand == null) {
+            if (other.mCommand != null) {
+                return false;
+            }
+        } else if (!mCommand.equals(other.mCommand)) {
+            return false;
+        }
+        if (mHeaders == null) {
+            if (other.mHeaders != null) {
+                return false;
+            }
+        } else if (!mHeaders.equals(other.mHeaders)) {
+            if (other.mHeaders == null || mHeaders.size() != other.mHeaders.size()) {
+                return false;
+            } else {
+                //special case, effectively equal if same headers but different order
+                return mHeaders.containsAll(other.mHeaders);
+            }
+        }
+        if (mModifier == null) {
+            if (other.mModifier != null) {
+                return false;
+            }
+        } else if (!mModifier.equals(other.mModifier)) {
+            return false;
+        }
+        if (mOctetEnd != other.mOctetEnd) {
+            return false;
+        }
+        if (mOctetStart != other.mOctetStart) {
+            return false;
+        }
+        if (mPart == null) {
+            if (other.mPart != null) {
+                return false;
+            }
+        } else if (!mPart.equals(other.mPart)) {
+            return false;
+        }
+        return true;
     }
 }

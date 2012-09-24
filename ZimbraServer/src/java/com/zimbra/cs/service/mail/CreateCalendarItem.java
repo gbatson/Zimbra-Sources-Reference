@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -114,9 +114,10 @@ public class CreateCalendarItem extends CalendarRequest {
             // This is the case of organizer saving an invite with attendees, but without sending the notification.
             dat.mInvite.setNeverSent(true);
         }
+        boolean forceSend = request.getAttributeBool(MailConstants.A_CAL_FORCESEND, true);
         MailSendQueue sendQueue = new MailSendQueue();
         try {
-            sendCalendarMessage(zsc, octxt, iidFolder.getId(), acct, mbox, dat, response, sendQueue);
+            sendCalendarMessage(zsc, octxt, iidFolder.getId(), acct, mbox, dat, response, true, forceSend, sendQueue);
         } finally {
             sendQueue.send();
         }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,7 @@ import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.soap.admin.type.CacheEntryType;
 
 public class PermissionCache {
     
@@ -69,7 +70,7 @@ public class PermissionCache {
     	// clear all LDAP entry caches
         Provisioning prov = Provisioning.getInstance();
         try {
-            prov.flushCache(Provisioning.CacheEntryType.all, null);
+            prov.flushCache(CacheEntryType.all, null);
         } catch (ServiceException e) {
             ZimbraLog.acl.warn("unable to flush cache", e);
         }

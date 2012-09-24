@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -137,13 +137,14 @@ ZmTreeView.prototype.SHARE_LINK_TEMPLATE = "share.Widgets#ZmAddShareLink";
  * @param	{Boolean}	params.omitParents	if <code>true</code>, do NOT insert parent nodes as needed
  * @param	{Hash}	params.searchTypes	the types of saved searches to show
  * @param	{Boolean}	params.noTooltips	if <code>true</code>, don't show tooltips for tree items
- * @param	{Boolean}	params.collapsed		if <code>true</code>, initially leave the root collapsed
+ * @param	{Boolean}	params.collapsed		if <code>true</code>, initially leave the root collapsed 
+ * @param 	{Hash}          params.optButton        a hash of data for showing a options button in the item: image, tooltip, callback
  */
 ZmTreeView.prototype.set =
 function(params) {
 	this._showUnread = params.showUnread;
 	this._dataTree = params.dataTree;
-    this._newButton = params.newButton;
+	this._optButton = params.optButton;
 
 	this.clearItems();
 
@@ -156,7 +157,7 @@ function(params) {
 		className:			isMultiAcctSubHeader ? "DwtTreeItem" : this._headerClass,
 		imageInfo:			imageInfo,
 		id:					ZmId.getTreeItemId(this.overviewId, null, this.type),
-		button:				isMultiAcctSubHeader ? null : params.newButton,
+		optButton:			params.optButton,
 		dndScrollCallback:	this._overview && this._overview._dndScrollCallback,
 		dndScrollId:		this._overview && this._overview._scrollableContainerId,
 		selectable:			(appCtxt.multiAccounts && this.type != ZmOrganizer.SEARCH && this.type != ZmOrganizer.TAG)
@@ -174,7 +175,7 @@ function(params) {
 		ti.setDropTarget(this._dropTgt);
 	}
 	this._treeItemHash[root.id] = ti;
-	
+	ti.getHtmlElement().style.overflow = "hidden";
 	// render the root item's children (ie everything else)
 	params.treeNode = ti;
 	params.organizer = root;
@@ -348,6 +349,15 @@ function(params) {
 	var addSep = true;
 	var numItems = 0;
 	var len = children.length;
+    if (params.startPos === undefined && params.lastRenderedFolder ){
+        for (var i = 0, len = children.length; i < len; i++) {
+            if (params.lastRenderedFolder == children[i] ){
+               params.startPos = i + 1; // Next to lastRenderedFolder
+               break;
+            }
+        }
+        DBG.println(AjxDebug.DBG1, "load remaining folders: " + params.startPos);
+    }
 	for (var i = params.startPos || 0; i < len; i++) {
 		var child = children[i];
 		if (!child || (params.omit && params.omit[child.nId])) { continue; }
@@ -406,7 +416,7 @@ function(params) {
 				if (this.isCheckedStyle) {
 					ti.showCheckBox(false);
 				}
-				params.startPos = i;
+                params.lastRenderedFolder  = children[i-1];
 				params.showRemainingFoldersNode = ti;
 				child._showFoldersCallback = new AjxCallback(this, this._showRemainingFolders, [params]);
 				return;
@@ -444,7 +454,7 @@ function(parentNode, organizer, index, noTooltips, omit) {
 
 	if (ds && ds.type == ZmAccount.TYPE_IMAP) {
 		var cname = appCtxt.isFamilyMbox ? null : this._headerClass;
-		var icon = appCtxt.isFamilyMbox ? "AccountIMAP" : null;
+		var icon =  "Folder";
 		ti = new DwtTreeItem({parent:this, text:organizer.getName(), className:cname, imageInfo:icon});
 		ti.enableSelection(false);
 	} else {
@@ -603,10 +613,11 @@ function(treeItem, treeItems, i) {
  */
 ZmTreeView.prototype._showRemainingFolders =
 function(params) {
-	if (params.showRemainingFoldersNode) {
+
+	if (params.showRemainingFoldersNode){
 		params.showRemainingFoldersNode.dispose();
 	}
-	DBG.println(AjxDebug.DBG1, "load remaining folders: " + params.startPos);
+
 	AjxTimedAction.scheduleAction(new AjxTimedAction(this,
 		function() {
 			this._render(params);
@@ -631,7 +642,6 @@ function() {
 			 this.type == ZmOrganizer.ADDRBOOK ||
 			 this.type == ZmOrganizer.CALENDAR ||
 			 this.type == ZmOrganizer.TASKS ||
-			 this.type == ZmOrganizer.NOTEBOOK ||
 			 this.type == ZmOrganizer.BRIEFCASE ||
 			 this.type == ZmOrganizer.PREF_PAGE ||
 			 this.type == ZmOrganizer.ZIMLET));

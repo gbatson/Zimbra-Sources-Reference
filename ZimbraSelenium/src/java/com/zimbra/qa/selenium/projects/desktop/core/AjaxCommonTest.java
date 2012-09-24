@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.desktop.core;
 
 import java.io.*;
@@ -95,13 +79,12 @@ public class AjaxCommonTest {
 	public final boolean isRunningDesktopTest = ZimbraSeleniumProperties.getStringProperty(
 			ZimbraSeleniumProperties.getLocalHost() + ".desktop.test", "false").toLowerCase().equals("true") ? true : false;
 
-	private static DefaultSelenium _selenium = null;
 
 	/**
 	 * The AdminConsole application object
 	 */
 	protected AppAjaxClient app = null;
-	protected static OsType osType = null;
+	protected OsType osType = null;
 	private String _downloadFilePath = null;
 	private String[] _executableFilePath = null;
 	private String [] _params = null;
@@ -240,7 +223,7 @@ public class AjaxCommonTest {
 
 		try
 		{
-			_selenium = ClientSessionFactory.session().selenium();
+			DefaultSelenium _selenium = ClientSessionFactory.session().selenium();
 			logger.debug("Starting selenium");
 
 			// This is needed only in Mac OS because when selenium invokes the test browser window,
@@ -486,8 +469,7 @@ public class AjaxCommonTest {
 		.append(zdp.getSerialNumber()).toString();
 		//append("&dev=1&scripterrors=1").toString();
 		logger.debug("Selenium is opening: " + accountUrl);
-		logger.debug("Selenium is: " + _selenium);
-		_selenium.open(accountUrl);
+		ClientSessionFactory.session().selenium().open(accountUrl);
 		GeneralUtility.waitForElementPresent(app.zPageLogin,
 				PageLogin.Locators.zBtnLoginDesktop);
 	}

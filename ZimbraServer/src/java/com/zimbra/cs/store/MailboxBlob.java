@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -44,7 +44,7 @@ public abstract class MailboxBlob {
 
     private final int itemId;
     private final int revision;
-    private final String mLocator;
+    private final String locator;
     protected Long size;
     protected String digest;
 
@@ -52,7 +52,7 @@ public abstract class MailboxBlob {
         this.mailbox = mbox;
         this.itemId = itemId;
         this.revision = revision;
-        mLocator = locator;
+        this.locator = locator;
     }
 
     public int getItemId() {
@@ -64,7 +64,7 @@ public abstract class MailboxBlob {
     }
 
     public String getLocator() {
-        return mLocator;
+        return locator;
     }
 
     public String getDigest() throws IOException {
@@ -81,7 +81,7 @@ public abstract class MailboxBlob {
 
     public long getSize() throws IOException {
         if (size == null) {
-            this.size = new Long(getLocalBlob().getRawSize());
+            this.size = Long.valueOf(getLocalBlob().getRawSize());
         }
         return size;
     }

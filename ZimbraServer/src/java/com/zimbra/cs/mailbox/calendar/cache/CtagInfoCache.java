@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,22 +20,23 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.util.memcached.MemcachedMap;
 import com.zimbra.common.util.memcached.MemcachedSerializer;
 import com.zimbra.common.util.memcached.ZimbraMemcachedClient;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailItem.Type;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Message;
@@ -47,8 +48,8 @@ import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.session.PendingModifications.ModificationKey;
 import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
 
 public class CtagInfoCache {
 
@@ -57,15 +58,19 @@ public class CtagInfoCache {
     CtagInfoCache() {
         ZimbraMemcachedClient memcachedClient = MemcachedConnector.getClient();
         CtagInfoSerializer serializer = new CtagInfoSerializer();
-        mMemcachedLookup = new MemcachedMap<CalendarKey, CtagInfo>(memcachedClient, serializer); 
+        mMemcachedLookup = new MemcachedMap<CalendarKey, CtagInfo>(memcachedClient, serializer);
     }
 
     private static class CtagInfoSerializer implements MemcachedSerializer<CtagInfo> {
-        
+
+        public CtagInfoSerializer() { }
+
+        @Override
         public Object serialize(CtagInfo value) {
             return value.encodeMetadata().toString();
         }
 
+        @Override
         public CtagInfo deserialize(Object obj) throws ServiceException {
             Metadata meta = new Metadata((String) obj);
             return new CtagInfo(meta);
@@ -195,7 +200,7 @@ public class CtagInfoCache {
             ZMailbox.Options zoptions = new ZMailbox.Options(zat, AccountUtil.getSoapUri(acct));
             zoptions.setNoSession(true);
             zoptions.setTargetAccount(acct.getId());
-            zoptions.setTargetAccountBy(Provisioning.AccountBy.id);
+            zoptions.setTargetAccountBy(Key.AccountBy.id);
             ZMailbox zmbx = ZMailbox.getMailbox(zoptions);
             ItemId iidFolder = new ItemId(accountId, folderId);
             ZFolder zfolder = zmbx.getFolderById(iidFolder.toString());
@@ -239,15 +244,15 @@ public class CtagInfoCache {
                 Object whatChanged = change.what;
                 if (whatChanged instanceof Folder) {
                     Folder folder = (Folder) whatChanged;
-                    byte viewType = folder.getDefaultView();
-                    if (viewType == MailItem.TYPE_APPOINTMENT || viewType == MailItem.TYPE_TASK) {
+                    MailItem.Type viewType = folder.getDefaultView();
+                    if (viewType == MailItem.Type.APPOINTMENT || viewType == MailItem.Type.TASK) {
                         CalendarKey key = new CalendarKey(folder.getMailbox().getAccountId(), folder.getId());
                         keysToInvalidate.add(key);
                     }
                 } else if (whatChanged instanceof Message) {
                     Message msg = (Message) whatChanged;
                     if (msg.hasCalendarItemInfos()) {
-                        if (msg.getFolderId() == inboxFolder || (change.why & Change.MODIFIED_FOLDER) != 0) {
+                        if (msg.getFolderId() == inboxFolder || (change.why & Change.FOLDER) != 0) {
                             // If message was moved, we don't know which folder it was moved from.
                             // Just invalidate the Inbox because that's the only message folder we care
                             // about in calendaring.
@@ -259,28 +264,17 @@ public class CtagInfoCache {
             }
         }
         if (mods.deleted != null) {
-            // This code gets called even for non-calendar items, for example it's called for every email
-            // being emptied from Trash.  But there's no way to short circuit out of here because the delete
-            // notification doesn't tell us the item type of what's being deleted.  Oh well.
-            for (Map.Entry<ModificationKey, Object> entry : mods.deleted.entrySet()) {
-                Object deletedObj = entry.getValue();
-                if (deletedObj instanceof Folder) {
-                    Folder folder = (Folder) deletedObj;
-                    byte viewType = folder.getDefaultView();
-                    if (viewType == MailItem.TYPE_APPOINTMENT || viewType == MailItem.TYPE_TASK) {
-                        CalendarKey key = new CalendarKey(folder.getMailbox().getAccountId(), folder.getId());
-                        keysToInvalidate.add(key);
-                    }
-                } else if (deletedObj instanceof Integer) {
+            for (Entry<ModificationKey, Change> entry : mods.deleted.entrySet()) {
+                Type type = (Type) entry.getValue().what;
+                if (type == MailItem.Type.FOLDER) {
                     // We only have item id.  Assume it's a folder id and issue a delete.
                     String acctId = entry.getKey().getAccountId();
-                    if (acctId == null) continue;  // just to be safe
-                    int itemId = ((Integer) deletedObj).intValue();
-                    CalendarKey key = new CalendarKey(acctId, itemId);
+                    if (acctId == null)
+                        continue;  // just to be safe
+                    CalendarKey key = new CalendarKey(acctId, entry.getKey().getItemId());
                     keysToInvalidate.add(key);
                 }
                 // Let's not worry about hard deletes of invite/reply emails.  It has no practical benefit.
-                // Besides, when deletedObj is an Integer, we can't tell if it's a calendaring Message.
             }
         }
         try {

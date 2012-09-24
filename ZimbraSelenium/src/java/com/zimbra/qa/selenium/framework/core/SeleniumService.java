@@ -1,24 +1,10 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.core;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -35,7 +21,6 @@ import com.zimbra.qa.selenium.framework.util.OperatingSystem;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 
-import sun.net.www.protocol.http.HttpURLConnection;
 
 /**
  * The <code>SeleniumService</code> class is used to start
@@ -63,46 +48,40 @@ public class SeleniumService {
 	private boolean serviceIsServerRunning() throws HarnessException {
 		logger.debug("isServerRunning");
 
-		// Create the URL
-		URL url = null;
+		String hostname = "unknown";
+		
+		HttpURLConnection connection = null;
+		
 		try {
+			
+			// Create the URL
 			URI uri = new URI("http", null, SeleniumServer, SeleniumPort, null, null, null);
-			url = uri.toURL();
+			URL url = uri.toURL();
+			hostname = url.toString();
+			
+			// Connect to the URL, if successful, then server is up
+			connection = (HttpURLConnection)url.openConnection();
+			connection.setRequestMethod("GET");
+			connection.setDoOutput(true);
+			connection.setReadTimeout(10000);
+			connection.connect();
+			
+			int status = connection.getResponseCode();
+			logger.debug("Selenium Service returned " + status);
+
 		} catch (URISyntaxException e) {
 			throw new HarnessException("Unable to build URL", e);
 		} catch (MalformedURLException e) {
 			throw new HarnessException("Unable to build URL", e);
-		}
-		
-		// Connect to the URL, if successful, then server is up
-		try {
-			
-			HttpURLConnection connection = null;
-			
-			try {
-				
-				connection = (HttpURLConnection)url.openConnection();
-				connection.setRequestMethod("GET");
-				connection.setDoOutput(true);
-				connection.setReadTimeout(10000);
-				connection.connect();
-				
-				int status = connection.getResponseCode();
-				logger.debug("Selenium Service returned " + status);
-
-			} finally {
-				if (connection != null ){
-					connection.disconnect();
-					connection = null;
-				}
-			}
-			
 		} catch (IOException e) {
-			logger.info("Selenium Service is not running at "+ url.toString());
+			logger.info("Selenium Service is not running at "+ hostname);
 			return (false);
+		} finally {
+			disconnect(connection);
 		}
+			
 		
-		logger.info("Selenium Service is running at "+ url.toString());
+		logger.info("Selenium Service is running at "+ hostname);
 		return (true);
 		
 
@@ -115,54 +94,42 @@ public class SeleniumService {
 	private void serviceShutDownSeleniumServer() throws HarnessException {
 		logger.debug("shutDownSeleniumServer");
 
-		// Create the URL
-		URL url = null;
+			
+		HttpURLConnection connection = null;
+		BufferedReader reader = null;
+		
 		try {
+
 			URI uri = new URI("http", null, SeleniumServer, SeleniumPort, "/selenium-server/driver", "cmd=shutDownSeleniumServer", null);
-			url = uri.toURL();
+			URL url = uri.toURL();
+		
+			logger.info("shutDownSeleniumServer @ "+ url.toString());
+
+			connection = (HttpURLConnection)url.openConnection();
+			connection.setRequestMethod("GET");
+			connection.setDoOutput(true);
+			connection.setReadTimeout(10000);
+			connection.connect();
+			
+			reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+			String line;
+			while ((line = reader.readLine()) != null ) {
+				logger.debug(line);
+			}
+
 		} catch (URISyntaxException e) {
-			throw new HarnessException("Unable to build URL", e);
+			throw new HarnessException("Unable to build URI", e);
 		} catch (MalformedURLException e) {
 			throw new HarnessException("Unable to build URL", e);
-		}
-		
-		// Connect to the URL, if successful, then server is up
-		try {
-			
-			HttpURLConnection connection = null;
-			BufferedReader reader = null;
-			
-			try {
-				
-				logger.info("shutDownSeleniumServer @ "+ url.toString());
-
-				connection = (HttpURLConnection)url.openConnection();
-				connection.setRequestMethod("GET");
-				connection.setDoOutput(true);
-				connection.setReadTimeout(10000);
-				connection.connect();
-				
-				reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-				String line;
-				while ((line = reader.readLine()) != null ) {
-					logger.debug(line);
-				}
-
-			} finally {
-				if ( reader != null ) {
-					reader.close();
-					reader = null;
-				}
-				if (connection != null ){
-					connection.disconnect();
-					connection = null;
-				}
-				
-			}
-			
 		} catch (IOException e) {
-			logger.debug("Selenium Service threw IOException", e);
+			logger.warn("Selenium Service threw exception while shutting down", e);
+		} finally {
+			
+			close(reader);
+			disconnect(connection);
+			
 		}
+			
 		
 		// Wait for the service to shut down
 		for (int i = 0; i < 10; i++) {
@@ -223,21 +190,24 @@ public class SeleniumService {
 
 				ss.stop();
 				
+				BufferedReader in = null;
 				try {
+					
 					URI stopUri = new URI("http", null, SeleniumServer, SeleniumPort, "/selenium-server/driver", "cmd=shutDownSeleniumServer", null);
-					BufferedReader in = new BufferedReader(new InputStreamReader(stopUri.toURL().openStream()));
-			
-					if (in.ready())
+					in = new BufferedReader(new InputStreamReader(stopUri.toURL().openStream()));
+					if (in.ready()) {
 						logger.info("A Selenium Server was not stopped. Attempting to kill");
+					}
 						
 					String line;
-					while ((line = in.readLine()) != null)
+					while ((line = in.readLine()) != null) {
 						logger.info(line);
+					}
 
-					in.close();
-					
 				} catch (IOException e) {
 					logger.warn("Selenium server is stopped");
+				} finally {
+					close(in);
 				}
 
 			}
@@ -252,7 +222,7 @@ public class SeleniumService {
 	 * @return true: if the mode matches, false: otherwise
 	 */
 	public boolean isSeleniumMode(SeleniumMode m) {
-		return (mode == m);
+		return (mode.equals(m));
 	}
 	
 	public String getSeleniumServer() {
@@ -284,10 +254,16 @@ public class SeleniumService {
 			return;
 
 		try {
-			CommandLine.CmdExec("taskkill /f /t /im iexplore.exe");
-			CommandLine.CmdExec("taskkill /f /t /im firefox.exe");
-			CommandLine.CmdExec("taskkill /f /t /im Safari.exe");
-			CommandLine.CmdExec("taskkill /f /t /im chrome.exe");
+			if (SeleniumBrowser.contains("iexplore")) {
+			    CommandLine.CmdExec("taskkill /f /t /im iexplore.exe");
+			} else if (SeleniumBrowser.contains("firefox")) {
+				CommandLine.CmdExec("taskkill /f /t /im firefox.exe");
+			} else if (SeleniumBrowser.contains("safariproxy")) {
+			    CommandLine.CmdExec("taskkill /f /t /im safari.exe");
+			} else if (SeleniumBrowser.contains("chrome")) {
+				CommandLine.CmdExec("taskkill /f /t /im chrome.exe");
+			}
+			
 		} catch (IOException e) {
 			throw new HarnessException("Unable to kill browsers", e);
 		} catch (InterruptedException e) {
@@ -298,16 +274,18 @@ public class SeleniumService {
 
 	private void stopBrowsersMac() throws HarnessException {
 		// Only run for Mac
-		if ( !OperatingSystem.isMac() )
+		if ( !OperatingSystem.isMac() ) {
 			return;
+		}
 
 		logger.warn("implement me!", new Throwable("implement me!"));
 	}
 	
 	private void stopBrowsersLinux() throws HarnessException {
 		// Only run for Linux
-		if ( !OperatingSystem.isLinux() )
+		if ( !OperatingSystem.isLinux() ) {
 			return;
+		}
 
 		logger.warn("implement me!", new Throwable("implement me!"));
 	}
@@ -392,6 +370,31 @@ public class SeleniumService {
 		}
 	}
 
+
+	/**
+	 * Close a stream, ignoring null and exceptions
+	 * @param c
+	 */
+	private static void close(Closeable c) {
+		if ( c == null ) {
+			return;
+		}
+		try {
+			c.close();
+		} catch (IOException e) {
+			logger.warn(e);
+		}
+	}
 	
+	/**
+	 * Close a connection, ignoring null and exceptions
+	 * @param c
+	 */
+	private static void disconnect(HttpURLConnection c) {
+		if ( c == null ) {
+			return;
+		}
+		c.disconnect();
+	}
 	
 }

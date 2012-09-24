@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,10 +32,13 @@ ZaSearch = function() {
 }
 ZaSearch.ALIASES = "aliases";
 ZaSearch.DLS = "distributionlists";
+ZaSearch.DDLS = "dynamicgroups";
 ZaSearch.ACCOUNTS = "accounts";
 ZaSearch.RESOURCES = "resources";
 ZaSearch.DOMAINS = "domains";
 ZaSearch.COSES = "coses";
+//Limit of result returned for best match.
+ZaSearch.BEST_MATCH_LIMIT = 5;
 
 ZaSearch.TYPES = new Object();
 ZaSearch.TYPES[ZaItem.ALIAS] = ZaSearch.ALIASES;
@@ -69,6 +72,7 @@ ZaSearch.getPredefinedSavedSearchesForAdminOnly = function () {
                   
 ZaSearch.getPredefinedSavedSearches =  function () {
     return [
+        {name: ZaMsg.ss_external_accounts, query: "(zimbraIsExternalVirtualAccount=TRUE)"},
         {name: ZaMsg.ss_locked_out_accounts, query: "(zimbraAccountStatus=*lockout*)"},
         {name: ZaMsg.ss_closed_accounts, query: "(zimbraAccountStatus=*closed*)"},
         {name: ZaMsg.ss_maintenance_accounts, query: "(zimbraAccountStatus=*maintenance*)"},
@@ -99,10 +103,12 @@ ZaSearch.standardAttributes = [ZaAccount.A_displayname,
 							ZaAccount.A_accountStatus,
 							ZaAccount.A_zimbraLastLogonTimestamp,
 							ZaAccount.A_description,
+							ZaAccount.A_zimbraIsSystemAccount,
                             ZaAccount.A_zimbraIsDelegatedAdminAccount,
                             ZaAccount.A_zimbraIsAdminAccount,
                             ZaAccount.A_zimbraIsSystemResource,
                             ZaAccount.A_zimbraAuthTokenValidityValue,
+                            ZaAccount.A_zimbraIsExternalVirtualAccount,
 							ZaDistributionList.A_mailStatus,
                             ZaDistributionList.A_isAdminGroup,
 							ZaResource.A_zimbraCalResType,
@@ -126,7 +132,8 @@ ZaSearch.standardAttributes = [ZaAccount.A_displayname,
 * 	callback - an AjxCallback
 * }
 * */
-ZaSearch.searchDirectory = 
+
+ZaSearch.searchDirectory =
 function (params) {
 	var soapDoc = AjxSoapDoc.create("SearchDirectoryRequest", ZaZimbraAdmin.URN, null);
 	if(params.query) {
@@ -170,8 +177,7 @@ function (params) {
 		soapDoc.getMethod().setAttribute("attrs", params.attrs.toString());
 		
 	if(params.types && params.types.length>0)
-		soapDoc.getMethod().setAttribute("types", params.types.toString());
-	
+        soapDoc.getMethod().setAttribute("types", ZaSearch.checkDynamicGroupType(params.types).toString());
 	//set the maxResults to 2 for testing
 	//params.maxResults = 2;
 	if(params.maxResults) {
@@ -199,6 +205,16 @@ function (params) {
 			throw (ex) ;
 		}
 	}
+}
+
+ZaSearch.checkDynamicGroupType = function(type) {
+    for (var i = 0; i < type.length; i ++) {
+        if (type[i] == ZaSearch.DLS) {
+            type.push(ZaSearch.DDLS);
+            return type;
+        }
+    }
+    return type;
 }
 
 ZaSearch.TOO_MANY_RESULTS_FLAG = false ; //control the no result text of the list view
@@ -245,9 +261,9 @@ ZaSearch.prototype.dynSelectDataCallback = function (params, resp) {
 			throw(resp.getException());
 		} else {
 			var response = resp.getResponse().Body.SearchDirectoryResponse;
-			var list = new ZaItemList(null);	
-			list.loadFromJS(response);	
-			callback.run(list.getArray(), response.more, response.searchTotal);
+            var list = new ZaItemList(null);
+            list.loadFromJS(response);
+            callback.run(list.getArray(), response.more, response.searchTotal);
 		}
 	} catch (ex) {
 		ZaApp.getInstance().getCurrentController()._handleException(ex, "ZaSearch.prototype.dynSelectDataCallback");	
@@ -298,7 +314,12 @@ ZaSearch.prototype.dynSelectSearch = function (callArgs) {
 		}
 		params.callback = dataCallback;
 		params.sortBy = ZaAccount.A_name;
-		params.query = ZaSearch.getSearchByNameQuery(value, params.types);
+        if (callArgs["needCategorized"]) {
+            params.limit = ZaSearch.BEST_MATCH_LIMIT;
+            params.query = ZaSearch.getBestMatchSearchByNameQuery(value, params.types);
+        } else {
+            params.query = ZaSearch.getSearchByNameQuery(value, params.types);
+        }
 		params.controller = ZaApp.getInstance().getCurrentController();
 		params.showBusy = true;
 		params.busyId = busyId;
@@ -313,6 +334,16 @@ ZaSearch.prototype.dynSelectSearch = function (callArgs) {
 	}
 }
 
+ZaSearch.prototype.dynSearchField = function (callArgs) {
+    var newCallArgs = {};
+	newCallArgs.value = callArgs["value"];
+    newCallArgs.event = callArgs["event"];
+    newCallArgs.callback = callArgs["callback"];
+    newCallArgs.needCategorized = true;
+    newCallArgs.types = ZaApp.getInstance().getSearchListController()._searchField.getSearchTypes();
+    ZaSearch.prototype.dynSelectSearch.call(this, newCallArgs);
+
+}
 /**
  * @argument callArgs {value, event, callback, extraLdapQuery}
  */
@@ -524,7 +555,7 @@ function(query, types, pagenum, orderby, isascending,  attrs, limit, domainName,
 		
 	var searchTotal = resp.searchTotal;
 	var numPages = Math.ceil(searchTotal/limit);
-	return {"list":list, "numPages":numPages};
+	return {"list":list, "numPages":numPages, "searchTotal":searchTotal};
 }
 
 ZaSearch.searchByDomain = 
@@ -532,12 +563,87 @@ function (domainName, types, pagenum, orderby, isascending, attrs, limit) {
 	return ZaSearch.search("", types, pagenum, orderby, isascending,  attrs, limit, domainName);
 }
 
+ZaSearch.getAccountStats =
+function() {
+	var retObj;
+    retObj = {};
+    retObj[ZaItem.ACCOUNT] = 0;
+    retObj[ZaItem.ALIAS] = 0;
+    retObj[ZaItem.RESOURCE] = 0;
+    retObj[ZaItem.DL] = 0;
+
+    for (var i in retObj) {
+        if (!ZaZimbraAdmin.isGlobalAdmin())
+            retObj[i] = ZaSearch.getObjectNumberBySearch(i);
+        else
+            retObj[i] = ZaSearch.getObjectNumberByType(i);
+    }
+
+    return retObj;
+}
+
+ZaSearch.getObjectNumberBySearch = function (type) {
+    var query = "";
+    if (type == ZaItem.ACCOUNT) {
+        query = "(!("+ ZaAccount.A_zimbraIsSystemAccount +"=TRUE))";
+        type = ZaSearch.ACCOUNTS;
+    } else if (type == ZaItem.ALIAS) {
+        type = ZaSearch.ALIASES;
+    } else if (type == ZaItem.RESOURCE) {
+        type = ZaSearch.RESOURCES;
+    }  else if (type  == ZaItem.DL) {
+        type = [ZaSearch.DLS, ZaSearch.DDLS];
+    }
+
+    var num = 0;
+    var soapDoc = AjxSoapDoc.create("SearchDirectoryRequest", ZaZimbraAdmin.URN, null);
+    soapDoc.setMethodAttribute("types", type);
+    soapDoc.setMethodAttribute("countOnly", 1);
+
+    soapDoc.set("query", query)
+    try {
+        var params = new Object();
+        params.soapDoc = soapDoc;
+        var reqMgrParams ={
+            controller:ZaApp.getInstance().getCurrentController()
+        }
+        var resp = ZaRequestMgr.invoke(params, reqMgrParams);
+        num = resp.Body.SearchDirectoryResponse.num;
+    } catch (ex) {
+
+    }
+    return num;
+}
+
+ZaSearch.getObjectNumberByType = function (type) {
+    var num = 0;
+    var soapDoc = AjxSoapDoc.create("CountObjectsRequest", ZaZimbraAdmin.URN, null);
+    if (type == ZaItem.ACCOUNT) {
+        type = "userAccount"; // exclude system account
+    }
+
+    soapDoc.setMethodAttribute("type", type);
+    try {
+        var params = new Object();
+        params.soapDoc = soapDoc;
+        var reqMgrParams ={
+            controller:ZaApp.getInstance().getCurrentController()
+        }
+        var resp = ZaRequestMgr.invoke(params, reqMgrParams);
+        num = resp.Body.CountObjectsResponse.num;
+    } catch (ex) {
+
+    }
+    return num;
+}
+
 ZaSearch.getSearchCosByNameQuery =
 function(n) {
 	if (n == null || n == "") {
 		return "";
 	} else {
-		n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
+		n = ZaSearch.escapeLdapQuery(n);
+		//n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
 		return ("(|(uid=*"+n+"*)(cn=*"+n+"*)(sn=*"+n+"*)(gn=*"+n+"*)(zimbraId="+n+"))");
 	}
 }
@@ -547,7 +653,8 @@ function(n) {
 	if (n == null || n == "") {
 		return "";
 	} else {
-		n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
+		n = ZaSearch.escapeLdapQuery(n);
+		//n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
 		return ("(|(uid=*"+n+"*)(cn=*"+n+"*)(sn=*"+n+"*)(gn=*"+n+"*)(zimbraId="+n+")(zimbraDomainName=*"+n+"*))");
 	}
 }
@@ -557,7 +664,8 @@ function(n) {
         if (n == null || n == "") {
                 return "";
         } else {
-                n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
+                n = ZaSearch.escapeLdapQuery(n);
+                //n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
                 return ("(&(|(uid=*"+n+"*)(cn=*"+n+"*)(sn=*"+n+"*)(gn=*"+n+"*)(zimbraId="+n+")(zimbraDomainName=*"+n+"*))(zimbraDomainType=local))");
         }
 }
@@ -578,7 +686,8 @@ function(n, types,excludeClosed) {
 	
 	if (!AjxUtil.isEmpty(n)) {
 		query.push("(|");
-		n = String(n).replace(/([\\\\\\*\\(\\)])/g, "\\$1");
+		// bug 67477, escape special symbols "(", ")", "*", "\"
+		n = ZaSearch.escapeLdapQuery(n);
         if (!types) types = [ZaSearch.ALIASES, ZaSearch.ACCOUNTS, ZaSearch.DLS, ZaSearch.RESOURCES, ZaSearch.DOMAINS, ZaSearch.COSES] ;
         var addedAddrFields = false;
         var addedAccResFields = false;
@@ -615,6 +724,28 @@ function(n, types,excludeClosed) {
 	//return "(|" + query.join("") + ")" ;
 	return query.join("");
 	
+}
+
+/**
+ * Get the query to search attributes that start or end with <code>n</code>.
+ * @param n
+ * @param types Array object that contains item types
+ */
+ZaSearch.getBestMatchSearchByNameQuery =
+function(n, types) {
+    var query = ZaSearch.getSearchByNameQuery(n, types);
+	n = ZaSearch.escapeLdapQuery(n);
+
+    var orig = new RegExp("\\*" + n + "\\*","g");
+    var lReg = new RegExp("^\\\s*\\(\\\s*\\|");
+    var rReg = new RegExp("\\)\\\s*$");
+    var beginWithQuery = query.replace(orig, n + "*");
+    beginWithQuery = beginWithQuery.replace(lReg, "");
+    beginWithQuery = beginWithQuery.replace(rReg,"");
+    var endWithQuery = query.replace(orig, "*" + n);
+    endWithQuery = endWithQuery.replace(lReg, "");
+    endWithQuery = endWithQuery.replace(rReg,"");
+    return "(|" + beginWithQuery + endWithQuery + ")";
 }
 
 ZaSearch.getSearchByDisplayNameQuery =
@@ -676,7 +807,7 @@ ZaSearch.getSearchFromQuery = function (query) {
 
 ZaSearch.myXModel = {
 	items: [
-		{id:ZaSearch.A_query, type:_STRING_},
+		{id:ZaSearch.A_query, type:(appNewUI? _OBJECT_ : _STRING_)},
 		{id:ZaSearch.A_selected, type:_OBJECT_, items:ZaAccount.myXModel},		
 		{id:ZaSearch.A_fAliases, type:_ENUM_, choices:ZaModel.BOOLEAN_CHOICES},
 		{id:ZaSearch.A_fdistributionlists, type:_ENUM_, choices:ZaModel.BOOLEAN_CHOICES},
@@ -850,19 +981,19 @@ function (resp) {
 ZaSearch.loadPredefinedSearch =
 function () {
     if (ZaSearchField.canViewSavedSearch()) {
-        var currentSavedSearches = ZaSearch.getSavedSearches().Body.GetAdminSavedSearchesResponse.search;
-       
+        //var currentSavedSearches = ZaSearch.getSavedSearches().Body.GetAdminSavedSearchesResponse.search;
+        var currentSavedSearches = ZaApp.getInstance().getSavedSearchList();
         /*
          * If we get saved search from server and have write-permission, we will         * replace all the "zimbraIsDomainAdminAccount" with "zimbraIsDelegatedA         * dminAccount" to update the query string for version update      
          */ 
-        if ( currentSavedSearches && ( ZaSearchField.canSaveSearch() )){
+        if ( (!AjxUtil.isEmpty(currentSavedSearches)) && ( ZaSearchField.canSaveSearch() )){
             var modifiedSearches = [];
  
             for (var i = 0; i < currentSavedSearches.length; i++ ){
                var currentName = currentSavedSearches[i].name;
-               var currentContent = currentSavedSearches[i]._content;
+               var currentContent = currentSavedSearches[i].query;
     
-               if (currentContent.search(/zimbraIsDomainAdminAccount/) != -1){
+               if (currentContent && currentContent.search(/zimbraIsDomainAdminAccount/) != -1){
              
                   currentContent = currentContent.replace(/zimbraIsDomainAdminAccount/g , "zimbraIsDelegatedAdminAccount"); //'g' is used for global replace
                   modifiedSearches.push ({
@@ -874,10 +1005,12 @@ function () {
             
             if ( modifiedSearches.length != 0 ){
                ZaSearch.modifySavedSearches (modifiedSearches);
+               ZaSearch.SAVED_SEARCHES = savedSearchArr;
+               ZaSearch._savedSearchToBeUpdated = false ;
             }   
         }
         
-        if ((! currentSavedSearches) && (ZaSearchField.canSaveSearch())){//load the predefined searches
+        if ((AjxUtil.isEmpty(currentSavedSearches)) && (ZaSearchField.canSaveSearch())){//load the predefined searches
             //if(window.console && window.console.log) console.log("Load the predefined saved searches ...") ;
             var savedSearchArr = [] ;
             //if (!ZaSettings.isDomainAdmin) { //admin only searches
@@ -891,6 +1024,8 @@ function () {
             }
 
             ZaSearch.modifySavedSearches (savedSearchArr) ;
+            ZaSearch.SAVED_SEARCHES = savedSearchArr;
+            ZaSearch._savedSearchToBeUpdated = false ;
         }
     }
 }
@@ -946,3 +1081,15 @@ function (days) {
 //A sample saved search object:
 // {name:"savedA", query:"users"};
 ZaSearch.SAVED_SEARCHES = [];
+
+
+ZaSearch.escapeLdapQuery =
+function (value) {
+    value = String(value);
+    value = value.replace(/\\/g, "\\5C");
+    value = value.replace(/\(/g, "\\28");
+    value = value.replace(/\)/g, "\\29");
+    value = value.replace(/\*/g, "\\2A");
+
+    return value;
+}

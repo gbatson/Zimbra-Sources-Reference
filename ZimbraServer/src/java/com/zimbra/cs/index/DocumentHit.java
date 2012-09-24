@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -26,22 +26,12 @@ public final class DocumentHit extends ZimbraHit {
     private final Document luceneDoc;
     private com.zimbra.cs.mailbox.Document docItem;
 
-    DocumentHit(ZimbraQueryResultsImpl results, Mailbox mbx, int itemId, Document luceneDoc,
-            com.zimbra.cs.mailbox.Document docItem) {
-        super(results, mbx);
-        this.itemId = itemId;
+    DocumentHit(ZimbraQueryResultsImpl results, Mailbox mbx, int id,
+            com.zimbra.cs.mailbox.Document docItem, Document luceneDoc, Object sortKey) {
+        super(results, mbx, sortKey);
+        this.itemId = id;
         this.luceneDoc = luceneDoc;
         this.docItem = docItem;
-    }
-
-    @Override
-    public long getDate() throws ServiceException {
-        return getDocument().getDate();
-    }
-
-    @Override
-    public long getSize() throws ServiceException {
-        return getDocument().getSize();
     }
 
     @Override
@@ -54,7 +44,7 @@ public final class DocumentHit extends ZimbraHit {
         return itemId;
     }
 
-    public byte getItemType() throws ServiceException {
+    public MailItem.Type getItemType() throws ServiceException {
         return getDocument().getType();
     }
 
@@ -68,11 +58,6 @@ public final class DocumentHit extends ZimbraHit {
     @Override
     boolean itemIsLoaded() {
         return docItem != null;
-    }
-
-    @Override
-    public String getSubject() throws ServiceException {
-        return getDocument().getName();
     }
 
     @Override

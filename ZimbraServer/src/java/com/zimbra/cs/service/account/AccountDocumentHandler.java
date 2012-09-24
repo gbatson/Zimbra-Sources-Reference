@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,13 +14,18 @@
  */
 package com.zimbra.cs.service.account;
 
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.AttributeClass;
+import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.MailMode;
 import com.zimbra.cs.account.Server;
@@ -69,5 +74,31 @@ public abstract class AccountDocumentHandler extends DocumentHandler {
             return false;
         else
             return true;
+    }
+    
+    protected Set<String> getReqAttrs(Element request, AttributeClass klass) throws ServiceException {
+        String attrsStr = request.getAttribute(AccountConstants.A_ATTRS, null);
+        if (attrsStr == null) {
+            return null;
+        }
+        
+        String[] attrs = attrsStr.split(",");
+
+        Set<String> attrsOnEntry = AttributeManager.getInstance().getAllAttrsInClass(klass);
+        Set<String> validAttrs = new HashSet<String>();
+
+        for (String attr : attrs) {
+            if (attrsOnEntry.contains(attr)) {
+                validAttrs.add(attr);
+            } else {
+                throw ServiceException.INVALID_REQUEST("requested attribute " + attr + 
+                        " is not on " + klass.name(), null);
+            }
+        }
+
+        // check and throw if validAttrs is empty?
+        // probably not, to be compatible with SearchDirectory
+
+        return validAttrs;
     }
 }

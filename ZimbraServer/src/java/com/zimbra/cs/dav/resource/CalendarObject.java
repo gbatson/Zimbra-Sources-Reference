@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -23,6 +23,11 @@ import java.util.Iterator;
 
 import javax.servlet.http.HttpServletResponse;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZCalendar;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
@@ -32,7 +37,8 @@ import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.DavException;
 import com.zimbra.cs.dav.caldav.Filter;
-import com.zimbra.cs.dav.caldav.TimeRange;
+import com.zimbra.cs.dav.caldav.Range.ExpandRange;
+import com.zimbra.cs.dav.caldav.Range.TimeRange;
 import com.zimbra.cs.dav.property.CalDavProperty;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Flag;
@@ -42,18 +48,16 @@ import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.Message;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
+import com.zimbra.cs.mailbox.calendar.InviteInfo;
+import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
-import com.zimbra.cs.mailbox.calendar.ZCalendar;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
 
 /**
  * CalendarObject is a single instance of iCalendar (RFC 2445) object, such as
  * VEVENT or VTODO.
- * 
+ *
  * @author jylee
  *
  */
@@ -64,6 +68,7 @@ public interface CalendarObject {
     public String getUid();
     public boolean match(Filter filter);
     public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException;
+    public void expand(ExpandRange range);
 
     public static abstract class LocalCalendarObjectBase extends MailItemResource {
         public LocalCalendarObjectBase(DavContext ctxt, String path, MailItem item) throws ServiceException {
@@ -170,19 +175,22 @@ public interface CalendarObject {
                     wr.close();
             }
         }
-        @Override public InputStream getContent(DavContext ctxt) throws IOException, DavException {
+        @Override
+        public InputStream getContent(DavContext ctxt) throws IOException, DavException {
             return new ByteArrayInputStream(getVcalendar(ctxt, null).getBytes("UTF-8"));
         }
-        @Override public boolean isCollection() {
+        @Override
+        public boolean isCollection() {
             return false;
         }
-        @Override public void delete(DavContext ctxt) throws DavException {
+        @Override
+        public void delete(DavContext ctxt) throws DavException {
             try {
                 Mailbox mbox = getMailbox(ctxt);
                 if (mbox.getAccount().isPrefDeleteInviteOnReply()) {
                     super.delete(ctxt);
                 } else {
-                    mbox.alterTag(ctxt.getOperationContext(), mId, MailItem.TYPE_MESSAGE, Flag.ID_FLAG_UNREAD, false);
+                    mbox.alterTag(ctxt.getOperationContext(), mId, MailItem.Type.MESSAGE, Flag.FlagInfo.UNREAD, false, null);
                 }
             } catch (ServiceException se) {
                 int resCode = se instanceof MailServiceException.NoSuchItemException ?
@@ -191,6 +199,9 @@ public interface CalendarObject {
             }
         }
         private Invite mInvite;
+        @Override
+        public void expand(ExpandRange range) {        
+        }
     }
     public static class LightWeightCalendarObject extends DavResource implements CalendarObject {
         private int mMailboxId;
@@ -253,6 +264,9 @@ public interface CalendarObject {
         @Override public boolean hasContent(DavContext ctxt) {
             return true;
         }
+        @Override
+        public void expand(ExpandRange range) { 
+        }
     }
     public static class LocalCalendarObject extends LocalCalendarObjectBase implements CalendarObject {
 
@@ -267,6 +281,7 @@ public interface CalendarObject {
 
         public LocalCalendarObject(DavContext ctxt, String path, CalendarItem calItem) throws ServiceException {
             super(ctxt, path, calItem);
+            item = calItem;
             mUid = calItem.getUid();
             mInvites = calItem.getInvites();
             mTzmap = calItem.getTimeZoneMap();
@@ -294,6 +309,7 @@ public interface CalendarObject {
             mEnd = calItem.getEndTime();
         }
 
+        private CalendarItem item;
         private String mUid;
         private Invite[] mInvites;
         private TimeZoneMap mTzmap;
@@ -323,6 +339,7 @@ public interface CalendarObject {
         /* Returns iCalendar representation of events that matches
          * the supplied filter.
          */
+        @Override
         public String getVcalendar(DavContext ctxt, Filter filter) throws IOException, DavException {
             CharArrayWriter wr = null;
             try {
@@ -390,12 +407,47 @@ public interface CalendarObject {
             return false;
         }
 
+        @Override
         public String getUid() {
             return mUid;
         }
 
+        @Override
         public boolean hasContent(DavContext ctxt) {
             return true;
+        }
+
+        @Override
+        public void expand(ExpandRange range) {
+            if (item.isRecurring() == false)
+                return;
+            Invite defInvite = item.getDefaultInviteOrNull();
+            if (defInvite == null)
+                return;
+            ArrayList<Invite> inviteList = new ArrayList<Invite>();
+            try {
+                for (CalendarItem.Instance instance : item.expandInstances(range.getStart(), range.getEnd(), false)) {
+                    InviteInfo info = instance.getInviteInfo();
+                    Invite inv = item.getInvite(info.getMsgId(), info.getComponentId());
+                    if (instance.isException() == false) {
+                        // set recurrence-id and adjust start/end dates
+                        ParsedDateTime datetime = RecurId.createFromInstance(instance).getDt();
+                        if (defInvite.isAllDayEvent())
+                            datetime.forceDateOnly();
+                        else {
+                            ParsedDateTime defStart = defInvite.getStartTime();
+                            if (defStart != null && defStart.getTimeZone() != null)
+                                datetime.toTimeZone(defInvite.getStartTime().getTimeZone());
+                        }
+                        inv = inv.makeInstanceInvite(datetime);
+                    }
+                    inviteList.add(inv);
+                }
+                mInvites = inviteList.toArray(new Invite[0]);
+            } catch (ServiceException se) {
+                ZimbraLog.dav.warn("error getting calendar item " + mUid + " from mailbox " + mMailboxId, se);
+            }
+            
         }
     }
 }

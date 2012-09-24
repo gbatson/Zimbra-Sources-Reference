@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -27,6 +27,11 @@ import java.util.Set;
 import junit.framework.AssertionFailedError;
 import junit.framework.TestCase;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.CacheEntryBy;
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.soap.admin.type.CacheEntryType;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.util.CliUtil;
 import com.zimbra.common.util.SetUtil;
@@ -34,15 +39,18 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.*;
 import com.zimbra.cs.account.Provisioning.CacheEntry;
-import com.zimbra.cs.account.Provisioning.CacheEntryBy;
-import com.zimbra.cs.account.Provisioning.CacheEntryType;
+import com.zimbra.cs.account.SearchDirectoryOptions.ObjectType;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.account.auth.ZimbraCustomAuth;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.account.auth.AuthMechanism.AuthMech;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.account.ldap.custom.CustomLdapProvisioning;
+import com.zimbra.cs.account.ldap.entry.LdapEntry;
 import com.zimbra.cs.account.soap.SoapProvisioning;
+import com.zimbra.cs.ldap.LdapUtil;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 import com.zimbra.cs.mime.MimeTypeInfo;
+import com.zimbra.soap.type.GalSearchType;
 
 public class TestProvisioning extends TestCase {
 
@@ -50,7 +58,7 @@ public class TestProvisioning extends TestCase {
     private static final boolean TEST_STARTTLS = false;
 
     private Provisioning mProv;
-    LdapProvisioning mLdapProv;
+    LdapProv mLdapProv;
     CustomProvTester mCustomProvTester;
     SoapProvisioning mSoapProv;
 
@@ -122,8 +130,8 @@ public class TestProvisioning extends TestCase {
 
     public void setUp() throws Exception {
         mProv = Provisioning.getInstance();
-        assertTrue(mProv instanceof LdapProvisioning);
-        mLdapProv = (LdapProvisioning)mProv;
+        assertTrue(mProv instanceof LdapProv);
+        mLdapProv = (LdapProv)mProv;
         mCustomProvTester = new CustomProvTester(mProv);
 
         mSoapProv = new SoapProvisioning();
@@ -136,16 +144,16 @@ public class TestProvisioning extends TestCase {
         PRE_AUTH_KEY = PreAuthKey.generateRandomPreAuthKey();
         PASSWORD = "test123";
 
-        // SPECIAL_CHARS_ALLOWED_IN_DOMAIN = "/";
-        SPECIAL_CHARS_ALLOWED_IN_DOMAIN = "";  // TODO
+        SPECIAL_CHARS_ALLOWED_IN_DOMAIN = "/";
         SPECIAL_CHARS_ALLOWED_IN_USER_PART = "/";
 
         COS_NAME = "cos-" + TEST_ID;
         // DOMAIN_NAME = "domain-" + TEST_ID + ".ldap-test-domain";
         // DOMAIN_NAME_SPECIAL_CHARS = "domain-" + SPECIAL_CHARS_ALLOWED_IN_DOMAIN + "-" + TEST_ID + ".ldap-test-domain";
         DOMAIN_NAME = TestProvisioningUtil.baseDomainName("domain", TEST_ID);
-        DOMAIN_NAME_SPECIAL_CHARS = TestProvisioningUtil.baseDomainName("domain-" + SPECIAL_CHARS_ALLOWED_IN_DOMAIN, TEST_ID);
-
+        
+        // DOMAIN_NAME_SPECIAL_CHARS = TestProvisioningUtil.baseDomainName("domain-" + SPECIAL_CHARS_ALLOWED_IN_DOMAIN, TEST_ID);
+        DOMAIN_NAME_SPECIAL_CHARS = TestProvisioningUtil.baseDomainName("domain-special", TEST_ID); // TODO: javamail now is more strict on domain names!!
 
         OTHER_DOMAIN_NAME = "other-" + DOMAIN_NAME;
         SERVER_NAME = "server-" + TEST_ID;
@@ -253,17 +261,25 @@ public class TestProvisioning extends TestCase {
         public void cleanup() throws Exception {
             System.out.println("Cleanup...");
 
+            /*
             Provisioning.SearchOptions options = new Provisioning.SearchOptions();
             int flags = 0;
-            flags = (Provisioning.SA_ACCOUNT_FLAG |
+            flags = (Provisioning.SD_ACCOUNT_FLAG |
                      // Provisioning.SA_ALIAS_FLAG |
-                     Provisioning.SA_CALENDAR_RESOURCE_FLAG |
-                     Provisioning.SA_DISTRIBUTION_LIST_FLAG);
+                     Provisioning.SD_CALENDAR_RESOURCE_FLAG |
+                     Provisioning.SD_DISTRIBUTION_LIST_FLAG);
             options.setFlags(flags);
             if (isCustom())
                 options.setBase(ACCT_BASE_DN);
             List<NamedEntry> list = mProv.searchDirectory(options);
-
+            */
+            SearchDirectoryOptions options = new SearchDirectoryOptions();
+            options.setTypes(
+                    SearchDirectoryOptions.ObjectType.accounts,
+                    SearchDirectoryOptions.ObjectType.resources,
+                    SearchDirectoryOptions.ObjectType.distributionlists);
+            List<NamedEntry> list = mProv.searchDirectory(options);
+            
             for (NamedEntry entry : list) {
                 if (entry instanceof CalendarResource)
                     mProv.deleteCalendarResource(entry.getId());
@@ -278,8 +294,13 @@ public class TestProvisioning extends TestCase {
             }
 
             // search again, this time we search for everything and it should not contain any entry
-            flags = 0xFF;
-            options.setFlags(flags);
+            options = new SearchDirectoryOptions();
+            options.setTypes(
+                    SearchDirectoryOptions.ObjectType.accounts,
+                    SearchDirectoryOptions.ObjectType.aliases,
+                    SearchDirectoryOptions.ObjectType.resources,
+                    SearchDirectoryOptions.ObjectType.distributionlists);
+            
             list = mProv.searchDirectory(options);
             assertEquals(0, list.size());
 
@@ -300,7 +321,8 @@ public class TestProvisioning extends TestCase {
             if (!mIsCustomProv)
                 return;
 
-            assertEquals(dn, mLdapProv.getDN(entry));
+            assertTrue(entry instanceof LdapEntry);
+            assertEquals(dn, ((LdapEntry) entry).getDN());
         }
 
         public boolean verifyAccountCountForDomainBasedSearch() {
@@ -343,22 +365,20 @@ public class TestProvisioning extends TestCase {
      * util functions
      */
     private List<NamedEntry> searchAccountsInDomain(Domain domain) throws ServiceException {
-        Provisioning.SearchOptions options = new Provisioning.SearchOptions();
+        SearchDirectoryOptions options = new SearchDirectoryOptions();
 
-        int flags = 0;
-        flags = Provisioning.SA_ACCOUNT_FLAG;
-        options.setFlags(flags);
+        options.setTypes(SearchDirectoryOptions.ObjectType.accounts);
         options.setDomain(domain);
+        options.setFilterString(FilterId.UNITTEST, null);
         return mProv.searchDirectory(options);
     }
 
     private List<NamedEntry> searchAliasesInDomain(Domain domain) throws ServiceException {
-        Provisioning.SearchOptions options = new Provisioning.SearchOptions();
+        SearchDirectoryOptions options = new SearchDirectoryOptions();
 
-        int flags = 0;
-        flags = Provisioning.SA_ALIAS_FLAG;
-        options.setFlags(flags);
+        options.setTypes(SearchDirectoryOptions.ObjectType.aliases);
         options.setDomain(domain);
+        options.setFilterString(FilterId.UNITTEST, null);
         return mProv.searchDirectory(options);
     }
 
@@ -428,7 +448,7 @@ public class TestProvisioning extends TestCase {
         System.out.println("Testing config");
 
         Config entry = mProv.getConfig();
-        assertNotNull(entry != null);
+        assertNotNull(entry);
 
         return entry;
     }
@@ -438,11 +458,11 @@ public class TestProvisioning extends TestCase {
 
         Cos entry = mProv.createCos(COS_NAME, new HashMap<String, Object>());
 
-        Cos entryGot = mProv.get(Provisioning.CosBy.id, entry.getId());
+        Cos entryGot = mProv.get(Key.CosBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.CosBy.name, COS_NAME);
+        entryGot = mProv.get(Key.CosBy.name, COS_NAME);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        Cos defaultCos = mProv.get(Provisioning.CosBy.name, "default");
+        Cos defaultCos = mProv.get(Key.CosBy.name, "default");
         assertNotNull(defaultCos);
 
         String destCosName = "cos2-" + TEST_ID;
@@ -473,13 +493,13 @@ public class TestProvisioning extends TestCase {
         attrs.put(Provisioning.A_zimbraVirtualHostname, virtualHosts.toArray(new String[0]));
         Domain entry = mProv.createDomain(DOMAIN_NAME, attrs);
 
-        Domain entryGot = mProv.get(Provisioning.DomainBy.id, entry.getId());
+        Domain entryGot = mProv.get(Key.DomainBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.DomainBy.name, DOMAIN_NAME);
+        entryGot = mProv.get(Key.DomainBy.name, DOMAIN_NAME);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
         for (int i=0; i<numVirtualHosts; i++) {
             String virtualHostName = "vhost-" + i + "-" + TEST_ID + ".com";
-            entryGot = mProv.get(Provisioning.DomainBy.virtualHostname, virtualHostName);
+            entryGot = mProv.get(Key.DomainBy.virtualHostname, virtualHostName);
             TestProvisioningUtil.verifySameEntry(entry, entryGot);
         }
 
@@ -508,9 +528,9 @@ public class TestProvisioning extends TestCase {
         Map<String, Object> serverAttrs = new HashMap<String, Object>();
         Server entry = mProv.createServer(SERVER_NAME, serverAttrs);
 
-        Server entryGot = mProv.get(Provisioning.ServerBy.id, entry.getId());
+        Server entryGot = mProv.get(Key.ServerBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.ServerBy.name, SERVER_NAME);
+        entryGot = mProv.get(Key.ServerBy.name, SERVER_NAME);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // modify server
@@ -556,7 +576,7 @@ public class TestProvisioning extends TestCase {
     private void externalAuthTest(Account account, boolean startTLS) throws Exception {
         Domain domain = mProv.getDomain(account);
         Map attrsToMod = new HashMap<String, Object>();
-        attrsToMod.put(Provisioning.A_zimbraAuthMech, Provisioning.AM_LDAP);
+        attrsToMod.put(Provisioning.A_zimbraAuthMech, AuthMech.ldap.name());
         attrsToMod.put(Provisioning.A_zimbraAuthLdapURL, "ldap://" + LC.zimbra_server_hostname.value() + ":389");
         attrsToMod.put(Provisioning.A_zimbraAuthLdapSearchFilter, "(zimbraMailDeliveryAddress=%n)");
         attrsToMod.put(Provisioning.A_zimbraAuthLdapSearchBindPassword, LC.zimbra_ldap_password.value());
@@ -589,7 +609,7 @@ public class TestProvisioning extends TestCase {
 
         // kerberos5 auth
         attrsToMod.clear();
-        attrsToMod.put(Provisioning.A_zimbraAuthMech, Provisioning.AM_KERBEROS5);
+        attrsToMod.put(Provisioning.A_zimbraAuthMech, AuthMech.kerberos5.name());
         attrsToMod.put(Provisioning.A_zimbraAuthKerberos5Realm, "PHOEBE.LOCAL");
         mProv.modifyAttrs(domain, attrsToMod, true);
         // by domain realm mapping    acct-1@PHOEBE.LOCAL has to be created (sudo /usr/local/sbin/kadmin.local addprinc command)
@@ -603,14 +623,14 @@ public class TestProvisioning extends TestCase {
         // skip these tests, as there could be multiple domain with PHOEBE.LOCAL in zimbraAuthKerberos5Realm  from previous test
         // to test, remove all previous test domains and uncomment the following.
         /*
-        Account acctNonExist = mProv.get(Provisioning.AccountBy.krb5Principal, "bad@PHOEBE.LOCAL");
+        Account acctNonExist = mProv.get(Key.AccountBy.krb5Principal, "bad@PHOEBE.LOCAL");
         assertNull(acctNonExist);
 
-        Account acctByRealm = mProv.get(Provisioning.AccountBy.krb5Principal, ACCT_USER+"@PHOEBE.LOCAL");
+        Account acctByRealm = mProv.get(Key.AccountBy.krb5Principal, ACCT_USER+"@PHOEBE.LOCAL");
         assertNotNull(acctByRealm);
         assertEquals(acctByRealm.getName(), ACCT_EMAIL);
 
-        Account acctByFP = mProv.get(Provisioning.AccountBy.krb5Principal, "user1@PHOEBE.LOCAL");
+        Account acctByFP = mProv.get(Key.AccountBy.krb5Principal, "user1@PHOEBE.LOCAL");
         assertNotNull(acctByFP);
         assertEquals(acctByFP.getName(), ACCT_EMAIL);
         */
@@ -619,7 +639,7 @@ public class TestProvisioning extends TestCase {
         attrsToMod.clear();
         String customAuthHandlerName = "test";
         String args = "http://blah.com:123    green \" ocean blue   \"  \"\" yelllow \"\"";
-        attrsToMod.put(Provisioning.A_zimbraAuthMech, Provisioning.AM_CUSTOM + customAuthHandlerName + " " + args);
+        attrsToMod.put(Provisioning.A_zimbraAuthMech, AuthMech.custom.name() + ":" + customAuthHandlerName + " " + args);
         mProv.modifyAttrs(domain, attrsToMod, true);
         ZimbraCustomAuth.register(customAuthHandlerName, new TestCustomAuth(account, PASSWORD));
         mProv.authAccount(account, PASSWORD, AuthContext.Protocol.test);
@@ -633,7 +653,7 @@ public class TestProvisioning extends TestCase {
         }
 
         // done testing auth mech, set auth meth back
-        attrsToMod.put(Provisioning.A_zimbraAuthMech, Provisioning.AM_ZIMBRA);
+        attrsToMod.put(Provisioning.A_zimbraAuthMech, AuthMech.zimbra.name());
         mProv.modifyAttrs(domain, attrsToMod, true);
 
         // preauth
@@ -663,7 +683,7 @@ public class TestProvisioning extends TestCase {
         System.out.println("Testing admin account");
 
         // LDAP bind admin user
-        Account entry = mProv.get(Provisioning.AccountBy.adminName, DEFAULT_LDAP_ADMIN_USER);
+        Account entry = mProv.get(Key.AccountBy.adminName, DEFAULT_LDAP_ADMIN_USER);
         assertNotNull(entry);
 
         /*
@@ -682,13 +702,13 @@ public class TestProvisioning extends TestCase {
         acctAttrs.put(Provisioning.A_zimbraIsAdminAccount, "TRUE");
         entry = mProv.createAccount(ADMIN_EMAIL, PASSWORD, acctAttrs);
 
-        Account entryGot = mProv.get(Provisioning.AccountBy.name, ADMIN_EMAIL);
+        Account entryGot = mProv.get(Key.AccountBy.name, ADMIN_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         /*
          * admin can be retrieved without the domain, default domain will be used if domain is not supplied
          */
-        Account entryGotByuser = mProv.get(Provisioning.AccountBy.name, ADMIN_USER);
+        Account entryGotByuser = mProv.get(Key.AccountBy.name, ADMIN_USER);
         TestProvisioningUtil.verifySameEntry(entryGot, entryGotByuser);
 
         if (!Flag.needLdapPaging("getAllAdminAccounts")) {
@@ -727,7 +747,7 @@ public class TestProvisioning extends TestCase {
         Account entrySpecialChars = mProv.createAccount(ACCT_EMAIL_SPECIAL_CHARS, PASSWORD, acctAttrsSpecialChars);
         String acctSpecialCharsDn = ACCT_NAMING_ATTR + "=" + namingAttrValue(ACCT_USER_SPECIAL_CHARS) + "," + ACCT_BASE_DN;
         mCustomProvTester.verifyDn(entrySpecialChars, acctSpecialCharsDn);
-        Account entryGot = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL_SPECIAL_CHARS);
+        Account entryGot = mProv.get(Key.AccountBy.name, ACCT_EMAIL_SPECIAL_CHARS);
         TestProvisioningUtil.verifySameEntry(entrySpecialChars, entryGot);
 
         // add an alias in the same domain
@@ -745,19 +765,19 @@ public class TestProvisioning extends TestCase {
         assertTrue(correct);
 
         // get account by id
-        entryGot = mProv.get(Provisioning.AccountBy.id, entry.getId());
+        entryGot = mProv.get(Key.AccountBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // get account by name(i.e. email)
-        entryGot = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        entryGot = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // get account by alias
-        entryGot = mProv.get(Provisioning.AccountBy.name, ACCT_ALIAS_EMAIL);
+        entryGot = mProv.get(Key.AccountBy.name, ACCT_ALIAS_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // get account by alias
-        entryGot = mProv.get(Provisioning.AccountBy.name, ACCT_ALIAS_IN_OTHER_DOMAIN_EMAIL);
+        entryGot = mProv.get(Key.AccountBy.name, ACCT_ALIAS_IN_OTHER_DOMAIN_EMAIL);
         if (mCustomProvTester.isCustom())
             assertEquals(null, entryGot);
         else
@@ -765,19 +785,29 @@ public class TestProvisioning extends TestCase {
 
         // get account by krb5Principal using account foreign principal
         // account has multiple kerberos principals
-        entryGot = mProv.get(Provisioning.AccountBy.krb5Principal, krb5Principal1);
+        entryGot = mProv.get(Key.AccountBy.krb5Principal, krb5Principal1);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.AccountBy.krb5Principal, krb5Principal2);
+        entryGot = mProv.get(Key.AccountBy.krb5Principal, krb5Principal2);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // test dup zFP on multiple accounts - should fail
         String krb5PrincipalDup = "fp-dup@FOO.COM";
+        
+        String user = "acctx-dup-kerberos";
         acctAttrs.clear();
+        mCustomProvTester.addAttr(acctAttrs, BASE_DN_PSEUDO_ATTR, ACCT_BASE_DN);
+        mCustomProvTester.addAttr(acctAttrs, ACCT_NAMING_ATTR, namingAttrValue(user));
         acctAttrs.put(Provisioning.A_zimbraForeignPrincipal, new String[]{"kerberos5:"+krb5PrincipalDup});
-        Account acctX = mProv.createAccount("acctx-dup-kerberos@" + DOMAIN_NAME, "test123", acctAttrs);
-        Account acctY = mProv.createAccount("accty-dup-kerberos@" + DOMAIN_NAME, "test123", acctAttrs);
+        Account acctX = mProv.createAccount(user+"@" + DOMAIN_NAME, "test123", acctAttrs);
+        
+        user = "accty-dup-kerberos";
+        acctAttrs.clear();
+        mCustomProvTester.addAttr(acctAttrs, BASE_DN_PSEUDO_ATTR, ACCT_BASE_DN);
+        mCustomProvTester.addAttr(acctAttrs, ACCT_NAMING_ATTR, namingAttrValue(user));
+        acctAttrs.put(Provisioning.A_zimbraForeignPrincipal, new String[]{"kerberos5:"+krb5PrincipalDup});
+        Account acctY = mProv.createAccount(user+"@" + DOMAIN_NAME, "test123", acctAttrs);
         try {
-            mProv.get(Provisioning.AccountBy.krb5Principal, krb5PrincipalDup);
+            mProv.get(Key.AccountBy.krb5Principal, krb5PrincipalDup);
             fail();
         } catch (ServiceException e) {
             assertEquals(AccountServiceException.MULTIPLE_ACCOUNTS_MATCHED, e.getCode());
@@ -789,12 +819,14 @@ public class TestProvisioning extends TestCase {
         domainAttrs.put(Provisioning.A_zimbraAuthKerberos5Realm, "JUNKREALM.COM");
         String krb5DomainName = "krb-test." + DOMAIN_NAME;
         Domain krb5TestDomain = mProv.createDomain(krb5DomainName, domainAttrs);
-        Account krb5TestAcct = mProv.createAccount("user1@"+krb5DomainName, "test123", null);
-        entryGot = mProv.get(Provisioning.AccountBy.krb5Principal, "user1@JUNKREALM.COM");
+        
+        user = "user1";
+        acctAttrs.clear();
+        mCustomProvTester.addAttr(acctAttrs, BASE_DN_PSEUDO_ATTR, ACCT_BASE_DN);
+        mCustomProvTester.addAttr(acctAttrs, ACCT_NAMING_ATTR, namingAttrValue(user));
+        Account krb5TestAcct = mProv.createAccount(user+"@"+krb5DomainName, "test123", acctAttrs);
+        entryGot = mProv.get(Key.AccountBy.krb5Principal, "user1@JUNKREALM.COM");
         TestProvisioningUtil.verifySameEntry(krb5TestAcct, entryGot);
-
-
-
 
         List list = null;
 
@@ -836,7 +868,7 @@ public class TestProvisioning extends TestCase {
             TestProvisioningUtil.verifyEntriesById(list, new String[]{entryId}, false);
             TestProvisioningUtil.verifyEntriesByName(list, new String[]{NEW_EMAIL}, false);
             // re-get the entry since it might've been changed after the rename
-            entry = mProv.get(Provisioning.AccountBy.id, entryId);
+            entry = mProv.get(Key.AccountBy.id, entryId);
             assertEquals(NEW_EMAIL,
                     entry.getAttr(Provisioning.A_zimbraPrefFromAddress));
             if (mCustomProvTester.isCustom()) {
@@ -870,7 +902,7 @@ public class TestProvisioning extends TestCase {
         }
         assertTrue(correct);
         // re-get the entry since it might've been changed after the rename
-        entry = mProv.get(Provisioning.AccountBy.id, entryId);
+        entry = mProv.get(Key.AccountBy.id, entryId);
 
         if (!mCustomProvTester.isCustom()) {
             if (!Flag.needLdapPaging("searchDirectory")) {
@@ -898,7 +930,7 @@ public class TestProvisioning extends TestCase {
             TestProvisioningUtil.verifyEntriesById(list, new String[]{entryId}, false);
             TestProvisioningUtil.verifyEntriesByName(list, new String[]{ACCT_EMAIL}, false);
             // re-get the entry since it might've been changed after the rename
-            entry = mProv.get(Provisioning.AccountBy.id, entryId);
+            entry = mProv.get(Key.AccountBy.id, entryId);
 
             if (mCustomProvTester.isCustom()) {
                 list = searchAliasesInDomain(domain);
@@ -935,7 +967,7 @@ public class TestProvisioning extends TestCase {
         }
 
         // set cos
-        entry = mProv.get(Provisioning.AccountBy.id, entryId);
+        entry = mProv.get(Key.AccountBy.id, entryId);
         mProv.setCOS(entry, cos);
 
         return new Account[]{entry, entrySpecialChars, acctX, acctY};
@@ -964,7 +996,7 @@ public class TestProvisioning extends TestCase {
     private void localeTest() throws Exception {
         System.out.println("Testing locale"); // bug 23218: entry.getLocale() is not refreshed on modifying locale (zimbraPrefLocale/zimbraLocale)
 
-        Account acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL);
         assertNotNull(acct);
 
         doLocaleTest(acct, "xxx");
@@ -985,11 +1017,11 @@ public class TestProvisioning extends TestCase {
         CalendarResource entry = mProv.createCalendarResource(CR_EMAIL, PASSWORD, crAttrs);
         mProv.addAlias(entry, CR_ALIAS_EMAIL);
 
-        CalendarResource entryGot = mProv.get(Provisioning.CalendarResourceBy.id, entry.getId());
+        CalendarResource entryGot = mProv.get(Key.CalendarResourceBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.CalendarResourceBy.name, CR_EMAIL);
+        entryGot = mProv.get(Key.CalendarResourceBy.name, CR_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.CalendarResourceBy.name, CR_ALIAS_EMAIL);
+        entryGot = mProv.get(Key.CalendarResourceBy.name, CR_ALIAS_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         List list = null;
@@ -1022,11 +1054,11 @@ public class TestProvisioning extends TestCase {
 
         mProv.addAlias(entry, DL_ALIAS_EMAIL);
 
-        DistributionList entryGot = mProv.get(Provisioning.DistributionListBy.id, entry.getId());
+        DistributionList entryGot = mProv.get(Key.DistributionListBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.DistributionListBy.name, DL_EMAIL);
+        entryGot = mProv.get(Key.DistributionListBy.name, DL_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(Provisioning.DistributionListBy.name, DL_ALIAS_EMAIL);
+        entryGot = mProv.get(Key.DistributionListBy.name, DL_ALIAS_EMAIL);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         Map<String, Object> dlNestedAttrs = new HashMap<String, Object>();
@@ -1047,7 +1079,7 @@ public class TestProvisioning extends TestCase {
         mCustomProvTester.addAttr(dlAttrsSpecialChars, BASE_DN_PSEUDO_ATTR, ACCT_BASE_DN);
         mCustomProvTester.addAttr(dlAttrsSpecialChars, ACCT_NAMING_ATTR, namingAttrValue(DL_USER_SPECIAL_CHARS));
         DistributionList dlSpecilaChars = mProv.createDistributionList(DL_EMAIL_SPECIAL_CHARS, dlAttrsSpecialChars);
-        entryGot = mProv.get(Provisioning.DistributionListBy.name, DL_EMAIL_SPECIAL_CHARS);
+        entryGot = mProv.get(Key.DistributionListBy.name, DL_EMAIL_SPECIAL_CHARS);
         TestProvisioningUtil.verifySameEntry(dlSpecilaChars, entryGot);
         // set back the orig default domain
         if (mCustomProvTester.isCustom())
@@ -1063,7 +1095,7 @@ public class TestProvisioning extends TestCase {
             TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{entry, dlNested}, mCustomProvTester.verifyDLCountForDomainBasedSearch());
         }
 
-        Account account = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account account = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
         Set<String> set = null;
 
         if (!Flag.needLdapPaging("getDistributionLists_account")) {
@@ -1096,7 +1128,7 @@ public class TestProvisioning extends TestCase {
         mProv.removeMembers(entry, new String[]{dlNested.getName()});
 
         mProv.renameDistributionList(entry.getId(), NEW_EMAIL);
-        entryGot = mProv.get(Provisioning.DistributionListBy.name, NEW_EMAIL);
+        entryGot = mProv.get(Key.DistributionListBy.name, NEW_EMAIL);
         TestProvisioningUtil.verifySameId(entry, entryGot);
         if (!Flag.needLdapPaging("getAllDistributionLists")) {
             list = mProv.getAllDistributionLists(domain);
@@ -1104,11 +1136,11 @@ public class TestProvisioning extends TestCase {
         }
 
         // refresh the entry, it might have been moved
-        entry = mProv.get(Provisioning.DistributionListBy.name, NEW_EMAIL);
+        entry = mProv.get(Key.DistributionListBy.name, NEW_EMAIL);
 
         // rename it back
         mProv.renameDistributionList(entry.getId(), DL_EMAIL);
-        entryGot = mProv.get(Provisioning.DistributionListBy.name, DL_EMAIL);
+        entryGot = mProv.get(Key.DistributionListBy.name, DL_EMAIL);
         TestProvisioningUtil.verifySameId(entry, entryGot);
         if (!Flag.needLdapPaging("getAllDistributionLists")) {
             list = mProv.getAllDistributionLists(domain);
@@ -1136,11 +1168,11 @@ public class TestProvisioning extends TestCase {
         dsAttrs.put(Provisioning.A_zimbraPrefReplyToAddress, "goofy@yahoo.com");
         dsAttrs.put(Provisioning.A_zimbraPrefReplyToDisplay, "Micky");
 
-        DataSource entry = mProv.createDataSource(account, DataSource.Type.pop3, DATA_SOURCE_NAME, dsAttrs);
+        DataSource entry = mProv.createDataSource(account, DataSourceType.pop3, DATA_SOURCE_NAME, dsAttrs);
 
-        DataSource entryGot = mProv.get(account, Provisioning.DataSourceBy.id, entry.getId());
+        DataSource entryGot = mProv.get(account, Key.DataSourceBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(account, Provisioning.DataSourceBy.name, DATA_SOURCE_NAME);
+        entryGot = mProv.get(account, Key.DataSourceBy.name, DATA_SOURCE_NAME);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         List list = mProv.getAllDataSources(account);
@@ -1165,13 +1197,13 @@ public class TestProvisioning extends TestCase {
         identityAttrs.put(Provisioning.A_zimbraPrefReplyToDisplay, "Micky");
         Identity entry = mProv.createIdentity(account, IDENTITY_NAME, identityAttrs);
 
-        Identity entryGot = mProv.get(account, Provisioning.IdentityBy.id, entry.getId());
+        Identity entryGot = mProv.get(account, Key.IdentityBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        entryGot = mProv.get(account, Provisioning.IdentityBy.name, IDENTITY_NAME);
+        entryGot = mProv.get(account, Key.IdentityBy.name, IDENTITY_NAME);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
-        Identity defaultIdentity = mProv.get(account, Provisioning.IdentityBy.name, Provisioning.DEFAULT_IDENTITY_NAME);
+        Identity defaultIdentity = mProv.get(account, Key.IdentityBy.name, ProvisioningConstants.DEFAULT_IDENTITY_NAME);
         TestProvisioningUtil.verifySameId(account, defaultIdentity);
-        assertEquals(Provisioning.DEFAULT_IDENTITY_NAME, defaultIdentity.getName());
+        assertEquals(ProvisioningConstants.DEFAULT_IDENTITY_NAME, defaultIdentity.getName());
 
         List list = mProv.getAllIdentities(account);
         TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{defaultIdentity, entry}, true);
@@ -1188,8 +1220,8 @@ public class TestProvisioning extends TestCase {
         mProv.modifyIdentity(account, IDENTITY_NAME, attrsToMod);
 
         // get by new name
-        entryGot = mProv.get(account, Provisioning.IdentityBy.name, newName);
-        entry = mProv.get(account, Provisioning.IdentityBy.id, entry.getId());
+        entryGot = mProv.get(account, Key.IdentityBy.name, newName);
+        entry = mProv.get(account, Key.IdentityBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // rename back
@@ -1198,7 +1230,7 @@ public class TestProvisioning extends TestCase {
         mProv.modifyIdentity(account, newName, attrsToMod);
 
         // refresh the entry to return
-        entry = mProv.get(account, Provisioning.IdentityBy.id, entry.getId());
+        entry = mProv.get(account, Key.IdentityBy.id, entry.getId());
 
         return entry;
     }
@@ -1212,11 +1244,11 @@ public class TestProvisioning extends TestCase {
         Signature entry = mProv.createSignature(account, SIGNATURE_NAME, signatureAttrs);
 
         // get the signature by id
-        Signature entryGot = mProv.get(account, Provisioning.SignatureBy.id, entry.getId());
+        Signature entryGot = mProv.get(account, Key.SignatureBy.id, entry.getId());
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // get the signature by name
-        entryGot = mProv.get(account, Provisioning.SignatureBy.name, SIGNATURE_NAME);
+        entryGot = mProv.get(account, Key.SignatureBy.name, SIGNATURE_NAME);
         TestProvisioningUtil.verifySameEntry(entry, entryGot);
 
         // get all the signatures, there should be only one - the one we just created
@@ -1233,7 +1265,7 @@ public class TestProvisioning extends TestCase {
         mProv.modifySignature(account, entry.getId(), attrsToMod);
 
         // make sure we get the modified value back
-        entryGot = mProv.get(account, Provisioning.SignatureBy.id, entry.getId());
+        entryGot = mProv.get(account, Key.SignatureBy.id, entry.getId());
         assertEquals(SIGNATURE_VALUE_MODIFIED, entryGot.getAttr(Provisioning.A_zimbraPrefMailSignature));
 
         /*
@@ -1268,7 +1300,7 @@ public class TestProvisioning extends TestCase {
         defaultSigId = account.getAttr(Provisioning.A_zimbraPrefDefaultSignatureId);
         assertEquals(secondEntry.getId(), defaultSigId);
         // refresh the entry, since it was moved
-        secondEntry = mProv.get(account, Provisioning.SignatureBy.name, secondSigNameNew);
+        secondEntry = mProv.get(account, Key.SignatureBy.name, secondSigNameNew);
 
         // create a third signature, it should sit on the account entry
         String thirdSigName = "third-sig";
@@ -1294,13 +1326,13 @@ public class TestProvisioning extends TestCase {
         mProv.modifyAttrs(account, acctAttrs);
 
         // get the account signature, by its name, which is the account's name
-        Signature acctSig = mProv.get(account, Provisioning.SignatureBy.name, accountSigName);
+        Signature acctSig = mProv.get(account, Key.SignatureBy.name, accountSigName);
         assertEquals(account.getName(), acctSig.getName());
         assertNotSame(account.getId(), acctSig.getId());
         assertEquals(acctSig.getAttr(Provisioning.A_zimbraPrefMailSignature), aSigValueOnAccount);
 
         // get the account signature, by it's id
-        acctSig = mProv.get(account, Provisioning.SignatureBy.id, acctSig.getId());
+        acctSig = mProv.get(account, Key.SignatureBy.id, acctSig.getId());
         assertNotSame(account.getId(), acctSig.getId());
         assertEquals(acctSig.getAttr(Provisioning.A_zimbraPrefMailSignature), aSigValueOnAccount);
 
@@ -1317,7 +1349,7 @@ public class TestProvisioning extends TestCase {
         mProv.modifyAttrs(account, acctAttrs);
 
         // get the account signature, by its name, which is the account's name
-        acctSig = mProv.get(account, Provisioning.SignatureBy.name, accountSigName);
+        acctSig = mProv.get(account, Key.SignatureBy.name, accountSigName);
         // set it to the default signature
         acctAttrs.clear();
         acctAttrs.put(Provisioning.A_zimbraPrefDefaultSignatureId, acctSig.getId());
@@ -1331,7 +1363,7 @@ public class TestProvisioning extends TestCase {
         mProv.modifySignature(account, acctSig.getId(), signatureAttrs);
 
         // make sure we can get it by the new name
-        Signature renamedAcctSig = mProv.get(account, Provisioning.SignatureBy.name, accountSigNameNew);
+        Signature renamedAcctSig = mProv.get(account, Key.SignatureBy.name, accountSigNameNew);
         assertEquals(renamedAcctSig.getId(), acctSig.getId());
 
         // make sure the default sig id is not changed
@@ -1367,7 +1399,7 @@ public class TestProvisioning extends TestCase {
 
         // make sure cn is also updated if cn is not the naing attribute
         if (mLdapProv != null) {
-            String namingAttr = mLdapProv.getNamingRdnAttr(entry);
+            String namingAttr = mLdapProv.getDIT().getNamingRdnAttr(entry);
             if (!namingAttr.equals(Provisioning.A_cn)) {
                 String cnValue = entry.getAttr(Provisioning.A_cn);
                 assertEquals(ACCT_FULL_NAME, cnValue);
@@ -1379,7 +1411,7 @@ public class TestProvisioning extends TestCase {
 
     private void externalGalTest(Domain domain, boolean startTLS) throws Exception {
         Map<String, String> attrs = new HashMap<String, String>();
-        attrs.put(Provisioning.A_zimbraGalMode, Provisioning.AM_LDAP);
+        attrs.put(Provisioning.A_zimbraGalMode, AuthMech.ldap.name());
         attrs.put(Provisioning.A_zimbraGalLdapURL, "ldap://" + LC.zimbra_server_hostname.value() + ":389"); // cannot be localhost for startTLS
 
         attrs.put(Provisioning.A_zimbraGalLdapBindDn, LC.zimbra_ldap_userdn.value());
@@ -1396,9 +1428,11 @@ public class TestProvisioning extends TestCase {
         }
 
         mProv.modifyAttrs(domain, attrs, true);
-        Provisioning.SearchGalResult galResult = mProv.searchGal(domain,
+        Provisioning.SearchGalResult galResult = mProv.searchGal(
+                domain,
                 ACCT_EMAIL,
-                Provisioning.GalSearchType.all,
+                GalSearchType.all,
+                0,
                 null);
         List<GalContact> matches = galResult.getMatches();
         assertEquals(1, galResult.getNumMatches());
@@ -1409,13 +1443,14 @@ public class TestProvisioning extends TestCase {
         System.out.println("Testing gal");
 
         String query = ACCT_USER;
-        Account acct = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account acct = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
 
         // auto complete Gal
         Provisioning.SearchGalResult galResult = mProv.autoCompleteGal(domain,
                                                                        query,
-                                                                       Provisioning.GalSearchType.all,
-                                                                       100);
+                                                                       GalSearchType.all,
+                                                                       100,
+                                                                       null);
 
         List<GalContact> matches = galResult.getMatches();
         assertEquals(1, galResult.getNumMatches());
@@ -1424,7 +1459,8 @@ public class TestProvisioning extends TestCase {
         // search gal
         galResult = mProv.searchGal(domain,
                                     query,
-                                    Provisioning.GalSearchType.all,
+                                    GalSearchType.all,
+                                    0,
                                     null);
         matches = galResult.getMatches();
         assertEquals(1, galResult.getNumMatches());
@@ -1440,64 +1476,16 @@ public class TestProvisioning extends TestCase {
     private void searchTest(Domain domain) throws Exception {
         System.out.println("Testing search");
 
-        Account acct = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
-        Account cr = mProv.get(Provisioning.AccountBy.name, CR_EMAIL);
+        Account acct = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
 
         String query = "(" + Provisioning.A_zimbraMailDeliveryAddress + "=" + ACCT_EMAIL + ")";
         List list = null;
 
-        if (!Flag.needLdapPaging("searchAccounts")) {
-            list = mProv.searchAccounts(query,
-                                            new String[]{Provisioning.A_zimbraMailDeliveryAddress},
-                                            Provisioning.A_zimbraMailDeliveryAddress,
-                                            true,
-                                            Provisioning.SA_ACCOUNT_FLAG);
-            TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{acct}, true);
-
-            // testing get all accounts on local server, used by BackupManager
-            String serverName = mProv.getLocalServer().getAttr(Provisioning.A_zimbraServiceHostname);
-            list = mProv.searchAccounts(
-                        "(zimbraMailHost=" + serverName + ")",
-                        new String[] { Provisioning.A_zimbraId }, null, false,
-                        Provisioning.SA_ACCOUNT_FLAG | Provisioning.SA_CALENDAR_RESOURCE_FLAG);
-
-        }
-
-        if (!Flag.needLdapPaging("searchAccounts_domain")) {
-            list = mProv.searchAccounts(domain, query,
-                                       new String[]{Provisioning.A_zimbraMailDeliveryAddress},
-                                       Provisioning.A_zimbraMailDeliveryAddress,
-                                       true,
-                                       Provisioning.SA_ACCOUNT_FLAG);
-            TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{acct}, true);
-        }
-
-        EntrySearchFilter.Term term = new EntrySearchFilter.Single(false,
-                                                                   Provisioning.A_zimbraMailDeliveryAddress,
-                                                                   EntrySearchFilter.Operator.eq,
-                                                                   CR_EMAIL);
-        EntrySearchFilter filter = new EntrySearchFilter(term);
-        if (!Flag.needLdapPaging("searchCalendarResources")) {
-            list = mProv.searchCalendarResources(filter,
-                                                new String[]{Provisioning.A_zimbraMailDeliveryAddress},
-                                                Provisioning.A_zimbraMailDeliveryAddress,
-                                                true);
-            TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{cr}, true);
-        }
-
-        if (!Flag.needLdapPaging("searchCalendarResources_domain")) {
-            list = mProv.searchCalendarResources(domain,
-                                                filter,
-                                                new String[]{Provisioning.A_zimbraMailDeliveryAddress},
-                                                Provisioning.A_zimbraMailDeliveryAddress,
-                                                true);
-            TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{cr}, true);
-        }
-
         if (!Flag.needLdapPaging("searchDirectory")) {
-            Provisioning.SearchOptions options = new Provisioning.SearchOptions();
+            SearchDirectoryOptions options = new SearchDirectoryOptions();
             options.setDomain(domain);
-            options.setQuery(query);
+            options.setFilterString(FilterId.UNITTEST, query);
+            options.setTypes(ObjectType.accounts);
             list = mProv.searchDirectory(options);
             TestProvisioningUtil.verifyEntries(list, new NamedEntry[]{acct}, true);
         }
@@ -1652,33 +1640,33 @@ public class TestProvisioning extends TestCase {
          * account
          */
         String acctAttr = Provisioning.A_description;
-        Account acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL);
         assertNotNull(acct);
 
         // write the old value
         attrs.clear();
         attrs.put(acctAttr, oldVal);
         mSoapProv.modifyAttrs(acct, attrs); // modify via soap
-        acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL); // get the entry
+        acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL); // get the entry
         value = acct.getAttr(acctAttr); // get the attr
         assertEquals(oldVal, value);  // make sure the attr is updated
 
         // update with the new values via ldap
         attrs.clear();
         attrs.put(acctAttr, newVal);
-        acct = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        acct = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
         mProv.modifyAttrs(acct, attrs); // modify via ldap prov
 
         // ensure it is still the old value
-        acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL); // get the entry via soap
+        acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL); // get the entry via soap
         value = acct.getAttr(acctAttr); // get the attr
         assertEquals(oldVal, value); // the value should be still old value
 
         // flush the account
-        mSoapProv.flushCache(CacheEntryType.account, new CacheEntry[]{new CacheEntry(CacheEntryBy.id, acct.getId())});
+        mSoapProv.flushCache(CacheEntryType.account, new CacheEntry[]{new CacheEntry(Key.CacheEntryBy.id, acct.getId())});
 
         // ensure it is the new value
-        acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL); // get he entry via soap
+        acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL); // get he entry via soap
         value = acct.getAttr(acctAttr); // get the attr
         assertEquals(newVal, value); // now we should see the new value
 
@@ -1687,43 +1675,43 @@ public class TestProvisioning extends TestCase {
          * cos
          */
         String cosAttr = Provisioning.A_zimbraPrefSkin;
-        Cos cos = mSoapProv.get(Provisioning.CosBy.name, COS_NAME);
+        Cos cos = mSoapProv.get(Key.CosBy.name, COS_NAME);
         assertNotNull(cos);
 
         // write the old value
         attrs.clear();
         attrs.put(cosAttr, oldVal);
         mSoapProv.modifyAttrs(cos, attrs); // modify via soap
-        cos = mSoapProv.get(Provisioning.CosBy.name, COS_NAME); // get the entry
+        cos = mSoapProv.get(Key.CosBy.name, COS_NAME); // get the entry
         value = cos.getAttr(cosAttr); // get the attr
         assertEquals(oldVal, value);  // make sure the attr is updated
 
         // update with the new values via ldap
         attrs.clear();
         attrs.put(cosAttr, newVal);
-        cos = mProv.get(Provisioning.CosBy.name, COS_NAME);
+        cos = mProv.get(Key.CosBy.name, COS_NAME);
         mProv.modifyAttrs(cos, attrs); // modify via ldap prov
 
         // ensure it is still the old value
-        cos = mSoapProv.get(Provisioning.CosBy.name, COS_NAME); // get he entry via soap
+        cos = mSoapProv.get(Key.CosBy.name, COS_NAME); // get he entry via soap
         value = cos.getAttr(cosAttr); // get the attr
         assertEquals(oldVal, value); // the value should be still old value
 
         // ensure the account is also still the old value
-        acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL); // get the entry via soap
+        acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL); // get the entry via soap
         value = acct.getAttr(cosAttr); // get the attr
         assertEquals(oldVal, value); // the value should be still old value
 
         // flush the cos
-        mSoapProv.flushCache(CacheEntryType.cos, new CacheEntry[]{new CacheEntry(CacheEntryBy.id, cos.getId())});
+        mSoapProv.flushCache(CacheEntryType.cos, new CacheEntry[]{new CacheEntry(Key.CacheEntryBy.id, cos.getId())});
 
         // ensure it is the new value
-        cos = mSoapProv.get(Provisioning.CosBy.name, COS_NAME); // get he entry via soap
+        cos = mSoapProv.get(Key.CosBy.name, COS_NAME); // get he entry via soap
         value = cos.getAttr(cosAttr); // get the attr
         assertEquals(newVal, value); // now we should see the new value
 
         // ensure the account also gets the new value
-        acct = mSoapProv.get(Provisioning.AccountBy.name, ACCT_EMAIL); // get he entry via soap
+        acct = mSoapProv.get(Key.AccountBy.name, ACCT_EMAIL); // get he entry via soap
         value = acct.getAttr(cosAttr); // get the attr
         assertEquals(newVal, value); // now we should see the new value
 
@@ -1765,7 +1753,7 @@ public class TestProvisioning extends TestCase {
     private void attributeInheritanceTest() throws Exception {
         System.out.println("Testing attribute inheritance");
 
-        Account acct = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account acct = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
         assertNotNull(acct);
 
         Cos cos = mProv.getCOS(acct);
@@ -1835,7 +1823,7 @@ public class TestProvisioning extends TestCase {
     private void attributeInheritanceTestMultiValue_prior_bug31596() throws Exception {
         System.out.println("Testing attribute inheritance multi-value prior bug31596");
 
-        Account acct = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account acct = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
         assertNotNull(acct);
 
         Domain domain = mProv.getDomain(acct);
@@ -1862,7 +1850,7 @@ public class TestProvisioning extends TestCase {
     private void attributeInheritanceTestMultiValue() throws Exception {
         System.out.println("Testing attribute inheritance multi-value");
 
-        Account acct = mProv.get(Provisioning.AccountBy.name, ACCT_EMAIL);
+        Account acct = mProv.get(Key.AccountBy.name, ACCT_EMAIL);
         assertNotNull(acct);
 
         Domain domain = mProv.getDomain(acct);
@@ -1899,6 +1887,7 @@ public class TestProvisioning extends TestCase {
 
         // mCustomProvTester.cleanup();
 
+
         healthTest();
         Config config = configTest();
         String cosName = cosTest();
@@ -1911,22 +1900,22 @@ public class TestProvisioning extends TestCase {
         Zimlet zimlet = zimletTest();
 
         Account adminAccount = adminAccountTest();
-        Account accounts[] = accountTest(adminAccount, mProv.get(Provisioning.CosBy.name, cosName), mProv.get(Provisioning.DomainBy.name, domainName), mProv.get(Provisioning.DomainBy.name, otherDomainName));
+        Account accounts[] = accountTest(adminAccount, mProv.get(Key.CosBy.name, cosName), mProv.get(Key.DomainBy.name, domainName), mProv.get(Key.DomainBy.name, otherDomainName));
         Account account = accounts[0];
         authTest(account);
         passwordTest(account);
         localeTest();
 
-        CalendarResource calendarResource = calendarResourceTest(mProv.get(Provisioning.CosBy.name, cosName), mProv.get(Provisioning.DomainBy.name, domainName));
+        CalendarResource calendarResource = calendarResourceTest(mProv.get(Key.CosBy.name, cosName), mProv.get(Key.DomainBy.name, domainName));
 
-        DistributionList[] distributionLists = distributionListTest(mProv.get(Provisioning.DomainBy.name, domainName));
+        DistributionList[] distributionLists = distributionListTest(mProv.get(Key.DomainBy.name, domainName));
         DataSource dataSource = dataSourceTest(account);
         Identity identity = identityTest(account);
         signatureTest(account);
 
         entryTest(account);
-        galTest(mProv.get(Provisioning.DomainBy.name, domainName));
-        searchTest(mProv.get(Provisioning.DomainBy.name, domainName));
+        galTest(mProv.get(Key.DomainBy.name, domainName));    // TODO: fixme for the custom DIT
+        searchTest(mProv.get(Key.DomainBy.name, domainName)); // TODO: fixme for the custom DIT
 
         Domain aliasTestDomain = aliasTest();
         familyTest();
@@ -1970,11 +1959,11 @@ public class TestProvisioning extends TestCase {
             mProv.deleteAccount(acct.getId());
         mProv.deleteAccount(adminAccount.getId());
 
-        mProv.deleteDomain(mProv.get(Provisioning.DomainBy.name, domainName).getId());
-        mProv.deleteDomain(mProv.get(Provisioning.DomainBy.name, otherDomainName).getId());
-        mProv.deleteDomain(mProv.get(Provisioning.DomainBy.name, specialCharDomainName).getId());
+        mProv.deleteDomain(mProv.get(Key.DomainBy.name, domainName).getId());
+        mProv.deleteDomain(mProv.get(Key.DomainBy.name, otherDomainName).getId());
+        mProv.deleteDomain(mProv.get(Key.DomainBy.name, specialCharDomainName).getId());
         mProv.deleteDomain(aliasTestDomain.getId());
-        mProv.deleteCos(mProv.get(Provisioning.CosBy.name, cosName).getId());
+        mProv.deleteCos(mProv.get(Key.CosBy.name, cosName).getId());
 
         System.out.println("\nAll done");
         return TEST_ID;

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
@@ -35,6 +36,7 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.soap.admin.type.ConstraintInfo;
 
 public class AttributeConstraint {
     private static final String CONSTRAINT_CACHE_KEY = "CONSTRAINT_CACHE";
@@ -394,7 +396,27 @@ public class AttributeConstraint {
         
         return constraint;
     }
-    
+
+    /**
+     * Returns an {@code AttributeConstraint} corresponding to the supplied
+     * {@code attrName) and {@code eConstraint}
+     * Note: returns null if {@code eConstraint} is null
+     */
+    public static AttributeConstraint fromJaxb(AttributeManager am,
+            String attrName, ConstraintInfo eConstraint)
+    throws ServiceException {
+        
+        if (eConstraint == null)
+            return null;
+        AttributeConstraint constraint =
+            AttributeConstraint.newConstratint(am, attrName);
+        constraint.setMin(eConstraint.getMin());
+        constraint.setMax(eConstraint.getMax());
+        for (String value : eConstraint.getValues())
+            constraint.addValue(value);
+        return constraint;
+    }
+
     public static AttributeConstraint fromXML(AttributeManager am, String attrName, Element eConstraint) throws ServiceException {
         
         AttributeConstraint constraint = AttributeConstraint.newConstratint(am, attrName);
@@ -523,7 +545,7 @@ public class AttributeConstraint {
             String attrName = newConstraintsForAttr.getAttrName();
             AttributeConstraint curConstraintsForAttr = curConstraints.get(attrName);
             
-            if (curConstraintsForAttr == null) {
+            if (curConstraintsForAttr != null) {
                 // currently there are constraints for the attr
                 if (newConstraintsForAttr.isEmpty()) {
                     // new constraints for the attr is empty, remove the current constraints for the attr
@@ -619,7 +641,7 @@ public class AttributeConstraint {
         AttributeConstraint.fromString(am, "zimbraPasswordMinLength:min=6:max=64:values=1,2,3");
         AttributeConstraint.fromString(am, "zimbraFeatureMailEnabled:values=FALSE,TRUE");
         
-        Account acct = prov.get(Provisioning.AccountBy.name, "user1@phoebe.mac");
+        Account acct = prov.get(Key.AccountBy.name, "user1@phoebe.mac");
         Cos cos = prov.getCOS(acct);
         cos.unsetConstraint();
         

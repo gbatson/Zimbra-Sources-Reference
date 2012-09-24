@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,7 +16,6 @@ package com.zimbra.cs.mailbox;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,6 +28,7 @@ import java.util.UUID;
 
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.io.Closeables;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
@@ -40,7 +40,6 @@ import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
-import com.zimbra.cs.account.DataSource.Type;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineGal;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -53,6 +52,7 @@ import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
 import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 /**
  * Utility class for common gal sync operations
@@ -92,7 +92,8 @@ public final class GalSyncUtil {
             dsId = UUID.randomUUID().toString();
             prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountDataSourceId, dsId);
         }
-        return new DataSource(galAccount, Type.gal, galAccount.getName(), dsId, new HashMap<String, Object>(), prov);
+        return new DataSource(galAccount, DataSourceType.gal, galAccount.getName(), dsId,
+                new HashMap<String, Object>(), prov);
     }
 
     /**
@@ -120,11 +121,41 @@ public final class GalSyncUtil {
                         }
                     }
                 } finally {
-                    dlResult.doneWithSearchResults();
+                    Closeables.closeQuietly(dlResult);
                 }
             }
         }
         return con;
+    }
+
+    /**
+     * Retrieve a list of groups email addresses
+     * 
+     * @param requestedAcct
+     * @param addrs - set of email addresses to select from
+     * @return - subset of addrs which are distribution lists
+     * @throws ServiceException
+     */
+    public static List<String> getGroupNames(Account requestedAcct, Set<String> addrs) throws ServiceException {
+        ZimbraQueryResults dlResult = (new OfflineGal((OfflineAccount) requestedAcct)).search(addrs, "group",
+                SortBy.NONE, 0, 0, null);
+        List<String> groups = new ArrayList<String>();
+        if (dlResult != null) {
+            try {
+                while (dlResult.hasNext()) {
+                    ZimbraHit hit = dlResult.getNext();
+                    Contact contact = (Contact) hit.getMailItem();
+                    if (contact.getEmailAddresses().size() > 0) {
+                        groups.addAll(contact.getEmailAddresses());
+                    } else {
+                        groups.add(contact.getFileAsString());
+                    }
+                }
+            } finally {
+                Closeables.closeQuietly(dlResult);
+            }
+        }
+        return groups;
     }
 
     public static String getContactLogStr(ParsedContact contact) {
@@ -237,8 +268,7 @@ public final class GalSyncUtil {
             //resolve mail.NO_SUCH_CONTACT, recursively exclude the bad id and try the good ids.
             if (MailServiceException.NO_SUCH_CONTACT.equals(e.getCode())) {
                 OfflineLog.offline.warn(
-                        "GAL sync got NO_SUCH_CONTACT error, trying to isolate it, code: %s, arg size: %d",
-                        e.getCode(), e.getArgs().length, e);
+                        "GAL sync got NO_SUCH_CONTACT error, trying to isolate it, code: %s", e.getCode(), e);
                 String err = e.toString();
                 String key = "no such contact: ";
                 String badIdStr = err.substring(err.indexOf(key)+key.length(), err.indexOf("ExceptionId"));
@@ -262,36 +292,33 @@ public final class GalSyncUtil {
 
         if (!parsedContacts.isEmpty()) {
             boolean success = false;
-            synchronized (galMbox) {
-                try {
-                    galMbox.beginTransaction("GALSync", null);
-
-                    if (isFullSync) {
-                        for (Entry<String, ParsedContact> entry : parsedContacts.entrySet()) {
-                            saveParsedContact(galMbox, ctxt, syncFolder, entry.getKey(), entry.getValue(),
-                                    getContactLogStr(entry.getValue()), isFullSync, ds);
-                        }
-                        GalSyncCheckpointUtil.checkpoint(galMbox, token, galAcctId, reqIds);
-                    } else {
-                        SortedMap<Integer, String> sorted = new TreeMap<Integer, String>();
-                        int count = Integer.MAX_VALUE;
-                        for (Entry<String, ParsedContact> entry : parsedContacts.entrySet()) {
-                            int itemId = GalSyncUtil.findContact(entry.getKey(), ds);
-                            if (itemId > 0) {
-                                sorted.put(itemId, entry.getKey()); // exists, sort by local item id
-                            } else {
-                                sorted.put(count--, entry.getKey()); // doesn't exist; add at end; new items have highest id
-                            }
-                        }
-                        for (String id : sorted.values()) {
-                            ParsedContact pc = parsedContacts.get(id);
-                            saveParsedContact(galMbox, ctxt, syncFolder, id, pc, getContactLogStr(pc), false, ds);
+            try {
+                galMbox.beginTransaction("GALSync", null);
+                if (isFullSync) {
+                    for (Entry<String, ParsedContact> entry : parsedContacts.entrySet()) {
+                        saveParsedContact(galMbox, ctxt, syncFolder, entry.getKey(), entry.getValue(),
+                                getContactLogStr(entry.getValue()), isFullSync, ds);
+                    }
+                    GalSyncCheckpointUtil.checkpoint(galMbox, token, galAcctId, reqIds);
+                } else {
+                    SortedMap<Integer, String> sorted = new TreeMap<Integer, String>();
+                    int count = Integer.MAX_VALUE;
+                    for (Entry<String, ParsedContact> entry : parsedContacts.entrySet()) {
+                        int itemId = GalSyncUtil.findContact(entry.getKey(), ds);
+                        if (itemId > 0) {
+                            sorted.put(itemId, entry.getKey()); // exists, sort by local item id
+                        } else {
+                            sorted.put(count--, entry.getKey()); // doesn't exist; add at end; new items have highest id
                         }
                     }
-                    success = true;
-                } finally {
-                    galMbox.endTransaction(success);
+                    for (String id : sorted.values()) {
+                        ParsedContact pc = parsedContacts.get(id);
+                        saveParsedContact(galMbox, ctxt, syncFolder, id, pc, getContactLogStr(pc), false, ds);
+                    }
                 }
+                success = true;
+            } finally {
+                galMbox.endTransaction(success);
             }
         }
     }
@@ -316,41 +343,6 @@ public final class GalSyncUtil {
         String domain = ((OfflineAccount) galMbox.getAccount()).getDomain();
         ZcsMailbox mbox = getGalEnabledZcsMailbox(domain);
         fetchContacts(mbox, galMbox, ctxt, syncFolder, reqIds, isFullSync, ds, retryContactIds, token, galAcctId);
-    }
-
-    /**
-     * Retrieve a list of groups email addresses
-     * 
-     * @param requestedAcct
-     * @param addrs
-     *            - set of email addresses to select from
-     * @return - subset of addrs which are distribution lists
-     * @throws ServiceException
-     */
-    public static List<String> getGroupNames(OfflineAccount requestedAcct, Set<String> addrs) throws ServiceException {
-        if (requestedAcct.isZcsAccount() && requestedAcct.isFeatureGalEnabled()
-                && requestedAcct.isFeatureGalSyncEnabled()) {
-            ZimbraQueryResults dlResult = (new OfflineGal((OfflineAccount) requestedAcct)).search(addrs, "group",
-                    SortBy.NONE, 0, 0, null);
-            List<String> groups = new ArrayList<String>();
-            if (dlResult != null) {
-                try {
-                    while (dlResult.hasNext()) {
-                        ZimbraHit hit = dlResult.getNext();
-                        Contact contact = (Contact) hit.getMailItem();
-                        if (contact.getEmailAddresses().size() > 0) {
-                            groups.addAll(contact.getEmailAddresses());
-                        } else {
-                            groups.add(contact.getFileAsString());
-                        }
-                    }
-                } finally {
-                    dlResult.doneWithSearchResults();
-                }
-            }
-            return groups;
-        }
-        return Collections.emptyList();
     }
 
     public static void removeConfig(Mailbox galMbox) throws ServiceException {

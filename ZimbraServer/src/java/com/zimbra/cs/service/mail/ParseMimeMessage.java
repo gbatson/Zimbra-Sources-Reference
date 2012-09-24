@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,8 +14,8 @@
  */
 package com.zimbra.cs.service.mail;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,7 +36,9 @@ import javax.mail.internet.MimePart;
 import javax.mail.util.SharedByteArrayInputStream;
 
 import com.google.common.base.Charsets;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
+import com.zimbra.common.calendar.ZCalendar;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.ContentDisposition;
 import com.zimbra.common.mime.ContentType;
@@ -72,7 +74,6 @@ import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ZCalendar;
 import com.zimbra.cs.mime.MailboxBlobDataSource;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.service.FileUploadServlet;
@@ -131,7 +132,7 @@ public final class ParseMimeMessage {
             throw ServiceException.INVALID_REQUEST("inline message too large", null);
         }
 
-        ByteArrayInputStream messageStream = new ByteArrayInputStream(content);
+        InputStream messageStream = new SharedByteArrayInputStream(content);
         try {
             return new Mime.FixedMimeMessage(JMSession.getSession(), messageStream);
         } catch (MessagingException me) {
@@ -177,18 +178,21 @@ public final class ParseMimeMessage {
 
     /** Wrapper class for data parsed out of the mime message */
     public static class MimeMessageData {
-        public List<InternetAddress> newContacts = new ArrayList<InternetAddress>();
-        public List<Upload> fetches = null;    // NULL unless we fetched messages from another server
-        public List<Upload> uploads = null;    // NULL unless there are uploaded attachments
-        public String iCalUUID = null;         // NULL unless there is an iCal part
+        public List<Upload> fetches; // NULL unless we fetched messages from another server
+        public List<Upload> uploads; // NULL unless there are uploaded attachments
+        public String iCalUUID; // NULL unless there is an iCal part
 
         void addUpload(Upload up) {
-            if (uploads == null)  uploads = new ArrayList<Upload>(4);
+            if (uploads == null) {
+                uploads = new ArrayList<Upload>(4);
+            }
             uploads.add(up);
         }
 
         void addFetch(Upload up) {
-            if (fetches == null)  fetches = new ArrayList<Upload>(4);
+            if (fetches == null) {
+                fetches = new ArrayList<Upload>(4);
+            }
             fetches.add(up);
         }
     }
@@ -268,24 +272,19 @@ public final class ParseMimeMessage {
     }
 
     /**
-     * Given an <m> element from SOAP, return us a parsed MimeMessage,
-     * and also fill in the MimeMessageData structure with information we parsed out of it (e.g. contained
-     * Invite, msgids, etc etc)
-     * @param zsc TODO
-     * @param octxt TODO
-     * @param mbox
-     * @param msgElem the <m> element
-     * @param additionalParts - MimeBodyParts that we want to have added to the MimeMessage (ie things the server is adding onto the message)
-     * @param inviteParser Callback which handles <inv> embedded invite components
+     * Given an {@code <m>} element from SOAP, return us a parsed {@link MimeMessage}, and also fill in the
+     * {@link MimeMessageData} structure with information we parsed out of it (e.g. contained Invite, msgids, etc etc)
+     *
+     * @param msgElem the {@code <m>} element
+     * @param additionalParts MimeBodyParts that we want to have added to the {@link MimeMessage} (ie things the server
+     * is adding onto the message)
+     * @param inviteParser Callback which handles {@code <inv>} embedded invite components
      * @param out Holds info about things we parsed out of the message that the caller might want to know about
-     * @return
-     * @throws ServiceException
      */
-    public static MimeMessage parseMimeMsgSoap(ZimbraSoapContext zsc, OperationContext octxt, Mailbox mbox, Element msgElem,
-                                               MimeBodyPart[] additionalParts, InviteParser inviteParser, MimeMessageData out)
+    public static MimeMessage parseMimeMsgSoap(ZimbraSoapContext zsc, OperationContext octxt, Mailbox mbox,
+            Element msgElem, MimeBodyPart[] additionalParts, InviteParser inviteParser, MimeMessageData out)
     throws ServiceException {
-        /* msgElem == "<m>" E_MSG */
-        assert(msgElem.getName().equals(MailConstants.E_MSG));
+        assert(msgElem.getName().equals(MailConstants.E_MSG)); // msgElem == "<m>" E_MSG
 
         Account target = DocumentHandler.getRequestedAccount(zsc);
         ParseMessageContext ctxt = new ParseMessageContext();
@@ -294,8 +293,8 @@ public final class ParseMimeMessage {
         ctxt.octxt = octxt;
         ctxt.mbox = mbox;
         ctxt.use2231 = target.isPrefUseRfc2231();
-        ctxt.defaultCharset = target.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, MimeConstants.P_CHARSET_UTF8);
-        if (ctxt.defaultCharset.equals("")) {
+        ctxt.defaultCharset = target.getPrefMailDefaultCharset();
+        if (Strings.isNullOrEmpty(ctxt.defaultCharset)) {
             ctxt.defaultCharset = MimeConstants.P_CHARSET_UTF8;
         }
 
@@ -372,7 +371,7 @@ public final class ParseMimeMessage {
 
             // <m> attributes: id, f[lags], s[ize], d[ate], cid(conv-id), l(parent folder)
             // <m> child elements: <e> (email), <s> (subject), <f> (fragment), <mp>, <attach>
-            MessageAddresses maddrs = new MessageAddresses(out.newContacts);
+            MessageAddresses maddrs = new MessageAddresses();
             Set<String> headerNames = ImmutableSet.copyOf(Provisioning.getInstance().getConfig().getCustomMimeHeaderNameAllowed());
             for (Element elem : msgElem.listElements()) {
                 String eName = elem.getName();
@@ -409,7 +408,7 @@ public final class ParseMimeMessage {
             String subject = msgElem.getAttribute(MailConstants.E_SUBJECT, "");
             mm.setSubject(subject, CharsetUtil.checkCharset(subject, ctxt.defaultCharset));
 
-            String irt = msgElem.getAttribute(MailConstants.E_IN_REPLY_TO, null);
+            String irt = cleanReference(msgElem.getAttribute(MailConstants.E_IN_REPLY_TO, null));
             if (irt != null) {
                 mm.setHeader("In-Reply-To", irt);
             }
@@ -424,10 +423,10 @@ public final class ParseMimeMessage {
             }
 
             String flagStr = msgElem.getAttribute(MailConstants.A_FLAGS, "");
-            if (flagStr.indexOf(Flag.getAbbreviation(Flag.ID_FLAG_HIGH_PRIORITY)) != -1) {
+            if (flagStr.indexOf(Flag.toChar(Flag.ID_HIGH_PRIORITY)) != -1) {
                 mm.addHeader("X-Priority", "1");
                 mm.addHeader("Importance", "high");
-            } else if (flagStr.indexOf(Flag.getAbbreviation(Flag.ID_FLAG_LOW_PRIORITY)) != -1) {
+            } else if (flagStr.indexOf(Flag.toChar(Flag.ID_LOW_PRIORITY)) != -1) {
                 mm.addHeader("X-Priority", "5");
                 mm.addHeader("Importance", "low");
             }
@@ -460,7 +459,7 @@ public final class ParseMimeMessage {
                 if (up == null) {
                     throw MailServiceException.NO_SUCH_UPLOAD(uploadId);
                 }
-                attachUpload(mmp, up, contentID, ctxt, null);
+                attachUpload(mmp, up, contentID, ctxt, null, null);
                 ctxt.out.addUpload(up);
             }
         }
@@ -619,7 +618,7 @@ public final class ParseMimeMessage {
         }
     }
 
-    private static void attachUpload(MimeMultipart mmp, Upload up, String contentID, ParseMessageContext ctxt, ContentType ctypeOverride)
+    private static void attachUpload(MimeMultipart mmp, Upload up, String contentID, ParseMessageContext ctxt, ContentType ctypeOverride, String contentDescription)
     throws ServiceException, MessagingException {
         // make sure we haven't exceeded the max size
         ctxt.incrementSize("upload " + up.getName(), (long) (up.getSize() * 1.33));
@@ -653,6 +652,9 @@ public final class ParseMimeMessage {
         }
         mbp.setHeader("Content-Type", ctype.setCharset(ctxt.defaultCharset).toString());
         mbp.setHeader("Content-Disposition", cdisp.setCharset(ctxt.defaultCharset).toString());
+        if (contentDescription != null) {
+            mbp.setHeader("Content-Description", contentDescription);
+        }
         if (ctype.getContentType().equals(MimeConstants.CT_APPLICATION_PDF)) {
             mbp.setHeader("Content-Transfer-Encoding", "base64");
         }
@@ -668,7 +670,7 @@ public final class ParseMimeMessage {
         try {
             Upload up = UserServlet.getRemoteResourceAsUpload(ctxt.zsc.getAuthToken(), iid, params);
             ctxt.out.addFetch(up);
-            attachUpload(mmp, up, contentID, ctxt, ctypeOverride);
+            attachUpload(mmp, up, contentID, ctxt, ctypeOverride, null);
             return;
         } catch (IOException ioe) {
             throw ServiceException.FAILURE("can't serialize remote item", ioe);
@@ -737,10 +739,11 @@ public final class ParseMimeMessage {
 
         Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(iid.getAccountId());
         Document doc;
-        if (version > 0)
-            doc = (Document)mbox.getItemRevision(ctxt.octxt, iid.getId(), MailItem.TYPE_DOCUMENT, version);
-        else
+        if (version > 0) {
+            doc = (Document)mbox.getItemRevision(ctxt.octxt, iid.getId(), MailItem.Type.DOCUMENT, version);
+        } else {
             doc = mbox.getDocumentById(ctxt.octxt, iid.getId());
+        }
         attachDocument(mmp, doc, contentID, ctxt);
     }
 
@@ -820,33 +823,30 @@ public final class ParseMimeMessage {
         //      deleting original blob doesn't lead to stale BlobInputStream references
         Upload up = FileUploadServlet.saveUpload(mp.getInputStream(), filename, contentType, DocumentHandler.getRequestedAccount(ctxt.zsc).getId());
         ctxt.out.addFetch(up);
-        attachUpload(mmp, up, contentID, ctxt, null);
+        String[] contentDesc = mp.getHeader("Content-Description");
+        attachUpload(mmp, up, contentID, ctxt, null, (contentDesc == null || contentDesc.length == 0) ? null : contentDesc[0]);
     }
 
 
-    private static final class MessageAddresses {
+    static final class MessageAddresses {
         private final HashMap<String, Object> addrs = new HashMap<String, Object>();
-        private final List<InternetAddress> newContacts;
 
-        MessageAddresses(List<InternetAddress> contacts) {
-            newContacts = contacts;
-        }
-
-        @SuppressWarnings("unchecked")
         public void add(Element elem, String defaultCharset) throws ServiceException, UnsupportedEncodingException {
             String emailAddress = IDNUtil.toAscii(elem.getAttribute(MailConstants.A_ADDRESS));
             String personalName = elem.getAttribute(MailConstants.A_PERSONAL, null);
             String addressType = elem.getAttribute(MailConstants.A_ADDRESS_TYPE);
 
-            InternetAddress addr = new JavaMailInternetAddress(emailAddress, personalName, CharsetUtil.checkCharset(personalName, defaultCharset));
-            if (elem.getAttributeBool(MailConstants.A_ADD_TO_AB, false))
-                newContacts.add(addr);
+            InternetAddress addr = new JavaMailInternetAddress(emailAddress, personalName,
+                    CharsetUtil.checkCharset(personalName, defaultCharset));
 
             Object content = addrs.get(addressType);
-            if (content == null || addressType.equals(EmailType.FROM.toString()) || addressType.equals(EmailType.SENDER.toString())) {
+            if (content == null || addressType.equals(EmailType.FROM.toString()) ||
+                    addressType.equals(EmailType.SENDER.toString())) {
                 addrs.put(addressType, addr);
             } else if (content instanceof List) {
-                ((List<InternetAddress>) content).add(addr);
+                @SuppressWarnings("unchecked")
+                List<InternetAddress> list = (List<InternetAddress>) content;
+                list.add(addr);
             } else {
                 List<InternetAddress> list = new ArrayList<InternetAddress>();
                 list.add((InternetAddress) content);
@@ -907,6 +907,27 @@ public final class ParseMimeMessage {
         if (addrs != null && addrs.length > 0) {
             mm.addHeader("Disposition-Notification-To", InternetAddress.toString(addrs));
         }
+    }
+
+    /** Strips leading and trailing whitespace from the given message-id and
+     *  adds the surrounding angle brackets if absent.  If the message-id was
+     *  {@code null} or just whitespace, returns {@code null}. */
+    private static String cleanReference(String refStr) {
+        if (refStr == null) {
+            return null;
+        }
+        String reference = refStr.trim();
+        if (reference.isEmpty()) {
+            return null;
+        }
+
+        if (!reference.startsWith("<")) {
+            reference = "<" + reference;
+        }
+        if (!reference.endsWith(">")) {
+            reference = reference + ">";
+        }
+        return reference;
     }
 
 }

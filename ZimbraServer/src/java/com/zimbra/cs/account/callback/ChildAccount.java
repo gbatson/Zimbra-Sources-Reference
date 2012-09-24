@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,39 +20,41 @@ import java.util.Map;
 import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.SetUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AttributeCallback;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
  
 public class ChildAccount extends AttributeCallback {
-
-    private static final String KEY = ChildAccount.class.getName();
     
-    public void preModify(Map context, String attrName, Object value,
-                          Map attrsToModify, Entry entry, boolean isCreate) throws ServiceException {
+    @Override
+    public void preModify(CallbackContext context, String attrName, Object value,
+            Map attrsToModify, Entry entry) 
+    throws ServiceException {
 
         /*
          * This callback is for both zimbraPrefChildVisibleAccount and zimbraChildAccount, and it handles
          * both in one shot.  If we've been called just return.
          */ 
-        Object done = context.get(KEY);
-        if (done == null)
-            context.put(KEY, KEY);
-        else
+        if (context.isDoneAndSetIfNot(ChildAccount.class)) {
             return;
+        }
         
         // the +/- has been striped off from attrName but we need that info, it is in attrsToModify
         
         MultiValueMod visibleChildrenMod = multiValueMod(attrsToModify, Provisioning.A_zimbraPrefChildVisibleAccount);
         MultiValueMod allChildrenMod = multiValueMod(attrsToModify, Provisioning.A_zimbraChildAccount);
-        
+
         Set<String> visibleChildren = newValuesToBe(visibleChildrenMod, entry, Provisioning.A_zimbraPrefChildVisibleAccount);
         Set<String> allChildren = newValuesToBe(allChildrenMod, entry, Provisioning.A_zimbraChildAccount);
-        
+
+        //if child account has already been deleted, let it go
+        if (allChildren != null && !allChildren.contains(value)) {
+            return;
+        }
+
         if (allChildrenMod != null && allChildrenMod.deleting()) {
             attrsToModify.put(Provisioning.A_zimbraPrefChildVisibleAccount, "");
         } else {
@@ -71,11 +73,11 @@ public class ChildAccount extends AttributeCallback {
                         throw ServiceException.INVALID_REQUEST("visible child id " + vid + " is not one of " + Provisioning.A_zimbraChildAccount, null);
                 }
             }
-    
+
             if (vidsToRemove.size() > 0)
                 attrsToModify.put("-" + Provisioning.A_zimbraPrefChildVisibleAccount, vidsToRemove.toArray(new String[vidsToRemove.size()]));
         }
-        
+
         // check circular relationship
         if (entry instanceof Account) {
             Provisioning prov = Provisioning.getInstance();
@@ -85,7 +87,7 @@ public class ChildAccount extends AttributeCallback {
                 Account childAcct = prov.get(AccountBy.id, childId);
                 if (childAcct == null)
                     throw AccountServiceException.NO_SUCH_ACCOUNT(childId);
-                
+
                 String[] children = childAcct.getChildAccount();
                 for (String child : children) {
                     if (child.equals(parentId))
@@ -97,12 +99,9 @@ public class ChildAccount extends AttributeCallback {
             }
         }
     }
-    
 
-
-    
-    public void postModify(Map context, String attrName, Entry entry, boolean isCreate) {
-
+    @Override
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 }
 

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -66,26 +50,32 @@ public class DialogConfirm extends AbsDialog {
 		AbsPage page = null; 
 
 		if (button == Button.B_YES) {
+			/*
 			locator = "css=div[class='" + Locators.zDialogClass + "'] "
 					+ "div[class='" + Locators.zDialogButtonsClass
 					+ "'] td[class=ZWidgetTitle]:contains(Yes)";
+			*/
+			locator = "//div[@class='DwtDialogButtonBar']" 
+					+ "//*[contains(@class,'ZWidgetTitle') and contains(text(),'Yes')]";
 			if(confirmation == DialogConfirm.Confirmation.SENDLINK)
 			page = 	new FormMailNew(this.MyApplication);
 		} else if (button == Button.B_NO) {
+			/*
 			locator = "css=div[class='" + Locators.zDialogClass + "'] "
 					+ "div[class='" + Locators.zDialogButtonsClass
 					+ "'] td[class=ZWidgetTitle]:contains(No)";
+			*/
+			locator = "//div[@class='DwtDialogButtonBar']" 
+					+ "//*[contains(@class,'ZWidgetTitle') and contains(text(),'No')]";
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
 		}
 
 		// Make sure the locator was set
-		if (locator == null) {
-			throw new HarnessException("Button " + button + " not implemented");
-		}
-
+	
 		// Make sure the locator exists
-		if (!this.sIsElementPresent(locator)) {
+		if (!
+	this.sIsVisible(locator)) {
 			throw new HarnessException("Button " + button + " locator "
 					+ locator + " not present!");
 		}
@@ -124,7 +114,7 @@ public class DialogConfirm extends AbsDialog {
 	public boolean zIsActive() throws HarnessException {
 		logger.info(myPageName() + " zIsActive()");
 
-		String locator = "class=" + Locators.zDialogClass;
+		String locator = "css=div[class=" + Locators.zDialogClass + "]";
 
 		if (!this.sIsElementPresent(locator)) {
 			return (false); // Not even present

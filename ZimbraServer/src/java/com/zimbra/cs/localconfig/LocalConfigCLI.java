@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,6 +16,7 @@
 package com.zimbra.cs.localconfig;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.ConnectException;
 import java.util.Collection;
 
@@ -34,6 +35,8 @@ import com.zimbra.common.localconfig.KnownKey;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.localconfig.LocalConfig;
 import com.zimbra.common.localconfig.Logging;
+import com.zimbra.common.localconfig.LC.Reloadable;
+import com.zimbra.common.localconfig.LC.Supported;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.SoapHttpTransport;
@@ -132,6 +135,13 @@ public final class LocalConfigCLI {
         if (cl.hasOption("h")) {
             usage();
         }
+
+        // Load known keys from BackupLC if available
+        loadExtensionLC("com.zimbra.cs.backup.BackupLC");
+        // Load known keys from ZimbraOpenOfficeExt if available
+        loadExtensionLC("com.zimbra.openoffice.config.OpenOfficeLC");
+        // Load known keys from ZimbraVoice if available
+        loadExtensionLC("com.zimbra.cs.voice.VoiceLC");
 
         // info/docs for supported keys
         if (cl.hasOption("i")) {
@@ -263,6 +273,31 @@ public final class LocalConfigCLI {
             lc.print(System.out, cwriter, cl.getArgs());
         } catch (Exception e) {
             error("exception occurred when printing", e);
+        }
+    }
+    
+    private void loadExtensionLC(String className) {
+        try {
+            Class<?> lcClass = Class.forName(className);
+            Field[] fields = lcClass.getFields();
+            for (Field field : fields) {
+                try {
+                    if (field.getType() == KnownKey.class) {
+                        KnownKey key = (KnownKey) field.get(null);
+                        // Automatically set the key name with the variable name.
+                        key.setKey(field.getName());
+                        // process annotations
+                        if(field.isAnnotationPresent(Supported.class))
+                            key.setSupported(true);
+                        if(field.isAnnotationPresent(Reloadable.class))
+                            key.setReloadable(true);
+                    }    
+                } catch (Throwable never) {
+                    // ignore
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            // ignore
         }
     }
 

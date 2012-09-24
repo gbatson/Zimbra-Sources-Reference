@@ -1,3 +1,17 @@
+/*
+ * ***** BEGIN LICENSE BLOCK *****
+ * Zimbra Collaboration Suite Server
+ * Copyright (C) 2012 Zimbra, Inc.
+ *
+ * The contents of this file are subject to the Zimbra Public License
+ * Version 1.3 ("License"); you may not use this file except in
+ * compliance with the License.  You may obtain a copy of the License at
+ * http://www.zimbra.com/license.
+ *
+ * Software distributed under the License is distributed on an "AS IS"
+ * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
+ * ***** END LICENSE BLOCK *****
+ */
 package com.zimbra.cs.account.ldap;
 
 import java.util.ArrayList;
@@ -5,16 +19,18 @@ import java.util.Collections;
 import java.util.List;
 
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.ShareLocator;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.cache.AccountCache;
 import com.zimbra.cs.account.cache.DomainCache;
 import com.zimbra.cs.account.cache.IAccountCache;
@@ -23,17 +39,23 @@ import com.zimbra.cs.account.cache.IMimeTypeCache;
 import com.zimbra.cs.account.cache.INamedEntryCache;
 import com.zimbra.cs.account.cache.NamedEntryCache;
 import com.zimbra.cs.account.cache.DomainCache.GetFromDomainCacheOption;
+import com.zimbra.cs.account.ldap.entry.LdapCos;
+import com.zimbra.cs.account.ldap.entry.LdapZimlet;
 import com.zimbra.cs.mime.MimeTypeInfo;
 
+/**
+ * @author pshao
+ */
 abstract class LdapCache {
     abstract IAccountCache accountCache();
     abstract INamedEntryCache<LdapCos> cosCache();
+    abstract INamedEntryCache<ShareLocator> shareLocatorCache();
     abstract IDomainCache domainCache();
     abstract IMimeTypeCache mimeTypeCache();
     abstract INamedEntryCache<Server> serverCache();
+    abstract INamedEntryCache<UCService> ucServiceCache();
     abstract INamedEntryCache<LdapZimlet> zimletCache();
-    abstract INamedEntryCache<DistributionList> aclGroupCache();
-    abstract INamedEntryCache<DistributionList> dlCache();
+    abstract INamedEntryCache<Group> groupCache();
     abstract INamedEntryCache<XMPPComponent> xmppComponentCache();
     
     /**
@@ -53,6 +75,11 @@ abstract class LdapCache {
                     LC.ldap_cache_cos_maxsize.intValue(),
                     LC.ldap_cache_cos_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
 
+        private INamedEntryCache<ShareLocator> shareLocatorCache =
+                new NamedEntryCache<ShareLocator>(
+                        LC.ldap_cache_share_locator_maxsize.intValue(),
+                        LC.ldap_cache_share_locator_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
+
         private IDomainCache domainCache =
             new DomainCache(
                     LC.ldap_cache_domain_maxsize.intValue(),
@@ -61,27 +88,25 @@ abstract class LdapCache {
                     LC.ldap_cache_external_domain_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
 
         private IMimeTypeCache mimeTypeCache = new LdapMimeTypeCache();
-            
+
         private INamedEntryCache<Server> serverCache =
             new NamedEntryCache<Server>(
                     LC.ldap_cache_server_maxsize.intValue(),
                     LC.ldap_cache_server_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
 
+        private INamedEntryCache<UCService> ucServiceCache =
+            new NamedEntryCache<UCService>(
+                    LC.ldap_cache_ucservice_maxsize.intValue(),
+                    LC.ldap_cache_ucservice_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
+        
         private INamedEntryCache<LdapZimlet> zimletCache =
             new NamedEntryCache<LdapZimlet>(
                     LC.ldap_cache_zimlet_maxsize.intValue(),
                     LC.ldap_cache_zimlet_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
 
 
-        private INamedEntryCache<DistributionList> aclGroupCache =
-            new NamedEntryCache<DistributionList>(
-                    LC.ldap_cache_group_maxsize.intValue(),
-                    LC.ldap_cache_group_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
-
-        // TODO: combine with sAclGroupCache
-        // note: DLs cached in this cache only contains sMinimalDlAttrs
-        private INamedEntryCache<DistributionList> dlCache =
-            new NamedEntryCache<DistributionList>(
+        private INamedEntryCache<Group> groupCache =
+            new NamedEntryCache<Group>(
                     LC.ldap_cache_group_maxsize.intValue(),
                     LC.ldap_cache_group_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
 
@@ -89,49 +114,54 @@ abstract class LdapCache {
             new NamedEntryCache<XMPPComponent>(
                     LC.ldap_cache_xmppcomponent_maxsize.intValue(),
                     LC.ldap_cache_xmppcomponent_maxage.intValue() * Constants.MILLIS_PER_MINUTE);
-        
+
         @Override
-        public IAccountCache accountCache() {
+        IAccountCache accountCache() {
             return accountCache;
         }
 
         @Override
-        public INamedEntryCache<DistributionList> aclGroupCache() {
-            return aclGroupCache;
-        }
-
-        @Override
-        public INamedEntryCache<LdapCos> cosCache() {
+        INamedEntryCache<LdapCos> cosCache() {
             return cosCache;
         }
 
         @Override
-        public INamedEntryCache<DistributionList> dlCache() {
-            return dlCache;
-        }
-
-        @Override
-        public IDomainCache domainCache() {
+        IDomainCache domainCache() {
             return domainCache;
         }
 
         @Override
-        public IMimeTypeCache mimeTypeCache() {
+        INamedEntryCache<Group> groupCache() {
+            return groupCache;
+        }
+
+        @Override
+        IMimeTypeCache mimeTypeCache() {
             return mimeTypeCache;
         }
 
         @Override
-        public INamedEntryCache<Server> serverCache() {
+        INamedEntryCache<Server> serverCache() {
             return serverCache;
+        }
+        
+        @Override
+        INamedEntryCache<UCService> ucServiceCache() {
+            return ucServiceCache;
         }
 
         @Override
-        public INamedEntryCache<XMPPComponent> xmppComponentCache() {
+        INamedEntryCache<ShareLocator> shareLocatorCache() {
+            return shareLocatorCache;
+        }
+
+        @Override
+        INamedEntryCache<XMPPComponent> xmppComponentCache() {
             return xmppComponentCache;
         }
 
         @Override
-        public INamedEntryCache<LdapZimlet> zimletCache() {
+        INamedEntryCache<LdapZimlet> zimletCache() {
             return zimletCache;
         }
     }
@@ -146,13 +176,15 @@ abstract class LdapCache {
         
         private IAccountCache accountCache = new NoopAccountCache();
         private INamedEntryCache<LdapCos> cosCache = new NoopNamedEntryCache<LdapCos>();
+        private INamedEntryCache<ShareLocator> shareLocatorCache = new NoopNamedEntryCache<ShareLocator>();
         private IDomainCache domainCache = new NoopDomainCache();
         private IMimeTypeCache mimeTypeCache = new NoopMimeTypeCache();
         private INamedEntryCache<Server> serverCache = new NoopNamedEntryCache<Server>();
+        private INamedEntryCache<UCService> ucServiceCache = new NoopNamedEntryCache<UCService>();
         private INamedEntryCache<LdapZimlet> zimletCache = new NoopNamedEntryCache<LdapZimlet>();
-        private INamedEntryCache<DistributionList> aclGroupCache = new NoopNamedEntryCache<DistributionList>();
-        private INamedEntryCache<DistributionList> dlCache = new NoopNamedEntryCache<DistributionList>();
+        private INamedEntryCache<Group> groupCache = new NoopNamedEntryCache<Group>();
         private INamedEntryCache<XMPPComponent> xmppComponentCache = new NoopNamedEntryCache<XMPPComponent>();
+        
         
         static class NoopAccountCache implements IAccountCache {
             @Override
@@ -279,47 +311,52 @@ abstract class LdapCache {
         }
 
         @Override
-        public IAccountCache accountCache() {
+        IAccountCache accountCache() {
             return accountCache;
         }
 
         @Override
-        public INamedEntryCache<DistributionList> aclGroupCache() {
-            return aclGroupCache;
-        }
-
-        @Override
-        public INamedEntryCache<LdapCos> cosCache() {
+        INamedEntryCache<LdapCos> cosCache() {
             return cosCache;
         }
 
         @Override
-        public INamedEntryCache<DistributionList> dlCache() {
-            return dlCache;
-        }
-
-        @Override
-        public IDomainCache domainCache() {
+        IDomainCache domainCache() {
             return domainCache;
         }
 
         @Override
-        public IMimeTypeCache mimeTypeCache() {
+        INamedEntryCache<Group> groupCache() {
+            return groupCache;
+        }
+
+        @Override
+        IMimeTypeCache mimeTypeCache() {
             return mimeTypeCache;
         }
 
         @Override
-        public INamedEntryCache<Server> serverCache() {
+        INamedEntryCache<Server> serverCache() {
             return serverCache;
+        }
+        
+        @Override
+        INamedEntryCache<UCService> ucServiceCache() {
+            return ucServiceCache;
         }
 
         @Override
-        public INamedEntryCache<XMPPComponent> xmppComponentCache() {
+        INamedEntryCache<ShareLocator> shareLocatorCache() {
+            return shareLocatorCache;
+        }
+
+        @Override
+        INamedEntryCache<XMPPComponent> xmppComponentCache() {
             return xmppComponentCache;
         }
 
         @Override
-        public INamedEntryCache<LdapZimlet> zimletCache() {
+        INamedEntryCache<LdapZimlet> zimletCache() {
             return zimletCache;
         }
     }

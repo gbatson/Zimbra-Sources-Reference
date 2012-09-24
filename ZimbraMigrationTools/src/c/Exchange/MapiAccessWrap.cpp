@@ -245,6 +245,8 @@ STDMETHODIMP CMapiAccessWrap::GetItemsList(IFolderObject *FolderObj, VARIANT cre
             creattiondate.vt = VT_DATE;
             creattiondate.date = (long)(*it).MessageDate;
 
+          
+
 // /////////////////////////////////////////////
 
             VARIANT var;
@@ -273,6 +275,19 @@ STDMETHODIMP CMapiAccessWrap::GetItemsList(IFolderObject *FolderObj, VARIANT cre
                 SafeArrayUnaccessData(var.parray);
             }
             pIItemObject->put_ItemID(var);
+            /*Zimbra::Util::ScopedArray<CHAR> spUid(new CHAR[(Itemid.cb * 2) + 1]);
+    if (spUid.get() != NULL)
+    {
+	Zimbra::Util::HexFromBin(Itemid.lpb, Itemid.cb, spUid.get());
+        CComBSTR str=spUid.getref();
+      pIItemObject->put_IDasString(str);
+      SysFreeString(str);
+
+        
+    }*/
+    
+            
+    
         }
         if (FAILED(hr))
             return S_FALSE;
@@ -428,7 +443,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
             {
                 MessageItemData msgdata;
 
-                printf("Got message item:");
+                //printf("Got message item:");
                 ret = maapi->GetItem(ItemID, msgdata);
                 if((ret != NULL))
                 {
@@ -555,6 +570,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                     pIt[L"uid"] = SysAllocString((apptData.Uid).c_str());
                     pIt[L"m"] = SysAllocString((apptData.AlarmTrigger).c_str());
                     pIt[L"s"] = SysAllocString((apptData.StartDate).c_str());
+                    pIt[L"sFilterDate"] = SysAllocString((apptData.CalFilterDate).c_str());   // FBS bug 73982 -- 5/14/12
                     pIt[L"e"] = SysAllocString((apptData.EndDate).c_str());
                     pIt[L"class"] = SysAllocString((apptData.ApptClass).c_str());
                     pIt[L"orAddr"] = SysAllocString((apptData.organizer.addr).c_str());
@@ -626,6 +642,31 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                         }                       
                     }
 
+		    bool bHasTags = false;
+		    if (apptData.vTags)
+		    {
+		        wstring tagData;
+		        int numTags = (int)apptData.vTags->size();
+		        if (numTags > 0)
+		        {
+			    for (int i = 0; i < numTags; i++)
+			    {
+				tagData += (*apptData.vTags)[i];
+				if (i < (numTags - 1))
+				{
+				    tagData += L",";
+				}
+			    }
+			    pIt[L"tags"] = SysAllocString(tagData.c_str());
+			    delete apptData.vTags;
+			    bHasTags = true;
+		        }
+		    }
+		    if (!bHasTags)
+		    {
+		        pIt[L"tags"] = SysAllocString(L"");
+		    }
+
                     // recurrence
                     if (apptData.recurPattern.length() > 0)
                     {
@@ -689,9 +730,10 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                                 pIt[attrs[14]] = SysAllocString((apptData.vExceptions[i]->GetPlainTextFileAndContent()).c_str());
                                 pIt[attrs[15]] = SysAllocString(L"text/html");
                                 pIt[attrs[16]] = SysAllocString((apptData.vExceptions[i]->GetHtmlFileAndContent()).c_str());
-                                if (numAttendees > 0)
+                                size_t numAttendeesInException = apptData.vExceptions[i]->GetAttendees().size();
+                                if (numAttendeesInException > 0)
                                 {
-                                    for (int j = 0; j < numAttendees; j++)
+                                    for (size_t j = 0; j < numAttendeesInException; j++)
                                     {                                       
                                         attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->nam;
                                         attendeeData += L"~";
@@ -700,7 +742,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                                         attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->role;
                                         attendeeData += L"~";
                                         attendeeData += apptData.vExceptions[i]->GetAttendees()[j]->partstat;
-                                        if (j < (numAttendees - 1))     // don't write comma after last attendee
+                                        if (j < (numAttendeesInException - 1))     // don't write comma after last attendee
 	                                        attendeeData += L"~";
                                     }
                                 }
@@ -742,6 +784,7 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                     pIt[L"su"] = SysAllocString((taskData.Subject).c_str());
                     pIt[L"priority"] = SysAllocString((taskData.Importance).c_str());
                     pIt[L"s"] = SysAllocString((taskData.TaskStart).c_str());
+                    pIt[L"sFilterDate"] = SysAllocString((taskData.TaskFilterDate).c_str());   // FBS bug 73982 -- 5/14/12
                     pIt[L"e"] = SysAllocString((taskData.TaskDue).c_str());
                     pIt[L"status"] = SysAllocString((taskData.Status).c_str());
                     pIt[L"percentComplete"] = SysAllocString((taskData.PercentComplete).c_str());
@@ -802,6 +845,31 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                             delete taskData.vAttachments[i];
                         }                       
                     }
+
+		    bool bHasTags = false;
+		    if (taskData.vTags)
+		    {
+			wstring tagData;
+			int numTags = (int)taskData.vTags->size();
+			if (numTags > 0)
+			{
+			    for (int i = 0; i < numTags; i++)
+			    {
+				tagData += (*taskData.vTags)[i];
+				if (i < (numTags - 1))
+				{
+				    tagData += L",";
+				}
+			    }
+			    pIt[L"tags"] = SysAllocString(tagData.c_str());
+			    delete taskData.vTags;
+			    bHasTags = true;
+			}
+		    }
+		    if (!bHasTags)
+		    {
+	                pIt[L"tags"] = SysAllocString(L"");
+		    }
 
                     // recurrence
                     if (taskData.recurPattern.length() > 0)

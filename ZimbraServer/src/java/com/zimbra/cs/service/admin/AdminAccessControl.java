@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -39,11 +39,13 @@ import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.AccessManager.AttrRightChecker;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.accesscontrol.ACLAccessManager;
 import com.zimbra.cs.account.accesscontrol.AccessControlUtil;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
@@ -57,6 +59,7 @@ import com.zimbra.cs.account.accesscontrol.RightCommand;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.cs.account.accesscontrol.HardRules.HardRule;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.cs.account.names.NameUtil;
 
 /**
  * This class serves as:
@@ -65,8 +68,7 @@ import com.zimbra.cs.account.accesscontrol.Rights.Admin;
  *    and pure ACL based access manager.   This is so we can go back and 
  *    forth between the two, by a LC key(zimbra_class_accessmanager) change:  
  *   
- *    DomainAccessControl can be deprecated after we decide to not support
- *    domain based access manager at all.
+ *    DomainAccessControl should be deprecated at some point.
  * 
  * 2. A utility layer between service handlers(SOAP and servlet handlers) 
  *    and access manger.  We want to keep the AccessManager API simple and 
@@ -90,7 +92,8 @@ public abstract class AdminAccessControl {
      * 
      * for SOAP callsites
      */
-    public static AdminAccessControl getAdminAccessControl(ZimbraSoapContext zsc) throws ServiceException {
+    public static AdminAccessControl getAdminAccessControl(ZimbraSoapContext zsc) 
+    throws ServiceException {
         Account authedAcct = DocumentHandler.getAuthenticatedAccount(zsc);
         AuthToken authToken = zsc.getAuthToken();
         return newAdminAccessControl(zsc, authToken, authedAcct);
@@ -101,7 +104,8 @@ public abstract class AdminAccessControl {
      * 
      * for non-SOAP callsites
      */
-    public static AdminAccessControl getAdminAccessControl(AuthToken authToken) throws ServiceException {
+    public static AdminAccessControl getAdminAccessControl(AuthToken authToken) 
+    throws ServiceException {
         String acctId = authToken.getAccountId();
         Account authedAcct = Provisioning.getInstance().get(AccountBy.id, acctId);
         if (authedAcct == null)
@@ -124,7 +128,8 @@ public abstract class AdminAccessControl {
      * @return
      * @throws ServiceException
      */
-    public abstract boolean isSufficientAdminForSoap(Map<String, Object> soapCtxt, DocumentHandler handler);
+    public abstract boolean isSufficientAdminForSoap(Map<String, Object> soapCtxt, 
+            DocumentHandler handler);
     
     /**
      * Returns if the auth token is sufficient for the zimlet filter servlet.
@@ -150,13 +155,15 @@ public abstract class AdminAccessControl {
     /**
      *  only called for domain based access manager
      */
-    public abstract void checkModifyAttrs(AttributeClass attrClass, Map<String, Object> attrs) throws ServiceException;
+    public abstract void checkModifyAttrs(AttributeClass attrClass,
+            Map<String, Object> attrs) throws ServiceException;
     
     /**
      * This has to be called *after* the *can create* check.
      * For domain based AccessManager, all attrs are allowed if the admin can create.
      */
-    public abstract void checkSetAttrsOnCreate(TargetType targetType, String entryName, Map<String, Object> attrs) throws ServiceException;
+    public abstract void checkSetAttrsOnCreate(TargetType targetType, 
+            String entryName, Map<String, Object> attrs) throws ServiceException;
     
     /**
      * for an entry to be listed in the Search*** and GetAll*** response,
@@ -170,9 +177,11 @@ public abstract class AdminAccessControl {
      *       and won't even get into the soap handler.
      * 
      */
-    public abstract boolean hasRightsToList(NamedEntry target, AdminRight listRight, Object getAttrRight) throws ServiceException;
+    public abstract boolean hasRightsToList(NamedEntry target, AdminRight listRight, 
+            Object getAttrRight) throws ServiceException;
    
-    public abstract boolean hasRightsToListCos(Cos target, AdminRight listRight, Object getAttrRight) throws ServiceException;
+    public abstract boolean hasRightsToListCos(Cos target, AdminRight listRight,
+            Object getAttrRight) throws ServiceException;
 
     /**
      * For non-domained rights
@@ -182,27 +191,38 @@ public abstract class AdminAccessControl {
      * will always return OK.  This should be called only when 
      * domain based permission checking has passed.
      */
-    public abstract void checkRight(Entry target, Object needed) throws ServiceException;
+    public abstract void checkRight(Entry target, Object needed) 
+    throws ServiceException;
     
     /**
      * cos right
      */
-    public abstract void checkCosRight(Cos cos, Object needed) throws ServiceException;
+    public abstract void checkCosRight(Cos cos, Object needed) 
+    throws ServiceException;
 
     /**
      * account right (SOAP only)
      */
-    public abstract void checkAccountRight(AdminDocumentHandler handler, Account account, Object needed) throws ServiceException;
+    public abstract void checkAccountRight(AdminDocumentHandler handler, 
+            Account account, Object needed) throws ServiceException;
     
     /**
      * calendar resource right (SOAP only)
      */
-    public abstract void checkCalendarResourceRight(AdminDocumentHandler handler, CalendarResource cr, Object needed) throws ServiceException;
+    public abstract void checkCalendarResourceRight(AdminDocumentHandler handler, 
+            CalendarResource cr, Object needed) throws ServiceException;
     
     /**
      * DL right (SOAP only)
      */
-    public abstract void checkDistributionListRight(AdminDocumentHandler handler, DistributionList dl, Object needed) throws ServiceException;
+    public abstract void checkDistributionListRight(AdminDocumentHandler handler, 
+            DistributionList dl, Object needed) throws ServiceException;
+    
+    /**
+     * Dynamic group right (SOAP only)
+     */
+    public abstract void checkDynamicGroupRight(AdminDocumentHandler handler, 
+            DynamicGroup group, Object needed) throws ServiceException;
     
     /**
      * domain right (SOAP only)
@@ -212,25 +232,29 @@ public abstract class AdminAccessControl {
      * 
      * Note: this method *does* check domain status.  
      */
-    public abstract void checkDomainRightByEmail(AdminDocumentHandler handler, String email, AdminRight needed) throws ServiceException;
+    public abstract void checkDomainRightByEmail(AdminDocumentHandler handler, 
+            String email, AdminRight needed) throws ServiceException;
 
     /**
      * domain right (SOAP only)
      * Note: this method does *not* check domain status.  
      */
-    public abstract void checkDomainRight(AdminDocumentHandler handler, String domainName, Object needed) throws ServiceException;
+    public abstract void checkDomainRight(AdminDocumentHandler handler, 
+            String domainName, Object needed) throws ServiceException;
 
     /**
      * domain right (SOAP only)
      * Note: this method does *not* check domain status.  
      */
-    public abstract void checkDomainRight(AdminDocumentHandler handler, Domain domain, Object needed) throws ServiceException;
+    public abstract void checkDomainRight(AdminDocumentHandler handler, 
+            Domain domain, Object needed) throws ServiceException;
 
     
     /**
      * returns an AttrRightChecker for the target
      */
-    public abstract AccessManager.AttrRightChecker getAttrRightChecker(Entry target) throws ServiceException;
+    public abstract AccessManager.AttrRightChecker getAttrRightChecker(Entry target) 
+    throws ServiceException;
     
 
     /**
@@ -245,25 +269,27 @@ public abstract class AdminAccessControl {
     public abstract AccessManager.AttrRightChecker getAttrRightChecker(
             Entry target, Set<HardRule> ignoreHardRules) 
     throws ServiceException;
-
+    
     
     /* ================
      * internal methods
      * ================
      */
-    private AdminAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, AuthToken authToken, Account authedAcct) {
+    private AdminAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, 
+            AuthToken authToken, Account authedAcct) {
         mAccessMgr = accessMgr;
         mZsc = zsc;
         mAuthToken = authToken;
         mAuthedAcct = authedAcct;
     }
     
-    private static AdminAccessControl newAdminAccessControl(ZimbraSoapContext zsc, AuthToken authToken, Account authedAcct) {
+    private static AdminAccessControl newAdminAccessControl(ZimbraSoapContext zsc, 
+            AuthToken authToken, Account authedAcct) {
         AccessManager accessMgr = AccessManager.getInstance();
         
-        if (accessMgr.getClass() == ACLAccessManager.class)
+        if (accessMgr.getClass() == ACLAccessManager.class) {
             return new ACLAccessControl(accessMgr, zsc, authToken, authedAcct);
-        else if (accessMgr.getClass() == GlobalAccessManager.class) {
+        } else if (accessMgr.getClass() == GlobalAccessManager.class) {
             return new GlobalAccessControl(accessMgr, zsc, authToken, authedAcct);
         } else {
             return new DomainAccessControl(accessMgr, zsc, authToken, authedAcct);
@@ -299,26 +325,20 @@ public abstract class AdminAccessControl {
      */
     protected void checkDomainStatus(Entry target) throws ServiceException {
         Domain domain;
-        if (target instanceof Domain)
+        if (target instanceof Domain) {
             domain = (Domain)target;
-        else
+        } else {
             domain = TargetType.getTargetDomain(Provisioning.getInstance(), target);
-        mAccessMgr.checkDomainStatus(domain); // will throw if domain is not in an accessible state
     }
     
-    // static just for called from AdminDocumentHandler.canAccessEmail
-    // that method should have been cleaned up (see comments on AdminDocumentHandler.canAccessEmail)
-    // and after that this methods can be protected and non-static.
-    static String getDomainFromEmail(String email) throws ServiceException {
-        String parts[] = EmailUtil.getLocalPartAndDomain(email);
-        if (parts == null)
-            throw ServiceException.INVALID_REQUEST("must be valid email address: "+email, null);
-        return parts[1];
+        // will throw if domain is not in an accessible state
+        mAccessMgr.checkDomainStatus(domain); 
     }
     
     protected void soapOnly() throws ServiceException {
-        if (mZsc == null)
+        if (mZsc == null) {
             throw ServiceException.FAILURE("internal error, called from non-SOAP servlet", null);
+    }
     }
 
     
@@ -328,15 +348,17 @@ public abstract class AdminAccessControl {
      *
      */
     private static class DomainAccessControl extends AdminAccessControl {
-        private DomainAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, AuthToken authToken, Account authedAcct) {
+        private DomainAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, 
+                AuthToken authToken, Account authedAcct) {
             super(accessMgr, zsc, authToken, authedAcct);
         }
         
         public boolean isSufficientAdminForSoap(Map<String, Object> soapCtxt, 
                 DocumentHandler handler) {
             
-            if (mAuthToken.isAdmin())
+            if (mAuthToken.isAdmin()) {
                 return true;  // is a global admin, all is well
+            }
             
             // if the request is OK for domain admins, see if the authed is a domain admin
             boolean ok = handler.domainAuthSufficient(soapCtxt) && mAuthToken.isDomainAdmin();
@@ -354,15 +376,17 @@ public abstract class AdminAccessControl {
                 if (attrName.charAt(0) == '+' || attrName.charAt(0) == '-')
                     attrName = attrName.substring(1);
 
-                if (!AttributeManager.getInstance().isDomainAdminModifiable(attrName, attrClass))
+                if (!AttributeManager.getInstance().isDomainAdminModifiable(attrName, attrClass)) {
                     throw ServiceException.PERM_DENIED("can not modify attr: "+attrName);
             }
+        }
         }
         
         /**
          * For domain based AccessManager, all attrs are allowed if the admin can create.
          */
-        public void checkSetAttrsOnCreate(TargetType targetType, String entryName, Map<String, Object> attrs) 
+        public void checkSetAttrsOnCreate(TargetType targetType, String entryName, 
+                Map<String, Object> attrs) 
             throws ServiceException {
             // all attrs are allowed if the admin can create.
         }
@@ -374,13 +398,15 @@ public abstract class AdminAccessControl {
         }
         
         @Override
-        public boolean hasRightsToListCos(Cos target, AdminRight listRight, Object getAttrRight) throws ServiceException {
+        public boolean hasRightsToListCos(Cos target, AdminRight listRight, Object getAttrRight) 
+        throws ServiceException {
             boolean hasRight;
             
-            if (isDomainAdminOnly())  
+            if (isDomainAdminOnly()) {
                 hasRight = mAccessMgr.canAccessCos(mAuthToken, target);
-            else
+            } else {
                 hasRight = true;
+            }
             
             return hasRight;
         }
@@ -393,43 +419,63 @@ public abstract class AdminAccessControl {
         @Override
         public void checkCosRight(Cos cos, Object needed) throws ServiceException {
             if (isDomainAdminOnly()) {
-                if (!mAccessMgr.canAccessCos(mAuthToken, cos))
+                if (!mAccessMgr.canAccessCos(mAuthToken, cos)) {
                     throw ServiceException.PERM_DENIED("can not access cos");
             }
         }
+        }
         
         @Override
-        public void checkAccountRight(AdminDocumentHandler handler, Account account, Object needed) throws ServiceException {
+        public void checkAccountRight(AdminDocumentHandler handler, Account account, 
+                Object needed) throws ServiceException {
             soapOnly();
             
-            if (!handler.canAccessAccount(mZsc, account))
+            if (!handler.canAccessAccount(mZsc, account)) {
                 throw ServiceException.PERM_DENIED("can not access account");
+            }
             
-            if (isDomainAdminOnly() && (needed instanceof Map))
+            if (isDomainAdminOnly() && (needed instanceof Map)) {
                 checkModifyAttrs(AttributeClass.account, (Map<String, Object>)needed);
         }
+        }
 
         @Override
-        public void checkCalendarResourceRight(AdminDocumentHandler handler, CalendarResource cr, Object needed) throws ServiceException {
+        public void checkCalendarResourceRight(AdminDocumentHandler handler,
+                CalendarResource cr, Object needed) throws ServiceException {
             soapOnly();
             
-            if (!handler.canAccessAccount(mZsc, cr))
+            if (!handler.canAccessAccount(mZsc, cr)) {
                 throw ServiceException.PERM_DENIED("can not access calendar resource");
+            }
 
-            if (isDomainAdminOnly() && (needed instanceof Map))
+            if (isDomainAdminOnly() && (needed instanceof Map)) {
                 checkModifyAttrs(AttributeClass.calendarResource, (Map<String, Object>)needed);
         }
-
-        @Override
-        public void checkDistributionListRight(AdminDocumentHandler handler, DistributionList dl, Object needed) throws ServiceException {
-            soapOnly();
-            
-            if (!handler.canAccessEmail(mZsc, dl.getName()))
-                throw ServiceException.PERM_DENIED("can not access dl");
         }
 
         @Override
-        public void checkDomainRightByEmail(AdminDocumentHandler handler, String email, AdminRight needed) throws ServiceException {
+        public void checkDistributionListRight(AdminDocumentHandler handler, 
+                DistributionList dl, Object needed) throws ServiceException {
+            soapOnly();
+            
+            if (!handler.canAccessEmail(mZsc, dl.getName())) {
+                throw ServiceException.PERM_DENIED("can not access dl");
+        }
+        }
+
+        @Override
+        public void checkDynamicGroupRight(AdminDocumentHandler handler,
+                DynamicGroup group, Object needed) throws ServiceException {
+            soapOnly();
+            
+            if (!handler.canAccessEmail(mZsc, group.getName())) {
+                throw ServiceException.PERM_DENIED("can not access group");
+            }
+        }
+
+        @Override
+        public void checkDomainRightByEmail(AdminDocumentHandler handler, 
+                String email, AdminRight needed) throws ServiceException {
             soapOnly();
             
             if (!handler.canAccessEmail(mZsc, email))
@@ -437,20 +483,24 @@ public abstract class AdminAccessControl {
         }
         
         @Override
-        public void checkDomainRight(AdminDocumentHandler handler, String domainName, Object needed) throws ServiceException {
+        public void checkDomainRight(AdminDocumentHandler handler, 
+                String domainName, Object needed) throws ServiceException {
             soapOnly();
             
             if (isDomainAdminOnly()) {
-                if (!handler.canAccessDomain(mZsc, domainName))
+                if (!handler.canAccessDomain(mZsc, domainName)) {
                     throw ServiceException.PERM_DENIED("can not access domain");
+                }
                 
-                if (needed instanceof Map)
+                if (needed instanceof Map) {
                     checkModifyAttrs(AttributeClass.domain, (Map<String, Object>)needed);
             }
         }
+        }
         
         @Override
-        public void checkDomainRight(AdminDocumentHandler handler, Domain domain, Object needed) throws ServiceException {
+        public void checkDomainRight(AdminDocumentHandler handler, 
+                Domain domain, Object needed) throws ServiceException {
             soapOnly();
             
             // delegate to the String version of checkDomainRight instead of duplicating
@@ -460,7 +510,8 @@ public abstract class AdminAccessControl {
         }
         
         @Override
-        public AccessManager.AttrRightChecker getAttrRightChecker(Entry target) throws ServiceException {
+        public AccessManager.AttrRightChecker getAttrRightChecker(Entry target) 
+        throws ServiceException {
             return null;
         }
 
@@ -468,8 +519,8 @@ public abstract class AdminAccessControl {
         public AttrRightChecker getAttrRightChecker(Entry target,
                 Set<HardRule> ignoreHardRules) throws ServiceException {
             return null;
-        }
-
+    }
+    
     }
     
     /**
@@ -478,7 +529,8 @@ public abstract class AdminAccessControl {
      *
      */
     private static class GlobalAccessControl extends AdminAccessControl {
-        private GlobalAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, AuthToken authToken, Account authedAcct) {
+        private GlobalAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, 
+                AuthToken authToken, Account authedAcct) {
             super(accessMgr, zsc, authToken, authedAcct);
         }
         
@@ -491,13 +543,14 @@ public abstract class AdminAccessControl {
             
             Boolean canAccess = handler.canAccessAccountCommon(mZsc, account, false);
             
-            if (canAccess == null)
+            if (canAccess == null) {
                 throwIfNotAllowed();
-            else {
+            } else {
                 boolean hasRight = canAccess.booleanValue();
-                if (!hasRight)
+                if (!hasRight) {
                     throw ServiceException.PERM_DENIED("only global admin is allowed");
             }     
+        }
         }
 
         @Override
@@ -520,11 +573,19 @@ public abstract class AdminAccessControl {
         }
 
         @Override
+        public void checkDynamicGroupRight(AdminDocumentHandler handler,
+                DynamicGroup group, Object needed) throws ServiceException {
+            soapOnly();
+            checkDomainStatus(group);
+            throwIfNotAllowed();
+        }
+
+        @Override
         public void checkDomainRight(AdminDocumentHandler handler,
                 String domainName, Object needed) throws ServiceException {
             soapOnly();
             
-            Domain domain = Provisioning.getInstance().get(Provisioning.DomainBy.name, domainName);
+            Domain domain = Provisioning.getInstance().get(Key.DomainBy.name, domainName);
             if (domain == null)
                 throw ServiceException.PERM_DENIED("no such domain: " + domainName);
             
@@ -543,10 +604,11 @@ public abstract class AdminAccessControl {
                 String email, AdminRight needed) throws ServiceException {
             soapOnly();
             
-            String domainName = getDomainFromEmail(email);
-            Domain domain = Provisioning.getInstance().get(Provisioning.DomainBy.name, domainName);
-            if (domain == null)
+            String domainName = NameUtil.EmailAddress.getDomainNameFromEmail(email);
+            Domain domain = Provisioning.getInstance().get(Key.DomainBy.name, domainName);
+            if (domain == null) {
                 throw AccountServiceException.NO_SUCH_DOMAIN(domainName);
+            }
             
             checkDomainStatus(domain);
             throwIfNotAllowed();
@@ -574,7 +636,7 @@ public abstract class AdminAccessControl {
                 throws ServiceException {
             return new AttributeRightChecker(this, target);
         }
-        
+
         @Override
         public AttrRightChecker getAttrRightChecker(Entry target,
                 Set<HardRule> ignoreHardRules) throws ServiceException {
@@ -610,8 +672,9 @@ public abstract class AdminAccessControl {
         private void throwIfNotAllowed() throws ServiceException {
             boolean hasRight = doCheckRight();
             
-            if (!hasRight)
+            if (!hasRight) {
                 throw ServiceException.PERM_DENIED("only global admin is allowed");
+        }
         }
         
         private boolean doCheckRight() {
@@ -625,7 +688,8 @@ public abstract class AdminAccessControl {
      *
      */
     private static class ACLAccessControl extends AdminAccessControl {
-        private ACLAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, AuthToken authToken, Account authedAcct) {
+        private ACLAccessControl(AccessManager accessMgr, ZimbraSoapContext zsc, 
+                AuthToken authToken, Account authedAcct) {
             super(accessMgr, zsc, authToken, authedAcct);
         }
         
@@ -648,13 +712,15 @@ public abstract class AdminAccessControl {
          * This has to be called *after* the *can create* check.
          */
         @Override
-        public void checkSetAttrsOnCreate(TargetType targetType, String entryName, Map<String, Object> attrs) 
-            throws ServiceException {
+        public void checkSetAttrsOnCreate(TargetType targetType, String entryName, 
+                Map<String, Object> attrs)  throws ServiceException {
             
-            boolean hasRight = mAccessMgr.canSetAttrsOnCreate(mAuthedAcct, targetType, entryName, attrs, true);
+            boolean hasRight = mAccessMgr.canSetAttrsOnCreate(
+                    mAuthedAcct, targetType, entryName, attrs, true);
      
-            if (!hasRight)
+            if (!hasRight) {
                 throw ServiceException.PERM_DENIED("cannot set attrs");
+        }
         }
         
         /**
@@ -663,26 +729,32 @@ public abstract class AdminAccessControl {
          * "get attrs" rights.
          */
         @Override
-        public boolean hasRightsToList(NamedEntry target, AdminRight listRight, Object getAttrRight) throws ServiceException {
+        public boolean hasRightsToList(NamedEntry target, AdminRight listRight, 
+                Object getAttrRight) throws ServiceException {
             
             try {
                 checkRight(target, listRight);
             } catch (ServiceException e) {
-                // if PERM_DENIED, log and return false, do not throw, so we can continue with the next entry
+                // if PERM_DENIED, log and return false, do not throw, 
+                // so we can continue with the next entry
                 if (ServiceException.PERM_DENIED.equals(e.getCode())) {
-                    ZimbraLog.acl.warn(getClass().getName() + ": skipping entry " + target.getName() + ": " + e.getMessage());
+                    ZimbraLog.acl.warn(getClass().getName() + 
+                            ": skipping entry " + target.getName() + ": " + e.getMessage());
                     return false;
-                } else
+                } else {
                     throw e;
+            }
             }
             
             // check only the list right, do not check the get attrs right
-            if (getAttrRight == null)
+            if (getAttrRight == null) {
                 return true;
+            }
             
             if (getAttrRight instanceof Set) {
                 if (((Set)getAttrRight).isEmpty()) {
-                    ZimbraLog.acl.warn(getClass().getName() + ": skipping entry " + target.getName() + ": " + "non of the requested attrs is valid on the entry");
+                    ZimbraLog.acl.warn(getClass().getName() + ": skipping entry " + 
+                            target.getName() + ": " + "non of the requested attrs is valid on the entry");
                     return false;
                 }
             }
@@ -693,26 +765,31 @@ public abstract class AdminAccessControl {
                 // if PERM_DENIED, log and return false, do not throw, so we 
                 // can continue with the next entry
                 if (ServiceException.PERM_DENIED.equals(e.getCode())) {
-                    ZimbraLog.acl.warn(getClass().getName() + ": skipping entry " + target.getName() + ": " + e.getMessage());
+                    ZimbraLog.acl.warn(getClass().getName() + ": skipping entry " + 
+                            target.getName() + ": " + e.getMessage());
                     return false;
-                } else
+                } else {
                     throw e;
+            }
             }
             
             return true;
         }
         
         @Override
-        public boolean hasRightsToListCos(Cos target, AdminRight listRight, Object getAttrRight) throws ServiceException {
+        public boolean hasRightsToListCos(Cos target, AdminRight listRight, 
+                Object getAttrRight) throws ServiceException {
             return hasRightsToList(target, listRight,  getAttrRight);
         }
         
         @Override
         public void checkRight(Entry target, Object needed) throws ServiceException {
-            if (target == null)
+            if (target == null) {
                 target = Provisioning.getInstance().getGlobalGrant();
-            if (!doCheckRight(target, needed))
+            }
+            if (!doCheckRight(target, needed)) {
                 throw ServiceException.PERM_DENIED(printNeededRight(target, needed));
+        }
         }
         
         @Override
@@ -722,85 +799,115 @@ public abstract class AdminAccessControl {
         }
         
         @Override
-        public void checkAccountRight(AdminDocumentHandler handler, Account account, Object needed) throws ServiceException {
+        public void checkAccountRight(AdminDocumentHandler handler, 
+                Account account, Object needed) throws ServiceException {
             soapOnly();
             
             checkDomainStatus(account);
             
             Boolean canAccess = handler.canAccessAccountCommon(mZsc, account, false);
             boolean hasRight;
-            if (canAccess == null)
+            if (canAccess == null) {
                 hasRight = doCheckRight(account, needed);
-            else
+            } else {
                 hasRight = canAccess.booleanValue();
-            if (!hasRight)
+            }
+            if (!hasRight) {
                 throw ServiceException.PERM_DENIED(printNeededRight(account, needed));
+        }
         }
         
         @Override
-        public void checkCalendarResourceRight(AdminDocumentHandler handler, CalendarResource cr, Object needed) throws ServiceException {
+        public void checkCalendarResourceRight(AdminDocumentHandler handler, 
+                CalendarResource cr, Object needed) throws ServiceException {
             soapOnly();
             
             checkDomainStatus(cr);
             
             Boolean canAccess = handler.canAccessAccountCommon(mZsc, cr, false);
             boolean hasRight;
-            if (canAccess == null)
+            if (canAccess == null) {
                 hasRight = doCheckRight(cr, needed);
-            else
+            } else {
                 hasRight = canAccess.booleanValue();
-            if (!hasRight)
+            }
+            
+            if (!hasRight) {
                 throw ServiceException.PERM_DENIED(printNeededRight(cr, needed));
+        }
         }
         
         @Override
-        public void checkDistributionListRight(AdminDocumentHandler handler, DistributionList dl, Object needed) throws ServiceException {
+        public void checkDistributionListRight(AdminDocumentHandler handler, 
+                DistributionList dl, Object needed) throws ServiceException {
             soapOnly();
             
             checkDomainStatus(dl);
             
-            if (!doCheckRight(dl, needed))
+            if (!doCheckRight(dl, needed)) {
                 throw ServiceException.PERM_DENIED(printNeededRight(dl, needed));
+        }
         }
         
         @Override
-        public void checkDomainRightByEmail(AdminDocumentHandler handler, String email, AdminRight needed) throws ServiceException {
+        public void checkDynamicGroupRight(AdminDocumentHandler handler, 
+                DynamicGroup group, Object needed) throws ServiceException {
             soapOnly();
             
-            String domainName = getDomainFromEmail(email);
-            Domain domain = Provisioning.getInstance().get(Provisioning.DomainBy.name, domainName);
-            if (domain == null)
+            checkDomainStatus(group);
+            
+            if (!doCheckRight(group, needed)) {
+                throw ServiceException.PERM_DENIED(printNeededRight(group, needed));
+            }
+        }
+        
+        @Override
+        public void checkDomainRightByEmail(AdminDocumentHandler handler, 
+                String email, AdminRight needed) throws ServiceException {
+            soapOnly();
+            
+            String domainName = NameUtil.EmailAddress.getDomainNameFromEmail(email);
+            Domain domain = Provisioning.getInstance().get(Key.DomainBy.name, domainName);
+            if (domain == null) {
                 throw AccountServiceException.NO_SUCH_DOMAIN(domainName);
+            }
             
             checkDomainStatus(domain);
             
-            if (!doCheckRight(domain, needed))
+            if (!doCheckRight(domain, needed)) {
                 throw ServiceException.PERM_DENIED(printNeededRight(domain, needed));
+        }
         }
         
         @Override
-        public void checkDomainRight(AdminDocumentHandler handler, String domainName, Object needed) throws ServiceException {
+        public void checkDomainRight(AdminDocumentHandler handler, 
+                String domainName, Object needed) throws ServiceException {
             soapOnly();
             
-            Domain domain = Provisioning.getInstance().get(Provisioning.DomainBy.name, domainName);
-            if (domain == null)
+            Domain domain = Provisioning.getInstance().get(Key.DomainBy.name, domainName);
+            if (domain == null) {
                 throw ServiceException.PERM_DENIED("no such domain: " + domainName);
+            }
             
-            if (!doCheckRight(domain, needed))
+            if (!doCheckRight(domain, needed)) {
                 throw ServiceException.PERM_DENIED(printNeededRight(domain, needed));
+        }
         }
         
         @Override
-        public void checkDomainRight(AdminDocumentHandler handler, Domain domain, Object needed) throws ServiceException {
+        public void checkDomainRight(AdminDocumentHandler handler, 
+                Domain domain, Object needed) throws ServiceException {
             soapOnly();
             
-            if (!doCheckRight(domain, needed))
+            if (!doCheckRight(domain, needed)) {
                 throw ServiceException.PERM_DENIED(printNeededRight(domain, needed));
+        }
         }
         
         
         @Override
-        public AccessManager.AttrRightChecker getAttrRightChecker(Entry target) throws ServiceException {
+        public AccessManager.AttrRightChecker getAttrRightChecker(Entry target) 
+        throws ServiceException {
             return new AttributeRightChecker(this, target);
         }
         
@@ -850,11 +957,14 @@ public abstract class AdminAccessControl {
                 if (adminRight.isPresetRight())
                     return mAccessMgr.canDo(mAuthedAcct, target, (AdminRight)needed, true, null);
                 else if (adminRight.isAttrRight()) {
-                    if (adminRight.getRightType() == Right.RightType.getAttrs)
-                        return mAccessMgr.canGetAttrs(mAuthedAcct, target, ((AttrRight)needed).getAttrs(), true);
-                    else if (adminRight.getRightType() == Right.RightType.setAttrs)
+                    if (adminRight.getRightType() == Right.RightType.getAttrs) {
+                        return mAccessMgr.canGetAttrs(mAuthedAcct, target, 
+                                ((AttrRight)needed).getAttrs(), true);
+                    } else if (adminRight.getRightType() == Right.RightType.setAttrs) {
                         // note: this does not check for constraints
-                        return mAccessMgr.canSetAttrs(mAuthedAcct, target, ((AttrRight)needed).getAttrs(), true); 
+                        return mAccessMgr.canSetAttrs(mAuthedAcct, target, 
+                                ((AttrRight)needed).getAttrs(), true); 
+                    }
                 }
                 throw ServiceException.FAILURE("internal error", null);
                 
@@ -866,8 +976,9 @@ public abstract class AdminAccessControl {
             } else if (needed instanceof DynamicAttrsRight) {
                 DynamicAttrsRight dar = (DynamicAttrsRight)needed;
                 return dar.checkRight(mAccessMgr, mAuthedAcct, target);
-            } else
+            } else {
                 throw ServiceException.FAILURE("internal error", null);
+        }
         }
         
         private String printNeededRight(Entry target, Object needed) throws ServiceException {
@@ -876,23 +987,25 @@ public abstract class AdminAccessControl {
             }
             
             String targetInfo;
-            if (PseudoTarget.isPseudoEntry(target))
+            if (PseudoTarget.isPseudoEntry(target)) {
                 targetInfo = "";
-            else if (target instanceof Alias) // see comments in SearchDirectory.hasRightsToListDanglingAlias
+            } else if (target instanceof Alias) { // see comments in SearchDirectory.hasRightsToListDanglingAlias
                 targetInfo = " for alias " + target.getLabel();
-            else
+            } else {
                 targetInfo = " for " + TargetType.getTargetType(target).name() + " " + target.getLabel();
+            }
             
-            if (needed instanceof AdminRight)
+            if (needed instanceof AdminRight) {
                 return "need right: " + ((AdminRight)needed).getName() + targetInfo;
-            else if (needed instanceof Set)
+            } else if (needed instanceof Set) {
                 return "cannot get attrs on " + targetInfo;
-            else if (needed instanceof Map)
+            } else if (needed instanceof Map) {
                 return "cannot set attrs on " + targetInfo;
-            else
+            } else {
                 throw ServiceException.FAILURE("internal error", null);
         }
 
+    }
     }
     
     /**
@@ -914,7 +1027,8 @@ public abstract class AdminAccessControl {
         RightCommand.AllEffectiveRights mAllEffRights;
         private Map<Right, Set<HardRule>> mIgnoreHardRules;
         
-        public BulkRightChecker(AdminAccessControl accessControl, Provisioning prov) throws ServiceException {
+        public BulkRightChecker(AdminAccessControl accessControl, Provisioning prov) 
+        throws ServiceException {
             mAC = accessControl;
             mProv = (prov == null)? Provisioning.getInstance() : prov;
         }
@@ -926,9 +1040,11 @@ public abstract class AdminAccessControl {
         
         /* Can't do this because of perf bug 39514
          * 
-         * For each entry found, this will lead to a LDAP search to find the groups this entry belongs, yuck.
+         * For each entry found, this will lead to a LDAP search to find the 
+         * groups this entry belongs, yuck.
          * 
-        private boolean hasRightsToList(NamedEntry target, AdminRight listRight) throws ServiceException {
+        private boolean hasRightsToList(NamedEntry target, AdminRight listRight) 
+        throws ServiceException {
             return mAC.hasRightsToList(target, listRight, null);
         }
         */
@@ -943,19 +1059,21 @@ public abstract class AdminAccessControl {
             return AccessControlUtil.isGlobalAdmin(mAC.mAuthedAcct, true);
         }
         
-        protected boolean hasRight(NamedEntry target, AdminRight rightNeeded) throws ServiceException {
+        protected boolean hasRight(NamedEntry target, AdminRight rightNeeded) 
+        throws ServiceException {
             
             // can use the bulk mechanism only the access control object is pure ACL based
-            if (mAC instanceof ACLAccessControl)
+            if (mAC instanceof ACLAccessControl) {
                 return hasRightImplBulk(target, rightNeeded);
-            else {
+            } else {
                 // fallback to the normal right checking
                 return hasRightImplBulkDefault(target, rightNeeded);
             }
         }
         
         // use the normal way to check right
-        private boolean hasRightImplBulkDefault(NamedEntry target, AdminRight rightNeeded) throws ServiceException {
+        private boolean hasRightImplBulkDefault(NamedEntry target, AdminRight rightNeeded) 
+        throws ServiceException {
             try {
                 mAC.checkRight(target, rightNeeded);
                 return true;  // survived the right checking
@@ -965,14 +1083,18 @@ public abstract class AdminAccessControl {
             return false;
         }
         
-        private boolean hasRightImplBulk(NamedEntry target, AdminRight rightNeeded) throws ServiceException {
+        private boolean hasRightImplBulk(NamedEntry target, AdminRight rightNeeded) 
+        throws ServiceException {
             
             try {
-                Boolean hardRulesResult = HardRules.checkHardRules(mAC.mAuthedAcct, true, target, rightNeeded);
-                if (hardRulesResult != null)
+                Boolean hardRulesResult = HardRules.checkHardRules(
+                        mAC.mAuthedAcct, true, target, rightNeeded);
+                if (hardRulesResult != null) {
                     return hardRulesResult.booleanValue();
+                }
             } catch (ServiceException e) {
-                // if PERM_DENIED, log and return false, do not throw, so we can continue with the next entry
+                // if PERM_DENIED, log and return false, do not throw, 
+                // so we can continue with the next entry
                 if (ServiceException.PERM_DENIED.equals(e.getCode())) {
                     boolean violatedIgnoredHardRule = false;
                     
@@ -987,10 +1109,12 @@ public abstract class AdminAccessControl {
                     }
 
                     if (violatedIgnoredHardRule) {
-                        // log a debug line and let go
-                        ZimbraLog.acl.debug(getClass().getName() + ": not skipping entry " + target.getName() + ": " + e.getMessage());
+                        // log a debug line and allow
+                        ZimbraLog.acl.debug(getClass().getName() + 
+                                ": not skipping entry " + target.getName() + ": " + e.getMessage());
                     } else {
-                        ZimbraLog.acl.warn(getClass().getName() + ": skipping entry " + target.getName() + ": " + e.getMessage());
+                        ZimbraLog.acl.warn(getClass().getName() + 
+                                ": skipping entry " + target.getName() + ": " + e.getMessage());
                         return false;
                     }
                 } else {
@@ -998,10 +1122,11 @@ public abstract class AdminAccessControl {
                 }
             }
             
-            if (mAllEffRights == null)
+            if (mAllEffRights == null) {
                 mAllEffRights = mProv.getAllEffectiveRights(GranteeType.GT_USER.getCode(), 
-                        Provisioning.GranteeBy.id, mAC.mAuthedAcct.getId(),
+                        Key.GranteeBy.id, mAC.mAuthedAcct.getId(),
                         false, false);
+            }
             
             TargetType targetType = rightNeeded.getTargetType();
             
@@ -1040,13 +1165,15 @@ public abstract class AdminAccessControl {
             
             // 3. see if the admin has the right on all entries of the type on the system
             RightCommand.EffectiveRights er = rbtt.all();
-            if (hasRightBulk(er, target, rightNeeded))
+            if (hasRightBulk(er, target, rightNeeded)) {
                 return true;
+            }
             
             return false;
         }
         
-        private boolean hasRightBulk(RightCommand.EffectiveRights effRights, NamedEntry target, AdminRight rightNeeded) {
+        private boolean hasRightBulk(RightCommand.EffectiveRights effRights, 
+                NamedEntry target, AdminRight rightNeeded) {
             if (effRights == null)
                 return false;
             
@@ -1066,7 +1193,8 @@ public abstract class AdminAccessControl {
         
         protected boolean mAllowAll; // short cut for global admin
         
-        public SearchDirectoryRightChecker(AdminAccessControl accessControl, Provisioning prov, Set<String> reqAttrs) throws ServiceException {
+        public SearchDirectoryRightChecker(AdminAccessControl accessControl, 
+                Provisioning prov, Set<String> reqAttrs) throws ServiceException {
             // reqAttrs is no longer needed, TODO, cleanup from all callsites 
             super(accessControl, prov);
             
@@ -1134,12 +1262,15 @@ public abstract class AdminAccessControl {
                 return Admin.R_listAccount;
             } else if (entry instanceof DistributionList) {
                 return Admin.R_listDistributionList;
+            } else if (entry instanceof DynamicGroup) {
+                return Admin.R_listGroup;
             } else if (entry instanceof Domain) {
                 return Admin.R_listDomain;
             } else if (entry instanceof Cos) {
                 return Admin.R_listCos;
-            } else
+            } else {
                 return null;
+        }
         }
         
         /**
@@ -1150,15 +1281,16 @@ public abstract class AdminAccessControl {
             if (mAllowAll)
                 return true;
             
-            if (entry instanceof Alias)
+            if (entry instanceof Alias) {
                 return hasRightsToListAlias((Alias)entry);
-            else {
+            } else {
                 AdminRight listRightNeeded = needRight(entry);  
-                if (listRightNeeded != null)
+                if (listRightNeeded != null) {
                     return hasRight(entry, listRightNeeded);
-                else
+                } else {
                     return false;
             }
+        }
         }
         
         /**
@@ -1169,8 +1301,9 @@ public abstract class AdminAccessControl {
             List allowedEntries = new ArrayList<String>();
             for (int i = 0; i < entries.size(); i++) {
                 NamedEntry entry = (NamedEntry)entries.get(i);
-                if (allow(entry))
+                if (allow(entry)) {
                     allowedEntries.add(entry);
+            }
             }
             return allowedEntries;
         }
@@ -1191,8 +1324,10 @@ public abstract class AdminAccessControl {
     static class AttributeRightChecker implements AccessManager.AttrRightChecker {
         private AccessManager.AttrRightChecker mRightChecker;
         
-        private AttributeRightChecker(AdminAccessControl accessControl, Entry target) throws ServiceException {
-            mRightChecker = accessControl.mAccessMgr.canGetAttrs(accessControl.mAuthedAcct, target, true);
+        private AttributeRightChecker(AdminAccessControl accessControl, Entry target) 
+        throws ServiceException {
+            mRightChecker = accessControl.mAccessMgr.getGetAttrsChecker(
+                    accessControl.mAuthedAcct, target, true);
         }
             
         @Override
@@ -1218,7 +1353,8 @@ public abstract class AdminAccessControl {
         }      
      */
     public static abstract class DynamicAttrsRight {
-        abstract boolean checkRight(AccessManager am, Account authedAcct, Entry target) throws ServiceException;
+        abstract boolean checkRight(AccessManager am, Account authedAcct, Entry target) 
+        throws ServiceException;
     }
     
     /*
@@ -1231,7 +1367,8 @@ public abstract class AdminAccessControl {
             mAttrs.add(attrName);
         }
         
-        boolean checkRight(AccessManager am, Account authedAcct, Entry target) throws ServiceException {
+        boolean checkRight(AccessManager am, Account authedAcct, Entry target) 
+        throws ServiceException {
             return am.canGetAttrs(authedAcct, target, mAttrs, true);
         }
     }
@@ -1246,7 +1383,8 @@ public abstract class AdminAccessControl {
             mAttrs.add(attrName);
         }
         
-        boolean checkRight(AccessManager am, Account authedAcct, Entry target) throws ServiceException {
+        boolean checkRight(AccessManager am, Account authedAcct, Entry target) 
+        throws ServiceException {
             return am.canSetAttrs(authedAcct, target, mAttrs, true);
         }
     }
@@ -1258,7 +1396,8 @@ public abstract class AdminAccessControl {
             mAttrs.put(attrName, attrValue);
         }
         
-        boolean checkRight(AccessManager am, Account authedAcct, Entry target) throws ServiceException {
+        boolean checkRight(AccessManager am, Account authedAcct, Entry target) 
+        throws ServiceException {
             return am.canSetAttrs(authedAcct, target, mAttrs, true);
         }
     }

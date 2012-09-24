@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,7 +19,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.ldap.LdapUtil;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
@@ -27,14 +27,14 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.Task;
 import com.zimbra.cs.mailbox.CalendarItem.Instance;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
-import com.zimbra.cs.mailbox.calendar.ParsedDuration;
-import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.ParsedDuration;
+import com.zimbra.common.calendar.TimeZoneMap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
@@ -44,9 +44,14 @@ import com.zimbra.soap.ZimbraSoapContext;
 public class CompleteTaskInstance extends CalendarRequest {
 
     private static final String[] TARGET_PATH = new String[] { MailConstants.A_ID };
+
+    @Override
     protected String[] getProxiedIdPath(Element request)     { return TARGET_PATH; }
+
+    @Override
     protected boolean checkMountpointProxy(Element request)  { return false; }
 
+    @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Mailbox mbox = getRequestedMailbox(zsc);
@@ -55,7 +60,8 @@ public class CompleteTaskInstance extends CalendarRequest {
         ItemId iid = new ItemId(request.getAttribute(MailConstants.A_ID), zsc);
         Element exceptElem = request.getElement(MailConstants.E_CAL_EXCEPTION_ID);
 
-        synchronized (mbox) {
+        mbox.lock.lock();
+        try {
             CalendarItem calItem = mbox.getCalendarItemById(octxt, iid.getId());
             if (calItem == null) {
                 throw MailServiceException.NO_SUCH_CALITEM(iid.toString(), "Could not find calendar item");
@@ -70,12 +76,12 @@ public class CompleteTaskInstance extends CalendarRequest {
             if (!inv.isRecurrence()) {
                 throw ServiceException.INVALID_REQUEST("Task is not a recurring task", null);
             }
-            
+
             ParsedDateTime recurStart = inv.getStartTime();
             if (recurStart == null) {
                 throw ServiceException.INVALID_REQUEST("Recurring task is missing start time", null);
             }
-    
+
             // the instance being marked complete
             TimeZoneMap tzmap = inv.getTimeZoneMap();
             Element tzElem = request.getOptionalElement(MailConstants.E_CAL_TZ);
@@ -123,6 +129,8 @@ public class CompleteTaskInstance extends CalendarRequest {
                 // No more instance left.  Delete the recurring task.
                 mbox.delete(octxt, calItem.getId(), calItem.getType());
             }
+        } finally {
+            mbox.lock.release();
         }
 
         // response
@@ -130,10 +138,9 @@ public class CompleteTaskInstance extends CalendarRequest {
         return response;
     }
 
-    private Invite createCompletedInstanceInvite(Invite recur, ParsedDateTime dtStart)
-    throws ServiceException {
-        Invite inst = new Invite(MailItem.TYPE_TASK,
-                                 recur.getMethod(), recur.getTimeZoneMap(), recur.isOrganizer());
+    private Invite createCompletedInstanceInvite(Invite recur, ParsedDateTime dtStart) throws ServiceException {
+        Invite inst = new Invite(MailItem.Type.TASK, recur.getMethod(), (recur.getTimeZoneMap() != null) ?
+                recur.getTimeZoneMap().clone() : null, recur.isOrganizer());
 
         long now = System.currentTimeMillis();
 

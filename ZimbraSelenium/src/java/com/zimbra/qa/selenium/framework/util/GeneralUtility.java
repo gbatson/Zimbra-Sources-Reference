@@ -1,25 +1,11 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.BufferedReader;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.Flushable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
@@ -139,16 +125,13 @@ public class GeneralUtility {
                   logger.debug("Breaking...");
                   break;
                } catch (IllegalArgumentException e) {
-                  logger.debug("Continue to find other method");
-                  e.printStackTrace();
+                  logger.debug("Continue to find other method", e);
                } catch (InvocationTargetException ive) {
                   method = methodList[i];
-                  logger.debug("Hit InvocationTargetException");
-                  logger.debug("Method: " + method);
-                  ive.printStackTrace();
+                  logger.debug("Hit InvocationTargetException.  Method: "+ method, ive);
                   break;
                } catch (Exception e) {
-                  e.printStackTrace();
+            	   logger.warn(e);
                }
             }
 
@@ -158,8 +141,7 @@ public class GeneralUtility {
          }
 
       } catch (Exception e) {
-         e.printStackTrace();
-         logger.info("Class name that you enter: " + apiClassPath + " doesn't exist!");
+         logger.info("Class name that you enter: " + apiClassPath + " doesn't exist!", e);
       }
 
       if (method == null) {
@@ -179,21 +161,10 @@ public class GeneralUtility {
             } else {
                output = method.invoke(nonStaticObject, parameters);
             }
-         } catch (IllegalArgumentException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-         } catch (IllegalAccessException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-         } catch (InvocationTargetException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-         } catch (ClassNotFoundException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
          } catch (Exception e) {
+        	 logger.warn(e);
             //TODO:
-            e.printStackTrace();
+        	 logger.warn(e);
          }
       }
       logger.info("Final Iteration is: " + i);
@@ -288,30 +259,37 @@ public class GeneralUtility {
     * @throws HarnessException
     */
    public static void doHttpPost(String Url) throws HarnessException {
-      try {
 
-         // Replace all the white space with "%20"
-         Url = Url.replaceAll(" ", "%20");
 
-         URL url = new URL(Url);
-         URLConnection conn = url.openConnection();
-         
-         //Get the response
-         BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-         StringBuffer sb = new StringBuffer();
-         String line;
+	   BufferedReader rd = null;
 
-         while ((line = rd.readLine()) != null)
-         {
-            sb.append(line);
-         }
-         rd.close();
-         logger.info("HTTP POST information ==> " + sb.toString());
-         
+	   try {
 
-      } catch (IOException e) {
-         throw new HarnessException("HTTP Post failed!");
-      }
+		   // Replace all the white space with "%20"
+		   Url = Url.replaceAll(" ", "%20");
+
+		   URL url = new URL(Url);
+		   URLConnection conn = url.openConnection();
+
+		   //Get the response
+		   rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+		   StringBuffer sb = new StringBuffer();
+		   String line;
+
+		   while ((line = rd.readLine()) != null)
+		   {
+			   sb.append(line);
+		   }
+		   logger.info("HTTP POST information ==> " + sb.toString());
+
+
+	   } catch (IOException e) {
+		   throw new HarnessException("HTTP Post failed!", e);
+	   } finally {
+		   close(rd);
+	   }
+	   
+	   
    }
 
    /**
@@ -365,17 +343,15 @@ public class GeneralUtility {
          createDirectory(dest);
       }
 
+      
+      TarInputStream tin = null;
+      
       try {
          logger.info("tar file is: " + tarFile.getCanonicalPath());
          logger.info("dest path is: " + dest.getCanonicalPath());
-         logger.debug("Initializing tarFileInputStream");
-         FileInputStream tarFileInputStream = new FileInputStream(tarFile);
-         
-         logger.debug("Initializing gzipInputStream");
-         GZIPInputStream gzipInputStream = new GZIPInputStream(tarFileInputStream);
 
          logger.debug("Initializing tarInputStream");
-         TarInputStream tin = new TarInputStream(gzipInputStream);
+         tin = new TarInputStream(new GZIPInputStream(new FileInputStream(tarFile)));
 
          logger.debug("Getting the entries...");
          TarEntry tarEntry = tin.getNextEntry();  
@@ -389,9 +365,14 @@ public class GeneralUtility {
                createDirectory(destPath);
 
             } else {
-               FileOutputStream fout = new FileOutputStream(destPath);
-               tin.copyEntryContents(fout);  
-               fout.close();
+            	
+               FileOutputStream fout = null;
+               try {
+            	   fout = new FileOutputStream(destPath);
+                   tin.copyEntryContents(fout);  
+               } finally {
+            	   close(fout);
+               }
 
             }  
 
@@ -399,15 +380,10 @@ public class GeneralUtility {
 
          }
 
-         tin.close();
-         tin = null;
-
       } catch (IOException ie) {
-         String message = "Getting IO Exception while untarring the file from: " +
-               tarFile + " to: " + dest;
-         logger.info(message);
-         logger.info(ie.getMessage());
-         throw new HarnessException(message);
+         throw new HarnessException("Getting IO Exception while untarring the file from: " + tarFile + " to: " + dest, ie);         
+      } finally {
+    	  close(tin);
       }
    }
 
@@ -471,4 +447,43 @@ public class GeneralUtility {
        logger.debug("Now removing the top directory...");
        return( path.delete() );
    }
+   
+   /**
+    * Flush and close a stream, ignore null and exception
+    * @param c
+    */
+   private static void close(Closeable c) {
+	   if ( c == null ) {
+		   return;
+	   }
+	   
+	   if ( c instanceof Flushable ) {
+		   flush((Flushable)c);
+	   }
+	   
+	   try {
+		   c.close();
+	   } catch (IOException e) {
+		   logger.warn(e);
+	   }
+
+   }
+   
+   /**
+    * Flush a stream, ignore null and exception
+    * @param f
+    */
+   private static void flush(Flushable f) {
+	   if ( f == null ) {
+		   return;
+	   }
+
+	   try {
+		   f.flush();
+	   } catch (IOException e) {
+		   logger.warn(e);
+	   }
+
+   }
+
 }

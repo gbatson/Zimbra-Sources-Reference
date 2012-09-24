@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.BufferedWriter;
@@ -29,12 +13,14 @@ import java.io.RandomAccessFile;
 import java.io.Writer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.testng.ITestContext;
 import org.testng.ITestResult;
 import org.testng.TestListenerAdapter;
@@ -43,6 +29,8 @@ import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 
 
 public class TestStatusReporter extends TestListenerAdapter {  
+	private static final Logger logger = LogManager.getLogger(TestStatusReporter.class);
+	
 	private PrintWriter    output=null;
 
 	private ArrayList<String> failArray = new ArrayList<String>();
@@ -76,7 +64,8 @@ public class TestStatusReporter extends TestListenerAdapter {
 
 
 	private static class GetFromFile{
-
+		private static final Logger logger = LogManager.getLogger(GetFromFile.class);
+		
 		private static ArrayList<Long> longArray = new ArrayList<Long>();
 		private static String currentFileName="";
 		private static RandomAccessFile   raf= null;
@@ -92,7 +81,7 @@ public class TestStatusReporter extends TestListenerAdapter {
 					furthestReadLong=0;
 				}
 				catch (Exception e) {
-					e.printStackTrace();
+					logger.warn(e);
 				}
 			}
 		}
@@ -115,7 +104,7 @@ public class TestStatusReporter extends TestListenerAdapter {
 					furthestReadLong  = raf.getFilePointer();
 				}
 				catch (IOException e) {
-					e.printStackTrace();
+					logger.warn(e);
 				}
 			}
 			else {
@@ -134,7 +123,7 @@ public class TestStatusReporter extends TestListenerAdapter {
 
 				}
 				catch (Exception e) {
-					e.printStackTrace();	
+					logger.warn(e);	
 				}
 			}
 
@@ -155,7 +144,7 @@ public class TestStatusReporter extends TestListenerAdapter {
 					furthestReadLong  = raf.getFilePointer();
 				}
 				catch (IOException e) {
-					e.printStackTrace();
+					logger.warn(e);
 				}
 			}
 			else {
@@ -167,7 +156,7 @@ public class TestStatusReporter extends TestListenerAdapter {
 					result =raf.readLine();	    		  	    	      
 				}
 				catch (Exception e) {
-					e.printStackTrace();	
+					logger.warn(e);	
 				}
 			}
 			result = "\n  " + lineNumber  + " : " + result;	                 
@@ -255,7 +244,10 @@ public class TestStatusReporter extends TestListenerAdapter {
 
 
 
-			}catch (Exception e) { e.printStackTrace(); }
+			}catch (Exception e) {
+				logger.warn(e);
+			}
+
 			return result.toString();
 		}
 
@@ -341,7 +333,9 @@ public class TestStatusReporter extends TestListenerAdapter {
 			PrintWriter pw = new PrintWriter(new File(path+ "\\" + inProgressDir + "\\index.html"));
 			pw.println(sb.toString());
 			pw.close();
-		} catch (Exception e) { e.printStackTrace(); }
+		} catch (Exception e) {
+			logger.warn(e);
+		}
 
 		output.println("<!DOCTYPE suite SYSTEM \"http://testng.org/testng-1.0.dtd\">");
 		output.println("<suite name='SelNG'>");
@@ -430,7 +424,7 @@ public class TestStatusReporter extends TestListenerAdapter {
 			try {
 				f.createNewFile();
 			} catch (IOException e) {
-				e.printStackTrace();
+				logger.warn(e);
 			}
 			try {
 
@@ -485,7 +479,9 @@ public class TestStatusReporter extends TestListenerAdapter {
 			pw.println(new Date().toString() + "\n " + "Running testcase... " + fullTestName);
 			pw.close();
 		}
-		catch (Exception e) { e.printStackTrace(); }
+		catch (Exception e) {
+			logger.warn(e);
+		}
 
 		try {
 			PrintWriter pw = new PrintWriter(new File(path+ "\\" + inProgressDir + "\\result.txt"));
@@ -510,7 +506,10 @@ public class TestStatusReporter extends TestListenerAdapter {
 			pw.println(testdetails);
 			pw.close();
 		}
-		catch (Exception e) { e.printStackTrace(); }
+		catch (Exception e) {
+			logger.warn(e);
+		}
+
 	}
 
 	private void generateReport() {
@@ -605,16 +604,22 @@ public class TestStatusReporter extends TestListenerAdapter {
 
 
 
-		Writer output = null;
-
-		output = null;
-		File bodyfile = new File(path+ "/ebody.txt");
 		try {
-			output = new BufferedWriter(new FileWriter(bodyfile));
-			output.write(body.toString());
-			output.close();
+			
+			Writer output = null;
+			try {
+				
+				output = new BufferedWriter(new FileWriter(path+ "/ebody.txt"));
+				output.write(body.toString());
+				
+			} finally {
+				if ( output != null ) {
+					output.close();
+					output = null;
+				}
+			}
 		} catch (IOException e) {
-			e.printStackTrace();
+			logger.warn(e);
 		}
 
 
@@ -682,38 +687,51 @@ public class TestStatusReporter extends TestListenerAdapter {
 			baos.reset();      	
 		}
 
-		catch (Exception e) { e.printStackTrace();}
+		catch (Exception e) {
+			logger.warn(e);
+		}
+
 	}
 
 	private String getParameters(Object[] objs) {
-		StringBuffer result=new StringBuffer("(");
+		
+		StringBuilder sb = new StringBuilder("(");
+		
+		String delim = "";
+		for (Object o : objs) {
+			
+			if ( o instanceof String[] ) {
+				
+				// Convert to "[ string1, string2, string3 ]" format
+				sb.append(delim).append(Arrays.toString((String[])o));
+				
+			} else if (o instanceof String[][]) {
+				
+				// Convert to "[ [v1, v2, v3][v4, v5] ]" format
+				sb.append(delim);
+				sb.append("[");
+				for (String[] s : (String[][])o) {
+					sb.append(Arrays.toString(s));
+				}
+				sb.append("]");
 
-		for (int i=0; i < objs.length; i++) {
-			if (i >0) {
-				result.append(",");
+			} else {
+				
+				// Use String.valueOf(o) for all other objects
+				sb.append(delim).append(o);
+				
 			}
-			if (objs[i] instanceof Integer) {
-				result.append( ((Integer)objs[i]).intValue() + "");
-			}
-			else if (objs[i] instanceof String) {
-				result.append(objs.toString());
-			}
-			else if ((objs[i] instanceof String[])) {
-				String[] temp= (String[])(objs[i]);
-				result.append(temp[0]);  		  
-			}
-			else if ((objs[i] instanceof String[][])) {
-				String[][] temp= (String[][])(objs[i]);
-				result.append(temp[0][0]);  		  
-			}
-			else {
-				result.append(objs.toString());					  
-			}
+			
+			// All subsequent args are separated by a comma
+			delim = ",";
 		}
-
-		result.append(")");
-		return result.toString();
-	}  
+		
+		sb.append(")");
+		
+		
+		return (sb.toString());
+	
+	}
 
 	@Override
 	public void onConfigurationFailure(ITestResult tr) {

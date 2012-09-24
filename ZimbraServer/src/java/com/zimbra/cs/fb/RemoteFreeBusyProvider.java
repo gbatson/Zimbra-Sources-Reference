@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -18,17 +18,24 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.zimbra.cs.servlet.ZimbraServlet;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.methods.GetMethod;
 
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZCalendarBuilder;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
@@ -41,12 +48,10 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.httpclient.HttpProxyUtil;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZCalendarBuilder;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
+import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.mail.ToXML;
 import com.zimbra.soap.DocumentHandler;
@@ -120,7 +125,7 @@ public class RemoteFreeBusyProvider extends FreeBusyProvider {
                         authToken = mSoapCtxt.getAuthToken().getEncoded();
                 } catch (AuthTokenException e) {}
                 if (authToken != null) {
-                    targetUrl.append("&").append(UserServlet.QP_ZAUTHTOKEN).append("=");
+                    targetUrl.append("&").append(ZimbraServlet.QP_ZAUTHTOKEN).append("=");
                     try {
                         targetUrl.append(URLEncoder.encode(authToken, "UTF-8"));
                     } catch (UnsupportedEncodingException e) {}
@@ -148,7 +153,7 @@ public class RemoteFreeBusyProvider extends FreeBusyProvider {
                     }
                 }
             } catch (ServiceException e) {
-            	ZimbraLog.fb.warn("can't get free/busy information for "+req.email, e);
+                ZimbraLog.fb.warn("can't get free/busy information for "+req.email, e);
             } finally {
                 if (method != null)
                     method.releaseConnection();
@@ -158,8 +163,8 @@ public class RemoteFreeBusyProvider extends FreeBusyProvider {
     }
 
     @Override
-    public int registerForItemTypes() {
-        return 0;
+    public Set<MailItem.Type> registerForItemTypes() {
+        return EnumSet.noneOf(MailItem.Type.class);
     }
 
     @Override
@@ -171,22 +176,39 @@ public class RemoteFreeBusyProvider extends FreeBusyProvider {
     public boolean registerForMailboxChanges(String accountId) {
         return false;
     }
-	public long cachedFreeBusyStartTime() {
-		return 0;
-	}
-	public long cachedFreeBusyEndTime() {
-		return 0;
-	}
+    
+    @Override
+    public long cachedFreeBusyStartTime() {
+        return 0;
+    }
 
-	public boolean handleMailboxChange(String accountId) {
-		return true;
-	}
+    @Override
+    public long cachedFreeBusyEndTime() {
+        return 0;
+    }
+    
+    @Override
+    public long cachedFreeBusyStartTime(String accountId) {
+        return 0;
+    }
 
-	public String foreignPrincipalPrefix() {
-		return "";
-	}
-	
-	public void addResults(Element response) {
+    @Override
+    public long cachedFreeBusyEndTime(String accountId) {
+        return 0;
+    }
+
+    @Override
+    public boolean handleMailboxChange(String accountId) {
+        return true;
+    }
+
+    @Override
+    public String foreignPrincipalPrefix() {
+        return "";
+    }
+
+    @Override
+    public void addResults(Element response) {
         Provisioning prov = Provisioning.getInstance();
         for (Map.Entry<String, StringBuilder> entry : mRemoteAccountMap.entrySet()) {
             // String server = entry.getKey();
@@ -212,37 +234,39 @@ public class RemoteFreeBusyProvider extends FreeBusyProvider {
                 }
             } catch (SoapFaultException e) {
                 ZimbraLog.fb.error("cannot get free/busy for "+idStrs[0], e);
-            	addFailedAccounts(response, idStrs);
+                addFailedAccounts(response, idStrs);
             } catch (ServiceException e) {
                 ZimbraLog.fb.error("cannot get free/busy for "+idStrs[0], e);
-            	addFailedAccounts(response, idStrs);
+                addFailedAccounts(response, idStrs);
             }
         }
-	}
+    }
 
-	private static final String REMOTE = "REMOTE";
-	public String getName() {
-		return REMOTE;
-	}
-	private Map<String,StringBuilder> mRemoteAccountMap;
-	private ArrayList<Request> mRequestList;
-	private HttpServletRequest mHttpReq;
-	private ZimbraSoapContext mSoapCtxt;
-	private long mStart;
-	private long mEnd;
-	private String mExApptUid;  // UID of appointment to exclude from free/busy search
-	
-	private void addFailedAccounts(Element response, String[] idStrs) {
-		for (String id : idStrs) {
-			ToXML.encodeFreeBusy(response, FreeBusy.nodataFreeBusy(id, mStart, mEnd));
-		}
-	}
-	
+    private static final String REMOTE = "REMOTE";
+
+    @Override
+    public String getName() {
+        return REMOTE;
+    }
+    private Map<String,StringBuilder> mRemoteAccountMap;
+    private ArrayList<Request> mRequestList;
+    private HttpServletRequest mHttpReq;
+    private ZimbraSoapContext mSoapCtxt;
+    private long mStart;
+    private long mEnd;
+    private String mExApptUid;  // UID of appointment to exclude from free/busy search
+
+    private void addFailedAccounts(Element response, String[] idStrs) {
+        for (String id : idStrs) {
+            ToXML.encodeFreeBusy(response, FreeBusy.nodataFreeBusy(id, mStart, mEnd));
+        }
+    }
+
     protected Element proxyRequest(Element request, String acctId, ZimbraSoapContext zsc) throws ServiceException {
         // new context for proxied request has a different "requested account"
         ZimbraSoapContext zscTarget = new ZimbraSoapContext(zsc, acctId);
         Provisioning prov = Provisioning.getInstance();
-        Account acct = prov.get(Provisioning.AccountBy.id, acctId);
+        Account acct = prov.get(Key.AccountBy.id, acctId);
         Server server = prov.getServer(acct);
 
         // executing remotely; find out target and proxy there

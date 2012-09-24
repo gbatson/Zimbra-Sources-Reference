@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,18 +19,26 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.zimbra.common.calendar.Attach;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.ParsedDuration;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZParameter;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.soap.MailConstants;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.service.mail.ToXML;
 import com.zimbra.common.soap.Element;
+import com.zimbra.soap.mail.type.AlarmInfo;
+import com.zimbra.soap.mail.type.AlarmTriggerInfo;
+import com.zimbra.soap.mail.type.CalendarAttach;
+import com.zimbra.soap.mail.type.DateAttr;
+import com.zimbra.soap.mail.type.DurationInfo;
 
 /**
  * iCalendar VALARM component
@@ -150,7 +158,7 @@ public class Alarm {
         mAttendees = attendees;
     }
 
-    public Alarm newCopy() throws ServiceException {
+    public Alarm newCopy() {
         List<ZAttendee> attendees = null;
         if (mAttendees != null) {
             attendees = new ArrayList<ZAttendee>(mAttendees.size());
@@ -159,8 +167,14 @@ public class Alarm {
             }
         }
         // Assume mAttach is immutable.  No need to create a copy object.
-        return new Alarm(mAction, mTriggerType, mTriggerRelated, mTriggerRelative, mTriggerAbsolute,
-                         mRepeatDuration, mRepeatCount, mDescription, mSummary, mAttach, attendees);
+        Alarm copy = null;
+        try {
+            copy = new Alarm(mAction, mTriggerType, mTriggerRelated, mTriggerRelative, mTriggerAbsolute,
+                             mRepeatDuration, mRepeatCount, mDescription, mSummary, mAttach, attendees);
+        } catch (ServiceException e) {
+            // shouldn't happen
+        }
+        return copy;
     }
 
     public String toString() {
@@ -203,6 +217,56 @@ public class Alarm {
             sb.append(", ").append(xprop.toString());
         }
         return sb.toString();
+    }
+
+    public AlarmInfo toJaxb() {
+        Action action;
+        if  (   (   Action.AUDIO.equals(mAction) ||
+                    Action.PROCEDURE.equals(mAction))
+                && DebugConfig.calendarConvertNonDisplayAlarm) {
+            action = Action.DISPLAY;
+            // remove X-WR-ALARMUID set by iCal if there is any.
+            ZProperty prop = getXProperty("X-WR-ALARMUID");
+            if (prop != null)
+                removeXProp(prop);
+        } else {
+            action = mAction;
+        }
+        AlarmInfo alarm = new AlarmInfo(action.toString());
+        AlarmTriggerInfo trigger = new AlarmTriggerInfo();
+        alarm.setTrigger(trigger);
+        if (TriggerType.ABSOLUTE.equals(mTriggerType)) {
+            trigger.setAbsolute(new DateAttr(
+                    mTriggerAbsolute.getDateTimePartString(false)));
+        } else {
+            DurationInfo relative = new DurationInfo(mTriggerRelative);
+            trigger.setRelative(relative);
+            if (mTriggerRelated != null)
+                relative.setRelated(mTriggerRelated.toString());
+        }
+        if (mRepeatDuration != null) {
+            DurationInfo repeat = new DurationInfo(mRepeatDuration);
+            alarm.setRepeat(repeat);
+            repeat.setRepeatCount(mRepeatCount);
+        }
+        if (!Action.AUDIO.equals(action)) {
+            alarm.setDescription(mDescription);
+        }
+        if (!Action.DISPLAY.equals(action) && mAttach != null)
+            alarm.setAttach(new CalendarAttach(mAttach));
+        if (Action.EMAIL.equals(mAction) ||
+            Action.X_YAHOO_CALENDAR_ACTION_IM.equals(mAction) ||
+            Action.X_YAHOO_CALENDAR_ACTION_MOBILE.equals(mAction)) {
+            alarm.setSummary(mSummary);
+            if (mAttendees != null) {
+                for (ZAttendee attendee : mAttendees) {
+                    alarm.addAttendee(attendee.toJaxb());
+                }
+            }
+        }
+        // x-prop
+        alarm.setXProps(ToXML.jaxbXProps(xpropsIterator()));
+        return alarm;
     }
 
     public Element toXml(Element parent) {
@@ -658,7 +722,7 @@ public class Alarm {
         meta.put(FN_DESCRIPTION, mDescription);
         meta.put(FN_SUMMARY, mSummary);
         if (mAttach != null)
-            meta.put(FN_ATTACH, mAttach.encodeMetadata());
+            meta.put(FN_ATTACH, Util.encodeMetadata(mAttach));
         if (mAttendees != null) {
             meta.put(FN_NUM_ATTENDEES, mAttendees.size());
             int i = 0;
@@ -713,7 +777,7 @@ public class Alarm {
         Attach attach = null;
         Metadata metaAttach = meta.getMap(FN_ATTACH, true);
         if (metaAttach != null)
-            attach = Attach.decodeMetadata(metaAttach);
+            attach = Util.decodeAttachFromMetadata(metaAttach);
 
         int numAts = (int) meta.getLong(FN_NUM_ATTENDEES, 0);
         List<ZAttendee> attendees = new ArrayList<ZAttendee>(numAts);

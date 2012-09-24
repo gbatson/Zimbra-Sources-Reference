@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,16 +20,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.FileUtil;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.extension.ExtensionUtil;
+import com.zimbra.cs.mime.handler.NoOpMimeHandler;
 import com.zimbra.cs.mime.handler.UnknownTypeHandler;
 
 
@@ -72,6 +74,10 @@ public class MimeHandlerManager {
     throws MimeHandlerException {
         sLog.debug("Getting MIME handler for type %s, filename '%s'", mimeType, filename);
 
+        if (!LC.zimbra_enable_text_extraction.booleanValue()) {
+            return new NoOpMimeHandler();
+        }
+        
         MimeHandler handler = null;
         if (!StringUtil.isNullOrEmpty(mimeType)) {
             mimeType = Mime.getContentType(mimeType);

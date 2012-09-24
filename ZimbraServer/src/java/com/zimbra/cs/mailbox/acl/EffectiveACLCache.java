@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,17 +29,19 @@ import com.zimbra.common.util.memcached.ZimbraMemcachedClient;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.mailbox.MetadataList;
 import com.zimbra.cs.memcached.MemcachedConnector;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.session.PendingModifications.ModificationKey;
 
-public class EffectiveACLCache {
-    
+public final class EffectiveACLCache {
+
     private static EffectiveACLCache sTheInstance = new EffectiveACLCache();
-    
+
     private MemcachedMap<EffectiveACLCacheKey, ACL> mMemcachedLookup;
 
     public static EffectiveACLCache getInstance() { return sTheInstance; }
@@ -47,37 +49,47 @@ public class EffectiveACLCache {
     EffectiveACLCache() {
         ZimbraMemcachedClient memcachedClient = MemcachedConnector.getClient();
         ACLSerializer serializer = new ACLSerializer();
-        mMemcachedLookup = new MemcachedMap<EffectiveACLCacheKey, ACL>(memcachedClient, serializer); 
+        mMemcachedLookup = new MemcachedMap<EffectiveACLCacheKey, ACL>(memcachedClient, serializer);
     }
 
     private static class ACLSerializer implements MemcachedSerializer<ACL> {
-        
+
+        public ACLSerializer() { }
+
+        @Override
         public Object serialize(ACL value) {
             return value.encode().toString();
         }
 
+        @Override
         public ACL deserialize(Object obj) throws ServiceException {
-            MetadataList meta = new MetadataList((String) obj);
-            return new ACL(meta);
+            try {
+                // first try with old serialization
+                MetadataList meta = new MetadataList((String) obj);
+                return new ACL(meta);
+            } catch (Exception e) {
+                Metadata meta = new Metadata((String) obj);
+                return new ACL(meta);
+            }
         }
     }
-    
+
     private ACL get(EffectiveACLCacheKey key) throws ServiceException {
         return mMemcachedLookup.get(key);
     }
-    
+
     private void put(EffectiveACLCacheKey key, ACL data) throws ServiceException {
         mMemcachedLookup.put(key, data);
     }
-    
+
     public static ACL get(String acctId, int folderId) throws ServiceException {
         EffectiveACLCacheKey key = new EffectiveACLCacheKey(acctId, folderId);
         return sTheInstance.get(key);
     }
-    
+
     public static void put(String acctId, int folderId, ACL acl) throws ServiceException {
         EffectiveACLCacheKey key = new EffectiveACLCacheKey(acctId, folderId);
-        
+
         // if no effective ACL, return an empty ACL
         if (acl == null)
             acl = new ACL();
@@ -103,8 +115,7 @@ public class EffectiveACLCache {
                 Object whatChanged = change.what;
                 // We only need to pay attention to modified folders whose modification involves
                 // permission change or move to a new parent folder.
-                if (whatChanged instanceof Folder &&
-                    (change.why & (Change.MODIFIED_ACL | Change.MODIFIED_FOLDER)) != 0) {
+                if (whatChanged instanceof Folder && (change.why & (Change.ACL | Change.FOLDER)) != 0) {
                     Folder folder = (Folder) whatChanged;
                     // Invalidate all child folders because their inherited ACL will need to be recomputed.
                     String acctId = folder.getMailbox().getAccountId();
@@ -117,21 +128,13 @@ public class EffectiveACLCache {
             }
         }
         if (mods.deleted != null) {
-            // This code gets called even for non-folder items, for example it's called for every email
-            // being emptied from Trash.  But there's no way to short circuit out of here because the delete
-            // notification doesn't tell us the item type of what's being deleted.  Oh well.
-            for (Map.Entry<ModificationKey, Object> entry : mods.deleted.entrySet()) {
-                Object deletedObj = entry.getValue();
-                if (deletedObj instanceof Folder) {
-                    Folder folder = (Folder) deletedObj;
-                    EffectiveACLCacheKey key = new EffectiveACLCacheKey(folder.getMailbox().getAccountId(), folder.getId());
-                    keysToInvalidate.add(key);
-                } else if (deletedObj instanceof Integer) {
-                    // We only have item id.  Assume it's a folder id and issue a delete.
+            for (Map.Entry<ModificationKey, Change> entry : mods.deleted.entrySet()) {
+                MailItem.Type type = (MailItem.Type) entry.getValue().what;
+                if (type == MailItem.Type.FOLDER) {
                     String acctId = entry.getKey().getAccountId();
-                    if (acctId == null) continue;  // just to be safe
-                    int itemId = ((Integer) deletedObj).intValue();
-                    EffectiveACLCacheKey key = new EffectiveACLCacheKey(acctId, itemId);
+                    if (acctId == null)
+                        continue;  // just to be safe
+                    EffectiveACLCacheKey key = new EffectiveACLCacheKey(acctId, entry.getKey().getItemId());
                     keysToInvalidate.add(key);
                 }
             }

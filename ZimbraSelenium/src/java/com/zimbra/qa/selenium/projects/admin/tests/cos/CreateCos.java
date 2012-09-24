@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.admin.tests.cos;
 
 import org.testng.annotations.Test;
@@ -25,7 +9,7 @@ import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAdminAccount;
 import com.zimbra.qa.selenium.projects.admin.core.AdminCommonTest;
 import com.zimbra.qa.selenium.projects.admin.items.CosItem;
-import com.zimbra.qa.selenium.projects.admin.ui.FormCosNew;
+import com.zimbra.qa.selenium.projects.admin.ui.WizardCreateCos;
 
 
 public class CreateCos extends AdminCommonTest {
@@ -52,11 +36,11 @@ public class CreateCos extends AdminCommonTest {
 		CosItem cos = new CosItem();
 
 		// Click "New"
-		FormCosNew cosForm = (FormCosNew) app.zPageManageCOS.zToolbarPressButton(Button.B_NEW);
+		WizardCreateCos cosDialog = (WizardCreateCos) app.zPageManageCOS.zToolbarPressPulldown(Button.B_GEAR_BOX, Button.O_NEW);
 	
 	
 		// Fill out the necessary input fields and submit
-		cosForm.zComplete(cos);
+		cosDialog.zCompleteWizard(cos);
 		
 		// Verify the cos exists in the ZCS
 		ZimbraAdminAccount.AdminConsoleAdmin().soapSend(

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,7 +16,9 @@ package com.zimbra.cs.mailbox;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
@@ -124,6 +126,7 @@ extends Thread {
             return;
         }
         
+        Set<Integer> purgePendingMailboxes = new HashSet<Integer>();
         while (true) {
             List<Integer> mailboxIds = getMailboxIds();
             boolean slept = false;
@@ -141,12 +144,13 @@ extends Thread {
                 boolean attemptedPurge = false;
                 try {
                     MailboxManager mm = MailboxManager.getInstance();
-                    if (mm.isMailboxLoadedAndAvailable(mailboxId)) {
+                    if (mm.isMailboxLoadedAndAvailable(mailboxId) || purgePendingMailboxes.contains(mailboxId)) {
                         attemptedPurge = true;
                         Mailbox mbox = mm.getMailboxById(mailboxId);
                         Account account = mbox.getAccount();
                         Provisioning prov = Provisioning.getInstance();
-                        if (!Provisioning.ACCOUNT_STATUS_MAINTENANCE.equals(account.getAccountStatus(prov))) { 
+                        if (!Provisioning.ACCOUNT_STATUS_MAINTENANCE.equals(account.getAccountStatus(prov)) &&
+                                !account.isIsExternalVirtualAccount()) { 
                             ZimbraLog.addAccountNameToContext(account.getName());
                             boolean purgedAll = mbox.purgeMessages(null);
                             if (!purgedAll) {
@@ -155,7 +159,7 @@ extends Thread {
                             }
                             Config.setInt(Config.KEY_PURGE_LAST_MAILBOX_ID, mbox.getId());
                         } else {
-                            ZimbraLog.purge.debug("Skipping mailbox %d because the account is in maintenance status.", mailboxId);
+                            ZimbraLog.purge.debug("Skipping mailbox %d because the account is in maintenance status or is an external virtual account.", mailboxId);
                         }
                     } else {
                         ZimbraLog.purge.debug("Skipping mailbox %d because it is not loaded into memory.", mailboxId);
@@ -179,6 +183,13 @@ extends Thread {
             // If nothing's getting purged, sleep to avoid a tight loop 
             if (!slept) {
                 sleep();
+            }
+            
+            try {
+                long lastPurgeMaxDuration = Provisioning.getInstance().getLocalServer().getLastPurgeMaxDuration();
+                purgePendingMailboxes = MailboxManager.getInstance().getPurgePendingMailboxes(System.currentTimeMillis() - lastPurgeMaxDuration);
+            } catch (ServiceException e) {
+                ZimbraLog.purge.warn("Unable to get purge pending mailboxes ", e);
             }
         }
     }

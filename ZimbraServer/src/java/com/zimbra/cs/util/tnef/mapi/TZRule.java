@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -113,7 +113,7 @@ public class TZRule {
     public TZRule() throws IOException {
         isAssociatedWithRecurrence = true;
         isEffectiveRule = true;
-        setStartYear(1971);
+        setStartYear(1601);
     }
     /**
      *
@@ -401,12 +401,12 @@ public class TZRule {
     /**
      *
      *   From initial TNEF to iCalendar Spec.
-     *       The DTSTART property can be hard-coded to 19710101T000000. This is a value that
+     *       The DTSTART property can be hard-coded to 16010101T000000. This is a value that
      *       works well across many calendar client apps.
      *   Note: Some examples seen are similar to this but include the hour of the transition.
      *         Suspect that is useful - so including it.
      *   Zimbra replaces our timezones with closest matchin known ones, so not worth trying
-     *   to improve this to see if can choose an accurate start date/time in 1971.
+     *   to improve this to see if can choose an accurate start date/time in 1601.
      *
      * @param hr
      * @param min
@@ -414,7 +414,7 @@ public class TZRule {
      */
     private DtStart getDtStart(int hr, int min) {
         TimeZone utcZone = TimeZone.getTimeZone("UTC");
-        GregorianCalendar gc = new GregorianCalendar(1971, 0 /* zero based */, 1, hr, min);
+        GregorianCalendar gc = new GregorianCalendar(1601, 0 /* zero based */, 1, hr, min);
         gc.setTimeZone(utcZone);
         Date startDate = gc.getTime();
         DateTime startDateTime = new DateTime(startDate);

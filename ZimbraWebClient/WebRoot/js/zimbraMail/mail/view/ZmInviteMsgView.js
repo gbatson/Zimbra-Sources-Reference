@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -56,6 +56,7 @@ function() {
 
 	if (this._dayView) {
 		this._dayView.setDisplay(Dwt.DISPLAY_NONE);
+		Dwt.delClass(this.parent.getHtmlElement(), "RightBorderSeparator");
 	}
 
 	this._msg = null;
@@ -74,6 +75,16 @@ function(msg) {
 	this._msg = msg;
 	var invite = this._invite = msg.invite;
 
+    // Can operate the toolbar if user is the invite recipient, or invite is in a
+    // non-trash shared folder with admin/workflow access permissions
+    var folder   =  appCtxt.getById(msg.folderId);
+    var enabled  = !appCtxt.isExternalAccount();
+    if (enabled && folder && folder.isRemote()) {
+        var workflow = folder.isPermAllowed(ZmOrganizer.PERM_WORKFLOW);
+        var admin    = folder.isPermAllowed(ZmOrganizer.PERM_ADMIN);
+        var enabled  = (admin || workflow) &&
+                       (ZmOrganizer.normalizeId(msg.folderId) != ZmFolder.ID_TRASH);
+    }
 	if (invite && invite.hasAcceptableComponents() &&
 		msg.folderId != ZmFolder.ID_SENT)
 	{
@@ -86,7 +97,7 @@ function(msg) {
 				this._counterToolbar = this._getCounterToolbar();
 			}
 			this._counterToolbar.reparentHtmlElement(this.parent.getHtmlElement(), 0);
-			this._counterToolbar.setVisible(Dwt.DISPLAY_BLOCK);
+			this._counterToolbar.setVisible(enabled);
 		}
 		else if (!invite.isOrganizer() && invite.hasInviteReplyMethod()) {
 			var ac = window.parentAppCtxt || window.appCtxt;
@@ -98,9 +109,7 @@ function(msg) {
 			}
 
 			var inviteToolbar = this.getInviteToolbar();
-
-			inviteToolbar.reparentHtmlElement(this.parent.getHtmlElement(), 0);
-			inviteToolbar.setVisible(Dwt.DISPLAY_BLOCK);
+			inviteToolbar.setVisible(enabled);
 
 			// show on-behalf-of info?
 			this._respondOnBehalfLabel.innerHTML = msg.cif
@@ -110,7 +119,7 @@ function(msg) {
 			// logic for showing calendar/folder chooser
 			var cc = AjxDispatcher.run("GetCalController");
 			var msgAcct = msg.getAccount();
-			var calendars = ac.get(ZmSetting.CALENDAR_ENABLED, null, msgAcct)
+			var calendars = ac.get(ZmSetting.CALENDAR_ENABLED, null, msgAcct) && (!msg.cif)
 				? cc.getCalendars({includeLinks:true, account:msgAcct, onlyWritable:true}) : [];
 
 			if (appCtxt.multiAccounts) {
@@ -154,7 +163,6 @@ function(msg) {
 					this._inviteMoveSelect.setSelectedValue(ZmOrganizer.ID_CALENDAR);
 				}
 			}
-			this._inviteMoveLabel.setVisible(visible);
 			this._inviteMoveSelect.setVisible(visible);
 		}
 	}
@@ -169,7 +177,7 @@ function(msg) {
  *    with the results returned.
  */
 ZmInviteMsgView.prototype.showMoreInfo =
-function(callback) {
+function(callback, dayViewCallback) {
 	var apptId = this._invite && this._invite.hasAttendeeResponse() && this._invite.getAppointmentId();
 	if (apptId) {
 		var jsonObj = {GetAppointmentRequest:{_jsns:"urn:zimbraMail"}};
@@ -179,11 +187,11 @@ function(callback) {
 		appCtxt.getAppController().sendRequest({
 			jsonObj: jsonObj,
 			asyncMode: true,
-			callback: (new AjxCallback(this, this._handleShowMoreInfo, [callback]))
+			callback: (new AjxCallback(this, this._handleShowMoreInfo, [callback, dayViewCallback]))
 		});
 	}
 	else {
-		this._showFreeBusy();
+		this._showFreeBusy(dayViewCallback);
 		if (callback) {
 			callback.run();
 		}
@@ -191,7 +199,7 @@ function(callback) {
 };
 
 ZmInviteMsgView.prototype._handleShowMoreInfo =
-function(callback, result) {
+function(callback, dayViewCallback, result) {
 	var appt = result && result.getResponse().GetAppointmentResponse.appt[0];
 	if (appt) {
 		var om = this.parent._objectManager;
@@ -222,27 +230,21 @@ function(callback, result) {
 		callback.run();
 	}
 
-	this._showFreeBusy();
+	this._showFreeBusy(dayViewCallback);
 };
 
 ZmInviteMsgView.prototype._showFreeBusy =
-function() {
+function(dayViewCallback) {
 	var ac = window.parentAppCtxt || window.appCtxt;
 
 	if (!appCtxt.isChildWindow &&
 		(ac.get(ZmSetting.CALENDAR_ENABLED) || ac.multiAccounts) &&
 		(this._invite && this._invite.type != "task"))
 	{
-
-		var inviteDate = this._invite.getServerStartDate(null, true);
-		if (inviteDate == null) { /* not sure when this happens (probably a bug) but this is defensive check for bug 51754 */
-			return;
-		}
-
-		var inviteTz = this._invite.getServerStartTimeTz();
-
-		inviteDate = AjxTimezone.convertTimezone(inviteDate, AjxTimezone.getClientId(inviteTz), AjxTimezone.DEFAULT);
-
+        var inviteDate = this._getInviteDate();
+        if (inviteDate == null) {
+            return;
+        }
 
 		AjxDispatcher.require(["CalendarCore", "Calendar"]);
 		var cc = AjxDispatcher.run("GetCalController");
@@ -250,14 +252,17 @@ function() {
 		if (!this._dayView) {
 			// create a new ZmCalDayView under msgview's parent otherwise, we
 			// cannot position the day view correctly.
-			this._dayView = new ZmCalDayView(this.parent.parent, DwtControl.ABSOLUTE_STYLE, cc, null, null, null, true, true, this.isRight());
+			var dayViewParent = (this.mode && (this.mode == ZmId.VIEW_CONV2)) ?
+			    this.parent : this.parent.parent;
+			this._dayView = new ZmCalDayView(dayViewParent, DwtControl.ABSOLUTE_STYLE, cc, null,
+                this.parent._viewId, null, true, true, this.isRight());
 			this._dayView.addSelectionListener(new AjxListener(this, this._apptSelectionListener));
 			this._dayView.setZIndex(Dwt.Z_VIEW); // needed by ZmMsgController's msgview
 		}
 
 		this._dayView.setDisplay(Dwt.DISPLAY_BLOCK);
 		this._dayView.setDate(inviteDate, 0, false);
-		this.resize();
+        this.resize();
 
         var acctFolderIds = [].concat(cc.getCheckedCalendarFolderIds()); // create a *copy*
         if(this._msg.cif) {
@@ -268,17 +273,42 @@ function() {
 			start: rt.start,
 			end: rt.end,
 			fanoutAllDay: this._dayView._fanoutAllDay(),
-			callback: (new AjxCallback(this, this._dayResultsCallback, [inviteDate.getHours()])),
+			callback: (new AjxCallback(this, this._dayResultsCallback, [dayViewCallback, inviteDate.getHours()])),
 			accountFolderIds: [acctFolderIds] // pass in array of array
 		};
 		cc.apptCache.batchRequest(params);
 	}
 };
 
+ZmInviteMsgView.prototype._getInviteDate =
+function() {
+	if (!this._invite) { return null; }
+    var inviteDate = this._invite.getServerStartDate(null, true);
+    // Not sure when null inviteDate happens (probably a bug) but this is defensive
+    // check for bug 51754
+    if (inviteDate != null) {
+        var inviteTz = this._invite.getServerStartTimeTz();
+        inviteDate = AjxTimezone.convertTimezone(inviteDate,
+            AjxTimezone.getClientId(inviteTz), AjxTimezone.DEFAULT);
+    }
+    return inviteDate;
+}
+
 ZmInviteMsgView.prototype.isRight =
 function() {
 	return this.parent._controller.isReadingPaneOnRight();
 };
+
+ZmInviteMsgView.prototype.convResize =
+function() {
+	var parentSize = this.parent.getSize();
+	if (this._dayView) {
+		this._dayView.setSize(parentSize.x - 5, 218);
+		var el = this._dayView.getHtmlElement();
+		el.style.left = el.style.top = "auto";
+		this._dayView.layout();
+	}
+}
 
 /**
  * Resizes the view depending on whether f/b is being shown or not.
@@ -288,14 +318,18 @@ function() {
 ZmInviteMsgView.prototype.resize =
 function(reset) {
 	if (appCtxt.isChildWindow) { return; }
+	if (this.parent.isZmMailMsgCapsuleView) { return; }
 
 	var isRight = this.isRight();
 	var grandParentSize = this.parent.parent.getSize();
 
 	if (reset) {
-		isRight
-			? this.parent.setSize(Dwt.DEFAULT, grandParentSize.y)
-			: this.parent.setSize(grandParentSize.x, Dwt.DEFAULT);
+		if (isRight) {
+			this.parent.setSize(Dwt.DEFAULT, grandParentSize.y);
+		}
+		else {
+			this.parent.setSize(grandParentSize.x, Dwt.DEFAULT);
+		}
 	} else if (this._dayView) {
 		// bug: 50412 - fix day view for stand-alone message view which is a parent
 		// of DwtShell and needs to be resized manually.
@@ -329,7 +363,7 @@ function(reset) {
 			this._dayView.setBounds(mvBounds.x, mvHeight, mvBounds.width, dvHeight);
             if (this.parent && this.parent instanceof ZmMailMsgView){
                 var el = this.parent.getHtmlElement();
-                if (this.mode && this.mode != "MSG") {
+                if (this.mode && this.mode != ZmId.VIEW_MSG) {
                     if (el){
                         el.style.height = mvHeight + "px";
                         Dwt.setScrollStyle(el, Dwt.SCROLL);
@@ -340,7 +374,8 @@ function(reset) {
                     if (bodyDiv) Dwt.setScrollStyle(bodyDiv, Dwt.CLIP);
                     if (el) {
                         Dwt.setScrollStyle(el, Dwt.SCROLL);
-                        el.style.height = (mvHeight - ( this._inviteToolbar ? this._inviteToolbar.getYH() : 0 ) + 10) + "px";
+                        var yOffset = this.parent.getBounds().y || 0;
+                        el.style.height = (mvHeight - yOffset) + "px";
                     }
                 }
             }
@@ -384,10 +419,10 @@ function(ptst) {
 	}
 	var inviteToolbar = this.getInviteToolbar();
 
-	var buttonIds = [ZmOperation.REPLY_ACCEPT, ZmOperation.REPLY_DECLINE, ZmOperation.REPLY_TENTATIVE];
+	var buttonIds = [ZmOperation.REPLY_ACCEPT, ZmOperation.REPLY_DECLINE, ZmOperation.REPLY_TENTATIVE, ZmOperation.PROPOSE_NEW_TIME];
 	for (var i = 0; i < buttonIds.length; i++) {
 		var buttonId = buttonIds[i];
-		inviteToolbar.getButton(buttonId).setEnabled(buttonId != disableButtonId);
+		inviteToolbar.getButton(buttonId).setEnabled(appCtxt.isExternalAccount() ? false : buttonId != disableButtonId);
 	}
 };
 
@@ -444,30 +479,39 @@ function(subs, sentBy, sentByAddr, obo) {
 	if (this._invite.hasCounterMethod() &&
 		this._msg.folderId != ZmFolder.ID_SENT)
 	{
-		subs.counterInvMsg = AjxMessageFormat.format(ZmMsg.counterInviteMsg, [(sentBy && sentBy.name ) ? sentBy.name : sentByAddr]);
+        var from = this._msg.getAddress(AjxEmailAddress.FROM) && this._msg.getAddress(AjxEmailAddress.FROM).getAddress();
+        subs.counterInvMsg =  (!sentByAddr || sentByAddr == from) ?
+            AjxMessageFormat.format(ZmMsg.counterInviteMsg, [from]):AjxMessageFormat.format(ZmMsg.counterInviteMsgOnBehalfOf, [sentByAddr, from]);
 	}
 	// if this an action'ed invite, show the status banner
 	else if (isOrganizer && this._invite.hasAttendeeResponse()) {
 		var attendee = this._invite.getAttendees()[0];
 		var ptst = attendee && attendee.ptst;
 		if (ptst) {
+            var names = [];
 			var dispName = attendee.d || attendee.a;
+            var sentBy = attendee.sentBy;
+            var ptstStr = null;
+            if (sentBy) names.push(attendee.sentBy);
+            names.push(dispName);
 			subs.ptstIcon = ZmCalItem.getParticipationStatusIcon(ptst);
-
 			switch (ptst) {
 				case ZmCalBaseItem.PSTATUS_ACCEPT:
-					subs.ptstMsg = AjxMessageFormat.format(ZmMsg.inviteMsgAccepted, [dispName]);
+					ptstStr = (!sentBy) ? ZmMsg.inviteMsgAccepted: ZmMsg.inviteMsgOnBehalfOfAccepted;
 					subs.ptstClassName = "InviteStatusAccept";
 					break;
 				case ZmCalBaseItem.PSTATUS_DECLINED:
-					subs.ptstMsg = AjxMessageFormat.format(ZmMsg.inviteMsgDeclined, [dispName]);
+					ptstStr = (!sentBy) ? ZmMsg.inviteMsgDeclined: ZmMsg.inviteMsgOnBehalfOfDeclined;
 					subs.ptstClassName = "InviteStatusDecline";
 					break;
 				case ZmCalBaseItem.PSTATUS_TENTATIVE:
-					subs.ptstMsg = AjxMessageFormat.format(ZmMsg.inviteMsgTentative, [dispName]);
+					ptstStr = (!sentBy) ?ZmMsg.inviteMsgTentative:ZmMsg.inviteMsgOnBehalfOfTentative;
 					subs.ptstClassName = "InviteStatusTentative";
 					break;
 			}
+            if (ptstStr){
+                subs.ptstMsg = AjxMessageFormat.format(ptstStr, names);
+            }
 		}
 	}
 
@@ -515,8 +559,10 @@ function(subs, sentBy, sentByAddr, obo) {
             invitees.push(attendee);
         }
 	}
-	subs.invitees = this.parent.getAddressesFieldHtml(invitees, options, "inv");
-	subs.optInvitees = this.parent.getAddressesFieldHtml(optInvitees, options, "opt");
+    var addressInfo = this.parent.getAddressesFieldInfo(invitees, options, "inv");
+    subs.invitees = addressInfo.html;
+    addressInfo = this.parent.getAddressesFieldInfo(optInvitees, options, "opt");
+    subs.optInvitees = addressInfo.html;
 
 	// convert to local timezone if necessary
 	var inviteTz = this._invite.getServerStartTimeTz();
@@ -551,15 +597,32 @@ function(subs, sentBy, sentByAddr, obo) {
 	}
 };
 
-ZmInviteMsgView.prototype.truncateBodyContent =
+ZmInviteMsgView.truncateBodyContent =
 function(content, isHtml) {
+    if (!content) return content;
 	var sepIdx = content.indexOf(ZmItem.NOTES_SEPARATOR);
 	if (sepIdx == -1) {
 		return content;
 	}
-	return isHtml
-		? (content.substring(content.indexOf(">", sepIdx)+1))
-		: (content.substring(sepIdx+ZmItem.NOTES_SEPARATOR.length));
+	if (isHtml) {
+		//if it is a html content then just remove the content and preserve the html tags
+		//surrounding the content.
+        content = content.replace("<div>"+ ZmItem.NOTES_SEPARATOR +"</div>", ZmItem.NOTES_SEPARATOR); // Striping div if ZmItem.NOTES_SEPARATOR is part of div.
+        content = content.replace(ZmItem.NOTES_SEPARATOR, "<div id='separatorId'>" + ZmItem.NOTES_SEPARATOR + "</div>");
+        var divEle = document.createElement("div");
+        divEle.innerHTML = content;
+        var node = Dwt.byId("separatorId",divEle) ;
+        if (node){
+            var parent = node.parentNode
+            // Removing all previousSiblings of node that contains ZmItem.NOTES_SEPARATOR
+            while(node.previousSibling){
+                parent.removeChild(node.previousSibling);
+            }
+            parent.removeChild(node);
+        }
+        return divEle.innerHTML;
+	}
+	return content.substring(sepIdx+ZmItem.NOTES_SEPARATOR.length);
 };
 
 ZmInviteMsgView.prototype._getCounterToolbar =
@@ -568,7 +631,7 @@ function() {
 		parent: this.parent,
 		buttons: [ZmOperation.ACCEPT_PROPOSAL, ZmOperation.DECLINE_PROPOSAL],
 		posStyle: DwtControl.STATIC_STYLE,
-		className: "ZmInviteToolBar",
+		className: "ZmCounterToolBar",
 		buttonClassName: "DwtToolbarButton",
 		context: this.mode,
 		toolbarType: ZmId.TB_COUNTER
@@ -628,7 +691,7 @@ function() {
 		posStyle: DwtControl.STATIC_STYLE,
 		className: "ZmInviteToolBar",
 		buttonClassName: "DwtToolbarButton",
-		context: this.mode,
+		context: this.parent.getHTMLElId(),
 		toolbarType: ZmId.TB_INVITE
 	};
 	var tb = new ZmButtonToolBar(params);
@@ -656,12 +719,8 @@ function() {
 	tb.addFiller();
 
 	// folder picker
-	var label = this._inviteMoveLabel = new DwtText({parent: tb, className: "DwtText InviteSelectLabel"});
-	label.setSize(Dwt.DEFAULT, DwtControl.DEFAULT);
-	label.setText(ZmMsg.calendarLabel);
-	tb.addSpacer();
 	this._inviteMoveSelect = new DwtSelect({parent:tb});
-	tb.addSpacer();
+	this._inviteMoveSelect.setVisible(false); //by default hide it. bug 74254
 
 	return tb;
 };
@@ -676,9 +735,17 @@ function(ev) {
 };
 
 ZmInviteMsgView.prototype._dayResultsCallback =
-function(invitedHour, list, skipMiniCalUpdate, query) {
+function(dayViewCallback, invitedHour, list, skipMiniCalUpdate, query) {
     this._dayView.set(list, true);
     this._dayView._scrollToTime(invitedHour);
+    if (dayViewCallback) {
+        dayViewCallback.run();
+    }
+};
+
+ZmInviteMsgView.prototype.getDayView =
+function() {
+    return this._dayView;
 };
 
 ZmInviteMsgView.prototype._apptSelectionListener =
@@ -696,3 +763,11 @@ function(ev) {
 		}
 	}
 };
+
+ZmInviteMsgView.prototype.scrollToInvite =
+function() {
+    var inviteDate = this._getInviteDate();
+    if ((inviteDate != null) && this._dayView) {
+        this._dayView._scrollToTime(inviteDate.getHours());
+    }
+}

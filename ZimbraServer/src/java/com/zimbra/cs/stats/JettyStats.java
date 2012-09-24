@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,7 +17,7 @@ package com.zimbra.cs.stats;
 
 import java.util.Map;
 
-import org.mortbay.thread.ThreadPool;
+import org.eclipse.jetty.util.thread.ThreadPool;
 
 import com.google.common.collect.Maps;
 import com.zimbra.common.jetty.JettyMonitor;

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 import java.util.*;
@@ -59,6 +43,11 @@ public class I18N {
     public static final String CONTEXT_MENU_ITEM_EMPTY_FOLDER = "Empty Folder";
     public static final String CONTEXT_MENU_ITEM_TURN_SYNC_OFF = "Turn sync off";
     public static final String CONTEXT_MENU_ITEM_SEND_RECEIVE = "Send/Receive";
+    public static final String FORMAT_AS_PLAIN_TEXT= "Format As Plain Text";
+    public static final String FORMAT_AS_HTML_TEXT= "Format As HTML";
+    public static final String NEW_SIGNATURE= "New Signature";
+    public static final String DELETE= "Delete";
+    
 
 	/**
 	 * My current Locale

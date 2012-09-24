@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,15 +17,17 @@ package com.zimbra.cs.offline.jsp;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
-import com.zimbra.cs.account.DataSource.ConnectionType;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.offline.common.OfflineConstants;
-import com.zimbra.cs.zclient.ZFolder;
+import com.zimbra.client.ZFolder;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 public class XmailBean extends MailBean {
     public XmailBean() {
@@ -125,7 +127,7 @@ public class XmailBean extends MailBean {
             return;
         try {
             Map<String, Object> dsAttrs = new HashMap<String, Object>();
-            DataSource.Type dsType = isEmpty(type) ? null : DataSource.Type.fromString(type);
+            DataSourceType dsType = isEmpty(type) ? null : DataSourceType.fromString(type);
 
             calLoginError = false;
             ycontactVerifyError = false;
@@ -165,8 +167,8 @@ public class XmailBean extends MailBean {
                 }
                 if (isAllOK()) {
                     dsAttrs.put(OfflineConstants.A_offlineAccountFlavor, accountFlavor);
-                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceAccountSetup, Provisioning.TRUE);
-                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled, Provisioning.TRUE);
+                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceAccountSetup, ProvisioningConstants.TRUE);
+                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled, ProvisioningConstants.TRUE);
                     dsAttrs.put(Provisioning.A_zimbraDataSourceUsername, username);
                     if (!password.equals(JspConstants.MASKED_PASSWORD))
                         dsAttrs.put(Provisioning.A_zimbraDataSourcePassword, password);
@@ -177,25 +179,25 @@ public class XmailBean extends MailBean {
                     dsAttrs.put(Provisioning.A_zimbraDataSourceHost, host);
                     dsAttrs.put(Provisioning.A_zimbraDataSourcePort, port);
                     dsAttrs.put(Provisioning.A_zimbraDataSourceConnectionType, connectionType.toString());
-                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnableTrace, isDebugTraceEnabled ? Provisioning.TRUE
-                            : Provisioning.FALSE);
+                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnableTrace, isDebugTraceEnabled ? ProvisioningConstants.TRUE
+                            : ProvisioningConstants.FALSE);
                     if (isCalendarSyncSupported()) {
                         dsAttrs.put(OfflineConstants.A_zimbraDataSourceCalendarSyncEnabled,
-                                calendarSyncEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+                                calendarSyncEnabled ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
                     }
                     if (isContactSyncSupported()) {
                         dsAttrs.put(OfflineConstants.A_zimbraDataSourceContactSyncEnabled,
-                                contactSyncEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+                                contactSyncEnabled ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
                     }
                     dsAttrs.put(Provisioning.A_zimbraDataSourceDomain, domain);
-                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpEnabled, smtpEnabled ? Provisioning.TRUE
-                            : Provisioning.FALSE);
+                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpEnabled, smtpEnabled ? ProvisioningConstants.TRUE
+                            : ProvisioningConstants.FALSE);
                     dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpHost, smtpHost);
                     dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpPort, smtpPort);
                     dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpConnectionType, (isSmtpSsl ? ConnectionType.ssl
                             : ConnectionType.cleartext).toString());
-                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpAuthRequired, isSmtpAuth ? Provisioning.TRUE
-                            : Provisioning.FALSE);
+                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpAuthRequired, isSmtpAuth ? ProvisioningConstants.TRUE
+                            : ProvisioningConstants.FALSE);
                     if (isSmtpAuth) {
                         dsAttrs.put(OfflineConstants.A_zimbraDataSourceSmtpAuthUsername, smtpUsername);
                         if (!smtpPassword.equals(JspConstants.MASKED_PASSWORD))
@@ -203,13 +205,13 @@ public class XmailBean extends MailBean {
                     }
                     dsAttrs.put(OfflineConstants.A_zimbraDataSourceSyncFreq, Long.toString(syncFreqSecs));
                     if (isFolderSyncSupported())
-                        dsAttrs.put(OfflineConstants.A_zimbraDataSourceSyncAllServerFolders, Provisioning.TRUE);
-                    if (dsType == DataSource.Type.pop3) {
+                        dsAttrs.put(OfflineConstants.A_zimbraDataSourceSyncAllServerFolders, ProvisioningConstants.TRUE);
+                    if (dsType == DataSourceType.pop3) {
                         dsAttrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer, Boolean.toString(leaveOnServer)
                                 .toUpperCase());
                         dsAttrs.put(Provisioning.A_zimbraDataSourceFolderId, ZFolder.ID_INBOX);
                     } else {
-                        assert dsType == DataSource.Type.imap;
+                        assert dsType == DataSourceType.imap;
                         dsAttrs.put(Provisioning.A_zimbraDataSourceFolderId, ZFolder.ID_USER_ROOT);
                     }
                     if (sslCertAlias != null && sslCertAlias.length() > 0)
@@ -219,21 +221,21 @@ public class XmailBean extends MailBean {
             if (verb.isAdd()) {
                 if (email.endsWith('@' + ydomain) || email.endsWith('@' + yjpdomain) || email.endsWith('@' + ymdomain)
                         || email.endsWith('@' + yrmdomain)) {
-                    if (dsType == DataSource.Type.imap) {
+                    if (dsType == DataSourceType.imap) {
                         dsAttrs.put(Provisioning.A_zimbraDataSourceDomain, ydomain);
                     } else {
                         addInvalid("type");
                         setError(getMessage("YMPMustUseImap"));
                     }
                 } else if (email.endsWith('@' + gdomain)) {
-                    if (dsType == DataSource.Type.imap) {
+                    if (dsType == DataSourceType.imap) {
                         dsAttrs.put(Provisioning.A_zimbraDataSourceDomain, gdomain);
                     } else {
                         addInvalid("type");
                         setError(getMessage("GmailMustUseImap"));
                     }
                 } else if (email.endsWith('@' + adomain)) {
-                    if (dsType == DataSource.Type.imap) {
+                    if (dsType == DataSourceType.imap) {
                         dsAttrs.put(Provisioning.A_zimbraDataSourceDomain, adomain);
                     } else {
                         addInvalid("type");

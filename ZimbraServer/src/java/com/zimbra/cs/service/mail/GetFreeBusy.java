@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import com.zimbra.soap.SoapServlet;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
@@ -57,6 +58,11 @@ public class GetFreeBusy extends MailDocumentHandler {
         if (days > MAX_PERIOD_SIZE_IN_DAYS)
             throw ServiceException.INVALID_REQUEST("Requested range is too large (Maximum "+MAX_PERIOD_SIZE_IN_DAYS+" days)", null);
     }
+    
+    @Override
+    public boolean needsAuth(Map<String, Object> context) {
+        return false;
+    }
 
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zc = getZimbraSoapContext(context);
@@ -73,7 +79,7 @@ public class GetFreeBusy extends MailDocumentHandler {
         String nameParam = request.getAttribute(MailConstants.A_NAME, null); // comma-separated list of account emails
         String exApptUid = request.getAttribute(MailConstants.A_APPT_FREEBUSY_EXCLUDE_UID, null);
 
-        Account requestor = Provisioning.getInstance().get(Provisioning.AccountBy.id, zc.getAuthtokenAccountId());
+        Account requestor = Provisioning.getInstance().get(Key.AccountBy.id, zc.getAuthtokenAccountId());
     	FreeBusyQuery fbQuery = new FreeBusyQuery((HttpServletRequest) context.get(SoapServlet.SERVLET_REQUEST), zc, requestor, rangeStart, rangeEnd, exApptUid);
 
         String[] idStrs = null;

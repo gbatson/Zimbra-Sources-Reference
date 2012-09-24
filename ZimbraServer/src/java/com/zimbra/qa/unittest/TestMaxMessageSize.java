@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,11 +26,11 @@ import com.zimbra.common.zclient.ZClientException;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.MailServiceException;
-import com.zimbra.cs.zclient.ZEmailAddress;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.AttachedMessagePart;
-import com.zimbra.cs.zclient.ZMessage;
+import com.zimbra.client.ZEmailAddress;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage.AttachedMessagePart;
+import com.zimbra.client.ZMessage;
 
 public class TestMaxMessageSize
 extends TestCase {
@@ -148,8 +148,8 @@ extends TestCase {
     throws Exception {
         Provisioning prov = Provisioning.getInstance();
         long maxSize = prov.getConfig().getLongAttr(Provisioning.A_zimbraMtaMaxMessageSize, -1);
-        assertTrue("Unexpected error: " + e.getReason(),
-            e.getReason().matches("Message of size \\d+ exceeded allowed size"));
+        assertTrue("Unexpected error: " + e.getMessage(),
+            e.getMessage().matches("Message of size \\d+ exceeded allowed size"));
         assertEquals(MailServiceException.MESSAGE_TOO_BIG, e.getCode());
         assertEquals(Long.toString(maxSize), e.getArgumentValue("maxSize"));
     }

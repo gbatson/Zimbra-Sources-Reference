@@ -1,17 +1,15 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * 
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account;
@@ -35,12 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.naming.NameClassPair;
-import javax.naming.NamingEnumeration;
-import javax.naming.NamingException;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.DirContext;
-
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -59,7 +51,7 @@ import com.zimbra.common.util.SetUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager.ObjectClassInfo;
-import com.zimbra.cs.account.ldap.ZimbraLdapContext;
+import com.zimbra.cs.account.ldap.LdapProv;
 
 public class AttributeManagerUtil {
 
@@ -104,6 +96,7 @@ public class AttributeManagerUtil {
     private enum Action { 
         dump,
         generateDefaultCOSLdif,
+        generateDefaultExternalCOSLdif,
         generateGetters,
         generateGlobalConfigLdif,
         generateLdapSchema,
@@ -169,9 +162,9 @@ public class AttributeManagerUtil {
         pw.println("#");
         pw.println("# LDAP entry for the default Zimbra COS.");
         pw.println("#");
-        
+
         String baseDn = CLOptions.getBaseDn("cos");
-        String cosName = CLOptions.getEntryName("cos", "default");
+        String cosName = CLOptions.getEntryName("cos", Provisioning.DEFAULT_COS_NAME);
         String cosId = CLOptions.getEntryId("cos", "e00428a1-0c00-11d9-836a-000d93afea2a");
 
         pw.println("dn: cn=" + cosName +",cn=cos," + baseDn);
@@ -189,13 +182,51 @@ public class AttributeManagerUtil {
                }
            }
         }
-        String[] outs = out.toArray(new String[0]);
+        String[] outs = out.toArray(new String[out.size()]);
         Arrays.sort(outs);
         for (String o : outs) {
             pw.println(o);
         }
     }
-    
+
+    private void generateDefaultExternalCOSLdif(PrintWriter pw) {
+        pw.println(doNotModifyDisclaimer("#"));
+        pw.println("#");
+        pw.println("# LDAP entry for default COS for external user accounts.");
+        pw.println("#");
+
+        String baseDn = CLOptions.getBaseDn("cos");
+        String cosName = CLOptions.getEntryName("cos", Provisioning.DEFAULT_EXTERNAL_COS_NAME);
+        String cosId = CLOptions.getEntryId("cos", "f27456a8-0c00-11d9-280a-286d93afea2g");
+
+        pw.println("dn: cn=" + cosName +",cn=cos," + baseDn);
+        pw.println("cn: " + cosName);
+        pw.println("objectclass: zimbraCOS");
+        pw.println("zimbraId: " + cosId);
+        pw.println("description: The default external users COS");
+
+        List<String> out = new LinkedList<String>();
+        for (AttributeInfo attr : getAttrs().values()) {
+            List<String> defaultValues = attr.getDefaultExternalCosValues();
+            if (defaultValues != null && !defaultValues.isEmpty()) {
+                for (String v : defaultValues) {
+                    out.add(attr.getName() + ": " + v);
+                }
+            } else {
+                defaultValues = attr.getDefaultCosValues();
+                if (defaultValues != null) {
+                    for (String v : defaultValues) {
+                        out.add(attr.getName() + ": " + v);
+                    }
+                }
+            }
+        }
+        String[] outs = out.toArray(new String[out.size()]);
+        Arrays.sort(outs);
+        for (String o : outs) {
+            pw.println(o);
+        }
+    }
 
     private void generateGlobalConfigLdif(PrintWriter pw) {
         pw.println(doNotModifyDisclaimer("#"));
@@ -218,7 +249,7 @@ public class AttributeManagerUtil {
                }
            }
         }
-        String[] outs = out.toArray(new String[0]);
+        String[] outs = out.toArray(new String[out.size()]);
         Arrays.sort(outs);
         for (String o : outs) {
             pw.println(o);
@@ -782,31 +813,6 @@ public class AttributeManagerUtil {
         
         FileGenUtil.replaceFile(outFile, result.toString());
     }
-    
-    private static void dumpAttrs(PrintWriter pw, String name, Attributes attrs) throws NamingException {
-        NamingEnumeration<javax.naming.directory.Attribute> attrIter = (NamingEnumeration<javax.naming.directory.Attribute>) attrs.getAll();
-        List<javax.naming.directory.Attribute> attrsList = new LinkedList<javax.naming.directory.Attribute>();
-        while (attrIter.hasMore()) {
-            attrsList.add(attrIter.next());
-        }
-        Collections.sort(attrsList, new Comparator<javax.naming.directory.Attribute>() {
-            public int compare(javax.naming.directory.Attribute a1, javax.naming.directory.Attribute b1) {
-                return a1.getID().compareTo(b1.getID());
-            }
-        });
-        for (javax.naming.directory.Attribute attr : attrsList) {
-//            String s = attr.toString();
-            NamingEnumeration valIter = attr.getAll();
-            List<String> values = new LinkedList<String>();
-            while (valIter.hasMore()) {
-                values.add((String)valIter.next());
-            }
-            Collections.sort(values);
-            for (String val : values) {
-                pw.println(name + ": " + attr.getID() + ": " + val);
-            }
-        }
-    }
 
     private void listAttrs(PrintWriter pw, String[] inClass, String[] notInClass, String[] printFlags) throws ServiceException {
         if (inClass == null)
@@ -851,39 +857,6 @@ public class AttributeManagerUtil {
         }
 
     }
-    
-    private static void dumpSchema(PrintWriter pw) throws ServiceException {
-        ZimbraLdapContext zlc = null;
-        try {
-          zlc = new ZimbraLdapContext(true);
-          DirContext schema = zlc.getSchema();
-
-          // Enumerate over ClassDefinition, AttributeDefinition, MatchingRule, SyntaxDefinition
-          NamingEnumeration<NameClassPair> schemaTypeIter = schema.list("");
-          while (schemaTypeIter.hasMore()) {
-              String schemaType = schemaTypeIter.next().getName();
-              NamingEnumeration<NameClassPair> schemaEntryIter = schema.list(schemaType);
-              List<String> schemaEntries = new LinkedList<String>();
-              while (schemaEntryIter.hasMore()) {
-                  schemaEntries.add(schemaEntryIter.next().getName());
-              }
-              Collections.sort(schemaEntries);
-
-              for (String schemaEntry : schemaEntries) {
-                  DirContext sdc = (DirContext) schema.lookup(schemaType + "/" + schemaEntry);
-                  dumpAttrs(pw, schemaType + ": " + schemaEntry, sdc.getAttributes(""));
-              }
-          }
-
-          dumpAttrs(pw, "GlobalConfig", zlc.getAttributes("cn=config,cn=zimbra"));
-          dumpAttrs(pw, "DefaultCOS", zlc.getAttributes("cn=default,cn=cos,cn=zimbra"));
-        } catch (NamingException ne) {
-            ne.printStackTrace();
-        } finally {
-            ZimbraLdapContext.closeContext(zlc);
-        }
-    }
-    
 
     private static String enumName(AttributeInfo ai) {
         String enumName = ai.getName();
@@ -962,7 +935,9 @@ public class AttributeManagerUtil {
                case TYPE_GENTIME:
                case TYPE_ENUM:
                case TYPE_PORT:
-                   generateGetter(result, ai, false, ac);
+                   if (ai.getCardinality() != AttributeCardinality.multi) {
+                       generateGetter(result, ai, false, ac);
+                   }
                    generateGetter(result, ai, true, ac);
                    generateSetters(result, ai, false, SetterType.set);
                    if (ai.getType() == AttributeType.TYPE_GENTIME ||
@@ -1397,11 +1372,14 @@ public class AttributeManagerUtil {
         
         switch (action) {
         case dump:
-            dumpSchema(pw);
+            LdapProv.getInst().dumpLdapSchema(pw);
             break;
         case generateDefaultCOSLdif:
             amu.generateDefaultCOSLdif(pw);
             break;        
+        case generateDefaultExternalCOSLdif:
+            amu.generateDefaultExternalCOSLdif(pw);
+            break;
         case generateGetters:
             amu.generateGetters(cl.getOptionValue('c'), cl.getOptionValue('r'));
             break;

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
 
@@ -36,44 +20,8 @@ public class TagContact extends AjaxCommonTest  {
 		
 	}
 	
-	@Test(	description = "Tag a contact",
-			groups = { "smoke" })
-	public void TagContact_01() throws HarnessException {
-
-		String firstName = "first" + ZimbraSeleniumProperties.getUniqueString();		
-		String lastName = "last" + ZimbraSeleniumProperties.getUniqueString();
-	    String email = "email" +  ZimbraSeleniumProperties.getUniqueString() + "@zimbra.com";
-		//default value for file as is last, first
-		String fileAs = lastName + ", " + firstName;
-	
-        app.zGetActiveAccount().soapSend(
-                "<CreateContactRequest xmlns='urn:zimbraMail'>" +
-                "<cn fileAsStr='" + fileAs + "' >" +
-                "<a n='firstName'>" + firstName +"</a>" +
-                "<a n='lastName'>" + lastName +"</a>" +
-                "<a n='email'>" + email + "</a>" +               
-                "</cn>" +            
-                "</CreateContactRequest>");
-
-        
-        ContactItem contactItem = ContactItem.importFromSOAP(app.zGetActiveAccount(), "FIELD[lastname]:" + lastName + "");
-        
-        // Refresh the view, to pick up the new contact
-        FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
-        GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-        app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
-                 
-        // Select the item
-        app.zPageAddressbook.zListItem(Action.A_LEFTCLICK, contactItem.fileAs); // contactItem.fileAs);
-
-	    String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();
-		
-		// Click new tag
-		DialogTag dialogTag = (DialogTag) app.zPageAddressbook.zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_NEWTAG);
-		dialogTag.zSetTagName(tagName);
-		dialogTag.zClickButton(Button.B_OK);		
-				
-	
+	// verify contact tagged with tag and toasted message
+	private void Verify(ContactItem contactItem, String tagName)throws HarnessException {
 		// Make sure the tag was created on the server (get the tag ID)
 		app.zGetActiveAccount().soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");;
 		String tagID = app.zGetActiveAccount().soapSelectValue("//mail:GetTagResponse//mail:tag[@name='"+ tagName +"']", "id");
@@ -86,17 +34,133 @@ public class TagContact extends AjaxCommonTest  {
 		
 		String contactTags = app.zGetActiveAccount().soapSelectValue("//mail:GetContactsResponse//mail:cn", "t");
 		 
-		ZAssert.assertEquals(contactTags, tagID, "Verify the tag appears on the contact id=" +  contactItem.getId());
-		
+		//if multi-tagged
+		if (contactTags.contains(",")) {
+			ZAssert.assertStringContains(contactTags, tagID, "Verify the tag appears on the contact id=" +  contactItem.getId());
+		}
+		else {
+			ZAssert.assertEquals(contactTags, tagID, "Verify the tag appears on the contact id=" +  contactItem.getId());
+		}
 		//verify toasted message '1 contact tagged ...'
         Toaster toast = app.zPageMain.zGetToaster();
         String toastMsg = toast.zGetToastMessage();
         ZAssert.assertStringContains(toastMsg, "1 contact tagged \"" + tagName + "\"", "Verify toast message '" + "1 contact tagged \"" + tagName + "\"'" );
  
-  
+ 		
+	}
+	@Test(	description = "Tag a contact, click pulldown menu Tag->New Tag",
+			groups = { "smoke" })
+	public void ClickPulldownMenuTagNewTag() throws HarnessException {
+
+		// Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+
+	    String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();
+		
+		// Click new tag
+		DialogTag dialogTag = (DialogTag) app.zPageAddressbook.zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_NEWTAG);
+		dialogTag.zSetTagName(tagName);
+		dialogTag.zClickButton(Button.B_OK);		
+				
+	    Verify(contactItem, tagName);
    	}
 	
+	@Test(	description = "Right click then click Tag Contact->New Tag",
+			groups = { "smoke" })	
+	public void ClickContextMenuTagContactNewTag() throws HarnessException {
+		  // Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+			
+		String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();
+			
+		//click Tag Contact->New Tag	
+        DialogTag dialogTag = (DialogTag) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_TAG, Button.O_TAG_NEWTAG , contactItem.fileAs);        
+    	dialogTag.zSetTagName(tagName);
+		dialogTag.zClickButton(Button.B_OK);		
+
+		Verify(contactItem, tagName); 
+	}
+
+	@Test(	description = "Right click then click Tag Contact->a tag name",
+			groups = { "functional" })	
+	public void ClickContextMenuTagContactExistingTag() throws HarnessException {
+		// Create a tag
+		TagItem tagItem = TagItem.CreateUsingSoap(app);		
+
+		// Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+			
+		//click Tag Contact->the tag name
+		app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_TAG, tagItem, contactItem.fileAs);        
+    	
+		Verify(contactItem, tagItem.getName()); 
+	}
+
+	@Test(	description = "click pulldown menu Tag->A tag name",
+			groups = { "smoke" })	
+	public void ClickPulldownMenuTagExistingTag() throws HarnessException {
+		// Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+
+		// Create a tag
+		TagItem tagItem = TagItem.CreateUsingSoap(app);
+		
+		// select the tag
+		app.zPageAddressbook.zToolbarPressPulldown(Button.B_TAG, tagItem);
+
+		Verify(contactItem, tagItem.getName()); 
+	}
+
+	@Test(	description = "Double tag a contact ",
+			groups = { "functional" })	
+	public void DoubleTag() throws HarnessException {
+		// Create a new tag
+		TagItem tagItem = TagItem.CreateUsingSoap(app);
+
+		// Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+
+		// select the tag
+		app.zPageAddressbook.zToolbarPressPulldown(Button.B_TAG, tagItem);
+
+		Verify(contactItem, tagItem.getName()); 
+
+		// create a new tag name 		
+		String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();
+			
+		//click Tag Contact->New Tag	
+        DialogTag dialogTag = (DialogTag) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_TAG, Button.O_TAG_NEWTAG , contactItem.fileAs);        
+    	dialogTag.zSetTagName(tagName);
+		dialogTag.zClickButton(Button.B_OK);		
+
+		Verify(contactItem, tagName); 
+		
+	}
+
 	
-  	
+	@Test(	description = "Tag a contact by dnd on an existing tag",
+			groups = { "functional" })
+	public void DnDOnExistingTag() throws HarnessException {
+	
+		  // Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+	          
+		// Create a new tag via soap
+	    TagItem tagItem = TagItem.CreateUsingSoap(app);
+		
+		// Refresh to display the new tag
+		app.zPageMain.zToolbarPressButton(Button.B_REFRESH);
+		
+	    // Dnd on the new tag
+		app.zPageAddressbook.zDragAndDrop(
+				"css=td#zlif__CNS-main__" + contactItem.getId() + "__fileas:contains("+ contactItem.fileAs + ")",
+				"css=div[id=main_Contacts-parent-TAG] div[id=ztih__main_Contacts__TAG] td[id^=zti__main_Contacts__][id$=_textCell]:contains("+ tagItem.getName() + ")");
+			
+		Verify(contactItem, tagItem.getName());
+			  
+   	}
+
+
+
 }
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -50,7 +50,8 @@ import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.DavException;
@@ -76,8 +77,8 @@ import com.zimbra.cs.service.FileUploadServlet.Upload;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
 
 @SuppressWarnings("serial")
 public class DavServlet extends ZimbraServlet {
@@ -488,6 +489,7 @@ public class DavServlet extends ZimbraServlet {
 		DavProtocol.HEADER_CONTENT_TYPE,
 		DavProtocol.HEADER_ETAG,
 		DavProtocol.HEADER_IF_MATCH,
+		DavProtocol.HEADER_OVERWRITE,
         DavProtocol.HEADER_DESTINATION
 	};
 	
@@ -555,7 +557,7 @@ public class DavServlet extends ZimbraServlet {
         ZMailbox.Options zoptions = new ZMailbox.Options(authToken.toZAuthToken(), AccountUtil.getSoapUri(acct));
         zoptions.setNoSession(true);
         zoptions.setTargetAccount(target.getAccountId());
-        zoptions.setTargetAccountBy(Provisioning.AccountBy.id);
+        zoptions.setTargetAccountBy(Key.AccountBy.id);
         ZMailbox zmbx = ZMailbox.getMailbox(zoptions);
         ZFolder f = zmbx.getFolderById("" + target.toString());
         if (f == null)
@@ -585,15 +587,8 @@ public class DavServlet extends ZimbraServlet {
         HttpMethod method = m.toHttpMethod(ctxt, url);
         for (String h : PROXY_REQUEST_HEADERS) {
             String hval = ctxt.getRequest().getHeader(h);
-            if (hval != null) {
-            	if (h.equalsIgnoreCase(DavProtocol.HEADER_DESTINATION)) {
-            		// decode and encode to make sure string matching is happening on the same encoding
-            		String dest = HttpUtil.urlEscape(HttpUtil.urlUnescape(hval));
-            		if (dest.contains(prefix))            	
-            			hval = dest.replace(prefix, newPrefix+"/");
-            	}	
-            	method.addRequestHeader(h, hval);
-            }	
+            if (hval != null)
+                method.addRequestHeader(h, hval);
         }
         int statusCode = HttpClientUtil.executeMethod(client, method);
         for (String h : PROXY_RESPONSE_HEADERS) {

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.staf;
 
 import java.io.*;
@@ -128,7 +112,7 @@ public class StafIntegration implements STAFServiceInterfaceLevel30 {
         String valuePattern = request.optionValue(argPattern);
         String valueURL = request.optionValue(argDesktopURL);
         String valueLog = request.optionValue(argLog);
-        harness.setTestOutputFolderName(valueLog);
+		        
 
         mLog.info("valueServer="+ valueServer);
         mLog.info("valueRoot="+ valueRoot);
@@ -137,12 +121,6 @@ public class StafIntegration implements STAFServiceInterfaceLevel30 {
         mLog.info("valueURL="+ valueURL);
         mLog.info("valueLog="+ valueLog);
         
-		// If specified, load the log4j property file first
-		// so that we start logging immediately
-		if (request.optionTimes(argLog4j) > 0 ) {
-        	PropertyConfigurator.configure(request.optionValue(argLog4j));
-		}
-		        
         // Since multiple GROUP arguments can be specified, process each one
         ArrayList<String> valueGroup = new ArrayList<String>();
         for (int i = 1; i <= request.optionTimes(argGroup); i++) {
@@ -169,12 +147,8 @@ public class StafIntegration implements STAFServiceInterfaceLevel30 {
         	// Load the original properties
 			StafProperties configProperties = new StafProperties(valueRoot + "/conf/config.properties");
 			
-			// Set values
-			configProperties.setProperty("server.scheme", "http");
 			configProperties.setProperty("server.host", valueServer);
-			configProperties.setProperty("server.port", "80");
-			configProperties.setProperty("adminName", "admin@" + valueServer);
-			configProperties.setProperty("browser", "firefox"); // TODO
+			configProperties.setProperty("adminName", "globaladmin@" + valueServer);
 
 			configProperties.setProperty("seleniumMode", "Local");
 			configProperties.setProperty("serverName", "localhost");
@@ -206,6 +180,13 @@ public class StafIntegration implements STAFServiceInterfaceLevel30 {
         	}
         }
 
+        harness.setTestOutputFolderName(valueLog);
+
+		// If specified, load the log4j property file first
+		// so that we start logging immediately
+		if (request.optionTimes(argLog4j) > 0 ) {
+        	PropertyConfigurator.configure(request.optionValue(argLog4j));
+		}
 
 		// Set the harness parameters
         harness.jarfilename = valueJarfile;

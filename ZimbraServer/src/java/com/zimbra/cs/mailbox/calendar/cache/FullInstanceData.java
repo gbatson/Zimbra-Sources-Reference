@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,12 +18,12 @@ package com.zimbra.cs.mailbox.calendar.cache;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.zimbra.common.calendar.Geo;
+import com.zimbra.common.calendar.ParsedDateTime;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.calendar.Geo;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
@@ -305,7 +305,7 @@ public class FullInstanceData extends InstanceData {
         Geo geo = null;
         Metadata metaGeo = meta.getMap(FN_GEO, true);
         if (metaGeo != null)
-            geo = Geo.decodeMetadata(metaGeo);
+            geo = com.zimbra.cs.mailbox.calendar.Util.decodeGeoFromMetadata(metaGeo);
 
         init(invId, compNum, recurId, seq, dtStamp, org, isOrg, attendees, hasAlarm, hasAttachment, draft, neverSent,
              summary, location, fragment, descInMeta, desc, descHtml,
@@ -372,7 +372,7 @@ public class FullInstanceData extends InstanceData {
             }
         }
         if (mGeo != null) {
-            meta.put(FN_GEO, mGeo.encodeMetadata());
+            meta.put(FN_GEO, com.zimbra.cs.mailbox.calendar.Util.encodeMetadata(mGeo));
         }
 
         return meta;

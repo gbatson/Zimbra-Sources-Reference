@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,6 +15,7 @@
 
 package com.zimbra.cs.service.mail;
 
+import com.google.common.io.Closeables;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -28,7 +29,6 @@ import com.zimbra.cs.index.ZimbraQueryResults;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.soap.ZimbraSoapContext;
 import org.apache.jsieve.parser.generated.Node;
@@ -36,6 +36,7 @@ import org.apache.jsieve.parser.generated.ParseException;
 import org.dom4j.QName;
 
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -55,7 +56,7 @@ public class ApplyFilterRules extends MailDocumentHandler {
         if (StringUtil.isNullOrEmpty(fullScript)) {
             throw ServiceException.INVALID_REQUEST("Account has no filter rules defined.", null);
         }
-        
+
         List<Element> ruleElements =
             request.getElement(MailConstants.E_FILTER_RULES).listElements(MailConstants.E_FILTER_RULE);
         if (ruleElements.size() == 0) {
@@ -78,11 +79,11 @@ public class ApplyFilterRules extends MailDocumentHandler {
         ZimbraLog.filter.debug("Applying partial script to existing messages: %s", partialScript);
         Node node = null;
         try {
-            node = RuleManager.parse(partialScript); 
+            node = RuleManager.parse(partialScript);
         } catch (ParseException e) {
             throw ServiceException.FAILURE("Unable to parse Sieve script: " + partialScript, e);
         }
-        
+
         // Get the ids of the messages to filter.
         Element msgEl = request.getOptionalElement(MailConstants.E_MSG);
         String query = getElementText(request, MailConstants.E_QUERY);
@@ -96,19 +97,17 @@ public class ApplyFilterRules extends MailDocumentHandler {
         List<Integer> messageIds = new ArrayList<Integer>();
         List<Integer> affectedIds = new ArrayList<Integer>();
         OperationContext octxt = getOperationContext(zsc, context);
-        
+
         if (msgEl != null) {
             String[] ids = msgEl.getAttribute(MailConstants.A_IDS).split(",");
             for (String id : ids) {
                 messageIds.add(Integer.valueOf(id));
             }
         } else if (query != null) {
-            byte[] types = new byte[] { MailItem.TYPE_MESSAGE };
             ZimbraQueryResults results = null;
-            
             try {
-                results = mbox.search(octxt, query, types,
-                    SortBy.NONE, Integer.MAX_VALUE);
+                results = mbox.index.search(octxt, query,
+                        EnumSet.of(MailItem.Type.MESSAGE), SortBy.NONE, Integer.MAX_VALUE);
                 while (results.hasNext()) {
                     ZimbraHit hit = results.getNext();
                     messageIds.add(hit.getItemId());
@@ -117,25 +116,23 @@ public class ApplyFilterRules extends MailDocumentHandler {
                 String msg = String.format("Unable to run search for query: '%s'", query);
                 throw ServiceException.INVALID_REQUEST(msg, e);
             } finally {
-                if (results != null) {
-                    results.doneWithSearchResults();
-                }
+                Closeables.closeQuietly(results);
             }
         } else {
             String msg = String.format("Must specify either the %s or %s element.",
                 MailConstants.E_MSG, MailConstants.E_QUERY);
             throw ServiceException.INVALID_REQUEST(msg, null);
         }
-        
+
         int max = account.getFilterBatchSize();
         if (messageIds.size() > max) {
             throw ServiceException.INVALID_REQUEST("Attempted to apply filter rules to " + messageIds.size() +
                 " messages, which exceeded the limit of " + max, null);
         }
-        
+
         ZimbraLog.filter.info("Applying filter rules to %s existing messages.", messageIds.size());
         long sleepInterval = account.getFilterSleepInterval();
-        
+
         // Apply filter rules.
         for (int i = 0; i < messageIds.size(); i++) {
             if (i > 0 && sleepInterval > 0) {
@@ -144,7 +141,7 @@ public class ApplyFilterRules extends MailDocumentHandler {
                 } catch (InterruptedException e) {
                 }
             }
-            
+
             int id = messageIds.get(i);
             try {
                 mbox.getMessageById(octxt, id);
@@ -158,7 +155,7 @@ public class ApplyFilterRules extends MailDocumentHandler {
                 ZimbraLog.filter.warn("Unable to filter message %d.", id, e);
             }
         }
-        
+
         // Send response.
         Element response = zsc.createElement(getResponseElementName());
         if (affectedIds.size() > 0) {

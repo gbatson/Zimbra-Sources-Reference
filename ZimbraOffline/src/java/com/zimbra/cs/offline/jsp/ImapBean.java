@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,7 +14,7 @@
  */
 package com.zimbra.cs.offline.jsp;
 
-import com.zimbra.cs.account.DataSource;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 public class ImapBean extends XmailBean {
 
@@ -24,7 +24,7 @@ public class ImapBean extends XmailBean {
 
     public ImapBean() {
         port = "143";
-        type = DataSource.Type.imap.toString();
+        type = DataSourceType.imap.toString();
     }
 
     public boolean isFolderSyncSupported() {

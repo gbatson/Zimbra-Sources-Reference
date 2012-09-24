@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -13,9 +13,6 @@
  * ***** END LICENSE BLOCK *****
  */
 
-/*
- * Created on Jun 17, 2004
- */
 package com.zimbra.cs.service.mail;
 
 import java.util.ArrayList;
@@ -29,12 +26,15 @@ import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.accesscontrol.RightManager;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.cs.account.accesscontrol.UserRight;
+import com.zimbra.cs.service.account.DiscoverRights;
+import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.TargetBy;
 
 public class CheckPermission extends MailDocumentHandler {
 
@@ -44,48 +44,46 @@ public class CheckPermission extends MailDocumentHandler {
         
         Element eTarget = request.getElement(MailConstants.E_TARGET);
         String targetType = eTarget.getAttribute(MailConstants.A_TARGET_TYPE);
-        
         TargetType tt = TargetType.fromCode(targetType);
+        
         String targetBy = eTarget.getAttribute(MailConstants.A_TARGET_BY);
+        
         String targetValue = eTarget.getText();
         
         NamedEntry entry = null;
-        
-        //
-        // Note, to defend against harvest attack, if the target is not found, return "not allowed"
-        // instead of NO_SUCH_XXX.
-        //
+
         Element response = zsc.createElement(MailConstants.CHECK_PERMISSION_RESPONSE);
         
         if (TargetType.account == tt) {
             AccountBy acctBy = AccountBy.fromString(targetBy);
             entry = prov.get(acctBy, targetValue, zsc.getAuthToken());
             
-            if (entry == null && acctBy == AccountBy.id)
+            if (entry == null && acctBy == AccountBy.id) {
                 throw AccountServiceException.NO_SUCH_ACCOUNT(targetValue);
+            }
             
             // otherwise, the target could be an external user, let it fall through
             // to return the default permission.
             
         } else if (TargetType.calresource == tt) {
-            CalendarResourceBy crBy = CalendarResourceBy.fromString(targetBy);
+            Key.CalendarResourceBy crBy = Key.CalendarResourceBy.fromString(targetBy);
             entry = prov.get(crBy, targetValue);
             
-            if (entry == null && crBy == CalendarResourceBy.id)
+            if (entry == null && crBy == Key.CalendarResourceBy.id) {
                 throw AccountServiceException.NO_SUCH_CALENDAR_RESOURCE(targetValue);
+            }
             
         } else if (TargetType.dl == tt) {
-            // entry = prov.get(DistributionListBy.fromString(targetBy), targetValue);
+            Key.DistributionListBy dlBy = Key.DistributionListBy.fromString(targetBy);
+            entry = prov.getGroupBasic(dlBy, targetValue);
             
-            // target for all user rights is "account", it doesn't make sense to 
-            // check if the authed user has right on a DL (e.g. can I invite tis DL?)
-            // until we add an inviteDistributionList right targeted for DLs.
-            // 
-            // let it fall through to return the default permission
-            entry = null;
+            if (entry == null && dlBy == Key.DistributionListBy.id) {
+                throw AccountServiceException.NO_SUCH_CALENDAR_RESOURCE(targetValue);
+            }
             
-        } else
+        } else {
             throw ServiceException.INVALID_REQUEST("invalid target type: " + targetType, null);
+        }
         
         List<UserRight> rights = new ArrayList<UserRight>();
         for (Element eRight : request.listElements(MailConstants.E_RIGHT)) {
@@ -97,6 +95,11 @@ public class CheckPermission extends MailDocumentHandler {
         AccessManager am = AccessManager.getInstance();
         for (UserRight right : rights) {
             boolean allow = am.canDo(zsc.getAuthToken(), entry, right, false);
+            if (allow && 
+                DiscoverRights.isDelegatedSendRight(right) &&
+                TargetBy.name.name().equals(targetBy)) {
+                allow = AccountUtil.isAllowedSendAddress(entry, targetValue);
+            }
             response.addElement(MailConstants.E_RIGHT).addAttribute(MailConstants.A_ALLOW, allow).setText(right.getName());
             finalResult = finalResult & allow;
         }

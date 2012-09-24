@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,6 +16,7 @@ package com.zimbra.cs.index;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 
 import org.apache.lucene.document.DateTools;
@@ -42,7 +43,7 @@ import org.apache.lucene.util.BitVector;
  */
 final class LuceneIndexRepair {
     // need to sync with SegmentInfos#CURRENT_FORMAT
-    private static final int FORMAT = SegmentInfos.FORMAT_DIAGNOSTICS;
+    private static final int FORMAT = SegmentInfos.FORMAT_3_1;
     // need to sync with IndexFileNames#SEGMENTS_GEN
     private static final String SEGMENTS_GEN = "segments.gen";
     // need to sync with IndexFileNames#SEGMENTS
@@ -92,7 +93,7 @@ final class LuceneIndexRepair {
             return repaired;
         }
 
-        directory.sync(nextSegsFilename);
+        directory.sync(Collections.singleton(nextSegsFilename));
         try {
             commit(gen);
         } catch (IOException e) {
@@ -116,12 +117,10 @@ final class LuceneIndexRepair {
         } finally {
             output.close();
         }
-        directory.sync(SEGMENTS_GEN);
+        directory.sync(Collections.singleton(SEGMENTS_GEN));
     }
 
-    private void convert(ChecksumIndexInput input, ChecksumIndexOutput output)
-        throws IOException {
-
+    private void convert(ChecksumIndexInput input, ChecksumIndexOutput output) throws IOException {
         int format = input.readInt();
         if (format < 0) {
             if (format < FORMAT) {
@@ -140,6 +139,9 @@ final class LuceneIndexRepair {
         int num = input.readInt();
         output.writeInt(num);
         for (int i = 0; i < num; i++) {
+            if (format <= SegmentInfos.FORMAT_3_1) {
+                output.writeString(input.readString()); // version
+            }
             String name = input.readString();
             output.writeString(name);
             int count = input.readInt();
@@ -183,6 +185,9 @@ final class LuceneIndexRepair {
             }
             if (format <= SegmentInfos.FORMAT_DIAGNOSTICS) {
                 output.writeStringStringMap(input.readStringStringMap()); // diagnostics
+            }
+            if (format <= SegmentInfos.FORMAT_HAS_VECTORS) {
+                output.writeByte(input.readByte()); // hasVectors
             }
         }
 
@@ -242,9 +247,9 @@ final class LuceneIndexRepair {
     private void rename(String from, String to) {
         File dir;
         if (directory instanceof LuceneDirectory) {
-            dir = ((LuceneDirectory) directory).getFile();
+            dir = ((LuceneDirectory) directory).getDirectory();
         } else if (directory instanceof FSDirectory) {
-            dir = ((FSDirectory) directory).getFile();
+            dir = ((FSDirectory) directory).getDirectory();
         } else {
             return;
         }

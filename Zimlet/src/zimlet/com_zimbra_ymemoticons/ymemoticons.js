@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -43,7 +43,7 @@ function(msg, manager) {
 		this.enableInMail = Boolean(this.getUserProperty("yemoticons_enableInMail"));
 	}
 
-	if (msg.folderId == ZmOrganizer.ID_CHATS) {
+	if (msg && msg.folderId == ZmOrganizer.ID_CHATS) {
 		manager.addHandler(this);
 		manager.sortHandlers();
 		manager.__hasSmileysHandler = true;
@@ -82,6 +82,9 @@ Com_Zimbra_YMEmoticons.prototype.generateSpan =
 function(html, idx, obj, spanId, context) {
 
 	var h = context.height / 2;
+	if (AjxEnv.isIE) {
+		h = "0px"; // IE uses non-standard box model
+	}
 	html[idx++] = [
 		"<span style='height:", context.height,
 		";width:", context.width,
@@ -92,7 +95,11 @@ function(html, idx, obj, spanId, context) {
 		"background:url(", context.img.src, ") no-repeat 0 50%;'",
 		' title="', AjxStringUtil.xmlAttrEncode(context.text), ' - ',
 		AjxStringUtil.xmlAttrEncode(context.alt), '"',
-		"></span>"
+		// bug 72304 in IE and Chrome, an empty span with only background
+		// image's position doesn't follow the element before, so add a
+		// invisible character
+		"><span style=\"visibility:hidden\">a</span></span>"
+		
 	].join("");
 
 	return idx;

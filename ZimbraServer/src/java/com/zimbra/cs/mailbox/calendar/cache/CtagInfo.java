@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,8 +21,8 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.service.util.ItemId;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMountpoint;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMountpoint;
 
 // for CalDAV
 // tracks last modified "time" of a calendar folder

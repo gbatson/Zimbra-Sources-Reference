@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,7 +24,7 @@ import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.Provisioning.PublishedShareInfoVisitor;
 import com.zimbra.cs.account.ShareInfo;
 import com.zimbra.cs.account.ShareInfoData;
@@ -116,9 +116,7 @@ public class GetShareInfo  extends AccountDocumentHandler {
         ShareInfoVisitor visitor = new ShareInfoVisitor(prov, response, mountedFolders, resultFilter);
         
         if (owner == null) {
-            // retrieve from published share info, 
-            if (granteeType != 0 && granteeType != ACL.GRANTEE_GROUP)
-                throw ServiceException.INVALID_REQUEST("invalid grantee type for retrieving published share info", null);
+            // retrieve from published share info
             ShareInfo.Published.get(prov, targetAcct, granteeType, owner, visitor);
         } else {
             // iterate all folders of the owner, this should be proxied to the owner account's
@@ -235,11 +233,22 @@ public class GetShareInfo  extends AccountDocumentHandler {
         
         private static class ShareInfoComparator implements Comparator<ShareInfoData> {
             public int compare(ShareInfoData a, ShareInfoData b) {
-                int r = a.getFolderPath().compareToIgnoreCase(b.getFolderPath());
-                if (r == 0)
+                int r = a.getPath().compareToIgnoreCase(b.getPath());
+                if (r == 0) {
                     r = a.getOwnerAcctEmail().compareToIgnoreCase(b.getOwnerAcctEmail());
-                if (r == 0)
-                    r = a.getGranteeName().compareToIgnoreCase(b.getGranteeName());
+                }
+                if (r == 0) {
+                    if (a.getGranteeName() != null && b.getGranteeName() != null) {
+                        r = a.getGranteeName().compareToIgnoreCase(b.getGranteeName());
+                    } else if (a.getGranteeName() == null) {
+                        r = b.getGranteeName() == null ? 0 : -1;
+                    } else {
+                        r = 1;
+                    }
+                }
+                if (r == 0) {
+                    r = a.getGranteeType().compareTo(b.getGranteeType());
+                }
                 return r;
             }
         }
@@ -274,7 +283,7 @@ public class GetShareInfo  extends AccountDocumentHandler {
             
             if (mMountedFolders != null) 
                 mptId = mMountedFolders.getLocalFolderId(
-                    sid.getOwnerAcctId(), sid.getFolderId());
+                    sid.getOwnerAcctId(), sid.getItemId());
             
             sid.toXML(eShare, mptId);
         }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,10 +14,12 @@
  */
 package com.zimbra.cs.account.accesscontrol;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.localconfig.DebugConfig;
 
 public abstract class CheckRight {
     // input to the class
@@ -28,12 +30,21 @@ public abstract class CheckRight {
     protected Provisioning mProv; 
     protected TargetType mTargetType;
     
-    
-    protected CheckRight(Entry target, Right rightNeeded, boolean canDelegateNeeded) {
+    protected CheckRight(Entry target, Right rightNeeded, boolean canDelegateNeeded) 
+    throws ServiceException {
         
         mProv = Provisioning.getInstance();
 
+        // This path is called from AccessManager, the target object can be a 
+        // DistributionList obtained from prov.get(DistributionListBy).  
+        // We require one from getDLBasic(DistributionListBy) here, because when group 
+        // members are added/removed, the upward membership cache is cleared on the cached
+        // entry.
+        if ((target instanceof DistributionList) && !(target instanceof PseudoTarget.PseudoDistributionList)) {
+            target = mProv.getDLBasic(Key.DistributionListBy.id, ((DistributionList)target).getId());
+        }
         mTarget = target;
+        
         mRightNeeded = rightNeeded;
         mCanDelegateNeeded = canDelegateNeeded;
     }
@@ -53,10 +64,11 @@ public abstract class CheckRight {
             // only if target type of the right is not account.
             // i.e. account right cannot be granted on groups
             
-            if (rightNeeded.getTargetType() == TargetType.account)
+            if (rightNeeded.getTargetType() == TargetType.account) {
                 allowed = false;
-            else
+            } else {
                 allowed = true;
+            }
             
         } else {
             // group targets can be turned off for admin rights by a localconfig key
@@ -73,12 +85,14 @@ public abstract class CheckRight {
             Right rightNeeded, boolean canDelegateNeeded) {
         if (canDelegateNeeded) {
             // check if the right is grantable on the target
-            if (!rightNeeded.grantableOnTargetType(targetType))
+            if (!rightNeeded.grantableOnTargetType(targetType)) {
                 return false;
+            }
         } else {
             // check if the right is executable on the target
-            if (!rightNeeded.executableOnTargetType(targetType))
+            if (!rightNeeded.executableOnTargetType(targetType)) {
                 return false;
+            }
         }
         return true;
     }

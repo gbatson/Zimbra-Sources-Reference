@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@ import java.io.IOException;
 
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
@@ -26,11 +27,13 @@ public class SaveChat extends CreateChat {
     
     private int mImapId;           // new IMAP id for this message
     
-    public SaveChat() {}
+    public SaveChat() {
+        mOperation = MailboxOperation.SaveChat;
+    }
     
-    public SaveChat(int mailboxId, int chatId, String digest, int msgSize,
-                    int folderId, int flags, String tags) {
+    public SaveChat(int mailboxId, int chatId, String digest, int msgSize, int folderId, int flags, String[] tags) {
         super(mailboxId, digest, msgSize, folderId, flags, tags);
+        mOperation = MailboxOperation.SaveChat;
         setMessageId(chatId);
     }
 
@@ -42,25 +45,25 @@ public class SaveChat extends CreateChat {
         mImapId = imapId;
     }
 
-    @Override protected String getPrintableData() {
+    @Override
+    protected String getPrintableData() {
         return super.getPrintableData() + ",imap=" + mImapId;
     }
     
-    @Override public int getOpCode() {
-        return OP_SAVE_DRAFT;
-    }
-    
-    @Override protected void serializeData(RedoLogOutput out) throws IOException {
+    @Override
+    protected void serializeData(RedoLogOutput out) throws IOException {
         out.writeInt(mImapId);
         super.serializeData(out);
     }
 
-    @Override protected void deserializeData(RedoLogInput in) throws IOException {
+    @Override
+    protected void deserializeData(RedoLogInput in) throws IOException {
         mImapId = in.readInt();
         super.deserializeData(in);
     }
     
-    @Override public void redo() throws Exception {
+    @Override
+    public void redo() throws Exception {
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
 
         ParsedMessage pm = new ParsedMessage(getMessageBody(), getTimestamp(), mbox.attachmentsIndexingEnabled());

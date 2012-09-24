@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import org.testng.annotations.Test;
@@ -21,18 +5,21 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 
-public class UnTagFile extends AjaxCommonTest {
+public class UnTagFile extends FeatureBriefcaseTest {
 
-	public UnTagFile() {
+	public UnTagFile() throws HarnessException {
 		logger.info("New " + UnTagFile.class.getCanonicalName());
 
 		// All tests start at the Briefcase page
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = null;
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
+		    super.startingAccountPreferences.put("zimbraPrefShowSelectionCheckbox","TRUE");
+		}
+			
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");
 	}
 
 	@Test(description = "Remove a tag from a File using Toolbar -> Tag -> Remove Tag", groups = { "smoke" })
@@ -79,14 +66,6 @@ public class UnTagFile extends AjaxCommonTest {
 		 * account.soapSelectValue("//mail:doc", "ver");
 		 */
 
-		// refresh briefcase page
-		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
-
-		SleepUtil.sleepVerySmall();
-
-		// Click on created document
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
-
 		// Create a tag
 		String tagName = "tag" + ZimbraSeleniumProperties.getUniqueString();
 
@@ -104,22 +83,59 @@ public class UnTagFile extends AjaxCommonTest {
 		 * 
 		 * //ClientSessionFactory.session().selenium().refresh();
 		 */
+		/*
+		 * // this flow is using tag pull down menu // refresh briefcase page
+		 * app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder,
+		 * true);
+		 * 
+		 * SleepUtil.sleepVerySmall();
+		 * 
+		 * // Click on created document
+		 * GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		 * app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
+		 * 
+		 * // Click on New Tag DialogTag dialogTag = (DialogTag)
+		 * app.zPageBriefcase .zToolbarPressPulldown(Button.B_TAG,
+		 * Button.O_TAG_NEWTAG, null);
+		 * 
+		 * dialogTag.zSetTagName(tagName); dialogTag.zClickButton(Button.B_OK);
+		 */
+		
+		account.soapSend("<CreateTagRequest xmlns='urn:zimbraMail'>"
+				+ "<tag name='" + tagName + "' color='1' />"
+				+ "</CreateTagRequest>");
 
-		// Click on New Tag
-		DialogTag dialogTag = (DialogTag) app.zPageBriefcase
-				.zToolbarPressPulldown(Button.B_TAG, Button.O_TAG_NEWTAG, null);
+		// Make sure the tag was created on the server
+		// account.soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");
+		// String tagId = account.soapSelectValue(
+		//		"//mail:GetTagResponse//mail:tag[@name='" + tagName + "']",
+		//		"id");
 
-		dialogTag.zSetTagName(tagName);
-		dialogTag.zClickButton(Button.B_OK);
+		TagItem tagItem = TagItem.importFromSOAP(app.zGetActiveAccount(),
+				tagName);
+		
+		ZAssert.assertNotNull(tagItem, "Verify the new tag was created");
 
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		String tagId = tagItem.getId();
+		
+		// refresh briefcase page
+		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
-		// Make sure the tag was created on the server (get the tag ID)
-		account.soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");
+		SleepUtil.sleepVerySmall();
 
-		String tagId = account.soapSelectValue(
-				"//mail:GetTagResponse//mail:tag[@name='" + tagName + "']",
-				"id");
+		// Click on created file
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+
+		// Tag document using Right Click context menu
+		app.zPageBriefcase.zListItem(Action.A_RIGHTCLICK, Button.O_TAG_FILE,
+				tagItem.getName(), fileItem);
+
 
 		// Make sure the tag was applied to the document
 		account
@@ -143,8 +159,14 @@ public class UnTagFile extends AjaxCommonTest {
 
 		SleepUtil.sleepVerySmall();
 
-		// Click on tagged document
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		// Click on tagged file
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
 
 		// Click Remove Tag
 		app.zPageBriefcase.zToolbarPressPulldown(Button.B_TAG,

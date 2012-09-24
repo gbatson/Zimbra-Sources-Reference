@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,62 +17,77 @@ package com.zimbra.cs.mailbox;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.UUIDUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.db.DbOfflineMailbox;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.ChangeTrackingMailbox.TracelessContext;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.redolog.op.CreateFolder;
 import com.zimbra.cs.redolog.op.DeleteMailbox;
 
 public class LocalMailbox extends DesktopMailbox {
-    public LocalMailbox(MailboxData data) throws ServiceException {
+    public LocalMailbox(MailboxData data) {
         super(data);
     }
-    
-    @Override synchronized void ensureSystemFolderExists() throws ServiceException {
-        super.ensureSystemFolderExists();
+
+    @Override
+    void ensureSystemFolderExists() throws ServiceException {
+        lock.lock();
         try {
-            getFolderById(ID_FOLDER_NOTIFICATIONS);
-        } catch (NoSuchItemException e) {
-            CreateFolder redo = new CreateFolder(getId(), NOTIFICATIONS_PATH,
-                ID_FOLDER_USER_ROOT, Folder.FOLDER_IS_IMMUTABLE,
-                MailItem.TYPE_UNKNOWN, 0, MailItem.DEFAULT_COLOR_RGB, null);
-            
-            redo.setFolderId(ID_FOLDER_NOTIFICATIONS);
-            redo.start(System.currentTimeMillis());
-            createFolder(new TracelessContext(redo), NOTIFICATIONS_PATH,
-                ID_FOLDER_USER_ROOT, Folder.FOLDER_IS_IMMUTABLE,
-                MailItem.TYPE_UNKNOWN, 0, MailItem.DEFAULT_COLOR_RGB, null);
-        }
-        OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
-        for (String accountId : prov.getAllAccountIds()) {
-            Account acct = prov.get(AccountBy.id, accountId);
-            if (acct == null || prov.isGalAccount(acct) || prov.isMountpointAccount(acct))
-                continue;
+            super.ensureSystemFolderExists();
             try {
-                getFolderByName(null, ID_FOLDER_NOTIFICATIONS, accountId);
+                getFolderById(ID_FOLDER_NOTIFICATIONS);
             } catch (NoSuchItemException e) {
-                createMountpoint(null, ID_FOLDER_NOTIFICATIONS, accountId,
-                    accountId, ID_FOLDER_USER_ROOT,
-                    MailItem.TYPE_UNKNOWN, 0, MailItem.DEFAULT_COLOR_RGB);
+                Folder.FolderOptions fopt = new Folder.FolderOptions().setAttributes(Folder.FOLDER_IS_IMMUTABLE);
+
+                CreateFolder redo = new CreateFolder(getId(), NOTIFICATIONS_PATH, ID_FOLDER_USER_ROOT, fopt);
+
+                redo.setFolderIdAndUuid(ID_FOLDER_NOTIFICATIONS, UUIDUtil.generateUUID());
+                redo.start(System.currentTimeMillis());
+                createFolder(new TracelessContext(redo), NOTIFICATIONS_PATH, ID_FOLDER_USER_ROOT, fopt);
             }
+            OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
+            for (String accountId : prov.getAllAccountIds()) {
+                Account acct = prov.get(AccountBy.id, accountId);
+                if (acct == null || prov.isGalAccount(acct) || prov.isMountpointAccount(acct))
+                    continue;
+                try {
+                    getFolderByName(null, ID_FOLDER_NOTIFICATIONS, accountId);
+                } catch (NoSuchItemException e) {
+                    createMountpoint(null, ID_FOLDER_NOTIFICATIONS, accountId,
+                        accountId, ID_FOLDER_USER_ROOT, null,
+                        MailItem.Type.UNKNOWN, 0, MailItem.DEFAULT_COLOR_RGB, false);
+                }
+            }
+        } finally {
+            lock.release();
         }
     }
 
-    @Override protected synchronized void initialize() throws ServiceException {
-        super.initialize();
-        getCachedItem(ID_FOLDER_CALENDAR).setColor(new MailItem.Color((byte)8));
-        Folder.create(ID_FOLDER_NOTIFICATIONS, this,
-            getFolderById(ID_FOLDER_USER_ROOT), NOTIFICATIONS_PATH,
-            Folder.FOLDER_IS_IMMUTABLE, MailItem.TYPE_UNKNOWN, 0,
-            MailItem.DEFAULT_COLOR_RGB, null, null);
+    @Override
+    protected void initialize() throws ServiceException {
+        lock.lock();
+        try {
+            super.initialize();
+
+            getCachedItem(ID_FOLDER_CALENDAR).setColor(new Color((byte) 8));
+
+            Folder.create(ID_FOLDER_NOTIFICATIONS, UUIDUtil.generateUUID(), this,
+                    getFolderById(ID_FOLDER_USER_ROOT), NOTIFICATIONS_PATH,
+                    Folder.FOLDER_IS_IMMUTABLE, MailItem.Type.UNKNOWN, 0,
+                    MailItem.DEFAULT_COLOR_RGB, null, null, null);
+        } finally {
+            lock.release();
+        }
     }
 
+    @Override
     Set<Folder> getAccessibleFolders(short rights) throws ServiceException {
         Set<Folder> accessable = super.getAccessibleFolders(rights);
         Set<Folder> visible = new HashSet<Folder>();
@@ -88,8 +103,8 @@ public class LocalMailbox extends DesktopMailbox {
         }
         return visible;
     }
-    
-    public synchronized void forceDeleteMailbox(Mailbox mbox) throws ServiceException {
+
+    public void forceDeleteMailbox(Mailbox mbox) throws ServiceException {
         DeleteMailbox redoRecorder = new DeleteMailbox(mbox.getId());
         boolean success = false;
         try {
@@ -98,9 +113,9 @@ public class LocalMailbox extends DesktopMailbox {
 
             try {
                 // remove all the relevant entries from the database
-                Connection conn = getOperationConnection();
+                DbConnection conn = getOperationConnection();
                 ZimbraLog.mailbox.info("attempting to remove the zimbra.mailbox row for id "+mbox.getId());
-                DbOfflineMailbox.forceDeleteMailbox(conn, mbox.getId());    
+                DbOfflineMailbox.forceDeleteMailbox(conn, mbox.getId());
                 success = true;
             } finally {
                 // commit the DB transaction before touching the store!  (also ends the operation)
@@ -113,10 +128,11 @@ public class LocalMailbox extends DesktopMailbox {
                 MailboxManager.getInstance().markMailboxDeleted(mbox);
             }
         } finally {
-            if (success)
+            if (success) {
                 redoRecorder.commit();
-            else
+            } else {
                 redoRecorder.abort();
+            }
         }
     }
 
@@ -128,5 +144,5 @@ public class LocalMailbox extends DesktopMailbox {
             return false;
         }
     }
-    
+
 }

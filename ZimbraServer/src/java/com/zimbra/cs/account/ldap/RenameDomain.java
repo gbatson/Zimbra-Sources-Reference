@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,11 +20,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import javax.naming.NameAlreadyBoundException;
-import javax.naming.NamingException;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.BasicAttributes;
-
+import com.google.common.collect.Maps;
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.util.EmailUtil;
@@ -37,30 +34,64 @@ import com.zimbra.cs.account.Alias;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.SearchDirectoryOptions;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.CacheEntryType;
+import com.zimbra.cs.account.SearchDirectoryOptions.ObjectType;
 import com.zimbra.cs.account.XMPPComponent;
+import com.zimbra.cs.account.ldap.entry.LdapEntry;
 import com.zimbra.cs.account.soap.SoapProvisioning;
 import com.zimbra.cs.httpclient.URLUtil;
+import com.zimbra.cs.ldap.ILdapContext;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
+import com.zimbra.soap.admin.type.CacheEntryType;
 
 
-class RenameDomain {
+public class RenameDomain {
+    
+    public static abstract class RenameDomainLdapHelper {
+        protected LdapProv mProv;
+        protected ILdapContext mZlc;
+        
+        public RenameDomainLdapHelper(LdapProv prov, ILdapContext zlc) {
+            mProv = prov;
+            mZlc = zlc;
+        }
+
+        public abstract Account getAccountById(String id) throws ServiceException;
+        public abstract DistributionList getDistributionListById(String id) throws ServiceException;
+        public abstract DynamicGroup getDynamicGroupById(String id) throws ServiceException;
+
+        public abstract void createEntry(String dn, Map<String, Object> attrs) throws ServiceException;
+        public abstract void deleteEntry(String dn) throws ServiceException;
+        public abstract void renameEntry(String oldDn, String newDn) throws ServiceException;
+        
+        public abstract void searchDirectory(SearchDirectoryOptions options, NamedEntry.Visitor visitor) 
+        throws ServiceException;
+        
+        public abstract void modifyLdapAttrs(Entry entry, Map<String, ? extends Object> attrs)
+        throws ServiceException;
+        
+        public abstract void renameAddressesInAllDistributionLists(Map<String, String> changedPairs);
+        public abstract void renameXMPPComponent(String zimbraId, String newName) throws ServiceException;
+    }
  
     private static final Log sRenameDomainLog = LogFactory.getLog("zimbra.provisioning.renamedomain");
     
-    private ZimbraLdapContext mZlc;
-    private LdapProvisioning mProv;
+    private LdapProv mProv;
+    private RenameDomainLdapHelper mLdapHelper;
     private Domain mOldDomain;
     private String mOldDomainId;   // save old domain id because we still need it after the old domain is deleted
     private String mOldDomainName; // save old domain name because we still need it after the old domain is deleted
     private String mNewDomainName;
     
-    RenameDomain(ZimbraLdapContext zlc, LdapProvisioning prov, Domain oldDomain, String newDomainName) {
-        mZlc = zlc;
+    public RenameDomain(LdapProv prov, RenameDomainLdapHelper ldapHelper, 
+            Domain oldDomain, String newDomainName) {
         mProv = prov;
+        mLdapHelper = ldapHelper;
         mOldDomain = oldDomain;
         mOldDomainId = mOldDomain.getId();
         mOldDomainName = mOldDomain.getName();
@@ -68,7 +99,7 @@ class RenameDomain {
     }
     
     private RenameDomainVisitor getVisitor(RenamePhase phase) {
-        return new RenameDomainVisitor(mZlc, mProv, mOldDomainName, mNewDomainName, phase);
+        return new RenameDomainVisitor(mProv, mLdapHelper, mOldDomainName, mNewDomainName, phase);
     }
         
     
@@ -87,46 +118,64 @@ class RenameDomain {
         debug("new domain: %s(%s)", newDomain.getName(), newDomain.getId());
             
         /*
-         * 2. move all accounts, DLs, and aliases
+         * 2. move all accounts, DLs, dynamic groups, and aliases
          */ 
         RenameDomainVisitor visitor;
-        String searchBase = mProv.mDIT.domainDNToAccountSearchDN(((LdapDomain)mOldDomain).getDN());
-        int flags = 0;
             
-        // first phase, go thru DLs and accounts and their aliases that are in the old domain into the new domain
+        // first phase, move DLs, dynamic groups, and accounts and their aliases from 
+        // the old domain into the new domain
         phase = RenamePhase.RENAME_ENTRIES;
         if (phase.ordinal() >= startingPhase.ordinal()) {
             debug("Entering phase " + phase.toString());
             // don't need to setPhase for the first first, it was set or got from beginRenameDomain
             visitor = getVisitor(phase);
-            flags = Provisioning.SA_ACCOUNT_FLAG + Provisioning.SA_CALENDAR_RESOURCE_FLAG + Provisioning.SA_DISTRIBUTION_LIST_FLAG;
-            mProv.searchObjects(null, null, searchBase, flags, visitor, 0);
+            
+            SearchDirectoryOptions options = new SearchDirectoryOptions();
+            options.setDomain(mOldDomain);
+            options.setOnMaster(true);
+            options.setFilterString(FilterId.RENAME_DOMAIN, null);
+            options.setTypes(ObjectType.accounts, ObjectType.resources, 
+                    ObjectType.distributionlists, ObjectType.dynamicgroups);
+            mLdapHelper.searchDirectory(options, visitor);
         }
             
-        // second phase, go thru aliases that have not been moved yet, by now aliases left in the domain should be aliases with target in other domains
+        // second phase, go thru aliases that have not been moved yet, by now aliases 
+        // left in the domain should be aliases with target in other domains
         phase = RenamePhase.FIX_FOREIGN_ALIASES;
         if (phase.ordinal() >= startingPhase.ordinal()) {
             debug("Entering phase " + phase.toString());
             renameInfo.setPhase(phase);
             renameInfo.write(mProv, mOldDomain);
             visitor = getVisitor(phase);
-            flags = Provisioning.SA_ALIAS_FLAG;
-            mProv.searchObjects(null, null, searchBase, flags, visitor, 0);
+            
+            SearchDirectoryOptions options = new SearchDirectoryOptions();
+            options.setDomain(mOldDomain);
+            options.setOnMaster(true);
+            options.setFilterString(FilterId.RENAME_DOMAIN, null);
+            options.setTypes(ObjectType.aliases);
+            mLdapHelper.searchDirectory(options, visitor);
         }
             
-        // third phase, go thru DLs and accounts in the *new* domain, rename the addresses in all DLs
-        //     - the addresses to be renamed are: the DL/account's main address and all the aliases that were moved to the new domain
-        //     - by now the DLs to modify should be those in other domains, because members of DLs in the old domain (now new domain) 
-        //       have been updated in first pass.
+        // third phase, go thru DLs and accounts in the *new* domain, 
+        // rename the addresses in all DLs
+        //     - the addresses to be renamed are: the DL/account's main address and 
+        //       all the aliases that were moved to the new domain
+        //     - by now the DLs to modify should be those in other domains, because 
+        //       members of DLs in the old domain (now new domain) have been updated 
+        //       in the first pass.
         phase = RenamePhase.FIX_FOREIGN_DL_MEMBERS;
         if (phase.ordinal() >= startingPhase.ordinal()) {
             debug("Entering phase " + phase.toString());
             renameInfo.setPhase(phase);
             renameInfo.write(mProv, mOldDomain);
             visitor = getVisitor(phase);
-            searchBase = mProv.mDIT.domainDNToAccountSearchDN(((LdapDomain)newDomain).getDN());
-            flags = Provisioning.SA_ACCOUNT_FLAG + Provisioning.SA_CALENDAR_RESOURCE_FLAG + Provisioning.SA_DISTRIBUTION_LIST_FLAG;
-            mProv.searchObjects(null, null, searchBase, flags, visitor, 0);
+            
+            SearchDirectoryOptions options = new SearchDirectoryOptions();
+            options.setDomain(newDomain);
+            options.setOnMaster(true);
+            options.setFilterString(FilterId.RENAME_DOMAIN, null);
+            options.setTypes(ObjectType.accounts, ObjectType.resources, ObjectType.distributionlists);
+            mLdapHelper.searchDirectory(options, visitor);
         }
         
         /*
@@ -162,7 +211,8 @@ class RenameDomain {
     
     public static enum RenamePhase {
         /*
-         * Note: the following text is written in zimbraDomainRenameInfo - change would require migration!!
+         * Note: the following text is written in zimbraDomainRenameInfo - 
+         * change would require migration!!
          */
         RENAME_ENTRIES,
         FIX_FOREIGN_ALIASES,
@@ -194,7 +244,10 @@ class RenameDomain {
         private String mSrcDomainName;
         private String mDestDomainName;
         private RenamePhase mPhase;
-        private boolean mIsSrc;  // convenient var so we don't need to check mSrcDomainName/mDestDomainName when determining whether thsi is for src or desc
+        
+        // convenient var so we don't need to check mSrcDomainName/mDestDomainName 
+        // when determining whether thsi is for src or desc
+        private boolean mIsSrc;  
         
         private RenameInfo(String srcDomainName, String destDomainName, RenamePhase phase) {
             mSrcDomainName = srcDomainName;
@@ -231,18 +284,26 @@ class RenameDomain {
             
             String renameInfo = domain.getAttr(Provisioning.A_zimbraDomainRenameInfo);
             if (StringUtil.isNullOrEmpty(renameInfo)) {
-                debug("RenameInfo.load: domain=%s(%s), %s=not set", domain.getName(), domain.getId(), Provisioning.A_zimbraDomainRenameInfo);
+                debug("RenameInfo.load: domain=%s(%s), %s=not set", 
+                        domain.getName(), domain.getId(), Provisioning.A_zimbraDomainRenameInfo);
                 return null;
             }
-            debug("RenameInfo.load: domain=%s(%s), %s=%s", domain.getName(), domain.getId(), Provisioning.A_zimbraDomainRenameInfo, renameInfo);
+            debug("RenameInfo.load: domain=%s(%s), %s=%s", 
+                    domain.getName(), domain.getId(), Provisioning.A_zimbraDomainRenameInfo, renameInfo);
             
             int idx = renameInfo.indexOf(COLON);
-            if (idx == -1)
-                throw ServiceException.FAILURE("invalid value in " + Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + " missing " + COLON, null);
+            if (idx == -1) {
+                throw ServiceException.FAILURE("invalid value in " + 
+                        Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + 
+                        " missing " + COLON, null);
+            }
             String statusPart = renameInfo.substring(0, idx);
             String domainName = renameInfo.substring(idx+1);
-            if (StringUtil.isNullOrEmpty(domainName))
-                throw ServiceException.FAILURE("invalid value in " + Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + " missing domain name", null);
+            if (StringUtil.isNullOrEmpty(domainName)) {
+                throw ServiceException.FAILURE("invalid value in " + 
+                        Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + 
+                        " missing domain name", null);
+            }
             
             idx = statusPart.indexOf(COMMA);
             String srcOrDest = statusPart;
@@ -253,19 +314,31 @@ class RenameDomain {
             }
                 
             if (srcOrDest.equals(SRC)) {
-                if (!expectingSrc)
-                    throw ServiceException.FAILURE("invalid value in " + Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + " missing " + DEST + " keyword", null);
-                if (phase == null)
-                    throw ServiceException.FAILURE("invalid value in " + Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + " missing phase info for source domain" , null);
+                if (!expectingSrc) {
+                    throw ServiceException.FAILURE("invalid value in " + 
+                            Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + 
+                            " missing " + DEST + " keyword", null);
+                }
+                
+                if (phase == null) {
+                    throw ServiceException.FAILURE("invalid value in " + 
+                            Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + 
+                            " missing phase info for source domain" , null);
+                }
+                    
                 return new RenameInfo(null, domainName, phase);
             } else {
-                if (expectingSrc)
-                    throw ServiceException.FAILURE("invalid value in " + Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + " missing " + SRC + " keyword", null);
+                if (expectingSrc) {
+                    throw ServiceException.FAILURE("invalid value in " + 
+                            Provisioning.A_zimbraDomainRenameInfo + ": " + renameInfo + 
+                            " missing " + SRC + " keyword", null);
+                }
+                
                 return new RenameInfo(domainName, null, phase);
             }
         }
         
-        public void write(LdapProvisioning prov, Domain domain) throws ServiceException {
+        public void write(LdapProv prov, Domain domain) throws ServiceException {
             HashMap<String, Object> attrs = new HashMap<String, Object>();
             
             String renameInfoStr;
@@ -276,7 +349,8 @@ class RenameDomain {
                 renameInfoStr = encodeDest();
             attrs.put(Provisioning.A_zimbraDomainRenameInfo, renameInfoStr);
             
-            debug("RenameInfo.write: domain=%s(%s), %s=%s", domain.getName(), domain.getId(), Provisioning.A_zimbraDomainRenameInfo, renameInfoStr);
+            debug("RenameInfo.write: domain=%s(%s), %s=%s", 
+                    domain.getName(), domain.getId(), Provisioning.A_zimbraDomainRenameInfo, renameInfoStr);
             prov.modifyAttrs(domain, attrs);
         }
     }
@@ -287,13 +361,19 @@ class RenameDomain {
         boolean domainIsShutdown = mOldDomain.isShutdown();
         RenameInfo renameInfo = RenameInfo.load(mOldDomain, true);
         
-        if (domainIsShutdown && renameInfo == null)
-            throw ServiceException.INVALID_REQUEST("domain " + mOldDomainName + " is shutdown without rename domain info", null);
+        if (domainIsShutdown && renameInfo == null) {
+            throw ServiceException.INVALID_REQUEST("domain " + mOldDomainName + 
+                    " is shutdown without rename domain info", null);
+        }
         
-        if (renameInfo != null && !renameInfo.destDomainName().equals(mNewDomainName))
-            throw ServiceException.INVALID_REQUEST("domain " + mOldDomainName + " was being renamed to " + renameInfo.destDomainName() + 
-                                                   " it cannot be renamed to " + mNewDomainName + " until the previous rename is finished", null);
-      
+        if (renameInfo != null && !renameInfo.destDomainName().equals(mNewDomainName)) {
+            throw ServiceException.INVALID_REQUEST(
+                    "domain " + mOldDomainName + " was being renamed to " + 
+                    renameInfo.destDomainName() + 
+                    " it cannot be renamed to " + mNewDomainName + 
+                    " until the previous rename is finished", null);
+        }
+        
         // okay, this is either a new rename or a restart of a previous rename that did not finish   
         
         // mark domain shutdown and rejecting mails
@@ -332,7 +412,9 @@ class RenameDomain {
         domainAttrs.remove(Provisioning.A_o);
         domainAttrs.remove(Provisioning.A_dc);
         domainAttrs.remove(Provisioning.A_objectClass);
-        domainAttrs.remove(Provisioning.A_zimbraId);  // use a new zimbraId so getDomainById of the old domain will not return this half baked domain
+        
+        // use a new zimbraId so getDomainById of the old domain will not return this half baked domain
+        domainAttrs.remove(Provisioning.A_zimbraId);  
         domainAttrs.remove(Provisioning.A_zimbraDomainName);
         domainAttrs.remove(Provisioning.A_zimbraMailStatus);
         
@@ -358,9 +440,10 @@ class RenameDomain {
             newDomain = mProv.createDomain(mNewDomainName, domainAttrs);
         } catch (AccountServiceException e) {
             if (e.getCode().equals(AccountServiceException.DOMAIN_EXISTS)) {
-                newDomain = mProv.get(Provisioning.DomainBy.name, mNewDomainName);
-                if (newDomain == null)  // this should not happen
+                newDomain = mProv.get(Key.DomainBy.name, mNewDomainName);
+                if (newDomain == null)  { // this should not happen
                     throw ServiceException.FAILURE("failed to load existing domain " + mNewDomainName, null);
+                }
                 
                 // the new domain already exists, make sure it is the one that was being renamed to
                 RenameInfo renameInfo = RenameInfo.load(newDomain, false);
@@ -372,9 +455,13 @@ class RenameDomain {
                     throw ServiceException.INVALID_REQUEST("domain " + mNewDomainName + " already exists", null);
                 }
                 
-                if (!renameInfo.srcDomainName().equals(mOldDomainName))
-                    throw ServiceException.INVALID_REQUEST("domain " + mNewDomainName + " was being renamed from " + renameInfo.srcDomainName() + 
-                            " it cannot be renamed from " + mOldDomainName + " until the previous rename is finished" , null);
+                if (!renameInfo.srcDomainName().equals(mOldDomainName)) {
+                    throw ServiceException.INVALID_REQUEST(
+                            "domain " + mNewDomainName + " was being renamed from " + 
+                            renameInfo.srcDomainName() + 
+                            " it cannot be renamed from " + mOldDomainName + 
+                            " until the previous rename is finished" , null);
+                }
                 return newDomain;  // all is well
             } else
                 throw e;
@@ -392,7 +479,8 @@ class RenameDomain {
      */
     private void endRenameDomain(Domain domain, String domainId) throws ServiceException {
         
-        debug("endRenameDomain domain=%s(%s), domainId=%s", domain.getName(), domain.getId(), domainId==null?"null":domainId);
+        debug("endRenameDomain domain=%s(%s), domainId=%s", 
+                domain.getName(), domain.getId(), domainId==null?"null":domainId);
         
         HashMap<String, Object> attrs = new HashMap<String, Object>();
         if (domainId != null)
@@ -400,15 +488,14 @@ class RenameDomain {
         attrs.put(Provisioning.A_zimbraDomainRenameInfo, "");
         attrs.put(Provisioning.A_zimbraDomainStatus, Provisioning.DOMAIN_STATUS_ACTIVE);
         attrs.put(Provisioning.A_zimbraMailStatus, Provisioning.MAIL_STATUS_ENABLED);
-        mProv.modifyAttrsInternal(domain, mZlc, attrs);  // skip callback
+        mLdapHelper.modifyLdapAttrs(domain, attrs);  // skip callback
         
         flushCacheOnAllServers(CacheEntryType.domain);
     }
     
     static class RenameDomainVisitor implements NamedEntry.Visitor {
-    
-        private ZimbraLdapContext mZlc;
-        private LdapProvisioning mProv;
+        private LdapProv mProv;
+        private RenameDomainLdapHelper mLdapHelper;
         private String mOldDomainName;
         private String mNewDomainName;
         private RenamePhase mPhase;
@@ -423,32 +510,37 @@ class RenameDomain {
             sAddrContainsDomainOnly.add(Provisioning.A_zimbraMailCatchAllForwardingAddress);
         }
     
-        private static final String[] sDLAttrsNeedRename = {Provisioning.A_mail, 
-                                                            Provisioning.A_zimbraMailAlias,
-                                                            Provisioning.A_zimbraMailForwardingAddress,
-                                                            Provisioning.A_zimbraMailDeliveryAddress, // ?
-                                                            Provisioning.A_zimbraMailCanonicalAddress,
-                                                            Provisioning.A_zimbraMailCatchAllAddress,
-                                                            Provisioning.A_zimbraMailCatchAllCanonicalAddress,
-                                                            Provisioning.A_zimbraMailCatchAllForwardingAddress};
+        private static final String[] sDLAttrsNeedRename = {
+                Provisioning.A_mail, 
+                Provisioning.A_zimbraMailAlias,
+                Provisioning.A_zimbraMailForwardingAddress,
+                Provisioning.A_zimbraMailDeliveryAddress, // ?
+                Provisioning.A_zimbraMailCanonicalAddress,
+                Provisioning.A_zimbraMailCatchAllAddress,
+                Provisioning.A_zimbraMailCatchAllCanonicalAddress,
+                Provisioning.A_zimbraMailCatchAllForwardingAddress,
+                Provisioning.A_zimbraPrefAllowAddressForDelegatedSender};
     
-        private static final String[] sAcctAttrsNeedRename = {Provisioning.A_mail, 
-                                                              Provisioning.A_zimbraMailAlias,
-                                                              Provisioning.A_zimbraMailForwardingAddress,
-                                                              Provisioning.A_zimbraMailDeliveryAddress, // ?
-                                                              Provisioning.A_zimbraMailCanonicalAddress,
-                                                              Provisioning.A_zimbraMailCatchAllAddress,
-                                                              Provisioning.A_zimbraMailCatchAllCanonicalAddress,
-                                                              Provisioning.A_zimbraMailCatchAllForwardingAddress};
+        private static final String[] sAcctAttrsNeedRename = {
+                Provisioning.A_mail, 
+                Provisioning.A_zimbraMailAlias,
+                Provisioning.A_zimbraMailForwardingAddress,
+                Provisioning.A_zimbraMailDeliveryAddress, // ?
+                Provisioning.A_zimbraMailCanonicalAddress,
+                Provisioning.A_zimbraMailCatchAllAddress,
+                Provisioning.A_zimbraMailCatchAllCanonicalAddress,
+                Provisioning.A_zimbraMailCatchAllForwardingAddress,
+                Provisioning.A_zimbraPrefAllowAddressForDelegatedSender};
     
     
         private static boolean addrContainsDomainOnly(String addr) {
             return (sAddrContainsDomainOnly.contains(addr));
         }
     
-        private RenameDomainVisitor(ZimbraLdapContext zlc, LdapProvisioning prov, String oldDomainName, String newDomainName, RenamePhase phase) {
-            mZlc = zlc;
+        private RenameDomainVisitor(LdapProv prov, RenameDomainLdapHelper ldapHelper, 
+                String oldDomainName, String newDomainName, RenamePhase phase) {
             mProv = prov;
+            mLdapHelper= ldapHelper;
             mOldDomainName = oldDomainName;
             mNewDomainName = newDomainName;
             mPhase = phase;
@@ -458,10 +550,7 @@ class RenameDomain {
             debug("(" + mPhase.toString() + ") visiting " + entry.getName());
         
             if (mPhase == RenamePhase.RENAME_ENTRIES) {
-                if (entry instanceof DistributionList)
-                    handleEntry(entry, true);  // PHASE_RENAME_ENTRIES
-                else if (entry instanceof Account)
-                    handleEntry(entry, false); // PHASE_RENAME_ENTRIES
+                handleEntry(entry);
             } else if (mPhase == RenamePhase.FIX_FOREIGN_ALIASES) {
                 if (entry instanceof Alias)
                     handleForeignAlias(entry); // PHASE_FIX_FOREIGN_ALIASES
@@ -472,33 +561,50 @@ class RenameDomain {
             }
         }
     
-        private void handleEntry(NamedEntry entry, boolean isDL) throws ServiceException {
+        private void handleEntry(NamedEntry entry) throws ServiceException {
             LdapEntry ldapEntry = (LdapEntry)entry;
             String[] parts = EmailUtil.getLocalPartAndDomain(entry.getName());
+            
+            Entry.EntryType entryType = entry.getEntryType();
             
             String newDn = null;
         
             try {
-                newDn = (isDL)?mProv.mDIT.distributionListDNRename(ldapEntry.getDN(), parts[0], mNewDomainName):
-                               mProv.mDIT.accountDNRename(ldapEntry.getDN(), parts[0], mNewDomainName);
-            } catch (NamingException e) {
-                warn(e, "handleEntry", "cannot get new DN, entry not handled", "entry=[%s]", entry.getName());
-                return;
+                if (Entry.EntryType.ACCOUNT == entryType) {
+                    newDn = mProv.getDIT().accountDNRename(ldapEntry.getDN(), parts[0], mNewDomainName);
+                } else if (Entry.EntryType.DISTRIBUTIONLIST == entryType) {
+                    newDn = mProv.getDIT().distributionListDNRename(ldapEntry.getDN(), parts[0], mNewDomainName);
+                } else if (Entry.EntryType.DYNAMICGROUP == entryType) {
+                    newDn = mProv.getDIT().dynamicGroupDNRename(ldapEntry.getDN(), parts[0], mNewDomainName);
+                } else {
+                    warn((Throwable) null, "handleEntry", "encountered invalid entry type", "entry=[%s]", entry.getName());
+                    return;
+                }
             } catch (ServiceException e) {
                 warn(e, "handleEntry", "cannot get new DN, entry not handled", "entry=[%s]", entry.getName());
                 return;
             }
         
             // Step 1. move the all aliases of the entry that are in the old domain to the new domain 
-            String[] aliases = (isDL)?((DistributionList)entry).getAliases():((Account)entry).getMailAlias();
+            String[] aliases = null;
+            
+            if (Entry.EntryType.ACCOUNT == entryType) {
+                aliases = ((Account)entry).getAliases();
+            } else if (Entry.EntryType.DISTRIBUTIONLIST == entryType) {
+                aliases = ((DistributionList)entry).getAliases();
+            } else if (Entry.EntryType.DYNAMICGROUP == entryType) {
+                aliases = ((DynamicGroup)entry).getAliases();
+            } else {
+                warn((Throwable) null, "handleEntry", 
+                        "encountered invalid entry type", "entry=[%s]", entry.getName());
+                return;
+            }
             handleAliases(entry, aliases, newDn);
          
-            // Step 2. move the entry to the new domain and fixup all the addr attrs that contain the old domain
+            // Step 2. move the entry to the new domain and fixup all the addr attrs that 
+            //         contain the old domain
             String oldDn = ((LdapEntry)entry).getDN();
-            if (isDL) 
-                handleDistributionList(entry, oldDn, newDn);
-            else
-                handleAccount(entry, oldDn, newDn);
+            moveEntry(entry, oldDn, newDn);
         }
         
         /*
@@ -511,62 +617,83 @@ class RenameDomain {
             // move aliases in the old domain if there are any
             for (int i=0; i<aliases.length; i++) {
             
-                // for dl, the main dl addr is also in the zimbraMailAlias.  To be consistent witha account,
-                // we don't move that when we move aliases; and will move it when we move the entry itself
+                // for dl and dynamic group, the main dl addr is also in the zimbraMailAlias.  
+                // To be consistent with account, we don't move that when we move aliases; 
+                // and will move it when we move the entry itself
                 if (aliases[i].equals(targetEntry.getName()))
                     continue;
             
                 String[] parts = EmailUtil.getLocalPartAndDomain(aliases[i]);
                 if (parts == null) {
                     assert(false);
-                    warn("moveEntry", "encountered invalid alias address", "alias=[%s], entry=[%s]", aliases[i], targetEntry.getName());
+                    warn("moveEntry", "encountered invalid alias address", 
+                            "alias=[%s], entry=[%s]", aliases[i], targetEntry.getName());
                     continue;
                 }
                 String aliasLocal = parts[0];
                 String aliasDomain = parts[1];
                 if (aliasDomain.equals(mOldDomainName)) {
                     // move the alias
-                    // ug, aliasDN and aliasDNRename also throw ServiceExeption - declared vars outside the try block so we can log it in the catch blocks
+                    // ug, aliasDN and aliasDNRename also throw ServiceExeption - 
+                    // declared vars outside the try block so we can log it in the catch blocks
                     String oldAliasDn = "";  
                     String newAliasDn = "";
                     try {
-                        oldAliasDn = mProv.mDIT.aliasDN(oldDn, mOldDomainName, aliasLocal, mOldDomainName);
-                        newAliasDn = mProv.mDIT.aliasDNRename(newTargetDn, mNewDomainName, aliasLocal+"@"+mNewDomainName);
-                        if (!oldAliasDn.equals(newAliasDn))
-                            mZlc.renameEntry(oldAliasDn, newAliasDn);
-                    } catch (NamingException e) {
-                        // log the error and continue
-                        warn(e, "moveEntry", "alias not moved", "alias=[%s], entry=[%s], oldAliasDn=[%s], newAliasDn=[%s]", aliases[i], targetEntry.getName(), oldAliasDn, newAliasDn);
+                        oldAliasDn = mProv.getDIT().aliasDN(oldDn, mOldDomainName, aliasLocal, mOldDomainName);
+                        newAliasDn = mProv.getDIT().aliasDNRename(newTargetDn, mNewDomainName, aliasLocal+"@"+mNewDomainName);
+                        if (!oldAliasDn.equals(newAliasDn)) {
+                            mLdapHelper.renameEntry(oldAliasDn, newAliasDn);
+                        }
                     } catch (ServiceException e) {
                         // log the error and continue
-                        warn(e, "moveEntry", "alias not moved", "alias=[%s], entry=[%s], oldAliasDn=[%s], newAliasDn=[%s]", aliases[i], targetEntry.getName(), oldAliasDn, newAliasDn);
+                        warn(e, "moveEntry", "alias not moved", 
+                                "alias=[%s], entry=[%s], oldAliasDn=[%s], newAliasDn=[%s]", 
+                                aliases[i], targetEntry.getName(), oldAliasDn, newAliasDn);
                     }
                 }
             }
         }
-    
-        private void handleDistributionList(NamedEntry entry, String oldDn, String newDn) {
         
-            NamedEntry refreshedEntry = entry;
-        
+        private void moveEntry(NamedEntry entry, String oldDn, String newDn) {
+            Entry.EntryType entryType = entry.getEntryType();
+            String entryId = entry.getId();
+            
+            NamedEntry refreshedEntry = null;
+
             if (!oldDn.equals(newDn)) {
                 // move the entry
                 try {
-                    mZlc.renameEntry(oldDn, newDn);
-                } catch (NamingException e) {
-                    warn(e, "moveDistributionList", "renameEntry", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
+                    mLdapHelper.renameEntry(oldDn, newDn);
+                } catch (ServiceException e) {
+                    warn(e, "moveEntry", "renameEntry failed", 
+                            "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
                 }
             
                 // refresh for the new DN 
-                // (the entry will be read from the master, since we forced using LDAP master for the rename domain process - bug 56768)
-                // do not catch here, if we can't refresh - we can't modify, just let it throw and proceed to the next entry
+                // (the entry will be read from the master, since we forced using LDAP 
+                // master for the rename domain process - bug 56768)
+                // do not catch here, if we can't refresh - we can't modify, 
+                // just let it throw and proceed to the next entry
                 try {
-                    refreshedEntry = mProv.get(Provisioning.DistributionListBy.id, entry.getId());
+                    if (Entry.EntryType.ACCOUNT == entryType) {
+                        refreshedEntry = mLdapHelper.getAccountById(entryId);
+                    } else if (Entry.EntryType.DISTRIBUTIONLIST == entryType) {
+                        refreshedEntry = mLdapHelper.getDistributionListById(entryId);
+                    } else if (Entry.EntryType.DYNAMICGROUP == entryType) {
+                        refreshedEntry = mLdapHelper.getDynamicGroupById(entryId);
+                    }
                 } catch (ServiceException e) {
-                    warn(e, "moveDistributionList", "getDistributionListById, entry not modified", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
+                    warn(e, "moveEntry", "failed to get entry by id after move, entry not modified", 
+                            "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
                     // if we can't refresh - we can't modify, just return and proceed to the next entry
                     return;
                 }
+            }
+        
+            if (refreshedEntry == null) {
+                warn((Throwable) null, "moveEntry", "entry not found after rename, entry not modified", 
+                        "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
+                return;
             }
         
             // modify the entry in the new domain
@@ -574,61 +701,23 @@ class RenameDomain {
         
             // modify the entry
             try {
-                mProv.modifyAttrsInternal(refreshedEntry, mZlc, fixedAttrs);
+                mLdapHelper.modifyLdapAttrs(refreshedEntry, fixedAttrs);
             } catch (ServiceException e) {
-                warn(e, "moveDistributionList", "modifyAttrsInternal", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
-            }
-        }
-    
-        private void handleAccount(NamedEntry entry, String oldDn, String newDn) {
-        
-            NamedEntry refreshedEntry = entry;
-            Map<String, Object> fixedAttrs = fixupAddrs(entry, sAcctAttrsNeedRename);
-        
-            if (!oldDn.equals(newDn)) {
-                // move the entry
-            
-                /*
-                 * for accounts, we need to first create the entry in the new domain, because it may have sub entries
-                 * (identities/datasources, signatures).  We create the account entry in the new domain using the fixed adddr attrs.
-                 */
-                Attributes attributes = new BasicAttributes(true);
-                LdapUtil.mapToAttrs(fixedAttrs, attributes);
-                try {
-                    mZlc.createEntry(newDn, attributes, "renameDomain-createAccount");
-                } catch (NameAlreadyBoundException e) {
-                    warn(e, "moveAccount", "createEntry", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
-                } catch (ServiceException e) {
-                    warn(e, "moveAccount", "createEntry", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
-                }
-                    
-                try {
-                    // move over all identities/sources/signatures etc. doesn't throw an exception, just logs
-                    mZlc.moveChildren(oldDn, newDn);
-                } catch (ServiceException e) {
-                    warn(e, "moveAccount", "moveChildren", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
-                }
-                
-                try {
-                    mZlc.unbindEntry(oldDn);
-                } catch (NamingException e) {
-                    warn(e, "moveAccount", "unbindEntry", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
-                }
-            } else {
-                // didn't need to move the account entry, still need to fixup the addr attrs
-         
-                try {
-                    mProv.modifyAttrsInternal(refreshedEntry, mZlc, fixedAttrs);
-                } catch (ServiceException e) {
-                    warn(e, "moveAccount", "modifyAttrsInternal", "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
-                }
+                warn(e, "moveEntry", "modifyAttrsInternal", 
+                        "entry=[%s], oldDn=[%s], newDn=[%s]", entry.getName(), oldDn, newDn);
             }
         }
     
         private Map<String, Object> fixupAddrs(NamedEntry entry, String[] attrsNeedRename)  {
 
             // replace the addr attrs
-            Map<String, Object> attrs = entry.getAttrs(false);
+            Map<String, Object> attrs = Maps.newHashMap(entry.getAttrs(false));
+            
+            // remove the pseudo attr on dynamic group
+            if (entry instanceof DynamicGroup) {
+                attrs.remove(Provisioning.A_member);
+            }
+            
             for (String attr : attrsNeedRename) {
                 boolean addrCanBeDomainOnly = addrContainsDomainOnly(attr);
                 
@@ -636,16 +725,19 @@ class RenameDomain {
                 if (values.length > 0) {
                     Set<String> newValues = new HashSet<String>();
                     for (int i=0; i<values.length; i++) {
-                        String newValue = convertToNewAddr(values[i], mOldDomainName, mNewDomainName, addrCanBeDomainOnly);
-                        if (newValue != null)
+                        String newValue = convertToNewAddr(values[i], 
+                                mOldDomainName, mNewDomainName, addrCanBeDomainOnly);
+                        if (newValue != null) {
                             newValues.add(newValue);
+                        }
                     }
             
                     // replace the attr with the new values
                     // if there is any address format error and the address cannot be converted, 
                     // whatever the current value will be carried to the new entry.
-                    if (newValues.size() > 0)
+                    if (newValues.size() > 0) {
                         attrs.put(attr, newValues.toArray(new String[newValues.size()]));
+                    }
                 }
             }
         
@@ -654,12 +746,14 @@ class RenameDomain {
 
         /*
          * given an email address, and old domain name and a new domain name, returns:
-         *   - if the domain of the address is the same as the old domain, returns localpart-of-addr@new-domain
+         *   - if the domain of the address is the same as the old domain, 
+         *     returns localpart-of-addr@new-domain
          *   - otherwise returns the email addr as is.
          *   
          *   Note, for some addresses they can be in the @domain format (no local part)
          */
-        private String convertToNewAddr(String address, String oldDomain, String newDomain, boolean addrCanBeDomainOnly) {
+        private String convertToNewAddr(String address, String oldDomain, 
+                String newDomain, boolean addrCanBeDomainOnly) {
             String addr = address.trim();
             String[] parts = EmailUtil.getLocalPartAndDomain(addr);
             if (parts == null && !addrCanBeDomainOnly) {
@@ -674,8 +768,9 @@ class RenameDomain {
                local = parts[0];
                domain = parts[1];
             } else {
-               if (addr.charAt(0) == '@')
+               if (addr.charAt(0) == '@') {
                    domain = addr.substring(1);
+               }
             }
             
             if (domain == null) {
@@ -684,12 +779,14 @@ class RenameDomain {
             }
             
             if (domain.equals(oldDomain)) {
-                if (local != null)
+                if (local != null) {
                     return local + "@" + newDomain;
-                else
+                } else {
                     return "@" + newDomain;
-            } else
+                }
+            } else {
                 return addr;
+            }
         }
     
         /*
@@ -705,6 +802,13 @@ class RenameDomain {
                         alias.getName(), alias.getAttr(Provisioning.A_zimbraAliasTargetId));
                 return;
             }
+            
+            // orphan alias
+            if (targetEntry == null) {
+                warn("handleForeignAlias", "encountered orphan alias", "alias=[%s]", alias.getName());
+                return;
+            }
+            
             
             // sanity check that the target is indeed in a different domain
             String targetName = targetEntry.getName();
@@ -729,6 +833,9 @@ class RenameDomain {
                 } else if (targetEntry instanceof Account){
                     Account acct = (Account)targetEntry;
                     fixupForeignTarget(acct, aliasOldAddr, aliasNewAddr);
+                } else if (targetEntry instanceof DynamicGroup) { 
+                    DynamicGroup dynGroup = (DynamicGroup)targetEntry;
+                    fixupForeignTarget(dynGroup, aliasOldAddr, aliasNewAddr);
                 } else {
                     warn("handleForeignAlias", "encountered invalid alias target type", "target=[%s]", targetName);
                     return;
@@ -736,38 +843,69 @@ class RenameDomain {
             }
         }
     
-        private void fixupForeignTarget(DistributionList targetEntry, String aliasOldAddr,  String aliasNewAddr) {
+        private void fixupForeignTarget(DistributionList targetEntry, 
+                String aliasOldAddr,  String aliasNewAddr) {
             try {
                 mProv.removeAlias(targetEntry, aliasOldAddr);
             } catch (ServiceException e) {
-                warn("fixupTargetInOtherDomain", "cannot remove alias for dl" + "dl=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", targetEntry.getName(), aliasOldAddr, aliasNewAddr);
+                warn("fixupTargetInOtherDomain", "cannot remove alias for dl" + 
+                        "dl=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", 
+                        targetEntry.getName(), aliasOldAddr, aliasNewAddr);
             }
             
             // continue doing add even if remove failed 
             try {
                 mProv.addAlias(targetEntry, aliasNewAddr);
             } catch (ServiceException e) {
-                warn("fixupTargetInOtherDomain", "cannot add alias for dl" + "dl=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", targetEntry.getName(), aliasOldAddr, aliasNewAddr);
+                warn("fixupTargetInOtherDomain", "cannot add alias for dl" + 
+                        "dl=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", 
+                        targetEntry.getName(), aliasOldAddr, aliasNewAddr);
             }
         }
         
-        private void fixupForeignTarget(Account targetEntry, String aliasOldAddr,  String aliasNewAddr) {
+        private void fixupForeignTarget(DynamicGroup targetEntry, 
+                String aliasOldAddr,  String aliasNewAddr) {
+            try {
+                mProv.removeGroupAlias(targetEntry, aliasOldAddr);
+            } catch (ServiceException e) {
+                warn("fixupTargetInOtherDomain", "cannot remove alias for dynamic group" + 
+                        "group=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", 
+                        targetEntry.getName(), aliasOldAddr, aliasNewAddr);
+            }
+            
+            // continue doing add even if remove failed 
+            try {
+                mProv.addGroupAlias(targetEntry, aliasNewAddr);
+            } catch (ServiceException e) {
+                warn("fixupTargetInOtherDomain", "cannot add alias for dynamic group" + 
+                        "group=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", 
+                        targetEntry.getName(), aliasOldAddr, aliasNewAddr);
+            }
+        }
+        
+        private void fixupForeignTarget(Account targetEntry, 
+                String aliasOldAddr, String aliasNewAddr) {
             try {
                 mProv.removeAlias(targetEntry, aliasOldAddr);
             } catch (ServiceException e) {
-                warn("fixupTargetInOtherDomain", "cannot remove alias for account" + "acct=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", targetEntry.getName(), aliasOldAddr, aliasNewAddr);
+                warn("fixupTargetInOtherDomain", "cannot remove alias for account" + 
+                        "acct=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", 
+                        targetEntry.getName(), aliasOldAddr, aliasNewAddr);
             }
             
             // we want to continue doing add even if remove failed 
             try {
                 mProv.addAlias(targetEntry, aliasNewAddr);
             } catch (ServiceException e) {
-                warn("fixupTargetInOtherDomain", "cannot add alias for account" + "acct=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", targetEntry.getName(), aliasOldAddr, aliasNewAddr);
+                warn("fixupTargetInOtherDomain", "cannot add alias for account" + 
+                        "acct=[%s], aliasOldAddr=[%s], aliasNewAddr=[%s]", 
+                        targetEntry.getName(), aliasOldAddr, aliasNewAddr);
             }
         }
     
         /*
-         * replace "old addrs of DL/accounts and their aliases that are members of DLs in other domains" to the new addrs
+         * replace "old addrs of DL/accounts and their aliases that are members 
+         * of DLs in other domains" to the new addrs
          */
         private void handleForeignDLMembers(NamedEntry entry) {
             Map<String, String> changedPairs = new HashMap<String, String>();
@@ -784,7 +922,7 @@ class RenameDomain {
                     changedPairs.put(oldNewPair[0], oldNewPair[1]);
             }
     
-            mProv.renameAddressesInAllDistributionLists(changedPairs);
+            mLdapHelper.renameAddressesInAllDistributionLists(changedPairs);
         }
         
         private String[] changedAddrPairs(String addr) {
@@ -857,12 +995,13 @@ class RenameDomain {
     private void updateSystemAccount(Entry entry, String attrName, Map<String, Object> attrMap) {
         String curAddr = entry.getAttr(attrName);
         String newAddr = getNewAddress(curAddr);
-        if (curAddr != null && newAddr != null)
+        if (curAddr != null && newAddr != null) {
             attrMap.put(attrName, newAddr);
+        }
     }
     
-    // TODO: should modify FlushCache to take more than one entry types, so that we can also flsuh the 
-    // global config cache in the same request when we flush accounts.
+    // TODO: should modify FlushCache to take more than one entry types, so that we 
+    // can also flsuh the global config cache in the same request when we flush accounts.
     private void updateGlobalConfigSettings(String curDefaultDomainName) {
         
         try {
@@ -872,6 +1011,7 @@ class RenameDomain {
             updateSystemAccount(config, Provisioning.A_zimbraNotebookAccount, attrMap);
             updateSystemAccount(config, Provisioning.A_zimbraSpamIsSpamAccount, attrMap);
             updateSystemAccount(config, Provisioning.A_zimbraSpamIsNotSpamAccount, attrMap);
+            updateSystemAccount(config, Provisioning.A_zimbraAmavisQuarantineAccount, attrMap);
             
             String newDomainName = getNewDomain(curDefaultDomainName);
             if (curDefaultDomainName != null && newDomainName != null)
@@ -896,7 +1036,7 @@ class RenameDomain {
                 if (curName.endsWith(mOldDomainName)) {
                     String newName = curName.substring(0, curName.length() - domainLen) + mNewDomainName;
                     debug("Renaming XMPP component " + curName + " to " + newName);
-                    mProv.renameXMPPComponent(xmpp.getId(), newName);
+                    mLdapHelper.renameXMPPComponent(xmpp.getId(), newName);
                 }
             }
         }
@@ -937,7 +1077,7 @@ class RenameDomain {
 
     private static void warn(Throwable t, String funcName, String desc, String format, Object ... objects) {
         if (sRenameDomainLog.isWarnEnabled())
-            sRenameDomainLog.warn(String.format(funcName + "(" + desc + "):" + format, objects));
+            sRenameDomainLog.warn(String.format(funcName + "(" + desc + "):" + format, objects), t);
     }
     
     private static void debug(String format, Object ... objects) {

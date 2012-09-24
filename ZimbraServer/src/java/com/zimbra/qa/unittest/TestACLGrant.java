@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,20 +26,20 @@ import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
-import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.ServerBy;
-import com.zimbra.cs.account.Provisioning.ZimletBy;
-import com.zimbra.cs.account.Provisioning.XMPPComponentBy;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.CalendarResourceBy;
+import com.zimbra.common.account.Key.CosBy;
+import com.zimbra.common.account.Key.DistributionListBy;
+import com.zimbra.common.account.Key.DomainBy;
+import com.zimbra.common.account.Key.ServerBy;
+import com.zimbra.common.account.Key.UCServiceBy;
+import com.zimbra.common.account.Key.XMPPComponentBy;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.Right;
 import com.zimbra.cs.account.accesscontrol.TargetType;
@@ -54,6 +54,7 @@ public class TestACLGrant extends TestACL {
     private static String DISTRIBUTION_LIST_NAME = getEmailAddr(TEST_CASE_NAME + "dl").toLowerCase();
     private static String SUBDOMAIN_NAME         = getSubDomainName(TEST_CASE_NAME +  "domain").toLowerCase();
     private static String SERVER_NAME            = TEST_CASE_NAME + "server".toLowerCase();
+    private static String UC_SERVICE_NAME        = TEST_CASE_NAME + "ucservice".toLowerCase();
     private static String XMPP_COMPONENT_NAME    = TEST_CASE_NAME + "xmppcomponent".toLowerCase();
     private static String ZIMLET_NAME            = TEST_CASE_NAME + "zimlet".toLowerCase();
     
@@ -101,6 +102,13 @@ public class TestACLGrant extends TestACL {
         if (server == null)
             server = mProv.createServer(SERVER_NAME, new HashMap<String, Object>());
         return server;
+    }
+    
+    private UCService getUCService() throws ServiceException {
+        UCService ucService = mProv.get(UCServiceBy.name, UC_SERVICE_NAME);
+        if (ucService == null)
+            ucService = mProv.createUCService(UC_SERVICE_NAME, new HashMap<String, Object>());
+        return ucService;
     }
     
     private XMPPComponent getXMPPComponent() throws ServiceException {
@@ -155,6 +163,7 @@ public class TestACLGrant extends TestACL {
         doTargetTest(authedAcct, grantee, TargetType.dl, getDistributionList(), right, expected);
         doTargetTest(authedAcct, grantee, TargetType.domain, getDomain(), right, expected);
         doTargetTest(authedAcct, grantee, TargetType.server, getServer(), right, expected);
+        doTargetTest(authedAcct, grantee, TargetType.ucservice, getUCService(), right, expected);
         doTargetTest(authedAcct, grantee, TargetType.xmppcomponent, getXMPPComponent(), right, expected);
         doTargetTest(authedAcct, grantee, TargetType.zimlet, getZimlet(), right, expected);
 
@@ -228,6 +237,7 @@ public class TestACLGrant extends TestACL {
     public void testDistributionListRight() throws Exception {}
     public void testDomainRight() throws Exception {}
     public void testServerRight() throws Exception {}
+    public void testUCServiceRight() throws Exception {}
     public void testXMPPComponentRight() throws Exception {}
     public void testZimletRight() throws Exception {}
     public void testConfigRight() throws Exception {}

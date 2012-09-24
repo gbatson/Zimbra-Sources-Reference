@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2012 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -38,6 +38,7 @@ public class AccountServiceException extends ServiceException {
     public static final String INVALID_ATTR_VALUE = "account.INVALID_ATTR_VALUE";
     public static final String MULTIPLE_ACCOUNTS_MATCHED  = "account.MULTIPLE_ACCOUNTS_MATCHED";
     public static final String MULTIPLE_DOMAINS_MATCHED  = "account.MULTIPLE_DOMAINS_MATCHED";
+    public static final String MULTIPLE_ENTRIES_MATCHED  = "account.MULTIPLE_ENTRIES_MATCHED";
     public static final String NO_SMIME_CONFIG    = "account.NO_SMIME_CONFIG";
     public static final String NO_SUCH_ACCOUNT    = "account.NO_SUCH_ACCOUNT";
     public static final String NO_SUCH_ALIAS      = "account.NO_SUCH_ALIAS";
@@ -48,11 +49,15 @@ public class AccountServiceException extends ServiceException {
     public static final String NO_SUCH_SIGNATURE   = "account.NO_SUCH_SIGNATURE";
     public static final String NO_SUCH_DATA_SOURCE = "account.NO_SUCH_DATA_SOURCE";
     public static final String NO_SUCH_RIGHT       = "account.NO_SUCH_RIGHT";
-    public static final String NO_SUCH_SERVER     = "account.NO_SUCH_SERVER";
+    public static final String NO_SUCH_SERVER      = "account.NO_SUCH_SERVER";
+    public static final String NO_SUCH_UC_SERVICE  = "account.NO_SUCH_UC_SERVICE";
+    public static final String NO_SUCH_SHARE_LOCATOR = "account.NO_SUCH_SHARE_LOCATOR";
     public static final String NO_SUCH_ZIMLET     = "account.NO_SUCH_ZIMLET";
     public static final String NO_SUCH_XMPP_COMPONENT = "account.NO_SUCH_XMPP_COMPONENT";
     public static final String NO_SUCH_DISTRIBUTION_LIST = "account.NO_SUCH_DISTRIBUTION_LIST";
+    public static final String NO_SUCH_GROUP      = "account.NO_SUCH_GROUP";
     public static final String NO_SUCH_CALENDAR_RESOURCE = "account.NO_SUCH_CALENDAR_RESOURCE";
+    public static final String NO_SUCH_EXTERNAL_ENTRY    = "account.NO_SUCH_EXTERNAL_ENTRY";
     public static final String MEMBER_EXISTS      = "account.MEMBER_EXISTS";
     public static final String NO_SUCH_MEMBER     = "account.NO_SUCH_MEMBER";
     public static final String ACCOUNT_EXISTS     = "account.ACCOUNT_EXISTS";
@@ -61,7 +66,10 @@ public class AccountServiceException extends ServiceException {
     public static final String COS_EXISTS         = "account.COS_EXISTS";
     public static final String RIGHT_EXISTS       = "account.RIGHT_EXISTS";
     public static final String SERVER_EXISTS      = "account.SERVER_EXISTS";
+    public static final String SHARE_LOCATOR_EXISTS = "account.SHARE_LOCATOR_EXISTS";
+    public static final String ZIMLET_EXISTS      = "account.ZIMLET_EXISTS";
     public static final String DISTRIBUTION_LIST_EXISTS = "account.DISTRIBUTION_LIST_EXISTS";
+    public static final String UC_SERVICE_EXISTS  = "account.UC_SERVICE_EXISTS";
     public static final String MAINTENANCE_MODE   = "account.MAINTENANCE_MODE";
     public static final String ACCOUNT_INACTIVE   = "account.ACCOUNT_INACTIVE";
     public static final String IDENTITY_EXISTS     = "account.IDENTITY_EXISTS";
@@ -133,7 +141,7 @@ public class AccountServiceException extends ServiceException {
         public static AuthFailedServiceException AUTH_FAILED(String namePassedIn, String reason, Throwable t) {
             return new AuthFailedServiceException("N/A", namePassedIn, reason, AUTH_FAILED, SENDERS_FAULT, t);
         }
-        
+
         public static AuthFailedServiceException AUTH_FAILED(String reason, Throwable t) {
             return new AuthFailedServiceException("N/A", "N/A", reason, AUTH_FAILED, SENDERS_FAULT, t);
         }
@@ -155,8 +163,13 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException("lookup returned multiple accounts: "+desc, MULTIPLE_ACCOUNTS_MATCHED, SENDERS_FAULT, null);
     }
 
+
     public static AccountServiceException MULTIPLE_DOMAINS_MATCHED(String desc) {
         return new AccountServiceException("lookup returned multiple domains: "+desc, MULTIPLE_DOMAINS_MATCHED, SENDERS_FAULT, null);
+    }
+
+    public static AccountServiceException MULTIPLE_ENTRIES_MATCHED(String desc, Throwable t) {
+        return new AccountServiceException("lookup returned multiple entries: "+desc, MULTIPLE_ENTRIES_MATCHED, SENDERS_FAULT, t);
     }
 
     public static AccountServiceException PASSWORD_CHANGE_TOO_SOON() {
@@ -182,7 +195,7 @@ public class AccountServiceException extends ServiceException {
     public static AccountServiceException NO_SMIME_CONFIG(String desc) {
         return new AccountServiceException("no SMIME config: "+ desc, NO_SMIME_CONFIG, SENDERS_FAULT, null);
     }
-    
+
     public static AccountServiceException NO_SUCH_ACCOUNT(String name) {
         return new AccountServiceException("no such account: "+name, NO_SUCH_ACCOUNT, SENDERS_FAULT, null);
     }
@@ -203,6 +216,10 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException("no such cos: "+name, NO_SUCH_COS, SENDERS_FAULT, null);
     }
 
+    public static AccountServiceException NO_SUCH_SHARE_LOCATOR(String id) {
+        return new AccountServiceException("no such share locator: "+id, NO_SUCH_SHARE_LOCATOR, SENDERS_FAULT, null);
+    }
+
     public static AccountServiceException NO_SUCH_GRANT(String grant) {
         return new AccountServiceException("no such grant: "+grant, NO_SUCH_GRANT, SENDERS_FAULT, null);
     }
@@ -213,6 +230,10 @@ public class AccountServiceException extends ServiceException {
 
     public static AccountServiceException NO_SUCH_SERVER(String name) {
         return new AccountServiceException("no such server: "+name, NO_SUCH_SERVER, SENDERS_FAULT, null);
+    }
+    
+    public static AccountServiceException NO_SUCH_UC_SERVICE(String name) {
+        return new AccountServiceException("no such uc service: "+name, NO_SUCH_UC_SERVICE, SENDERS_FAULT, null);
     }
 
     public static AccountServiceException NO_SUCH_IDENTITY(String name) {
@@ -239,9 +260,19 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException("no such distribution list: " + name, NO_SUCH_DISTRIBUTION_LIST,
                 SENDERS_FAULT, null);
     }
+    
+    public static AccountServiceException NO_SUCH_GROUP(String name) {
+        return new AccountServiceException("no such group: " + name, NO_SUCH_GROUP,
+                SENDERS_FAULT, null);
+    }
 
     public static AccountServiceException NO_SUCH_CALENDAR_RESOURCE(String name) {
         return new AccountServiceException("no such calendar resource: " + name, NO_SUCH_CALENDAR_RESOURCE,
+                SENDERS_FAULT, null);
+    }
+    
+    public static AccountServiceException NO_SUCH_EXTERNAL_ENTRY(String name) {
+        return new AccountServiceException("no such external entry: " + name, NO_SUCH_EXTERNAL_ENTRY,
                 SENDERS_FAULT, null);
     }
 
@@ -273,12 +304,24 @@ public class AccountServiceException extends ServiceException {
         return new AccountServiceException("server already exists: " + name, SERVER_EXISTS, SENDERS_FAULT, null);
     }
 
+    public static AccountServiceException SHARE_LOCATOR_EXISTS(String id) {
+        return new AccountServiceException("share locator already exists: " + id, SHARE_LOCATOR_EXISTS, SENDERS_FAULT, null);
+    }
+
+    public static AccountServiceException ZIMLET_EXISTS(String name) {
+        return new AccountServiceException("zimlet already exists: " + name, ZIMLET_EXISTS, SENDERS_FAULT, null);
+    }
+
     public static AccountServiceException DISTRIBUTION_LIST_EXISTS(String name) {
         return new AccountServiceException("email address already exists: " + name, DISTRIBUTION_LIST_EXISTS, SENDERS_FAULT, null);
     }
 
     public static AccountServiceException IDENTITY_EXISTS(String name) {
         return new AccountServiceException("identity already exists: " + name, IDENTITY_EXISTS, SENDERS_FAULT, null);
+    }
+
+    public static AccountServiceException UC_SERVICE_EXISTS(String name) {
+        return new AccountServiceException("uc service already exists: " + name, UC_SERVICE_EXISTS, SENDERS_FAULT, null);
     }
 
     public static AccountServiceException TOO_MANY_IDENTITIES() {

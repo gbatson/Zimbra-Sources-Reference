@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
@@ -28,10 +29,12 @@ import java.util.StringTokenizer;
 import javax.mail.Header;
 import javax.mail.MessagingException;
 import javax.mail.internet.AddressException;
-import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimePart;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
+import com.zimbra.common.mime.InternetAddress;
 import com.zimbra.cs.filter.jsieve.ActionNotify;
 import com.zimbra.cs.filter.jsieve.ActionReply;
 import org.apache.jsieve.SieveContext;
@@ -52,43 +55,39 @@ import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.filter.jsieve.ActionFlag;
 import com.zimbra.cs.filter.jsieve.ActionTag;
 import com.zimbra.cs.mailbox.Folder;
-import com.zimbra.cs.mailbox.MailItem;
-import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.Mountpoint;
-import com.zimbra.cs.mailbox.Tag;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.service.util.ItemId;
 
 /**
- * Sieve evaluation engine adds a list of {@link org.apache.jsieve.mail.Action}s 
+ * Sieve evaluation engine adds a list of {@link org.apache.jsieve.mail.Action}s
  * that have matched the filter conditions to this object
  * and invokes its {@link #executeActions()} method.
  */
-public class ZimbraMailAdapter implements MailAdapter
-{
+public class ZimbraMailAdapter implements MailAdapter {
     private Mailbox mailbox;
     private FilterHandler handler;
-    private String tags;
+    private String[] tags;
     private boolean allowFilterToMountpoint = true;
-    
+
     /**
      * Keeps track of folders into which we filed messages, so we don't file twice
      * (RFC 3028 2.10.3).
      */
     private Set<String> filedIntoPaths = new HashSet<String>();
-   
+
     /**
      * Set of address headers that need to be processed for IDN.
      */
-    private static Set<String> addrHdrs;
-    
+    private static Set<String> addrHdrs = ImmutableSet.of("from", "sender", "to", "bcc", "cc", "reply-to");
+
     /**
      * List of Actions to perform.
-     */ 
+     */
     private List<Action> actions = new ArrayList<Action>();
 
     /**
@@ -100,23 +99,25 @@ public class ZimbraMailAdapter implements MailAdapter
 
     private boolean discardActionPresent = false;
 
-    static {
-        addrHdrs = new HashSet<String>();
-        addrHdrs.add("bcc");
-        addrHdrs.add("cc");
-        addrHdrs.add("from");
-        addrHdrs.add("reply-to");
-        addrHdrs.add("sender");
-        addrHdrs.add("to");
-    }
-    
     public ZimbraMailAdapter(Mailbox mailbox, FilterHandler handler) {
         this.mailbox = mailbox;
         this.handler = handler;
     }
-    
+
     public void setAllowFilterToMountpoint(boolean allowFilterToMountpoint) {
         this.allowFilterToMountpoint = allowFilterToMountpoint;
+    }
+
+    /**
+     * Returns the {@link Message} we are filtering, or {@code null} if not available.
+     */
+    public Message getMessage() {
+        try {
+            return handler.getMessage();
+        } catch (ServiceException e) {
+            ZimbraLog.filter.warn("Unable to get Message", e);
+        }
+        return null;
     }
 
     /**
@@ -156,30 +157,33 @@ public class ZimbraMailAdapter implements MailAdapter
      * @param context the current context,
      *                or null to clear the contest once the execution of a script has completed.
      */
+    @Override
     public void setContext(SieveContext context) {
         this.context = context;
     }
 
     /**
      * Returns the List of actions.
-     * @return List
      */
+    @Override
     public List<Action> getActions() {
         return actions;
     }
-    
+
     /**
      * Adds an Action.
      * @param action The action to set
      */
+    @Override
     public void addAction(Action action) {
         actions.add(action);
     }
-    
+
+    @Override
     public void executeActions() throws SieveException {
         try {
             handler.beforeFiltering();
-            
+
             String messageId = Mime.getMessageID(handler.getMimeMessage());
 
             // If the Sieve script has no actions, JSieve generates an implicit keep.  If
@@ -275,17 +279,14 @@ public class ZimbraMailAdapter implements MailAdapter
             throw new ZimbraSieveException(e);
         }
     }
-    
+
     private static boolean isMountpoint(Mailbox mbox, String folderPath)
     throws ServiceException {
         Pair<Folder, String> pair = mbox.getFolderByPathLongestMatch(null, Mailbox.ID_FOLDER_USER_ROOT, folderPath);
         Folder f = pair.getFirst();
-        if (f != null && f instanceof Mountpoint) {
-            return true;
-        }
-        return false;
+        return f != null && f instanceof Mountpoint;
     }
-    
+
     private List<Action> getDeliveryActions() {
         List<Action> actions = new ArrayList<Action>();
         for (Action action : this.actions) {
@@ -297,7 +298,7 @@ public class ZimbraMailAdapter implements MailAdapter
         }
         return actions;
     }
-    
+
     private List<ActionTag> getTagActions() {
         List<ActionTag> actions = new ArrayList<ActionTag>();
         for (Action action : this.actions) {
@@ -307,7 +308,7 @@ public class ZimbraMailAdapter implements MailAdapter
         }
         return actions;
     }
-    
+
     private List<ActionFlag> getFlagActions() {
         List<ActionFlag> actions = new ArrayList<ActionFlag>();
         for (Action action : this.actions) {
@@ -374,7 +375,7 @@ public class ZimbraMailAdapter implements MailAdapter
         }
         return msg;
     }
-    
+
     /**
      * Files the message into the given folder, as a result of an explicit
      * fileinto filter action.  Keeps track of the folder path, to make
@@ -409,42 +410,17 @@ public class ZimbraMailAdapter implements MailAdapter
         return builder.toString();
     }
 
-    private String getTags()
-    throws ServiceException {
+    private String[] getTags() {
         if (tags == null) {
-            StringBuilder tagsBuf = null;
+            List<String> taglist = Lists.newArrayList();
             for (Action action : getTagActions()) {
-                String tagName = ((ActionTag) action).getTagName();
-                Tag tag = null;
-                try {
-                    tag = mailbox.getTagByName(tagName);
-                } catch (MailServiceException e) {
-                    if (e.getCode().equals(MailServiceException.NO_SUCH_TAG)) {
-                        ZimbraLog.filter.info("Could not find tag %s.  Automatically creating it.", tagName);
-                        try {
-                            tag = mailbox.createTag(null, tagName, MailItem.DEFAULT_COLOR);
-                        } catch (ServiceException e2) {
-                            ZimbraLog.filter.warn("Could not create tag %s.  Not applying tag.", tagName, e2);
-                        }
-                    }
-                }
-                if (tag != null) {
-                    if (tagsBuf == null) {
-                        tagsBuf = new StringBuilder(Integer.toString(tag.getId()));
-                    } else {
-                        tagsBuf.append(",").append(tag.getId());
-                    }
-                }
+                taglist.add(((ActionTag) action).getTagName());
             }
-            if (tagsBuf == null) {
-                tags = "";
-            } else {
-                tags = tagsBuf.toString();
-            }
+            tags = taglist.toArray(new String[taglist.size()]);
         }
         return tags;
     }
-    
+
     private List<String> handleIDN(String headerName, String[] headers) {
 
         List<String> hdrs = new ArrayList<String>();
@@ -459,7 +435,7 @@ public class ZimbraMailAdapter implements MailAdapter
                     String address = st.nextToken();
                     String delim = st.hasMoreTokens() ? st.nextToken() : "";
                     try {
-                        InternetAddress inetAddr = new JavaMailInternetAddress(address);
+                        javax.mail.internet.InternetAddress inetAddr = new JavaMailInternetAddress(address);
                         String addr = inetAddr.getAddress();
                         String unicodeAddr = IDNUtil.toUnicode(addr);
                         if (unicodeAddr.equalsIgnoreCase(addr)) {
@@ -488,10 +464,11 @@ public class ZimbraMailAdapter implements MailAdapter
             hdrs.add(header);
 
         }
-        
+
         return hdrs;
     }
-    
+
+    @Override
     public List<String> getHeader(String name) {
         MimeMessage msg;
         try {
@@ -500,18 +477,19 @@ public class ZimbraMailAdapter implements MailAdapter
             ZimbraLog.filter.warn("Unable to get MimeMessage.", e);
             return Collections.emptyList();
         }
-        
+
         String[] headers = Mime.getHeaders(msg, name);
         if (headers == null) {
             return Collections.emptyList();
         }
-        
+
         if (addrHdrs.contains(name.toLowerCase()))
             return handleIDN(name, headers);
         else
             return Arrays.asList(headers);
     }
 
+    @Override
     public List<String> getHeaderNames() throws SieveMailException {
         Set<String> headerNames = new HashSet<String>();
         MimeMessage msg;
@@ -534,11 +512,11 @@ public class ZimbraMailAdapter implements MailAdapter
         }
     }
 
-    public List<String> getMatchingHeader(String name)
-    throws SieveMailException {
+    @Override
+    public List<String> getMatchingHeader(String name) throws SieveMailException {
         return MailUtils.getMatchingHeader(this, name);
     }
-    
+
     /**
      * Scans all MIME parts and returns the values of any headers that
      * match the given name.
@@ -557,14 +535,15 @@ public class ZimbraMailAdapter implements MailAdapter
         } catch (Exception e) {
             throw new SieveMailException("Unable to match attachment headers.", e);
         }
-        
+
         return values;
     }
-    
+
+    @Override
     public int getSize() {
         return handler.getMessageSize();
     }
-    
+
     /**
      * Returns the ids of messages that have been added by filter rules,
      * or an empty list.
@@ -572,19 +551,21 @@ public class ZimbraMailAdapter implements MailAdapter
     public List<ItemId> getAddedMessageIds() {
         return Collections.unmodifiableList(addedMessageIds);
     }
-    
+
     public Mailbox getMailbox() {
         return mailbox;
     }
-    
+
     public Object getContent() {
         return "";
     }
-    
+
+    @Override
     public String getContentType() {
         return "text/plain";
     }
 
+    @Override
     public Address[] parseAddresses(String headerName) {
         MimeMessage msg;
         try {
@@ -593,19 +574,30 @@ public class ZimbraMailAdapter implements MailAdapter
             ZimbraLog.filter.warn("Unable to get MimeMessage.", e);
             return FilterAddress.EMPTY_ADDRESS_ARRAY;
         }
-        
-        String[] addresses = Mime.getHeaders(msg, headerName);
-        if (addresses == null) {
+
+        String[] hdrValues = null;
+        try {
+            hdrValues = msg.getHeader(headerName);
+        } catch (MessagingException e) {
+            ZimbraLog.filter.warn("Unable to get headers named '%s'", headerName, e);
+        }
+        if (hdrValues == null) {
             return FilterAddress.EMPTY_ADDRESS_ARRAY;
         }
-        Address[] retVal = new Address[addresses.length];
-        for (int i = 0; i < addresses.length; i++) {
-            retVal[i] = new FilterAddress(addresses[i]);
+
+        List<Address> retVal = new LinkedList<Address>();
+        for (String hdrValue : hdrValues) {
+            for (InternetAddress addr : InternetAddress.parseHeader(hdrValue)) {
+                String emailAddr = addr.getAddress();
+                if (emailAddr != null)
+                    retVal.add(new FilterAddress(emailAddr));
+            }
         }
-        return retVal;
+        return retVal.toArray(new Address[retVal.size()]);
     }
 
     // jSieve 0.4
+    @Override
     public boolean isInBodyText(String substring) {
         // No implementation.  We use our own body test.
         return false;

@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.service.formatter;
 
 import java.util.Collections;
@@ -45,28 +31,29 @@ public class FormatterFactory {
             TGZ("tgz"),
             VCF("vcf"),
             XML("xml"),
-            ZIP("zip");
-            
+            ZIP("zip"),
+            OPATCH("opatch");
+
             /**
              * cache of available format types
              */
             private static Map<String, FormatType> strToType = Collections.emptyMap();
-            
+
             /*
              * The string name of the format type
              * mostly for backwards compatibility
              */
             private String strName;
-            
-            
+
+
             /*
              * Creates a new format type using the legacy string name
              */
             FormatType(String strName){
                 this.strName = strName;
             }
-            
-            
+
+
             public String toString() {
                 return strName;
             }
@@ -79,7 +66,7 @@ public class FormatterFactory {
             {
                              // Attempt to get the type from the map
                 FormatType result = strToType.get(str);
-                
+
                 // if we missed this is likely the first call
                 if(result == null && strToType.isEmpty()) {
                     Map<String, FormatType> tempMap = new HashMap<String, FormatType>();
@@ -92,10 +79,10 @@ public class FormatterFactory {
                    }
                    strToType = Collections.unmodifiableMap(tempMap);
                 }
-                
+
                 return result;
             }
-            
+
         }
 
     public static Map<FormatType, Formatter> mFormatters;
@@ -105,7 +92,7 @@ public class FormatterFactory {
         mDefaultFormatters = new HashMap<String, Formatter>();
         mFormatters = Collections.synchronizedMap(mFormatters);
         mDefaultFormatters = Collections.synchronizedMap(mDefaultFormatters);
-        
+
         addFormatter(new CsvFormatter());
         addFormatter(new VcfFormatter());
         addFormatter(new IcsFormatter());
@@ -122,12 +109,13 @@ public class FormatterFactory {
         addFormatter(new TgzFormatter());
         addFormatter(new ZipFormatter());
         addFormatter(new ContactFolderFormatter());
+        addFormatter(new OctopusPatchFormatter());
     }
-    
+
     /**
-     * Adds a new formatter to the factory. Using this method it is possible to override the default formatters for a specificy 
+     * Adds a new formatter to the factory. Using this method it is possible to override the default formatters for a specificy
      * FormatType. The last formatter added to the the factory will always win.
-     * 
+     *
      * @param formatter The formatter to add to the factory
      */
     public  static void addFormatter(Formatter formatter) {
@@ -135,6 +123,6 @@ public class FormatterFactory {
         for (String mimeType : formatter.getDefaultMimeTypes())
             mDefaultFormatters.put(mimeType, formatter);
     }
-    
+
 
 }

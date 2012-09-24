@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -238,7 +238,7 @@ public class SpamHandler {
         }
     }
 
-    public void handle(OperationContext octxt, Mailbox mbox, int itemId, byte type, SpamReport report)
+    public void handle(OperationContext octxt, Mailbox mbox, int itemId, MailItem.Type type, SpamReport report)
     throws ServiceException {
         Config config = Provisioning.getInstance().getConfig();
         String address;
@@ -269,18 +269,21 @@ public class SpamHandler {
         }
 
         List<SpamReport> reports = Lists.newArrayList();
-        if (type == MailItem.TYPE_MESSAGE) {
+        switch (type) {
+        case MESSAGE:
             report.messageId = itemId;
             reports.add(report);
-        } else if (type == MailItem.TYPE_CONVERSATION) {
+            break;
+        case CONVERSATION:
             for (Message msg : mbox.getMessagesByConversation(null, itemId)) {
                 SpamReport msgReport = new SpamReport(report);
                 msgReport.messageId = msg.getId();
                 reports.add(report);
             }
-        } else {
-            ZimbraLog.misc.warn("SpamHandler called on unhandled item type=" + MailItem.getNameForType(type) +
-                " account=" + report.accountName +  " id=" + itemId);
+            break;
+        default:
+            ZimbraLog.misc.warn("SpamHandler called on unhandled item type=" + type +
+                    " account=" + report.accountName + " id=" + itemId);
             return;
         }
 

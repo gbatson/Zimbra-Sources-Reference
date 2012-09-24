@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -22,19 +22,14 @@ import com.zimbra.cs.mailbox.MailItem;
  *
  * @author ysasaki
  */
-public class MockHit extends ZimbraHit {
+public final class MockHit extends ZimbraHit {
     private int id;
-    private long date;
-    private long size;
     private int convId;
     private MailItem mailItem;
-    private String subject;
-    private String name;
 
-    public MockHit(int id, String name) {
-        super(null, null);
+    public MockHit(ZimbraQueryResultsImpl results, int id, Object sortValue) {
+        super(results, null, sortValue);
         this.id = id;
-        this.name = name;
     }
 
     @Override
@@ -44,24 +39,6 @@ public class MockHit extends ZimbraHit {
 
     public void setItemId(int value) {
         id = value;
-    }
-
-    @Override
-    long getDate() {
-        return date;
-    }
-
-    public void setDate(long value) {
-        date = value;
-    }
-
-    @Override
-    long getSize() {
-        return size;
-    }
-
-    public void setSize(long value) {
-        size = value;
     }
 
     @Override
@@ -89,21 +66,8 @@ public class MockHit extends ZimbraHit {
     }
 
     @Override
-    String getSubject() {
-        return subject;
-    }
-
-    void setSubject(String value) {
-        subject = value;
-    }
-
-    @Override
     String getName() {
-        return name;
-    }
-
-    void setName(String value) {
-        name = value;
+        return (String) sortValue;
     }
 
 }

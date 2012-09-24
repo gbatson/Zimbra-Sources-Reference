@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -25,7 +25,6 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineGal;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -36,6 +35,7 @@ import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.ZcsMailbox;
 import com.zimbra.cs.service.mail.AutoComplete;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.GalSearchType;
 
 public class OfflineAutoComplete extends AutoComplete {
 
@@ -48,7 +48,7 @@ public class OfflineAutoComplete extends AutoComplete {
 
         String name = request.getAttribute(MailConstants.A_NAME);
         String typeStr = request.getAttribute(MailConstants.A_TYPE, "account");
-        Provisioning.GalSearchType stype = Provisioning.GalSearchType.fromString(typeStr);
+        GalSearchType stype = GalSearchType.fromString(typeStr);
         final int limit = reqAccount.getContactAutoCompleteMaxResults();
         int floatingLimit = 0;
         // if GAL sync feature is diabled (A_zimbraFeatureGalEnabled is false), it will enter "proxy mode"
@@ -109,7 +109,7 @@ public class OfflineAutoComplete extends AutoComplete {
 
     // search local account, zcs accounts, data source accounts in order
     private void autoCompleteFromOtherAccountsContacts(Element request, ZimbraSoapContext ctxt, OfflineAccount reqAcct,
-            String name, final int limit, Provisioning.GalSearchType stype, AutoCompleteResult result,
+            String name, final int limit, GalSearchType stype, AutoCompleteResult result,
             OperationContext octxt, String typeStr) throws ServiceException {
         OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
         Account localAccount = prov.getLocalAccount();
@@ -149,7 +149,7 @@ public class OfflineAutoComplete extends AutoComplete {
     }
 
     private void autoCompleteFromOtherAccountsGal(Element request, ZimbraSoapContext ctxt, Account reqAcct,
-            String name, final int limit, Provisioning.GalSearchType stype, AutoCompleteResult result,
+            String name, final int limit, GalSearchType stype, AutoCompleteResult result,
             OperationContext octxt, String typeStr) throws ServiceException {
         OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
         List<Account> zcsAccounts = prov.getAllZcsAccounts();

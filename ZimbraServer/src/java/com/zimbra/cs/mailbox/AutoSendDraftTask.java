@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.mailbox;
 
 import com.zimbra.common.service.ServiceException;
@@ -43,8 +29,7 @@ public class AutoSendDraftTask extends ScheduledTask<Object> {
      * @throws Exception if unable to compute a result
      */
     @Override public Void call() throws Exception {
-        if (ZimbraLog.scheduler.isDebugEnabled())
-            ZimbraLog.scheduler.debug("Running task " + this);
+        ZimbraLog.scheduler.debug("Running task %s", this);
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
         if (mbox == null) {
             ZimbraLog.scheduler.error("Mailbox for id %s does not exist", getMailboxId());
@@ -53,7 +38,7 @@ public class AutoSendDraftTask extends ScheduledTask<Object> {
         Integer draftId = new Integer(getProperty(DRAFT_ID_PROP_NAME));
         Message msg;
         try {
-            msg = (Message) mbox.getItemById(null, draftId, MailItem.TYPE_MESSAGE);
+            msg = (Message) mbox.getItemById(null, draftId, MailItem.Type.MESSAGE);
         } catch (MailServiceException.NoSuchItemException e) {
             // Draft might have been deleted
             ZimbraLog.scheduler.debug("Draft message with id %s no longer exists in mailbox", draftId);
@@ -63,7 +48,7 @@ public class AutoSendDraftTask extends ScheduledTask<Object> {
             ZimbraLog.scheduler.warn("Message with id %s is not a Draft scheduled to be auto-sent", draftId);
             return null;
         }
-        if (msg.isTagged(Flag.ID_FLAG_DELETED) || msg.inTrash()) {
+        if (msg.isTagged(Flag.FlagInfo.DELETED) || msg.inTrash()) {
             ZimbraLog.scheduler.debug("Draft with id %s is deleted", draftId);
             return null;
         }
@@ -72,9 +57,9 @@ public class AutoSendDraftTask extends ScheduledTask<Object> {
         mailSender.setOriginalMessageId(StringUtil.isNullOrEmpty(msg.getDraftOrigId()) ? null : new ItemId(msg.getDraftOrigId(), mbox.getAccountId()));
         mailSender.setReplyType(StringUtil.isNullOrEmpty(msg.getDraftReplyType()) ? null : msg.getDraftReplyType());
         mailSender.setIdentity(StringUtil.isNullOrEmpty(msg.getDraftIdentityId()) ? null : mbox.getAccount().getIdentityById(msg.getDraftIdentityId()));
-        mailSender.sendMimeMessage(null, mbox, msg.getMimeMessage());
+        mailSender.sendMimeMessage(new OperationContext(mbox), mbox, msg.getMimeMessage());
         // now delete the draft
-        mbox.delete(null, draftId, MailItem.TYPE_MESSAGE);
+        mbox.delete(null, draftId, MailItem.Type.MESSAGE);
         return null;
     }
 

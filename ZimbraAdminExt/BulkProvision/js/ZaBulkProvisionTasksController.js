@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Zimbra Collaboration Suite Web Client
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -78,6 +78,30 @@ function () {
 }
 ZaController.initToolbarMethods["ZaBulkProvisionTasksController"].push(ZaBulkProvisionTasksController.initToolbarMethod);
 
+ZaBulkProvisionTasksController.initPopupMenuMethod =
+function () {
+	var showBulkProvision = false;
+	if(ZaSettings.HAVE_MORE_DOMAINS || ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
+		showBulkProvision = true;
+	} else {
+		var domainList = ZaApp.getInstance().getDomainList().getArray();
+		var cnt = domainList.length;
+		for(var i = 0; i < cnt; i++) {
+			if(ZaItem.hasRight(ZaDomain.RIGHT_CREATE_ACCOUNT,domainList[i])) {
+				showBulkProvision = true;
+				break;
+			}
+		}
+	}
+	if(showBulkProvision) {
+		this._popupOperations[ZaOperation.BULK_DATA_IMPORT]=new ZaOperation(ZaOperation.BULK_DATA_IMPORT,com_zimbra_bulkprovision.TB_IMAP_Import, com_zimbra_bulkprovision.TB_IMAP_Import_tt, "ApplianceMigration", "ApplianceMigration", new AjxListener(this, this.bulkDataImportListener));
+		this._popupOperations[ZaOperation.DELETE]=new ZaOperation(ZaOperation.DELETE,com_zimbra_bulkprovision.DeleteTask, com_zimbra_bulkprovision.DeleteTask_tt, "Delete", "Delete", new AjxListener(this, this.deleteButtonListener));
+		this._popupOperations[ZaOperation.REFRESH]=new ZaOperation(ZaOperation.REFRESH,ZaMsg.TBB_Refresh, ZaMsg.TBB_Refresh_tt, "Refresh", "Refresh", new AjxListener(this, this.refreshButtonListener));
+	}
+}
+ZaController.initPopupMenuMethods["ZaBulkProvisionTasksController"].push(ZaBulkProvisionTasksController.initPopupMenuMethod);
+
+
 ZaBulkProvisionTasksController.prototype.refreshButtonListener = function(ev) {
 	var list = ZaBulkProvision.getBulkDataImportTasks();
 	if (list != null)
@@ -129,14 +153,18 @@ ZaBulkProvisionTasksController.prototype.openBulkProvisionDialog = function (par
 		ZaApp.getInstance().dialogs["importAccountsWizard"] = new ZaBulkImportXWizard(DwtShell.getShell(window),obj);
 		if(params && params.prevCallback) {
 			ZaApp.getInstance().dialogs["importAccountsWizard"].prevCallback = params.prevCallback;
+            obj.prevCallback = params.prevCallback;
 		} else {
 			ZaApp.getInstance().dialogs["importAccountsWizard"].prevCallback = null;
+            obj.prevCallback = null
 		}
 
 		if(params && params.finishCallback) {
 			ZaApp.getInstance().dialogs["importAccountsWizard"].finishCallback = params.finishCallback;
+            obj.finishCallback = params.finishCallback;
 		} else {
-			ZaApp.getInstance().dialogs["importAccountsWizard"].finishCallback = null;	
+			ZaApp.getInstance().dialogs["importAccountsWizard"].finishCallback = null;
+            obj.finishCallback = null;
 		}
 
 		ZaApp.getInstance().dialogs["importAccountsWizard"].setObject(obj);
@@ -180,8 +208,10 @@ ZaBulkProvisionTasksController.prototype.openMigrationWizard = function (params,
 		
 		if(params && params.prevCallback) {
 			ZaApp.getInstance().dialogs["migrationWizard"].prevCallback = params.prevCallback;
+            obj.prevCallback = params.prevCallback;
 		} else {
 			ZaApp.getInstance().dialogs["migrationWizard"].prevCallback = null;
+            obj.prevCallback = null;
 		}
 		ZaApp.getInstance().dialogs["migrationWizard"].setObject(obj);
 		ZaApp.getInstance().dialogs["migrationWizard"].popup();
@@ -232,20 +262,23 @@ ZaBulkProvisionTasksController.prototype._createUI = function () {
 		var elements = new Object();
 		this._contentView = new ZaBulkProvisionTasksView(this._container);
 		this._initToolbar();
-		this._toolbar = new ZaToolBar(this._container, this._toolbarOperations,this._toolbarOrder); 
-		elements[ZaAppViewMgr.C_TOOLBAR_TOP] = this._toolbar;
+		this._toolbar = new ZaToolBar(this._container, this._toolbarOperations,this._toolbarOrder);
 
 		this._initPopupMenu();
 		this._actionMenu =  new ZaPopupMenu(this._contentView, "ActionMenu", null, this._popupOperations);
 
 		elements[ZaAppViewMgr.C_APP_CONTENT] = this._contentView;
-		var tabParams = {
-			openInNewTab: false,
-			tabId: this.getContentViewId(),
-			tab: this.getMainTab() 
-		}
-		ZaApp.getInstance().createView(this.getContentViewId(), elements, tabParams) ;
-		
+        if (!appNewUI) {
+		    elements[ZaAppViewMgr.C_TOOLBAR_TOP] = this._toolbar;
+            var tabParams = {
+                openInNewTab: false,
+                tabId: this.getContentViewId(),
+                tab: this.getMainTab()
+            }
+            ZaApp.getInstance().createView(this.getContentViewId(), elements, tabParams) ;
+        } else {
+            ZaApp.getInstance().getAppViewMgr().createView(this.getContentViewId(), elements);
+        }
 		this._UICreated = true;
 		ZaApp.getInstance()._controllers[this.getContentViewId ()] = this ;
 		this._contentView.addSelectionListener(new AjxListener(this, this._listSelectionListener));

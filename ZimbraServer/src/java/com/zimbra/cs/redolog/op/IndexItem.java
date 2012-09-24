@@ -1,20 +1,16 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
- */
-
-/*
- * Created on 2004. 7. 21.
  */
 package com.zimbra.cs.redolog.op;
 
@@ -27,61 +23,69 @@ import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
+/**
+ * @since 2004. 7. 21.
+ */
 public class IndexItem extends RedoableOp {
 
     private int mId;
-    private byte mType;
-    private boolean mDeleteFirst;
+    private MailItem.Type type;
+    private boolean mDeleteFirst; // obsolete
     private boolean mCommitAllowed;
     private boolean mCommitAbortDone;
 
     public IndexItem() {
+        super(MailboxOperation.IndexItem);
         mId = UNKNOWN_ID;
-        mType = MailItem.TYPE_UNKNOWN;
+        type = MailItem.Type.UNKNOWN;
         mCommitAllowed = false;
         mCommitAbortDone = false;
     }
 
-    public IndexItem(int mailboxId, int id, byte type, boolean deleteFirst) {
+    public IndexItem(int mailboxId, int id, MailItem.Type type, boolean deleteFirst) {
+        this();
         setMailboxId(mailboxId);
         mId = id;
-        mType = type;
+        this.type = type;
         mDeleteFirst = deleteFirst;
         mCommitAllowed = false;
         mCommitAbortDone = false;
     }
 
-    @Override public int getOpCode() {
-        return OP_INDEX_ITEM;
-    }
-
-    @Override public boolean deferCrashRecovery() {
+    @Override
+    public boolean deferCrashRecovery() {
         return true;
     }
 
-    @Override protected String getPrintableData() {
+    @Override
+    protected String getPrintableData() {
         StringBuffer sb = new StringBuffer("id=");
-        sb.append(mId).append(", type=").append(mType);
+        sb.append(mId).append(", type=").append(type);
         return sb.toString();
     }
 
-    @Override protected void serializeData(RedoLogOutput out) throws IOException {
+    @Override
+    protected void serializeData(RedoLogOutput out) throws IOException {
         out.writeInt(mId);
-        out.writeByte(mType);
-        if (getVersion().atLeast(1,8))
+        out.writeByte(type.toByte());
+        if (getVersion().atLeast(1,8)) {
             out.writeBoolean(mDeleteFirst);
+        }
     }
 
-    @Override protected void deserializeData(RedoLogInput in) throws IOException {
+    @Override
+    protected void deserializeData(RedoLogInput in) throws IOException {
         mId = in.readInt();
-        mType = in.readByte();
-        if (getVersion().atLeast(1,8))
+        type = MailItem.Type.of(in.readByte());
+        if (getVersion().atLeast(1,8)) {
             mDeleteFirst = in.readBoolean();
-        else
+        } else {
             mDeleteFirst = false;
+        }
     }
 
     @Override
@@ -89,7 +93,7 @@ public class IndexItem extends RedoableOp {
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
         MailItem item;
         try {
-            item = mbox.getItemById(null, mId, mType);
+            item = mbox.getItemById(null, mId, type);
         } catch (MailServiceException.NoSuchItemException e) {
             // Because index commits are batched, during mailbox restore
             // it's possible to see the commit record of indexing operation
@@ -102,8 +106,8 @@ public class IndexItem extends RedoableOp {
         }
 
         try {
-            List<IndexDocument> docList = item.generateIndexData(true);
-            mbox.redoIndexItem(item, mDeleteFirst, mId, docList);
+            List<IndexDocument> docList = item.generateIndexData();
+            mbox.index.redoIndexItem(item, mId, docList);
         } catch (Exception e) {
             // TODO - update the item and set the item's "unindexed" flag
             ZimbraLog.index.info("Caught exception attempting to replay IndexItem for ID "+mId+" item will not be indexed", e);

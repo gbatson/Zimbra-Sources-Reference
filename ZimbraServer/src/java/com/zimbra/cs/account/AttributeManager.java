@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,49 +17,21 @@ package com.zimbra.cs.account;
 
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ByteUtil;
-import com.zimbra.common.util.CliUtil;
-import com.zimbra.common.util.DateUtil;
-import com.zimbra.common.util.Log;
-import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.SetUtil;
-import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.Version;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.callback.CallbackContext;
 import com.zimbra.cs.account.callback.IDNCallback;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
-import com.zimbra.cs.account.ldap.LdapUtil;
-import com.zimbra.cs.account.ldap.ZimbraLdapContext;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.extension.ExtensionUtil;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.dom4j.Attribute;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
-import javax.naming.NameClassPair;
-import javax.naming.NamingEnumeration;
-import javax.naming.NamingException;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.DirContext;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -103,6 +75,7 @@ public class AttributeManager {
     private static final String E_GLOBAL_CONFIG_VALUE = "globalConfigValue";
     private static final String E_GLOBAL_CONFIG_VALUE_UPGRADE = "globalConfigValueUpgrade";
     private static final String E_DEFAULT_COS_VALUE = "defaultCOSValue";
+    private static final String E_DEFAULT_EXTERNAL_COS_VALUE = "defaultExternalCOSValue";
     private static final String E_DEFAULT_COS_VALUE_UPGRADE = "defaultCOSValueUpgrade";
 
     private static AttributeManager mInstance;
@@ -447,6 +420,7 @@ public class AttributeManager {
             List<String> globalConfigValues = new LinkedList<String>();
             List<String> globalConfigValuesUpgrade = null; // note: init to null instead of empty List
             List<String> defaultCOSValues = new LinkedList<String>();
+            List<String> defaultExternalCOSValues = new LinkedList<String>();
             List<String> defaultCOSValuesUpgrade = null;   // note: init to null instead of empty List
             String description = null;
             String deprecateDesc = null;
@@ -461,6 +435,8 @@ public class AttributeManager {
                     globalConfigValuesUpgrade.add(elem.getText());
                 } else if (elem.getName().equals(E_DEFAULT_COS_VALUE)) {
                     defaultCOSValues.add(elem.getText());
+                } else if (elem.getName().equals(E_DEFAULT_EXTERNAL_COS_VALUE)) {
+                    defaultExternalCOSValues.add(elem.getText());
                 } else if (elem.getName().equals(E_DEFAULT_COS_VALUE_UPGRADE)) {
                     if (defaultCOSValuesUpgrade == null)
                         defaultCOSValuesUpgrade = new LinkedList<String>();
@@ -536,7 +512,7 @@ public class AttributeManager {
                 if (globalConfigValues.size() > 1) {
                     error(name, file, "more than one global config value specified for cardinality " + AttributeCardinality.single);
                 }
-                if (defaultCOSValues.size() > 1) {
+                if (defaultCOSValues.size() > 1 || defaultExternalCOSValues.size() > 1) {
                     error(name, file, "more than one default COS value specified for cardinality " + AttributeCardinality.single);
                 }
             }
@@ -544,7 +520,7 @@ public class AttributeManager {
             AttributeInfo info = createAttributeInfo(
                     name, id, parentOid, groupId, callback, type, order, value, immutable, min, max,
                     cardinality, requiredIn, optionalIn, flags, globalConfigValues, defaultCOSValues,
-                    globalConfigValuesUpgrade, defaultCOSValuesUpgrade,
+                    defaultExternalCOSValues, globalConfigValuesUpgrade, defaultCOSValuesUpgrade,
                     mMinimize ? null : description, requiresRestart, sinceVer, deprecatedSinceVer);
 
             if (mAttrs.get(canonicalName) != null) {
@@ -584,19 +560,20 @@ public class AttributeManager {
         }
     }
 
-    protected AttributeInfo createAttributeInfo(String name, int id, String parentOid, int groupId,
+    protected AttributeInfo createAttributeInfo(
+            String name, int id, String parentOid, int groupId,
             AttributeCallback callback, AttributeType type, AttributeOrder order,
             String value, boolean immutable, String min, String max,
             AttributeCardinality cardinality, Set<AttributeClass> requiredIn,
             Set<AttributeClass> optionalIn, Set<AttributeFlag> flags,
             List<String> globalConfigValues, List<String> defaultCOSValues,
-            List<String> globalConfigValuesUpgrade, List<String> defaultCOSValuesUpgrade,
-            String description, List<AttributeServerType> requiresRestart,
+            List<String> defaultExternalCOSValues, List<String> globalConfigValuesUpgrade,
+            List<String> defaultCOSValuesUpgrade, String description, List<AttributeServerType> requiresRestart,
             Version sinceVer, Version deprecatedSinceVer) {
         return new AttributeInfo(
                 name, id, parentOid, groupId, callback, type, order, value, immutable, min, max,
                 cardinality, requiredIn, optionalIn, flags, globalConfigValues, defaultCOSValues,
-                globalConfigValuesUpgrade, defaultCOSValuesUpgrade,
+                defaultExternalCOSValues, globalConfigValuesUpgrade, defaultCOSValuesUpgrade,
                 description, requiresRestart, sinceVer, deprecatedSinceVer);
     }
 
@@ -988,7 +965,7 @@ public class AttributeManager {
         emailp,    // attr type is emailp
         cs_emailp, // attr type is cs_emailp
         idn,       // attr has idn flag
-        none;      // attr is not of type smail, emailp, cs_emailp, nor does it has idn flag
+        none;      // attr is not of type smail, emailp, cs_emailp, nor does it have idn flag
 
         public boolean isEmailOrIDN() {
             return this != none;
@@ -1173,20 +1150,13 @@ public class AttributeManager {
     }
 
     public void preModify(Map<String, ? extends Object> attrs,
-                          Entry entry,
-                          Map context,
-                          boolean isCreate,
-                          boolean checkImmutable)
+            Entry entry, CallbackContext context, boolean checkImmutable)
     throws ServiceException {
-        preModify(attrs, entry, context, isCreate, checkImmutable, true);
+        preModify(attrs, entry, context, checkImmutable, true);
     }
 
     public void preModify(Map<String, ? extends Object> attrs,
-                          Entry entry,
-                          Map context,
-                          boolean isCreate,
-                          boolean checkImmutable,
-                          boolean allowCallback)
+            Entry entry, CallbackContext context, boolean checkImmutable, boolean allowCallback)
     throws ServiceException {
         String[] keys = attrs.keySet().toArray(new String[0]);
         for (int i = 0; i < keys.length; i++) {
@@ -1205,12 +1175,12 @@ public class AttributeManager {
                 // IDN unicode to ACE conversion needs to happen before checkValue or else
                 // regex attrs will be rejected by checkValue
                 if (idnType(name).isEmailOrIDN()) {
-                    mIDNCallback.preModify(context, name, value, attrs, entry, isCreate);
+                    mIDNCallback.preModify(context, name, value, attrs, entry);
                     value = attrs.get(name);
                 }
                 info.checkValue(value, checkImmutable, attrs);
                 if (allowCallback && info.getCallback() != null) {
-                    info.getCallback().preModify(context, name, value, attrs, entry, isCreate);
+                    info.getCallback().preModify(context, name, value, attrs, entry);
                 }
             } else {
                 ZimbraLog.misc.warn("checkValue: no attribute info for: "+name);
@@ -1219,17 +1189,12 @@ public class AttributeManager {
     }
 
     public void postModify(Map<String, ? extends Object> attrs,
-            Entry entry,
-            Map context,
-            boolean isCreate) {
-        postModify(attrs, entry, context, isCreate, true);
+            Entry entry, CallbackContext context) {
+        postModify(attrs, entry, context, true);
     }
 
     public void postModify(Map<String, ? extends Object> attrs,
-                           Entry entry,
-                           Map context,
-                           boolean isCreate,
-                           boolean allowCallback) {
+            Entry entry, CallbackContext context, boolean allowCallback) {
         String[] keys = attrs.keySet().toArray(new String[0]);
         for (int i = 0; i < keys.length; i++) {
             String name = keys[i];
@@ -1239,7 +1204,7 @@ public class AttributeManager {
             if (info != null) {
                 if (allowCallback && info.getCallback() != null) {
                     try {
-                        info.getCallback().postModify(context, name, entry, isCreate);
+                        info.getCallback().postModify(context, name, entry);
                     } catch (Exception e) {
                         // need to swallow all exceptions as postModify shouldn't throw any...
                         ZimbraLog.account.warn("postModify caught exception: "+e.getMessage(), e);
@@ -1257,7 +1222,7 @@ public class AttributeManager {
             return mAttrs.get(name.toLowerCase());
     }
 
-    public static void loadLdapSchemaExtensionAttrs(LdapProvisioning prov) {
+    public static void loadLdapSchemaExtensionAttrs(LdapProv prov) {
         synchronized(AttributeManager.class) {
             try {
                 AttributeManager theInstance = AttributeManager.getInstance();
@@ -1269,7 +1234,7 @@ public class AttributeManager {
         }
     }
 
-    private void getLdapSchemaExtensionAttrs(LdapProvisioning prov) throws ServiceException {
+    private void getLdapSchemaExtensionAttrs(LdapProv prov) throws ServiceException {
         if (mLdapSchemaExtensionInited)
             return;
 
@@ -1282,57 +1247,15 @@ public class AttributeManager {
         getExtraObjectClassAttrs(prov, AttributeClass.server, Provisioning.A_zimbraServerExtraObjectClass);
     }
 
-    private void getExtraObjectClassAttrs(LdapProvisioning prov, AttributeClass ac, String extraObjectClassAttr) throws ServiceException {
+    private void getExtraObjectClassAttrs(LdapProv prov, AttributeClass attrClass, String extraObjectClassAttr) 
+    throws ServiceException {
         Config config = prov.getConfig();
 
         String[] extraObjectClasses = config.getMultiAttr(extraObjectClassAttr);
 
         if (extraObjectClasses.length > 0) {
             Set<String> attrsInOCs = mClassToAttrsMap.get(AttributeClass.account);
-            getAttrsInOCs(extraObjectClasses, attrsInOCs);
-        }
-    }
-
-    private void getAttrsInOCs(String[] ocs, Set<String> attrsInOCs) throws ServiceException {
-
-        ZimbraLdapContext zlc = null;
-        try {
-            zlc = new ZimbraLdapContext(true);
-            DirContext schema = zlc.getSchema();
-
-            Map<String, Object> attrs;
-            for (String oc : ocs) {
-                attrs = null;
-                try {
-                    DirContext ocSchema = (DirContext)schema.lookup("ClassDefinition/" + oc);
-                    Attributes attributes = ocSchema.getAttributes("");
-                    attrs = LdapUtil.getAttrs(attributes);
-                } catch (NamingException e) {
-                    ZimbraLog.account.debug("unable to load LDAP schema extension for objectclass: " + oc, e);
-                }
-
-                if (attrs == null)
-                    continue;
-
-                for (Map.Entry<String, Object> attr : attrs.entrySet()) {
-                    String attrName = attr.getKey();
-                    if ("MAY".compareToIgnoreCase(attrName) == 0 || "MUST".compareToIgnoreCase(attrName) == 0) {
-                        Object value = attr.getValue();
-                        if (value instanceof String)
-                            attrsInOCs.add((String)value);
-                        else if (value instanceof String[]) {
-                            for (String v : (String[])value)
-                                attrsInOCs.add(v);
-                        }
-                    }
-                }
-
-            }
-
-        } catch (NamingException e) {
-            ZimbraLog.account.debug("unable to load LDAP schema extension", e);
-        } finally {
-            ZimbraLdapContext.closeContext(zlc);
+            prov.getAttrsInOCs(extraObjectClasses, attrsInOCs);
         }
     }
 

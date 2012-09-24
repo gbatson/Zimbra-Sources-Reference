@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -56,7 +56,11 @@ import com.zimbra.soap.ZimbraSoapContext;
 public class SendDeliveryReport extends MailDocumentHandler {
 
     private static final String[] TARGET_ITEM_PATH = new String[] { MailConstants.A_MESSAGE_ID };
-    @Override protected String[] getProxiedIdPath(Element request) { return TARGET_ITEM_PATH; }
+
+    @Override
+    protected String[] getProxiedIdPath(Element request) {
+        return TARGET_ITEM_PATH;
+    }
 
     @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
@@ -68,14 +72,14 @@ public class SendDeliveryReport extends MailDocumentHandler {
         Message msg = mbox.getMessageById(octxt, msgid);
 
         // sending a read receipt requires write access to the message
-        if ((mbox.getEffectivePermissions(octxt, msgid, MailItem.TYPE_MESSAGE) & ACL.RIGHT_WRITE) == 0)
+        if ((mbox.getEffectivePermissions(octxt, msgid, MailItem.Type.MESSAGE) & ACL.RIGHT_WRITE) == 0) {
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions on the message");
-
+        }
         // first, send the notification
         sendReport(getSenderAccount(zsc), msg, false, zsc.getRequestIP(), zsc.getUserAgent());
 
         // then mark the message as \Notified
-        mbox.alterTag(octxt, msgid, MailItem.TYPE_MESSAGE, Flag.ID_FLAG_NOTIFIED, true);
+        mbox.alterTag(octxt, msgid, MailItem.Type.MESSAGE, Flag.FlagInfo.NOTIFIED, true, null);
 
         Element response = zsc.createElement(MailConstants.SEND_REPORT_RESPONSE);
         return response;
@@ -91,8 +95,9 @@ public class SendDeliveryReport extends MailDocumentHandler {
         Account owner = msg.getMailbox().getAccount();
 
         String charset = authAccount.getPrefMailDefaultCharset();
-        if (charset == null)
+        if (charset == null) {
             charset = MimeConstants.P_CHARSET_UTF8;
+        }
 
         try {
             InternetAddress[] recipients = Mime.parseAddressHeader(mm, "Disposition-Notification-To");
@@ -108,10 +113,11 @@ public class SendDeliveryReport extends MailDocumentHandler {
             report.setHeader("Auto-Submitted", "auto-replied (zimbra; read-receipt)");
             report.setHeader("Precedence", "bulk");
 
-            if (Provisioning.getInstance().getConfig().isAutoSubmittedNullReturnPath())
+            if (Provisioning.getInstance().getConfig().isAutoSubmittedNullReturnPath()) {
                 report.setEnvelopeFrom("<>");
-            else
+            } else {
                 report.setEnvelopeFrom(authAccount.getName());
+            }
 
             MimeMultipart multi = new ZMimeMultipart("report");
 
@@ -129,7 +135,7 @@ public class SendDeliveryReport extends MailDocumentHandler {
             multi.addBodyPart(mpMDN);
 
 //            // part 3: original message
-//            MimeBodyPart mpOriginal = new JavaMailMimeBodyPart();
+//            MimeBodyPart mpOriginal = new ZMimeBodyPart();
 //            mpOriginal.setDataHandler(new DataHandler(new BlobDataSource(msg.getBlob())));
 //            mpOriginal.setHeader("Content-Type", MimeConstants.CT_MESSAGE_RFC822);
 //            mpOriginal.setHeader("Content-Disposition", Part.ATTACHMENT);
@@ -165,10 +171,12 @@ public class SendDeliveryReport extends MailDocumentHandler {
 
         if (userAgent != null || requestHost != null) {
             mdn.append("Reporting-UA: ");
-            if (requestHost != null && !requestHost.trim().equals(""))
+            if (requestHost != null && !requestHost.trim().equals("")) {
                 mdn.append(requestHost).append(userAgent == null ? "" : "; ");
-            if (userAgent != null && !userAgent.trim().equals(""))
+            }
+            if (userAgent != null && !userAgent.trim().equals("")) {
                 mdn.append(userAgent);
+            }
             mdn.append("\r\n");
         }
 
@@ -176,8 +184,9 @@ public class SendDeliveryReport extends MailDocumentHandler {
         mdn.append("Final-Recipient: rfc822;").append(owner.getName()).append("\r\n");
 
         String messageID = mm.getMessageID();
-        if (messageID != null && !messageID.trim().equals(""))
+        if (messageID != null && !messageID.trim().equals("")) {
             mdn.append("Original-Message-ID: ").append(messageID.trim()).append("\r\n");
+        }
 
         mdn.append("Disposition: manual-action/MDN-sent-");
         mdn.append(automatic ? "automatically" : "manually");

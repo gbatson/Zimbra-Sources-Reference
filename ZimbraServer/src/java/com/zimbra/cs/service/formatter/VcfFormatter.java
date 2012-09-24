@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,22 +16,23 @@ package com.zimbra.cs.service.formatter;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
+
 import javax.mail.Part;
 import javax.servlet.http.HttpServletResponse;
 
-import com.zimbra.cs.index.MailboxIndex;
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.HttpUtil;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
-import com.zimbra.cs.service.formatter.VCard;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.HttpUtil;
-import com.zimbra.common.mime.MimeConstants;
 
 public class VcfFormatter extends Formatter {
 
@@ -50,8 +51,8 @@ public class VcfFormatter extends Formatter {
     }
 
     @Override
-    public String getDefaultSearchTypes() {
-        return MailboxIndex.SEARCH_FOR_CONTACTS;
+    public Set<MailItem.Type> getDefaultSearchTypes() {
+        return EnumSet.of(MailItem.Type.CONTACT);
     }
 
     @Override
@@ -63,8 +64,7 @@ public class VcfFormatter extends Formatter {
 
             String filename = context.target instanceof Contact ?
                     ((Contact) context.target).getFileAsString() : "contacts";
-            String cd = Part.ATTACHMENT + "; filename=" +
-            HttpUtil.encodeFilename(context.req, filename + ".vcf");
+            String cd = HttpUtil.createContentDisposition(context.req, Part.ATTACHMENT,filename +".vcf");
             context.resp.addHeader("Content-Disposition", cd);
             context.resp.setContentType(MimeConstants.CT_TEXT_VCARD_LEGACY);  // for backward compatibility
             context.resp.setCharacterEncoding(charset.name());

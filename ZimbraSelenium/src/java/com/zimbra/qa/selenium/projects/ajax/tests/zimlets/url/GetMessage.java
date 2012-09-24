@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.zimlets.url;
 
 import java.io.File;
@@ -21,6 +5,7 @@ import java.util.*;
 
 import org.testng.annotations.*;
 
+import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
@@ -242,5 +227,47 @@ public class GetMessage extends AjaxCommonTest {
 
 	}
 
+	@Bugs(ids = "29018,67927")
+	@Test(	description = "Receive a mail with a URL in angled brackets",
+			groups = { "functional" })
+	public void GetMessage_06() throws HarnessException {
+		
+		// Create the message data to be sent
+		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
+		String url = "http://www.vmware.com";
+		String body = "text &lt;" + url + "&gt; text "+ ZimbraSeleniumProperties.getUniqueString();
+				
+		
+		// Send the message from AccountA to the ZWC user
+		ZimbraAccount.AccountA().soapSend(
+					"<SendMsgRequest xmlns='urn:zimbraMail'>" +
+						"<m>" +
+							"<e t='t' a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+							"<su>"+ subject +"</su>" +
+							"<mp ct='text/plain'>" +
+								"<content>"+ body +"</content>" +
+							"</mp>" +
+						"</m>" +
+					"</SendMsgRequest>");
+
+		// Click Get Mail button
+		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+
+		// Get all the messages in the inbox
+		DisplayMail display = (DisplayMail) app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
+		
+		// Wait for a bit so the zimlet can take affect
+		SleepUtil.sleep(5000);
+		
+		// Get the HTML of the body
+		HtmlElement bodyElement = display.zGetMailPropertyAsHtml(Field.Body);
+		
+		// Verify that the phone zimlet has been applied
+		// <a href="http://www.vmware.com" target="_blank">http://www.vmware.com</a>
+		HtmlElement.evaluate(bodyElement, "//a[@href='"+ url +"']", null, (String)null, 1);
+		HtmlElement.evaluate(bodyElement, "//a[@href='"+ url +"']", "target", "_blank", 1);
+		HtmlElement.evaluate(bodyElement, "//a[@href='"+ url +"']", null, url, 1);
+
+	}
 
 }

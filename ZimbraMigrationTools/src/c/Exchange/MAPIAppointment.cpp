@@ -400,6 +400,9 @@ void MAPIAppointment::SetTimezoneId(LPTSTR pStr)
     }
 
     ULONG ulRecurrenceEndType = recur.GetEndType();
+    Zimbra::Mapi::CRecurrenceTime rtEndDate = recur.GetEndDate();
+    Zimbra::Mapi::CFileTime ft = (FILETIME)rtEndDate;
+    m_pCalFilterDate = Zimbra::MAPI::Util::CommonDateString(ft);
     if (ulRecurrenceEndType == oetEndAfterN)
     {
 	IntToWstring(recur.GetOccurrences(), m_pRecurCount);
@@ -407,12 +410,10 @@ void MAPIAppointment::SetTimezoneId(LPTSTR pStr)
     else
     if (ulRecurrenceEndType == oetEndDate)
     {
-	SYSTEMTIME st;
-	Zimbra::Mapi::CRecurrenceTime rtEndDate = recur.GetEndDate();
-	Zimbra::Mapi::CFileTime ft = (FILETIME)rtEndDate;
-	FileTimeToSystemTime(&ft, &st);
-	wstring temp = Zimbra::Util::FormatSystemTime(st, TRUE, TRUE);
-	m_pRecurEndDate = temp.substr(0, 8);
+        SYSTEMTIME st;
+        FileTimeToSystemTime(&ft, &st);
+        wstring temp = Zimbra::Util::FormatSystemTime(st, TRUE, TRUE);
+        m_pRecurEndDate = temp.substr(0, 8);
     }
     return recur.GetExceptionCount();  
 }
@@ -446,7 +447,10 @@ void MAPIAppointment::SetExceptions()
         {
             Zimbra::Util::ScopedInterface<IMessage> lpExceptionMessage;
             Zimbra::Util::ScopedInterface<IAttach> lpExceptionAttach;
-            HRESULT hResult = lpException->OpenAppointment((LPMESSAGE)OlkAppt.MapiMsg(),
+
+            // FBS bug 70987 -- 5/27/12 -- since Exchange provider doesn't seem to support restriction on
+            // attachment table, call OpenApptNR instead of OpenAppointment
+            HRESULT hResult = lpException->OpenApptNR((LPMESSAGE)OlkAppt.MapiMsg(),
                 lpExceptionMessage.getptr(), lpExceptionAttach.getptr(), pr_exceptionreplacetime);
 
             if (FAILED(hResult))
@@ -460,10 +464,13 @@ void MAPIAppointment::SetExceptions()
                                            lpException, lpExceptionAttach.get(),
                                            OlkAppt.MapiMsg());
             MAPIMessage exMAPIMsg;
-            exMAPIMsg.Initialize(lpExceptionMessage.get(), *m_session);
-            MAPIAppointment* pEx = new MAPIAppointment(*m_session, exMAPIMsg, NORMAL_EXCEPTION);   // delete done in CMapiAccessWrap::GetData
-            FillInExceptionAppt(pEx, lpException);
-            m_vExceptions.push_back(pEx);
+            if (lpExceptionMessage.get() != NULL)
+            {
+                exMAPIMsg.Initialize(lpExceptionMessage.get(), *m_session);
+                MAPIAppointment* pEx = new MAPIAppointment(*m_session, exMAPIMsg, NORMAL_EXCEPTION);   // delete done in CMapiAccessWrap::GetData
+                FillInExceptionAppt(pEx, lpException);
+                m_vExceptions.push_back(pEx);
+            }
         }
         else
         {
@@ -476,9 +483,6 @@ void MAPIAppointment::SetExceptions()
 
 void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::COutlookRecurrenceException* lpException)
 {
-    // PST seems to find the MAPI message, thereby eventually filling in the pEx.  Server does not, but the
-    // info is in the lpException.  Note that for allday, PST seems to MAPI msg set right -- just need to truncate end
-
     // FBS 4/12/12 -- set this up no matter what (so exceptId will be set)
     // FBS bug 71050 -- 4/9/12 -- recurrence id needs the original occurrence date
     Zimbra::Mapi::CRecurrenceTime rtOriginalDate = lpException->GetOriginalDateTime();  
@@ -491,7 +495,7 @@ void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::CO
         Zimbra::Mapi::CRecurrenceTime rtStartDate = lpException->GetStartDateTime();
         Zimbra::Mapi::CFileTime ftStartDate = (FILETIME)rtStartDate;
         pEx->m_pStartDate = MakeDateFromExPtr(ftStartDate);
-        pEx->m_pStartDateCommon = Zimbra::MAPI::Util::CommonDateString(ftStartDate);
+        pEx->m_pCalFilterDate = Zimbra::MAPI::Util::CommonDateString(ftStartDate);
     }
     if (pEx->m_pEndDate.length() == 0)
     {
@@ -555,8 +559,6 @@ void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::CO
         pEx->m_pOrganizerAddr = m_pOrganizerAddr;
     }
 
-    pEx->m_vAttendees = m_vAttendees;   // FBS bug 71054 -- 4/12/12
-
     if (pEx->m_pReminderMinutes.length() == 0)
     {
         pEx->m_pReminderMinutes = m_pReminderMinutes;
@@ -611,7 +613,7 @@ void MAPIAppointment::SetStartDate(FILETIME ft)
     }
     m_pStartDate = (bUseLocal) ? Zimbra::Util::FormatSystemTime(localst, FALSE, TRUE)
 			       : Zimbra::Util::FormatSystemTime(st, TRUE, TRUE);
-    m_pStartDateCommon = Zimbra::MAPI::Util::CommonDateString(m_pPropVals[C_START].Value.ft);   // may have issue with recur/local
+    m_pCalFilterDate = Zimbra::MAPI::Util::CommonDateString(m_pPropVals[C_START].Value.ft);   // may have issue with recur/local
 }
 
 LPWSTR MAPIAppointment::MakeDateFromExPtr(FILETIME ft)
@@ -863,16 +865,19 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
 		}
 		else
 		{
-		    Attendee* pAttendee = new Attendee();   // delete done in CMapiAccessWrap::GetData after we allocate dict string for ZimbraAPI
-			if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_DISPLAY_NAME].ulPropTag) != PT_ERROR)
-				pAttendee->nam = pRecipRows->aRow[iRow].lpProps[AT_DISPLAY_NAME].Value.lpszW;
-			if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_SMTP_ADDR].ulPropTag) != PT_ERROR)
-				pAttendee->addr = pRecipRows->aRow[iRow].lpProps[AT_SMTP_ADDR].Value.lpszW;
-			if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TYPE].ulPropTag) != PT_ERROR)
-				pAttendee->role = ConvertValueToRole(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TYPE].Value.l);
-			if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].ulPropTag) != PT_ERROR)
-				pAttendee->partstat = ConvertValueToPartStat(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].Value.l);
-		    m_vAttendees.push_back(pAttendee);
+                    if (!(RECIP_FLAG_EXCEP_DELETED & pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_FLAGS].Value.l)) // make sure attendee wasn't deleted
+                    {
+		        Attendee* pAttendee = new Attendee();   // delete done in CMapiAccessWrap::GetData after we allocate dict string for ZimbraAPI
+			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_DISPLAY_NAME].ulPropTag) != PT_ERROR)
+				    pAttendee->nam = pRecipRows->aRow[iRow].lpProps[AT_DISPLAY_NAME].Value.lpszW;
+			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_SMTP_ADDR].ulPropTag) != PT_ERROR)
+				    pAttendee->addr = pRecipRows->aRow[iRow].lpProps[AT_SMTP_ADDR].Value.lpszW;
+			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TYPE].ulPropTag) != PT_ERROR)
+				    pAttendee->role = ConvertValueToRole(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TYPE].Value.l);
+			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].ulPropTag) != PT_ERROR)
+				    pAttendee->partstat = ConvertValueToPartStat(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].Value.l);
+		        m_vAttendees.push_back(pAttendee);
+                    }
 		}
 	    }
         }
@@ -882,7 +887,7 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
 
 wstring MAPIAppointment::GetSubject() { return m_pSubject; }
 wstring MAPIAppointment::GetStartDate() { return m_pStartDate; }
-wstring MAPIAppointment::GetStartDateCommon() { return m_pStartDateCommon; }
+wstring MAPIAppointment::GetCalFilterDate() { return m_pCalFilterDate; }
 wstring MAPIAppointment::GetStartDateForRecID() { return m_pStartDateForRecID; }
 wstring MAPIAppointment::GetEndDate() { return m_pEndDate; }
 wstring MAPIAppointment::GetInstanceUID() { return m_pInstanceUID; }

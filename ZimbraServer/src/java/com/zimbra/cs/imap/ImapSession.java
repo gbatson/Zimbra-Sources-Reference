@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import com.google.common.base.Function;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ArrayUtil;
@@ -30,7 +31,6 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.imap.ImapFolder.DirtyMessage;
 import com.zimbra.cs.imap.ImapHandler.ImapExtension;
 import com.zimbra.cs.imap.ImapMessage.ImapMessageSet;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
@@ -41,11 +41,12 @@ import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.Tag;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.cs.session.PendingModifications.Change;
+import com.zimbra.cs.session.PendingModifications.ModificationKey;
 import com.zimbra.cs.session.Session;
 
 public class ImapSession extends Session {
     private static final ImapSessionManager MANAGER = ImapSessionManager.getInstance();
-    
+
     interface ImapFolderData {
         int getId();
         int getSize();
@@ -55,10 +56,9 @@ public class ImapSession extends Session {
         void doEncodeState(Element imap);
         void endSelect();
 
-        void handleTagDelete(int changeId, int tagId);
-        void handleTagCreate(int changeId, Tag tag);
+        void handleTagDelete(int changeId, int tagId, Change chg);
         void handleTagRename(int changeId, Tag tag, Change chg);
-        void handleItemDelete(int changeId, int itemId);
+        void handleItemDelete(int changeId, int itemId, Change chg);
         void handleItemCreate(int changeId, MailItem item, AddedItems added);
         void handleFolderRename(int changeId, Folder folder, Change chg);
         void handleItemUpdate(int changeId, Change chg, AddedItems added);
@@ -70,7 +70,7 @@ public class ImapSession extends Session {
     private final int      mFolderId;
     private final boolean  mIsVirtual;
     private ImapFolderData mFolder;
-    private ImapHandler    mHandler;
+    private ImapHandler handler;
 
     ImapSession(ImapFolder i4folder, ImapHandler handler) throws ServiceException {
         super(i4folder.getCredentials().getAccountId(), i4folder.getPath().getOwnerAccountId(), Session.Type.IMAP);
@@ -78,17 +78,17 @@ public class ImapSession extends Session {
         mFolderId  = i4folder.getId();
         mIsVirtual = i4folder.isVirtual();
         mFolder    = i4folder;
-        mHandler   = handler;
+        this.handler = handler;
 
         i4folder.setSession(this);
     }
 
     ImapHandler getHandler() {
-        return mHandler;
+        return handler;
     }
 
-    ImapFolder getImapFolder() throws ImapSessionClosedException, IOException {
-        ImapSessionManager.getInstance().recordAccess(this);
+    ImapFolder getImapFolder() throws ImapSessionClosedException {
+        MANAGER.recordAccess(this);
         return reload();
     }
 
@@ -97,7 +97,7 @@ public class ImapSession extends Session {
     }
 
     boolean isInteractive() {
-        return mHandler != null;
+        return handler != null;
     }
 
     public boolean isWritable() {
@@ -124,7 +124,7 @@ public class ImapSession extends Session {
     boolean isExtensionActivated(ImapExtension ext) {
         switch (ext) {
             case CONDSTORE:
-                return !mIsVirtual && mHandler.sessionActivated(ext);
+                return !mIsVirtual && handler.sessionActivated(ext);
             default:
                 return false;
         }
@@ -160,7 +160,7 @@ public class ImapSession extends Session {
         mFolder.endSelect();
         // removes this session from the global SessionCache, *not* from ImapSessionManager
         removeFromSessionCache();
-        mHandler = null;
+        handler = null;
     }
 
     /** If the folder is selected READ-WRITE, updates its high-water RECENT
@@ -168,7 +168,7 @@ public class ImapSession extends Session {
      *  messages as \Recent. */
     private void snapshotRECENT() {
         try {
-            Mailbox mbox = mMailbox;
+            Mailbox mbox = mailbox;
             if (mbox != null && isWritable()) {
                 mbox.recordImapSession(mFolderId);
             }
@@ -196,32 +196,39 @@ public class ImapSession extends Session {
 
     @Override
     protected long getSessionIdleLifetime() {
-        return mHandler.getConfig().getAuthenticatedMaxIdleSeconds() * 1000L;
+        return handler.getConfig().getAuthenticatedMaxIdleTime() * 1000;
     }
 
     // XXX: need to handle the abrupt disconnect case, the LOGOUT case, the timeout case, and the too-many-sessions disconnect case
     @Override
     public Session unregister() {
-        ImapSessionManager.getInstance().closeFolder(this, true);
+        MANAGER.closeFolder(this, true);
         return detach();
     }
 
     Session detach() {
-        Mailbox mbox = mMailbox;
-        synchronized (mbox != null ? mbox : this) { // locking order is always Mailbox then Session
+        Mailbox mbox = mailbox;
+        if (mbox != null) { // locking order is always Mailbox then Session
+            mbox.lock.lock();
+        }
+        try {
             synchronized (this) {
-                ImapSessionManager.getInstance().uncacheSession(this);
+                MANAGER.uncacheSession(this);
                 return isRegistered() ? super.unregister() : this;
+            }
+        } finally {
+            if (mbox != null) {
+                mbox.lock.release();
             }
         }
     }
 
     @Override
     protected void cleanup() {
-        ImapHandler handler = mHandler;
-        if (handler != null) {
+        ImapHandler i4handler = handler;
+        if (i4handler != null) {
             ZimbraLog.imap.debug("dropping connection because Session is closing");
-            handler.close();
+            i4handler.close();
         }
     }
 
@@ -240,7 +247,7 @@ public class ImapSession extends Session {
         }
 
         if (!isRegistered()) {
-            throw ServiceException.FAILURE("cannot serialized unregistered session", null);
+            throw ServiceException.FAILURE("cannot serialize unregistered session", null);
         }
 
         // if it's a disconnected session, no need to track expunges
@@ -259,11 +266,14 @@ public class ImapSession extends Session {
      * @param active true to use active session cache, otherwise use inactive session cache
      */
     void unload(boolean active) throws ServiceException {
-        Mailbox mbox = mMailbox;
+        Mailbox mbox = mailbox;
         if (mbox == null) {
             return;
         }
-        synchronized (mbox) {
+        // Mailbox.endTransaction() -> ImapSession.notifyPendingChanges() locks in the order of Mailbox -> ImapSession.
+        // Need to lock in the same order here, otherwise can result in deadlock.
+        mbox.lock.lock(); // serialize() locks Mailbox deep inside of it
+        try {
             synchronized (this) {
                 if (mFolder instanceof ImapFolder) { // if the data's already paged out, we can short-circuit
                     mFolder = new PagedFolderData(serialize(active), (ImapFolder) mFolder);
@@ -275,46 +285,47 @@ public class ImapSession extends Session {
                         ImapFolder folder = null;
                         try {
                             folder = reload();
-                            mFolder = new PagedFolderData(serialize(active), folder);
+                            if (folder != null) {
+                                mFolder = new PagedFolderData(serialize(active), folder);
+                            } else {
+                                ZimbraLog.imap.debug("folder not found while reloading for relocate. probably already evicted");
+                            }
                         } catch (ImapSessionClosedException e) {
                             throw ServiceException.FAILURE("Session closed while relocating paged item", e);
-                        } catch (IOException e) {
-                            throw ServiceException.FAILURE("IOException while relocating paged item", e);
                         }
                     }
                 }
             }
+        } finally {
+            mbox.lock.release();
         }
     }
 
-    public static final String CACHE_MISS = "cache miss deserializing folder state";
-
-    ImapFolder reload() throws IOException, ImapSessionClosedException {
-        Mailbox mbox = mMailbox;
+    ImapFolder reload() throws ImapSessionClosedException {
+        Mailbox mbox = mailbox;
         if (mbox == null) {
             throw new ImapSessionClosedException();
         }
         // Mailbox.endTransaction() -> ImapSession.notifyPendingChanges() locks in the order of Mailbox -> ImapSession.
         // Need to lock in the same order here, otherwise can result in deadlock.
-        synchronized (mbox) { // PagedFolderData.replay() locks Mailbox deep inside of it.
+        mbox.lock.lock(); // PagedFolderData.replay() locks Mailbox deep inside of it.
+        try {
             synchronized (this) {
-                PagedFolderData paged = mFolder instanceof PagedFolderData ? (PagedFolderData) mFolder : null;
-                if (paged != null) { // if the data's already paged in, we can short-circuit
+                // if the data's already paged in, we can short-circuit
+                if (mFolder instanceof PagedFolderData) {
+                    PagedFolderData paged = (PagedFolderData) mFolder;
                     ImapFolder i4folder = MANAGER.deserialize(paged.getCacheKey());
-                    if (i4folder == null) {
-                        //IOException expected up the stack when cache miss occurs
-                        //for now, keep it that way. 
-                        //TODO: refactor later (in 8.0) once we've shaken out any other bugs w/ new cache impl.
+                    if (i4folder == null) { // cache miss
                         if (ImapSessionManager.isActiveKey(paged.getCacheKey())) {
                             ZimbraLog.imap.debug("cache miss in active cache with key %s",paged.getCacheKey());
                         }
-                        throw new IOException(CACHE_MISS + " from "+(ImapSessionManager.isActiveKey(paged.getCacheKey()) ? "active" : "inactive")+ " cache");
+                        return null;
                     }
-
                     try {
                         paged.restore(i4folder);
                     } catch (ServiceException e) {
-                        throw new IOException("unable to deserialize folder state", e);
+                        ZimbraLog.imap.warn("Failed to restore folder %s", paged.getCacheKey(), e);
+                        return null;
                     }
                     // need to switch target before replay (yes, this is inelegant)
                     mFolder = i4folder;
@@ -327,6 +338,8 @@ public class ImapSession extends Session {
                 }
                 return (ImapFolder) mFolder;
             }
+        } finally {
+            mbox.lock.release();
         }
     }
 
@@ -361,13 +374,13 @@ public class ImapSession extends Session {
             return;
         }
 
-        ImapHandler handler = mHandler;
+        ImapHandler i4handler = handler;
         try {
             synchronized (this) {
                 AddedItems added = new AddedItems();
                 if (pns.deleted != null) {
-                    for (Object obj : pns.deleted.values()) {
-                        handleDelete(changeId, obj instanceof MailItem ? ((MailItem) obj).getId() : ((Integer) obj).intValue());
+                    for (Map.Entry<ModificationKey, Change> entry : pns.deleted.entrySet()) {
+                        handleDelete(changeId, entry.getKey().getItemId(), entry.getValue());
                     }
                 }
                 if (pns.created != null) {
@@ -389,8 +402,8 @@ public class ImapSession extends Session {
                 mFolder.finishNotification(changeId);
             }
 
-            if (handler != null && handler.isIdle()) {
-                handler.sendNotifications(true, true);
+            if (i4handler != null && i4handler.isIdle()) {
+                i4handler.sendNotifications(true, true);
             }
         } catch (IOException e) {
             // ImapHandler.dropConnection clears our mHandler and calls SessionCache.clearSession,
@@ -400,35 +413,35 @@ public class ImapSession extends Session {
             } else { // without stack trace
                 ZimbraLog.imap.info("Failed to notify (%s), closing %s", e.toString(), this);
             }
-            if (handler != null) {
-                handler.close();
+            if (i4handler != null) {
+                i4handler.close();
             }
         }
     }
 
-    void handleDelete(int changeId, int id) {
+    void handleDelete(int changeId, int id, Change chg) {
+        MailItem.Type type = (MailItem.Type) chg.what;
         if (id <= 0) {
             return;
-        } else if (Tag.validateId(id)) {
-            mFolder.handleTagDelete(changeId, id);
+        } else if (type == MailItem.Type.TAG) {
+            mFolder.handleTagDelete(changeId, id, chg);
         } else if (id == mFolderId) {
+            // Once the folder's gone, there's no point in keeping an IMAP Session listening on it around.
+            detach();
             // notify client that mailbox is deselected due to delete?
             // RFC 2180 3.3: "The server MAY allow the DELETE/RENAME of a multi-accessed
             //                mailbox, but disconnect all other clients who have the
             //                mailbox accessed by sending a untagged BYE response."
-            if (mHandler != null) {
-                mHandler.close();
+            if (handler != null) {
+                handler.close();
             }
-        } else {
-            // XXX: would be helpful to have the item type here
-            mFolder.handleItemDelete(changeId, id);
+        } else if (ImapMessage.SUPPORTED_TYPES.contains(type)) {
+            mFolder.handleItemDelete(changeId, id, chg);
         }
     }
 
     private void handleCreate(int changeId, MailItem item, AddedItems added) {
-        if (item instanceof Tag) {
-            mFolder.handleTagCreate(changeId, (Tag) item);
-        } else if (item == null || item.getId() <= 0) {
+        if (item == null || item.getId() <= 0) {
             return;
         } else if (item.getFolderId() == mFolderId && (item instanceof Message || item instanceof Contact)) {
             mFolder.handleItemCreate(changeId, item, added);
@@ -436,25 +449,25 @@ public class ImapSession extends Session {
     }
 
     private void handleModify(int changeId, Change chg, AddedItems added) {
-        if (chg.what instanceof Tag && (chg.why & Change.MODIFIED_NAME) != 0) {
+        if (chg.what instanceof Tag && (chg.why & Change.NAME) != 0) {
             mFolder.handleTagRename(changeId, (Tag) chg.what, chg);
         } else if (chg.what instanceof Folder && ((Folder) chg.what).getId() == mFolderId) {
             Folder folder = (Folder) chg.what;
-            if ((chg.why & Change.MODIFIED_FLAGS) != 0 && (folder.getFlagBitmask() & Flag.BITMASK_DELETED) != 0) {
+            if ((chg.why & Change.FLAGS) != 0 && (folder.getFlagBitmask() & Flag.BITMASK_DELETED) != 0) {
                 // notify client that mailbox is deselected due to \Noselect?
                 // RFC 2180 3.3: "The server MAY allow the DELETE/RENAME of a multi-accessed
                 //                mailbox, but disconnect all other clients who have the
                 //                mailbox accessed by sending a untagged BYE response."
-                if (mHandler != null) {
-                    mHandler.close();
+                if (handler != null) {
+                    handler.close();
                 }
-            } else if ((chg.why & (Change.MODIFIED_FOLDER | Change.MODIFIED_NAME)) != 0) {
+            } else if ((chg.why & (Change.FOLDER | Change.NAME)) != 0) {
                 mFolder.handleFolderRename(changeId, folder, chg);
             }
         } else if (chg.what instanceof Message || chg.what instanceof Contact) {
             MailItem item = (MailItem) chg.what;
             boolean inFolder = mIsVirtual || item.getFolderId() == mFolderId;
-            if (!inFolder && (chg.why & Change.MODIFIED_FOLDER) == 0) {
+            if (!inFolder && (chg.why & Change.FOLDER) == 0) {
                 return;
             }
             mFolder.handleItemUpdate(changeId, chg, added);
@@ -464,17 +477,20 @@ public class ImapSession extends Session {
     @Override
     public void updateAccessTime() {
         super.updateAccessTime();
-        Mailbox mbox = mMailbox;
+        Mailbox mbox = mailbox;
         if (mbox == null) {
             return;
         }
-        synchronized (mbox) { 
+        mbox.lock.lock();
+        try {
             synchronized (this) {
                 PagedFolderData paged = mFolder instanceof PagedFolderData ? (PagedFolderData) mFolder : null;
                 if (paged != null) { // if the data's already paged in, we can short-circuit
                     MANAGER.updateAccessTime(paged.getCacheKey());
                 }
             }
+        } finally {
+            mbox.lock.release();
         }
     }
 
@@ -485,14 +501,14 @@ public class ImapSession extends Session {
     static final int RESERIALIZATION_THRESHOLD = DebugConfig.imapSerializedSessionNotificationOverloadThreshold;
 
     private final class PagedFolderData implements ImapFolderData {
-        private String mCacheKey;
-        private int mOriginalSize;
+        private final String cacheKey;
+        private final int originalSize;
         private PagedSessionData pagedSessionData; // guarded by PagedFolderData.this
-        private Map<Integer, PendingModifications> mQueuedChanges;
+        private Map<Integer, PendingModifications> queuedChanges;
 
         PagedFolderData(String cachekey, ImapFolder i4folder) {
-            mCacheKey = cachekey;
-            mOriginalSize = i4folder.getSize();
+            cacheKey = cachekey;
+            originalSize = i4folder.getSize();
             pagedSessionData = i4folder.getSessionData() == null ? null : new PagedSessionData(i4folder);
         }
 
@@ -503,24 +519,24 @@ public class ImapSession extends Session {
 
         @Override
         public int getSize() {
-            return mOriginalSize;
+            return originalSize;
         }
 
         @Override
         public synchronized boolean isWritable() {
-            return pagedSessionData == null ? false : pagedSessionData.mOriginalSessionData.mWritable;
+            return pagedSessionData == null ? false : pagedSessionData.mOriginalSessionData.writable;
         }
 
         @Override
         public synchronized boolean hasExpunges() {
             // hugely overbroad, but this should never be called in the first place...
-            if (pagedSessionData != null && pagedSessionData.mOriginalSessionData.mExpungedCount > 0) {
+            if (pagedSessionData != null && pagedSessionData.mOriginalSessionData.expungedCount > 0) {
                 return true;
             }
-            if (mQueuedChanges == null || mQueuedChanges.isEmpty()) {
+            if (queuedChanges == null || queuedChanges.isEmpty()) {
                 return false;
             }
-            for (PendingModifications pms : mQueuedChanges.values()) {
+            for (PendingModifications pms : queuedChanges.values()) {
                 if (pms.deleted != null && !pms.deleted.isEmpty()) {
                     return true;
                 }
@@ -536,26 +552,27 @@ public class ImapSession extends Session {
             if (pagedSessionData != null && pagedSessionData.hasNotifications()) {
                 return true;
             }
-            return mQueuedChanges != null && !mQueuedChanges.isEmpty();
+            return queuedChanges != null && !queuedChanges.isEmpty();
         }
 
         synchronized boolean notificationsFull() {
-            if (mQueuedChanges == null || mQueuedChanges.isEmpty()) {
+            if (queuedChanges == null || queuedChanges.isEmpty()) {
                 return false;
             }
 
             int count = 0;
-            for (PendingModifications pms : mQueuedChanges.values()) {
+            for (PendingModifications pms : queuedChanges.values()) {
                 count += pms.getScaledNotificationCount();
             }
             return count > RESERIALIZATION_THRESHOLD;
         }
 
         String getCacheKey() {
-            return mCacheKey;
+            return cacheKey;
         }
 
-        @Override public void doEncodeState(Element imap) {
+        @Override
+        public void doEncodeState(Element imap) {
             imap.addAttribute("paged", true);
         }
 
@@ -579,18 +596,19 @@ public class ImapSession extends Session {
         }
 
         private PendingModifications getQueuedNotifications(int changeId) {
-            if (mQueuedChanges == null) {
-                mQueuedChanges = new TreeMap<Integer, PendingModifications>();
+            if (queuedChanges == null) {
+                queuedChanges = new TreeMap<Integer, PendingModifications>();
             }
-            PendingModifications pns = mQueuedChanges.get(changeId);
+            PendingModifications pns = queuedChanges.get(changeId);
             if (pns == null) {
-                mQueuedChanges.put(changeId, pns = new PendingModifications());
+                queuedChanges.put(changeId, pns = new PendingModifications());
             }
             return pns;
         }
 
-        private synchronized void queueDelete(int changeId, int itemId) {
-            getQueuedNotifications(changeId).recordDeleted(getTargetAccountId(), itemId, MailItem.TYPE_UNKNOWN);
+        private synchronized void queueDelete(int changeId, int itemId, Change chg) {
+            getQueuedNotifications(changeId).recordDeleted(
+                    getTargetAccountId(), itemId, (MailItem.Type) chg.what);
         }
 
         private synchronized void queueCreate(int changeId, MailItem item) {
@@ -598,18 +616,19 @@ public class ImapSession extends Session {
         }
 
         private synchronized void queueModify(int changeId, Change chg) {
-            getQueuedNotifications(changeId).recordModified((MailItem) chg.what, chg.why);
+            getQueuedNotifications(changeId).recordModified(
+                    (MailItem) chg.what, chg.why, (MailItem) chg.preModifyObj);
         }
 
         synchronized void replay() {
             // it's an error if we're replaying changes back into this same queuer...
             assert mFolder != this;
 
-            if (mQueuedChanges == null) {
+            if (queuedChanges == null) {
                 return;
             }
 
-            for (Iterator<Map.Entry<Integer, PendingModifications>> it = mQueuedChanges.entrySet().iterator(); it.hasNext();) {
+            for (Iterator<Map.Entry<Integer, PendingModifications>> it = queuedChanges.entrySet().iterator(); it.hasNext();) {
                 Map.Entry<Integer, PendingModifications> entry = it.next();
                 notifyPendingChanges(entry.getValue(), entry.getKey(), null);
                 it.remove();
@@ -617,13 +636,8 @@ public class ImapSession extends Session {
         }
 
         @Override
-        public void handleTagDelete(int changeId, int tagId) {
-            queueDelete(changeId, tagId);
-        }
-
-        @Override
-        public void handleTagCreate(int changeId, Tag tag) {
-            queueCreate(changeId, tag);
+        public void handleTagDelete(int changeId, int tagId, Change chg) {
+            queueDelete(changeId, tagId, chg);
         }
 
         @Override
@@ -632,8 +646,8 @@ public class ImapSession extends Session {
         }
 
         @Override
-        public void handleItemDelete(int changeId, int itemId) {
-            queueDelete(changeId, itemId);
+        public void handleItemDelete(int changeId, int itemId, Change chg) {
+            queueDelete(changeId, itemId, chg);
         }
 
         @Override
@@ -679,10 +693,10 @@ public class ImapSession extends Session {
                 }
 
                 // save the session data in a simple form
-                if (mOriginalSessionData.mSavedSearchResults != null) {
-                    mSavedSearchIds = new int[mOriginalSessionData.mSavedSearchResults.size()];
+                if (mOriginalSessionData.savedSearchResults != null) {
+                    mSavedSearchIds = new int[mOriginalSessionData.savedSearchResults.size()];
                     int pos = 0;
-                    for (ImapMessage i4msg : mOriginalSessionData.mSavedSearchResults) {
+                    for (ImapMessage i4msg : mOriginalSessionData.savedSearchResults) {
                         mSavedSearchIds[pos++] = i4msg.imapUid;
                     }
                 }
@@ -715,18 +729,18 @@ public class ImapSession extends Session {
                 }
 
                 // kill references to ImapMessage objects, since they'll change after the restore
-                mOriginalSessionData.mSavedSearchResults = null;
+                mOriginalSessionData.savedSearchResults = null;
                 mOriginalSessionData.dirtyMessages.clear();
             }
 
             ImapFolder.SessionData asFolderData(ImapFolder i4folder) {
                 if (mOriginalSessionData != null) {
                     if (mSavedSearchIds != null) {
-                        mOriginalSessionData.mSavedSearchResults = new ImapMessageSet();
+                        mOriginalSessionData.savedSearchResults = new ImapMessageSet();
                         for (int uid : mSavedSearchIds) {
-                            mOriginalSessionData.mSavedSearchResults.add(i4folder.getByImapId(uid));
+                            mOriginalSessionData.savedSearchResults.add(i4folder.getByImapId(uid));
                         }
-                        mOriginalSessionData.mSavedSearchResults.remove(null);
+                        mOriginalSessionData.savedSearchResults.remove(null);
                     }
 
                     mOriginalSessionData.dirtyMessages.clear();
@@ -748,7 +762,7 @@ public class ImapSession extends Session {
                 if (mOriginalSessionData == null) {
                     return false;
                 }
-                return mOriginalSessionData.mTagsAreDirty || mDirtyChanges != null || mOriginalSessionData.mExpungedCount > 0;
+                return mOriginalSessionData.tagsAreDirty || mDirtyChanges != null || mOriginalSessionData.expungedCount > 0;
             }
         }
     }

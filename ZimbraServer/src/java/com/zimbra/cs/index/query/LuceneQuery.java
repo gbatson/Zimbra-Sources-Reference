@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -21,6 +21,7 @@ import org.apache.lucene.search.TermQuery;
 
 import com.zimbra.cs.index.LuceneQueryOperation;
 import com.zimbra.cs.index.QueryOperation;
+import com.zimbra.cs.mailbox.Mailbox;
 
 /**
  * Query by Lucene field.
@@ -31,7 +32,7 @@ import com.zimbra.cs.index.QueryOperation;
 abstract class LuceneQuery extends Query {
     private final String luceneField;
     private final String queryField;
-    private final String term;
+    String term;
 
     static String lookup(Map<String, String> map, String key) {
         String toRet = map.get(key);
@@ -49,17 +50,21 @@ abstract class LuceneQuery extends Query {
     }
 
     @Override
-    public QueryOperation getQueryOperation(boolean bool) {
+    public boolean hasTextOperation() {
+        return true;
+    }
+
+    @Override
+    public QueryOperation compile(Mailbox mbox, boolean bool) {
         LuceneQueryOperation op = new LuceneQueryOperation();
-        op.addClause(queryField + term,
-                new TermQuery(new Term(luceneField, term)), evalBool(bool));
+        op.addClause(queryField + term, new TermQuery(new Term(luceneField, term)), evalBool(bool));
         return op;
     }
 
     @Override
     public void dump(StringBuilder out) {
         out.append(luceneField);
-        out.append(',');
+        out.append(':');
         out.append(term);
     }
 

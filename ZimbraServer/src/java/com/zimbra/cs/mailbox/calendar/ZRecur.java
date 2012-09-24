@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -27,6 +27,10 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZWeekDay;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Provisioning;
@@ -36,28 +40,6 @@ import com.zimbra.cs.util.Zimbra;
 public class ZRecur implements Cloneable {
 
     public static enum Frequency { DAILY, HOURLY, MINUTELY, MONTHLY, SECONDLY, WEEKLY, YEARLY }
-    
-    public static enum ZWeekDay { 
-        FR, MO, SA, SU, TH, TU, WE;
-        
-        public int getCalendarDay() {
-            switch (this) {
-            case SU:
-                return Calendar.SUNDAY;
-            case MO:
-                return Calendar.MONDAY;
-            case TU:
-                return Calendar.TUESDAY;
-            case WE:
-                return Calendar.WEDNESDAY;
-            case TH:
-                return Calendar.THURSDAY;
-            case FR:
-                return Calendar.FRIDAY;
-            }
-            return Calendar.SATURDAY;
-        }
-    }
     
     public static class ZWeekDayNum {
         public static class DayOnlyComparator implements Comparator<ZWeekDayNum>

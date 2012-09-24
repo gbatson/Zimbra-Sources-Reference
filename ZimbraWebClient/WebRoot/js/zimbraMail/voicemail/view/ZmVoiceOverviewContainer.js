@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -46,17 +46,27 @@ ZmVoiceOverviewContainer.prototype.initialize =
 function(params) {
 	if (this.initialized) { return; }
 
+	var deskPhone = false;
 	var phones = params.phones;
+	
+	for (var i=0; i<phones.length; i++) {
+		if (phones[i].phoneType == "DeskPhone") {
+			deskPhone = phones[i];
+		}
+	}
 	for (var i = 0; i < phones.length; i++) {
 		var phone = phones[i];
-
+		if(!phone.hasVoiceMail) {
+			continue;
+		}
 		// create a top-level section header
-		var headerLabel = phone.getDisplay();
+		var headerLabel = deskPhone && deskPhone.name != phone.name ? deskPhone.getDisplay() : phone.getDisplay();
 		var headerParams = {
 			parent: this,
 			text: headerLabel,
 			selectable: false,
-			className: "overviewHeader"
+			className: "overviewHeader",
+			imageInfo: "VoiceMailApp"
 		};
 
 		var header = this._headerItems[phone.id] = new DwtTreeItem(headerParams);

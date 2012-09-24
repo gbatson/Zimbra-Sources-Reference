@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -28,7 +28,7 @@ public class Version {
 
     // These should be incremented with changes to serialization format.
     private static final short CURRENT_MAJOR = 1;   // range: 0 - Short.MAX_VALUE
-    private static final short CURRENT_MINOR = 31;  // range: 0 - Short.MAX_VALUE
+    private static final short CURRENT_MINOR = 42;  // range: 0 - Short.MAX_VALUE
 
     /**
      * Returns a version object with latest major and minor version
@@ -56,25 +56,18 @@ public class Version {
         this(b.mMajorVer, b.mMinorVer);
     }
 
-    /**
-     * Returns if this version is at least as high as the version specified
-     * by major and minor.
-     * @param major
-     * @param minor
+    /** Returns if this version is at least as high as the version specified
+     *  by major and minor.
      * @return true if this version is higher than or equal to major/minor,
-     *         false if this version is lower
-     */
+     *         false if this version is lower */
     public boolean atLeast(int major, int minor) {
         return (mMajorVer > major ||
                 (mMajorVer == major && mMinorVer >= minor));
     }
 
-    /**
-     * Returns if this version is at least as high as version b.
-     * @param b
+    /** Returns if this version is at least as high as version b.
      * @return true if this version is higher than or equal to version b,
-     *         false if this version is lower than version b
-     */
+     *         false if this version is lower than version b */
     public boolean atLeast(Version b) {
         return atLeast(b.mMajorVer, b.mMinorVer);
     }

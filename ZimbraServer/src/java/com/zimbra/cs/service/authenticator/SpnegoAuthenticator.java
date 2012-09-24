@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,28 +17,37 @@ package com.zimbra.cs.service.authenticator;
 
 import java.io.IOException;
 import java.security.Principal;
+import java.util.Arrays;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.mortbay.jetty.HttpHeaders;
-import org.mortbay.jetty.Request;
-import org.mortbay.jetty.security.SpnegoUserRealm;
-import org.mortbay.jetty.security.UserRealm;
-import org.mortbay.jetty.security.SpnegoUserRealm.SpnegoUser;
+import org.eclipse.jetty.http.HttpHeaders;
+import org.eclipse.jetty.server.Authentication;
+import org.eclipse.jetty.server.Request;
+import org.eclipse.jetty.server.UserIdentity;
+import org.eclipse.jetty.security.SpnegoLoginService;
+import org.eclipse.jetty.security.LoginService;
+import org.eclipse.jetty.security.SpnegoUserIdentity;
+import org.eclipse.jetty.security.SpnegoUserPrincipal;
+import org.eclipse.jetty.security.UserAuthentication;
 
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ZAttrProvisioning.AutoProvAuthMech;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.AccountServiceException.AuthFailedServiceException;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.cs.account.krb5.Krb5Principal;
 
 public class SpnegoAuthenticator extends SSOAuthenticator {
 
-    private SpnegoUserRealm spnegoUserRealm;
+    private SpnegoLoginService spnegoUserRealm;
     
-    public SpnegoAuthenticator(HttpServletRequest req, HttpServletResponse resp, SpnegoUserRealm spnegoUserRealm) {
+    public SpnegoAuthenticator(HttpServletRequest req, HttpServletResponse resp, SpnegoLoginService spnegoUserRealm) {
         super(req, resp);
         this.spnegoUserRealm = spnegoUserRealm;
     }
@@ -55,17 +64,11 @@ public class SpnegoAuthenticator extends SSOAuthenticator {
         if (request == null) {
             throw ServiceException.FAILURE("not supported", null);
         }
-        
-        Principal principal = getPrincipal(request);
-        Account acct = getAccountByPrincipal(principal);
-        ZimbraPrincipal zimbraPrincipal = new ZimbraPrincipal(principal.getName(), acct);
-        request.setUserPrincipal(zimbraPrincipal);
-        
-        return zimbraPrincipal;
+        return getPrincipal(request);
     }
     
-    private Principal getPrincipal(Request request) throws ServiceException {
-        Principal principal = null;
+    private ZimbraPrincipal getPrincipal(Request request) throws ServiceException {
+    	ZimbraPrincipal principal = null;
         
         try {
             principal = authenticate(spnegoUserRealm, request, resp);
@@ -91,16 +94,23 @@ public class SpnegoAuthenticator extends SSOAuthenticator {
         
         Provisioning prov = Provisioning.getInstance();
         Account acct = prov.get(AccountBy.krb5Principal, krb5Name);
+        
+        if (acct == null) {
+            Domain domain = Krb5Principal.getDomainByKrb5Principal(krb5Name);
+            if (domain != null) {
+                acct = prov.autoProvAccountLazy(domain, krb5Name, null, AutoProvAuthMech.SPNEGO);
+            }
+        }
         return acct;
     }
     
     /* =========================================================
      * 
-     * Based on org.mortbay.jetty.security.SpnegoAuthenticator
+     * Based on org.eclipse.jetty.security.SpnegoAuthenticator
      * 
      * =========================================================
      */
-    private Principal authenticate(UserRealm realm, Request request, HttpServletResponse response) 
+    private ZimbraPrincipal authenticate(LoginService realm, Request request, HttpServletResponse response) 
     throws ServiceException, IOException {
         Principal user = null;
         String header = request.getHeader(HttpHeaders.AUTHORIZATION);
@@ -118,18 +128,27 @@ public class SpnegoAuthenticator extends SSOAuthenticator {
              */
             
             // skip over "Negotiate "
-            String username = header.substring(10);
+            String token = header.substring(10);
             
-            user = realm.authenticate(username, null, request);
+            UserIdentity identity = realm.login(null, token);
+            if (identity == null) {
+                throw AuthFailedServiceException.AUTH_FAILED("SpengoAuthenticator: unable to login", (Throwable)null);
+            }
+            user = identity.getUserPrincipal();
             
             if (user != null) {
                 ZimbraLog.account.debug("SpengoAuthenticator: obtained principal: " + user.getName());
-
-                request.setAuthType(getAuthType());
-                // request.setUserPrincipal(user);
-                response.addHeader(HttpHeaders.WWW_AUTHENTICATE, HttpHeaders.NEGOTIATE + " " + ((SpnegoUser)user).getToken());
                 
-                return user;
+                Account acct = getAccountByPrincipal(user);
+                ZimbraPrincipal zimbraPrincipal = new ZimbraPrincipal(user.getName(), acct);
+                String clientName = ((SpnegoUserPrincipal)user).getName();
+                String role = clientName.substring(clientName.indexOf('@') + 1);                
+                SpnegoUserIdentity spnegoUserIdentity = new SpnegoUserIdentity(identity.getSubject(), zimbraPrincipal, Arrays.asList(role));     
+                Authentication authentication = new UserAuthentication(getAuthType(), spnegoUserIdentity);
+                request.setAuthentication(authentication);
+                response.addHeader(HttpHeaders.WWW_AUTHENTICATE, HttpHeaders.NEGOTIATE + " " + ((SpnegoUserPrincipal)user).getToken());                
+                
+                return zimbraPrincipal;
             }
             else {
                 /*
@@ -148,7 +167,7 @@ public class SpnegoAuthenticator extends SSOAuthenticator {
         }        
     }
     
-    public void sendChallenge(UserRealm realm, Request request, HttpServletResponse response) throws IOException {
+    public void sendChallenge(LoginService realm, Request request, HttpServletResponse response) throws IOException {
         ZimbraLog.account.debug("SpengoAuthenticator: sending challenge");
         response.setHeader(HttpHeaders.WWW_AUTHENTICATE, HttpHeaders.NEGOTIATE);
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
@@ -159,8 +178,14 @@ public class SpnegoAuthenticator extends SSOAuthenticator {
         String name;
         String token;
         
-        private static MockSpnegoUser getMockPrincipal() throws IOException {
-            return new MockSpnegoUser("spnego@SPNEGO.LOCAL", "blah");
+        private static ZimbraPrincipal getMockPrincipal() throws IOException {
+            Principal principal = new MockSpnegoUser("spnego@SPNEGO.LOCAL", "blah");
+            ZimbraPrincipal zimbraPrincipal = null;
+			try {
+				zimbraPrincipal = new ZimbraPrincipal(principal.getName(), GuestAccount.ANONYMOUS_ACCT);
+			} catch (ServiceException e) {
+			}
+            return zimbraPrincipal;
         }
         
         MockSpnegoUser(String name, String token) {

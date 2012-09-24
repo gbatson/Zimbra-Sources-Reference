@@ -45,7 +45,7 @@ ZaPosixAccount.getNextUid = function () {
 	var soapDoc = AjxSoapDoc.create("GetLDAPEntriesRequest", "urn:zimbraAdmin", null);	
 	soapDoc.set("ldapSearchBase", zimbra_posixaccount_ext.ldapSuffix);
 	soapDoc.set("query", "(objectClass=posixAccount)");	
-    soapDoc.set("sortBy", ZaPosixAccount.A_uidNumber);	
+	soapDoc.set("sortBy", ZaPosixAccount.A_uidNumber);	
 	soapDoc.set("sortAscending", "false");		
 	soapDoc.set("limit", "1");			
 	var getPosixAccountsCommand = new ZmCsfeCommand();
@@ -343,17 +343,18 @@ zimbra_posixaccount_ext.ovTreeModifier = function (tree) {
 		
 		this._posixGroupTi = new DwtTreeItem({parent:this._configTi,className:"AdminTreeItem"});
 		this._posixGroupTi.setText(zimbra_posixaccount.PosixGroups);
-		this._posixGroupTi.setImage("AdminExtension");
+		this._posixGroupTi.setImage("Zimlet");
 		this._posixGroupTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSIX_GROUP_LIST);	
 		
 		try {
+			//add server statistics nodes
 			var posixGroupList = ZaApp.getInstance().getPosixGroupList(true).getArray();
 			if(posixGroupList && posixGroupList.length) {
 				var cnt = posixGroupList.length;
 				for(var ix=0; ix< cnt; ix++) {
 					var ti1 = new DwtTreeItem({parent:this._posixGroupTi,className:"AdminTreeItem"});			
 					ti1.setText(posixGroupList[ix].name);	
-					ti1.setImage("AdminExtension");
+					ti1.setImage("Domain");
 					ti1.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._POSIX_GROUP_VIEW);
 					ti1.setData(ZaOverviewPanelController._OBJ_ID, posixGroupList[ix].id);
 				}

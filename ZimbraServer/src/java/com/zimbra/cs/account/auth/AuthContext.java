@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -47,6 +47,19 @@ public class AuthContext {
     public static final String AC_USER_AGENT = "ua";
     
     /*
+     * Whether the auth request came to the admin port and attempting 
+     * to acquire an admin auth token
+     * 
+     * type: Boolean
+     */
+    public static final String AC_AS_ADMIN = "asAdmin";
+    
+    /*
+     * 
+     */
+    public static final String AC_AUTHED_BY_MECH = "authedByMech";
+    
+    /*
      * Protocol from which the auth request went in.
      * 
      * type: AuthContext.Protocol
@@ -65,7 +78,6 @@ public class AuthContext {
         
         //for internal use only
         test;
-
-    }
+    };
     
 }

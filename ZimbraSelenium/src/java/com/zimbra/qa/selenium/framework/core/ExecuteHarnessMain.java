@@ -1,29 +1,18 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
 package com.zimbra.qa.selenium.framework.core;
 
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.List;
 import java.util.jar.*;
 import java.util.regex.*;
+
+import javax.imageio.ImageIO;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.cli.CommandLine;
@@ -31,9 +20,10 @@ import org.apache.log4j.*;
 import org.testng.*;
 import org.testng.xml.*;
 
-import com.zimbra.qa.selenium.framework.util.performance.*;
+import com.zimbra.qa.selenium.framework.ui.AbsSeleniumObject;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.framework.util.performance.PerfMetrics;
 
 
 
@@ -65,6 +55,7 @@ public class ExecuteHarnessMain {
 	/**
 	 * A Log4j logger for tracing test case steps
 	 */
+	
 	public static final String TraceLoggerName = "testcase.trace";
 	public static Logger tracer = LogManager.getLogger(TraceLoggerName);
 
@@ -128,31 +119,13 @@ public class ExecuteHarnessMain {
 		if ( !coverage.exists() )	coverage.mkdirs();
 		CodeCoverage.getInstance().setOutputFolder(coverage.getAbsolutePath());
 
-		String browser = ZimbraSeleniumProperties.getStringProperty(
-				ZimbraSeleniumProperties.getLocalHost() + ".browser",
-				ZimbraSeleniumProperties.getStringProperty("browser"));
-		
-		if (browser.charAt(0) == '*') {
-			browser = browser.substring(1);
-			if ((browser.indexOf(" ")) > 0) {
-				String str = browser.split(" ")[0];
-				int i;
-				if ((i = browser.lastIndexOf("\\")) > 0) {
-					str += "_" + browser.substring(i+1);
-				}
-				browser = str;
-			}
-		}
-		
-		// Save the browser value (for logging)
-		ZimbraSeleniumProperties.setStringProperty("CalculatedBrowser", browser);
 		
 
 		// Append the app, browser, locale
 		path += "/"
 			+ ZimbraSeleniumProperties.getAppType()
 			+ "/"
-			+	browser						
+			+ ZimbraSeleniumProperties.getCalculatedBrowser()						
 			+ "/" + ZimbraSeleniumProperties.getStringProperty("locale");
 		
 		// Make sure the path exists
@@ -199,43 +172,55 @@ public class ExecuteHarnessMain {
 		
 		List<String> classes = new ArrayList<String>();
 		
-		JarInputStream jarFile = new JarInputStream(new FileInputStream(jarfile));
-		while (true) {
-			JarEntry jarEntry = jarFile.getNextJarEntry();
+		JarInputStream jarFile = null;
+		try {
 			
-			if ( jarEntry == null )
-				break; // All Done!
-
-
-			if ( !jarEntry.getName().endsWith(".class") )
-				continue; // Only process classes
+			jarFile = new JarInputStream(new FileInputStream(jarfile));
 			
-			if ( jarEntry.getName().contains("CommonTest.class") )
-				continue; // Skip CommonTest, since those aren't tests
-			
-			String name = jarEntry.getName().replace('/', '.').replaceAll(".class$", "");
-			logger.debug("Class: "+ name);
-
-			if ( pattern != null ) {
+			while (true) {
+				JarEntry jarEntry = jarFile.getNextJarEntry();
 				
-				Matcher matcher = pattern.matcher(name);
-				if (matcher.find()) {
+				if ( jarEntry == null )
+					break; // All Done!
+
+
+				if ( !jarEntry.getName().endsWith(".class") )
+					continue; // Only process classes
+				
+				if ( jarEntry.getName().contains("CommonTest.class") )
+					continue; // Skip CommonTest, since those aren't tests
+				
+				String name = jarEntry.getName().replace('/', '.').replaceAll(".class$", "");
+				logger.debug("Class: "+ name);
+
+				if ( pattern != null ) {
 					
-					// Class name matched the filter.  add it.
+					Matcher matcher = pattern.matcher(name);
+					if (matcher.find()) {
+						
+						// Class name matched the filter.  add it.
+						if (!isExcluded(name,excludeStr)) {
+						  classes.add(name);
+						}
+					}
+					
+				} else {
+					
+					// No filter.  add all.
 					if (!isExcluded(name,excludeStr)) {
 					  classes.add(name);
 					}
-				}
-				
-			} else {
-				
-				// No filter.  add all.
-				if (!isExcluded(name,excludeStr)) {
-				  classes.add(name);
+					
 				}
 				
 			}
+
 			
+		} finally {
+			if ( jarFile != null ) {
+				jarFile.close();
+				jarFile = null;
+			}
 		}
 
 		if (classes.size() < 1) {
@@ -364,9 +349,7 @@ public class ExecuteHarnessMain {
 				}
 			}
 		}
-				
-		LogManager.getLogger("xmlsuite").info(suite.toXml());
-		
+						
 		return (Arrays.asList(suite));
 	}
 	
@@ -400,7 +383,7 @@ public class ExecuteHarnessMain {
 		// calculate how long the tests took
 		long duration = finish.getTime() - start.getTime();
 		result.append("Duration: ").append(duration / 1000).append(" seconds\n");
-		result.append("Browser: ").append(ZimbraSeleniumProperties.getStringProperty("CalculatedBrowser", "unknown")).append('\n');
+		result.append("Browser: ").append(ZimbraSeleniumProperties.getCalculatedBrowser()).append('\n');
 		
 		return (result.toString());
 
@@ -492,6 +475,7 @@ public class ExecuteHarnessMain {
 		// Configure the runner
 		ng.setXmlSuites(suites);
 		ng.addListener(new MethodListener(this.testoutputfoldername));
+		ng.addListener(new ErrorDialogListener());
 		ng.addListener(listener = new ResultListener(this.testoutputfoldername));
 		
 		try {
@@ -514,6 +498,78 @@ public class ExecuteHarnessMain {
 	
 
 
+	/**
+	 * This class checks for the Zimbra error dialog after each test
+	 * method.  If present, it marks the test case as failed, then
+	 * logs out of the application.
+	 * 
+	 * @author Matt Rhoades
+	 *
+	 */
+	protected static class ErrorDialogListener extends AbsSeleniumObject implements IInvokedMethodListener {
+
+		@Override
+		public void afterInvocation(IInvokedMethod method, ITestResult result) {
+			logger.debug("ErrorDialogListener:afterInvocation ...");
+
+			boolean check = "true".equals(ZimbraSeleniumProperties.getStringProperty("dialog.error.aftertest.check", "true"));
+			boolean dismiss = "true".equals(ZimbraSeleniumProperties.getStringProperty("dialog.error.aftertest.dismiss", "true"));
+			if ( !check ) {
+				return;
+			}
+			
+			
+			String locator = "css=div#ErrorDialog";
+
+			try{
+			    
+			    boolean present = sIsElementPresent(locator);
+			    if ( present ) {
+
+				logger.info("ErrorDialogListener:afterInvocation ... present="+ present);
+
+				Number left = sGetElementPositionLeft(locator);
+				if ( left.intValue() > 0 ) {
+
+				    logger.info("ErrorDialogListener:afterInvocation ... left="+ left);
+
+				    Number top = sGetElementPositionTop(locator);
+
+				    if ( top.intValue()>0 ) {
+
+					logger.info("ErrorDialogListener:afterInvocation ... top="+ top);
+
+					if ( dismiss ) {
+							
+					    String bLocator = locator + " td[id^='OK_'] td[id$='_title']";
+					    sMouseDownAt(bLocator, "");
+					    sMouseUpAt(bLocator, "");
+							
+					} else {
+							
+					    // Log the error
+					    // Take a snapshot
+					    logger.error(new HarnessException("Error Dialog is visible"));
+							
+					    // Set the test as failed
+					    result.setStatus(ITestResult.FAILURE);
+
+					}
+				    }
+				}
+			    }
+			}catch(Exception ex){
+			    logger.error(new HarnessException("ErrorDialogListener:afterInvocation "), ex);
+			}
+			
+			logger.debug("ErrorDialogListener:afterInvocation ... done");
+		}
+
+		@Override
+		public void beforeInvocation(IInvokedMethod arg0, ITestResult arg1) {
+		}
+		
+	}
 
 	
 	/**
@@ -606,7 +662,7 @@ public class ExecuteHarnessMain {
 			if ( method.isTestMethod() ) {
 				
 				try {
-					CodeCoverage.getInstance().calculateCoverage();
+					CodeCoverage.getInstance().calculateCoverage(getTestCaseID(method.getTestMethod().getMethod()));
 				} catch (HarnessException e) {
 					logger.error("Skip logging calculation", e);
 				}
@@ -642,10 +698,10 @@ public class ExecuteHarnessMain {
 	 * <p>
 	 * @author Matt Rhoades
 	 */
-	protected static class ResultListener extends TestListenerAdapter {
+	public static class ResultListener extends TestListenerAdapter {
 
 		private static final String ZimbraQABasePackage = "com.zimbra.qa.selenium";
-
+		
 		private int testsTotal = 0;
 		private int testsPass = 0;
 		private int testsFailed = 0;
@@ -653,10 +709,9 @@ public class ExecuteHarnessMain {
 		private List<String> failedTests = new ArrayList<String>();
 		private List<String> skippedTests = new ArrayList<String>();
 		
-		private String outputFolder = null;
 
 		protected ResultListener(String folder) {
-			outputFolder = (folder == null ? "logs" : folder);
+			ResultListener.setOutputfolder(folder);
 		}
 		
 		protected String getResults() {
@@ -680,13 +735,23 @@ public class ExecuteHarnessMain {
 			return (sb.toString());
 		}
 		
+		private static ITestResult runningTestCase = null;
+		private static void setRunningTestCase(ITestResult result) {
+			runningTestCase = result;
+		}
+		
+		private static String outputFolder = null;
+		private static void setOutputfolder(String folder) {
+			outputFolder = (folder == null ? "logs" : folder);
+		}
+		
 		private static int screenshotcount = 0; 
 		/**
 		 * Generate the screenshot filename name
 		 * @param method
 		 * @return
 		 */
-		protected String getScreenCaptureFilename(Method method) {
+		public static String getScreenCaptureFilename(Method method) {
 			String c = method.getDeclaringClass().getCanonicalName().replace(ZimbraQABasePackage, "").replace('.', '/');
 			String m = method.getName();
 			return (String.format("%s/debug/%s/%sss%d.png", outputFolder, c, m, ++screenshotcount));
@@ -697,10 +762,21 @@ public class ExecuteHarnessMain {
 		 * @param result
 		 * @return
 		 */
-		protected void getScreenCapture(ITestResult result) {
+		public static void getScreenCapture(ITestResult result) {
 			String filename = getScreenCaptureFilename(result.getMethod().getMethod());
 			logger.warn("Creating screenshot: "+ filename);
-			ClientSessionFactory.session().selenium().captureScreenshot(filename);
+			if (ZimbraSeleniumProperties.isWebDriver()||ZimbraSeleniumProperties.isWebDriverBackedSelenium()){
+				try {
+					//File scrFile = ((TakesScreenshot)ClientSessionFactory.session().webDriver()).getScreenshotAs(OutputType.FILE);
+					//FileUtils.copyFile(scrFile, new File(filename));
+					BufferedImage image = new Robot().createScreenCapture(new Rectangle(Toolkit.getDefaultToolkit().getScreenSize()));
+				    ImageIO.write(image, "png", new File(filename));
+				} catch (Exception ex) {
+					logger.error(ex);
+				}
+			}else{
+				ClientSessionFactory.session().selenium().captureScreenshot(filename);
+			}
 		}
 		
 		@Override
@@ -709,11 +785,12 @@ public class ExecuteHarnessMain {
 
 		@Override
 		public void onStart(ITestContext context) {
+			
 		}
 
 		@Override
 		public void onTestFailedButWithinSuccessPercentage(ITestResult result) {
-			this.getScreenCapture(result);
+			getScreenCapture(result);
 		}
 
 		/**
@@ -723,8 +800,8 @@ public class ExecuteHarnessMain {
 		public void onTestFailure(ITestResult result) {
 			testsFailed++;
 			String fullname = result.getMethod().getMethod().getDeclaringClass().getName() +"."+ result.getMethod().getMethod().getName();
-			failedTests.add(fullname.replace("com.zimbra.qa.selenium.projects.", "HELIX.projects."));
-			this.getScreenCapture(result);
+			failedTests.add(fullname.replace("com.zimbra.qa.selenium.projects.", "main.projects."));
+			getScreenCapture(result);
 		}
 
 		/**
@@ -742,9 +819,13 @@ public class ExecuteHarnessMain {
 		 */
 		@Override
 		public void onTestStart(ITestResult result) {
+			setRunningTestCase(result);
 			testsTotal++;
 		}
 
+		public static void captureScreen() {
+			getScreenCapture(runningTestCase);
+		}
 		/**
 		 * Add 1 to the passed tests
 		 */
@@ -755,7 +836,7 @@ public class ExecuteHarnessMain {
 
 		@Override
 		public void onConfigurationFailure(ITestResult result) {
-			this.getScreenCapture(result);
+			getScreenCapture(result);
 		}
 
 		@Override

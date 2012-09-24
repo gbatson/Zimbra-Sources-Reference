@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -27,13 +27,14 @@ import javax.mail.internet.MimeUtility;
 import org.apache.lucene.document.Document;
 
 import com.google.common.base.Strings;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.cs.convert.AttachmentInfo;
 import com.zimbra.cs.convert.ConversionException;
 import com.zimbra.cs.index.IndexDocument;
-import com.zimbra.cs.localconfig.DebugConfig;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
+import com.zimbra.cs.index.analysis.MimeTypeTokenStream;
 import com.zimbra.cs.object.MatchedObject;
 import com.zimbra.cs.object.ObjectHandler;
 import com.zimbra.cs.object.ObjectHandlerException;
@@ -57,7 +58,7 @@ public abstract class MimeHandler {
     private String filename;
     private DataSource dataSource;
     private String contentType;
-    private int size = -1;
+    private long size = -1;
     private String defaultCharset;
     private String partName; // dotted-number part name
 
@@ -75,11 +76,11 @@ public abstract class MimeHandler {
         mimeTypeInfo = value;
     }
 
-    protected String getContentType() {
+    public String getContentType() {
         return Strings.nullToEmpty(contentType);
     }
 
-    protected void setContentType(String value) {
+    public void setContentType(String value) {
         contentType = value;
     }
 
@@ -92,11 +93,14 @@ public abstract class MimeHandler {
     }
 
     public String getDescription() {
+        if (mimeTypeInfo == null) {
+            return "";
+        }
         return mimeTypeInfo.getDescription();
     }
 
     public boolean isIndexingEnabled() {
-        return mimeTypeInfo.isIndexingEnabled();
+        return mimeTypeInfo == null? false : mimeTypeInfo.isIndexingEnabled();
     }
 
     /**
@@ -117,7 +121,7 @@ public abstract class MimeHandler {
         return partName;
     }
 
-    void setFilename(String value) {
+    public void setFilename(String value) {
         filename = value;
     }
 
@@ -129,28 +133,22 @@ public abstract class MimeHandler {
         return dataSource;
     }
 
-    public int getSize() {
+    public long getSize() {
         return size;
     }
 
-    public void setSize(int value) {
+    public void setSize(long value) {
         size = value;
     }
 
     /**
      * Adds the indexed fields to the Lucene document for search. Each handler determines
      * a set of fields that it deems important for the type of documents it handles.
-     *
-     * @param doc
-     * @throws MimeHandlerException
      */
     protected abstract void addFields(Document doc) throws MimeHandlerException;
 
     /**
      * Gets the text content of the document.
-     *
-     * @return
-     * @throws MimeHandlerException
      */
     public final String getContent() throws MimeHandlerException {
         if (!DebugConfig.disableMimePartExtraction) {
@@ -160,10 +158,10 @@ public abstract class MimeHandler {
             else
                 return toRet;
         } else {
-            if (!mDrainedContent) {
+            if (dataSource != null && !mDrainedContent) {
                 InputStream is = null;
                 try {
-                    is = getDataSource().getInputStream();
+                    is = dataSource.getInputStream();
                     // Read all bytes from the input stream and discard them.
                     // This is useful for testing MIME parser performance, as
                     // the parser may not fully parse the message unless the
@@ -240,7 +238,7 @@ public abstract class MimeHandler {
         throws MimeHandlerException, ObjectHandlerException, ServiceException {
 
         IndexDocument doc = new IndexDocument(new Document());
-        doc.addMimeType(getContentType());
+        doc.addMimeType(new MimeTypeTokenStream(getContentType()));
 
         addFields(doc.toDocument());
         String content = getContent();
@@ -249,13 +247,15 @@ public abstract class MimeHandler {
 
         doc.addPartName(partName);
 
-        String name = dataSource.getName();
-        if (name != null) {
-            try {
-                name = MimeUtility.decodeText(name);
-            } catch (UnsupportedEncodingException ignore) {
+        if (dataSource != null) {
+            String name = dataSource.getName();
+            if (name != null) {
+                try {
+                    name = MimeUtility.decodeText(name);
+                } catch (UnsupportedEncodingException ignore) {
+                }
+                doc.addFilename(name);
             }
-            doc.addFilename(name);
         }
         return doc.toDocument();
     }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.service.offline;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.offline.OfflineSyncManager;
+import com.zimbra.cs.session.SoapSession;
 import com.zimbra.soap.SoapContextExtension;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -25,7 +26,7 @@ public class OfflineContextExtension extends SoapContextExtension {
 	public static final String ZDSYNC = "zdsync";
 	
 	@Override
-	public void addExtensionHeader(Element context, ZimbraSoapContext zsc, String requestedAccountId) throws ServiceException {
-        OfflineSyncManager.getInstance().encode(context, requestedAccountId);
+	public void addExtensionHeader(Element context, ZimbraSoapContext zsc, SoapSession session) throws ServiceException {
+        OfflineSyncManager.getInstance().encode(context);
 	}
 }

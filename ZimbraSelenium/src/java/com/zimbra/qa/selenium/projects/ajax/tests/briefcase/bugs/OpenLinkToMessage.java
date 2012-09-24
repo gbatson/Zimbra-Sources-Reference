@@ -1,24 +1,7 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.bugs;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
 import com.zimbra.qa.selenium.framework.core.Bugs;
@@ -28,14 +11,14 @@ import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
+import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
+import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.PageMail;
 
-public class OpenLinkToMessage extends AjaxCommonTest {
-
+public class OpenLinkToMessage extends FeatureBriefcaseTest {
 	String url;
 
-	@SuppressWarnings("serial")
 	public OpenLinkToMessage() {
 		logger.info("New " + OpenLinkToMessage.class.getCanonicalName());
 
@@ -43,15 +26,11 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 		super.startingPage = app.zPageBriefcase;
 
 		// use an account with message view
-		super.startingAccountPreferences = new HashMap<String, String>() {
-			{
-				put("zimbraPrefGroupMailBy", "message");
-				put("zimbraPrefMessageViewHtmlPreferred", "TRUE");
-			}
-		};
+		super.startingAccountPreferences.put("zimbraPrefGroupMailBy", "message");
+		super.startingAccountPreferences.put("zimbraPrefMessageViewHtmlPreferred", "TRUE");
 	}
 
-	@Bugs(ids = "56802")
+	@Bugs(ids = "56802,64833,65939,67059")
 	@Test(description = "Open link to the message - Verify List View Rows are displayed after message closed", groups = { "functional" })
 	public void OpenLinkToMessage_01() throws HarnessException {
 		// Create the message data to be sent
@@ -68,13 +47,17 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 								+ "</content>" + "</mp>" + "</m>"
 								+ "</SendMsgRequest>");
 
-		// Temporary workaround
-		// Click on Mail tab 
+		// The starting page intentionally defined as Briefcase and not Mail
+		// From Briefcase open Mail page by clicking on Mail tab 
 		app.zPageMain.zClickAt("id=zb__App__Mail_title", "0,0");
-		// Click Get Mail button to view folder in list
+		
+		SleepUtil.sleepSmall();
+		
+		// Click Get Mail button to view message in the list
 		// app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+		app.zPageMail.zClick("//div[@id='CHECK_MAIL']//td[@id='CHECK_MAIL_left_icon']/div");
 
-		SleepUtil.sleepMedium();
+		SleepUtil.sleepSmall();
 
 		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(),
 				"subject:(" + subject + ")");
@@ -101,19 +84,22 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 
 		map.put("id", mail.getId());
 
-		app.zPageBriefcase.openUrl("zimbra", map);
+		app.zPageBriefcase.openUrl("", map);
+		
+		String locator = PageBriefcase.Locators.zCloseIconBtn.locator;
 
 		app.zPageBriefcase
-				.zWaitForElementPresent(PageMail.Locators.zCloseIconBtn_messageWindow);
+				.zWaitForElementPresent(locator);
+		
+		SleepUtil.sleepSmall();
 
-		app.zPageBriefcase.zClickAt(
-				PageMail.Locators.zCloseIconBtn_messageWindow, "0,0");
-
+		app.zPageBriefcase.sClickAt(locator,"");
+				
 		SleepUtil.sleepVerySmall();
 		
 		ZAssert
 				.assertTrue(app.zPageBriefcase
-						.sIsElementPresent(PageMail.Locators.zTVRows),
+						.zWaitForElementPresent(PageMail.Locators.cssTVRowsLocator,"5000"),
 						"Verify List View Rows are displayed after message pane is closed");
 	}
 
@@ -123,7 +109,7 @@ public class OpenLinkToMessage extends AjaxCommonTest {
 
 		// app.zPageBriefcase.openUrl("", null);
 		app.zPageBriefcase.openUrl(url);
-
+		app.zPageBriefcase.zWaitForElementPresent(PageMain.Locators.zLogoffOption,"2000");
 		app.zPageBriefcase.zNavigateTo();
 	}
 }

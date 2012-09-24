@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -183,12 +183,27 @@ public class TestUtilCode extends TestCase
         
         assertEquals(expected, ByteUtil.getSHA1Digest(data, false));
         assertEquals(expectedBase64, ByteUtil.getSHA1Digest(data, true));
-        assertEquals(expectedBase64, ByteUtil.getDigest(data));
         
         assertEquals(expected, ByteUtil.getSHA1Digest(new ByteArrayInputStream(data), false));
         assertEquals(expectedBase64, ByteUtil.getSHA1Digest(new ByteArrayInputStream(data), true));
     }
     
+    /**
+     * Tests {@link ByteUtil#getSHA256Digest.
+     */
+    public void testSHA256Digest()
+    throws Exception {
+        byte[] data = "I am not a number.  I am a free man.".getBytes();
+        String expected = "a9be58e9f21ede0e9ddfac9fb3014e5d3552850cc1f0f2813ec7ccc232fde278";
+        String expectedBase64 = "qb5Y6fIe3g6d36yfswFOXTVShQzB8PKBPsfMwjL94ng=";
+        
+        assertEquals(expected, ByteUtil.getSHA256Digest(data, false));
+        assertEquals(expectedBase64, ByteUtil.getSHA256Digest(data, true));
+        
+        assertEquals(expected, ByteUtil.getSHA256Digest(new ByteArrayInputStream(data), false));
+        assertEquals(expectedBase64, ByteUtil.getSHA256Digest(new ByteArrayInputStream(data), true));
+    }
+
     /**
      * Tests {@link ByteUtil#getContent(Reader, int, boolean)}.
      */

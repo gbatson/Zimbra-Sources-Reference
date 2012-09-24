@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.zimlets.phone;
 
 import java.io.File;
@@ -164,13 +148,13 @@ public class GetMessage extends AjaxCommonTest {
 			private static final long serialVersionUID = -3501450894693465698L;
 		{
 			put("//a[@href='callto:1-877-486-9273']",				"1-877-486-9273");
-			put("//a[@href='callto:877-486-9273']",					" 877-486-9273");
-			put("//a[@href='callto:%28877%29%20456-7890']",			" (877) 456-7890");
+			put("//a[@href='callto:877-486-9273']",					"877-486-9273");
+			put("//a[@href='callto:%28877%29%20456-7890']",			"(877) 456-7890");		// http://bugzilla.zimbra.com/show_bug.cgi?id=67424
 			put("//a[@href='callto:6503501010']",					"6503501010");
-			put("//a[@href='callto:1%20650%20350%201010']",			"1 650 350 1010");
-			put("//a[@href='callto:650.350.1010']",					" 650.350.1010");
-			put("//a[@href='callto:%28650%29%20350%201010']",		" (650) 350 1010");
-			put("//a[@href='callto:1%20%28650%29%20350%201010']",	"1 (650) 350 1010");
+			put("//a[@href='callto:+1%20650%20350%201010']",		"+1 650 350 1010");		// http://bugzilla.zimbra.com/show_bug.cgi?id=52337#c15
+			put("//a[@href='callto:650.350.1010']",					"650.350.1010");
+			put("//a[@href='callto:%28650%29%20350%201010']",		"(650) 350 1010");		// http://bugzilla.zimbra.com/show_bug.cgi?id=67424
+			put("//a[@href='callto:+1%20%28650%29%20350%201010']",	"+1 (650) 350 1010");	// http://bugzilla.zimbra.com/show_bug.cgi?id=52337#c15
 			put("//a[@href='callto:1-650-350-1010']",				"1-650-350-1010");
 		}};
 

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,10 +15,21 @@
 
 package com.zimbra.soap;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.dom4j.QName;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.Version;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
@@ -27,8 +38,6 @@ import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.ServerBy;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.OperationContext;
@@ -39,30 +48,38 @@ import com.zimbra.cs.session.SoapSession;
 import com.zimbra.cs.util.Zimbra;
 import com.zimbra.soap.ZimbraSoapContext.SessionInfo;
 
-import org.dom4j.QName;
-
-import javax.servlet.http.HttpServletRequest;
-
-import java.util.HashMap;
-import java.util.Map;
-
 /**
  * @since May 26, 2004
  * @author schemers
  */
 public abstract class DocumentHandler {
 
-    private QName mResponseQName;
-    private static String LOCAL_HOST = "", LOCAL_HOST_ID = "";
+    private QName responseQName;
+    private long proxyTimeout = -1;
 
-    protected void setResponseQName(QName response) { mResponseQName = response; }
-
-    protected Element getResponseElement(ZimbraSoapContext zc) {
-        return zc.createElement(mResponseQName);
+    @VisibleForTesting
+    public void setResponseQName(QName response) {
+        this.responseQName = response;
     }
 
+    protected Element getResponseElement(ZimbraSoapContext zc) {
+        return zc.createElement(responseQName);
+    }
+    
+    /**
+     * Set the timeout in milli seconds for SoapHttpTransport when this request gets proxied. 
+     * @param timeoutMsecs
+     */
+
+    protected void setProxyTimeout(long timeoutMsecs) {
+        proxyTimeout = timeoutMsecs;
+    }
+
+    private static String LOCAL_HOST = "";
+    private static String LOCAL_HOST_ID = "";
+
     public static String getLocalHost() {
-        synchronized(LOCAL_HOST) {
+        synchronized (LOCAL_HOST) {
             if (LOCAL_HOST.length() == 0) {
                 try {
                     Server localServer = Provisioning.getInstance().getLocalServer();
@@ -77,8 +94,9 @@ public abstract class DocumentHandler {
     }
 
     public static String getLocalHostId() {
-        if (LOCAL_HOST_ID.length() == 0)
+        if (LOCAL_HOST_ID.length() == 0) {
             getLocalHost();
+        }
         return LOCAL_HOST_ID;
     }
 
@@ -127,12 +145,14 @@ public abstract class DocumentHandler {
         String id = zsc.getAuthtokenAccountId();
         AuthToken at = zsc.getAuthToken();
 
-        if (GuestAccount.GUID_PUBLIC.equals(id) || (at != null && !at.isZimbraUser()))
+        if (GuestAccount.GUID_PUBLIC.equals(id) || (at != null && !at.isZimbraUser())) {
             return new GuestAccount(at);
+        }
 
         Account acct = Provisioning.getInstance().get(AccountBy.id, id, zsc.getAuthToken());
-        if (acct == null)
+        if (acct == null) {
             throw ServiceException.AUTH_REQUIRED();
+        }
         return acct;
     }
 
@@ -141,33 +161,28 @@ public abstract class DocumentHandler {
 
         Account acct = Provisioning.getInstance().get(AccountBy.id, id, zsc.getAuthToken());
         if (acct == null) {
-            if (zsc.isDelegatedRequest())
+            if (zsc.isDelegatedRequest()) {
                 throw ServiceException.DEFEND_ACCOUNT_HARVEST(id);
-            else
+            } else {
                 throw ServiceException.AUTH_EXPIRED();
+            }
         }
 
         return acct;
     }
 
     public static Mailbox getRequestedMailbox(ZimbraSoapContext zsc) throws ServiceException {
+        return getRequestedMailbox(zsc, true);
+    }
+
+    public static Mailbox getRequestedMailbox(ZimbraSoapContext zsc, boolean autoCreate) throws ServiceException {
         String id = zsc.getRequestedAccountId();
-        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(id);
-        if (mbox != null)
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(id, autoCreate);
+        if (mbox != null) {
             ZimbraLog.addMboxToContext(mbox.getId());
+        }
         return mbox;
     }
-
-    private static boolean isRequestLocal(ZimbraSoapContext zsc) {
-        try {
-            Account acct = getAuthenticatedAccount(zsc);
-            return (acct != null && Provisioning.onLocalServer(acct));
-        } catch (ServiceException e) {
-            ZimbraLog.session.info("error determining whether authenticated account is local", e);
-            return false;
-        }
-    }
-
 
     /** Returns whether the command's caller must be authenticated. */
     public boolean needsAuth(Map<String, Object> context) {
@@ -181,26 +196,30 @@ public abstract class DocumentHandler {
     }
 
     public Boolean canAccessAccountCommon(ZimbraSoapContext zsc, Account target, boolean allowSelf) throws ServiceException {
-        if (zsc.getAuthtokenAccountId() == null || target == null)
+        if (zsc.getAuthtokenAccountId() == null || target == null) {
             return Boolean.FALSE;
+        }
 
-        if (allowSelf && target.getId().equals(zsc.getAuthtokenAccountId()))
+        if (allowSelf && target.getId().equals(zsc.getAuthtokenAccountId())) {
             return Boolean.TRUE;
+        }
 
         // 1. delegated auth case has been logged in SoapEngine
         // 2. we do not want to log delegated request, where the target account is specified in
         //    soap context header.  Usages for that route are family mailboxes and sharing access.
         //    we only want to log the "admin" accesses.
-        if (!zsc.getAuthToken().isDelegatedAuth() && !zsc.isDelegatedRequest())
+        if (!zsc.getAuthToken().isDelegatedAuth() && !zsc.isDelegatedRequest()) {
             logAuditAccess(null, zsc.getAuthtokenAccountId(), target.getId());
+        }
 
         return null;
     }
 
     public boolean canAccessAccount(ZimbraSoapContext zsc, Account target) throws ServiceException {
         Boolean canAccess = canAccessAccountCommon(zsc, target, true);
-        if (canAccess != null)
+        if (canAccess != null) {
             return canAccess.booleanValue();
+        }
         return AccessManager.getInstance().canAccessAccount(zsc.getAuthToken(), target);
     }
 
@@ -236,7 +255,7 @@ public abstract class DocumentHandler {
     /** Returns whether the client making the SOAP request is localhost. */
     protected boolean clientIsLocal(Map<String, Object> context) {
         HttpServletRequest req = (HttpServletRequest) context.get(SoapServlet.SERVLET_REQUEST);
-        return (req == null ? true : "127.0.0.1".equals(req.getRemoteAddr()));
+        return req == null ? true : "127.0.0.1".equals(req.getRemoteAddr());
     }
 
     /** Updates the {@link ZimbraSoapContext} to treat the specified account
@@ -254,19 +273,22 @@ public abstract class DocumentHandler {
     public Session updateAuthenticatedAccount(ZimbraSoapContext zsc, AuthToken authToken, Map<String, Object> context, boolean getSession) {
         String oldAccountId = zsc.getAuthtokenAccountId();
         String accountId = authToken.getAccountId();
-        if (accountId != null && !accountId.equals(oldAccountId))
+        if (accountId != null && !accountId.equals(oldAccountId)) {
             zsc.clearSessionInfo();
+        }
         zsc.setAuthToken(authToken);
 
         Session session = (getSession ? getSession(zsc) : null);
-        if (context != null)
+        if (context != null) {
             context.put(SoapEngine.ZIMBRA_SESSION, session);
+        }
         return session;
     }
 
     public static Session getReferencedSession(ZimbraSoapContext zsc) {
-        if (zsc == null)
+        if (zsc == null) {
             return null;
+        }
         SessionInfo sinfo = zsc.getSessionInfo();
         return sinfo == null ? null : SessionCache.lookup(sinfo.sessionId, zsc.getAuthtokenAccountId());
     }
@@ -303,16 +325,19 @@ public abstract class DocumentHandler {
      * @see SessionCache#SESSION_SOAP
      * @see SessionCache#SESSION_ADMIN */
     protected Session getSession(ZimbraSoapContext zsc, Session.Type stype) {
-        if (zsc == null || stype == null || !zsc.isNotificationEnabled())
+        if (zsc == null || stype == null || !zsc.isNotificationEnabled()) {
             return null;
+        }
         String authAccountId = zsc.getAuthtokenAccountId();
-        if (authAccountId == null)
+        if (authAccountId == null) {
             return null;
+        }
 
         // if they asked for a SOAP session on a remote host and it's a non-proxied request, we don't notify
-        boolean isLocal = isRequestLocal(zsc);
-        if (stype == Session.Type.SOAP && !isLocal && !zsc.isSessionProxied())
+        boolean isLocal = zsc.isAuthUserOnLocalhost();
+        if (stype == Session.Type.SOAP && !isLocal && !zsc.isSessionProxied()) {
             return null;
+        }
 
         Session s = null;
 
@@ -334,23 +359,25 @@ public abstract class DocumentHandler {
         if (s == null) {
             try {
                 if (stype == Session.Type.SOAP) {
-                    s = SoapSessionFactory.getInstance().getSoapSession(authAccountId, isLocal, zsc.isUsingAdminPrivileges()).register();
+                    s = SoapSessionFactory.getInstance().getSoapSession(zsc).register();
                 } else if (stype == Session.Type.ADMIN) {
                     s = new AdminSession(authAccountId).register();
                 }
             } catch (ServiceException e) {
                 ZimbraLog.session.info("exception while creating session", e);
             }
-            if (s != null)
+            if (s != null) {
                 zsc.recordNewSession(s.getSessionId());
+            }
         }
 
         // if it's a delegated request, try to get a session on the local requested mailbox
         //   (note that if the requested account is remote, getDelegateSession returns null)
         if (s instanceof SoapSession && zsc.isDelegatedRequest()) {
             Session delegate = ((SoapSession) s).getDelegateSession(zsc.getRequestedAccountId());
-            if (delegate != null)
+            if (delegate != null) {
                 s = delegate;
+            }
         }
 
         return s;
@@ -379,40 +406,48 @@ public abstract class DocumentHandler {
      *        with the Account does not exist</ul> */
     protected static Server getServer(String acctId) throws ServiceException {
         Account acct = Provisioning.getInstance().get(AccountBy.id, acctId);
-        if (acct == null)
+        if (acct == null) {
             throw AccountServiceException.NO_SUCH_ACCOUNT(acctId);
+        }
 
         String hostname = acct.getAttr(Provisioning.A_zimbraMailHost);
-        if (hostname == null)
+        if (hostname == null) {
             throw ServiceException.PROXY_ERROR(AccountServiceException.NO_SUCH_SERVER(""), "");
-        Server server = Provisioning.getInstance().get(ServerBy.name, hostname);
-        if (server == null)
+        }
+        Server server = Provisioning.getInstance().get(Key.ServerBy.name, hostname);
+        if (server == null) {
             throw ServiceException.PROXY_ERROR(AccountServiceException.NO_SUCH_SERVER(hostname), "");
+        }
         return server;
     }
 
     protected static String getXPath(Element request, String[] xpath) {
         int depth = 0;
-        while (depth < xpath.length - 1 && request != null)
+        while (depth < xpath.length - 1 && request != null) {
             request = request.getOptionalElement(xpath[depth++]);
+        }
         return (request == null ? null : request.getAttribute(xpath[depth], null));
     }
 
     protected static Element getXPathElement(Element request, String[] xpath) {
         int depth = 0;
-        while (depth < xpath.length && request != null)
+        while (depth < xpath.length && request != null) {
             request = request.getOptionalElement(xpath[depth++]);
+        }
         return request;
     }
 
     protected static void setXPath(Element request, String[] xpath, String value) throws ServiceException {
         if (xpath == null || xpath.length == 0)
             return;
+
         int depth = 0;
-        while (depth < xpath.length - 1 && request != null)
+        while (depth < xpath.length - 1 && request != null) {
             request = request.getOptionalElement(xpath[depth++]);
-        if (request == null)
+        }
+        if (request == null) {
             throw ServiceException.INVALID_REQUEST("could not find path", null);
+        }
         request.addAttribute(xpath[depth], value);
     }
 
@@ -420,8 +455,9 @@ public abstract class DocumentHandler {
         // if the "target account" is remote and the command is non-admin, proxy.
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         String acctId = zsc.getRequestedAccountId();
-        if (acctId != null && zsc.getProxyTarget() == null && !isAdminCommand() && !Provisioning.onLocalServer(getRequestedAccount(zsc)))
+        if (acctId != null && zsc.getProxyTarget() == null && !isAdminCommand() && !Provisioning.onLocalServer(getRequestedAccount(zsc))) {
             return proxyRequest(request, context, acctId);
+        }
 
         return null;
     }
@@ -436,8 +472,8 @@ public abstract class DocumentHandler {
         return proxyRequest(request, context, getServer(acctId), zscTarget);
     }
 
-    protected Element proxyRequest(Element request, Map<String, Object> context, 
-            AuthToken authToken, String acctId) throws ServiceException {
+    protected Element proxyRequest(Element request, Map<String, Object> context, AuthToken authToken, String acctId)
+    throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
 
         // new context for proxied request has a different auth token and "requested account"
@@ -469,8 +505,8 @@ public abstract class DocumentHandler {
         //reset proxy token if proxying locally; it could previously be set to wrong account
         if (isLocal) {
             zsc.resetProxyAuthToken();
-        } 
-        
+        }
+
         //make sure proxy token is set correctly for current requested acct
         if (zsc.getRequestedAccountId() != null) {
             try {
@@ -502,6 +538,9 @@ public abstract class DocumentHandler {
             // executing remotely; find our target and proxy there
             HttpServletRequest httpreq = (HttpServletRequest) context.get(SoapServlet.SERVLET_REQUEST);
             ProxyTarget proxy = new ProxyTarget(server.getId(), zsc.getAuthToken(), httpreq);
+            if (proxyTimeout >= 0) {
+                proxy.setTimeouts(proxyTimeout);
+            }
             response = proxyWithNotification(request, proxy, zsc, (Session) context.get(SoapEngine.ZIMBRA_SESSION));
             // do any necessary operations after doing a cross-server proxy
             postProxy(request, response, context);
@@ -519,20 +558,23 @@ public abstract class DocumentHandler {
         Server server = proxy.getServer();
         boolean isLocal = getLocalHostId().equalsIgnoreCase(server.getId());
 
-        if (isLocal)
+        if (isLocal) {
             zscProxy.resetProxyAuthToken();
+        }
 
         if (zscProxy.isNotificationEnabled()) {
             // if we've got a SOAP session, make sure to use the appropriate remote session ID
-            if (localSession instanceof SoapSession.DelegateSession)
+            if (localSession instanceof SoapSession.DelegateSession) {
                 localSession = ((SoapSession.DelegateSession) localSession).getParentSession();
+            }
             // note that requests proxied to *this same host* shouldn't request notification, as the existing local session collects the notifications
-            if (!(localSession instanceof SoapSession) || localSession.getMailbox() == null)
+            if (!(localSession instanceof SoapSession) || localSession.getMailbox() == null) {
                 zscProxy.disableNotifications();
-            else if (!isLocal)
+            } else if (!isLocal) {
                 zscProxy.setProxySession(((SoapSession) localSession).getRemoteSessionId(server));
-            else
+            } else {
                 zscProxy.setProxySession(localSession.getSessionId());
+            }
         }
 
         Pair<Element, Element> envelope = proxy.execute(request, zscProxy);
@@ -553,13 +595,15 @@ public abstract class DocumentHandler {
      * @return
      */
     private String getAccountLogName(Provisioning prov, String acctId) {
-        if (acctId == null)
+        if (acctId == null) {
             return "";
+        }
 
         try {
             Account acct = prov.get(AccountBy.id, acctId);
-            if (acct != null)
+            if (acct != null) {
                 return acct.getName();
+            }
         } catch (ServiceException e) { }
 
         return acctId;
@@ -570,7 +614,7 @@ public abstract class DocumentHandler {
             return;
 
         // 8 => "Response".length()
-        String reqName = mResponseQName.getQualifiedName().substring(0, mResponseQName.getQualifiedName().length()-8);
+        String reqName = responseQName.getQualifiedName().substring(0, responseQName.getQualifiedName().length()-8);
 
         Provisioning prov = Provisioning.getInstance();
         String delegatingAcctName = getAccountLogName(prov, delegatingAcctId);
@@ -581,5 +625,34 @@ public abstract class DocumentHandler {
             (delegatingAcctId==null?"" : ", delegating account="+delegatingAcctName) +
             ", authenticated account=" + authedAcctName +
             ", target account=" + targetAcctName);
+    }
+
+    protected static Version zimbraConnectorClientVersion(ZimbraSoapContext zsc) {
+        final String UA_ZCO = "ZimbraConnectorForOutlook";
+        final String UA_ZCB = "ZimbraConnectorForBES";
+        final String UA_MIGRATION = "ZimbraMigration";
+
+        String ua = zsc.getUserAgent();
+
+        // user agent is in the format of: name + "/" + version;
+        // ZCO: ZimbraConnectorForOutlook/7.0.0.0
+        // ZCB: ZimbraConnectorForBES/7.0.0.0
+        // MIGRATION: ZimbraMigration/8.0.0.x (where x is latest build number)
+        if (ua != null) {
+            String[] parts = ua.split("/");
+            if (parts.length == 2) {
+                String app = parts[0];
+                String version = parts[1];
+
+                if (UA_ZCO.equalsIgnoreCase(app) || UA_ZCB.equalsIgnoreCase(app) || UA_MIGRATION.equalsIgnoreCase(app)) {
+                    try {
+                        return new Version(version, false);
+                    } catch (ServiceException e) {
+                        ZimbraLog.soap.debug("unable to parse zimbra connector client version", e);
+                    }
+                }
+            }
+        }
+        return null;
     }
 }

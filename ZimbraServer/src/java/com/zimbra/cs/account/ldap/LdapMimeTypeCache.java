@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,33 +24,33 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.cache.IMimeTypeCache;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.mime.MimeTypeInfo;
 
-class LdapMimeTypeCache implements IMimeTypeCache {
+public class LdapMimeTypeCache implements IMimeTypeCache {
 	
 	private List<MimeTypeInfo> mAllMimeTypes;
 	private Map<String, List<MimeTypeInfo>> mMapByMimeType;
 	private long mRefreshTTL;
 	private long mLifetime;
 	
-	LdapMimeTypeCache() {
+	public LdapMimeTypeCache() {
 		mRefreshTTL = LC.ldap_cache_mime_maxage.intValue() * Constants.MILLIS_PER_MINUTE;
 	}
 	
 	@Override
 	public synchronized void flushCache(Provisioning prov) throws ServiceException {
-		refresh((LdapProvisioning)prov);
+		refresh((LdapProv)prov);
 	}
 	
 	@Override
-	public synchronized List<MimeTypeInfo> getAllMimeTypes(Provisioning prov) 
-	throws ServiceException {
-		refreshIfNecessary((LdapProvisioning)prov);
+	public synchronized List<MimeTypeInfo> getAllMimeTypes(Provisioning prov) throws ServiceException {
+		refreshIfNecessary((LdapProv)prov);
 		return mAllMimeTypes;
 	}
 	
 	@Override
-	public synchronized List<MimeTypeInfo> getMimeTypes(Provisioning prov, String mimeType)
+	public synchronized List<MimeTypeInfo> getMimeTypes(Provisioning prov, String mimeType) 
 	throws ServiceException {
 	    
 	    LdapProvisioning ldapProv = (LdapProvisioning) prov;
@@ -64,9 +64,10 @@ class LdapMimeTypeCache implements IMimeTypeCache {
 		return mimeTypes;
 	}
 	
-	private void refreshIfNecessary(LdapProvisioning prov) throws ServiceException {
-		if (isStale())
-			refresh(prov);
+	private void refreshIfNecessary(LdapProv ldapProv) throws ServiceException {
+		if (isStale()) {
+			refresh(ldapProv);
+		}
 	}
 	
 	private boolean isStale() {
@@ -76,8 +77,8 @@ class LdapMimeTypeCache implements IMimeTypeCache {
         return mRefreshTTL != 0 && mLifetime < System.currentTimeMillis();
     }
 	
-	private void refresh(LdapProvisioning prov) throws ServiceException {
-		mAllMimeTypes = Collections.unmodifiableList(prov.getAllMimeTypesByQuery());
+	private void refresh(LdapProv ldapProv) throws ServiceException {
+		mAllMimeTypes = Collections.unmodifiableList(ldapProv.getAllMimeTypesByQuery());
 		mMapByMimeType = new HashMap<String, List<MimeTypeInfo>>();
 		mLifetime = System.currentTimeMillis() + mRefreshTTL;
 	}

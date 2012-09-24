@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,14 +23,14 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.servlet.http.HttpServletRequest;
 
-import org.mortbay.util.ajax.Continuation;
-import org.mortbay.util.ajax.ContinuationSupport;
-import org.mortbay.util.ajax.WaitingContinuation;
+import org.eclipse.jetty.continuation.Continuation;
+import org.eclipse.jetty.continuation.ContinuationSupport;
 
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.soap.SoapServlet;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -64,6 +64,12 @@ public class NoOp extends MailDocumentHandler  {
         return timeout;
     }
     
+    @Override
+    public void preProxy(Element request, Map<String, Object> context) throws ServiceException {
+        setProxyTimeout(parseTimeout(request) + 10 * Constants.MILLIS_PER_SECOND);
+        super.preProxy(request, context);
+    }
+    
     ConcurrentHashMap<String /*AccountId*/, ZimbraSoapContext> sBlockedNops = 
         new ConcurrentHashMap<String /*AccountId*/, ZimbraSoapContext>(5000, 0.75f, 50);
 
@@ -86,12 +92,11 @@ public class NoOp extends MailDocumentHandler  {
                 throw ServiceException.INVALID_REQUEST("Cannot execute a NoOpRequest with wait=\"1\" without a session."+
                                                        "  Set the <session> flag in the <context> of your request", null);
             }
-            if (!context.containsKey(SoapServlet.IS_RESUMED_REQUEST)) {
-                Continuation continuation = ContinuationSupport.getContinuation(servletRequest, zsc);
-                
+            ZimbraSoapContext origContext = (ZimbraSoapContext)(servletRequest.getAttribute("nop_origcontext"));
+            if (origContext == null) { // Initial
                 servletRequest.setAttribute("nop_origcontext", zsc);
-                
                 // NOT a resumed request -- block if necessary
+                Continuation continuation = ContinuationSupport.getContinuation(servletRequest);
                 if (zsc.beginWaitForNotifications(continuation, includeDelegates)) {
                     if (enforceLimit) {
                         ZimbraSoapContext otherContext = sBlockedNops.put(zsc.getAuthtokenAccountId(), zsc);
@@ -102,11 +107,13 @@ public class NoOp extends MailDocumentHandler  {
                     
                     synchronized (zsc) {
                         if (zsc.waitingForNotifications()) {
-                            assert (!(continuation instanceof WaitingContinuation) || ((WaitingContinuation) continuation).getMutex() == zsc); 
+                            //assert (!(continuation instanceof WaitingContinuation) || ((WaitingContinuation) continuation).getMutex() == zsc); 
                             long timeout = parseTimeout(request);
                             if (ZimbraLog.soap.isTraceEnabled())
                                 ZimbraLog.soap.trace("Suspending <NoOpRequest> for %dms", timeout);
-                            continuation.suspend(timeout);
+                            continuation.setTimeout(timeout);
+                            continuation.suspend();
+                            continuation.undispatch();
                         }
                         // bug 63230: Commenting out the below assertion.  continuation can be a RetryContinuation object, apparently.
                         //assert(continuation instanceof WaitingContinuation); // this part of code only reached if we're using WaitingContinuations
@@ -115,21 +122,19 @@ public class NoOp extends MailDocumentHandler  {
                             blockingUnsupported = true;
                     }
                 }
-            } else {
-                ZimbraSoapContext origContext = (ZimbraSoapContext)(servletRequest.getAttribute("nop_origcontext"));
+                if (enforceLimit) {
+                    // remove this soap context from the blocked-conext hash, but only
+                    // if it hasn't already been removed by someone else...
+                    sBlockedNops.remove(zsc.getAuthtokenAccountId(), zsc);
+                }
+            } else { // Resumed
                 if (origContext.isCanceledWaitForNotifications())
                     blockingUnsupported = true;
-            }
-            //
-            // at this point, we know we're done waiting -- we either blocked on a BlockingContinuation, or
-            // we've resumed a RetryContinuation...either way our wait is up, time to execute.
-            //
-//            blockingUnsupported = zsc.isCanceledWaitForNotifications();
-
-            if (enforceLimit) {
-                // remove this soap context from the blocked-conext hash, but only
-                // if it hasn't already been removed by someone else...
-                sBlockedNops.remove(zsc.getAuthtokenAccountId(), zsc);
+                if (enforceLimit) {
+                    // remove this soap context from the blocked-conext hash, but only
+                    // if it hasn't already been removed by someone else...
+                    sBlockedNops.remove(origContext.getAuthtokenAccountId(), origContext);
+                }
             }
         }
         Element toRet = zsc.createElement(MailConstants.NO_OP_RESPONSE);

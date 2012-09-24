@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,8 +34,8 @@ import org.junit.Test;
 import com.google.common.base.Charsets;
 import com.sun.mail.smtp.SMTPMessage;
 import com.zimbra.common.zmime.ZMimeMessage;
-import com.zimbra.cs.mailclient.MockTcpServer;
 import com.zimbra.cs.util.JMSession;
+import com.zimbra.cs.util.MockTcpServer;
 
 /**
  * Unit test for {@link SmtpTransport}.
@@ -554,7 +554,8 @@ public final class SmtpTransportTest {
         Transport transport = session.getTransport("smtp");
         transport.connect("localhost", PORT, null, null);
         String raw = "From: sender@zimbra.com\nTo: rcpt@zimbra.com\nSubject: test\n\ntest";
-        MimeMessage msg = new ZMimeMessage(session, new SharedByteArrayInputStream(raw.getBytes(Charsets.ISO_8859_1))) {
+        MimeMessage msg = new ZMimeMessage(session,
+                new SharedByteArrayInputStream(raw.getBytes(Charsets.ISO_8859_1))) {
             @Override
             public void writeTo(OutputStream os, String[] ignoreList) throws MessagingException {
                 throw new MessagingException(); // exception while encoding

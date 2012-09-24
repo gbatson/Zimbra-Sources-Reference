@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,9 +22,10 @@ import java.io.IOException;
 
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.MailboxIdConflictException;
 import com.zimbra.cs.redolog.RedoException;
 import com.zimbra.cs.redolog.RedoLogInput;
@@ -35,14 +36,12 @@ public class CreateMailbox extends RedoableOp {
     private String mAccountId;
 
     public CreateMailbox() {
+        super(MailboxOperation.CreateMailbox);
     }
 
     public CreateMailbox(String accountId) {
+        this();
         mAccountId = accountId;
-    }
-
-    @Override public int getOpCode() {
-        return OP_CREATE_MAILBOX;
     }
 
     @Override protected String getPrintableData() {

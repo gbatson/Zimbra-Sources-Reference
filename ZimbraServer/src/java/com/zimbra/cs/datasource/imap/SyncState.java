@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,7 +38,7 @@ final class SyncState {
 
     SyncState(Mailbox mbox) throws ServiceException {
         this.mbox = mbox;
-        inboxFolder = mbox.getFolderById(Mailbox.ID_FOLDER_INBOX);
+        inboxFolder = mbox.getFolderById(null, Mailbox.ID_FOLDER_INBOX);
         folders = Collections.synchronizedMap(new HashMap<Integer, FolderSyncState>());
     }
 
@@ -81,14 +81,14 @@ final class SyncState {
         // changes to INBOX since the last time we checked
         FolderChanges fc = FolderChanges.getChanges(ds, lastChangeId);
         if (fc.hasChanges()) {
-            ZimbraLog.datasource.debug("Forcing sync due to local folder changes: " + fc);
+            ZimbraLog.datasource.debug("Forcing sync due to local folder changes: %s", fc);
             lastChangeId = fc.getLastChangeId();
             return true;
         }
         inboxChanges = MessageChanges.getChanges(ds, inboxFolder, lastChangeId);
         lastChangeId = Math.min(inboxChanges.getLastChangeId(), fc.getLastChangeId());
         if (inboxChanges.hasChanges()) {
-            ZimbraLog.datasource.debug("Forcing sync due to local INBOX changes: " + inboxChanges);
+            ZimbraLog.datasource.debug("Forcing sync due to local INBOX changes: %s", inboxChanges);
             return true;
         }
         return false;

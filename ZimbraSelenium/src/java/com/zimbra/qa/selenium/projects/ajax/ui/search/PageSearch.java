@@ -1,24 +1,11 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.search;
 
+import java.util.*;
+
+import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
@@ -32,13 +19,38 @@ public class PageSearch extends AbsTab {
 
 	public static class Locators {
 		
-		public static final String zActiveLocator = "id=zb__Search__SEARCH";
+		public static final String zActiveLocator = "css=div#ztb_search";
 		
-		public static final String zSearchInput = "//input[@class='search_input']";
-		public static final String zSearchButton = "id=zb__Search__SEARCH_title";
+		public static final String zSearchInput = "css=input#zi_search_inputfield";
+		public static final String zSearchButton = "css=td#zb__Search__SAVE_left_icon";
 		
 	}
-	
+
+	private boolean zIsIncludeSharedItems=false;
+	private static HashMap<Button,String> imagesMap             = new HashMap<Button,String>();
+	private static HashMap<Button,String> imagesIncludeShareMap = new HashMap<Button,String>();
+	{	
+		imagesMap.put(Button.O_SEARCHTYPE_ALL,"ImgGlobe");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_ALL,"ImgGlobe");
+		
+		imagesMap.put(Button.O_SEARCHTYPE_EMAIL,"ImgMessage");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_EMAIL,"ImgSharedMailFolder");
+		
+		imagesMap.put(Button.O_SEARCHTYPE_CONTACTS,"ImgContact");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_CONTACTS,"ImgSharedContactsFolder");
+
+		imagesMap.put(Button.O_SEARCHTYPE_GAL,"ImgGAL");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_GAL,"ImgGAL");
+		
+		imagesMap.put(Button.O_SEARCHTYPE_APPOINTMENTS,"ImgAppointment");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_APPOINTMENTS,"ImgAppointment");
+		
+		imagesMap.put(Button.O_SEARCHTYPE_TASKS,"ImgTasksApp");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_TASKS,"ImgSharedTaskList");
+		
+		imagesMap.put(Button.O_SEARCHTYPE_FILES,"ImgDoc");
+		imagesIncludeShareMap.put(Button.O_SEARCHTYPE_FILES,"ImgDoc");		
+	}
 	
 	public PageSearch(AbsApplication application) {
 		super(application);
@@ -58,7 +70,7 @@ public class PageSearch extends AbsTab {
 			throw new HarnessException("Application is not active!");
 		
 
-		// Look for the Logout button
+		// Look for the search toolbar button
 		boolean present = sIsElementPresent(Locators.zActiveLocator);
 		if ( !present ) {
 			logger.debug("isActive() present = "+ present);
@@ -68,6 +80,24 @@ public class PageSearch extends AbsTab {
 		logger.debug("isActive() = "+ true);
 		return (true);
 
+	}
+	
+	public void zClose() throws HarnessException {
+		
+		if ( !zIsActive() ) {
+			return; // Already closed
+		}
+		
+		String locator = "css=div[id^='zb__App__tab_SR'] td[id$='_right_icon'] div.ImgCloseGray";
+		
+		if ( !this.sIsElementPresent(locator) ) {
+			return; // Already closed
+		}
+		
+		this.zClickAt(locator, "");
+		this.zWaitForBusyOverlay();
+		
+		return;
 	}
 
 	/* (non-Javadoc)
@@ -122,37 +152,17 @@ public class PageSearch extends AbsTab {
 		//
 		
 		if ( button == Button.B_SEARCH ) {
+			locator = "css=div#zb__Search__SEARCH_left_icon div.ImgSearch2";
 			
-			locator = "zb__Search__SEARCH_title";
-			page = null;
+			// for all item types
+			if (zIsSearchType(Button.O_SEARCHTYPE_ALL)) {
+			    page = new PageAllItemTypes(((AppAjaxClient)MyApplication));
+			}
 			
-			// Make sure the button exists
-			if ( !this.sIsElementPresent(locator) )
-				throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
+		} else if ( (button == Button.B_SEARCHSAVE) || (button == Button.B_SAVE) ) {
 			
-			// FALL THROUGH
-			
-		} else if ( button == Button.B_SEARCHSAVE ) {
-			
-			locator = "zb__Search__SAVE_title";
+			locator = "css=div[id^='ztb_searchresults__'] td[id$='_saveButton'] td[id$='_title']";
 			page = new DialogSaveSearch(MyApplication, this);
-			
-			// Make sure the button exists
-			if ( !this.sIsElementPresent(locator) )
-				throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
-			
-			// FALL THROUGH
-			
-		} else if ( button == Button.B_SEARCHADVANCED ) {
-			
-			locator = "zb__Search__ADV_title";
-			page = ((AppAjaxClient)MyApplication).zPageAdvancedSearch;
-			
-			// Make sure the button exists
-			if ( !this.sIsElementPresent(locator) )
-				throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
-			
-			// FALL THROUGH
 			
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);
@@ -162,19 +172,23 @@ public class PageSearch extends AbsTab {
 			throw new HarnessException("locator was null for button "+ button);
 		}
 		
+		// Make sure the button exists
+		if ( !sIsElementPresent(locator) )
+			throw new HarnessException("Button is not present locator="+ locator +" button="+ button);
+		
 		// Default behavior, process the locator by clicking on it
 		//
-		
+	
 		// Click it
-		this.zClick(locator);
+		zClick(locator);
 		
 		// If the app is busy, wait for it to become active
-		this.zWaitForBusyOverlay();
+		zWaitForBusyOverlay();
 		
-
+		
 		// If page was specified, make sure it is active
 		if ( page != null ) {
-			
+            
 			// This function (default) throws an exception if never active
 			page.zWaitForActive();
 			
@@ -205,27 +219,25 @@ public class PageSearch extends AbsTab {
 		//
 		
 		if ( pulldown == Button.B_SEARCHTYPE ) {
-
-			if ( option == Button.O_SEARCHTYPE_ALL ) {
-
-				pulldownLocator = "implement me";
-				optionLocator = "implement me";
-				page = null;
-				
+			pulldownLocator = "css=td#ztb_search_searchMenuButton";
+			
+			if ( option == Button.O_SEARCHTYPE_ALL ) {        
+				optionLocator = "css=div#zmi__Search__ANY";						
 			} else if ( option == Button.O_SEARCHTYPE_EMAIL ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__MAIL";		
 			} else if ( option == Button.O_SEARCHTYPE_CONTACTS ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__CONTACT";		
 			} else if ( option == Button.O_SEARCHTYPE_GAL ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__GAL";		
 			} else if ( option == Button.O_SEARCHTYPE_APPOINTMENTS ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__APPT";		
 			} else if ( option == Button.O_SEARCHTYPE_TASKS ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__TASK";		
 			} else if ( option == Button.O_SEARCHTYPE_FILES ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__BRIEFCASE_ITEM";		
 			} else if ( option == Button.O_SEARCHTYPE_INCLUDESHARED ) {
-				throw new HarnessException("implement me!");
+				optionLocator = "css=div#zmi__Search__SHARED";		
+				
 			} else {
 				throw new HarnessException("no logic defined for pulldown/option "+ pulldown +"/"+ option);
 			}
@@ -260,13 +272,20 @@ public class PageSearch extends AbsTab {
 				// If the app is busy, wait for it to become active
 				this.zWaitForBusyOverlay();
 				
-
+				if ( option == Button.O_SEARCHTYPE_INCLUDESHARED ) {
+				   zIsIncludeSharedItems = !zIsIncludeSharedItems; 
+				}
+				
 			}
 			
 			// If we click on pulldown/option and the page is specified, then
 			// wait for the page to go active
 			if ( page != null ) {
 				page.zWaitForActive();
+			}
+			
+			if (!zIsSearchType(option)) {
+				throw new HarnessException("Not able to change search type "+ option ); 
 			}
 			
 		}
@@ -301,12 +320,75 @@ public class PageSearch extends AbsTab {
 		tracer.trace("Search for the query "+ query);
 
 		
-		this.sType(Locators.zSearchInput, query);
+		this.zTypeKeys(Locators.zSearchInput, query);
 
 	}
 	
 
+    public boolean zIsSearchType(Button button) throws HarnessException
+    {
+    	String imageClass=null;
+        if (zIsIncludeSharedItems) {
+        	imageClass = imagesIncludeShareMap.get(button);
+        }
+        else {
+        	imageClass = imagesMap.get(button);
+        }
+            
+    	return sIsElementPresent("css=td#zb__Search__MENU_left_icon>div." + imageClass);
+    }
 
+	public List<MailItem> zListGetMessages() throws HarnessException {
+
+		List<MailItem> items = new ArrayList<MailItem>();
+
+		String listLocator = null;
+		String rowLocator = null;
+		if (zGetPropMailView() == SearchView.BY_MESSAGE) {
+			listLocator = "css=div[id^='zv__TV-SR-Mail-']";
+			rowLocator = "div[id$='__rows']";
+		} else {
+			listLocator = "css=div[id^='zv__CLV-SR-Mail-']";
+			rowLocator = "div[id$='__rows']";
+		}
+
+		// Make sure the button exists
+		if ( !this.sIsElementPresent(listLocator) )
+			throw new HarnessException("Message List View Rows is not present: " + listLocator);
+
+		String tableLocator = listLocator + " " + rowLocator;
+		
+		// How many items are in the table?
+		int count = this.sGetCssCount(tableLocator);
+		logger.debug(myPageName() + " zListGetMessages: number of messages: "+ count);
+
+		// Get each conversation's data from the table list
+		for (int i = 1; i <= count; i++) {
+
+			// Add the new item to the list
+			MailItem item = ((AppAjaxClient)this.MyApplication).zPageMail.parseMessageRow(listLocator + " div:nth-of-type("+ i +") ");
+			items.add(item);
+			logger.info(item.prettyPrint());
+		}
+
+		// Return the list of items
+		return (items);
+	}
 	
+	public enum SearchView {
+		BY_MESSAGE, BY_CONVERSATION
+	}
+
+
+	public SearchView zGetPropMailView() throws HarnessException {
+		if ( this.zIsVisiblePerPosition("css=div[id^='zv__CLV-SR-Mail-']", 0, 0) ) {
+			return (SearchView.BY_CONVERSATION);
+		} else if ( this.zIsVisiblePerPosition("css=div[id^='zv__TV-SR-Mail-']", 0, 0) ) {
+			return (SearchView.BY_MESSAGE);
+		}
+
+		throw new HarnessException("Unable to determine the Page Mail View");
+	}
+
 
 }

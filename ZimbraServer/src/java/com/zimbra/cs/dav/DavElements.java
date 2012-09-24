@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -207,6 +207,7 @@ public class DavElements {
 	public static final String P_SHARED = "shared";
 	public static final String P_SOURCE = "source";
     public static final String P_SUPPORTED_ADDRESS_DATA = "supported-address-data";
+    public static final String P_SUPPORTED_CALENDAR_COMPONENT = "supported-calendar-component";
 	public static final String P_SUPPORTED_CALENDAR_COMPONENT_SET = "supported-calendar-component-set";
 	public static final String P_SUPPORTED_CALENDAR_DATA = "supported-calendar-data";
 	public static final String P_SUPPORTED_COLLATION = "supported-collation";
@@ -228,7 +229,9 @@ public class DavElements {
 	public static final String P_UNBIND = "unbind";
 	public static final String P_UNLOCK = "unlock";
 	
+	public static final String P_VALID_ADDRESS_DATA = "valid-address-data";
 	public static final String P_VALID_CALENDAR_DATA = "valid-calendar-data";
+	public static final String P_VALID_CALENDAR_OBJECT_RESOURCE = "valid-calendar-object-resource";
 	public static final String P_VERSION= "version";
 	
 	public static final String P_WRITE = "write";
@@ -291,6 +294,7 @@ public class DavElements {
 	public static final QName E_EMAIL_ADDRESS_SET = QName.get(P_EMAIL_ADDRESS_SET, CS_NS);
 	public static final QName E_ERROR = QName.get(P_ERROR, WEBDAV_NS);
 	public static final QName E_EXCLUSIVE = QName.get(P_EXCLUSIVE, WEBDAV_NS);
+	public static final QName E_EXPAND = QName.get(P_EXPAND, CALDAV_NS);
 	public static final QName E_EXPAND_PROPERTY = QName.get(P_EXPAND_PROPERTY, WEBDAV_NS);
 	
 	public static final QName E_FILTER = QName.get(P_FILTER, CALDAV_NS);
@@ -376,6 +380,7 @@ public class DavElements {
 	public static final QName E_SHARED = QName.get(P_SHARED, WEBDAV_NS);
 	public static final QName E_SOURCE = QName.get(P_SOURCE, WEBDAV_NS);
 	public static final QName E_STATUS = QName.get(P_STATUS, WEBDAV_NS);
+	public static final QName E_SUPPORTED_CALENDAR_COMPONENT = QName.get(P_SUPPORTED_CALENDAR_COMPONENT, CALDAV_NS);
 	public static final QName E_SUPPORTED_CALENDAR_COMPONENT_SET = QName.get(P_SUPPORTED_CALENDAR_COMPONENT_SET, CALDAV_NS);
 	public static final QName E_SUPPORTED_CALENDAR_DATA = QName.get(P_SUPPORTED_CALENDAR_DATA, CALDAV_NS);
 	public static final QName E_SUPPORTED_COLLATION = QName.get(P_SUPPORTED_COLLATION, CALDAV_NS);
@@ -403,6 +408,8 @@ public class DavElements {
 	// errors
 	public static final QName E_CANNOT_MODIFY_PROTECTED_PROPERTY = QName.get("cannot-modify-protected-property", WEBDAV_NS);
 	public static final QName E_PROPFIND_FINITE_DEPTH = QName.get("propfind-finite-depth", WEBDAV_NS);
+	public static final QName E_VALID_CALENDAR_DATA = QName.get(P_VALID_CALENDAR_DATA, CALDAV_NS);
+	public static final QName E_VALID_CALENDAR_OBJECT_RESOURCE = QName.get(P_VALID_CALENDAR_OBJECT_RESOURCE, CALDAV_NS);
 	
 	public static class CardDav {
         public static final QName E_ADDRESS_DATA = QName.get(P_ADDRESS_DATA, CARDDAV_NS);
@@ -424,7 +431,7 @@ public class DavElements {
 	    public static final QName E_PROP_FILTER = QName.get(P_PROP_FILTER, CARDDAV_NS);
 	    
 	    public static final QName E_SUPPORTED_ADDRESS_DATA = QName.get(P_SUPPORTED_ADDRESS_DATA, CARDDAV_NS);
-	    
+	    public static final QName E_VALID_ADDRESS_DATA = QName.get(P_VALID_ADDRESS_DATA, CARDDAV_NS);
 	    public static final QName E_TEXT_MATCH = QName.get(P_TEXT_MATCH, CARDDAV_NS);
 	}
 }

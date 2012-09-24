@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
 import org.testng.annotations.Test;
@@ -21,10 +5,10 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
 
-public class TagDocument extends AjaxCommonTest {
+public class TagDocument extends FeatureBriefcaseTest {
 
 	public TagDocument() {
 		logger.info("New " + TagDocument.class.getCanonicalName());
@@ -32,7 +16,7 @@ public class TagDocument extends AjaxCommonTest {
 		// All tests start at the Briefcase page
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = null;
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");				
 	}
 
 	@Test(description = "Tag a Document using Toolbar -> Tag -> New Tag", groups = { "smoke" })
@@ -83,8 +67,6 @@ public class TagDocument extends AjaxCommonTest {
 
 		dialogTag.zSetTagName(tagName);
 		dialogTag.zClickButton(Button.B_OK);
-
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
 		// Make sure the tag was created on the server (get the tag ID)
 		account.soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");
@@ -249,7 +231,6 @@ public class TagDocument extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 
 		// Click on created document
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
 
 		// Tag document using Right Click context menu

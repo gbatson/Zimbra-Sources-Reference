@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -29,51 +13,30 @@ import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.admin.items.AccountItem;
 
 
 /**
- * Admin Console -> Addresses -> Accounts
+ * Admin Console -> Manage Accounts -> Accounts
  * @author Matt Rhoades
  *
  */
 public class PageManageAccounts extends AbsTab {
 
 	public static class Locators {
-
-		// ** OverviewTreePanel -> Addresses -> Accounts
-		public static final String zti__ACCOUNTS = "zti__AppAdmin__ADDRESS__ACCOUNT_textCell";
-
-		// ** "Manage Accounts" Tab Title
-		public static final String ztab__MANAGE_ACCOUNT_ICON = "css=tr#ztab__MAIN_TAB_row div.ImgAccount";
-
-		// ** Menus
-		public static final String zb__ACLV__NEW_MENU_title = "xpath=//*[@id='zb__ACLV__NEW_MENU_title']";// New Button
-		//public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown div.ImgSelectPullDownArrow";
-		public static final String zdd_NEW_MENU="css=td#zb__ACLV__NEW_MENU_dropdown.ZDropDown";	
-		public static final String zb__ACLV__EDIT_title = "xpath=//*[@id='zb__ACLV__EDIT_title']";
-		public static final String zb__ACLV__DELETE_title = "xpath=//*[@id='zb__ACLV__DELETE_title']";
-		public static final String zb__ACLV__CHNG_PWD_title = "xpath=//*[@id='zb__ACLV__CHNG_PWD_title']";
-		public static final String zb__ACLV__EXPIRE_SESSION_title = "xpath=//*[@id='zb__ACLV__EXPIRE_SESSION_title']";
-		public static final String zb__ACLV__VIEW_MAIL_title = "xpath=//*[@id='zb__ACLV__VIEW_MAIL_title']";
-		public static final String zb__ACLV__UNKNOWN_66_title = "xpath=//*[@id='zb__ACLV__UNKNOWN_66_title']"; // Search Mail
-		public static final String zb__ACLV__UNKNOWN_72_title = "xpath=//*[@id='zb__ACLV__UNKNOWN_72_title']"; // Move Mailbox
-		public static final String zb__ACLV__MORE_ACTIONS_title = "xpath=//*[@id='zb__ACLV__MORE_ACTIONS_title']";
-		public static final String zb__ACLV__PAGE_BACK_title = "xpath=//*[@id='zb__ACLV__PAGE_BACK_title']";
-		public static final String zb__ACLV__PAGE_FORWARD_title = "xpath=//*[@id='zb__ACLV__PAGE_FORWARD_title']";
-		public static final String zb__ACLV__HELP_title = "xpath=//*[@id='zb__ACLV__HELP_title']";
-
-
-		// NEW Menu
-		// TODO: define these locators
-		public static final String zmi__ACLV__NEW_WIZARD_title = "zmi__ACLV__NEW_ACCT";	// New -> Account 
-
-
+		public static final String MANAGE_ACCOUNTS_ICON="css=div.ImgManageAccounts";
+		public static final String ACCOUNTS="css=td[id^='zti__AppAdmin__Home__actLstHV']";
+		public static final String GEAR_ICON="css=div.ImgConfigure";
+		public static final String HOME="Home";
+		public static final String MANAGE="Manage";
+		public static final String ACCOUNT="Accounts";
+		public static final String NEW_MENU="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgNewAccount']";
+		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
+		public static final String EDIT_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgEdit']";
+		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON="css=div[id^='zm__ACLV__MENU_POP'] div[class='ImgDelete']";
+		public static final String RIGHT_CLICK_MENU_EDIT_BUTTON="css=div[id^='zm__ACLV__MENU_POP'] div[class='ImgEdit']";
 	}
-
-
-
-
 
 	public PageManageAccounts(AbsApplication application) {
 		super(application);
@@ -101,12 +64,12 @@ public class PageManageAccounts extends AbsTab {
 			throw new HarnessException("Admin Console application is not active!");
 
 
-		boolean present = sIsElementPresent(Locators.ztab__MANAGE_ACCOUNT_ICON);
+		boolean present = sIsElementPresent(Locators.GEAR_ICON);
 		if ( !present ) {
 			return (false);
 		}
 
-		boolean visible = zIsVisiblePerPosition(Locators.ztab__MANAGE_ACCOUNT_ICON, 0, 0);
+		boolean visible = zIsVisiblePerPosition(Locators.GEAR_ICON, 0, 0);
 		if ( !visible ) {
 			logger.debug("isActive() visible = "+ visible);
 			return (false);
@@ -127,18 +90,60 @@ public class PageManageAccounts extends AbsTab {
 			return;
 		}
 
-		// Click on Addresses -> Accounts
-		zClickAt(Locators.zti__ACCOUNTS,"");
+		// Click on Manage Accounts -> Accounts
+		zClickAt(Locators.MANAGE_ACCOUNTS_ICON,"");
+		sIsElementPresent(Locators.ACCOUNTS);
+		zClickAt(Locators.ACCOUNTS, "");
 
 		zWaitForActive();
+
+	}
+
+	public void zNavigateTo(String treeItem) {
+
 
 	}
 
 	@Override
 	public AbsPage zListItem(Action action, String item)
 	throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;
+		logger.info(myPageName() + " zListItem("+ action +", "+ item +")");
+
+		tracer.trace(action +" on subject = "+ item);
+
+		AbsPage page = null;
+		SleepUtil.sleepSmall();
+
+		// How many items are in the table?
+		String rowsLocator = "css=div#zl__ACCT_MANAGE div[id$='__rows'] div[id^='zli__']";
+		int count = this.sGetCssCount(rowsLocator);
+		logger.debug(myPageName() + " zListGetAccounts: number of accounts: "+ count);
+
+		// Get each conversation's data from the table list
+		for (int i = 1; i <= count; i++) {
+			final String accountLocator = rowsLocator + ":nth-child("+i+")";
+			String locator;
+
+			// Email Address
+			locator = accountLocator + " td[id^='account_data_emailaddress']";
+
+
+			if(this.sIsElementPresent(locator)) 
+			{
+				if(this.sGetText(locator).trim().equalsIgnoreCase(item)) 
+				{
+					if(action == Action.A_LEFTCLICK) {
+						zClick(locator);
+						break;
+					} else if(action == Action.A_RIGHTCLICK) {
+						zRightClick(locator);
+						break;
+					}
+
+				}
+			}
+		}
+		return page;
 	}
 
 	@Override
@@ -176,14 +181,29 @@ public class PageManageAccounts extends AbsTab {
 		if ( button == Button.B_NEW ) {
 
 			// New button
-			locator = Locators.zb__ACLV__NEW_MENU_title;
-
+			//			locator = Locators.zb__ACLV__NEW_MENU_title;
+			locator ="";
 			// Create the page
 			page = new WizardCreateAccount(this);
-
 			// FALL THROUGH
 
-		} else {
+		} else if(button == Button.B_TREE_DELETE) {
+
+			locator=Locators.RIGHT_CLICK_MENU_DELETE_BUTTON;
+
+			page = new DialogForDeleteOperation(this.MyApplication, null);
+		} else if(button == Button.B_EDIT) {
+
+			locator=Locators.EDIT_BUTTON;
+
+			page = new FormEditAccount(this.MyApplication);
+		} else if(button == Button.B_TREE_EDIT) {
+
+			locator=Locators.RIGHT_CLICK_MENU_EDIT_BUTTON;
+
+			page = new FormEditAccount(this.MyApplication);
+		} 
+		else {
 			throw new HarnessException("no logic defined for button "+ button);
 		}
 
@@ -194,8 +214,8 @@ public class PageManageAccounts extends AbsTab {
 		// Default behavior, process the locator by clicking on it
 		//
 		this.zClickAt(locator,"");
-		
-		
+
+
 
 		// If page was specified, make sure it is active
 		if ( page != null ) {
@@ -226,18 +246,30 @@ public class PageManageAccounts extends AbsTab {
 		String optionLocator = null; // If set, this will be clicked
 		AbsPage page = null; // If set, this page will be returned
 
-		if (pulldown == Button.B_NEW) {
+		if (pulldown == Button.B_GEAR_BOX) {
+			pulldownLocator = Locators.GEAR_ICON;
 
-			if (option == Button.O_ACCOUNTS_ACCOUNT) {
+			if (option == Button.O_NEW) {
 
-				pulldownLocator = Locators.zdd_NEW_MENU;
-				optionLocator = PageManageAccounts.Locators.zmi__ACLV__NEW_WIZARD_title;
+				optionLocator = Locators.NEW_MENU;
 
 				page = new WizardCreateAccount(this);
 
 				// FALL THROUGH
 
-			} else {
+			} else if(option == Button.O_EDIT) {
+				optionLocator = Locators.EDIT_BUTTON;
+
+				page = new FormEditAccount(this.MyApplication);
+
+			} else if(option == Button.O_DELETE) {
+				optionLocator = Locators.DELETE_BUTTON;
+
+				page = new DialogForDeleteOperation(this.MyApplication,null);
+
+			}
+
+			else {
 				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
 			}
 
@@ -255,6 +287,7 @@ public class PageManageAccounts extends AbsTab {
 			}
 
 			this.zClickAt(pulldownLocator,"");
+			SleepUtil.sleepMedium();
 
 			// If the app is busy, wait for it to become active
 			//zWaitForBusyOverlay();
@@ -286,7 +319,7 @@ public class PageManageAccounts extends AbsTab {
 	 * @throws HarnessException 
 	 */
 	public List<AccountItem> zListGetAccounts() throws HarnessException {
-		
+
 		List<AccountItem> items = new ArrayList<AccountItem>();
 
 		// Make sure the button exists
@@ -303,7 +336,7 @@ public class PageManageAccounts extends AbsTab {
 			final String accountLocator = rowsLocator + "["+ i +"]";
 			String locator;
 
-			AccountItem item = new AccountItem();
+			AccountItem item = new AccountItem("email" + ZimbraSeleniumProperties.getUniqueString(),ZimbraSeleniumProperties.getStringProperty("testdomain"));
 
 			// Type (image)
 			// ImgAdminUser ImgAccount ImgSystemResource (others?)
@@ -318,12 +351,12 @@ public class PageManageAccounts extends AbsTab {
 			if ( this.sIsElementPresent(locator) ) {
 				item.setGEmailAddress(this.sGetText(locator).trim());
 			}
-			
+
 			// Display Name
 			// Status
 			// Lost Login Time
 			// Description
-			
+
 
 			// Add the new item to the list
 			items.add(item);
@@ -334,5 +367,9 @@ public class PageManageAccounts extends AbsTab {
 		return (items);
 	}
 
-
+	public boolean zVerifyHeader (String header) throws HarnessException {
+		if(this.sIsElementPresent("css=span:contains('" + header + "')"))
+			return true;
+		return false;
+	}
 }

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -40,8 +40,9 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.ServerBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.ServerBy;
 import com.zimbra.cs.html.DefangFactory;
 import com.zimbra.cs.html.HtmlDefang;
 import com.zimbra.cs.mailbox.CalendarItem;
@@ -53,6 +54,7 @@ import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.Invite;
+import com.zimbra.cs.mailbox.util.TagUtil;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.service.FileUploadServlet.Upload;
 import com.zimbra.cs.service.util.*;
@@ -79,11 +81,12 @@ public class ContentServlet extends ZimbraServlet {
     protected static final String PARAM_UPLOAD_ID = "aid";
     protected static final String PARAM_PART = "part";
     protected static final String PARAM_FORMAT = "fmt";
+    protected static final String PARAM_DUMPSTER = "dumpster";
     protected static final String PARAM_SYNC = "sync";
     protected static final String PARAM_EXPUNGE = "expunge";
-	protected static final String PARAM_LOCALE_ID = L10nUtil.P_LOCALE_ID;
+    protected static final String PARAM_LOCALE_ID = L10nUtil.P_LOCALE_ID;
 
-	protected static final String FORMAT_RAW = "raw";
+    protected static final String FORMAT_RAW = "raw";
     protected static final String FORMAT_DEFANGED_HTML = "htmldf";
     protected static final String FORMAT_DEFANGED_HTML_NOT_IMAGES = "htmldfi";
 
@@ -109,6 +112,8 @@ public class ContentServlet extends ZimbraServlet {
 
         String part = req.getParameter(PARAM_PART);
         String fmt = req.getParameter(PARAM_FORMAT);
+        String dumpsterParam = req.getParameter(PARAM_DUMPSTER);
+        boolean fromDumpster = dumpsterParam != null && !dumpsterParam.equals("0") && !dumpsterParam.equalsIgnoreCase("false");
 
         try {
             // need to proxy the fetch if the mailbox lives on another server
@@ -127,14 +132,14 @@ public class ContentServlet extends ZimbraServlet {
             Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(accountId);
             if (mbox == null) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, L10nUtil.getMessage(MsgKey.errMailboxNotFound, req));
-                return;				
+                return;
             }
             ZimbraLog.addMboxToContext(mbox.getId());
 
-            MailItem item = mbox.getItemById(new OperationContext(token), iid.getId(), MailItem.TYPE_UNKNOWN);
+            MailItem item = mbox.getItemById(new OperationContext(token), iid.getId(), MailItem.Type.UNKNOWN, fromDumpster);
             if (item == null) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, L10nUtil.getMessage(MsgKey.errMessageNotFound, req));
-                return;				
+                return;
             }
 
             try {
@@ -144,17 +149,19 @@ public class ContentServlet extends ZimbraServlet {
                     StringBuffer hdr = new StringBuffer();
                     if (sync) {
                         // for sync, return metadata as headers to avoid extra SOAP round-trips
-                        resp.addHeader("X-Zimbra-Tags", item.getTagString());
+                        resp.addHeader("X-Zimbra-Tags", TagUtil.getTagIdString(item));
+                        resp.addHeader("X-Zimbra-Tag-Names", TagUtil.encodeTags(item.getTags()));
                         resp.addHeader("X-Zimbra-Flags", item.getFlagString());
                         resp.addHeader("X-Zimbra-Received", Long.toString(item.getDate()));
                         resp.addHeader("X-Zimbra-Modified", Long.toString(item.getChangeDate()));
                         // also return metadata inline in the message content for now
-                        hdr.append("X-Zimbra-Tags: ").append(item.getTagString()).append("\n");
+                        hdr.append("X-Zimbra-Tags: ").append(TagUtil.getTagIdString(item)).append("\n");
+                        hdr.append("X-Zimbra-Tag-Names: ").append(TagUtil.encodeTags(item.getTags()));
                         hdr.append("X-Zimbra-Flags: ").append(item.getFlagString()).append("\n");
                         hdr.append("X-Zimbra-Received: ").append(item.getDate()).append("\n");
                         hdr.append("X-Zimbra-Modified: ").append(item.getChangeDate()).append("\n");
                     }
-                    
+
                     if (item instanceof Message) {
                         Message msg = (Message) item;
                         if (sync) {
@@ -171,7 +178,7 @@ public class ContentServlet extends ZimbraServlet {
                         if (sync) {
                             resp.getOutputStream().write(hdr.toString().getBytes());
                         }
-                        
+
                         resp.setContentType(MimeConstants.CT_TEXT_PLAIN);
                         if (iid.hasSubpart()) {
                             int invId = iid.getSubpartId();
@@ -186,7 +193,7 @@ public class ContentServlet extends ZimbraServlet {
                             }
                             if (mm != null)
                                 mm.writeTo(resp.getOutputStream());
-                        } else { 
+                        } else {
                             InputStream is = calItem.getRawMessage();
                             if (is != null)
                                 ByteUtil.copy(is, true, resp.getOutputStream(), false);
@@ -196,7 +203,7 @@ public class ContentServlet extends ZimbraServlet {
                 } else {
                     MimePart mp = null;
                     if (item instanceof Message) {
-                        mp = getMimePart((Message) item, part); 
+                        mp = getMimePart((Message) item, part);
                     } else {
                         CalendarItem calItem = (CalendarItem) item;
                         if (iid.hasSubpart()) {
@@ -231,13 +238,13 @@ public class ContentServlet extends ZimbraServlet {
                 }
             } catch (MessagingException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
-            } 
+            }
         } catch (NoSuchItemException e) {
             resp.sendError(HttpServletResponse.SC_NOT_FOUND, L10nUtil.getMessage(MsgKey.errNoSuchItem, req));
         } catch (ServiceException e) {
-        	returnError(resp, e);
-		} finally {
-            ZimbraLog.clearContext();      
+            returnError(resp, e);
+        } finally {
+            ZimbraLog.clearContext();
         }
         /*
          out.println("hello world "+req.getParameter("id"));
@@ -258,7 +265,7 @@ public class ContentServlet extends ZimbraServlet {
             if (!FileUploadServlet.isLocalUpload(uploadId)) {
                 // wrong server; proxy to the right one...
                 String serverId = FileUploadServlet.getUploadServerId(uploadId);
-                Server server = Provisioning.getInstance().get(ServerBy.id, serverId);
+                Server server = Provisioning.getInstance().get(Key.ServerBy.id, serverId);
                 proxyServletRequest(req, resp, server, null);
                 return;
             }
@@ -270,7 +277,7 @@ public class ContentServlet extends ZimbraServlet {
             }
 
             String filename = up.getName();
-            ContentDisposition cd = new ContentDisposition(Part.INLINE).setParameter("filename", filename == null ? "unknown" : filename);
+            ContentDisposition cd = new ContentDisposition(Part.ATTACHMENT).setParameter("filename", filename == null ? "unknown" : filename);
             resp.addHeader("Content-Disposition", cd.toString());
             sendbackOriginalDoc(up.getInputStream(), up.getContentType(), resp);
 
@@ -278,7 +285,7 @@ public class ContentServlet extends ZimbraServlet {
             if (expunge)
                 FileUploadServlet.deleteUpload(up);
         } catch (ServiceException e) {
-        	returnError(resp, e);
+            returnError(resp, e);
         }
     }
 
@@ -301,7 +308,7 @@ public class ContentServlet extends ZimbraServlet {
     public static MimePart getMimePart(CalendarItem calItem, String part) throws IOException, MessagingException, ServiceException {
         return Mime.getMimePart(calItem.getMimeMessage(), part);
     }
-    
+
     public static MimePart getMimePart(Message msg, String part) throws IOException, MessagingException, ServiceException {
         return Mime.getMimePart(msg.getMimeMessage(), part);
     }
@@ -311,21 +318,21 @@ public class ContentServlet extends ZimbraServlet {
         String filename = Mime.getFilename(mp);
         if (filename == null)
             filename = "unknown";
-        String cd = Part.INLINE + "; filename=" + HttpUtil.encodeFilename(req, filename);
+        String cd = HttpUtil.createContentDisposition(req, Part.ATTACHMENT, filename);
         resp.addHeader("Content-Disposition", cd);
         String desc = mp.getDescription();
         if (desc != null)
             resp.addHeader("Content-Description", desc);
         sendbackOriginalDoc(mp.getInputStream(), contentType, resp);
     }
-    
+
     public static void sendbackOriginalDoc(InputStream is, String contentType, HttpServletResponse resp)
     throws IOException {
         resp.setContentType(contentType);
         ByteUtil.copy(is, true, resp.getOutputStream(), false);
     }
 
-    static void sendbackDefangedHtml(MimePart mp, String contentType, HttpServletResponse resp, String fmt) 
+    static void sendbackDefangedHtml(MimePart mp, String contentType, HttpServletResponse resp, String fmt)
     throws IOException, MessagingException {
         resp.setContentType(contentType);
         InputStream is = null;
@@ -336,7 +343,7 @@ public class ContentServlet extends ZimbraServlet {
         } finally {
             ByteUtil.closeStream(is);
         }
-	}
+    }
 
     /**
      * @param req
@@ -352,17 +359,18 @@ public class ContentServlet extends ZimbraServlet {
         }
         resp.sendError(HttpServletResponse.SC_FORBIDDEN, L10nUtil.getMessage(MsgKey.errAttachmentDownloadDisabled, req));
     }
-    
+
+    @Override
     public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException, ServletException {
         ZimbraLog.clearContext();
         addRemoteIpToLoggingContext(req);
 
         mLog.debug("request url: %s, path info: ", req.getRequestURL(), req.getPathInfo());
-        
+
         AuthToken authToken = getAuthTokenFromCookie(req, resp);
-        if (authToken == null) 
+        if (authToken == null)
             return;
-        
+
         if (isTrue(Provisioning.A_zimbraAttachmentsBlocked, authToken.getAccountId())) {
             sendbackBlockMessage(req, resp);
             return;
@@ -376,7 +384,8 @@ public class ContentServlet extends ZimbraServlet {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, L10nUtil.getMessage(MsgKey.errInvalidRequest, req));
         }
     }
-    
+
+    @Override
     public void init() throws ServletException {
         String name = getServletName();
         mLog.info("Servlet " + name + " starting up");
@@ -384,6 +393,7 @@ public class ContentServlet extends ZimbraServlet {
         mBlockPage = getInitParameter(MSGPAGE_BLOCK);
     }
 
+    @Override
     public void destroy() {
         String name = getServletName();
         mLog.info("Servlet " + name + " shutting down");

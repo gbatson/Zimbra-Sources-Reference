@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.login;
 
 import java.util.Calendar;
@@ -21,6 +5,7 @@ import java.util.GregorianCalendar;
 
 import org.testng.annotations.Test;
 
+import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
@@ -40,7 +25,7 @@ public class LoginScreen extends AjaxCommonTest {
 
 	}
 
-	@Test(	description = "Verify the label text on the mobile client login screen",
+	@Test(	description = "Verify the label text on the ajax client login screen",
 			groups = { "smoke" })
 	public void LoginScreen01() throws HarnessException {
 		
@@ -97,5 +82,18 @@ public class LoginScreen extends AjaxCommonTest {
 		
 	}
 
+
+	@Bugs(ids = "50457")
+	@Test(	description = "Verify 'web client' rather than 'collaboration suite'",
+			groups = { "functional" })
+	public void LoginScreen05() throws HarnessException {
+		
+
+		String title = app.zPageLogin.sGetTitle();
+		
+		// TODO: Need to I18N
+		ZAssert.assertStringContains(title, "Web Client", "Verify 'web client' rather than 'collaboration suite'");
+		
+	}
 
 }

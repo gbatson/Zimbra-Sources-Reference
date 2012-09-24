@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,6 +34,11 @@ public class Server extends ZAttrServer {
     public Server(String name, String id, Map<String,Object> attrs, Map<String,Object> defaults, Provisioning prov) {
         super(name, id, attrs, defaults, prov);
     }
+    
+    @Override
+    public EntryType getEntryType() {
+        return EntryType.SERVER;
+    }
 
     public void deleteServer(String zimbraId) throws ServiceException {
         getProvisioning().deleteServer(getId());
@@ -61,6 +66,15 @@ public class Server extends ZAttrServer {
         }
         
         return false;
+    }
+    
+    public boolean hasMailboxService() {
+        return getMultiAttrSet(Provisioning.A_zimbraServiceEnabled).contains(Provisioning.SERVICE_MAILBOX);
+    }
+    
+    public boolean isLocalServer() throws ServiceException {
+        Server localServer = getProvisioning().getLocalServer();
+        return getId() != null && getId().equals(localServer.getId());
     }
 
 }

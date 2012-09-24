@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.*;
@@ -36,7 +20,8 @@ public class CodeCoverage {
 	
 	protected static final List<AppType> supportedAppTypes = Arrays.asList(
 																	AppType.AJAX,
-																	AppType.ADMIN
+																	AppType.ADMIN,
+																	AppType.OCTOPUS
 																	);
 	/**
 	 * The cumulative code coverage object
@@ -65,7 +50,7 @@ public class CodeCoverage {
 	public void writeXml() {
 		logger.info("writeXml()");
 		
-		if ( !Enabled ) {
+		if ( !isEnabled() ) {
 			logger.info("writeXml(): Code Coverage reporting is disabled");
 			return;
 		}
@@ -184,7 +169,7 @@ public class CodeCoverage {
 	public void writeCoverage() {
 		logger.info("writeCoverage()");
 
-		if ( !Enabled ) {
+		if ( !isEnabled() ) {
 			logger.info("writeCoverage(): Code Coverage reporting is disabled");
 			return;
 		}
@@ -243,16 +228,20 @@ public class CodeCoverage {
 	 * Update the coverage data
 	 * @throws HarnessException 
 	 */
-	public void calculateCoverage() throws HarnessException {
+	public void calculateCoverage(String method) throws HarnessException {
 		logger.info("calculateCoverage()");
 
-		if ( !Enabled ) {
+		if ( !isEnabled() ) {
 			logger.info("calculateCoverage(): Code Coverage is disabled");
 			return;
 		}
 
 		Date start = new Date();
 		try {
+
+			// Log the name of the method
+			logger.info("METHOD: "+ method);
+
 
 			// COVERAGE_SCRIPT returns a JSON object
 			// The key is the file name
@@ -291,7 +280,7 @@ public class CodeCoverage {
 				
 				logger.error("Unable to calculate code coverage.  Disabling code coverage", e);
 				logger.error(ClientSessionFactory.session().selenium().getEval(COVERAGE_SCRIPT));
-				Enabled = false;
+				isDisabled = true;
 				throw e;
 
 			}
@@ -573,6 +562,7 @@ public class CodeCoverage {
 
 	private static final String WebappsZimbra = "/opt/zimbra/jetty/webapps/zimbra";
 	private static final String WebappsZimbraAdmin = "/opt/zimbra/jetty/webapps/zimbraAdmin";
+	private static final String WebappsOctopus = "/opt/zimbra/jetty/webapps/zimbra";
 	private String WebappsOriginal = null;
 	private String WebappsInstrumented = null;
 	
@@ -583,7 +573,7 @@ public class CodeCoverage {
 	public void instrumentServerCheck() throws HarnessException {
 		logger.info("instrumentServerCheck()");
 
-		if ( !Enabled ) {
+		if ( !isEnabled() ) {
 			logger.info("instrumentServerCheck(): Code Coverage is disabled");
 			return;
 
@@ -592,7 +582,7 @@ public class CodeCoverage {
 		StafServiceFS staf = new StafServiceFS();
 		staf.execute("QUERY ENTRY "+ Tool);
 		if ( staf.getSTAFResult().rc == STAFResult.DoesNotExist ) {
-			Enabled = false;
+			isDisabled = true;
 			throw new HarnessException(Tool +" does not exist!");
 		}	
 
@@ -608,7 +598,7 @@ public class CodeCoverage {
 	public void instrumentServer() throws HarnessException {
 		logger.info("instrumentServer()");
 
-		if ( !Enabled ) {
+		if ( !isEnabled() ) {
 			logger.info("instrumentServer(): Code Coverage is disabled");
 			return;
 		}
@@ -627,6 +617,8 @@ public class CodeCoverage {
 				instrumentServer(WebappsZimbra);
 			} else if ( ZimbraSeleniumProperties.getAppType().equals(AppType.ADMIN) ) {
 				instrumentServer(WebappsZimbraAdmin);
+			} else if ( ZimbraSeleniumProperties.getAppType().equals(AppType.OCTOPUS) ) {
+				instrumentServer(WebappsOctopus);
 			}
 		
 		} finally {
@@ -684,7 +676,7 @@ public class CodeCoverage {
 	public void instrumentServerUndo() throws HarnessException {
 		logger.info("instrumentServerUndo()");
 
-		if ( !Enabled ) {
+		if ( !isEnabled() ) {
 			logger.info("instrumentServerUndo(): Code Coverage is disabled");
 			return;
 		}
@@ -702,6 +694,8 @@ public class CodeCoverage {
 				instrumentServerUndo(WebappsZimbra);
 			} else if ( ZimbraSeleniumProperties.getAppType().equals(AppType.ADMIN) ) {
 				instrumentServerUndo(WebappsZimbraAdmin);
+			} else if ( ZimbraSeleniumProperties.getAppType().equals(AppType.OCTOPUS) ) {
+				instrumentServerUndo(WebappsOctopus);
 			}
 
 		} finally {
@@ -748,7 +742,6 @@ public class CodeCoverage {
 		durationTotal += ((finish.getTime()/1000) - (start.getTime()/1000));
 	}
 
-	protected boolean Enabled = false;
 	protected String Tool = "/usr/local/bin/jscoverage";
 	protected boolean EnableSourceCodeReport = false;
 	protected boolean InstrumentServer = true;
@@ -791,32 +784,28 @@ public class CodeCoverage {
 	private CodeCoverage() {
 		logger.info("new "+ CodeCoverage.class.getCanonicalName());
 		
-		Enabled = ZimbraSeleniumProperties.getStringProperty("coverage.enabled", "false").equalsIgnoreCase("true");
-		
-		if ( !Enabled ) {
-			logger.info("CodeCoverage(): Code Coverage is disabled");
-			return;
-		}
-		
 		if ( !supportedAppTypes.contains(ZimbraSeleniumProperties.getAppType())) {
 			logger.info("CodeCoverage(): code coverage does not support type "+ ZimbraSeleniumProperties.getAppType() +".  Disabling.");
-			Enabled = false;
+			isDisabled = true;
 			return;
 		}
 		
 		// Read the Code Coverage JS function into a string
 		StringBuffer sb = new StringBuffer();
-		BufferedReader reader = null;
+		InputStream stream = null;
 		try {
 			try {
 				
-				InputStream stream = this.getClass().getResourceAsStream("/coverageScript.js");
-				if ( stream == null ) {
+				// Load coverageScript.js from its two possible locations
+				if ( this.getClass().getResource("/coverageScript.js") != null ) {
+					stream = this.getClass().getResourceAsStream("/coverageScript.js");
+				} else {
 					stream = this.getClass().getResourceAsStream("/com/zimbra/qa/selenium/framework/util/coverage/coverageScript.js");
 				}
+
 				if ( stream == null ) {
 					logger.error("CodeCoverage(): unable to find resource: /coverageScript.js");
-					Enabled = false;
+					isDisabled = true;
 					return;
 				}
 				
@@ -827,14 +816,14 @@ public class CodeCoverage {
 				}
 				
 			} finally {
-				if ( reader != null ) {
-					reader.close();
-					reader = null;
+				if ( stream != null ) {
+					stream.close();
+					stream = null;
 				}
 			}
 		} catch (IOException e) {
 			logger.error("unable to read resource: /coverageScript.js", e);
-			Enabled = false;
+			isDisabled = true;
 			return;
 		}
 
@@ -851,6 +840,21 @@ public class CodeCoverage {
 		InstrumentServer = ZimbraSeleniumProperties.getStringProperty("coverage.instrument", "true").equalsIgnoreCase("true");
 
 
+	}
+	
+	// Sometimes, there may be an exception that should disable
+	// code coverage metrics for the remainder of the run.
+	// In those cases, isDisabled will be flipped to true
+	private boolean isDisabled = false;
+		
+	public boolean isEnabled() {
+		String v = ZimbraSeleniumProperties.getStringProperty("coverage.enabled", "false");
+		logger.info("coverage.enabled="+v);
+		if ( isDisabled ) {
+			logger.info("isDiabled is true, therefore Code Coverage is disabled");
+			return (false);
+		}
+		return (v.equalsIgnoreCase("true"));
 	}
 
 	/**
@@ -894,12 +898,13 @@ public class CodeCoverage {
 				// Contents never read.  Read them now.
 				
 				StringBuffer sb = new StringBuffer();
-				BufferedReader reader = null;
+				InputStream stream = null;
 				try {
 					try {
 						
-						InputStream stream = this.getClass().getResourceAsStream("/" +filename);
-						if ( stream == null ) {
+						if ( this.getClass().getResource("/" + filename) != null ) {
+							stream = this.getClass().getResourceAsStream("/" +filename);
+						} else {
 							stream = this.getClass().getResourceAsStream("/com/zimbra/qa/selenium/framework/util/coverage/" + filename);
 						}
 						if ( stream == null )
@@ -912,9 +917,9 @@ public class CodeCoverage {
 						}
 						
 					} finally {
-						if ( reader != null ) {
-							reader.close();
-							reader = null;
+						if ( stream != null ) {
+							stream.close();
+							stream = null;
 						}
 					}
 				} catch (IOException e) {

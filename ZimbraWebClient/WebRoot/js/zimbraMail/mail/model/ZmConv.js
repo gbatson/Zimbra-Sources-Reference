@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,10 +38,8 @@ ZmConv = function(id, list) {
 ZmConv.prototype = new ZmMailItem;
 ZmConv.prototype.constructor = ZmConv;
 
-ZmConv.prototype.toString = 
-function() {
-	return "ZmConv";
-};
+ZmConv.prototype.isZmConv = true;
+ZmConv.prototype.toString = function() { return "ZmConv"; };
 
 // Public methods
 
@@ -80,16 +78,20 @@ function(msg, args) {
  * should be used when in a search context, for example when expanding a conv that is the result
  * of a search.
  *
- * @param {Hash}		params				a hash of parameters:
- * @param {String}		params.query		the query used to retrieve this conv
- * @param {constant}	params.sortBy		the sort constraint
- * @param {int}			params.offset		the position of first msg to return
- * @param {int}			params.limit		the number of msgs to return
- * @param {Boolean}		params.getHtml		if <code>true</code>, return HTML part for inlined msg
- * @param {Boolean}		params.getFirstMsg	if <code>true</code>, retrieve the content of the first matching msg in the conv as a side effect of the search
- * @param {Boolean}		params.markRead		if <code>true</code>, mark that msg read
- * @param {boolean}		params.needExp		if not <code>false</code>, have server check if addresses are DLs
- * @param {AjxCallback}	callback			the callback to run with results
+ * @param {Hash}		params						a hash of parameters:
+ * @param {String}		params.query				the query used to retrieve this conv
+ * @param {constant}	params.sortBy				the sort constraint
+ * @param {int}			params.offset				the position of first msg to return
+ * @param {int}			params.limit				the number of msgs to return
+ * @param {Boolean}		params.getHtml				if <code>true</code>, return HTML part for inlined msg
+ * @param {Boolean}		params.getFirstMsg			if <code>true</code>, fetch the first matching msg in the conv
+ * @param {Boolean}		params.getMatches			if <code>true</code>, fetch all matching msgs in the conv 
+ * @param {Boolean}		params.getAllMsgs			if <code>true</code>, fetch all msgs in the conv 
+ * @param {Boolean}		params.getUnreadMsgs		if <code>true</code>, fetch all unread msgs in the conv
+ * @param {Boolean}		params.getUnreadOrFirstMsg	if <code>true</code>, fetch unread, or first if none are unread
+ * @param {Boolean}		params.markRead				if <code>true</code>, mark that msg read
+ * @param {boolean}		params.needExp				if not <code>false</code>, have server check if addresses are DLs
+ * @param {AjxCallback}	callback					the callback to run with results
  */
 ZmConv.prototype.load =
 function(params, callback) {
@@ -142,9 +144,10 @@ function(params, callback) {
 		};
 		var search = this.search = new ZmSearch(searchParams);
 
-		var fetchId = ((params.getFirstMsg && this.msgIds && this.msgIds.length) ? this.msgIds[0] : null);
+		var fetchId = (params.getFirstMsg && "1") || (params.getMatches && "hits") || (params.getAllMsgs && "all") ||
+					  (params.getUnreadMsgs && "u") || (params.getUnreadOrFirstMsg && "u1") || "0";
 		var convParams = {
-			cid: this.id,
+			cid:		this.id,
 			callback:	(new AjxCallback(this, this._handleResponseLoad, [params, callback])),
 			fetchId:	fetchId,
 			markRead:	params.markRead,
@@ -175,33 +178,32 @@ function(params, callback, result) {
  * messages, including their content. Note that it is not search-based, and uses
  * GetConvRequest rather than SearchConvRequest.
  * 
- * @param {Hash}	params		a hash of parameters
- * @param {Boolean}      params.fetchAll		if <code>true</code>, fetch content of all msgs
- * @param {AjxCallback}	callback		the callback
- * @param {ZmBatchCommand}	batchCmd		the batch cmd that contains this request
+ * @param {Hash}			params				a hash of parameters
+ * @param {Boolean}			params.fetchAll		if <code>true</code>, fetch content of all msgs
+ * @param {AjxCallback}		callback			the callback
+ * @param {ZmBatchCommand}	batchCmd			the batch cmd that contains this request
  */
 ZmConv.prototype.loadMsgs =
 function(params, callback, batchCmd) {
-	var soapDoc = AjxSoapDoc.create("GetConvRequest", "urn:zimbraMail");
-	var convNode = soapDoc.set("c");
-	convNode.setAttribute("id", this.id);
-	params = params || {};
-	if (params.fetchAll) {
-		convNode.setAttribute("fetch", "all");
-	}
 
-	// Request additional headers
-	for (var hdr in ZmMailMsg.requestHeaders) {
-		var headerNode = soapDoc.set('header', null, convNode);
-		headerNode.setAttribute('n', hdr);
+	params = params || {};
+	var jsonObj = {GetConvRequest:{_jsns:"urn:zimbraMail"}};
+	var request = jsonObj.GetConvRequest;
+	var c = request.c = {
+		id:		this.id,
+		html:	(params.getHtml || this.isDraft || appCtxt.get(ZmSetting.VIEW_AS_HTML))
 	}
+	if (params.fetchAll) {
+		c.fetch = "all";
+	}
+	ZmMailMsg.addRequestHeaders(c);
 
 	// never pass "undefined" as arg to a callback!
-	var respCallback = new AjxCallback(this, this._handleResponseLoadMsgs, callback || null);
+	var respCallback = this._handleResponseLoadMsgs.bind(this, callback || null);
 	if (batchCmd) {
-		batchCmd.addRequestParams(soapDoc, respCallback);
+		batchCmd.addRequestParams(jsonObj, respCallback);
 	} else {
-		appCtxt.getAppController().sendRequest({soapDoc:soapDoc, asyncMode:true, callback:respCallback});
+		appCtxt.getAppController().sendRequest({jsonObj:jsonObj, asyncMode:true, callback:respCallback});
 	}
 };
 
@@ -209,21 +211,28 @@ ZmConv.prototype._handleResponseLoadMsgs =
 function(callback, result) {
 	var resp = result.getResponse().GetConvResponse.c[0];
 	this.msgIds = [];
-	
-	// create new msg list
-	this.msgs = new ZmMailList(ZmItem.MSG, this.search);
-	this.msgs.convId = this.id;
-	this.msgs.addChangeListener(this._listChangeListener);
+
+	if (!this.msgs) {
+		// create new msg list
+		this.msgs = new ZmMailList(ZmItem.MSG, this.search);
+		this.msgs.convId = this.id;
+		this.msgs.addChangeListener(this._listChangeListener);
+	}
+	else {
+		//don't recreate if it already exists, so we don't lose listeners.. (see ZmConvView2.prototype.set)
+		this.msgs.removeAllItems();
+	}
 	this.msgs.setHasMore(false);
 	this._loaded = true;
 
 	var len = resp.m.length;
-	for (var i = 0; i < len; i++) {
+	//going from last to first since GetConvRequest returns the msgs in order of creation (older first) but we keep things newer first.
+	for (var i = len - 1; i >= 0; i--) {
 		var msgNode = resp.m[i];
 		this.msgIds.push(msgNode.id);
 		msgNode.su = resp.su;
 		// construct ZmMailMsg's so they get cached
-		var msg = ZmMailMsg.createFromDom(msgNode, this.list);
+		var msg = ZmMailMsg.createFromDom(msgNode, {list: this.list});
 		this.msgs.add(msg);
 	}
 
@@ -268,6 +277,41 @@ function(msg) {
 	}
 };
 
+ZmConv.prototype.mute =
+function() {
+    this.isMute = true;
+    if(this.msgs) {
+        var msgs = this.msgs.getArray();
+		for (var i = 0; i < msgs.length; i++) {
+			var msg = msgs[i];
+			msg.mute();
+		}
+    }
+};
+
+ZmConv.prototype.unmute =
+function() {
+    this.isMute = false;
+    if(this.msgs) {
+        var msgs = this.msgs.getArray();
+		for (var i = 0; i < msgs.length; i++) {
+			var msg = msgs[i];
+			msg.unmute();
+		}
+    }
+};
+
+/**
+ * Gets the mute/unmute icon.
+ *
+ * @return	{String}	the icon
+ */
+ZmConv.prototype.getMuteIcon =
+function() {
+	return this.isMute ? "Mute" : "Unmute";
+};
+
+
 ZmConv.prototype.clear =
 function() {
 	if (this.msgs) {
@@ -281,18 +325,29 @@ function() {
 };
 
 /**
- * Checks if the conversation is read only.
+ * Checks if the conversation is read only. Returns false if it cannot be determined.
  * 
  * @return	{Boolean}	<code>true</code> if the conversation is read only
  */
 ZmConv.prototype.isReadOnly =
 function() {
-	var folderId = this.getFolderId();
-	var folder = appCtxt.getById(folderId);
-	// NOTE: if no folder, we're in a search so we dont know whether this conv
-	// is read-only or not. That means we should load the whole conv and iterate
-	// thru its messages to see if they all belong w/in read-only folders.
-	return (folder ? folder.isReadOnly() : false);
+	
+	if (this._loaded && this.msgs && this.msgs.size()) {
+		// conv has been loaded, check each msg
+		var msgs = this.msgs.getArray();
+		for (var i = 0; i < msgs.length; i++) {
+			if (msgs[i].isReadOnly()) {
+				return true;
+			}
+		}
+	}
+	else {
+		// conv has not been loaded, see if it's constrained to a folder
+		var folderId = this.getFolderId();
+		var folder = folderId && appCtxt.getById(folderId);
+		return !!(folder && folder.isReadOnly());
+	}
+	return false;
 };
 
 /**
@@ -306,7 +361,7 @@ function() {
  */
 ZmConv.prototype.hasMatchingMsg =
 function(search, defaultValue) {
-	if (search && search.matches && this.msgs) {
+	if (search && search.isMatchable() && this.msgs) {
 		var msgs = this.msgs.getArray();
 		for (var i = 0; i < msgs.length; i++) {
 			var msg = msgs[i];
@@ -379,9 +434,6 @@ function(obj, batchMode) {
 			}
 		}
 		conv.folders = AjxUtil.hashCopy(this.folders);
-		AjxDebug.println(AjxDebug.NOTIFY, "ZmConv::notifyModify - conv changed ID from " + conv._oldId + " to " + conv.id);
-		var folders = AjxUtil.keys(conv.folders);
-		AjxDebug.println(AjxDebug.NOTIFY, "copied " + folders.length + " folders: " + folders.join(" "));
 		if (conv.list && conv._oldId && conv.list._idHash[conv._oldId]) {
 			delete conv.list._idHash[conv._oldId];
 			conv.list._idHash[conv.id] = conv;
@@ -421,14 +473,18 @@ function(flag, value) {
 	return false;
 };
 
+/**
+ * Checks to see if a change in the value of a msg flag changes the value of the conv's flag. That will happen
+ * for the first msg to get an off flag turned on, or when the last msg to have an on flag turns it off.
+ */
 ZmConv.prototype._checkFlags = 
 function(flags) {
-	var msgs = this.msgs.getArray();
+
 	var convOn = {};
 	var msgsOn = {};
 	for (var i = 0; i < flags.length; i++) {
 		var flag = flags[i];
-		if (!(flag == ZmItem.FLAG_FLAGGED || flag == ZmItem.FLAG_UNREAD || flag == ZmItem.FLAG_ATTACH)) { continue; }
+		if (!(flag == ZmItem.FLAG_FLAGGED || flag == ZmItem.FLAG_UNREAD || flag == ZmItem.FLAG_MUTE || flag == ZmItem.FLAG_ATTACH || flag == ZmItem.FLAG_PRIORITY)) { continue; }
 		convOn[flag] = this[ZmItem.FLAG_PROP[flag]];
 		msgsOn[flag] = this.hasFlag(flag, true);
 	}			
@@ -586,11 +642,10 @@ function(msg, callback) {
 
 ZmConv.prototype._loadFromDom =
 function(convNode) {
-	AjxDebug.println(AjxDebug.NOTIFY, "ZmConv::_loadFromDom - conv ID: " + convNode.id);
 	this.numMsgs = convNode.n;
 	this.date = convNode.d;
 	this._parseFlags(convNode.f);
-	this._parseTags(convNode.t);	
+	this._parseTagNames(convNode.tn);
 	if (convNode.e) {
 		for (var i = 0; i < convNode.e.length; i++) {
 			this._parseParticipantNode(convNode.e[i]);
@@ -605,10 +660,11 @@ function(convNode) {
 	if (convNode.m) {
 		this.msgIds = [];
 		for (var i = 0, count = convNode.m.length; i < count; i++) {
-			this.msgIds.push(convNode.m[i].id);
+			var msgNode = convNode.m[i];
+			this.msgIds.push(msgNode.id);
+			this.folders[msgNode.l] = true;
 		}
 		if (count == 1) {
-			AjxDebug.println(AjxDebug.NOTIFY, "single msg conv");
 			var msgNode = convNode.m[0];
 
 			// bug 49067 - SearchConvResponse does not return the folder ID w/in
@@ -618,11 +674,9 @@ function(convNode) {
 			if (searchFolderId) {
 				this.folderId = searchFolderId;
 				this.folders[searchFolderId] = true;
-				AjxDebug.println(AjxDebug.NOTIFY, "added folder (from search): " + searchFolderId);
 			} else if (msgNode.l) {
 				this.folderId = msgNode.l;
 				this.folders[msgNode.l] = true;
-				AjxDebug.println(AjxDebug.NOTIFY, "added folder (from msg): " + msgNode.l);
 			}
 			else {
 				AjxDebug.println(AjxDebug.NOTIFY, "no folder added for conv");
@@ -652,8 +706,6 @@ function(convNode) {
 			}
 		}
 	}
-	var folders = AjxUtil.keys(this.folders);
-	AjxDebug.println(AjxDebug.NOTIFY, "ZmConv::_loadFromDom - conv spans " + folders.length + " folder(s): " + folders.join(" "));
 };
 
 ZmConv.prototype._loadFromMsg =
@@ -679,6 +731,8 @@ function(msg) {
 	this.fragment = msg.fragment;
 	this.sf = msg.sf;
 	this.msgIds = [msg.id];
+	//add a flag to redraw this conversation when additional information is available
+	this.redrawConvRow = true;
 };
 
 ZmConv.prototype._msgListChangeListener =
@@ -761,4 +815,22 @@ function() {
 	var status = [];
 	if (this.isScheduled)	{ status.push(ZmMsg.scheduled); }
 	return status.join(", ");
+};
+
+/**
+ * Returns the number of unread messages in this conversation.
+ */
+ZmConv.prototype.getNumUnreadMsgs =
+function() {
+	var numUnread = 0;
+	var msgs = this.getMsgList();
+	if (msgs) {
+		for (var i = 0, len = msgs.length; i < len; i++) {
+			if (msgs[i].isUnread) {
+				numUnread++;
+			}
+		}
+		return numUnread;
+	}
+	return null;
 };

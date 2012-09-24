@@ -55,18 +55,23 @@ I. Conventional Debugging
 
 2. In Eclipse select Run/Debug... and right click on Java Application
    to "New" a configuration.  Call it anything you want, such as
-   "jetty".  You can choose any project as the debug project.  That is
-   unimportant.  What's important is the Main class.  Set it to
-   org.mortbay.start.Main.
+   "jetty".  Choose the ZimbraServer as the debug project. Set the main
+   class to org.eclipse.jetty.start.Main.
 
-3. Switch to the Arguments tab and set VM arguments to
+3. Switch to the Arguments tab and set
+
+   Program arguments to 
+   --ini OPTIONS=Server,jsp,jmx,resources,websocket,ext,jta,plus,rewrite etc/jetty.xml
+   
+   and VM arguments to
    "-DSTART=/opt/zimbra/jetty/etc/start.config -DSTOP.PORT=7867
    -DSTOP.KEY=stop -Dzimbra.config=/opt/zimbra/conf/localconfig.xml
    -Djava.library.path=/opt/zimbra/lib".  Then choose "Other" under
    working directory and set it to /opt/zimbra/jetty.
 
 4. Swtich to the Classpath tab and add /opt/zimbra/jetty/start.jar to
-   User Entries.
+   User Entries. Also add all the jar files of /opt/zimbra/jetty/lib/
+   and /opt/zimbra/jetty/lib/jsp/
 
 5. Switch to the Source tab and add all the java projects in your
    workspace that you care about to debug.
@@ -82,7 +87,7 @@ I. Conventional Debugging
    that wouldn't do a proper shutdown.
 
 
-II. Ant Jetty Plugin (personal favorite)
+II. Ant Jetty Plugin
 
 There's another radically different way to run and debug jetty with
 jetty-ant plugin.  Basically you run jetty as an ant task.  We use

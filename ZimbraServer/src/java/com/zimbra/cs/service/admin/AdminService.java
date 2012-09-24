@@ -1,27 +1,28 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.admin;
 
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.StringUtil;
-import com.zimbra.common.soap.AdminConstants;
-import com.zimbra.common.soap.Element;
-import com.zimbra.soap.DocumentDispatcher;
-import com.zimbra.soap.DocumentService;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.AdminConstants;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.StringUtil;
+import com.zimbra.soap.DocumentDispatcher;
+import com.zimbra.soap.DocumentService;
 
 /**
  * @zm-service-description		The Admin Service includes commands for server, account
@@ -40,6 +41,7 @@ public class AdminService implements DocumentService {
         dispatcher.registerHandler(AdminConstants.AUTH_REQUEST, new Auth());
         dispatcher.registerHandler(AdminConstants.CREATE_ACCOUNT_REQUEST, new CreateAccount());
         dispatcher.registerHandler(AdminConstants.CREATE_GAL_SYNC_ACCOUNT_REQUEST, new CreateGalSyncAccount());
+        dispatcher.registerHandler(AdminConstants.ADD_GAL_SYNC_DATASOURCE_REQUEST, new AddGalSyncDataSource());
         dispatcher.registerHandler(AdminConstants.DELEGATE_AUTH_REQUEST, new DelegateAuth());
         dispatcher.registerHandler(AdminConstants.DELETE_GAL_SYNC_ACCOUNT_REQUEST, new DeleteGalSyncAccount());
         dispatcher.registerHandler(AdminConstants.GET_ACCOUNT_REQUEST, new GetAccount());
@@ -78,6 +80,13 @@ public class AdminService implements DocumentService {
         dispatcher.registerHandler(AdminConstants.GET_ALL_SERVERS_REQUEST, new GetAllServers());
         dispatcher.registerHandler(AdminConstants.MODIFY_SERVER_REQUEST, new ModifyServer());
         dispatcher.registerHandler(AdminConstants.DELETE_SERVER_REQUEST, new DeleteServer());
+
+        dispatcher.registerHandler(AdminConstants.CREATE_UC_SERVICE_REQUEST, new CreateUCService());
+        dispatcher.registerHandler(AdminConstants.GET_UC_SERVICE_REQUEST, new GetUCService());
+        dispatcher.registerHandler(AdminConstants.GET_ALL_UC_SERVICES_REQUEST, new GetAllUCServices());
+        dispatcher.registerHandler(AdminConstants.MODIFY_UC_SERVICE_REQUEST, new ModifyUCService());
+        dispatcher.registerHandler(AdminConstants.DELETE_UC_SERVICE_REQUEST, new DeleteUCService());
+        dispatcher.registerHandler(AdminConstants.RENAME_UC_SERVICE_REQUEST, new RenameUCService());
 
         dispatcher.registerHandler(AdminConstants.GET_CONFIG_REQUEST, new GetConfig());
         dispatcher.registerHandler(AdminConstants.GET_ALL_CONFIG_REQUEST, new GetAllConfig());
@@ -119,10 +128,18 @@ public class AdminService implements DocumentService {
         dispatcher.registerHandler(AdminConstants.RENAME_DISTRIBUTION_LIST_REQUEST, new RenameDistributionList());
         dispatcher.registerHandler(AdminConstants.GET_DISTRIBUTION_LIST_MEMBERSHIP_REQUEST, new GetDistributionListMembership());
 
+        dispatcher.registerHandler(AdminConstants.AUTO_PROV_ACCOUNT_REQUEST, new AutoProvAccount());
+        dispatcher.registerHandler(AdminConstants.AUTO_PROV_TASK_CONTROL_REQUEST, new AutoProvTaskControl());
+        dispatcher.registerHandler(AdminConstants.SEARCH_AUTO_PROV_DIRECTORY_REQUEST, new SearchAutoProvDirectory());
+
         dispatcher.registerHandler(AdminConstants.GET_VERSION_INFO_REQUEST, new GetVersionInfo());
         dispatcher.registerHandler(AdminConstants.GET_LICENSE_INFO_REQUEST, new GetLicenseInfo());
+        dispatcher.registerHandler(AdminConstants.GET_ATTRIBUTE_INFO_REQUEST, new GetAttributeInfo());
 
         dispatcher.registerHandler(AdminConstants.REINDEX_REQUEST, new ReIndex());
+        dispatcher.registerHandler(AdminConstants.COMPACT_INDEX_REQUEST, new CompactIndex());
+        dispatcher.registerHandler(AdminConstants.GET_INDEX_STATS_REQUEST, new GetIndexStats());
+        dispatcher.registerHandler(AdminConstants.VERIFY_INDEX_REQUEST, new VerifyIndex());
         dispatcher.registerHandler(AdminConstants.RECALCULATE_MAILBOX_COUNTS_REQUEST, new RecalculateMailboxCounts());
 
         // zimlet
@@ -150,6 +167,9 @@ public class AdminService implements DocumentService {
 
         // QUOTA and mailbox data
         dispatcher.registerHandler(AdminConstants.GET_QUOTA_USAGE_REQUEST, new GetQuotaUsage());
+        dispatcher.registerHandler(AdminConstants.COMPUTE_AGGR_QUOTA_USAGE_REQUEST, new ComputeAggregateQuotaUsage());
+        dispatcher.registerHandler(AdminConstants.GET_AGGR_QUOTA_USAGE_ON_SERVER_REQUEST,
+                new GetAggregateQuotaUsageOnServer());
         dispatcher.registerHandler(AdminConstants.GET_ALL_MAILBOXES_REQUEST, new GetAllMailboxes());
         dispatcher.registerHandler(AdminConstants.GET_MAILBOX_STATS_REQUEST, new GetMailboxStats());
 
@@ -158,8 +178,6 @@ public class AdminService implements DocumentService {
         dispatcher.registerHandler(AdminConstants.GET_MAIL_QUEUE_REQUEST, new GetMailQueue());
         dispatcher.registerHandler(AdminConstants.MAIL_QUEUE_ACTION_REQUEST, new MailQueueAction());
         dispatcher.registerHandler(AdminConstants.MAIL_QUEUE_FLUSH_REQUEST, new MailQueueFlush());
-
-        dispatcher.registerHandler(AdminConstants.INIT_NOTEBOOK_REQUEST, new InitNotebook());
 
         dispatcher.registerHandler(AdminConstants.AUTO_COMPLETE_GAL_REQUEST, new AutoCompleteGal());
         dispatcher.registerHandler(AdminConstants.SEARCH_GAL_REQUEST, new SearchGal());
@@ -185,17 +203,16 @@ public class AdminService implements DocumentService {
         dispatcher.registerHandler(AdminConstants.REMOVE_ACCOUNT_LOGGER_REQUEST, new RemoveAccountLogger());
         dispatcher.registerHandler(AdminConstants.GET_ACCOUNT_LOGGERS_REQUEST, new GetAccountLoggers());
         dispatcher.registerHandler(AdminConstants.GET_ALL_ACCOUNT_LOGGERS_REQUEST, new GetAllAccountLoggers());
+        dispatcher.registerHandler(AdminConstants.RESET_ALL_LOGGERS_REQUEST, new ResetAllLoggers());
 
         dispatcher.registerHandler(AdminConstants.CHECK_DIRECTORY_REQUEST, new CheckDirectory());
 
         dispatcher.registerHandler(AdminConstants.FLUSH_CACHE_REQUEST, new FlushCache());
 
         dispatcher.registerHandler(AdminConstants.COUNT_ACCOUNT_REQUEST, new CountAccount());
+        dispatcher.registerHandler(AdminConstants.COUNT_OBJECTS_REQUEST, new CountObjects());
 
         dispatcher.registerHandler(AdminConstants.GET_SHARE_INFO_REQUEST, new GetShareInfo());
-        dispatcher.registerHandler(AdminConstants.GET_PUBLISHED_SHARE_INFO_REQUEST, new GetPublishedShareInfo());
-        dispatcher.registerHandler(AdminConstants.PUBLISH_SHARE_INFO_REQUEST, new PublishShareInfo());
-
 
         dispatcher.registerHandler(AdminConstants.GET_SERVER_NIFS_REQUEST, new GetServerNIFs());
 
@@ -248,12 +265,25 @@ public class AdminService implements DocumentService {
 
         // wiki migration
         dispatcher.registerHandler(AdminConstants.MIGRATE_ACCOUNT_REQUEST, new MigrateAccount());
-        
+
         // noop
         dispatcher.registerHandler(AdminConstants.NO_OP_REQUEST, new NoOp());
-        
+
         // clear cookie
         dispatcher.registerHandler(AdminConstants.CLEAR_COOKIE_REQUEST, new ClearCookie());
+
+        // Retention policy
+        dispatcher.registerHandler(AdminConstants.GET_SYSTEM_RETENTION_POLICY_REQUEST, new GetSystemRetentionPolicy());
+        dispatcher.registerHandler(AdminConstants.CREATE_SYSTEM_RETENTION_POLICY_REQUEST, new CreateSystemRetentionPolicy());
+        dispatcher.registerHandler(AdminConstants.MODIFY_SYSTEM_RETENTION_POLICY_REQUEST, new ModifySystemRetentionPolicy());
+        dispatcher.registerHandler(AdminConstants.DELETE_SYSTEM_RETENTION_POLICY_REQUEST, new DeleteSystemRetentionPolicy());
+
+        // store manager verifier
+        dispatcher.registerHandler(AdminConstants.VERIFY_STORE_MANAGER_REQUEST, new VerifyStoreManager());
+
+        // Skins
+        dispatcher.registerHandler(AdminConstants.GET_ALL_SKINS_REQUEST, new GetAllSkins());
+
     }
 
     /**
@@ -279,7 +309,8 @@ public class AdminService implements DocumentService {
      * @return
      * @throws ServiceException
      */
-    public static Map<String, Object> getAttrs(Element request, boolean ignoreEmptyValues) throws ServiceException {
+    public static Map<String, Object> getAttrs(Element request, boolean ignoreEmptyValues)
+    throws ServiceException {
         Map<String, Object> result = new HashMap<String, Object>();
         for (Element a : request.listElements(AdminConstants.E_A)) {
             String name = a.getAttribute(AdminConstants.A_N);

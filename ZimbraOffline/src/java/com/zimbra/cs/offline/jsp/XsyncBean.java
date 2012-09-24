@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,14 +17,16 @@ package com.zimbra.cs.offline.jsp;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.DataSource.ConnectionType;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.offline.jsp.JspConstants.JspVerb;
-import com.zimbra.cs.zclient.ZFolder;
+import com.zimbra.client.ZFolder;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 public class XsyncBean extends MailBean {
     protected String fromDisplay = "";
@@ -69,7 +71,7 @@ public class XsyncBean extends MailBean {
             return;
         try {
             Map<String, Object> dsAttrs = new HashMap<String, Object>();
-            DataSource.Type dsType = isEmpty(type) ? null : DataSource.Type.fromString(type);
+            DataSourceType dsType = isEmpty(type) ? null : DataSourceType.fromString(type);
 
             if (verb.isAdd() || verb.isModify()) {
                 if (dsType == null)
@@ -93,8 +95,8 @@ public class XsyncBean extends MailBean {
                     username = email.substring(0, email.indexOf('@'));
 
                 if (isAllOK()) {
-                	dsAttrs.put(OfflineConstants.A_zimbraDataSourceAccountSetup, Provisioning.TRUE);
-                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled, Provisioning.TRUE);
+                	dsAttrs.put(OfflineConstants.A_zimbraDataSourceAccountSetup, ProvisioningConstants.TRUE);
+                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled, ProvisioningConstants.TRUE);
                     dsAttrs.put(Provisioning.A_zimbraDataSourceUsername, username);
                     dsAttrs.put(Provisioning.A_zimbraDataSourceDomain, domain);
                     if (!password.equals(JspConstants.MASKED_PASSWORD))
@@ -104,10 +106,10 @@ public class XsyncBean extends MailBean {
                     dsAttrs.put(Provisioning.A_zimbraDataSourceHost, host);
                     dsAttrs.put(Provisioning.A_zimbraDataSourcePort, port);
                     dsAttrs.put(Provisioning.A_zimbraDataSourceConnectionType, connectionType.toString());
-                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnableTrace, isDebugTraceEnabled ? Provisioning.TRUE : Provisioning.FALSE);
-                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceContactSyncEnabled, Provisioning.TRUE);
-                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceCalendarSyncEnabled, Provisioning.TRUE);
-                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceTaskSyncEnabled, Provisioning.TRUE);
+                    dsAttrs.put(Provisioning.A_zimbraDataSourceEnableTrace, isDebugTraceEnabled ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
+                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceContactSyncEnabled, ProvisioningConstants.TRUE);
+                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceCalendarSyncEnabled, ProvisioningConstants.TRUE);
+                    dsAttrs.put(OfflineConstants.A_zimbraDataSourceTaskSyncEnabled, ProvisioningConstants.TRUE);
                     dsAttrs.put(OfflineConstants.A_zimbraDataSourceSyncFreq, Long.toString(syncFreqSecs));
                     dsAttrs.put(Provisioning.A_zimbraDataSourceFolderId, ZFolder.ID_USER_ROOT);
                     if (sslCertAlias != null && sslCertAlias.length() > 0)

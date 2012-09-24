@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.db;
 
 import java.sql.SQLException;
@@ -30,8 +16,7 @@ public abstract class AbstractRetry<T> {
 
     protected boolean retryException(SQLException sqle)
     {
-        //TODO: add new error codes in Db and consult those instead. Currently tightly coupled to SQLite
-        return (sqle.getMessage() != null && (sqle.getMessage().contains("SQLITE_BUSY") || sqle.getMessage().contains("database is locked")));
+        return Db.errorMatches(sqle, Db.Error.BUSY) || Db.errorMatches(sqle, Db.Error.LOCKED);
     }
 
     private static final int RETRY_LIMIT = 10;
@@ -71,7 +56,7 @@ public abstract class AbstractRetry<T> {
                 }
             }
         }
-        throw new SQLException("SQLITE_BUSY retry gave up after "+tries+" attempts.",sqle);
+        throw new SQLException("DB retry gave up after "+tries+" attempts.",sqle);
     }
 
 }

@@ -1,58 +1,31 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.mail.mail;
 
-import java.util.HashMap;
 import java.util.List;
 
 import org.testng.annotations.Test;
 
 import com.zimbra.qa.selenium.framework.items.MailItem;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
-import com.zimbra.qa.selenium.framework.util.ZAssert;
-import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.projects.ajax.core.PrefGroupMailByMessageTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.DisplayMail;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.DisplayMail.Field;
 
 
-public class GetMail extends AjaxCommonTest {
+public class GetMail extends PrefGroupMailByMessageTest {
 
 	int pollIntervalSeconds = 60;
 	
-	@SuppressWarnings("serial")
 	public GetMail() {
 		logger.info("New "+ GetMail.class.getCanonicalName());
 		
-		// All tests start at the login page
-		super.startingPage = app.zPageMail;
+		
+		
 
-		// Make sure we are using an account with message view
-		super.startingAccountPreferences = new HashMap<String, String>() {{
-				    put("zimbraPrefGroupMailBy", "message");
-				    put("zimbraPrefMessageViewHtmlPreferred", "TRUE");
-				    put("zimbraPrefMailPollingInterval", "" + pollIntervalSeconds);
-				}};
+		
+		
+		super.startingAccountPreferences.put("zimbraPrefMailPollingInterval", "" + pollIntervalSeconds);
+
 
 
 	}
@@ -259,8 +232,47 @@ public class GetMail extends AjaxCommonTest {
 
 		// Wait for the timeout to expire
 		logger.info("waiting for the message to arrive");
-		SleepUtil.sleep((this.pollIntervalSeconds + 15) * 1000);
+		SleepUtil.sleep(1000L * (this.pollIntervalSeconds + 15));
 
+		// Get the message list
+		List<MailItem> messages = app.zPageMail.zListGetMessages();
+		ZAssert.assertNotNull(messages, "Verify the list contains messages");
+
+		MailItem found = null;
+		for (MailItem m : messages) {
+			if ( mail.dSubject.equals(m.gSubject) ) {
+				found = m;
+				break;
+			}
+		}
+		ZAssert.assertNotNull(found, "Verify the list contains the new message");
+		
+	}
+
+	@Test(	description = "Type keyboard shortcut (=) for 'Get Mail' to receive any new messages",
+			groups = { "functional" })
+	public void GetMail_06() throws HarnessException {
+
+		
+		// Create the message data to be sent
+		String subject = "subject" + ZimbraSeleniumProperties.getUniqueString();
+		
+		ZimbraAccount.AccountA().soapSend(
+					"<SendMsgRequest xmlns='urn:zimbraMail'>" +
+						"<m>" +
+							"<e t='t' a='"+ app.zGetActiveAccount().EmailAddress +"'/>" +
+							"<su>"+ subject +"</su>" +
+							"<mp ct='text/plain'>" +
+								"<content>content" + ZimbraSeleniumProperties.getUniqueString() +"</content>" +
+							"</mp>" +
+						"</m>" +
+					"</SendMsgRequest>");
+		
+		MailItem mail = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
+
+		// Type shortcut
+		app.zPageMail.zKeyboardShortcut(Shortcut.S_MAIL_GETMAIL);
+		
 		// Get the message list
 		List<MailItem> messages = app.zPageMail.zListGetMessages();
 		ZAssert.assertNotNull(messages, "Verify the list contains messages");

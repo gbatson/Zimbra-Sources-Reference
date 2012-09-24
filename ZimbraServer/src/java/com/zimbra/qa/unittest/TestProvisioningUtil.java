@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,12 +30,11 @@ import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.Element.XMLElement;
-import com.zimbra.common.util.SetUtil;
-import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.account.soap.SoapProvisioning;
+
 
 public class TestProvisioningUtil extends TestCase {
     
@@ -164,40 +163,8 @@ public class TestProvisioningUtil extends TestCase {
     }
     
     
-    public static class IDNName {
-        String mUincodeName;
-        String mAsciiName;
-        
-        IDNName(String uName) {
-            mUincodeName = uName;
-            
-            String[] parts = uName.split("@");
-            if (parts.length == 2)
-                mAsciiName = parts[0] + "@" + IDNUtil.toAsciiDomainName(parts[1]);
-            else
-                mAsciiName = IDNUtil.toAsciiDomainName(uName);
-        }
-        
-        IDNName(String localPart, String uName) {
-            mUincodeName = localPart + "@" + uName;
-            mAsciiName = localPart + "@" + IDNUtil.toAsciiDomainName(uName);
-        }
-        
-        String uName() { return mUincodeName; } 
-        String aName() { return mAsciiName; }
-    }
-    
-    public static Provisioning getProvisioning(Class cls) throws ServiceException {
-        if (cls == LdapProvisioning.class)
-            return getLdapProvisioning();
-        else if (cls == SoapProvisioning.class)
-            return getSoapProvisioning();
-        else
-            throw ServiceException.FAILURE("unsupported Provisioning class", null);
-    }
-    
-    public static LdapProvisioning getLdapProvisioning() throws ServiceException {
-        LdapProvisioning lp = (LdapProvisioning)Provisioning.getInstance();
+    public static LdapProv getLdapProvisioning() throws ServiceException {
+        LdapProv lp = (LdapProv)Provisioning.getInstance();
         return lp;
     }
     

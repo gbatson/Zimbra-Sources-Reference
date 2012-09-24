@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,6 +24,7 @@ package com.zimbra.cs.redolog.op;
 import java.io.File;
 import java.io.IOException;
 
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -39,10 +40,12 @@ public class Rollover extends RedoableOp {
     String mFilename;
 
     public Rollover() {
+        super(MailboxOperation.Rollover);
         mSeq = 0;
     }
 
     public Rollover(File logfile, long seq) {
+        this();
         mSeq = seq;
     	mFilename = logfile.getName();
     }
@@ -54,10 +57,6 @@ public class Rollover extends RedoableOp {
     public String getFilename() {
     	return mFilename;
     }
-
-	public int getOpCode() {
-		return OP_ROLLOVER;
-	}
 
 	/* (non-Javadoc)
 	 * @see com.zimbra.cs.redolog.op.RedoableOp#redo()

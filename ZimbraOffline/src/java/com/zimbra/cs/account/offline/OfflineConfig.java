@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.account.offline;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
@@ -33,13 +34,13 @@ class OfflineConfig extends Config {
 
     static synchronized OfflineConfig instantiate(Provisioning provisioning) {
         try {
-            Map<String, Object> attrs = DbOfflineDirectory.readDirectoryEntry(EntryType.CONFIG, OfflineProvisioning.A_offlineDn, "config");
+            Map<String, Object> attrs = DbOfflineDirectory.readDirectoryEntry(OfflineProvisioning.EntryType.CONFIG, OfflineProvisioning.A_offlineDn, "config");
             if (attrs == null) {
                 attrs = new HashMap<String, Object>(2);
                 attrs.put(Provisioning.A_cn, "config");
                 attrs.put(Provisioning.A_objectClass, "zimbraGlobalConfig");
                 try {
-                    DbOfflineDirectory.createDirectoryEntry(EntryType.CONFIG, "config", attrs, false);
+                    DbOfflineDirectory.createDirectoryEntry(OfflineProvisioning.EntryType.CONFIG, "config", attrs, false);
                 } catch (ServiceException x) {
                     OfflineLog.offline.error("can't save config", x); //shouldn't really happen.  see bug 34567
                 }
@@ -47,10 +48,10 @@ class OfflineConfig extends Config {
             String[] skins = OfflineLC.zdesktop_skins.value().split("\\s*,\\s*");
             attrs.put(Provisioning.A_zimbraInstalledSkin, skins);
             if (!OfflineLC.zdesktop_redolog_enabled.booleanValue()) {
-                attrs.put(Provisioning.A_zimbraRedoLogEnabled, OfflineLC.zdesktop_redolog_enabled.booleanValue() ? Provisioning.TRUE : Provisioning.FALSE);
+                attrs.put(Provisioning.A_zimbraRedoLogEnabled, OfflineLC.zdesktop_redolog_enabled.booleanValue() ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
                 attrs.put(Provisioning.A_zimbraRedoLogFsyncIntervalMS, 0);
             }
-            attrs.put(Provisioning.A_zimbraSmtpSendAddMailer, Provisioning.FALSE);
+            attrs.put(Provisioning.A_zimbraSmtpSendAddMailer, ProvisioningConstants.FALSE);
             attrs.put(Provisioning.A_zimbraNotebookAccount, "local@host.local");
             attrs.put(Provisioning.A_zimbraMtaMaxMessageSize, OfflineLC.zdesktop_upload_size_limit.value());
 

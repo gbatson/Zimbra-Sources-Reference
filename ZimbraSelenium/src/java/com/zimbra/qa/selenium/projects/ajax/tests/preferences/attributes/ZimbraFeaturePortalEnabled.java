@@ -20,6 +20,7 @@ import java.util.HashMap;
 
 import org.testng.annotations.Test;
 
+import com.zimbra.qa.selenium.framework.core.Bugs;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
@@ -43,6 +44,7 @@ public class ZimbraFeaturePortalEnabled extends AjaxCommonTest {
 		
 	}
 	
+	@Bugs(ids = "67462")
 	@Test(	description = "Login to the Ajax Client with the 'example' portal enabled",
 			groups = { "functional" })
 	public void BasicLogin01() throws HarnessException {

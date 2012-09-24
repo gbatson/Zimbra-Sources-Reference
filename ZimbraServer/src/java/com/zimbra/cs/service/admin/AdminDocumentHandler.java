@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,16 +29,19 @@ import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
-import com.zimbra.cs.account.Provisioning.ServerBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.CalendarResourceBy;
+import com.zimbra.common.account.Key.ServerBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.cs.account.names.NameUtil;
 import com.zimbra.cs.session.Session;
 import com.zimbra.soap.DocumentHandler;
 import com.zimbra.common.soap.AdminConstants;
@@ -85,7 +88,7 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
         return acct;
     }
 
-    private CalendarResource getCalendarResource(Provisioning prov, CalendarResourceBy crBy, String value) throws ServiceException {
+    private CalendarResource getCalendarResource(Provisioning prov, Key.CalendarResourceBy crBy, String value) throws ServiceException {
         CalendarResource cr = null;
 
         // first try getting it from master if not in cache
@@ -129,7 +132,7 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
             xpath = getProxiedResourcePath();
             String rsrcId = (xpath != null ? getXPath(request, xpath) : null);
             if (rsrcId != null) {
-                CalendarResource rsrc = getCalendarResource(prov, CalendarResourceBy.id, rsrcId);
+                CalendarResource rsrc = getCalendarResource(prov, Key.CalendarResourceBy.id, rsrcId);
                 if (rsrc != null && !Provisioning.onLocalServer(rsrc)) {
                     return proxyRequest(request, context, rsrcId);
                 }
@@ -138,7 +141,7 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
             xpath = getProxiedResourceElementPath();
             Element resourceElt = (xpath != null ? getXPathElement(request, xpath) : null);
             if (resourceElt != null) {
-                CalendarResource rsrc = getCalendarResource(prov, CalendarResourceBy.fromString(resourceElt.getAttribute(AdminConstants.A_BY)), resourceElt.getText());
+                CalendarResource rsrc = getCalendarResource(prov, Key.CalendarResourceBy.fromString(resourceElt.getAttribute(AdminConstants.A_BY)), resourceElt.getText());
                 if (rsrc != null && !Provisioning.onLocalServer(rsrc)) {
                     return proxyRequest(request, context, rsrc.getId());
                 }
@@ -148,7 +151,7 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
             xpath = getProxiedServerPath();
             String serverId = (xpath != null ? getXPath(request, xpath) : null);
             if (serverId != null) {
-                Server server = prov.get(ServerBy.id, serverId);
+                Server server = prov.get(Key.ServerBy.id, serverId);
                 if (server != null && !getLocalHostId().equalsIgnoreCase(server.getId()))
                     return proxyRequest(request, context, server);
             }
@@ -183,19 +186,22 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
      */
     protected Set<String> getReqAttrs(Element request, AttributeClass klass) throws ServiceException {
         String attrsStr = request.getAttribute(AdminConstants.A_ATTRS, null);
-        if (attrsStr == null)
+        if (attrsStr == null) {
             return null;
-
+        }
+        
         String[] attrs = attrsStr.split(",");
 
         Set<String> attrsOnEntry = AttributeManager.getInstance().getAllAttrsInClass(klass);
         Set<String> validAttrs = new HashSet<String>();
 
         for (String attr : attrs) {
-            if (attrsOnEntry.contains(attr))
+            if (attrsOnEntry.contains(attr)) {
                 validAttrs.add(attr);
-            else
-                throw ServiceException.INVALID_REQUEST("requested attribute " + attr + " is not on " + klass.name(), null);
+            } else {
+                throw ServiceException.INVALID_REQUEST("requested attribute " + attr + 
+                        " is not on " + klass.name(), null);
+            }
         }
 
         // check and throw if validAttrs is empty?
@@ -234,7 +240,7 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
      *        only call this method from there.
      */
     public boolean canAccessEmail(ZimbraSoapContext zsc, String email) throws ServiceException {
-        return canAccessDomain(zsc, AdminAccessControl.getDomainFromEmail(email));
+        return canAccessDomain(zsc, NameUtil.EmailAddress.getDomainNameFromEmail(email));
     }
 
 
@@ -382,7 +388,7 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
     protected AdminAccessControl checkAdminLoginAsRight(ZimbraSoapContext zsc, Provisioning prov, Account account) throws ServiceException {
         if (account.isCalendarResource()) {
             // need a CalendarResource instance for RightChecker
-            CalendarResource resource = prov.get(CalendarResourceBy.id, account.getId());
+            CalendarResource resource = prov.get(Key.CalendarResourceBy.id, account.getId());
             return checkCalendarResourceRight(zsc, resource, Admin.R_adminLoginCalendarResourceAs);
         } else
             return checkAccountRight(zsc, account, Admin.R_adminLoginAs);
@@ -393,9 +399,23 @@ public abstract class AdminDocumentHandler extends DocumentHandler implements Ad
      * DL right
      * --------
      */
-    protected AdminAccessControl checkDistributionListRight(ZimbraSoapContext zsc, DistributionList dl, Object needed) throws ServiceException {
+    protected AdminAccessControl checkDistributionListRight(ZimbraSoapContext zsc, 
+            DistributionList dl, Object needed) throws ServiceException {
         AdminAccessControl aac = AdminAccessControl.getAdminAccessControl(zsc);
         aac.checkDistributionListRight(this, dl, needed);
+        return aac;
+    }
+    
+
+    /*
+     * --------
+     * Dynamic group right
+     * --------
+     */
+    protected AdminAccessControl checkDynamicGroupRight(ZimbraSoapContext zsc, 
+            DynamicGroup group, Object needed) throws ServiceException {
+        AdminAccessControl aac = AdminAccessControl.getAdminAccessControl(zsc);
+        aac.checkDynamicGroupRight(this, group, needed);
         return aac;
     }
 

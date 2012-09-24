@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import java.util.List;
@@ -29,18 +13,22 @@ import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseOpen;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
 
-public class OpenFile extends AjaxCommonTest {
+public class OpenFile extends FeatureBriefcaseTest {
 
-	public OpenFile() {
+	public OpenFile() throws HarnessException {
 		logger.info("New " + OpenFile.class.getCanonicalName());
 
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = null;
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
+		    super.startingAccountPreferences.put("zimbraPrefShowSelectionCheckbox","TRUE");
+		}
+		
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");			
 	}
 
 	@Test(description = "Upload file through RestUtil - open & verify through GUI", groups = { "smoke" })
@@ -74,16 +62,27 @@ public class OpenFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 
 		// Click on created file
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Click on open in a separate window icon in toolbar
 	
 		DocumentBriefcaseOpen file;
 		
-		file = (DocumentBriefcaseOpen)app.zPageBriefcase
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			file = (DocumentBriefcaseOpen)app.zPageBriefcase
 					.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW,
 							fileItem);
-		
+		else
+			file = (DocumentBriefcaseOpen)app.zPageBriefcase
+					.zToolbarPressPulldown(Button.B_ACTIONS,
+							Button.B_LAUNCH_IN_SEPARATE_WINDOW,fileItem);
+
 		app.zPageBriefcase.isOpenFileLoaded(fileName, fileText);
 
 		String text = "";

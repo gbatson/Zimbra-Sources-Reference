@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -22,6 +6,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 
 /**
  * Represents a "Create New Briefcase Folder" dialog box
@@ -72,8 +57,8 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 
 		String locator = Locators.zNameField;
 	
-		if (!this.sIsElementPresent(locator)) {
-			return (false); // Not even present
+		if (!this.zWaitForElementPresent(locator,"3000")) {
+			throw new HarnessException("locator not even present");			
 		}
 
 		if (!this.zIsVisiblePerPosition(locator, 0, 0)) {
@@ -110,11 +95,6 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 		// Default behavior, click the locator
 		//
 
-		// Make sure the locator was set
-		if (locator == null) {
-			throw new HarnessException("Button " + button + " not implemented");
-		}
-		
 		// Make sure the locator exists
 		if (!this.sIsElementPresent(locator)) {
 			throw new HarnessException("Button " + button + " locator "
@@ -149,12 +129,13 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 	 * @throws HarnessException
 	 */
 	public void zClickTreeFolder(FolderItem folder) throws HarnessException {
+		if (folder == null){
+			throw new HarnessException("zClickTreeFolder(FolderItem): folder must not be null");
+		}
+		
 		logger.info(myPageName() + " zClickTreeFolder(" + folder + ")");
 
 		tracer.trace("Click on tree briefcase with name " + folder.getName());
-
-		if (folder == null)
-			throw new HarnessException("folder must not be null");
 
 		String locator = "css=div[id='" + Locators.zDialogId
 				+ "'] td[id='zti__ZmChooseFolderDialog_Briefcase__" + folder.getId()
@@ -192,6 +173,9 @@ public class DialogCreateBriefcaseFolder extends AbsDialog {
 		// For some reason, the text doesn't get entered on the first try
 		this.sFocus(locator);
 		this.zClickAt(locator, "0,0");
+		if(ZimbraSeleniumProperties.isWebDriver()){
+			this.clearField(locator);
+		}
 		this.sType(locator, folder);
 
 		this.zWaitForBusyOverlay();

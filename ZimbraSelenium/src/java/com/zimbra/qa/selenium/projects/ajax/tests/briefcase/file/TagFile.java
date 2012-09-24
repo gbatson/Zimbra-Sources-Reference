@@ -1,42 +1,29 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
+import java.util.List;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
-
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
 
-public class TagFile extends AjaxCommonTest {
+public class TagFile extends FeatureBriefcaseTest {
 
-	public TagFile() {
+	public TagFile() throws HarnessException {
 		logger.info("New " + TagFile.class.getCanonicalName());
 
 		// All tests start at the Briefcase page
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = null;
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
+		    super.startingAccountPreferences.put("zimbraPrefShowSelectionCheckbox","TRUE");
+		}
+			    
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");
 	}
 
 	@Test(description = "Tag a File using Toolbar -> Tag -> New Tag", groups = { "smoke" })
@@ -68,7 +55,13 @@ public class TagFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 
 		// Click on created File
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
 
 		// Click on header check box
 		// app.zPageBriefcase.zHeader(Action.A_BRIEFCASE_HEADER_CHECKBOX);
@@ -144,7 +137,7 @@ public class TagFile extends AjaxCommonTest {
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-				+ "/data/public/other/testpptfile.ppt";
+				+ "/data/public/other/testexcelfile.xls";
 
 		FileItem fileItem = new FileItem(filePath);
 
@@ -176,7 +169,13 @@ public class TagFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 
 		// Click on uploaded file
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
 
 		// Click on header check box
 		// app.zPageBriefcase.zHeader(Action.A_BRIEFCASE_HEADER_CHECKBOX);
@@ -214,7 +213,7 @@ public class TagFile extends AjaxCommonTest {
 
 		// Create file item
 		String filePath = ZimbraSeleniumProperties.getBaseDirectory()
-				+ "/data/public/other/testpptfile.ppt";
+				+ "/data/public/other/testwordfile.doc";
 
 		FileItem fileItem = new FileItem(filePath);
 
@@ -247,7 +246,13 @@ public class TagFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 
 		// Click on uploaded file
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
 
 		// Click on header check box
 		// app.zPageBriefcase.zHeader(Action.A_BRIEFCASE_HEADER_CHECKBOX);
@@ -282,8 +287,7 @@ public class TagFile extends AjaxCommonTest {
 		logger.info("Checking for the opened window ...");
 
 		// Check if the window is still open
-		String[] windows = ClientSessionFactory.session().selenium()
-				.getAllWindowNames();
+		List<String> windows = app.zPageBriefcase.sGetAllWindowNames();
 		for (String window : windows) {
 			if (!window.isEmpty() && !window.contains("null")
 					&& !window.contains(PageBriefcase.pageTitle)

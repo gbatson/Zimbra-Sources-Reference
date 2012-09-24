@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
 import java.util.ArrayList;
@@ -26,15 +10,19 @@ import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.admin.items.AccountItem;
 
 
 
 public class PageSearchResults extends AbsTab {
 	public static class Locators {
-		public static final String SEARCH_INPUT_TEXT_BOX="_XForm_2_query";
-		public static final String SEARCH_BUTTON="css=div.ImgSearch";
-		public static final String DELETE_BUTTON="zb__SCHLV__DELETE_title";
+		public static final String SEARCH_INPUT_TEXT_BOX="_XForm_query_display";
+		public static final String SEARCH_BUTTON="css=td.xform_container div.ImgSearch";
+		public static final String DELETE_BUTTON="css=div[id='zm__zb_currentApp__MENU_POP'] div[class='ImgDelete']";
+		public static final String RIGHT_CLICK_MENU_DELETE_BUTTON="css=div[id='zm__SCHLV__MENU_POP'] div[class='ImgDelete']";
+		public static final String EDIT_BUTTON="div[id='zm__zb_currentApp__MENU_POP']  div[class='ImgEdit']";
+		public static final String GEAR_ICON="css=div.ImgConfigure";
 	}
 
 	public PageSearchResults(AbsApplication application) {
@@ -99,6 +87,9 @@ public class PageSearchResults extends AbsTab {
 					if(action == Action.A_LEFTCLICK) {
 						zClick(locator);
 						break;
+					} else if(action == Action.A_RIGHTCLICK) {
+						zRightClick(locator);
+						break;
 					}
 
 				}
@@ -150,8 +141,8 @@ public class PageSearchResults extends AbsTab {
 
 			// FALL THROUGH
 
-		} else if(button == Button.B_DELETE) {
-			locator = Locators.DELETE_BUTTON;
+		} else if(button == Button.B_TREE_DELETE) {
+			locator = Locators.RIGHT_CLICK_MENU_DELETE_BUTTON;
 			page = new DialogForDeleteOperation(this.MyApplication, null);
 
 			// Make sure the button exists
@@ -192,8 +183,82 @@ public class PageSearchResults extends AbsTab {
 	@Override
 	public AbsPage zToolbarPressPulldown(Button pulldown, Button option)
 	throws HarnessException {
-		// TODO Auto-generated method stub
-		return null;
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
+
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (option == null)
+			throw new HarnessException("Option cannot be null!");
+
+
+		// Default behavior variables
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+
+		if (pulldown == Button.B_GEAR_BOX) {
+
+			if (option == Button.O_DELETE) {
+
+				pulldownLocator = Locators.GEAR_ICON;
+				optionLocator = Locators.DELETE_BUTTON;
+
+				page = new DialogForDeleteOperation(this.MyApplication,null);
+
+				// FALL THROUGH
+
+			} else if (option == Button.O_EDIT) {
+
+				pulldownLocator = Locators.GEAR_ICON;
+				optionLocator = Locators.EDIT_BUTTON;
+
+				//page = new FormEditAccount(this.MyApplication);
+				page=new FormEditDistributionList(this.MyApplication);
+
+				// FALL THROUGH
+
+			}else {
+				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
+			}
+
+		} else {
+			throw new HarnessException("no logic defined for pulldown/option "
+					+ pulldown + "/" + option);
+		}
+
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown + " option " + option + " pulldownLocator " + pulldownLocator + " not present!");
+			}
+
+			this.zClickAt(pulldownLocator,"");
+
+			// If the app is busy, wait for it to become active
+			//zWaitForBusyOverlay();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException("Button " + pulldown + " option " + option + " optionLocator " + optionLocator + " not present!");
+				}
+
+				this.zClickAt(optionLocator,"");
+
+				// If the app is busy, wait for it to become active
+				//zWaitForBusyOverlay();
+			}
+
+		}
+
+		// Return the specified page, or null if not set
+		return (page);
 	}
 
 	/**
@@ -220,7 +285,7 @@ public class PageSearchResults extends AbsTab {
 			final String accountLocator = rowsLocator + ":nth-child("+i+")";
 			String locator;
 
-			AccountItem item = new AccountItem();
+			AccountItem item = new AccountItem("email" + ZimbraSeleniumProperties.getUniqueString(),ZimbraSeleniumProperties.getStringProperty("testdomain"));
 
 			// Type (image)
 			// ImgAdminUser ImgAccount ImgSystemResource (others?)

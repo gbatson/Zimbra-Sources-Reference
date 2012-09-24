@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,8 +24,9 @@ import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DistributionListBy;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public abstract class ShareInfoHandler extends AdminDocumentHandler {
@@ -48,7 +49,7 @@ public abstract class ShareInfoHandler extends AdminDocumentHandler {
         String key = eDl.getAttribute(AdminConstants.A_BY);
         String value = eDl.getText();
     
-        DistributionList dl = prov.get(DistributionListBy.fromString(key), value);
+        DistributionList dl = prov.get(Key.DistributionListBy.fromString(key), value);
             
         if (dl == null)
             throw AccountServiceException.NO_SUCH_DISTRIBUTION_LIST(value);

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 import org.apache.log4j.LogManager;
@@ -47,16 +31,17 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
 public abstract class AbsWizard extends AbsPage {
 	protected static Logger logger = LogManager.getLogger(AbsWizard.class);
 	public static class Locators {
-	public static String CANCEL_BUTTON = "zdlg__NEW_ACCT_button1_title";
-	public static String HELP_BUTTON = "zdlg__NEW_ACCT_button10_title";
-	public static String PREVIOUS_BUTTON = "zdlg__NEW_ACCT_button11_title";
-	public static String NEXT_BUTTON = "zdlg__NEW_ACCT_button12_title";
-	public static String FINISH_BUTTON = "_button13_title";
-	public static String ACCOUNT_DIALOG="ACCT";
-	public static String DOMAIN_DIALOG="DOMAIN";
-	public static String RESOURCE_DIALOG="RES";
+	public static final String CANCEL_BUTTON = "zdlg__NEW_ACCT_button1_title";
+	public static final String HELP_BUTTON = "zdlg__NEW_ACCT_button10_title";
+	public static final String PREVIOUS_BUTTON = "zdlg__NEW_ACCT_button11_title";
+	public static final String NEXT_BUTTON = "_button12_title";
+	public static final String FINISH_BUTTON = "_button13_title";
+	public static final String ACCOUNT_DIALOG="ACCT";
+	public static final String DL_DIALOG="DL";
+	public static final String DOMAIN_DIALOG="DOMAIN";
+	public static final String COS_DIALOG="COS";
+	public static final String RESOURCE_DIALOG="RES";
 	}
-	public static String buttonPath="";
 	
 	
 	
@@ -112,20 +97,35 @@ public abstract class AbsWizard extends AbsPage {
 	protected void clickWizardButton(WizardButton button, String dialogName) throws HarnessException {
 
 		// TODO: If possible, define in the abstract class
-
+		String buttonPath = null;
+		
 		// Check if the button is enabled
 		// throw HarnessException if not enabled
 		// Click on the button
 		switch(button) {
 		case Finish : 
 				buttonPath="css=td[id$='_" +  dialogName + Locators.FINISH_BUTTON + "']";
-				if(sIsElementPresent(buttonPath)) zClick(buttonPath); 
 				break;
-		case Next:if(sIsElementPresent(Locators.NEXT_BUTTON)) zClick(Locators.NEXT_BUTTON);break;
-		case Previous:if(sIsElementPresent(Locators.PREVIOUS_BUTTON))zClick(Locators.PREVIOUS_BUTTON);break;
-		case Cancel:if(sIsElementPresent(Locators.CANCEL_BUTTON))zClick(Locators.CANCEL_BUTTON);break;
-		case Help:if(sIsElementPresent(Locators.HELP_BUTTON)) zClick(Locators.HELP_BUTTON);break;
+		case Next:
+				buttonPath="css=td[id$='_" +  dialogName + Locators.NEXT_BUTTON + "']";
+				break;				
+		case Previous:
+				buttonPath="css=td[id$='_" +  dialogName + Locators.PREVIOUS_BUTTON + "']";
+				break;
+		case Cancel:
+				buttonPath="css=td[id$='_" +  dialogName + Locators.CANCEL_BUTTON + "']";
+				break;
+		case Help:
+				buttonPath="css=td[id$='_" +  dialogName + Locators.HELP_BUTTON + "']";
+			}
+		
+		if ( buttonPath == null ) {
+			throw new HarnessException("buttonPath was null for "+ button);
 		}
+		
+		if(sIsElementPresent(buttonPath))
+			zClickAt(buttonPath,"");
+
 	}
 
 }

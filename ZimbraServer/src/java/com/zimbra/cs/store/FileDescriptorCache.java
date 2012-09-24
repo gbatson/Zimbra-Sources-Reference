@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,27 +16,30 @@
 package com.zimbra.cs.store;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.stats.Counter;
+import com.zimbra.common.util.FileCache;
 import com.zimbra.common.util.FileUtil;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.localconfig.DebugConfig;
 
 /**
  * Caches file descriptors to blobs in the mail store.  If the blob is compressed,
- * uses {@link UncompressedFileCache} to access the uncompressed data.  Cache entries
+ * uses a {@link FileCache} to access the uncompressed data.  Cache entries
  * that reference uncompressed blobs keep the file descriptor open until {@link #remove}
  * is called or the cache entry is aged out.
  */
@@ -49,20 +52,20 @@ public class FileDescriptorCache
     // Create a concurrent list for the SharedFies for which the mapping has been removed but is still in use by some threads.
     private final List<SharedFileInfo> mInactiveCache = Collections.synchronizedList(new ArrayList<SharedFileInfo>());
     private int mMaxSize = 1000;
-    private final UncompressedFileCache<String> mUncompressedFileCache;
+    private final FileCache<String> mUncompressedFileCache;
     private final Counter mHitRate = new Counter();
-    
+
     private class SharedFileInfo {
         public String path;
         public SharedFile file;
-        
+
         public SharedFileInfo(String path, SharedFile file) {
             this.path = path;
             this.file = file;
         }
     }
 
-    public FileDescriptorCache(UncompressedFileCache<String> uncompressedCache) {
+    public FileDescriptorCache(FileCache<String> uncompressedCache) {
         mUncompressedFileCache = uncompressedCache;
     }
 
@@ -140,8 +143,7 @@ public class FileDescriptorCache
      * Returns the existing cache entry or creates a new one.  Implicitly
      * increments the number of readers for the <tt>SharedFile</tt>.
      */
-    private SharedFile getSharedFile(String path, long rawSize)
-    throws IOException {
+    private SharedFile getSharedFile(String path, long rawSize) throws IOException {
         SharedFile sharedFile = null;
 
         synchronized (this) {
@@ -160,7 +162,19 @@ public class FileDescriptorCache
 
         if (file.length() != rawSize && FileUtil.isGzipped(file)) {
             sLog.debug("Adding file descriptor cache entry for %s from the uncompressed file cache.", path);
-            sharedFile = mUncompressedFileCache.get(path, file, !DebugConfig.disableMessageStoreFsync);
+            FileCache.Item uncompressed = mUncompressedFileCache.get(path);
+            if (uncompressed == null) {
+                InputStream in = null;
+                in = new GZIPInputStream(new FileInputStream(file));
+                mUncompressedFileCache.put(path, in);
+                uncompressed = mUncompressedFileCache.get(path);
+                if (uncompressed == null) {
+                    // Should not happen, since the uncompressed file is guaranteed to
+                    // be in the cache for at least a minute.
+                    throw new IOException("Unable to get uncompressed file for " + path);
+                }
+                sharedFile = new SharedFile(uncompressed.file);
+            }
         } else {
             sLog.debug("Opening new file descriptor for %s.", path);
             sharedFile = new SharedFile(file);
@@ -186,8 +200,7 @@ public class FileDescriptorCache
      * Closes the file descriptor and removes it from the cache.  Does nothing if the file
      * descriptor is not in the cache.
      */
-    public void remove(String path)
-    throws IOException {
+    public void remove(String path) throws IOException {
         SharedFile file = null;
 
         synchronized (this) {
@@ -201,7 +214,7 @@ public class FileDescriptorCache
         } else {
             sLog.debug("Attempted to remove %s but could not find it in the cache.", path);
         }
-        
+
         // Close if there are any SharedFiles in the inactive cache.
         quietCloseInactiveCache();
     }
@@ -211,8 +224,7 @@ public class FileDescriptorCache
      * @return true if the file is closed, false otherwise.
      * @throws IOException if there is an error closing the file.
      */
-    private boolean close(SharedFile file, String path)
-    throws IOException {
+    private boolean close(SharedFile file, String path) throws IOException {
         if (file != null) {
             sLog.debug("Closing file descriptor for %s, %s", path, file);
 
@@ -233,7 +245,7 @@ public class FileDescriptorCache
         }
         return true;
     }
-    
+
     private void quietCloseInactiveCache() {
         synchronized (mInactiveCache) {
             Iterator<SharedFileInfo> iter = mInactiveCache.iterator();
@@ -278,8 +290,9 @@ public class FileDescriptorCache
             SharedFile file = mapEntry.getValue();
             try {
                 boolean success = close(file, path);
-                if (!success)
+                if (!success) {
                     mInactiveCache.add(new SharedFileInfo(path, file));
+                }
             } catch (IOException e) {
                 ZimbraLog.store.warn("Unable to close file descriptor for " + path, e);
             }

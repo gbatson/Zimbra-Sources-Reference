@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.search.savedsearch;
 
 import java.util.List;
@@ -53,16 +37,27 @@ public class CreateSavedSearch extends AjaxCommonTest  {
 		// Create the message data to be sent
 		String name = "search" + ZimbraSeleniumProperties.getUniqueString();
 		String query = "subject:(" + ZimbraSeleniumProperties.getUniqueString() + ")";
-		
 
-		// Search for the message
-		app.zPageSearch.zAddSearchQuery(query);
-		DialogSaveSearch dialog = (DialogSaveSearch)app.zPageSearch.zToolbarPressButton(Button.B_SEARCHSAVE);
-		
-		// Save the search
-		dialog.zEnterFolderName(name);
-		dialog.zClickButton(Button.B_OK);
+		// Remember to close the search window after saving
+		try {
 
+			// Search for the message
+			app.zPageSearch.zAddSearchQuery(query);
+			app.zPageSearch.zToolbarPressButton(Button.B_SEARCH);
+			DialogSaveSearch dialog = (DialogSaveSearch)app.zPageSearch.zToolbarPressButton(Button.B_SAVE);
+			
+			// Save the search
+			dialog.zEnterFolderName(name);
+			dialog.zClickButton(Button.B_OK);
+		
+		} finally {
+			
+			// Remember to close the search window after saving
+			app.zPageSearch.zClose();
+			
+		}
+
+		
 		//Verify the saved search exists in the server
 		SavedSearchFolderItem item = SavedSearchFolderItem.importFromSOAP(app.zGetActiveAccount(), name);
 		ZAssert.assertNotNull(item, "Verify the saved search was created correctly");

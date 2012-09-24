@@ -1,24 +1,18 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.core;
 
+import java.net.URL;
+import static org.openqa.selenium.firefox.FirefoxDriver.PROFILE;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverBackedSelenium;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxProfile;
+import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 
@@ -48,6 +42,9 @@ public class ClientSession {
 	private String name;	// A unique string identifying this session
 	
 	private ZimbraSelenium selenium = null;
+	private WebDriver webDriver = null;
+	private WebDriverBackedSelenium webDriverBackedSelenium = null;
+	
 	private String applicationURL = ZimbraSeleniumProperties.getStringProperty("server.scheme", "http") 
 	+ "://" + ZimbraSeleniumProperties.getStringProperty("server.host", "localhost"); 
 	private ZimbraAccount currentAccount = null;
@@ -74,6 +71,102 @@ public class ClientSession {
 		}
 		return (selenium);
 	}
+	
+	/**
+	 * Get the current WebDriverBackedSelenium object
+	 * <p>
+	 * 
+	 * @return
+	 */
+	public WebDriverBackedSelenium webDriverBackedSelenium() {
+		if (webDriverBackedSelenium == null) {
+			if(ZimbraSeleniumProperties.getStringProperty("browser").contains("googlechrome")){
+				webDriverBackedSelenium = new WebDriverBackedSelenium(new ChromeDriver(), applicationURL);
+			}else{
+				FirefoxProfile profile = new FirefoxProfile();
+				profile.setEnableNativeEvents(false);
+				webDriverBackedSelenium = new WebDriverBackedSelenium(new FirefoxDriver(profile), applicationURL);
+			}
+		}
+		return webDriverBackedSelenium;
+	}
+	
+	/**
+	 * Get the current WebDriver object
+	 * <p>
+	 * 
+	 * @return
+	 */
+	public WebDriver webDriver() {
+		if (webDriver == null) {			
+			if(ZimbraSeleniumProperties.getStringProperty("browser").contains("iexplore")){	
+				DesiredCapabilities desiredCapabilities = DesiredCapabilities.internetExplorer();
+				//desiredCapabilities.setCapability(InternetExplorerDriver.INTRODUCE_FLAKINESS_BY_IGNORING_SECURITY_DOMAINS, true);
+				desiredCapabilities.setCapability("ignoreProtectedModeSettings", true);
+				webDriver = new InternetExplorerDriver(desiredCapabilities);	
+			}
+			else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("googlechrome")){
+				//DesiredCapabilities caps = DesiredCapabilities.chrome();
+				//caps.setJavascriptEnabled(true);
+				//caps.setCapability("chrome.binary", "path/to/chrome.exe");
+				//System.setProperty("webdriver.chrome.driver","/path/to/chromedriver.exe");
+				//ChromeDriver driver = new ChromeDriver(caps);
+				
+				ChromeOptions options = new ChromeOptions();
+				String chromedriverPath = null;
+				if((chromedriverPath = ZimbraSeleniumProperties.getStringProperty("chromedriver.path"))!=null){
+					System.setProperty("webdriver.chrome.driver",chromedriverPath);
+				}
+				webDriver = new ChromeDriver(options);
+				//webDriver = new ChromeDriver();
+			} else if (ZimbraSeleniumProperties.getStringProperty("browser").contains("firefox")){
+				FirefoxProfile profile = new FirefoxProfile();
+				//Proxy proxy = new Proxy();
+				//proxy.setHttpProxy("proxy.vmware.com:3128");
+				//profile.setProxyPreferences(proxy);
+				//profile.addExtension(....);
+				profile.setEnableNativeEvents(false);
+				webDriver = new FirefoxDriver(profile);
+				//webDriver = new FirefoxDriver();					
+			} else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("remoteff")){
+				try {
+					DesiredCapabilities desiredCapabilities = new DesiredCapabilities();
+					desiredCapabilities.setBrowserName(DesiredCapabilities.firefox().getBrowserName());
+					FirefoxProfile fp = new FirefoxProfile();
+					fp.setEnableNativeEvents(false);
+					desiredCapabilities.setCapability(PROFILE,fp);
+					desiredCapabilities.setJavascriptEnabled(true);
+					webDriver = new RemoteWebDriver(new URL(String.format("http://localhost:%d/wd/hub", 4444)), desiredCapabilities);
+				} catch (Exception ex) {
+					logger.error(ex);
+				}
+			}else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("remotechrome")){
+				try {
+					DesiredCapabilities desiredCapabilities = DesiredCapabilities.chrome();
+					desiredCapabilities.setJavascriptEnabled(true);
+					webDriver = new RemoteWebDriver(new URL(String.format("http://localhost:%d/wd/hub", 4444)), desiredCapabilities);
+				} catch (Exception ex) {
+						logger.error(ex);					
+				}					
+			}else if(ZimbraSeleniumProperties.getStringProperty("browser").contains("remoteie")){
+				try {
+					DesiredCapabilities desiredCapabilities = DesiredCapabilities.internetExplorer();
+					desiredCapabilities.setJavascriptEnabled(true);
+					webDriver = new RemoteWebDriver(new URL(String.format("http://localhost:%d/wd/hub", 4444)), desiredCapabilities);
+				} catch (Exception ex) {
+					logger.error(ex);					
+				}					
+			}else{
+				// default FirefoxDriver
+				FirefoxProfile profile = new FirefoxProfile();
+				profile.setEnableNativeEvents(false);
+				profile.setPreference("javascript.enabled", true);
+				webDriver = new FirefoxDriver(profile);
+			}
+		}	
+		
+		return webDriver;
+	}	
 	
 	/**
 	 * Get the current Browser Name

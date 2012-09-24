@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,9 +21,10 @@ import java.util.Map;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.CalendarResourceBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.soap.AdminConstants;
@@ -53,7 +54,7 @@ public class RenameCalendarResource extends AdminDocumentHandler {
         String id = request.getAttribute(AdminConstants.E_ID);
         String newName = request.getAttribute(AdminConstants.E_NEW_NAME);
 
-        CalendarResource resource = prov.get(CalendarResourceBy.id, id);
+        CalendarResource resource = prov.get(Key.CalendarResourceBy.id, id);
         if (resource == null)
             throw AccountServiceException.NO_SUCH_CALENDAR_RESOURCE(id);
         
@@ -73,7 +74,7 @@ public class RenameCalendarResource extends AdminDocumentHandler {
 
         // get again with new name...
 
-        resource = prov.get(CalendarResourceBy.id, id);
+        resource = prov.get(Key.CalendarResourceBy.id, id);
         if (resource == null)
             throw ServiceException.FAILURE("unable to get calendar resource after rename: " + id, null);
         Element response = zsc.createElement(AdminConstants.RENAME_CALENDAR_RESOURCE_RESPONSE);

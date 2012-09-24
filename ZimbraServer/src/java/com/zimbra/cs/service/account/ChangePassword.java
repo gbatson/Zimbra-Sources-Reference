@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,14 +21,15 @@ package com.zimbra.cs.service.account;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException.AuthFailedServiceException;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -54,7 +55,7 @@ public class ChangePassword extends AccountDocumentHandler {
         String virtualHost = virtualHostEl == null ? null : virtualHostEl.getText().toLowerCase();
         
         if (virtualHost != null && name.indexOf('@') == -1) {
-            Domain d = prov.get(DomainBy.virtualHostname, virtualHost);
+            Domain d = prov.get(Key.DomainBy.virtualHostname, virtualHost);
             if (d != null)
                 name = name + "@" + d.getName();
         }
@@ -82,7 +83,15 @@ public class ChangePassword extends AccountDocumentHandler {
         
 		String oldPassword = request.getAttribute(AccountConstants.E_OLD_PASSWORD);
 		String newPassword = request.getAttribute(AccountConstants.E_PASSWORD);
-		prov.changePassword(acct, oldPassword, newPassword);
+        if (acct.isIsExternalVirtualAccount() && StringUtil.isNullOrEmpty(oldPassword)
+                && !acct.isVirtualAccountInitialPasswordSet() && acct.getId().equals(zsc.getAuthtokenAccountId())) {
+            // need a valid auth token in this case
+            AuthProvider.validateAuthToken(prov, zsc.getAuthToken(), false);
+            prov.setPassword(acct, newPassword, true);
+            acct.setVirtualAccountInitialPasswordSet(true);
+        } else {
+		    prov.changePassword(acct, oldPassword, newPassword);
+        }
         AuthToken at = AuthProvider.getAuthToken(acct);
 
         Element response = zsc.createElement(AccountConstants.CHANGE_PASSWORD_RESPONSE);

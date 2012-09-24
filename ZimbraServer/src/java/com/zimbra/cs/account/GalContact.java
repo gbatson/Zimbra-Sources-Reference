@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,10 +15,15 @@
 
 package com.zimbra.cs.account;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.AccountConstants;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.StringUtil;
 
 import com.zimbra.cs.gal.GalSearchConfig.GalType;
 
@@ -115,5 +120,17 @@ public class GalContact implements Comparable {
             return 0;
         GalContact other = (GalContact) obj;
         return getSortField().compareTo(other.getSortField());
+    }
+    
+    public static GalContact fromElement(Element elm) throws ServiceException {
+        String dn = elm.getAttribute(AccountConstants.A_REF);
+        Map<String,Object> attrs = new HashMap<String,Object>();
+        for (Element attr : elm.listElements(MailConstants.E_ATTRIBUTE)) {
+            String name = attr.getAttribute(MailConstants.A_ATTRIBUTE_NAME);
+            String value = attr.getText();
+            StringUtil.addToMultiMap(attrs, name, value);
+        }
+        GalContact galContact = new GalContact(dn , attrs);
+        return galContact;
     }
 }

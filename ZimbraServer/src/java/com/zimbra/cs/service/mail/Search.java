@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,29 +15,27 @@
 
 package com.zimbra.cs.service.mail;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import org.jivesoftware.wildfire.XMPPServer;
-
+import com.google.common.base.Strings;
+import com.google.common.collect.Iterables;
+import com.google.common.io.Closeables;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.util.Log;
-import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.im.provider.ZimbraRoutingTableImpl;
-import com.zimbra.cs.index.MailboxIndex;
 import com.zimbra.cs.index.QueryInfo;
 import com.zimbra.cs.index.ResultsPager;
 import com.zimbra.cs.index.SearchParams;
@@ -59,46 +57,31 @@ import com.zimbra.cs.mailbox.calendar.cache.CalendarItemData;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.client.ZMailbox;
 import com.zimbra.soap.ZimbraSoapContext;
 
 /**
  * @since May 26, 2004
  */
 public class Search extends MailDocumentHandler  {
-    protected static Log mLog = LogFactory.getLog(Search.class);
-
-    public static final String DEFAULT_SEARCH_TYPES = MailboxIndex.GROUP_BY_CONVERSATION;
 
     @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Mailbox mbox = getRequestedMailbox(zsc);
-        Account acct = getRequestedAccount(zsc);
+        Account account = getRequestedAccount(zsc);
         OperationContext octxt = getOperationContext(zsc, context);
-        {
-            String query = request.getAttribute(MailConstants.E_QUERY, "");
-            if (query.startsWith("$dump_routes")) {
-                ZimbraLog.im.info("Routing Table: "+((ZimbraRoutingTableImpl)(XMPPServer.getInstance().getRoutingTable())).dumpRoutingTable());
-                // create the XML response Element
-                Element response = zsc.createElement(MailConstants.SEARCH_RESPONSE);
-                return response;
-            }
-        }
-        SearchParams params = SearchParams.parse(request, zsc, acct.getAttr(Provisioning.A_zimbraPrefMailInitialSearch));
-        if (params.inDumpster()) {
-            byte[] types = params.getTypes();
-            if (types != null) {
-                for (byte t : types) {
-                    if (t == MailItem.TYPE_CONVERSATION)
-                        throw ServiceException.INVALID_REQUEST("cannot search for conversations in dumpster", null);
-                }
-            }
+
+        if (request.getAttributeBool(MailConstants.A_WARMUP, false)) {
+            mbox.index.getIndexStore().warmup();
+            return zsc.createElement(MailConstants.SEARCH_RESPONSE);
         }
 
-        String query = params.getQueryStr();
+        SearchParams params = SearchParams.parse(request, zsc, account.getPrefMailInitialSearch());
+        if (params.inDumpster() && params.getTypes().contains(MailItem.Type.CONVERSATION)) {
+            throw ServiceException.INVALID_REQUEST("cannot search for conversations in dumpster", null);
+        }
 
-        params.setQueryStr(query);
         if (LC.calendar_cache_enabled.booleanValue()) {
             List<String> apptFolderIds = getFolderIdListIfSimpleAppointmentsQuery(params, zsc);
             if (apptFolderIds != null) {
@@ -109,53 +92,31 @@ public class Search extends MailDocumentHandler  {
             }
         }
 
-        ZimbraQueryResults results = null;
+        ZimbraQueryResults results = mbox.index.search(zsc.getResponseProtocol(), octxt, params);
         try {
-            results = doSearch(zsc, octxt, mbox, params);
-
             // create the XML response Element
             Element response = zsc.createElement(MailConstants.SEARCH_RESPONSE);
-
             // must use results.getSortBy() because the results might have ignored our sortBy
             // request and used something else...
             response.addAttribute(MailConstants.A_SORTBY, results.getSortBy().toString());
-            response.addAttribute(MailConstants.A_QUERY_OFFSET, params.getOffset());
             putHits(zsc, octxt, response, results, params);
             return response;
         } finally {
-            if (results != null)
-                results.doneWithSearchResults();
+            Closeables.closeQuietly(results);
         }
     }
 
-    protected ZimbraQueryResults doSearch(ZimbraSoapContext zsc, OperationContext octxt, Mailbox mbox, SearchParams params) throws ServiceException {
-        ZimbraQueryResults results;
-        try {
-            results = mbox.search(zsc.getResponseProtocol(), octxt, params);
-        } catch (IOException e) {
-            throw ServiceException.FAILURE("IO error", e);
-        }
-        return results;
-    }
-
-    protected static void putInfo(Element response, SearchParams params, ZimbraQueryResults results) {
+    protected static void putInfo(Element response, ZimbraQueryResults results) {
         List<QueryInfo> qinfo = results.getResultInfo();
-        if ((qinfo.size() > 0) || params.getEstimateSize()) {
+        if (qinfo.size() > 0) {
             Element qinfoElt = response.addElement(MailConstants.E_INFO);
-            Element sizeEst = qinfoElt.addElement("sizeEstimate");
-            try {
-                sizeEst.addAttribute("value", results.estimateResultSize());
-            } catch (ServiceException ex) {
-            }
-
             for (QueryInfo inf : qinfo) {
                 inf.toXml(qinfoElt);
             }
         }
     }
 
-    private void putHits(ZimbraSoapContext zsc,
-            OperationContext octxt, Element el, ZimbraQueryResults results,
+    private void putHits(ZimbraSoapContext zsc, OperationContext octxt, Element el, ZimbraQueryResults results,
             SearchParams params) throws ServiceException {
 
         if (params.getInlineRule() == ExpandResults.HITS) {
@@ -164,6 +125,16 @@ public class Search extends MailDocumentHandler  {
         }
 
         ResultsPager pager = ResultsPager.create(results, params);
+        if (params.getCursor() != null) {
+            if (params.getCursor().isIncludeOffset()) {
+                long offset = pager.getCursorOffset();
+                if (offset >= 0) {
+                    el.addAttribute(MailConstants.A_QUERY_OFFSET, offset);
+                }
+            }
+        } else {
+            el.addAttribute(MailConstants.A_QUERY_OFFSET, params.getOffset());
+        }
 
         SearchResponse resp = new SearchResponse(zsc, octxt, el, params);
         resp.setIncludeMailbox(false);
@@ -175,51 +146,64 @@ public class Search extends MailDocumentHandler  {
         }
 
         resp.addHasMore(pager.hasNext());
-        resp.add(results.getResultInfo(), results.estimateResultSize());
+        resp.add(results.getResultInfo());
     }
 
     // Calendar summary cache stuff
 
-    // Returns list of folder id string if the query is a simple appointments query.
-    // Otherwise returns null.
-    protected List<String> getFolderIdListIfSimpleAppointmentsQuery(SearchParams params, ZimbraSoapContext zsc) throws ServiceException {
+    /**
+     * Returns list of folder id string if the query is a simple appointments query. Otherwise returns null.
+     *
+     * @param params search parameters
+     * @param zsc not used, may be used in subclass
+     * @throws ServiceException subclass may throw
+     */
+    protected List<String> getFolderIdListIfSimpleAppointmentsQuery(SearchParams params, ZimbraSoapContext zsc)
+            throws ServiceException {
         // types = "appointment"
-        byte[] types = params.getTypes();
-        if (types == null || types.length != 1 ||
-            (types[0] != MailItem.TYPE_APPOINTMENT && types[0] != MailItem.TYPE_TASK))
+        Set<MailItem.Type> types = params.getTypes();
+        if (types.size() != 1) {
             return null;
+        }
+        MailItem.Type type = Iterables.getOnlyElement(types);
+        if (type != MailItem.Type.APPOINTMENT && type != MailItem.Type.TASK) {
+            return null;
+        }
         // has time range
-        if (params.getCalItemExpandStart() == -1 || params.getCalItemExpandEnd() == -1)
+        if (params.getCalItemExpandStart() == -1 || params.getCalItemExpandEnd() == -1) {
             return null;
+        }
         // offset = 0
-        if (params.getOffset() != 0)
+        if (params.getOffset() != 0) {
             return null;
+        }
         // sortBy = "none"
         SortBy sortBy = params.getSortBy();
-        if (sortBy != null && !sortBy.equals(SortBy.NONE))
+        if (sortBy != null && !sortBy.equals(SortBy.NONE)) {
             return null;
-
+        }
         // query string is "inid:<folder> [OR inid:<folder>]*"
-        String queryStr = params.getQueryStr();
-        if (queryStr == null)
-            queryStr = "";
-        queryStr = queryStr.toLowerCase();
-        queryStr = removeOuterParens(queryStr);
+        String queryString = Strings.nullToEmpty(params.getQueryString());
+        queryString = queryString.toLowerCase();
+        queryString = removeOuterParens(queryString);
         // simple appointment query can't have any ANDed terms
-        if (queryStr.contains("and"))
+        if (queryString.contains("and")) {
             return null;
-        String[] terms = queryStr.split("\\s+or\\s+");
+        }
+        String[] terms = queryString.split("\\s+or\\s+");
         List<String> folderIdStrs = new ArrayList<String>();
         for (String term : terms) {
             term = term.trim();
             // remove outermost parentheses (light client does this, e.g. "(inid:10)")
             term = removeOuterParens(term);
-            if (!term.startsWith("inid:"))
+            if (!term.startsWith("inid:")) {
                 return null;
+            }
             String folderId = term.substring(5);  // everything after "inid:"
             folderId = unquote(folderId);  // e.g. if query is: inid:"account-id:num", we want just account-id:num
-            if (folderId.length() > 0)
+            if (folderId.length() > 0) {
                 folderIdStrs.add(folderId);
+            }
         }
         return folderIdStrs;
     }
@@ -241,17 +225,14 @@ public class Search extends MailDocumentHandler  {
         return str;
     }
 
-    private static void runSimpleAppointmentQuery(Element parent, SearchParams params,
-                                                  OperationContext octxt, ZimbraSoapContext zsc,
-                                                  Account authAcct, Mailbox mbox,
-                                                  List<String> folderIdStrs)
-    throws ServiceException {
-        byte itemType = MailItem.TYPE_APPOINTMENT;
-        byte[] types = params.getTypes();
-        if (types != null && types.length == 1)
-            itemType = types[0];
+    private static void runSimpleAppointmentQuery(Element parent, SearchParams params, OperationContext octxt,
+            ZimbraSoapContext zsc, Account authAcct, Mailbox mbox, List<String> folderIdStrs) throws ServiceException {
+        Set<MailItem.Type> types = params.getTypes();
+        MailItem.Type type = types.size() == 1 ? Iterables.getOnlyElement(types) : MailItem.Type.APPOINTMENT;
 
-        parent.addAttribute(MailConstants.A_SORTBY, params.getSortByStr());
+        if (params.getSortBy() != null) {
+            parent.addAttribute(MailConstants.A_SORTBY, params.getSortBy().toString());
+        }
         parent.addAttribute(MailConstants.A_QUERY_OFFSET, params.getOffset());
         parent.addAttribute(MailConstants.A_QUERY_MORE, false);
 
@@ -287,7 +268,8 @@ public class Search extends MailDocumentHandler  {
                     for (Iterator<Integer> iterFolderId = folderIds.iterator(); iterFolderId.hasNext(); ) {
                         int folderId = iterFolderId.next();
                         try {
-                            CalendarDataResult result = calCache.getCalendarSummary(octxt, acctId, folderId, itemType, rangeStart, rangeEnd, true);
+                            CalendarDataResult result = calCache.getCalendarSummary(octxt, acctId, folderId, type,
+                                    rangeStart, rangeEnd, true);
                             if (result != null) {
                                 // Found data in cache.
                                 iterFolderId.remove();
@@ -333,7 +315,7 @@ public class Search extends MailDocumentHandler  {
                         continue;
                     }
                     Mailbox targetMbox = mboxMgr.getMailboxByAccount(targetAcct);
-                    searchLocalAccountCalendars(parent, params, octxt, zsc, authAcct, targetMbox, folderIds, itemType);
+                    searchLocalAccountCalendars(parent, params, octxt, zsc, authAcct, targetMbox, folderIds, type);
                 }
             } else {  // remote server
                 searchRemoteAccountCalendars(parent, params, zsc, authAcct, accountFolders);
@@ -354,18 +336,19 @@ public class Search extends MailDocumentHandler  {
         }
     }
 
-    private static void searchLocalAccountCalendars(
-            Element parent, SearchParams params, OperationContext octxt, ZimbraSoapContext zsc,
-            Account authAcct, Mailbox targetMbox, List<Integer> folderIds, byte itemType)
-    throws ServiceException {
+    private static void searchLocalAccountCalendars(Element parent, SearchParams params, OperationContext octxt,
+            ZimbraSoapContext zsc, Account authAcct, Mailbox targetMbox, List<Integer> folderIds, MailItem.Type type)
+            throws ServiceException {
         ItemIdFormatter ifmt = new ItemIdFormatter(authAcct.getId(), targetMbox.getAccountId(), false);
         long rangeStart = params.getCalItemExpandStart();
         long rangeEnd = params.getCalItemExpandEnd();
         for (int folderId : folderIds) {
             try {
-                CalendarDataResult result = targetMbox.getCalendarSummaryForRange(octxt, folderId, itemType, rangeStart, rangeEnd);
-                if (result != null)
+                CalendarDataResult result = targetMbox.getCalendarSummaryForRange(octxt, folderId, type,
+                        rangeStart, rangeEnd);
+                if (result != null) {
                     addCalendarDataToResponse(parent, zsc, ifmt, result.data, result.allowPrivateAccess);
+                }
             } catch (ServiceException e) {
                 String ecode = e.getCode();
                 if (ecode.equals(ServiceException.PERM_DENIED)) {
@@ -403,8 +386,10 @@ public class Search extends MailDocumentHandler  {
             }
         }
         Element req = zsc.createElement(MailConstants.SEARCH_REQUEST);
-        req.addAttribute(MailConstants.A_SEARCH_TYPES, params.getTypesStr());
-        req.addAttribute(MailConstants.A_SORTBY, params.getSortByStr());
+        req.addAttribute(MailConstants.A_SEARCH_TYPES, MailItem.Type.toString(params.getTypes()));
+        if (params.getSortBy() != null) {
+            req.addAttribute(MailConstants.A_SORTBY, params.getSortBy().toString());
+        }
         req.addAttribute(MailConstants.A_QUERY_OFFSET, params.getOffset());
         if (params.getLimit() != 0)
             req.addAttribute(MailConstants.A_QUERY_LIMIT, params.getLimit());
@@ -412,7 +397,7 @@ public class Search extends MailDocumentHandler  {
         req.addAttribute(MailConstants.A_CAL_EXPAND_INST_END, params.getCalItemExpandEnd());
         req.addAttribute(MailConstants.E_QUERY, queryStr.toString(), Element.Disposition.CONTENT);
 
-        Account target = Provisioning.getInstance().get(Provisioning.AccountBy.id, nominalTargetAcctId);
+        Account target = Provisioning.getInstance().get(Key.AccountBy.id, nominalTargetAcctId);
         String pxyAuthToken = zsc.getAuthToken().getProxyAuthToken();
         ZAuthToken zat = pxyAuthToken == null ? zsc.getRawAuthToken() : new ZAuthToken(pxyAuthToken);
         ZMailbox.Options zoptions = new ZMailbox.Options(zat, AccountUtil.getSoapUri(target));

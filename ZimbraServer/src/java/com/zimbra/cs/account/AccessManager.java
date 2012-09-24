@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,17 +15,24 @@
 
 package com.zimbra.cs.account;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import com.google.common.collect.Maps;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DistributionListBy;
 import com.zimbra.cs.account.accesscontrol.Right;
 import com.zimbra.cs.account.accesscontrol.TargetType;
+import com.zimbra.cs.account.accesscontrol.Rights.User;
+import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.Zimbra;
 
 public abstract class AccessManager {
 
@@ -42,10 +49,10 @@ public abstract class AccessManager {
                 Config config = Provisioning.getInstance().getConfig();
                 String accessManager = config.getAttr(Provisioning.A_zimbraAdminAccessControlMech);
                 if (accessManager != null) {
-                    ZAttrProvisioning.AdminAccessControlMech am = ZAttrProvisioning.AdminAccessControlMech.fromString(accessManager);
-                    if (am == ZAttrProvisioning.AdminAccessControlMech.acl)
+                    Provisioning.AdminAccessControlMech am = Provisioning.AdminAccessControlMech.fromString(accessManager);
+                    if (am == Provisioning.AdminAccessControlMech.acl)
                         sManager = new com.zimbra.cs.account.accesscontrol.ACLAccessManager();
-                    else if (am == ZAttrProvisioning.AdminAccessControlMech.global)
+                    else if (am == Provisioning.AdminAccessControlMech.global)
                         sManager = new com.zimbra.cs.account.accesscontrol.GlobalAccessManager();
                 }
             } catch (ServiceException e) {
@@ -79,7 +86,9 @@ public abstract class AccessManager {
             if (sManager == null)
             	sManager = new com.zimbra.cs.account.accesscontrol.GlobalAccessManager();
             
-            ZimbraLog.account.info("Initialized access manager: " + sManager.getClass().getCanonicalName());
+            if (Zimbra.started()) {
+                ZimbraLog.account.info("Initialized access manager: " + sManager.getClass().getCanonicalName());
+            }
         }
         
         return sManager;
@@ -123,6 +132,11 @@ public abstract class AccessManager {
     public abstract boolean canAccessDomain(AuthToken at, Domain domain) throws ServiceException;
     
     public abstract boolean canAccessCos(AuthToken at, Cos cos) throws ServiceException;
+    
+    public abstract boolean canCreateGroup(AuthToken at, String groupEmail) throws ServiceException;
+    public abstract boolean canCreateGroup(Account credentials, String groupEmail) throws ServiceException;
+    public abstract boolean canAccessGroup(AuthToken at, Group group) throws ServiceException;
+    public abstract boolean canAccessGroup(Account credentials, Group group, boolean asAdmin) throws ServiceException;
 
     public abstract boolean canAccessEmail(AuthToken at, String email) throws ServiceException;
 
@@ -193,8 +207,13 @@ public abstract class AccessManager {
         checkDomainStatus(domain);
     }
     
+    protected void checkDomainStatus(Group group) throws ServiceException {
+        Domain domain = group.getDomain();
+        checkDomainStatus(domain);
+    }
+    
     protected void checkDomainStatus(String domainName) throws ServiceException {
-        Domain domain = Provisioning.getInstance().get(Provisioning.DomainBy.name, domainName);
+        Domain domain = Provisioning.getInstance().get(Key.DomainBy.name, domainName);
         checkDomainStatus(domain);
     }
     
@@ -265,8 +284,10 @@ public abstract class AccessManager {
      * @return
      * @throws ServiceException
      */
-    public abstract boolean canGetAttrs(Account credentials,   Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
-    public abstract boolean canGetAttrs(AuthToken credentials, Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
+    public abstract boolean canGetAttrs(Account credentials,   
+            Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
+    public abstract boolean canGetAttrs(AuthToken credentials, 
+            Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
     
 
     public interface AttrRightChecker {
@@ -289,11 +310,13 @@ public abstract class AccessManager {
      * @return
      * @throws ServiceException
      */
-    public AttrRightChecker canGetAttrs(Account credentials,   Entry target, boolean asAdmin) throws ServiceException {
+    public AttrRightChecker getGetAttrsChecker(Account credentials, 
+            Entry target, boolean asAdmin) throws ServiceException {
         throw ServiceException.FAILURE("not supported", null);
     }
     
-    public AttrRightChecker canGetAttrs(AuthToken credentials, Entry target, boolean asAdmin) throws ServiceException {
+    public AttrRightChecker getGetAttrsChecker(AuthToken credentials, 
+            Entry target, boolean asAdmin) throws ServiceException {
         throw ServiceException.FAILURE("not supported", null);
     }
 
@@ -310,12 +333,16 @@ public abstract class AccessManager {
      * @return
      * @throws ServiceException
      */
-    public abstract boolean canSetAttrs(Account credentials,   Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
-    public abstract boolean canSetAttrs(AuthToken credentials, Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
+    public abstract boolean canSetAttrs(Account credentials,   
+            Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
+    public abstract boolean canSetAttrs(AuthToken credentials, 
+            Entry target, Set<String> attrs, boolean asAdmin) throws ServiceException;
     
 
     /**
-     * returns if the specified account's credentials can set the specified attrs to the specified values on target.
+     * returns if the specified account's credentials can set the specified attrs to 
+     * the specified values on target.
+     * 
      * constraints are checked.
      *
      * @param credentials The authenticated account performing the action.
@@ -325,24 +352,87 @@ public abstract class AccessManager {
      * @return
      * @throws ServiceException
      */
-    public abstract boolean canSetAttrs(Account credentials,   Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException;
-    public abstract boolean canSetAttrs(AuthToken credentials, Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException;
+    public abstract boolean canSetAttrs(Account credentials, 
+            Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException;
+    public abstract boolean canSetAttrs(AuthToken credentials, 
+            Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException;
     
     public boolean canSetAttrsOnCreate(Account credentials, TargetType targetType, String entryName, 
             Map<String, Object> attrs, boolean asAdmin) throws ServiceException {
         throw ServiceException.FAILURE("not supported", null);
     }
     
+    public Map<Right, Set<Entry>> discoverUserRights(Account credentials, Set<Right> rights, boolean onMaster) 
+    throws ServiceException {
+        return Maps.newHashMap();  // return empty result
+    }
+    
     // for access manager internal use and unittest only, do not call this API, use the canDo API instead.
-    public boolean canPerform(Account credentials, Entry target, Right rightNeeded, boolean canDelegate, 
-            Map<String, Object> attrs, boolean asAdmin, ViaGrant viaGrant) throws ServiceException {
+    public boolean canPerform(Account credentials, Entry target, 
+            Right rightNeeded, boolean canDelegate, 
+            Map<String, Object> attrs, boolean asAdmin, ViaGrant viaGrant) 
+    throws ServiceException {
         throw ServiceException.FAILURE("not supported", null);
     }
     
     // for access manager internal use and unittest only, do not call this API, use the canDo API instead.
-    public boolean canPerform(AuthToken credentials, Entry target, Right rightNeeded, boolean canDelegate, 
-            Map<String, Object> attrs, boolean asAdmin, ViaGrant viaGrant) throws ServiceException {
+    public boolean canPerform(AuthToken credentials, Entry target, 
+            Right rightNeeded, boolean canDelegate, 
+            Map<String, Object> attrs, boolean asAdmin, ViaGrant viaGrant) 
+    throws ServiceException {
         throw ServiceException.FAILURE("not supported", null);
     }
 
+    public boolean canSendAs(Account grantee, Account targetAccount, String targetAddress, boolean asAdmin)
+            throws ServiceException {
+        return canSendInternal(grantee, targetAccount, targetAddress, User.R_sendAs, asAdmin);
+    }
+
+    public boolean canSendOnBehalfOf(Account grantee, Account targetAccount, String targetAddress, boolean asAdmin)
+            throws ServiceException {
+        return canSendInternal(grantee, targetAccount, targetAddress, User.R_sendOnBehalfOf, asAdmin);
+    }
+
+    private boolean canSendInternal(Account grantee, Account targetAccount, String targetAddress, Right sendRight, boolean asAdmin)
+            throws ServiceException {
+        boolean allowed = false;
+        Right dlSendRight;
+        if (User.R_sendAs.equals(sendRight)) {
+            dlSendRight = User.R_sendAsDistList;
+        } else if (User.R_sendOnBehalfOf.equals(sendRight)) {
+            dlSendRight = User.R_sendOnBehalfOfDistList;
+        } else {
+            throw ServiceException.FAILURE("invalid send right " + sendRight, null);
+        }
+        NamedEntry target = null;
+        if (AccountUtil.addressHasInternalDomain(targetAddress)) {
+            // If targetAddress has an internal domain, it could be another account or a distribution list.
+            Provisioning prov = Provisioning.getInstance();
+            if (prov.isDistributionList(targetAddress)) {
+                target = prov.getGroupBasic(DistributionListBy.name, targetAddress);
+                sendRight = dlSendRight;
+            } else {
+                target = prov.get(AccountBy.name, targetAddress);
+            }
+        } else if (targetAccount != null) {
+            // If targetAddress has an external domain, it must be a zimbraAllowFromAddress of the target account.
+            Set<String> addrs = new HashSet<String>();
+            String[] allowedFromAddrs = targetAccount.getMultiAttr(Provisioning.A_zimbraAllowFromAddress);
+            for (String addr : allowedFromAddrs) {
+                addrs.add(addr.toLowerCase());
+            }
+            if (addrs.contains(targetAddress.toLowerCase())) {
+                target = targetAccount;
+            }
+        }
+        if (target != null) {
+            allowed = canDo(grantee, target, sendRight, asAdmin);
+            if (allowed && !asAdmin) {
+                // Admins can send as any address of the target.  Non-admins can only use the addresses designated
+                // by the target user/DL.
+                allowed = AccountUtil.isAllowedSendAddress(target, targetAddress);
+            }
+        }
+        return allowed;
+    }
 }

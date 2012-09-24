@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2012 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,6 +17,7 @@ package com.zimbra.cs.util;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.mail.Address;
@@ -24,6 +25,8 @@ import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
@@ -33,17 +36,57 @@ import com.zimbra.common.util.EmailUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.SystemUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 public class AccountUtil {
+
+    /**
+     * Returns effective quota for an account which is calculated as the minimum of account level quota and domain
+     * max mailbox quota. Returns zero for unlimited effective quota.
+     *
+     * @param acct
+     * @return
+     * @throws ServiceException
+     */
+    public static long getEffectiveQuota(Account acct) throws ServiceException {
+        long acctQuota = acct.getLongAttr(Provisioning.A_zimbraMailQuota, 0);
+        Domain domain = Provisioning.getInstance().getDomain(acct);
+        long domainQuota = 0;
+        if (domain != null) {
+            domainQuota = domain.getLongAttr(Provisioning.A_zimbraMailDomainQuota, 0);
+        }
+        if (acctQuota == 0) {
+            return domainQuota;
+        } else if (domainQuota == 0) {
+            return acctQuota;
+        } else {
+            return Math.min(acctQuota, domainQuota);
+        }
+    }
+
+    public static boolean isOverAggregateQuota(Domain domain) {
+        long quota = domain.getDomainAggregateQuota();
+        return quota != 0 && domain.getLongAttr(Provisioning.A_zimbraAggregateQuotaLastUsage, 0) > quota;
+    }
+
+    public static boolean isSendAllowedOverAggregateQuota(Domain domain) {
+        return domain.getDomainAggregateQuotaPolicy().isALLOWSENDRECEIVE();
+    }
+
+    public static boolean isReceiveAllowedOverAggregateQuota(Domain domain) {
+        return !domain.getDomainAggregateQuotaPolicy().isBLOCKSENDRECEIVE();
+    }
 
     /**
      * Check mailbox/domain quota
@@ -52,9 +95,14 @@ public class AccountUtil {
      */
     public static void checkQuotaWhenSendMail(Mailbox mbox) throws ServiceException {
         Account account = mbox.getAccount();
-        long acctQuota = account.getMailQuota();
+        long acctQuota = AccountUtil.getEffectiveQuota(account);
         if (account.isMailAllowReceiveButNotSendWhenOverQuota() && acctQuota != 0 && mbox.getSize() > acctQuota) {
             throw MailServiceException.QUOTA_EXCEEDED(acctQuota);
+        }
+        Domain domain = Provisioning.getInstance().getDomain(account);
+        if (domain != null &&
+                AccountUtil.isOverAggregateQuota(domain) && !AccountUtil.isSendAllowedOverAggregateQuota(domain)) {
+            throw MailServiceException.DOMAIN_QUOTA_EXCEEDED(domain.getDomainAggregateQuota());
         }
     }
 
@@ -90,10 +138,10 @@ public class AccountUtil {
         ia.setAddress(address);
         return ia;
     }
-    
+
     /**
      * Returns the <tt>From</tt> address used for an outgoing message from the given account.
-     * Takes all account attributes into consideration, including user preferences.  
+     * Takes all account attributes into consideration, including user preferences.
      */
     public static InternetAddress getFromAddress(Account acct) {
         if (acct == null) {
@@ -110,7 +158,7 @@ public class AccountUtil {
             return ia;
         }
     }
-    
+
     /**
      * Returns the <tt>Reply-To</tt> address used for an outgoing message from the given
      * account, based on user preferences, or <tt>null</tt> if <tt>zimbraPrefReplyToEnabled</tt>
@@ -137,11 +185,11 @@ public class AccountUtil {
             return ia;
         }
     }
-    
+
     public static boolean isDirectRecipient(Account acct, MimeMessage mm) throws ServiceException, MessagingException {
         return isDirectRecipient(acct, null, mm, -1);
     }
-    
+
     public static boolean isDirectRecipient(Account acct, String[] otherAccountAddrs, MimeMessage mm, int maxToCheck) throws ServiceException, MessagingException {
         Address[] recipients = mm.getAllRecipients();
         if (recipients == null) {
@@ -154,7 +202,7 @@ public class AccountUtil {
             String msgAddress = ((InternetAddress) recipients[i]).getAddress();
             if (acctMatcher.matches(msgAddress))
                 return true;
-            
+
             if (otherAccountAddrs != null) {
                 for (String otherAddr: otherAccountAddrs) {
                     if (otherAddr.equalsIgnoreCase(msgAddress)) {
@@ -163,7 +211,7 @@ public class AccountUtil {
                 }
             }
         }
-        
+
         return false;
     }
 
@@ -174,7 +222,7 @@ public class AccountUtil {
     public static String getCanonicalAddress(Account account) throws ServiceException {
         // If account has a canonical address, let's use that.
         String ca = account.getAttr(Provisioning.A_zimbraMailCanonicalAddress);
-        
+
         // But we still have to canonicalize domain names, so do that with account address
         if (ca == null)
             ca = account.getName();
@@ -183,7 +231,7 @@ public class AccountUtil {
         if (parts == null)
             return ca;
 
-        Domain domain = Provisioning.getInstance().getDomain(DomainBy.name, parts[1], true);
+        Domain domain = Provisioning.getInstance().getDomain(Key.DomainBy.name, parts[1], true);
         if (domain == null)
             return ca;
 
@@ -195,21 +243,11 @@ public class AccountUtil {
     }
 
     /**
-     * Check if given account is allowed to set given from header.
-     */
-    public static boolean allowFromAddress(Account acct, String fromAddr) throws ServiceException {
-        if (fromAddr == null)
-            return false;
-        return addressMatchesAccountOrSendAs(acct, fromAddr)
-            || acct.getBooleanAttr(Provisioning.A_zimbraAllowAnyFromAddress, false);
-    }
-
-    /**
      * True if this address matches some address for this account (aliases, domain re-writes, etc) or address of
      * another account that this account may send as.
      */
     public static boolean addressMatchesAccountOrSendAs(Account acct, String givenAddress) throws ServiceException {
-        return (new AccountAddressMatcher(acct, true)).matches(givenAddress);
+        return (new AccountAddressMatcher(acct, false, true)).matches(givenAddress);
     }
 
     /**
@@ -220,7 +258,7 @@ public class AccountUtil {
     public static boolean addressMatchesAccount(Account acct, String givenAddress) throws ServiceException {
         return (new AccountAddressMatcher(acct)).matches(givenAddress);
     }
-    
+
     /**
      * Returns all account email addresses in lower case in a hash set.
      * @param acct user's account
@@ -229,29 +267,107 @@ public class AccountUtil {
      */
     public static Set<String> getEmailAddresses(Account acct) throws ServiceException {
         Set<String> addrs = new HashSet<String> ();
-        
+
         addrs.add(acct.getName().toLowerCase());
         addrs.add(AccountUtil.getCanonicalAddress(acct).toLowerCase());
 
         String[] accountAliases = acct.getMailAlias();
         for (String addr : accountAliases)
             addrs.add(addr.toLowerCase());
-        
+
         String[] allowedFromAddrs = acct.getMultiAttr(Provisioning.A_zimbraAllowFromAddress);
         for (String addr : allowedFromAddrs)
             addrs.add(addr.toLowerCase());
-        
+
         return addrs;
     }
 
+    /**
+     * Gets all email addresses for the imap and pop3 external accounts for the given account.
+     * @param acct
+     * @return
+     * @throws ServiceException
+     */
+    public static Set<String> getImapPop3EmailAddresses(Account acct) throws ServiceException {
+        List<DataSource> dataSources = acct.getAllDataSources();
+        Set<String> addrs = new HashSet<String> ();
+        for (DataSource dataSource : dataSources) {
+            DataSourceType dataSourceType = dataSource.getType();
+            if (dataSourceType == DataSourceType.imap || dataSourceType == DataSourceType.pop3) {
+                addrs.add(dataSource.getEmailAddress().toLowerCase());
+            }
+        }
+        return addrs;
+    }
+
+    public static long getMaxInternalShareLifetime(Account account, MailItem.Type folderType) {
+        switch (folderType) {
+            case DOCUMENT:
+                return account.getFileShareLifetime();
+            case UNKNOWN:
+                return minShareLifetime(account.getFileShareLifetime(), account.getShareLifetime());
+            default:
+                return account.getShareLifetime();
+        }
+    }
+
+    public static long getMaxExternalShareLifetime(Account account, MailItem.Type folderType) {
+        switch (folderType) {
+            case DOCUMENT:
+                return account.getFileExternalShareLifetime();
+            case UNKNOWN:
+                return minShareLifetime(account.getFileExternalShareLifetime(), account.getExternalShareLifetime());
+            default:
+                return account.getExternalShareLifetime();
+        }
+    }
+
+    public static long getMaxPublicShareLifetime(Account account, MailItem.Type folderType) {
+        switch (folderType) {
+            case DOCUMENT:
+                return account.getFilePublicShareLifetime();
+            case UNKNOWN:
+                return minShareLifetime(account.getFilePublicShareLifetime(), account.getPublicShareLifetime());
+            default:
+                return account.getPublicShareLifetime();
+        }
+    }
+
+    private static long minShareLifetime(long shareLifetime1, long shareLifetime2) {
+        // 0 means there's no limit on lifetime
+        if (shareLifetime1 == 0) {
+            return shareLifetime2;
+        } else if (shareLifetime2 == 0) {
+            return shareLifetime1;
+        } else {
+            return Math.min(shareLifetime1, shareLifetime2);
+        }
+    }
+
     public static class AccountAddressMatcher {
+        private Account account;
+        private boolean matchSendAs;
         private Set<String> addresses;
 
         public AccountAddressMatcher(Account account) throws ServiceException {
-            this(account, false);
+            this(account, false, false);
         }
 
-        public AccountAddressMatcher(Account account, boolean matchSendAs) throws ServiceException {
+        public AccountAddressMatcher(Account account, boolean internalOnly) throws ServiceException {
+            this(account, internalOnly, false);
+        }
+
+        /**
+         * 
+         * @param account
+         * @param internalOnly only match internal addresses, i.e. ignore zimbraAllowFromAddress values
+         * @param matchSendAs match sendAs/sendAsDistList addresses granted
+         * @throws ServiceException
+         */
+        public AccountAddressMatcher(Account account, boolean internalOnly, boolean matchSendAs) throws ServiceException {
+            this.account = account;
+            this.matchSendAs = matchSendAs;
+
             addresses = new HashSet<String>();
             String mainAddr = account.getName();
             if (!StringUtil.isNullOrEmpty(mainAddr)) {
@@ -269,45 +385,14 @@ public class AccountUtil {
                     }
                 }
             }
-            String[] addrs = account.getMultiAttr(Provisioning.A_zimbraAllowFromAddress);
-            if (addrs != null) {
-                for (String addr : addrs) {
-                    if (StringUtil.isNullOrEmpty(addr)) {
-                        continue;
+            if (!internalOnly) {
+                String[] addrs = account.getMultiAttr(Provisioning.A_zimbraAllowFromAddress);
+                if (addrs != null) {
+                    for (String addr : addrs) {
+                        if (!StringUtil.isNullOrEmpty(addr)) {
+                            addresses.add(addr.toLowerCase());
+                        }
                     }
-                    
-                    if (addresses.contains(addr.toLowerCase())) {
-                        continue;
-                    }
-                    
-                    if (!matchSendAs) {
-                        // Find addresses that point to a different account.  We want to distinguish between sending
-                        // as another user and sending as an external address controlled/owned by this user.
-                        // This check can be removed when we stop adding sendAs addresses in zimbraAllowFromAddress.
-                        try {
-                            // Don't lookup account if email domain is not internal.  This will avoid unnecessary ldap searches
-                            // that will have returned no match anyway.
-                            String domain = EmailUtil.getValidDomainPart(addr);
-                            if (domain != null) {
-                                Domain internalDomain = Provisioning.getInstance().getDomain(DomainBy.name, domain, true);
-                                if (internalDomain != null) {
-                                    Account allowFromAccount;
-                                    if (Provisioning.getInstance().isDistributionList(addr)) {
-                                        // Avoid ldap search of DL address as an account.  This will have returned no match anyway.
-                                        allowFromAccount = null;
-                                    } else {
-                                        allowFromAccount = Provisioning.getInstance().get(AccountBy.name, addr);
-                                    }
-                                    if (allowFromAccount != null && !account.getId().equalsIgnoreCase(allowFromAccount.getId())) {
-                                        // The allow-from address refers to another account, and therefore it is not a match
-                                        // for this account.
-                                        continue;
-                                    }
-                                }
-                            }
-                        } catch (ServiceException e) {}                
-                    }
-                    addresses.add(addr.toLowerCase());
                 }
             }
         }
@@ -323,17 +408,24 @@ public class AccountUtil {
             if (addresses.contains(address.toLowerCase())) {
                 return true;
             }
+            boolean match = false;
             if (checkDomainAlias) {
                 try {
                     String addrByDomainAlias = Provisioning.getInstance().getEmailAddrByDomainAlias(address);
                     if (addrByDomainAlias != null) {
-                        return matches(addrByDomainAlias, false);  // Assume domain aliases are never chained.
+                        match = matches(addrByDomainAlias, false);  // Assume domain aliases are never chained.
                     }
                 } catch (ServiceException e) {
                     ZimbraLog.account.warn("unable to get addr by alias domain" + e);
                 }
             }
-            return false;
+            if (!match && matchSendAs) {
+                match = AccessManager.getInstance().canSendAs(account, account, address, false);
+            }
+            if (match) {
+                addresses.add(address.toLowerCase());  // Cache for later matches() calls.
+            }
+            return match;
         }
     }
 
@@ -379,7 +471,7 @@ public class AccountUtil {
 
 //    /**
 //     * True if this mime message has at least one recipient that is NOT the same as the specified account
-//     * 
+//     *
 //     * @param acct
 //     * @param mm
 //     * @return
@@ -392,12 +484,12 @@ public class AccountUtil {
 //        String canonicalAddress = getCanonicalAddress(acct);
 //        String[] accountAliases = acct.getMailAlias();
 //        Address[] recipients = mm.getAllRecipients();
-//        
+//
 //        if (recipients != null) {
 //            int numRecipientsToCheck = (maxToCheck <= 0 ? recipients.length : Math.min(recipients.length, maxToCheck));
 //            for (int i = 0; i < numRecipientsToCheck; i++) {
 //                String msgAddress = ((InternetAddress) recipients[i]).getAddress();
-//                if (!addressMatchesAccount(accountAddress, canonicalAddress, accountAliases, msgAddress)) 
+//                if (!addressMatchesAccount(accountAddress, canonicalAddress, accountAliases, msgAddress))
 //                    return true;
 //            }
 //        }
@@ -413,7 +505,7 @@ public class AccountUtil {
     public static void addAccountToLogContext(Provisioning prov, String id, String nameKey, String idOnlyKey, AuthToken authToken) {
         Account acct = null;
         try {
-            acct = prov.get(Provisioning.AccountBy.id, id, authToken);
+            acct = prov.get(Key.AccountBy.id, id, authToken);
         } catch (ServiceException se) {
             ZimbraLog.misc.warn("unable to lookup account for log, id: " + id, se);
         }
@@ -456,5 +548,55 @@ public class AccountUtil {
     public static boolean isZDesktopLocalAccount(String accountId) {
         String zdLocalAcctId = LC.zdesktop_local_account_id.value();
         return zdLocalAcctId != null && zdLocalAcctId.equalsIgnoreCase(accountId);
+    }
+
+    public static String[] getAllowedSendAddresses(NamedEntry grantor) {
+        String[] addrs = grantor.getMultiAttr(Provisioning.A_zimbraPrefAllowAddressForDelegatedSender);
+        if (addrs.length == 0) {
+            addrs = new String[] { grantor.getName() };
+        }
+        return addrs;
+    }
+
+    public static boolean isAllowedSendAddress(NamedEntry grantor, String address) {
+        String[] addrs = getAllowedSendAddresses(grantor);
+        for (String a : addrs) {
+            if (a.equalsIgnoreCase(address)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // returns true if address is the From address of an enabled pop/imap/caldav data source
+    public static boolean isAllowedDataSourceSendAddress(Account account, String address) throws ServiceException {
+        if (address == null || addressHasInternalDomain(address)) {
+            // only external addresses are allowed because internal addresses require the address owner to grant send rights
+            return false;
+        }
+        List<DataSource> dsList = Provisioning.getInstance().getAllDataSources(account);
+        for (DataSource ds : dsList) {
+            DataSourceType dsType = ds.getType();
+            if (ds.isEnabled() &&
+                (DataSourceType.pop3.equals(dsType) || DataSourceType.imap.equals(dsType) || DataSourceType.caldav.equals(dsType)) &&
+                address.equalsIgnoreCase(ds.getEmailAddress())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // returns true if address's domain is a local domain
+    // it doesn't necessarily imply an account with the address exists
+    public static boolean addressHasInternalDomain(String address) throws ServiceException {
+        String domain = EmailUtil.getValidDomainPart(address);
+        if (domain != null) {
+            Provisioning prov = Provisioning.getInstance();
+            Domain internalDomain = prov.getDomain(DomainBy.name, domain, true);
+            if (internalDomain != null) {
+                return true;
+            }
+        }
+        return false;
     }
 }

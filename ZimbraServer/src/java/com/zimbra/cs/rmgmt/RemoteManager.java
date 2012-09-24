@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,8 +26,8 @@ import ch.ethz.ssh2.StreamGobbler;
 
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.ServerBy;
 import com.zimbra.cs.util.Zimbra;
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -203,7 +203,7 @@ public class RemoteManager {
 
         CliUtil.toolSetup("DEBUG");
         Provisioning prov = Provisioning.getInstance();
-        Server remote = prov.get(ServerBy.name, serverName);
+        Server remote = prov.get(Key.ServerBy.name, serverName);
 
         for (int i = 0; i < iterations; i++) {
             RemoteManager rm = RemoteManager.getRemoteManager(remote);

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -52,7 +52,7 @@ public class OfflineSendDeliveryReport extends SendDeliveryReport {
     protected Account getSenderAccount(ZimbraSoapContext zsc) throws ServiceException {
         return getRequestedAccount(zsc);
     }
-    
+
     @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
@@ -63,16 +63,16 @@ public class OfflineSendDeliveryReport extends SendDeliveryReport {
         Message msg = mbox.getMessageById(octxt, msgid);
 
         // sending a read receipt requires write access to the message
-        if ((mbox.getEffectivePermissions(octxt, msgid, MailItem.TYPE_MESSAGE) & ACL.RIGHT_WRITE) == 0)
+        if ((mbox.getEffectivePermissions(octxt, msgid, MailItem.Type.MESSAGE) & ACL.RIGHT_WRITE) == 0) {
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions on the message");
-
+        }
         // first, send the notification
-        // make new auth token so we are sure proxy is not set. 
+        // make new auth token so we are sure proxy is not set.
         ZAuthToken authToken = new ZAuthToken(zsc.getRawAuthToken().getValue());
         sendReport(getSenderAccount(zsc), msg, false, zsc.getRequestIP(), zsc.getUserAgent(), authToken);
 
         // then mark the message as \Notified
-        mbox.alterTag(octxt, msgid, MailItem.TYPE_MESSAGE, Flag.ID_FLAG_NOTIFIED, true);
+        mbox.alterTag(octxt, msgid, MailItem.Type.MESSAGE, Flag.FlagInfo.NOTIFIED, true, null);
 
         Element response = zsc.createElement(MailConstants.SEND_REPORT_RESPONSE);
         return response;
@@ -90,21 +90,21 @@ public class OfflineSendDeliveryReport extends SendDeliveryReport {
     throws ServiceException {
         OfflineLog.offline.debug("sending report for msg ["+msg+"] in account ["+authAccount+"]");
         try {
-        	MimeMessage mm = msg.getMimeMessage();
-        	Account owner = msg.getMailbox().getAccount();
+            MimeMessage mm = msg.getMimeMessage();
+            Account owner = msg.getMailbox().getAccount();
 
-        	//should be ok with no duplicate tracking? if a request to self is lost or stuck the system is in pretty bad shape?
-        	String sendUID = UUID.randomUUID().toString();
+            //should be ok with no duplicate tracking? if a request to self is lost or stuck the system is in pretty bad shape?
+            String sendUID = UUID.randomUUID().toString();
             Element request = new Element.XMLElement(MailConstants.SEND_MSG_REQUEST).addAttribute(MailConstants.A_SEND_UID, sendUID);
             Element m = request.addElement(MailConstants.E_MSG);
-            
+
             InternetAddress[] recipients = Mime.parseAddressHeader(mm, MIME_DISP_NOTIFICATION_TO);
             if (recipients == null || recipients.length == 0)
                 return;
             for (InternetAddress recipient : recipients) {
-            	m.addElement(MailConstants.E_EMAIL).addAttribute(MailConstants.A_ADDRESS_TYPE, TO_ADDRESS_TYPE).
-            	    addAttribute(MailConstants.A_ADDRESS, recipient.getAddress()).
-            	    addAttribute(MailConstants.A_PERSONAL, recipient.getPersonal());
+                m.addElement(MailConstants.E_EMAIL).addAttribute(MailConstants.A_ADDRESS_TYPE, TO_ADDRESS_TYPE).
+                    addAttribute(MailConstants.A_ADDRESS, recipient.getAddress()).
+                    addAttribute(MailConstants.A_PERSONAL, recipient.getPersonal());
             }
             InternetAddress fromAddr = AccountUtil.getFromAddress(authAccount);
             m.addElement(MailConstants.E_EMAIL).addAttribute(MailConstants.A_ADDRESS_TYPE, FROM_ADDRESS_TYPE).
@@ -122,8 +122,8 @@ public class OfflineSendDeliveryReport extends SendDeliveryReport {
                 addAttribute(MailConstants.A_CONTENT_TYPE, CONTENT_TYPE_NOTIFICATION);
             mdn.addElement(MailConstants.E_CONTENT).
                 setText(generateReport(owner, mm, automatic, requestHost, userAgent));
-            
-            ZcsMailbox ombx = (ZcsMailbox)MailboxManager.getInstance().getMailboxByAccountId(owner.getId(), false);            
+
+            ZcsMailbox ombx = (ZcsMailbox)MailboxManager.getInstance().getMailboxByAccountId(owner.getId(), false);
             ombx.sendRequest(request, true, true, OfflineLC.zdesktop_request_timeout.intValue(), null, null, getSelfUri(), authToken, true);
             OfflineLog.offline.debug("sent report (" + sendUID + ") " + msg.getSubject());
         } catch (MessagingException me) {
@@ -132,10 +132,10 @@ public class OfflineSendDeliveryReport extends SendDeliveryReport {
     }
 
     private static String selfUri = null;
-    
+
     private synchronized String getSelfUri() {
-    	if (selfUri == null) 
-    	    selfUri = "http://127.0.0.1:" + LC.zimbra_admin_service_port.intValue() + "/service/soap";
-    	return selfUri;
-    }    
+        if (selfUri == null)
+            selfUri = "http://127.0.0.1:" + LC.zimbra_admin_service_port.intValue() + "/service/soap";
+        return selfUri;
+    }
 }

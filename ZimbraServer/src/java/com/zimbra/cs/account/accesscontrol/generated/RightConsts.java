@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,7 +24,7 @@ package com.zimbra.cs.account.accesscontrol.generated;
 public class RightConsts {
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20111117-2058 */
+    /* build: 8.0.0_BETA1_1111 dywang 20120522-1930 */
 
 
     /*
@@ -33,6 +33,11 @@ public class RightConsts {
     ============
     */
 
+
+    /**
+     * create distribution lists in a domain
+     */
+    public static final String RT_createDistList = "createDistList";
 
     /**
      * automatically add meeting invites from grantee to the target&#039;s
@@ -47,9 +52,29 @@ public class RightConsts {
     public static final String RT_loginAs = "loginAs";
 
     /**
+     * own distribution list
+     */
+    public static final String RT_ownDistList = "ownDistList";
+
+    /**
      * reply to messages in a shared folder as the owner of the folder
      */
     public static final String RT_sendAs = "sendAs";
+
+    /**
+     * reply to messages in a shared folder as the owner of the folder
+     */
+    public static final String RT_sendAsDistList = "sendAsDistList";
+
+    /**
+     * send messages on behalf of the grantor
+     */
+    public static final String RT_sendOnBehalfOf = "sendOnBehalfOf";
+
+    /**
+     * send messages on behalf of the grantor
+     */
+    public static final String RT_sendOnBehalfOfDistList = "sendOnBehalfOfDistList";
 
     /**
      * send mails to distribution list
@@ -98,6 +123,16 @@ public class RightConsts {
      * add member to distribution list
      */
     public static final String RT_addDistributionListMember = "addDistributionListMember";
+
+    /**
+     * add group alias
+     */
+    public static final String RT_addGroupAlias = "addGroupAlias";
+
+    /**
+     * add member to group
+     */
+    public static final String RT_addGroupMember = "addGroupMember";
 
     /**
      * Admin Console Account Rights
@@ -226,6 +261,11 @@ public class RightConsts {
     public static final String RT_adminConsoleCertificateRights = "adminConsoleCertificateRights";
 
     /**
+     * Rights for uploading client software through Admin Console
+     */
+    public static final String RT_adminConsoleClientUploadRights = "adminConsoleClientUploadRights";
+
+    /**
      * Admin Console set attr rights for configure GAL
      */
     public static final String RT_adminConsoleConfigGALRights = "adminConsoleConfigGALRights";
@@ -234,6 +274,16 @@ public class RightConsts {
      * Admin Console set attr rights for create GAL sync account
      */
     public static final String RT_adminConsoleCreateGALRights = "adminConsoleCreateGALRights";
+
+    /**
+     * Admin Console Create Sub Domain Rights
+     */
+    public static final String RT_adminConsoleCreateSubDomainModifierRights = "adminConsoleCreateSubDomainModifierRights";
+
+    /**
+     * Admin Console Create Sub Domain Account Rights
+     */
+    public static final String RT_adminConsoleCreateSubDomainRights = "adminConsoleCreateSubDomainRights";
 
     /**
      * Admin Console Create Top Domain Rights
@@ -441,7 +491,7 @@ public class RightConsts {
     public static final String RT_adminConsoleRights = "adminConsoleRights";
 
     /**
-     * Admin Console Extension Rights
+     * Admin Console Saved Search Rights
      */
     public static final String RT_adminConsoleSavedSearchRights = "adminConsoleSavedSearchRights";
 
@@ -507,6 +557,11 @@ public class RightConsts {
     public static final String RT_adminConsoleSoftwareUpdatesRights = "adminConsoleSoftwareUpdatesRights";
 
     /**
+     * Rights for viewing Voice/Chat services through Admin Console
+     */
+    public static final String RT_adminConsoleUCServiceRights = "adminConsoleUCServiceRights";
+
+    /**
      * Admin Console rights for Zimlet ACL Tab
      */
     public static final String RT_adminConsoleZimletACLTabRights = "adminConsoleZimletACLTabRights";
@@ -537,6 +592,11 @@ public class RightConsts {
     public static final String RT_assignCos = "assignCos";
 
     /**
+     * auto provision account in the domain in MANUAL mode
+     */
+    public static final String RT_autoProvisionAccount = "autoProvisionAccount";
+
+    /**
      * backup accounts on a server
      */
     public static final String RT_backupAccount = "backupAccount";
@@ -550,6 +610,17 @@ public class RightConsts {
      * server rights for BES admin
      */
     public static final String RT_besAdminServerRights = "besAdminServerRights";
+
+    /**
+     * change account password, restricted by password strength policies
+     */
+    public static final String RT_changeAccountPassword = "changeAccountPassword";
+
+    /**
+     * set calendar resource password, restricted by password strength
+     * policies
+     */
+    public static final String RT_changeCalendarResourcePassword = "changeCalendarResourcePassword";
 
     /**
      * check password strength
@@ -667,6 +738,11 @@ public class RightConsts {
     public static final String RT_createDistributionList = "createDistributionList";
 
     /**
+     * create group in the domain
+     */
+    public static final String RT_createGroup = "createGroup";
+
+    /**
      * create bulk migration task on a server
      */
     public static final String RT_createMigrationTask = "createMigrationTask";
@@ -685,6 +761,11 @@ public class RightConsts {
      * create a top-level domain
      */
     public static final String RT_createTopDomain = "createTopDomain";
+
+    /**
+     * create UC service
+     */
+    public static final String RT_createUCService = "createUCService";
 
     /**
      * create XMPP component
@@ -737,9 +818,19 @@ public class RightConsts {
     public static final String RT_deleteDomain = "deleteDomain";
 
     /**
+     * delete group
+     */
+    public static final String RT_deleteGroup = "deleteGroup";
+
+    /**
      * delete server
      */
     public static final String RT_deleteServer = "deleteServer";
+
+    /**
+     * delete UC service
+     */
+    public static final String RT_deleteUCService = "deleteUCService";
 
     /**
      * delete XMPP component
@@ -932,11 +1023,6 @@ public class RightConsts {
     public static final String RT_getAccountMembership = "getAccountMembership";
 
     /**
-     * get share info on account
-     */
-    public static final String RT_getAccountShareInfo = "getAccountShareInfo";
-
-    /**
      * Retrieve a list of Free/Busy providers via
      * GetAllFreeBusyProvidersRequest SOAP request
      */
@@ -958,11 +1044,6 @@ public class RightConsts {
     public static final String RT_getCalendarResourceInfo = "getCalendarResourceInfo";
 
     /**
-     * get share info on calendar resource
-     */
-    public static final String RT_getCalendarResourceShareInfo = "getCalendarResourceShareInfo";
-
-    /**
      * view SSL certificates installed on the target server
      */
     public static final String RT_getCertificateInfo = "getCertificateInfo";
@@ -981,11 +1062,6 @@ public class RightConsts {
      * get all groups the distribution list is a member of
      */
     public static final String RT_getDistributionListMembership = "getDistributionListMembership";
-
-    /**
-     * get share info on distribution list
-     */
-    public static final String RT_getDistributionListShareInfo = "getDistributionListShareInfo";
 
     /**
      * get all domain attributes
@@ -1011,6 +1087,11 @@ public class RightConsts {
      * get all global config attributes
      */
     public static final String RT_getGlobalConfig = "getGlobalConfig";
+
+    /**
+     * get all group attributes
+     */
+    public static final String RT_getGroup = "getGroup";
 
     /**
      * get HSM process status for a server
@@ -1046,6 +1127,11 @@ public class RightConsts {
      * dump/get sessions
      */
     public static final String RT_getSessions = "getSessions";
+
+    /**
+     * get all UC service attributes
+     */
+    public static final String RT_getUCService = "getUCService";
 
     /**
      * get all XMPP component attributes
@@ -1099,9 +1185,19 @@ public class RightConsts {
     public static final String RT_listDomain = "listDomain";
 
     /**
-     * see server in GetAllCos/SearchDirectoryResponse
+     * see group in GetAllCos/SearchDirectoryResponse
+     */
+    public static final String RT_listGroup = "listGroup";
+
+    /**
+     * see server in GetAllServers/SearchDirectoryResponse
      */
     public static final String RT_listServer = "listServer";
+
+    /**
+     * see UC service in GetAllUCServices/SearchDirectoryResponse
+     */
+    public static final String RT_listUCService = "listUCService";
 
     /**
      * see XMPP component in GetAllXMPPComponents
@@ -1184,9 +1280,19 @@ public class RightConsts {
     public static final String RT_modifyGlobalConfig = "modifyGlobalConfig";
 
     /**
+     * set all group attributes
+     */
+    public static final String RT_modifyGroup = "modifyGroup";
+
+    /**
      * set all server attributes
      */
     public static final String RT_modifyServer = "modifyServer";
+
+    /**
+     * set all UC service attributes
+     */
+    public static final String RT_modifyUCService = "modifyUCService";
 
     /**
      * set all XMPP component attributes
@@ -1224,11 +1330,6 @@ public class RightConsts {
     public static final String RT_moveMailboxToServer = "moveMailboxToServer";
 
     /**
-     * publish share info on distribution list
-     */
-    public static final String RT_publishDistributionListShareInfo = "publishDistributionListShareInfo";
-
-    /**
      * purge messages of an account
      */
     public static final String RT_purgeMessages = "purgeMessages";
@@ -1264,6 +1365,16 @@ public class RightConsts {
     public static final String RT_removeDistributionListMember = "removeDistributionListMember";
 
     /**
+     * remove group alias
+     */
+    public static final String RT_removeGroupAlias = "removeGroupAlias";
+
+    /**
+     * remove member from group
+     */
+    public static final String RT_removeGroupMember = "removeGroupMember";
+
+    /**
      * rename account
      */
     public static final String RT_renameAccount = "renameAccount";
@@ -1284,6 +1395,16 @@ public class RightConsts {
     public static final String RT_renameDistributionList = "renameDistributionList";
 
     /**
+     * rename group
+     */
+    public static final String RT_renameGroup = "renameGroup";
+
+    /**
+     * rename UC service
+     */
+    public static final String RT_renameUCService = "renameUCService";
+
+    /**
      * restore accounts on a server
      */
     public static final String RT_restoreAccount = "restoreAccount";
@@ -1294,7 +1415,7 @@ public class RightConsts {
     public static final String RT_rolloverRedoLog = "rolloverRedoLog";
 
     /**
-     * set account password
+     * set account password, not restricted by password strength policies
      */
     public static final String RT_setAccountPassword = "setAccountPassword";
 
@@ -1549,7 +1670,7 @@ public class RightConsts {
     public static final String RT_setAdminConsoleServerACLTab = "setAdminConsoleServerACLTab";
 
     /**
-     * Admin Console set attr rights for Server ACL Tab
+     * Admin Console set attr rights for Server backup/restore Tab
      */
     public static final String RT_setAdminConsoleServerBackupRestoreTab = "setAdminConsoleServerBackupRestoreTab";
 
@@ -1579,12 +1700,12 @@ public class RightConsts {
     public static final String RT_setAdminConsoleServerServicesTab = "setAdminConsoleServerServicesTab";
 
     /**
-     * Admin Console set attr rights for Server ACL Tab
+     * Admin Console set attr rights for Server Volumes Tab
      */
     public static final String RT_setAdminConsoleServerVolumesTab = "setAdminConsoleServerVolumesTab";
 
     /**
-     * Admin Console view attr rights for accounts contact tab
+     * Admin Console view attr rights for software updates tab
      */
     public static final String RT_setAdminConsoleSoftwareUpdatesConfigAttrs = "setAdminConsoleSoftwareUpdatesConfigAttrs";
 
@@ -1599,7 +1720,8 @@ public class RightConsts {
     public static final String RT_setAdminSavedSearch = "setAdminSavedSearch";
 
     /**
-     * set calendar resource password
+     * set calendar resource password, not restricted by password strength
+     * policies
      */
     public static final String RT_setCalendarResourcePassword = "setCalendarResourcePassword";
 
@@ -1697,6 +1819,11 @@ public class RightConsts {
      * manager
      */
     public static final String RT_setDomainAdminDomainAttrs = "setDomainAdminDomainAttrs";
+
+    /**
+     * upload client software via Admin Console
+     */
+    public static final String RT_uploadClientSoftware = "uploadClientSoftware";
 
     /**
      * execute the GetAdminConsoleUIComp SOAP when an account other than the
@@ -1955,7 +2082,7 @@ public class RightConsts {
     public static final String RT_viewAdminConsoleServerACLTab = "viewAdminConsoleServerACLTab";
 
     /**
-     * Admin Console view attr rights for Server ACL Tab
+     * Admin Console view attr rights for Server backup/restore Tab
      */
     public static final String RT_viewAdminConsoleServerBackupRestoreTab = "viewAdminConsoleServerBackupRestoreTab";
 
@@ -1990,17 +2117,17 @@ public class RightConsts {
     public static final String RT_viewAdminConsoleServerStatus = "viewAdminConsoleServerStatus";
 
     /**
-     * Admin Console view attr rights for Server ACL Tab
+     * Admin Console view attr rights for Server Volumes Tab
      */
     public static final String RT_viewAdminConsoleServerVolumesTab = "viewAdminConsoleServerVolumesTab";
 
     /**
-     * Admin Console view attr rights for accounts contact tab
+     * Admin Console view attr rights for software updates tab
      */
     public static final String RT_viewAdminConsoleSoftwareUpdatesConfigAttrs = "viewAdminConsoleSoftwareUpdatesConfigAttrs";
 
     /**
-     * Admin Console view attr rights for accounts contact tab
+     * Admin Console view attr rights for software updates tab
      */
     public static final String RT_viewAdminConsoleSoftwareUpdatesServerAttrs = "viewAdminConsoleSoftwareUpdatesServerAttrs";
 

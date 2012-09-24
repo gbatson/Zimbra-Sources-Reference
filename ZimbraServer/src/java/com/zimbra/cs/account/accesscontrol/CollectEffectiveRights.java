@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,9 +29,9 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.SetUtil;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.accesscontrol.RightBearer.GlobalAdmin;
 import com.zimbra.cs.account.accesscontrol.RightBearer.Grantee;
@@ -58,11 +58,13 @@ public class CollectEffectiveRights {
      * @param result
      * @throws ServiceException
      */
-    static void getEffectiveRights(RightBearer rightBearer, Entry target, TargetType targetType,
+    static void getEffectiveRights(RightBearer rightBearer, 
+            Entry target, TargetType targetType,
             boolean expandSetAttrs, boolean expandGetAttrs,
             RightCommand.EffectiveRights result) throws ServiceException{
-        CollectEffectiveRights cer = new CollectEffectiveRights(rightBearer, target, targetType,
-                expandSetAttrs, expandGetAttrs, result);
+        
+        CollectEffectiveRights cer = new CollectEffectiveRights(rightBearer, 
+                target, targetType, expandSetAttrs, expandGetAttrs, result);
         cer.collect();
     }
     
@@ -75,7 +77,8 @@ public class CollectEffectiveRights {
                 expandSetAttrs, expandGetAttrs, result);
     }
             
-    private CollectEffectiveRights(RightBearer rightBearer, Entry target, TargetType targetType,
+    private CollectEffectiveRights(RightBearer rightBearer, 
+            Entry target, TargetType targetType,
             boolean expandSetAttrs, boolean expandGetAttrs,
             RightCommand.EffectiveRights result) {
         
@@ -90,6 +93,10 @@ public class CollectEffectiveRights {
     
     private boolean isGlobalAdmin() {
         return (mRightBearer instanceof GlobalAdmin);
+    }
+    
+    private Grantee getGrantee() {
+        return (Grantee) mRightBearer;
     }
     
     private void collect() throws ServiceException {
@@ -109,16 +116,16 @@ public class CollectEffectiveRights {
             allowGetAttrs = AllowedAttrs.ALLOW_ALL_ATTRS();
             
         } else {
-            Grantee grantee = (Grantee)mRightBearer;
-            
             // get effective preset rights
-            presetRights = getEffectiveAdminPresetRights(grantee);
+            presetRights = getEffectiveAdminPresetRights();
             
             // get effective setAttrs rights
-            allowSetAttrs = CheckAttrRight.accessibleAttrs(grantee, mTarget, AdminRight.PR_SET_ATTRS, false);
+            allowSetAttrs = CheckAttrRight.accessibleAttrs(
+                    getGrantee(), mTarget, AdminRight.PR_SET_ATTRS, false);
             
             // get effective getAttrs rights
-            allowGetAttrs = CheckAttrRight.accessibleAttrs(grantee, mTarget, AdminRight.PR_GET_ATTRS, false);
+            allowGetAttrs = CheckAttrRight.accessibleAttrs(
+                    getGrantee(), mTarget, AdminRight.PR_GET_ATTRS, false);
         }
         
         // finally, populate our result 
@@ -133,8 +140,9 @@ public class CollectEffectiveRights {
         // setAttrs
         if (allowSetAttrs.getResult() == AllowedAttrs.Result.ALLOW_ALL) {
             mResult.setCanSetAllAttrs();
-            if (mExpandSetAttrs)
+            if (mExpandSetAttrs) {
                 mResult.setCanSetAttrs(expandAttrs(AdminRight.PR_SET_ATTRS));
+            }
         } else if (allowSetAttrs.getResult() == AllowedAttrs.Result.ALLOW_SOME) {
             mResult.setCanSetAttrs(fillDefault(allowSetAttrs, AdminRight.PR_SET_ATTRS));
         }
@@ -142,8 +150,9 @@ public class CollectEffectiveRights {
         // getAttrs
         if (allowGetAttrs.getResult() == AllowedAttrs.Result.ALLOW_ALL) {
             mResult.setCanGetAllAttrs();
-            if (mExpandGetAttrs)
+            if (mExpandGetAttrs) {
                 mResult.setCanGetAttrs(expandAttrs(AdminRight.PR_GET_ATTRS));
+            }
         } else if (allowGetAttrs.getResult() == AllowedAttrs.Result.ALLOW_SOME) {
             mResult.setCanGetAttrs(fillDefault(allowGetAttrs, AdminRight.PR_GET_ATTRS));
         }
@@ -161,14 +170,16 @@ public class CollectEffectiveRights {
         for (Map.Entry<String, AdminRight> right : allRights.entrySet()) {
             Right r = right.getValue();
             if (r.isPresetRight()) {
-                if (r.executableOnTargetType(mTargetType))
+                if (r.executableOnTargetType(mTargetType)) {
                     rights.add(r);
+                }
                 
             } else if (r.isComboRight()) {
                 ComboRight comboRight = (ComboRight)r;
                 for (Right rt : comboRight.getPresetRights()) {
-                    if (rt.executableOnTargetType(mTargetType))
+                    if (rt.executableOnTargetType(mTargetType)) {
                         rights.add(rt);
+                    }
                 }
                 
             }
@@ -176,11 +187,11 @@ public class CollectEffectiveRights {
         return rights;
     }
     
-    private Set<Right> getEffectiveAdminPresetRights(Grantee grantee) throws ServiceException {
+    private Set<Right> getEffectiveAdminPresetRights() throws ServiceException {
         
         Provisioning prov = Provisioning.getInstance();
         
-        Set<String> granteeIds = grantee.getIdAndGroupIds();
+        Grantee grantee = getGrantee();
         TargetType targetType = TargetType.getTargetType(mTarget);
         
         Map<Right, Integer> allowed = new HashMap<Right, Integer>();
@@ -195,7 +206,7 @@ public class CollectEffectiveRights {
         // check the target entry itself
         List<ZimbraACE> acl = ACLUtil.getAllACEs(mTarget);
         if (acl != null) {
-            collectAdminPresetRightOnTarget(acl, targetType, granteeIds, relativity, false, allowed, denied);
+            collectAdminPresetRightOnTarget(acl, targetType, relativity, false, allowed, denied);
             relativity += 2;
         }
         
@@ -215,7 +226,7 @@ public class CollectEffectiveRights {
         while ((grantedOn = iter.next()) != null && (!car.isAll())) {
             acl = ACLUtil.getAllACEs(grantedOn);
                 
-            if (grantedOn instanceof DistributionList) {
+            if (grantedOn instanceof Group) {
                 if (acl == null)
                     continue;
                     
@@ -223,14 +234,17 @@ public class CollectEffectiveRights {
                 // check cross domain right if we are checking rights for an account
                 // skip cross domain rights if we are checking rights for a group, because
                 // members in the group can be in different domains, no point checking it.
-                if (grantee.isAccount())
-                    skipPositiveGrants = !CrossDomain.crossDomainOK(prov, grantee.getAccount(), grantee.getDomain(), 
-                        targetDomain, (DistributionList)grantedOn);
+                if (grantee.isAccount()) {
+                    skipPositiveGrants = 
+                        !CrossDomain.crossDomainOK(prov, grantee.getAccount(), 
+                                grantee.getDomain(), targetDomain, (Group)grantedOn);
+                }
                 
                 // don't check yet, collect all acls on all target groups
-                if (groupACLs == null)
+                if (groupACLs == null) {
                     groupACLs = new GroupACLs(mTarget);
-                groupACLs.collectACL((DistributionList)grantedOn, skipPositiveGrants);
+                }
+                groupACLs.collectACL((Group)grantedOn, skipPositiveGrants);
                     
             } else {
                 // end of group targets, put all collected denied and allowed grants into one list, as if 
@@ -239,7 +253,8 @@ public class CollectEffectiveRights {
                 if (groupACLs != null) {
                     List<ZimbraACE> aclsOnGroupTargets = groupACLs.getAllACLs();
                     if (aclsOnGroupTargets != null) {
-                        collectAdminPresetRightOnTarget(aclsOnGroupTargets, targetType, granteeIds, relativity, false, allowed, denied);
+                        collectAdminPresetRightOnTarget(aclsOnGroupTargets, targetType, 
+                                relativity, false, allowed, denied);
                         relativity += 2;
                     }
                         
@@ -247,11 +262,12 @@ public class CollectEffectiveRights {
                     groupACLs = null;
                 }
                     
-                if (acl == null)
+                if (acl == null) {
                     continue;
+                }
                 
                 boolean subDomain = (mTargetType == TargetType.domain && (grantedOn instanceof Domain));
-                collectAdminPresetRightOnTarget(acl, targetType, granteeIds, relativity, subDomain, allowed, denied);
+                collectAdminPresetRightOnTarget(acl, targetType, relativity, subDomain, allowed, denied);
                 relativity += 2;
             }
         }
@@ -282,28 +298,33 @@ public class CollectEffectiveRights {
     }
 
     private void collectAdminPresetRightOnTarget(List<ZimbraACE> acl, TargetType targeType,
-            Set<String> granteeIds, Integer relativity, boolean subDomain,
-            Map<Right, Integer> allowed, Map<Right, Integer> denied) throws ServiceException {
+            Integer relativity, boolean subDomain,
+            Map<Right, Integer> allowed, Map<Right, Integer> denied) 
+    throws ServiceException {
         // as an individual: user
         short granteeFlags = (short)(GranteeFlag.F_INDIVIDUAL | GranteeFlag.F_ADMIN);
-        collectAdminPresetRights(acl, targeType, granteeIds, granteeFlags, relativity, subDomain, allowed,  denied);
+        collectAdminPresetRights(acl, targeType, granteeFlags, relativity, 
+                subDomain, allowed,  denied);
         
         // as a group member, bump up the relativity
         granteeFlags = (short)(GranteeFlag.F_GROUP | GranteeFlag.F_ADMIN);
-        collectAdminPresetRights(acl, targeType, granteeIds, granteeFlags, relativity, subDomain, allowed,  denied);
+        collectAdminPresetRights(acl, targeType, granteeFlags, relativity, 
+                subDomain, allowed,  denied);
     }
     
     private void collectAdminPresetRights(List<ZimbraACE> acl, TargetType targetType,
-            Set<String> granteeIds, short granteeFlags, Integer relativity, boolean subDomain,
-            Map<Right, Integer> allowed, Map<Right, Integer> denied) throws ServiceException {
+            short granteeFlags, Integer relativity, boolean subDomain,
+            Map<Right, Integer> allowed, Map<Right, Integer> denied) 
+    throws ServiceException {
         
         for (ZimbraACE ace : acl) {
             GranteeType granteeType = ace.getGranteeType();
             if (!granteeType.hasFlags(granteeFlags))
                 continue;
                 
-            if (!granteeIds.contains(ace.getGrantee()))
+            if (!RightBearer.matchesGrantee(getGrantee(), ace)) {
                 continue;
+            }
             
             if (!ace.deny()) {
                 if (subDomain != ace.subDomain())
@@ -319,20 +340,25 @@ public class CollectEffectiveRights {
                 ComboRight comboRight = (ComboRight)right;
                 for (Right r : comboRight.getPresetRights()) {
                     if (r.executableOnTargetType(targetType)) {
-                        if (ace.deny())
-                            denied.put(r, relativity);
-                        else
-                            allowed.put(r, relativity);
+                        collectPresetRightIfMoreRelevant(r, ace.deny(), relativity, allowed, denied);
                     }
                 }
             } else if (right.isPresetRight()) {
                 if (right.executableOnTargetType(targetType)) {
-                    if (ace.deny())
-                        denied.put(right, relativity);
-                    else
-                        allowed.put(right, relativity);
+                    collectPresetRightIfMoreRelevant(right, ace.deny(), relativity, allowed, denied);
                 }
             } 
+        }
+    }
+    
+    private void collectPresetRightIfMoreRelevant(
+            Right right, boolean negative, Integer relativity,
+            Map<Right, Integer> allowed, Map<Right, Integer> denied) {
+        Map<Right, Integer> map = negative ? denied : allowed;
+        
+        Integer mostRelevant = map.get(right);
+        if (mostRelevant == null || relativity < mostRelevant) {
+            map.put(right, relativity);
         }
     }
     
@@ -347,7 +373,8 @@ public class CollectEffectiveRights {
         return fillDefaultAndConstratint(allowSetAttrs.getAllowed(), rightNeeded);
     }
     
-    private SortedMap<String, RightCommand.EffectiveAttr> expandAttrs(AttrRight rightNeeded) throws ServiceException {
+    private SortedMap<String, RightCommand.EffectiveAttr> expandAttrs(AttrRight rightNeeded) 
+    throws ServiceException {
         return fillDefaultAndConstratint(TargetType.getAttrsInClass(mTarget), rightNeeded);
     }
     
@@ -358,9 +385,10 @@ public class CollectEffectiveRights {
      * @return
      * @throws ServiceException
      */
-    private SortedMap<String, RightCommand.EffectiveAttr> fillDefaultAndConstratint(Set<String> attrs, 
-            AttrRight rightNeeded) throws ServiceException {
-        SortedMap<String, RightCommand.EffectiveAttr> effAttrs = new TreeMap<String, RightCommand.EffectiveAttr>();
+    private SortedMap<String, RightCommand.EffectiveAttr> fillDefaultAndConstratint(
+            Set<String> attrs, AttrRight rightNeeded) throws ServiceException {
+        SortedMap<String, RightCommand.EffectiveAttr> effAttrs = 
+            new TreeMap<String, RightCommand.EffectiveAttr>();
         
         Entry constraintEntry = AttributeConstraint.getConstraintEntry(mTarget);
         Map<String, AttributeConstraint> constraints = (constraintEntry==null)?null:
@@ -369,8 +397,10 @@ public class CollectEffectiveRights {
         boolean hasConstraints = (constraints != null && !constraints.isEmpty());
 
         for (String attrName : attrs) {
-            if (rightNeeded == AdminRight.PR_SET_ATTRS && !isGlobalAdmin() && HardRules.isForbiddenAttr(attrName))
+            if (rightNeeded == AdminRight.PR_SET_ATTRS && !isGlobalAdmin() && 
+                HardRules.isForbiddenAttr(attrName)) {
                 continue;
+            }
             
             Set<String> defaultValues = null;
             

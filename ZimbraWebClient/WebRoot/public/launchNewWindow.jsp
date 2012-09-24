@@ -1,4 +1,3 @@
-<%@ page session="false" %>
 <%@ page import='java.util.Locale' %>
 <%@ page import="java.util.regex.Pattern" %>
 <%@ page import="java.util.regex.Matcher" %>
@@ -21,7 +20,7 @@
  launchNewWindow.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -37,6 +36,11 @@
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 <meta http-equiv="cache-control" content="no-cache"/>
 <meta http-equiv="Pragma" content="no-cache"/>
+
+<%--bug:74490 The page session = "false" has been removed hence it defaults to true. This is required for getting the mailbox object--%>
+<app:handleError>
+    <zm:getMailbox var="mailbox"/>
+</app:handleError>
 <%!
 	static String getParameter(HttpServletRequest request, String pname, String defValue) {
 		String value = request.getParameter(pname);
@@ -53,7 +57,7 @@
 	if(contextPath.equals("/")) contextPath = "";
 
     String skin = request.getParameter("skin");
-    if (skin == null) {
+    if (skin == null || !mailbox.getAvailableSkins().contains(skin)) {
         skin = application.getInitParameter("zimbraDefaultSkin");
 	}
 	skin = skin.replaceAll("['\"<>&]", "");
@@ -123,7 +127,7 @@
 	<jsp:param name="res" value="I18nMsg,AjxMsg,ZMsg,ZmMsg,AjxKeys,ZmKeys,AjxTemplateMsg" />
 	<jsp:param name="skin" value="${skin}" />
 </jsp:include>
-<link href='${contextPath}/css/common,dwt,msgview,login,zm,spellcheck,wiki,images,skin.css?v=${vers}${isDebug?"&debug=1":""}&skin=${zm:cook(skin)}' rel='stylesheet' type="text/css">
+<link href='${contextPath}/css/common,dwt,msgview,login,zm,spellcheck,images,skin.css?v=${vers}${isDebug?"&debug=1":""}&skin=${zm:cook(skin)}' rel='stylesheet' type="text/css">
 <jsp:include page="Boot.jsp"/>
 <script type="text/javascript">
 	AjxEnv.DEFAULT_LOCALE = "${zm:javaLocaleId(locale)}";

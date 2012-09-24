@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -44,7 +44,7 @@ class DbStats implements RealtimeStatsCallback {
             data.put(ZimbraPerf.RTS_DB_POOL_SIZE, DbPool.getSize());
             
             // Parse innodb status output
-            DbResults results = DbUtil.executeQuery("SHOW INNODB STATUS");
+            DbResults results = DbUtil.executeQuery("SHOW ENGINE INNODB STATUS");
             Integer hitRate = parseBufferPoolHitRate(results.getString("Status"));
             if (hitRate != null) {
                 data.put(ZimbraPerf.RTS_INNODB_BP_HIT_RATE, hitRate);

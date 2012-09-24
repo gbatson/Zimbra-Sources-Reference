@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature;
 
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
@@ -21,6 +5,7 @@ import com.zimbra.qa.selenium.framework.ui.AbsPage;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.ui.I18N;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 
 
@@ -36,15 +21,14 @@ public class PageSignature extends AbsTab{
 		// Preferences Toolbar: Save, Cancel
 		public static final String zToolbarSaveID = "zb__PREF__SAVE_title";
 		public static final String zToolbarCancelID = "zb__PREF__CANCEL_title";
-
-		public static final String zSaveChangesYes = "id=DWT241_title";
-		public static final String zSaveChangesNo = "id=DWT242_title";
-		public static final String zSaveChangesCancel = "id=DWT243_title";
-	//	public static final String zSignatureListView = "//div[@class='ZmSignatureListView']/div//tbody/tr/td";
 		public static final String zSignatureListView = "//div[@class='ZmSignatureListView']";
-		public static final String zNewSignature ="//td[contains(@id,'_title') and contains (text(),'New Signature')]";
-		public static final String zDeleteSignature ="//td[contains(@id,'DWT') and contains (text(),'Delete')]";
-
+		//public static final String zNewSignature ="//td[contains(@id,'_title') and contains (text(),'"+I18N.NEW_SIGNATURE+"')]";
+		public static final String zNewSignature ="css=td[class='ZOptionsField'] td[id$='_title']:contains('"+I18N.NEW_SIGNATURE+"')";
+		
+		
+		//public static final String zDeleteSignature ="//td[contains(@id,'DWT') and contains (text(),'"+I18N.DELETE+"')]";
+		public static final String zDeleteSignature ="css=td[class='ZOptionsField'] td[id$='_title']:contains('"+I18N.DELETE+"')";
+		
 	}
 
 
@@ -73,7 +57,7 @@ public class PageSignature extends AbsTab{
 	}
 	public String zGetHtmlSignatureBody() throws HarnessException {
 		try {
-			sSelectFrame("css=iframe[id*='DWT']");
+			sSelectFrame("css=iframe[id='TEXTAREA_SIGNATURE_ifr']");
 			String sigbodyhtml = this.sGetHtmlSource();
 			return sigbodyhtml;
 		} finally {
@@ -139,7 +123,7 @@ public class PageSignature extends AbsTab{
 
 		// Default behavior, process the locator by clicking on it
 	
-		this.zClick(locator);
+		this.zClickAt(locator,"");
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();

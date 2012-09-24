@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,6 +25,7 @@ import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.SetUtil;
+import com.zimbra.cs.account.callback.CallbackContext;
 
 /**
  * @author schemers
@@ -48,12 +49,11 @@ public abstract class AttributeCallback {
      * @throws ServiceException causes the whole transaction to abort.
      */
     public abstract void preModify(
-            Map context,
+            CallbackContext context,
             String attrName,
             Object attrValue,
             Map attrsToModify,
-            Entry entry,
-            boolean isCreate) throws ServiceException;
+            Entry entry) throws ServiceException;
 
     /**
      * called after a successful modify of the attributes. should not throw any exceptions.
@@ -64,10 +64,9 @@ public abstract class AttributeCallback {
      * @param isCreate set to true if called during create
      */
     public abstract void postModify(
-            Map context,
+            CallbackContext context,
             String attrName,
-            Entry entry,
-            boolean isCreate);
+            Entry entry);
     
     
     protected static class SingleValueMod {
@@ -124,9 +123,10 @@ public abstract class AttributeCallback {
     }
     
     // TODO, remove the above singleValueMod in main and change all callsites to 
-    // use this one.  The above does not handle the case if someone does a -attrName value 
-    // for a single-valued attribute, a quite corner case.
-    protected SingleValueMod singleValueMod(Map attrsToModify, String attrName)  throws ServiceException {
+    // use this one.  The above does not handle the case if someone does 
+    // a -attrName value for a single-valued attribute, a quite corner case.
+    protected SingleValueMod singleValueMod(Map attrsToModify, String attrName)  
+    throws ServiceException {
        
         SingleValueMod svm = new SingleValueMod();
         
@@ -238,14 +238,17 @@ public abstract class AttributeCallback {
         if (value instanceof String) {
             values.add((String)value);
         } else if (value instanceof String[]) {
-            for (String s : (String[])value)
+            for (String s : (String[])value) {
                 values.add(s);
+            }
         } else if (value instanceof Collection) {
-            for (Object o : (Collection)value)
+            for (Object o : (Collection)value) {
                 values.add(o.toString());
-        } else
+            }
+        } else {
             throw ServiceException.INVALID_REQUEST("value not a String or String[] or a Collection", null);
-
+        }
+        
         return values;
     }
     

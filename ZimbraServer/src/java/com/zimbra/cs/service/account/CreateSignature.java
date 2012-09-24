@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.SignatureUtil;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
@@ -46,7 +47,7 @@ public class CreateSignature extends DocumentHandler {
         Map<String,Object> attrs = new HashMap<String, Object>();
         for (Element eContent : contents) {
             String type = eContent.getAttribute(AccountConstants.A_TYPE);
-            String attr = Signature.mimeTypeToAttrName(type);
+            String attr = SignatureUtil.mimeTypeToAttrName(type);
             if (attr == null)
                 throw ServiceException.INVALID_REQUEST("invalid type "+type, null);
             if (attrs.get(attr) != null)

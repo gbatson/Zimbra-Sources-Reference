@@ -1,18 +1,27 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.formatter;
+
+import java.io.IOException;
+
+import javax.servlet.RequestDispatcher;
+import javax.servlet.Servlet;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletException;
+
+import org.apache.commons.httpclient.Header;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Pair;
@@ -27,21 +36,12 @@ import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.UserServletContext;
+import com.zimbra.cs.service.UserServletException;
 import com.zimbra.cs.service.UserServlet.HttpInputStream;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
-import com.zimbra.cs.service.UserServletException;
-
-import javax.servlet.RequestDispatcher;
-import javax.servlet.Servlet;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-
-import org.apache.commons.httpclient.Header;
-
-import java.io.IOException;
 
 public class HtmlFormatter extends Formatter {
-    
+
     private static final String PATH_MAIN_CONTEXT  = "/zimbra";
     private static final String PATH_JSP_REST_PAGE = "/h/rest";
     private static final long   AUTH_EXPIRATION = 60L * 60L * 1000L;
@@ -107,33 +107,33 @@ public class HtmlFormatter extends Formatter {
         Account targetAccount = context.targetAccount;
         MailItem targetItem = context.target;
         String uri = (String) context.req.getAttribute("requestedPath");
-        
-        if (targetItem instanceof Mountpoint && ((Mountpoint)targetItem).getDefaultView() != MailItem.TYPE_APPOINTMENT) {
-        	Mountpoint mp = (Mountpoint) targetItem;
+
+        if (targetItem instanceof Mountpoint && ((Mountpoint)targetItem).getDefaultView() != MailItem.Type.APPOINTMENT) {
+            Mountpoint mp = (Mountpoint) targetItem;
             Provisioning prov = Provisioning.getInstance();
             targetAccount = prov.getAccountById(mp.getOwnerId());
-        	Pair<Header[], HttpInputStream> remoteItem = UserServlet.getRemoteResourceAsStream((auth == null) ? null : auth.toZAuthToken(), mp.getTarget(), context.extraPath);
-        	remoteItem.getSecond().close();
-        	String remoteItemId = null;
-        	String remoteItemType = null;
-        	String remoteItemName = null;
-        	String remoteItemPath = null;
-        	for (Header h : remoteItem.getFirst())
-        		if (h.getName().compareToIgnoreCase("X-Zimbra-ItemId") == 0)
-        			remoteItemId = h.getValue();
-        		else if (h.getName().compareToIgnoreCase("X-Zimbra-ItemType") == 0)
-        			remoteItemType = h.getValue();
-        		else if (h.getName().compareToIgnoreCase("X-Zimbra-ItemName") == 0)
-        			remoteItemName = h.getValue();
-        		else if (h.getName().compareToIgnoreCase("X-Zimbra-ItemPath") == 0)
-        			remoteItemPath = h.getValue();
-        	
+            Pair<Header[], HttpInputStream> remoteItem = UserServlet.getRemoteResourceAsStream((auth == null) ? null : auth.toZAuthToken(), mp.getTarget(), context.extraPath);
+            remoteItem.getSecond().close();
+            String remoteItemId = null;
+            String remoteItemType = null;
+            String remoteItemName = null;
+            String remoteItemPath = null;
+            for (Header h : remoteItem.getFirst())
+                if (h.getName().compareToIgnoreCase("X-Zimbra-ItemId") == 0)
+                    remoteItemId = h.getValue();
+                else if (h.getName().compareToIgnoreCase("X-Zimbra-ItemType") == 0)
+                    remoteItemType = h.getValue();
+                else if (h.getName().compareToIgnoreCase("X-Zimbra-ItemName") == 0)
+                    remoteItemName = h.getValue();
+                else if (h.getName().compareToIgnoreCase("X-Zimbra-ItemPath") == 0)
+                    remoteItemPath = h.getValue();
+
             context.req.setAttribute(ATTR_TARGET_ITEM_ID, remoteItemId);
             context.req.setAttribute(ATTR_TARGET_ITEM_TYPE, remoteItemType);
             context.req.setAttribute(ATTR_TARGET_ITEM_NAME, remoteItemName);
             context.req.setAttribute(ATTR_TARGET_ITEM_PATH, remoteItemPath);
             context.req.setAttribute(ATTR_TARGET_ITEM_COLOR, mp.getColor());
-            context.req.setAttribute(ATTR_TARGET_ITEM_VIEW, MailItem.getNameForType(mp.getDefaultView()));
+            context.req.setAttribute(ATTR_TARGET_ITEM_VIEW, mp.getDefaultView().toByte());
             targetItem = null;
         }
 
@@ -145,20 +145,21 @@ public class HtmlFormatter extends Formatter {
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_ID, targetAccount.getId());
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_TIME_ZONE, targetAccount.getAttr(Provisioning.A_zimbraPrefTimeZoneId));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_SKIN, targetAccount.getAttr(Provisioning.A_zimbraPrefSkin));
-            context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_LOCALE, targetAccount.getAttr(Provisioning.A_zimbraPrefLocale));            
+            context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_LOCALE, targetAccount.getAttr(Provisioning.A_zimbraPrefLocale));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_CALENDAR_FIRST_DAY_OF_WEEK, targetAccount.getAttr(Provisioning.A_zimbraPrefCalendarFirstDayOfWeek));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_CALENDAR_DAY_HOUR_START, targetAccount.getAttr(Provisioning.A_zimbraPrefCalendarDayHourStart));
             context.req.setAttribute(ATTR_TARGET_ACCOUNT_PREF_CALENDAR_DAY_HOUR_END, targetAccount.getAttr(Provisioning.A_zimbraPrefCalendarDayHourEnd));
         }
         if (targetItem != null) {
             context.req.setAttribute(ATTR_TARGET_ITEM_ID, targetItem.getId());
-            context.req.setAttribute(ATTR_TARGET_ITEM_TYPE, MailItem.getNameForType(targetItem));
+            context.req.setAttribute(ATTR_TARGET_ITEM_TYPE, targetItem.getType().toString());
             context.req.setAttribute(ATTR_TARGET_ITEM_PATH, targetItem.getPath());
             context.req.setAttribute(ATTR_TARGET_ITEM_NAME, targetItem.getName());
-    
+
             context.req.setAttribute(ATTR_TARGET_ITEM_COLOR, targetItem.getColor());
-            if (targetItem instanceof Folder)
-                context.req.setAttribute(ATTR_TARGET_ITEM_VIEW, MailItem.getNameForType(((Folder)targetItem).getDefaultView()));
+            if (targetItem instanceof Folder) {
+                context.req.setAttribute(ATTR_TARGET_ITEM_VIEW, ((Folder) targetItem).getDefaultView().toString());
+            }
         }
 
         String mailUrl = PATH_MAIN_CONTEXT;

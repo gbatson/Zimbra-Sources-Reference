@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -543,10 +543,9 @@ public class OfflineSyncManager implements FormatListener {
         if (exception instanceof ServiceException) {
             ServiceException e = (ServiceException)exception;
             if (e.getCode() != null && e.getCode().equals(ServiceException.RESOURCE_UNREACHABLE)) {
-                if (e.getArgs() != null)
-                    for (Argument arg : e.getArgs())
-                        if (UserServlet.HTTP_STATUS_CODE.equals(arg.mName) && arg.mValue.startsWith("5"))
-                            return false;
+                for (Argument arg : e.getArgs())
+                    if (UserServlet.HTTP_STATUS_CODE.equals(arg.name) && arg.value.startsWith("5"))
+                        return false;
                 return true;
             }
         }
@@ -633,7 +632,7 @@ public class OfflineSyncManager implements FormatListener {
             OfflineLog.offline.error("sync failure: " + entry.getName(), exception);
             if (exception instanceof SoapFaultException) {
                 SoapFaultException x = (SoapFaultException)exception;
-                OfflineLog.offline.warn("SoapFaultException: " + x.getReason() + "\nFaultRequest:\n" + x.getFaultRequest() + "\nFaultResponse:\n" + x.getFaultResponse());
+                OfflineLog.offline.warn("SoapFaultException: " + x.getMessage() + "\nFaultRequest:\n" + x.getFaultRequest() + "\nFaultResponse:\n" + x.getFaultResponse());
             }
         }
     }
@@ -902,7 +901,7 @@ public class OfflineSyncManager implements FormatListener {
           [(<account>...</account>)*]
         </zdsync>
      */
-    public void encode(Element context, String requestedAccountId) throws ServiceException {
+    public void encode(Element context) throws ServiceException {
         synchronized (syncStatusTable) {
             pendingStatusChanges = false;
         }
@@ -914,7 +913,7 @@ public class OfflineSyncManager implements FormatListener {
             try {
                 mbox = MailboxManager.getInstance().getMailboxByAccount(account);
             } catch (Exception e) {
-                OfflineLog.offline.error("exception fetching mailbox for account ["+account.getName()+"]",e);
+                OfflineLog.offline.error("exception fetching mailbox for account ["+account+"]",e);
                 markAccountSyncDisabled(account, e);
                 continue;
             }

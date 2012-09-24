@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -28,6 +28,9 @@ import java.util.TimerTask;
 import org.dom4j.ElementHandler;
 
 import com.google.common.collect.Sets;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.common.account.ZAttrProvisioning;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
@@ -41,9 +44,6 @@ import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
-import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ZAttrProvisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineDomainGal;
 import com.zimbra.cs.account.offline.OfflineGal;
@@ -377,11 +377,10 @@ public class GalSync {
         }
         if (fullSync) { // after a full sync, reset maintenance timer
             prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountLastRefresh,
-                    Long.toString(System.currentTimeMillis()));
-
+                Long.toString(System.currentTimeMillis()));
+            //we've done a full sync, group populate is implied; as long as remote server is 7xx
             if (mbox != null && mbox.getRemoteServerVersion().isAtLeast7xx()) {
-                prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalGroupMembersPopulated,
-                        Provisioning.TRUE);
+                prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalGroupMembersPopulated, ProvisioningConstants.TRUE);
             }
             if (galAccount.isGalSyncRetryOn()) {
                 GalSyncRetry.checkpoint(galAccount, this.retryContactIds);
@@ -390,7 +389,7 @@ public class GalSync {
                 && mbox != null && mbox.getRemoteServerVersion().isAtLeast7xx()) {
             // existing groups have incorrect type=account and don't have member list
             populateGroupMembers(mbox, galAccount);
-            prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.TRUE);
+            prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalGroupMembersPopulated, ProvisioningConstants.TRUE);
         }
         prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountSyncToken, token);
         if (fullSync) {

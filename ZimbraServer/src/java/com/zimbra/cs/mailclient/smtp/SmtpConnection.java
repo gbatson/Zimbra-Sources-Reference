@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -42,6 +42,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Iterables;
 import com.sun.mail.smtp.SMTPMessage;
 import com.zimbra.cs.mailclient.CommandFailedException;
+import com.zimbra.cs.mailclient.MailConfig;
 import com.zimbra.cs.mailclient.MailConnection;
 import com.zimbra.cs.mailclient.MailException;
 import com.zimbra.cs.mailclient.MailInputStream;
@@ -63,7 +64,7 @@ public final class SmtpConnection extends MailConnection {
     private static final String LOGIN = "LOGIN";
 
     // Same headers that SMTPTransport passes to MimeMessage.writeTo().
-    private static final String[] IGNORE_HEADERS = new String[] { "Bcc", "Content-Length" };
+    private static final String[] IGNORE_HEADERS = new String[] { "Bcc", "Resent-Bcc", "Content-Length" };
 
     private Set<String> invalidRecipients = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
     private Set<String> validRecipients = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
@@ -218,30 +219,11 @@ public final class SmtpConnection extends MailConnection {
         if (ehlo() != 250) {
             helo();
         }
-
-        SmtpConfig config = getSmtpConfig();
-        if (config.getAuthenticationId() != null) {
-            if (!serverExtensions.contains(AUTH)) {
-                throw new MailException("The server doesn't support SMTP-AUTH.");
-            }
-            String mech = config.getMechanism();
-            if (mech != null) {
-                if (!serverAuthMechanisms.contains(mech.toUpperCase())) {
-                    throw new MailException("Auth mechanism mismatch client=" + mech + ",server="+ serverAuthMechanisms);
-                }
-            } else {
-                if (serverAuthMechanisms.contains(LOGIN)) {
-                    config.setMechanism(LOGIN);
-                } else if (serverAuthMechanisms.contains(SaslAuthenticator.PLAIN)) {
-                    config.setMechanism(SaslAuthenticator.PLAIN);
-                } else if (serverAuthMechanisms.contains(SaslAuthenticator.CRAM_MD5)) {
-                    config.setMechanism(SaslAuthenticator.CRAM_MD5);
-                } else if (serverAuthMechanisms.contains(SaslAuthenticator.DIGEST_MD5)) {
-                    config.setMechanism(SaslAuthenticator.DIGEST_MD5);
-                } else {
-                    throw new MailException("No auth mechanism supported: " + serverAuthMechanisms);
-                }
-            }
+        
+        // check auth extensions now if starttls is not being used
+        if (config.getSecurity() != MailConfig.Security.TLS_IF_AVAILABLE ||
+                !serverExtensions.contains(STARTTLS)) {
+            checkAuthExtensions();
         }
 
         setState(State.NOT_AUTHENTICATED);
@@ -321,6 +303,33 @@ public final class SmtpConnection extends MailConnection {
         }
     }
 
+    private void checkAuthExtensions() throws MailException {
+        if (config.getAuthenticationId() == null) {
+            return;
+        }
+        if (!serverExtensions.contains(AUTH)) {
+            throw new MailException("The server doesn't support SMTP-AUTH.");
+        }
+        String mech = config.getMechanism();
+        if (mech != null) {
+            if (!serverAuthMechanisms.contains(mech.toUpperCase())) {
+                throw new MailException("Auth mechanism mismatch client=" + mech + ",server="+ serverAuthMechanisms);
+            }
+        } else {
+            if (serverAuthMechanisms.contains(LOGIN)) {
+                config.setMechanism(LOGIN);
+            } else if (serverAuthMechanisms.contains(SaslAuthenticator.PLAIN)) {
+                config.setMechanism(SaslAuthenticator.PLAIN);
+            } else if (serverAuthMechanisms.contains(SaslAuthenticator.CRAM_MD5)) {
+                config.setMechanism(SaslAuthenticator.CRAM_MD5);
+            } else if (serverAuthMechanisms.contains(SaslAuthenticator.DIGEST_MD5)) {
+                config.setMechanism(SaslAuthenticator.DIGEST_MD5);
+            } else {
+                throw new MailException("No auth mechanism supported: " + serverAuthMechanisms);
+            }
+        }
+    }
+
     @Override
     protected void sendLogin(String user, String pass) throws IOException {
         // Send AUTH LOGIN command.
@@ -393,6 +402,7 @@ public final class SmtpConnection extends MailConnection {
         if (ehlo() != 250) {
             helo();
         }
+        checkAuthExtensions();
     }
 
     @Override
@@ -509,6 +519,31 @@ public final class SmtpConnection extends MailConnection {
         }
     }
 
+    /**
+     * Return notification options as an RFC 1891 string.
+     * Returns null if no options set.
+     */
+    private String getDSNNotify(SMTPMessage message) {
+        if (message.getNotifyOptions() == 0)
+            return null;
+        if (message.getNotifyOptions() == SMTPMessage.NOTIFY_NEVER)
+            return "NEVER";
+        StringBuffer sb = new StringBuffer();
+        if ((message.getNotifyOptions() & SMTPMessage.NOTIFY_SUCCESS) != 0)
+            sb.append("SUCCESS");
+        if ((message.getNotifyOptions() & SMTPMessage.NOTIFY_FAILURE) != 0) {
+            if (sb.length() != 0)
+                sb.append(',');
+            sb.append("FAILURE");
+        }
+        if ((message.getNotifyOptions() & SMTPMessage.NOTIFY_DELAY) != 0) {
+            if (sb.length() != 0)
+                sb.append(',');
+            sb.append("DELAY");
+        }
+        return sb.toString();
+    }
+    
     private void sendInternal(String sender, String[] recipients, MimeMessage javaMailMessage, String messageString)
             throws IOException, MessagingException {
 
@@ -517,7 +552,16 @@ public final class SmtpConnection extends MailConnection {
         Collections.addAll(validRecipients, recipients);
 
         mail(sender);
-        rcpt(recipients);
+        
+        String notify = null;
+        if (serverExtensions.contains("DSN")) {
+            if (javaMailMessage instanceof SMTPMessage)
+                notify = getDSNNotify((SMTPMessage) javaMailMessage);
+            if (notify == null)
+                notify = getSmtpConfig().getDsn();
+        }
+        
+        rcpt(recipients, notify);
         Reply reply = sendCommand(DATA, null);
         if (reply.code != 354) {
             throw new CommandFailedException(DATA, reply.toString());
@@ -620,12 +664,15 @@ public final class SmtpConnection extends MailConnection {
         }
     }
 
-    private void rcpt(String[] recipients) throws IOException {
+    private void rcpt(String[] recipients, String dsn) throws IOException {
         for (String recipient : recipients) {
             if (recipient == null) {
                 recipient = "";
             }
-            Reply reply = sendCommand(RCPT, "TO:" + normalizeAddress(recipient));
+            String cmd = "TO:" + normalizeAddress(recipient);
+            if (dsn != null)
+                cmd += " NOTIFY=" + dsn;
+            Reply reply = sendCommand(RCPT, cmd);
             if (!reply.isPositive()) {
                 validRecipients.remove(recipient);
                 invalidRecipients.add(recipient);

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.mailbox.MailSender;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -46,7 +47,8 @@ public class DeclineCounterCalendarItem extends CalendarRequest {
         InviteParser parser = new InviteParser();
         CalSendData dat = handleMsgElement(zsc, octxt, msgElem, acct, mbox, parser);
 
-        mbox.getMailSender().sendMimeMessage(octxt, mbox, dat.mMm);
+        MailSender mailSender = mbox.getMailSender();
+        mailSender.sendMimeMessage(octxt, mbox, dat.mMm);
         Element response = getResponseElement(zsc);
         return response;
     }

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
 import java.util.List;
@@ -66,16 +50,7 @@ public class CreateContact extends AjaxCommonTest  {
         ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(), "Contact Created", "Verify toast message 'Contact Created'");
 
         //verify contact "file as" is displayed
-		List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
-		boolean isFileAsEqual=false;
-		for (ContactItem ci : contacts) {
-			if (ci.fileAs.equals(contactItem.fileAs)) {
-	            isFileAsEqual = true;	
-				break;
-			}
-		}
-		
-        ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") existed ");
+        ZAssert.assertTrue(app.zPageAddressbook.zIsContactDisplayed(contactItem), "Verify contact fileAs (" + contactItem.fileAs + ") displayed ");
 
 	    //verify location is System folder "Contacts"
 		ZAssert.assertEquals(app.zPageAddressbook.sGetText("css=td.companyFolder"), SystemFolder.Contacts.getName(), "Verify location (folder) is " + SystemFolder.Contacts.getName());
@@ -102,7 +77,7 @@ public class CreateContact extends AjaxCommonTest  {
 	
 	@Test(	description = "Create a basic contact item by click New in page Addressbook ",
 			groups = { "sanity" })
-	public void CreateContact_01() throws HarnessException {				
+	public void ClickNew() throws HarnessException {				
 		FormContactNew formContactNew = (FormContactNew)app.zPageAddressbook.zToolbarPressButton(Button.B_NEW);
 
 		createBasicContact(app, formContactNew);		
@@ -134,17 +109,8 @@ public class CreateContact extends AjaxCommonTest  {
         String toastMsg = toast.zGetToastMessage();
         ZAssert.assertStringContains(toastMsg, "Contact Created", "Verify toast message 'Contact Created'");
   
-	    // Verify contact  created
-  	    List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
-		boolean isFileAsEqual=false;
-		for (ContactItem ci : contacts) {
-			if (ci.fileAs.equals(contactItem.fileAs)) {
-	            isFileAsEqual = true;	
-				break;
-			}
-		}
-		
-        ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") not existed ");
+	    // Verify contact  created  	    
+        ZAssert.assertTrue(app.zPageAddressbook.zIsContactDisplayed(contactItem), "Verify contact fileAs (" + contactItem.fileAs + ") displayed ");
 
 
 	}
@@ -163,16 +129,7 @@ public class CreateContact extends AjaxCommonTest  {
 	    dialogWarning.zClickButton(Button.B_NO);
 
 	    // Verify contact not created
-  	    List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
-		boolean isFileAsEqual=false;
-		for (ContactItem ci : contacts) {
-			if (ci.fileAs.equals(contactItem.fileAs)) {
-	            isFileAsEqual = true;	
-				break;
-			}
-		}
-		
-        ZAssert.assertFalse(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") existed ");
+        ZAssert.assertFalse(app.zPageAddressbook.zIsContactDisplayed(contactItem), "Verify contact fileAs (" + contactItem.fileAs + ") not displayed ");
 
 
 	}
@@ -195,8 +152,8 @@ public class CreateContact extends AjaxCommonTest  {
 		ZAssert.assertTrue(formContactNew.zIsActive(),"Verify new contact form is displayed");
 		
 		//Verify firstname , lastname  not changed
-        ZAssert.assertEquals(app.zPageAddressbook.sGetValue(FormContactNew.Locators.zFirstEditField),contactItem.firstName, "Verify contact firstname (" + contactItem.firstName + ") not changed ");
-        ZAssert.assertEquals(app.zPageAddressbook.sGetValue(FormContactNew.Locators.zLastEditField),contactItem.lastName, "Verify contact lastname (" + contactItem.lastName + ") not changed ");
+        ZAssert.assertEquals(app.zPageAddressbook.sGetValue(FormContactNew.getLocator(FormContactNew.Locators.zFirstEditField)),contactItem.firstName, "Verify contact firstname (" + contactItem.firstName + ") not changed ");
+        ZAssert.assertEquals(app.zPageAddressbook.sGetValue(FormContactNew.getLocator(FormContactNew.Locators.zLastEditField)),contactItem.lastName, "Verify contact lastname (" + contactItem.lastName + ") not changed ");
 
 
 	}
@@ -209,7 +166,7 @@ public class CreateContact extends AjaxCommonTest  {
 		// Create a contact Item
 		ContactItem contactItem = ContactItem.generateContactItem(GenerateItemType.AllAttributes);
 	
-		 // or form contact new page is displayed
+		 //Verify form contact new page is displayed
 		ZAssert.assertTrue(formContactNew.zIsActive(),"Verify new contact form is displayed");
 		
 		// show all hidden field for names:
@@ -226,16 +183,8 @@ public class CreateContact extends AjaxCommonTest  {
 
         
 		//verify contact "file as" is displayed
-		List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
-		boolean isFileAsEqual=false;
-		for (ContactItem ci : contacts) {
-			if (ci.fileAs.equals(contactItem.fileAs)) {
-	            isFileAsEqual = true;	
-				break;
-			}
-		}
-		
-        ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") existed ");
+        ZAssert.assertTrue(app.zPageAddressbook.zIsContactDisplayed(contactItem), "Verify contact fileAs (" + contactItem.fileAs + ") displayed ");
+
 	}
 
 }

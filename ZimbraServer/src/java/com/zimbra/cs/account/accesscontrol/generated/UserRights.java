@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,21 +30,31 @@ public class UserRights {
     
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 pshao 20111117-2058 */
+    /* build: 8.0.0_BETA1_1111 dywang 20120522-1930 */
 
 
+    public static UserRight R_createDistList;
     public static UserRight R_invite;
     public static UserRight R_loginAs;
+    public static UserRight R_ownDistList;
     public static UserRight R_sendAs;
+    public static UserRight R_sendAsDistList;
+    public static UserRight R_sendOnBehalfOf;
+    public static UserRight R_sendOnBehalfOfDistList;
     public static UserRight R_sendToDistList;
     public static UserRight R_viewDistList;
     public static UserRight R_viewFreeBusy;
 
 
     public static void init(RightManager rm) throws ServiceException {
+        R_createDistList                       = rm.getUserRight(Right.RT_createDistList);
         R_invite                               = rm.getUserRight(Right.RT_invite);
         R_loginAs                              = rm.getUserRight(Right.RT_loginAs);
+        R_ownDistList                          = rm.getUserRight(Right.RT_ownDistList);
         R_sendAs                               = rm.getUserRight(Right.RT_sendAs);
+        R_sendAsDistList                       = rm.getUserRight(Right.RT_sendAsDistList);
+        R_sendOnBehalfOf                       = rm.getUserRight(Right.RT_sendOnBehalfOf);
+        R_sendOnBehalfOfDistList               = rm.getUserRight(Right.RT_sendOnBehalfOfDistList);
         R_sendToDistList                       = rm.getUserRight(Right.RT_sendToDistList);
         R_viewDistList                         = rm.getUserRight(Right.RT_viewDistList);
         R_viewFreeBusy                         = rm.getUserRight(Right.RT_viewFreeBusy);

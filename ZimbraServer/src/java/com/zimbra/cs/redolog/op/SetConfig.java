@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
@@ -31,18 +32,16 @@ public class SetConfig extends RedoableOp {
     private String mConfig;
 
     public SetConfig() {
+        super(MailboxOperation.SetConfig);
         mSection = "";
         mConfig = "";
     }
 
     public SetConfig(int mailboxId, String section, Metadata config) {
+        this();
         setMailboxId(mailboxId);
         mSection = section == null ? "" : section;
         mConfig = config == null ? "" : config.toString();
-    }
-
-    @Override public int getOpCode() {
-        return OP_SET_CONFIG;
     }
 
     @Override protected String getPrintableData() {

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.tasks;
 
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -42,7 +26,7 @@ public class DisplayTask extends AbsDisplay {
 	 */
 	public static class Locators {
 		
-		public static final String IsActive 			= "css=[parentid='zv__TKL']";
+		public static final String IsActive 			= "css=[parentid='zv__TKL-main']";
 
 	}
 
@@ -104,44 +88,69 @@ public class DisplayTask extends AbsDisplay {
 		// See https://bugzilla.zimbra.com/show_bug.cgi?id=56657 - "Need unique id for "view task" pane"
 		//**
 		
-		String locator = null;
+		String locator = "css=div[id='zv__TKL-main'] div[class='ZmMailMsgView']";
 		
 		if ( field == Field.Subject ) {
 			
 			//locator = "css=[parentid='zv__TKL'][class^='SubjectCol']";
-			locator="class=SubjectCol LabelColValue";
+			locator += " div[id$='__su']";
 			
 		} else if ( field == Field.Location ) {
 
-			locator = "//tr[contains(@id,'__lo')]/td[2]";
+			locator += " tr[id$='__lo'] td[class='LabelColValue']";
 
 		} else if ( field == Field.Priority ) {
 
-			locator = "//tr[contains(@id,'__pr')]/td[2]";
+			locator += " tr[id$='__pr'] td[class='LabelColValue']";
 
 		} else if ( field == Field.Status ) {
 
-			locator = "//tr[contains(@id,'__st')]/td[2]";
+			locator += " tr[id$='__st'] td[class='LabelColValue']";
 
 		} else if ( field == Field.Percentage ) {
 
-			locator = "//tr[contains(@id,'__pc')]/td[2]";
+			locator += " tr[id$='__pc'] td[class='LabelColValue']";
 
 		} else if ( field == Field.StartDate ) {
 
-			locator = "//tr[contains(@id,'__sd')]/td[2]";
+			locator += " tr[id$='__sd'] td[class='LabelColValue']";
 
 		} else if ( field == Field.DueDate ) {
 
-			locator = "//tr[contains(@id,'__ed')]/td[2]/span";
+			locator += " tr[id$='__ed'] td[class='LabelColValue']";
 
 		} else if ( field == Field.Reminder ) {
 
-			locator = "//tr[contains(@id,'__al')]/td[2]";
+			locator += " tr[id$='__al'] td[class='LabelColValue']";
 
 		} else if ( field == Field.Body ) {
 
-			locator = "class=MsgBody MsgBody-html";
+			/*
+			 * To get the body contents, need to switch iframes
+			 */
+			try {
+				
+				//this.sSelectFrame("css=iframe[id='zv__MSG_body__iframe']");
+				//this.sSelectFrame("css=iframe[id='zv__TKL_body__iframe']");
+				this.sSelectFrame("css=div[id='zv__TKL-main'] iframe[id$='__body__iframe']");
+				
+				String bodyLocator = "css=body";
+				
+				// Make sure the body is present
+				if ( !this.sIsElementPresent(bodyLocator) )
+					throw new HarnessException("Unable to find the message body!");
+				
+				// Get the body value
+				// String body = this.sGetText(bodyLocator).trim();
+				String html = this.zGetHtml(bodyLocator);
+				
+				logger.info("DisplayMail.zGetBody(" + bodyLocator + ") = " + html);
+				return(html);
+
+			} finally {
+				// Make sure to go back to the original iframe
+				this.sSelectFrame("relative=top");
+			}
 
 		}else {
 			
@@ -163,6 +172,45 @@ public class DisplayTask extends AbsDisplay {
 		return(value);
 
 		
+	}
+
+	public String zGetTaskListViewProperty(Field field) throws HarnessException {
+		String locator = "css=div[id='zl__TKL__rows'] div[id^='zli__TKL'] tr[id^='zlif__TKL']";
+
+		if (field == Field.Subject) {
+		
+			locator += " div[id$='__su']";
+
+		} else if (field == Field.Status) {
+
+			locator += " td[id$='__st']";
+
+		} else if (field == Field.Percentage) {
+
+			locator += " td[id$='__pc']";
+
+		} else if (field == Field.DueDate) {
+
+			locator += " td[id$='__dt']";
+
+		} else {
+
+			throw new HarnessException("no logic defined for field " + field);
+
+		}
+
+		// Make sure something was set
+		if (locator == null)
+			throw new HarnessException("locator was null for field = " + field);
+
+
+		// Get the subject value
+		String value = this.sGetText(locator).trim();
+
+		logger.info(myPageName() + ".zGetTaskListViewProperty(" + field
+				+ ") = " + value);
+		return (value);
+
 	}
 
 

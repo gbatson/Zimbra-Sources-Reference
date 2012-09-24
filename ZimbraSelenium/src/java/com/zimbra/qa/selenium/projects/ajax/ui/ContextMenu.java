@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -26,6 +10,7 @@ import java.util.ArrayList;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.PageAddressbook;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.DialogCreateFolder;
 
 /*
@@ -67,11 +52,19 @@ public class ContextMenu extends AbsDisplay {
       }
 
       return page;
-   }
+    }
 
-	public ContextMenuItem getContextMenuItem  (String locator, Class contextMenuItemObject)throws HarnessException {
+	public ContextMenuItem getContextMenuItem  (String parentLocator, Class contextMenuItemObject)throws HarnessException {
 		   ContextMenuItem cmi=null;
 		   
+		   
+	       if (parentLocator.startsWith("DWT")){
+				  //most likely separator 
+			   cmi = ContextMenuItem.C_SEPARATOR;		
+			   return cmi;
+		   }
+		  
+		   String locator=sGetAttribute("xpath=(//div[@id='" + parentLocator + "']/table/tbody/tr)@id");
 		   Field[] fields= contextMenuItemObject.getFields();
 	       
 	       for (Field f:fields) {
@@ -79,9 +72,9 @@ public class ContextMenu extends AbsDisplay {
 	    		 cmi = (ContextMenuItem) f.get(null); 
 	    		 
 	    	    	
-		         if (cmi.locator.equals(locator)) {
-			     
-		        	 String cssLocator= "css=td[id='" + locator ;
+		         //if (cmi.locator.equals(locator)) {
+	    		 if (locator.startsWith(cmi.locator)) {
+		        	 String cssLocator= "css=td[id='" + parentLocator ;
 			 
 			        //verify image, text, and shortcut 		   
 		        	 if (! this.sIsElementPresent(cssLocator + "_left_icon" + "'] " +cmi.image))
@@ -107,11 +100,6 @@ public class ContextMenu extends AbsDisplay {
 	    	   catch (Exception e) {}    		        	
 	    
 	       }	   
-		   
-	       if (locator.startsWith("DWT")){
-				  //most likely separator 
-			   cmi = ContextMenuItem.C_SEPARATOR;			  
-		   }
 		  
 			
 		   if (cmi == null) {
@@ -129,17 +117,16 @@ public class ContextMenu extends AbsDisplay {
 		//get LOCATOR 
 		try {			
 		  typeLocator = (String) contextMenuItemObjects.getField("LOCATOR").get(null);
-		}
-		catch (Exception e) {
-			throw new HarnessException(e.getMessage() + " Context Menu LOCATOR not defined");
+		} catch (Exception e) {
+			throw new HarnessException("Context Menu LOCATOR not defined", e);
 		}
 		
 		//TODO: check for visible		
-		if ( !this.sIsElementPresent("xpath=//div[@" +typeLocator + "]"))
-			throw new HarnessException("Context Menu List is not present(visible) "+ "//div[@id='zm__Contacts']");
+		if ( !this.sIsElementPresent("css=div[" +typeLocator + "]"))
+			throw new HarnessException("Context Menu List is not present(visible) "+ "css=div[" +typeLocator + "]");
 
 		//Get the number of context menu item including separator  
-		int count = this.sGetXpathCount("//div[@" + typeLocator + "]/table/tbody/tr");
+		int count = sGetCssCount("css=div[" +typeLocator + "]>table>tbody>tr");
 		
 		logger.debug(myPageName() + " zListGetContextMenuItems: number of context menu item including separators: "+ count);
 		System.out.println(myPageName() + " zListGetContextMenuItems: number of context menu item including separators: "+ count);
@@ -148,12 +135,17 @@ public class ContextMenu extends AbsDisplay {
 		for (int i = 1; i <= count; i++) {
 			//get id attribute
 			String id = sGetAttribute("xpath=(//div[@" + typeLocator + "]/table/tbody/tr["+ i +"]/td/div)@id");
-						
+            		    				
 			ContextMenuItem ci  = getContextMenuItem(id, contextMenuItemObjects);		    						
-			list.add(ci);	    	      
+			list.add(ci);
+			ci.parentLocator = id;
+			/*if ( PageAddressbook.CONTEXT_MENU.CONTEXT_MENUITEM_ARRAY[i-1]!= null) { 
+			  PageAddressbook.CONTEXT_MENU.CONTEXT_MENUITEM_ARRAY[i-1].parentLocator=id;
+			}*/
 		}
 
-
+        
+		
 		return list;		
 	}
 	
@@ -185,7 +177,8 @@ public class ContextMenu extends AbsDisplay {
 
 	//check if a context menu item is enable
 	public boolean isEnable(ContextMenuItem cmi) throws HarnessException  {
-		return !zIsElementDisabled("div#" +cmi.locator);       		
+	//	String id = sGetAttribute("xpath=(../../../tr[@id='" + cmi.locator + "'])@id");        	
+		return !zIsElementDisabled("css=div#" + cmi.parentLocator );       		
 	}
 
 }

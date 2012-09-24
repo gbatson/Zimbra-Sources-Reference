@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -34,12 +18,10 @@ public class DialogSaveSearch extends AbsDialog {
 
 	public static class Locators {
 
-      public static final String zDialogId         = "SaveSearch";
-      public static final String zTitleId          = "SaveSearch_title";
-      public static final String zDialogContentId     = "SaveSearch_content";
-      public static final String zDialogInputId    = "SaveSearch_inputDivId";
-      public static final String zDialogInputLocator  = "SaveSearch_nameField";
-      public static final String zDialogButtonsId     = "SaveSearch_buttons";
+      public static final String zDialogLocator			= "css=div#CreateNewFolderDialog";
+      public static final String zTitleId				= "css=td#CreateNewFolderDialog_title";
+      public static final String zDialogInputLocator	= "css=input#CreateNewFolderDialog_name";
+      public static final String zDialogButtonsId		= "CreateNewFolderDialog_buttons";
 
 
 	}
@@ -65,7 +47,7 @@ public class DialogSaveSearch extends AbsDialog {
 	public boolean zIsActive() throws HarnessException {
 		logger.info(myPageName() + " zIsActive()");
 
-		String locator = "id="+ Locators.zDialogId;
+		String locator = Locators.zDialogLocator;
 		
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false); // Not even present
@@ -90,18 +72,13 @@ public class DialogSaveSearch extends AbsDialog {
 
 		String locator = null;
 		
-		if ( button == Button.B_NEW ) {
+		if ( button == Button.B_OK ) {
 
-         locator = "css=div[id='" + Locators.zDialogButtonsId + "'] div[id='SaveSearch_button2']";
-         throw new HarnessException("implement me!");
-
-      } else if ( button == Button.B_OK ) {
-
-         locator = "css=div[id='" + Locators.zDialogButtonsId + "'] div[id='SaveSearch_button2']";
+         locator = "css=div[id='" + Locators.zDialogButtonsId + "'] div[id='CreateNewFolderDialog_button2']";
 
       } else if ( button == Button.B_CANCEL ) {
 
-         locator = "css=div[id='" + Locators.zDialogButtonsId + "'] div[id='SaveSearch_button1']";
+         locator = "css=div[id='" + Locators.zDialogButtonsId + "'] div[id='CreateNewFolderDialog_button1']";
 
       } else {
          throw new HarnessException("Button "+ button +" not implemented");
@@ -153,7 +130,7 @@ public class DialogSaveSearch extends AbsDialog {
 		if ( folder == null ) 
 			throw new HarnessException("folder must not be null");
 		
-		String locator = "css=div[id='"+ Locators.zDialogId +"'] td[id='zti__ZmChooseFolderDialog_Mail__"+ folder.getId() +"_textCell']";
+		String locator = Locators.zDialogLocator + " td[id='zti__ZmChooseFolderDialog_Mail__"+ folder.getId() +"_textCell']";
 		
 		if ( !this.sIsElementPresent(locator) )
 			throw new HarnessException("unable to find folder in tree "+ locator);
@@ -187,7 +164,8 @@ public class DialogSaveSearch extends AbsDialog {
 		// For some reason, the text doesn't get entered on the first try
 		this.sFocus(locator);
 		this.zClick(locator);
-		zKeyboard.zTypeCharacters(folder);
+		this.sType(locator, folder);
+		// zKeyboard.zTypeCharacters(folder);
 
 		// Is this sleep necessary?
 		SleepUtil.sleepSmall();

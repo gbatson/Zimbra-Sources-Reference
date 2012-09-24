@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,7 +15,6 @@
 package com.zimbra.cs.account.callback;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,9 +28,9 @@ import com.zimbra.cs.account.Provisioning;
 public class DomainCOSMaxAccounts extends AttributeCallback {
 
     @Override
-    public void preModify(Map context, String attrName, Object attrValue,
-            Map attrsToModify, Entry entry, boolean isCreate)
-            throws ServiceException {
+    public void preModify(CallbackContext context, String attrName, Object attrValue,
+            Map attrsToModify, Entry entry)
+    throws ServiceException {
         
         String attr = Provisioning.A_zimbraDomainCOSMaxAccounts;
         String addAttr = "+" + attr;
@@ -111,8 +110,7 @@ public class DomainCOSMaxAccounts extends AttributeCallback {
     }
 
     @Override
-    public void postModify(Map context, String attrName, Entry entry,
-            boolean isCreate) {
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 
 }

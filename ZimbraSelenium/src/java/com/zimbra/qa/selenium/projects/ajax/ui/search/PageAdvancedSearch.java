@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -55,13 +39,30 @@ public class PageAdvancedSearch extends AbsTab {
 	 */
 	@Override
 	public boolean zIsActive() throws HarnessException {
+		
+		// Should it really wait?  Maybe the caller just
+		// wants to know that it is not visible?
+		
 		try {
 			zWaitForElementVisible(Locators.TOOLBAR);
 		}
 		catch (Exception e) {
 			return false;
 		} 
-		return sIsVisible(Locators.TOOLBAR) & sIsVisible(Locators.PANEL);		
+		
+		boolean toolbarVisible = sIsVisible(Locators.TOOLBAR);
+		if ( !toolbarVisible ) {
+			return false;
+		}
+
+		boolean panelVisible = sIsVisible(Locators.PANEL);
+		if ( !panelVisible ) {
+			return false;
+		}
+
+
+		return (true);
+		
 	}
 
 	

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,16 +17,17 @@ package com.zimbra.cs.dav.carddav;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 
 import org.dom4j.Element;
 import org.dom4j.QName;
 
+import com.google.common.io.Closeables;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.Provisioning.GalSearchType;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.resource.AddressObject;
@@ -41,16 +42,17 @@ import com.zimbra.cs.index.ZimbraQueryResults;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.soap.type.GalSearchType;
 
 /*
  * draft-daboo-carddav-02 section 10.7
- * 
+ *
  *          <!ELEMENT filter (prop-filter)>
- *          
+ *
  *          <!ELEMENT prop-filter (is-not-defined |
  *                                 (text-match?, param-filter*))>
  *          <!ATTLIST prop-filter name CDATA #REQUIRED>
- *          
+ *
  *          <!ELEMENT param-filter (is-not-defined | text-match)?>
  *          <!ATTLIST param-filter name CDATA #REQUIRED>
  *
@@ -138,9 +140,9 @@ public abstract class Filter {
             return structures.get(key);
         }
     }
-    
+
     private static final HashMap<String,AttrMapping> sAttrMappings;
-    
+
     static {
         sAttrMappings = new HashMap<String,AttrMapping>();
         AttrMapping m = AttrMapping.createStructured("FN");
@@ -150,8 +152,8 @@ public abstract class Filter {
         AttrMapping.createSimple("NOTE", ContactConstants.A_notes);
         AttrMapping.createStructured("ADR", "home", ContactConstants.A_homeStreet, "work", ContactConstants.A_workStreet);
         AttrMapping.createStructured("URL", "home", ContactConstants.A_homeURL, "work", ContactConstants.A_workURL);
-        
-        m = AttrMapping.createStructured("TEL", 
+
+        m = AttrMapping.createStructured("TEL",
                 "car", ContactConstants.A_carPhone,
                 "cell", ContactConstants.A_mobilePhone,
                 "pager", ContactConstants.A_pager,
@@ -160,18 +162,18 @@ public abstract class Filter {
         m.addSubType("work", ContactConstants.A_workPhone, ContactConstants.A_workPhone2);
         m.addSubType("home", ContactConstants.A_homePhone, ContactConstants.A_homePhone2);
         m.addSubType("fax", ContactConstants.A_homeFax, ContactConstants.A_workFax);
-        
+
         m = AttrMapping.createStructured("EMAIL");
         m.addSubType("internet", ContactConstants.A_email, ContactConstants.A_email2, ContactConstants.A_email3);
-        
+
         m = AttrMapping.createStructured("ORG");
         m.addSubType("work", ContactConstants.A_company, ContactConstants.A_department);
     }
-    
+
     public String getNameAsContactAttr() {
         return mName;
     }
-    
+
     protected void parse(Element elem) {
         for (Object o : elem.elements()) {
             if (o instanceof Element) {
@@ -194,7 +196,7 @@ public abstract class Filter {
     public Collection<AddressObject> match(DavContext ctxt, AddressbookCollection folder) {
         return null;
     }
-    
+
     public boolean mIsNotDefinedSet() {
         return mIsNotDefinedSet;
     }
@@ -203,10 +205,10 @@ public abstract class Filter {
         boolean matched = true;
         return matched;
     }
-    
+
     protected boolean canHavePropFilter()  { return true; }
     protected boolean canHaveParamFilter() { return true; }
-    
+
     public enum MatchType {
         equals, contains, starts_with, ends_with;
         public static MatchType fromString(String s) {
@@ -218,13 +220,13 @@ public abstract class Filter {
             return contains;
         }
     };
-    
+
     public static class TextMatch extends Filter {
         //private String mCollation;
         private String mText;
         private boolean mNegate;
         private MatchType mMatch;
-        
+
         private class Callback extends GalSearchResultCallback {
             DavContext ctxt;
             ArrayList<AddressObject> result;
@@ -233,6 +235,8 @@ public abstract class Filter {
                 this.ctxt = ctxt;
                 this.result = result;
             }
+
+            @Override
             public com.zimbra.common.soap.Element handleContact(Contact c) {
                 try {
                     result.add(new AddressObject(ctxt, c));
@@ -250,7 +254,8 @@ public abstract class Filter {
             mText = elem.getText();
             mMatch = MatchType.fromString(elem.attributeValue(DavElements.P_MATCH_TYPE));
         }
-        
+
+        @Override
         public Collection<AddressObject> match(DavContext ctxt, AddressbookCollection folder) {
             // search the folder for #key:val where key is mName and val is mTextMatch.mText.
             //boolean ignoreCase = mCollation.equals(DavElements.ASCII);
@@ -285,7 +290,8 @@ public abstract class Filter {
                     ZimbraLog.dav.debug("Can't get target mailbox for %s", ctxt.getUser());
                     return result;
                 }
-                zqr = mbox.search(ctxt.getOperationContext(), filter, new byte[] { MailItem.TYPE_CONTACT }, SortBy.NAME_ASCENDING, 100);
+                zqr = mbox.index.search(ctxt.getOperationContext(), filter,
+                        EnumSet.of(MailItem.Type.CONTACT), SortBy.NAME_ASC, 100);
                 while (zqr.hasNext()) {
                     ZimbraHit hit = zqr.getNext();
                     if (hit instanceof ContactHit) {
@@ -296,10 +302,7 @@ public abstract class Filter {
                 ZimbraLog.dav.warn("can't get target mailbox", e);
                 return result;
             } finally {
-                if (zqr != null)
-                    try {
-                        zqr.doneWithSearchResults();
-                    } catch (ServiceException e) {}
+                Closeables.closeQuietly(zqr);
             }
             boolean includeGal = true;
             if (includeGal) {
@@ -320,7 +323,7 @@ public abstract class Filter {
                     gal.search();
                 } catch (ServiceException e) {
                     if (ServiceException.PERM_DENIED.equals(e.getCode()))
-                        ZimbraLog.dav.debug("Can't get gal search result for %s (%s)", ctxt.getUser(), e.getMessage()); 
+                        ZimbraLog.dav.debug("Can't get gal search result for %s (%s)", ctxt.getUser(), e.getMessage());
                     else
                         ZimbraLog.dav.error("Can't get gal search result for %s", ctxt.getUser());
                 }
@@ -335,7 +338,11 @@ public abstract class Filter {
         public boolean match(String prop) {
             return runTextMatch(prop);
         }
+
+        @Override
         protected boolean canHavePropFilter()  { return false; }
+
+        @Override
         protected boolean canHaveParamFilter() { return false; }
     }
     public static class PropFilter extends Filter {
@@ -352,6 +359,8 @@ public abstract class Filter {
             matched &= runTextMatch(val);
             return matched;
         }
+
+        @Override
         public Collection<AddressObject> match(DavContext ctxt, AddressbookCollection folder) {
             if (mIsNotDefinedSet) {
                 // go through all the contacts and return the ones that do not
@@ -366,6 +375,8 @@ public abstract class Filter {
             }
             return null;
         }
+
+        @Override
         protected boolean canHavePropFilter()  { return false; }
     }
 }

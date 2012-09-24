@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -267,12 +267,13 @@ public class ZimbraACL {
      * @param rights specified rights.
      * @return ACEs with right specified in rights
      */
-    List<ZimbraACE> getACEs(Set<Right> rights) {
+    List<ZimbraACE> getACEs(Set<? extends Right> rights) {
         List<ZimbraACE> result = new ArrayList<ZimbraACE>();
         
         for (ZimbraACE ace : mAces) {
-            if (rights.contains(ace.getRight()))
+            if (rights.contains(ace.getRight())) {
                 result.add(ace);
+            }
         }
 
         return result;
@@ -281,9 +282,9 @@ public class ZimbraACL {
     List<String> serialize() {
         List<String> aces = new ArrayList<String>();
         
-        for (ZimbraACE ace : mAces)
+        for (ZimbraACE ace : mAces) {
             aces.add(ace.serialize());
-        
+        }
         return aces;
     }
     

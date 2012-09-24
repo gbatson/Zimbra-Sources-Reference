@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,6 +19,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.security.kerberos.Krb5Keytab;
+import com.zimbra.common.account.Key;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
@@ -109,7 +110,7 @@ public class GssAuthenticator extends Authenticator {
 
         final String host;
         if (LC.krb5_service_principal_from_interface_address.booleanValue()) {
-            String localSocketHostname = mConnection.getLocalAddress().getCanonicalHostName().toLowerCase();
+            String localSocketHostname = localAddress.getCanonicalHostName().toLowerCase();
             if (localSocketHostname.length() == 0 || Character.isDigit(localSocketHostname.charAt(0)))
                 localSocketHostname = LC.zimbra_server_hostname.value();
             host = localSocketHostname;
@@ -216,7 +217,7 @@ public class GssAuthenticator extends Authenticator {
                                           AuthContext.Protocol protocol, String origRemoteIp, String remoteIp, String userAgent)
     throws ServiceException {
         Provisioning prov = Provisioning.getInstance();
-        Account authAccount = prov.get(Provisioning.AccountBy.krb5Principal, principal);
+        Account authAccount = prov.get(Key.AccountBy.krb5Principal, principal);
         if (authAccount == null) {
             ZimbraLog.account.warn("authentication failed (no account associated with Kerberos principal " + principal + ')');
             return null;

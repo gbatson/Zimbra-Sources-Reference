@@ -1,23 +1,8 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
 
 import java.awt.event.KeyEvent;
+import java.util.HashMap;
 import java.util.List;
 
 import org.testng.annotations.Test;
@@ -27,7 +12,7 @@ import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.Toaster;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogMove;
 
 
 public class DeleteContact extends AjaxCommonTest  {
@@ -37,7 +22,11 @@ public class DeleteContact extends AjaxCommonTest  {
 		// All tests start at the Address page
 		super.startingPage = app.zPageAddressbook;
 
-		super.startingAccountPreferences = null;		
+		// Enable user preference checkboxes
+		super.startingAccountPreferences = new HashMap<String , String>() {
+		   {
+		    	put("zimbraPrefShowSelectionCheckbox", "TRUE");		         
+		   }};			
 		
 	}
 	
@@ -47,43 +36,21 @@ public class DeleteContact extends AjaxCommonTest  {
 	    ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(),
 			        expectedMsg , "Verify toast message '" + expectedMsg + "'");
 
-	      //verify deleted contact not displayed
-        List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts(); 
- 	           
-		boolean isFileAsEqual=false;
-		for (ContactItem ci : contacts) {
-			if (ci.fileAs.equals(contactItem.fileAs)) {
-	            isFileAsEqual = true;	 
-				break;
-			}
-		}
-		
-        ZAssert.assertFalse(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") deleted");
+	     //verify deleted contact not displayed      
+        ZAssert.assertFalse(app.zPageAddressbook.zIsContactDisplayed(contactItem), "Verify contact fileAs (" + contactItem.fileAs + ") deleted");
     
 
-		FolderItem trash = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
-
-
-        //verify deleted contact displayed in trash folder
         // refresh Trash folder
+		FolderItem trash = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
         app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, trash);
-   	 
-        contacts = app.zPageAddressbook.zListGetContacts(); 
-         
-		isFileAsEqual=false;
-		for (ContactItem ci : contacts) {
-			if (ci.fileAs.equals(contactItem.fileAs)) {
-	            isFileAsEqual = true;	 
-				break;
-			}
-		}
-		
-        ZAssert.assertTrue(isFileAsEqual, "Verify contact fileAs (" + contactItem.fileAs + ") displayed in Trash folder");
+   	 		
+        //verify deleted contact displayed in trash folder        
+        ZAssert.assertTrue(app.zPageAddressbook.zIsContactDisplayed(contactItem), "Verify contact fileAs (" + contactItem.fileAs + ") displayed in Trash folder");
      
 	}
 	@Test(	description = "Delete a contact item",
 			groups = { "smoke" })
-	public void DeleteContactByClickDeleteOnToolbar() throws HarnessException {
+	public void ClickDeleteOnToolbar() throws HarnessException {
 
 		// Create a contact via soap 
 		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
@@ -113,7 +80,7 @@ public class DeleteContact extends AjaxCommonTest  {
 
 	@Test(	description = "Delete a contact item using keyboard short cut Del",
 			groups = { "functional" })
-	public void DeleteContactUseShortcutDel() throws HarnessException {
+	public void UseShortcutDel() throws HarnessException {
 
 		// Create a contact via soap 
 		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
@@ -127,7 +94,7 @@ public class DeleteContact extends AjaxCommonTest  {
 	
 	@Test(	description = "Delete a contact item using keyboard short cut backspace",
 			groups = { "functional" })
-	public void DeleteContactUseShortcutBackspace() throws HarnessException {
+	public void UseShortcutBackspace() throws HarnessException {
 
 		// Create a contact via soap 
 		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
@@ -211,5 +178,45 @@ public class DeleteContact extends AjaxCommonTest  {
 			
         ZAssert.assertTrue(count==0, "Verify contact fileAs (" + contactItem1.fileAs + "," + contactItem2.fileAs + "," + contactItem3.fileAs + ") deleted");
             
+   	}
+	@Test(	description = "Move a contact item to trash folder by expand Move dropdown on toolbar, then select Trash",
+			groups = { "functional" })
+	public void MoveToTrashFromMoveDropdownOnToolbar() throws HarnessException {
+		
+		 // Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+	
+	
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
+		
+	    //click Move dropdown on toolbar then select Trash
+        app.zPageAddressbook.zToolbarPressPulldown(Button.B_MOVE,folder);
+  
+     
+        //verify
+        VerifyContactDeleted(contactItem);
+        
+   	}
+	
+	@Test(	description = "Move a contact item to trash folder by drag and drop",
+			groups = { "functional" })
+	public void DnDToTrash() throws HarnessException {
+		
+		 // Create a contact via Soap then select
+		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
+	
+	
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
+		
+	    
+		app.zPageAddressbook.zDragAndDrop(
+				"css=td#zlif__CNS-main__" + contactItem.getId() + "__fileas:contains("+ contactItem.fileAs + ")",
+				"css=td#zti__main_Contacts__" + folder.getId() + "_textCell:contains("+ folder.getName() + ")");
+			
+	
+	     //verify
+        VerifyContactDeleted(contactItem);
+   
+         
    	}
 }

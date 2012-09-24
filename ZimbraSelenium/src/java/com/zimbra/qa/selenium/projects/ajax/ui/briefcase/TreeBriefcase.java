@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -21,6 +5,7 @@ package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 
 import java.util.*;
 
+import org.openqa.selenium.By;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
@@ -36,10 +21,11 @@ public class TreeBriefcase extends AbsTree {
 	public static class Locators {
 		public static final String briefcaseListView = "css=[id='zl__BDLV__rows']";
 		public static final String briefcaseTreeView = "css=[id*=zti__main_Briefcase__";
-		public static final String zNewTagTreeMenuItem = "css=tr[id=POPUP_NEW_TAG]:contains('New Tag')";
-		public static final String zNewFolderTreeMenuItem = "css=tr[id=POPUP_NEW_BRIEFCASE]:contains('New Folder')";
+		public static final String zNewTagTreeMenuItem = "css=td[id^=NEW_TAG__][id$=_title]";
+		public static final String zNewFolderTreeMenuItem = "//div[contains(@id,NEW_BRIEFCASE)]//tr[contains(@id,POPUP_NEW_BRIEFCASE)]//td[contains(text(),'New Folder')]";
 		public static final String zRenameTagTreeMenuItem = "css=td[id$=_left_icon]>[class=ImgRename]";
-		public static final String zDeleteTreeMenuItem = "css=td[id$=_left_icon]>[class=ImgDelete]";
+		public static final String zDeleteTreeMenuItem = "css=td[id^=DELETE_WITHOUT_SHORTCUT][id$=_title]";
+		public static final String zEditPropertiesTreeMenuItem = "css=div[id=EDIT_PROPS] tr[id=POPUP_EDIT_PROPS]:contains('Edit Properties')";
 	}
 
 	public TreeBriefcase(AbsApplication application) {
@@ -50,35 +36,34 @@ public class TreeBriefcase extends AbsTree {
 	@Override
 	public AbsPage zTreeItem(Action action, Button option, IItem item)
 			throws HarnessException {
+		// Validate the arguments
+		if ((action == null) || (option == null) || (item == null)) {
+			throw new HarnessException(
+					"zTreeItem(Action, Button, IItem): Must define an action, option, and item");
+		}
+
 		logger.info(myPageName() + " zTreeItem(" + action + ", " + option
 				+ ", " + item.getName() + ")");
 
 		tracer.trace("Click " + action + " then " + option + " on item "
 				+ item.getName());
 
-		// Validate the arguments
-		if ((action == null) || (option == null) || (item == null)) {
-			throw new HarnessException(
-					"Must define an action, option, and item");
-		}
-
 		AbsPage page = null;
 		String actionLocator = null;
 		String optionLocator = null;
 
 		if (item instanceof TagItem) {
-			actionLocator = "zti__main_Briefcase__" + ((TagItem) item).getId()
-					+ "_textCell";
+			actionLocator = "css=td[id^=zti__main_Briefcase__]:contains(" + ((TagItem) item).getName()
+				+ ")";
 		} else if (item instanceof FolderItem) {
-			actionLocator = "zti__main_Briefcase__"
-					+ ((FolderItem) item).getId() + "_textCell";
+			actionLocator = "css=td[id^=zti__main_Briefcase__"
+					+ ((FolderItem) item).getId() + "_textCell]";
 		} else {
 			throw new HarnessException("Must use IItem as argument, but was "
 					+ item.getClass());
 		}
-
-		if (actionLocator == null)
-			throw new HarnessException("locator is null for action " + action);
+		
+		zWaitForElementVisible(actionLocator);	
 
 		if (action == Action.A_RIGHTCLICK) {
 			this.zRightClickAt(actionLocator, "0,0");
@@ -117,17 +102,25 @@ public class TreeBriefcase extends AbsTree {
 			page = new DialogCreateBriefcaseFolder(MyApplication,
 					((AppAjaxClient) MyApplication).zPageBriefcase);
 
+		} else if (option == Button.B_TREE_EDIT_PROPERTIES) {
+
+			optionLocator = Locators.zEditPropertiesTreeMenuItem;
+
+			page = new DialogEditProperties(MyApplication,
+					((AppAjaxClient) MyApplication).zPageBriefcase);
+
 		} else {
 			throw new HarnessException("button " + option
 					+ " not yet implemented");
 		}
 
-		if (optionLocator == null)
-			throw new HarnessException("locator is null for option " + option);
-
+		this.zWaitForBusyOverlay();
+		
+		zWaitForElementVisible(optionLocator);		
+		
 		// Default behavior. Click the locator
-		zClickAt(optionLocator, "0,0");
-
+		zClickAt(optionLocator,"");
+ 
 		// If there is a busy overlay, wait for that to finish
 		this.zWaitForBusyOverlay();
 
@@ -161,31 +154,38 @@ public class TreeBriefcase extends AbsTree {
 
 	@Override
 	public AbsPage zTreeItem(Action action, IItem item) throws HarnessException {
+		// Validate the arguments
+		if ((action == null) || (item == null)) {
+			throw new HarnessException("zTreeItem(Action, IItem): Must define an action, and item");
+		}
 		logger.info(myPageName() + " zTreeItem(" + action + ", "
 				+ item.getName() + ")");
 
 		tracer.trace("Click " + action + " on item " + item.getName());
 
-		// Validate the arguments
-		if ((action == null) || (item == null)) {
-			throw new HarnessException("Must define an action, and item");
-		}
-
 		AbsPage page = null;
 		String locator = null;
 
 		if (item instanceof TagItem) {
-			locator = "zti__main_Briefcase__" + ((TagItem) item).getId()
-					+ "_textCell";
+			locator = "css=td[id^=zti__main_Briefcase__]:contains(" + ((TagItem) item).getName()
+				+ ")";
 		} else if (item instanceof FolderItem) {
 			locator = Locators.briefcaseTreeView + ((FolderItem) item).getId()
 					+ "_imageCell]";
 
 		} else if (item instanceof LinkItem) {
-			locator = "css=a[id$=_addshare_link]";
 			page = new DialogFindShares(MyApplication,
 					((AppAjaxClient) MyApplication).zPageBriefcase);
-
+			if (ZimbraSeleniumProperties.isWebDriver()) {
+				clickBy(By.id("ztih__main_Briefcase__BRIEFCASE"),
+					By.linkText("Find Shares..."));
+				return page;
+			}else{
+				locator = "css=div[id=ztih__main_Briefcase__BRIEFCASE] a[id$=_addshare_link]";
+				page = new DialogFindShares(MyApplication,
+					((AppAjaxClient) MyApplication).zPageBriefcase);
+			}
+			
 			if (!this.sIsElementPresent(locator)) {
 				throw new HarnessException("Unable to locate link in the tree "
 						+ locator);
@@ -232,21 +232,10 @@ public class TreeBriefcase extends AbsTree {
 
 		// If there is a busy overlay, wait for that to finish
 		zWaitForBusyOverlay();
-
-		if (page != null) {
-			// Wait for the page to become active, if it was specified
-			page.zWaitForActive();
-		}
+		
 		return (page);
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.zimbra.qa.selenium.framework.ui.AbsTree#zPressButton(com.zimbra.qa
-	 * .selenium.framework.ui.Button)
-	 */
 	@Override
 	public AbsPage zPressButton(Button button) throws HarnessException {
 		tracer.trace("Click " + button);
@@ -316,6 +305,108 @@ public class TreeBriefcase extends AbsTree {
 			page.zWaitForActive();
 		}
 		return (page);
+	}
+
+	public AbsPage zPressPulldown(Button pulldown, Button option)
+			throws HarnessException {
+		logger.info(myPageName() + " zPressPulldown(" + pulldown + ", "
+				+ option + ")");
+
+		tracer.trace("Click " + pulldown + " then " + option);
+
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null");
+
+		if (option == null)
+			throw new HarnessException("Option cannot be null");
+
+		AbsPage page = null;
+		String pulldownLocator = null;
+		String optionLocator = null;
+
+		if (pulldown == Button.B_TREE_FOLDERS_OPTIONS) {
+
+			pulldownLocator = "css=div[id='ztih__main_Briefcase__BRIEFCASE_div'] td[id='ztih__main_Briefcase__BRIEFCASE_optCell'] div[class=ImgContextMenu]";
+
+			if (option == Button.B_TREE_NEWFOLDER) {
+
+				optionLocator = "css=div[id='ZmActionMenu_briefcase_BRIEFCASE'] div[id='NEW_BRIEFCASE'] td[id$='_title']";
+				page = new DialogCreateBriefcaseFolder(MyApplication,
+						((AppAjaxClient) MyApplication).zPageBriefcase);
+
+			} else {
+				throw new HarnessException("Pulldown/Option " + pulldown + "/"
+						+ option + " not implemented");
+			}
+
+			// FALL THROUGH
+
+		} else if (pulldown == Button.B_TREE_TAGS_OPTIONS) {
+
+			pulldownLocator = "css=div[id='zov__main_Briefcase'] td[id='ztih__main_Briefcase__TAG_optCell'] div[class=ImgContextMenu]";
+
+			if (option == Button.B_TREE_NEWTAG) {
+
+				optionLocator = "css=div[id='ZmActionMenu_briefcase_TAG'] div[id='NEW_TAG'] td[id$='_title']";
+				page = new DialogTag(MyApplication,
+						((AppAjaxClient) MyApplication).zPageBriefcase);
+
+			} else {
+				throw new HarnessException("Pulldown/Option " + pulldown + "/"
+						+ option + " not implemented");
+			}
+
+			// FALL THROUGH
+
+		} else {
+			throw new HarnessException("Pulldown/Option " + pulldown + "/"
+					+ option + " not implemented");
+		}
+
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown + " option "
+						+ option + " pulldownLocator " + pulldownLocator
+						+ " not present!");
+			}
+
+			// 8.0 change ... need zClickAt()
+			// this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator, "0,0");
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException("Button " + pulldown
+							+ " option " + option + " optionLocator "
+							+ optionLocator + " not present!");
+				}
+
+				// 8.0 change ... need zClickAt()
+				// this.zClick(optionLocator);
+				this.zClickAt(optionLocator, "0,0");
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+			}
+
+			// If we click on pulldown/option and the page is specified, then
+			// wait for the page to go active
+			if (page != null) {
+				page.zWaitForActive();
+			}
+		}
+
+		// Return the specified page, or null if not set
+		return (page);
+
 	}
 
 	public List<TagItem> zListGetTags() throws HarnessException {

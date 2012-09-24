@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -178,9 +178,46 @@ WebExZimlet.prototype.init = function() {
  *
  */
 WebExZimlet.prototype.initializeToolbar = function(app, toolbar, controller, viewId) {
-	if (viewId.indexOf("APPT") >= 0) {
+	var viewType = appCtxt.getViewTypeFromId(viewId);
+	if (viewType == ZmId.VIEW_APPOINTMENT) {
 		this._initCalendarWebexToolbar(toolbar, controller);
+	} else 	if (viewType == ZmId.VIEW_CONVLIST || viewType == ZmId.VIEW_CONV || viewType == ZmId.VIEW_TRAD
+			|| viewType == ZmId.VIEW_CONTACT_SIMPLE || viewType == ZmId.VIEW_CAL_DAY) {
+
+		var op = toolbar.getOp(ZmId.OP_ACTIONS_MENU);
+		if(op) {
+			var menu = op.getMenu();
+			if(menu) {
+				if(menu.getMenuItem("WEBEX_ZIMLET_START_QUICK_MEETING")) {
+					return;
+				}
+				var mi = menu.createMenuItem("WEBEX_ZIMLET_START_QUICK_MEETING", {image:"WEBEX-panelIcon", text:this.getMessage("WebExZimlet_startQuickWebExMeeting")});
+				mi.addSelectionListener(new AjxListener(this, this._handleQuickMeetingMenuClick, controller));
+			}
+		}
 	}
+};
+
+WebExZimlet.prototype._handleQuickMeetingMenuClick = function(controller) {
+	var items = controller.getSelection();
+	if(!items instanceof Array) {
+		this._showOneClickDlg("");
+		return;
+	}
+	var type = items[0].type;
+	var obj;
+	var emails = [];
+	if (type == ZmId.ITEM_CONV) {
+		obj = items[0].getFirstHotMsg();
+		emails = obj.getEmails().getArray();
+	} else if(type == ZmId.ITEM_MSG) {
+		obj = items[0];
+		emails = obj.getEmails().getArray();
+	} else if(type == ZmId.ITEM_CONTACT) {
+		emails = this._getEmailsFromContacts(items);
+	}
+	var emails = emails instanceof Array ?  emails.join(";") : "";
+	this._showOneClickDlg(emails);
 };
 
 /**
@@ -309,7 +346,7 @@ WebExZimlet.prototype._initCalendarWebexToolbar = function(toolbar, controller) 
 		//button.addDropDownSelectionListener(new AjxListener(this, this._addMenuItems, [button, menu]));
 		var mi = menu.createMenuItem(Dwt.getNextId(), {image:"WEBEX-panelIcon", text:this.getMessage("WebExZimlet_insertWebExDetails")});
 		mi.addSelectionListener(new AjxListener(this._composerCtrl, this._saveAsWebExHandler, true));
-		var mi = menu.createMenuItem(Dwt.getNextId(), {image:"WEBEX-panelIcon", text:this.getMessage("WebExZimlet_insertWebExDetailsAndSaveAppointment")});
+		var mi = menu.createMenuItem(Dwt.getNextId(), {image:"WEBEX-panelIcon", text:this.getMessage("WebExZimlet_insertWebExDetailsAndSendAppointment")});
 		mi.addSelectionListener(new AjxListener(this._composerCtrl, this._saveAsWebExHandler, false));
 	}
 };
@@ -963,9 +1000,9 @@ WebExZimlet.prototype._getWebExBodyString = function(joinMeetingUrl, editorType,
 	var html = [];
 	html.push(noHeader ? "" : this._getMeetingDetailshdr(this.getMessage("WebExZimlet_teleconferenceDetails"), editorType));
 	if (editorType == "HTML") {
-		html.push("<table cellpadding='0' cellspacing='0' border='0' width=94% align=center><tr><td>");
-		html.push("<div style='border-bottom: 1px solid #6E6E6E; border-right: 1px solid #6E6E6E; border-left: 1px solid #CECECE;'>");
-		html.push("<table cellpadding='4' width=100% cellspacing='0'>");
+		html.push("<table width='94%' align='center'><tr><td>");
+		html.push("<div style='border-bottom:1px solid #6E6E6E; border-right:1px solid #6E6E6E; border-left:1px solid #CECECE;'>");
+		html.push("<table width='100%' class='ZPropertySheet' cellspacing='6'>");
 	}
 	var isRowOdd = true;
 	var hasTeleconfDetails = false;
@@ -1000,9 +1037,9 @@ WebExZimlet.prototype._getWebExBodyString = function(joinMeetingUrl, editorType,
 	var html = [];
 	html.push(noHeader ? "" : this._getMeetingDetailshdr(this.getMessage("WebExZimlet_webExDetails"), editorType));
 	if (editorType == "HTML") {
-		html.push("<table cellpadding='0' cellspacing='0' border='0' width=94% align=center><tr><td>");
-		html.push("<div style='border-bottom: 1px solid #6E6E6E; border-right: 1px solid #6E6E6E; border-left: 1px solid #CECECE;'>");
-		html.push("<table cellpadding='4' width=100% cellspacing='0'>");
+		html.push("<table width='94%' align='center'><tr><td>");
+		html.push("<div style='border-bottom:1px solid #6E6E6E; border-right:1px solid #6E6E6E; border-left:1px solid #CECECE;'>");
+		html.push("<table width='100%' class='ZPropertySheet' cellspacing='6'>");
 	}
 	html.push(this._getMeetingDetailsRow(this.getMessage("WebExZimlet_webExUrl"), joinMeetingUrl, editorType, false, true));
 	html.push(this._getMeetingDetailsRow(this.getMessage("WebExZimlet_userName"), this.getMessage("WebExZimlet_enterYourName"), editorType, false, false));
@@ -1040,7 +1077,7 @@ WebExZimlet.prototype._getMeetingDetailsRow = function(name, val, editorType, no
 	if (editorType == "HTML") {
 		val = val.replace(/\n/g, "<br/>");//make sure to replace newLine to br
 		var rStyle = !isRowOdd ? " style='background-color:#FBF9F4' " : " style='background-color:#FEFDFC' ";
-		return ["<tr ",rStyle,"><td width=20%><b>",name,"</b> </td><td> ", val, "</td></tr>"].join("");
+		return ["<tr ",rStyle,"><td width='20%'><b>",name,"</b> </td><td> ", val, "</td></tr>"].join("");
 	} else {
 		if (noDelimiter) {
 			return [name, val].join("");
@@ -1059,8 +1096,8 @@ WebExZimlet.prototype._getMeetingDetailsRow = function(name, val, editorType, no
 WebExZimlet.prototype._getMeetingDetailshdr = function(hdrName, editorType) {
 	if (editorType == "HTML") {
 		return	["<br/>",
-			"<table cellpadding='0' cellspacing='0' border='0' width=94% align=center><tr><td>",
-			"<div style='background: #808080; border-bottom: 1px solid #6E6E6E;border-right: 1px solid #6E6E6E;font-weight:bold;color:white;padding:2px;'>",
+			"<table width='94%' align='center'><tr><td>",
+			"<div style='background:#808080;border-bottom:1px solid #6E6E6E;border-right:1px solid #6E6E6E;font-weight:bold;color:white;padding:2px;'>",
 			"<b>",hdrName,"</b>",
 			"</div>", "</tr></td></table>"].join("");
 	} else {
@@ -1505,7 +1542,7 @@ function() {
 	this._accntPrefsHelpObjsHash = [];
 	var html = [];
 	if (!AjxEnv.isIE) {//w/o this, stupid IE will break
-		html.push("<table width=96% align=center><tr><td>");
+		html.push("<table width='96%' align='center'><tr><td>");
 	}
 	for (var indx = 1; indx < 6; indx++) {
 		if (indx == 1) {
@@ -1532,11 +1569,11 @@ function(indx, notes) {
 	var html = [];
 	var j = 0;
 	var prefLabel = this.getMessage("WebExZimlet_accountNumber").replace("{0}", indx);
-	html.push("<div class='webExZimlet_YellowBold '>");
+	html.push("<div class='webExZimlet_YellowBold'>");
 	html.push("<div class='webExZimlet_grayAccntHdr'>", prefLabel, "</div>")
 	html.push("<div class='webExZimlet_lightGray'>", this.getMessage("WebExZimlet_accountSettings"), "</div>");
 
-	html.push("<table class='webExZimlet_table'>");
+	html.push("<table class='webExZimlet_table ZPropertySheet' cellspacing='6'>");
 	for (var i = 0; i < WebExZimlet.SINGLE_WEBEX_ACCNT_PROPS.length; i++) {
 		var obj = WebExZimlet.SINGLE_WEBEX_ACCNT_PROPS[i];
 		var type = obj.objType ? obj.objType : "text";
@@ -1546,10 +1583,10 @@ function(indx, notes) {
 			var helpLinkId = Dwt.getNextId();
 			this._accntPrefsHelpObjsHash.push({helpLinkId:helpLinkId, propId:obj.propId});
 			html.push("<tr><td>", this.getMessage(obj.label), "</td><td><input id='", id, "'  type='", type, "'/>",
-				"&nbsp; <a href='javascript:void(0)' id='",helpLinkId,"' style='color:darkBlue;text-decoration:underline'>",this.getMessage("WebExZimlet_help"),"</a></td></tr>");
+				"&nbsp; <a href='javascript:void(0)' id='",helpLinkId,"'>",this.getMessage("WebExZimlet_help"),"</a></td></tr>");
 		} else {
 			html.push("<tr><td>", this.getMessage(obj.label), "</td><td><input id='", id, "'  type='", type, "'/>",
-				"<label style='color:gray'>", this.getMessage(obj.extraLabel), "</label></td></tr>");
+				"<label style='color:gray;'>", this.getMessage(obj.extraLabel), "</label></td></tr>");
 		}
 	}
 
@@ -1557,17 +1594,17 @@ function(indx, notes) {
 	html.push("</table>");
 
 	html.push("<br/><div class='webExZimlet_lightGray'>", this.getMessage("WebExZimlet_teleConfSettings"), "</div>");
-	html.push("<table class='webExZimlet_table'>");
+	html.push("<table class='webExZimlet_table ZPropertySheet' cellspacing='6'>");
 	for (var i = 0; i < WebExZimlet.WEBEX_TELECONF_PROPS.length; i++) {
 		var obj = WebExZimlet.WEBEX_TELECONF_PROPS[i];
 		var id = [obj.propId , indx].join("");
 		this._accntPrefsObjsHash.push(id);
 		if (obj.propId != WebExZimlet.PROP_OTHER_PHONE_NUMBERS.propId) {
 			html.push("<tr><td>", this.getMessage(obj.label), "</td><td><input id='", id,
-					"'  type='text'/>", "<label style='color:gray'>", this.getMessage(obj.extraLabel), "</label></td></tr>");
+					"'  type='text'/>", "<label style='color:gray;'>", this.getMessage(obj.extraLabel), "</label></td></tr>");
 		} else {
 			html.push("<tr><td>", this.getMessage(obj.label), "</td><td><textarea id='", id,
-					"' rows='5' cols='20'></textarea>", "<label style='color:gray'>", this.getMessage(obj.extraLabel), "</label></td></tr>");
+					"' rows='5' cols='20'></textarea>", "<label style='color:gray;'>", this.getMessage(obj.extraLabel), "</label></td></tr>");
 		}
 	}
 	html.push("</table>");
@@ -1575,7 +1612,7 @@ function(indx, notes) {
 	html.push("<br/><div class='webExZimlet_lightGray'>", this.getMessage("WebExZimlet_associateCalendarHdr"), "</div>");
 	var obj = WebExZimlet.PROP_ASSOCIATED_CALENDAR;
 	html.push("<div style='padding:5px'><label style='color:blue;font-weight:bold'>", this.getMessage(obj.label),
-			"</label><label style='color:gray'>", this._getCalendarFoldersList(indx), "<label style='color:gray'>", this.getMessage(obj.extraLabel),
+			"</label><label style='color:gray;'>", this._getCalendarFoldersList(indx), "<label style='color:gray;'>", this.getMessage(obj.extraLabel),
 			"</label></div></div><br/><br/>");
 
 	return html.join("");
@@ -1822,10 +1859,10 @@ function() {
 	var html = [];
 	html.push("<div class='webExZimlet_YellowBold '>");
 	html.push("<div class='webExZimlet_gray'>", this.getMessage("WebExZimlet_appendMeetingInfoToSubOrLoc"), "</div>");
-	html.push("<table cellpadding=0 cellspacing=4>");
+	html.push("<table class='ZPropertySheet' cellspacing='6'>");
 	for (var i = 0; i < WebExZimlet.APPEND_SUB_OPTIONS.length; i++) {
 		var obj = WebExZimlet.APPEND_SUB_OPTIONS[i];
-		html.push("<tr><td>", this.getMessage(obj.label), "</td><td>", this._getAppendSelectListMenuHtml(obj.propId), "</td></tr>");
+		html.push("<tr><td class='ZmFieldLabelRight'>", this.getMessage(obj.label), "</td><td>", this._getAppendSelectListMenuHtml(obj.propId), "</td></tr>");
 	}
 	html.push("</table>");
 	html.push("<br/>");
@@ -2080,15 +2117,15 @@ function(selectHtml) {
 		this._showSelectAccntsDlg._altHostFieldId = "WebExZimlet_showSelectAccntsDlg_altHostFieldId";
 		this._showSelectAccntsDlg._altHelpLinkId = "WebExZimlet_showSelectAccntsDlg_altHelpLinkId";
 		this._showSelectAccntsDlg._mPwdFieldId = "WebExZimlet_showSelectAccntsDlg_mPwdFieldId";
-		html.push("<div style='padding:5px'>", this.getMessage("WebExZimlet_webExAccntToUse"), " <span>", selectHtml, "</span></div>");
+		html.push("<div style='padding:5px;'>", this.getMessage("WebExZimlet_webExAccntToUse"), " <span>", selectHtml, "</span></div>");
 		html.push("<br/>");
 		html.push("<div id='webexZimlet_showSelectAccnts_OptionsDiv' >");
 		html.push("<div><b>",this.getMessage("WebExZimlet_getAccounts"),"</b></div>");
-		html.push("<table class='webExZimlet_table'>");
+		html.push("<table class='webExZimlet_table ZPropertySheet' cellspacing='6'>");
 		html.push("<tr><td>", this.getMessage(WebExZimlet.PROP_ALT_HOSTS.label), "</td><td><input  id='", this._showSelectAccntsDlg._altHostFieldId, "'  type='text'/>",
-				"&nbsp; <a href='javascript:void(0)' id='",this._showSelectAccntsDlg._altHelpLinkId,"' style='color:darkBlue;text-decoration:underline'>",this.getMessage("WebExZimlet_help"),"</a></td></tr>");
+				"&nbsp; <a href='javascript:void(0)' id='",this._showSelectAccntsDlg._altHelpLinkId,"'>",this.getMessage("WebExZimlet_help"),"</a></td></tr>");
 		html.push("<tr><td>", this.getMessage(WebExZimlet.PROP_MEETING_PASSWORD.label), "</td><td><input id='", this._showSelectAccntsDlg._mPwdFieldId, "'  type='text'/>",
-				"<label style='color:gray'>", this.getMessage(WebExZimlet.PROP_MEETING_PASSWORD.extraLabel), "</label></td></tr>");
+				"<label style='color:gray;'>", this.getMessage(WebExZimlet.PROP_MEETING_PASSWORD.extraLabel), "</label></td></tr>");
 		html.push("</table>");
 		html.push("</div>");
 
@@ -2155,7 +2192,7 @@ function(accountNumber, listType) {
 		var sDate = tomorrow;
 	} else if (listType == "NEXT_7_DAYS") {
 		var sHours = 0;
-		var sDate = tomorrow;
+		var sDate = today;
 	} else {
 		var sHours = today.getHours() - 1;//give 1 hour buffer
 		var sDate = today;
@@ -2190,15 +2227,18 @@ function(accountNumber, listType) {
 		"<dateScope>",startDateStr, endDateStr,"</dateScope></bodyContent>"].join("");
 
 	var request = this.newWebExRequest(requestBody);
-	var result = AjxRpc.invoke(request, this.postUri(), {"Content-Type":"text/xml"}, null, false, false);
+	AjxRpc.invoke(request, this.postUri(), {"Content-Type":"text/xml"}, new AjxCallback(this, this._handleGetMeetingsList, [listType]), false, false);	
+};
+
+WebExZimlet.prototype._handleGetMeetingsList = 
+function(listType, result) {
 	var objResult = this.xmlToObject(result);
 	if (!this._validateWebExResult(objResult, this.getMessage("WebExZimlet_unableToGetMeetingInfo"))) {
 		return;
 	}
 	this._setMeetingListView(objResult, listType);
-	this._addShowMeetingListListeners();
+	this._addShowMeetingListListeners();	
 };
-
 /**
  * Shows WebEx meeting list dialog.
  * @param {int} accountNumber WebEx Account Number
@@ -2383,8 +2423,61 @@ function(attendees) {
 	this._oneClickDlg = new ZmDialog({parent: this.getShell(), title:this.getMessage("WebExZimlet_startQuickWebExMeeting"), view:this._oneClickDlgView, standardButtons:[DwtDialog.OK_BUTTON, DwtDialog.CANCEL_BUTTON]});
 	this._oneClickDlg.setButtonListener(DwtDialog.OK_BUTTON, new AjxListener(this, this._oneClickDlgOkBtnListner));
 	this._addAutoCompleteHandler();
+	this._addToButton();
 	this._setAttendeesToOneClickDlg(attendees);
 	this._oneClickDlg.popup();
+};
+
+WebExZimlet.prototype._addToButton =
+function(attendees) {
+	var btn = new DwtButton({parent:this.getShell()});
+	btn.setText(ZmMsg.to);
+	btn.addSelectionListener(new AjxListener(this, this._handleToButton));
+	document.getElementById("webexZimlet__oneClickMeeting_toButton").appendChild(btn.getHtmlElement());
+};
+
+WebExZimlet.prototype._handleToButton =
+function(ev) {
+	if (!this._contactPicker) {
+		AjxDispatcher.require("ContactsCore");
+		var buttonInfo = [{id:AjxEmailAddress.TO, label : ZmMsg[AjxEmailAddress.TYPE_STRING[AjxEmailAddress.TO]]}];
+
+		this._contactPicker = new ZmContactPicker(buttonInfo);
+		this._contactPicker.registerCallback(DwtDialog.OK_BUTTON, this._contactPickerOkCallback, this);
+	}
+	this._contactPicker.popup();
+};
+
+WebExZimlet.prototype._contactPickerOkCallback =
+function(addrVec) {
+	var addrAdded = false;
+	used = {};
+	var addrList = [];
+	var addrs = addrVec && addrVec.getArray();
+	if (addrs && addrs.length) {
+		for (var i = 0, len = addrs.length; i < len; i++) {
+			var addr = addrs[i];
+			var email = addr.isAjxEmailAddress ? addr && addr.getAddress() : addr;
+			if (!email) { continue; }
+			email = email.toLowerCase();
+			if (!used[email]) {
+				addrList.push(addr.address);
+				used[email] = true;
+				addrAdded = true;
+			}
+		}
+		var field = document.getElementById("webExZimlet_oneClickAttendeesField");
+		var existingAddrs = AjxEmailAddress.parseEmailString(field.value).good.getArray();
+		var eAddrs = [];
+		var len = existingAddrs.length;
+		for(var i = 0; i < len; i++) {
+			eAddrs.push(existingAddrs[i].address);
+		}
+		addrList = eAddrs.concat(addrList);
+		var addrStr = addrList.join(AjxEmailAddress.SEPARATOR);
+		field.value = addrStr;
+	}
+	this._contactPicker.popdown();
 };
 
 /**
@@ -2403,10 +2496,10 @@ WebExZimlet.prototype._addAutoCompleteHandler =
 function() {
 	if (appCtxt.get(ZmSetting.CONTACTS_ENABLED) || appCtxt.get(ZmSetting.GAL_ENABLED)) {
 		var params = {
-			dataClass: appCtxt.getAutocompleter(),
-			matchValue: ZmAutocomplete.AC_VALUE_EMAIL,
-			compCallback: (new AjxCallback(this, this._handleCompletionData, [this])),
-			keyUpCallback: (new AjxCallback(this, this._acKeyUpListener))
+			dataClass:		appCtxt.getAutocompleter(),
+			matchValue:		ZmAutocomplete.AC_VALUE_EMAIL,
+			keyUpCallback:	this._acKeyUpListener.bind(this),
+			contextId:		this.name
 		};
 		this._acAddrSelectList = new ZmAutocompleteListView(params);
 		this._acAddrSelectList.handle(document.getElementById("webExZimlet_oneClickAttendeesField"));
@@ -2418,22 +2511,6 @@ function(event, aclv, result) {
 	//ZmSharePropsDialog._enableFieldsOnEdit(this);
 };
 
-WebExZimlet.prototype._handleCompletionData =
-function (control, text, element) {
-	element.value = text;
-	try {
-		if (element.fireEvent) {
-			element.fireEvent("onchange");
-		} else if (document.createEvent) {
-			var ev = document.createEvent("UIEvents");
-			ev.initUIEvent("change", false, window, 1);
-			element.dispatchEvent(ev);
-		}
-	}
-	catch (ex) {
-		// ignore -- TODO: what to do with this error?
-	}
-};
 /**
  * Creates oneclick html view.
  *
@@ -2443,9 +2520,11 @@ WebExZimlet.prototype._createOneClickMeetingView =
 function(selectHtml) {
 
 	var html = [];
-	html.push("<table class='webExZimlet_table' width=100%>");
-	html.push("<tr><td>", this.getMessage("WebExZimlet_webExAccntToUse"), " </td><td>", selectHtml, "</td></tr>");
-	html.push("<tr><td>", this.getMessage("WebExZimlet_addAttendees"), "</td><td><input  style='width:300px' type='text' id='webExZimlet_oneClickAttendeesField'> </input></td></tr>");
+	html.push("<table width='100%' class='webExZimlet_table ZPropertySheet' cellspacing='6'>");
+	html.push("<tr><td colspan='2' class='ZmFieldLabelRight'>", this.getMessage("WebExZimlet_webExAccntToUse"), " </td><td>", selectHtml, "</td></tr>");
+	html.push("<tr>",
+			"<td width='30'></td><td width='15' id='webexZimlet__oneClickMeeting_toButton'></td>",
+			"<td><input  style='width:400px;' type='text' id='webExZimlet_oneClickAttendeesField'> </input></td></tr>");
 	html.push("</table>");
 	return html.join("");
 };
@@ -2456,15 +2535,16 @@ function(selectHtml) {
  */
 WebExZimlet.prototype._oneClickDlgOkBtnListner =
 function() {
-	this._oneClickDlg.popdown();
 	var accntNumber = document.getElementById("webExZimlet_oneClickAccountSelect").value;
-	var attendees = document.getElementById("webExZimlet_oneClickAttendeesField").value;
+	var attendees = this._getValidEmailsAsString("webExZimlet_oneClickAttendeesField");
+	if(attendees == "") {
+		return;
+	}
 	var params = {accntNumber:accntNumber, attendees:attendees};
-
-
 	var postCallback2 = new AjxCallback(this, this._createOneClickMeetingAndLaunch, params);
 	var postCallback = new AjxCallback(this, this._getGeneralPrefsMetaData, postCallback2);
 	this._getAccPrefsMetaData(postCallback);
+	this._oneClickDlg.popdown();
 };
 
 /**
@@ -2675,17 +2755,41 @@ WebExZimlet.prototype.mailDropped = function(msgObj) {
  * @param {ZmContact} objContact Contact
  */
 WebExZimlet.prototype.contactDropped = function(objContact) {
+	var emails = this._getEmailsFromContacts(objContact);
+	this._showOneClickDlg(emails.join(";"));
+};
+
+WebExZimlet.prototype._getEmailsFromContacts = function(objContact) {
 	if (!(objContact instanceof Array)) {
 		objContact = [objContact];
 	}
-	var emails = []
+	var emails = [];
 	for (var i = 0; i < objContact.length; i++) {
 		var c = objContact[i];
+		//when drag-drop, c.attr is null but when passed from ActionMenu, c.attr has the info
+		c = c.attr || c._attr ? (c.attr ? c.attr : c._attr) : c;
 		var e = c.email ? c.email : (c.email2 ? c.email2 : (c.email3 ? c.email3 : ""));
 		if (e != "" && e != undefined && e != "undefined") {
 			emails.push(e);
 		}
 	}
-	this._showOneClickDlg(emails.join(";"));
+	return emails;
+};
+
+WebExZimlet.prototype._getValidEmailsAsString = function(fieldId) {
+    var el = document.getElementById(fieldId);
+    if (el) {
+        var val = el.value;
+        if (val != "") {
+            var parsed = AjxEmailAddress.parseEmailString(val);
+            var badAddrs = parsed.bad.getArray().toString();
+            if (badAddrs != "") {
+                this._showErrorMessage(this.getMessage("cannotContinueInvalidEmails") + "<br>"+ badAddrs);
+                return "";
+            }
+            var ccEmails = parsed.good.size() ? parsed.good.getArray() : parsed.all.getArray();
+        }
+    }
+    return ccEmails.join(";");
 };
 

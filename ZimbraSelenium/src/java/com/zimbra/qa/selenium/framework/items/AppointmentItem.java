@@ -1,49 +1,61 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.items;
 
 import java.util.*;
-
 import org.apache.log4j.*;
-
 import com.zimbra.common.soap.Element;
 import com.zimbra.qa.selenium.framework.util.*;
 
 public class AppointmentItem implements IItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
 
-	////
 	// Data values (SOAP)
-	////
 	protected String dSubject = null;
+	protected String dFragment = null;
+	protected String dAttendees = null;
+	protected String dOptionals = null;
 	protected String dLocation = null;
-	protected String dContent = null; // TODO: need to separate HTML from text
-	protected ZDate dStart = null;
-	protected ZDate dEnd = null;
+	protected String dEquipment = null;
+	protected ZDate dStartTime = null;
+	protected ZDate dEndTime = null;
+	protected String dAllDay = null;
+	protected String dDisplay = null;
+	protected String dFolder = null;
+	protected String dPrivate = null;
+	protected String dRepeat = null;
+	protected String dReminder = null;
+	protected String dContent = null;
+	protected boolean dIsChecked = false;
+	protected boolean dIsTagged = false;
+	protected String dRecurring = null;
+	protected boolean dIsAllDay = false;
+	protected boolean dIsPrivate = false;
+	protected boolean dHasAttachments = false;
 	
-	////
 	// GUI values
-	////
 	protected String gSubject = null;
+	protected String gFragment = null;
+	protected String gAttendees = null;
+	protected String gOptionals = null;	
 	protected String gLocation = null;
-	protected String gStart = null;
-	protected String gEnd = null;
+	protected String gEquipment = null;
+	protected String gStartDate = null;
+	protected ZDate gStartTime = null;
+	protected String gEndDate = null;
+	protected ZDate gEndTime = null;
+	protected String gDisplay = null;
+	protected String gFolder = null;
+	protected String gRepeat = null;
+	protected String gReminder = null;
+	protected String gContent = null;
+	protected boolean gIsChecked = false;
+	protected boolean gIsTagged = false;
+	protected boolean gIsRecurring = false;
+	protected boolean gIsAllDay = false;
+	protected boolean gIsPrivate = false;
+	protected boolean gHasAttachments = false;
+	protected String gStatus = null;
+	protected String TheLocator = null;
 
-	
 	public AppointmentItem() {	
 	}
 	
@@ -52,7 +64,16 @@ public class AppointmentItem implements IItem {
 		return (getSubject());
 	}
 
-	public static AppointmentItem importFromSOAP(Element GetAppointmentResponse) throws HarnessException {
+	public String getLocator() {
+		return (TheLocator);
+	}
+	
+	public void setLocator(String locator) {
+		TheLocator = locator;
+	}
+	
+public static AppointmentItem importFromSOAP(Element GetAppointmentResponse) throws HarnessException {
+	
 		
 		if ( GetAppointmentResponse == null )
 			throw new HarnessException("Element cannot be null");
@@ -74,41 +95,89 @@ public class AppointmentItem implements IItem {
 			// Create the object
 			appt = new AppointmentItem();
 						
+			String parentFolder = m.getAttribute("l");
+			if ( parentFolder != null ) {
+				appt.dFolder = parentFolder;
+			}
+
 			Element sElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:s");
 			if ( sElement != null ) {
 				
-				// Parse the start time
-				appt.dStart = new ZDate(sElement);
+				// Start time
+				appt.dStartTime = new ZDate(sElement);
 
 			}
 
 			Element eElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:e");
 			if ( eElement != null ) {
 				
-				// Parse the start time
-				appt.dEnd = new ZDate(eElement);
+				// End time
+				appt.dEndTime = new ZDate(eElement);
 
 			}
 
 			Element compElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:comp");
 			if ( compElement != null ) {
 
-				// If there is a subject, save it
+				// Subject
 				appt.dSubject = compElement.getAttribute("name");
 				
-				// If there is a location, save it
+				// Location
 				appt.dLocation = compElement.getAttribute("loc");
+				
+				// Display
+				appt.dDisplay = compElement.getAttribute("fb");
+			}
+				
+			// Parse the required attendees
+			ArrayList<String> attendees = new ArrayList<String>();
+			Element[] requiredElements = ZimbraAccount.SoapClient.selectNodes(m, "//mail:at[@role='REQ']");
+			for ( Element e : requiredElements ) {
+				attendees.add(e.getAttribute("a"));
+			}
+			if ( attendees.size() > 0 ) {
+				appt.dAttendees = AppointmentItem.StringListToCommaSeparated(attendees);
 			}
 			
-			Element descElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:desc");
+			// Parse the optional attendees
+			ArrayList<String> optionals = new ArrayList<String>();
+			Element[] optionalElements = ZimbraAccount.SoapClient.selectNodes(m, "//mail:at[@role='OPT']");
+			for ( Element e : optionalElements ) {
+				optionals.add(e.getAttribute("a"));
+			}
+			if ( optionals.size() > 0 ) {
+				appt.dOptionals = AppointmentItem.StringListToCommaSeparated(optionals);
+			}
+			
+			if (appt.dLocation == "") {
+				
+				Element equipElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:at[@cutype='RES']");
+				if ( equipElement != null ) {
+				
+					// Equipment
+					appt.dEquipment = equipElement.getAttribute("a");
+			
+				}
+				
+			} else if (appt.dLocation != null) {
+				
+				Element equipElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:at[@cutype='RES'][2]");
+				if ( equipElement != null ) {
+				
+					// Equipment
+					appt.dEquipment = equipElement.getAttribute("a");
+			
+				}
+			}
+			
+			Element descElement = ZimbraAccount.SoapClient.selectNode(m, "//mail:fr");
 			if ( descElement != null ) {
 				
-				// If there is a description, save it
+				// Body
 				appt.dContent = descElement.getTextTrim();
 				
 			}
 
-						
 			return (appt);
 			
 		} catch (Exception e) {
@@ -119,10 +188,32 @@ public class AppointmentItem implements IItem {
 		
 	}
 
+	/**
+	 * Get an AppointmentItem using start/end +/- 31 days
+	 * @param account
+	 * @param query
+	 * @return
+	 * @throws HarnessException
+	 */
+	public static AppointmentItem importFromSOAP(ZimbraAccount account, String query) throws HarnessException {
+		Calendar now = Calendar.getInstance();
+		ZDate date = new ZDate(now.get(Calendar.YEAR), now.get(Calendar.MONTH) + 1, now.get(Calendar.DAY_OF_MONTH), 12, 0, 0);
+		return (importFromSOAP(account, query, date.addDays(-31), date.addDays(31)));
+	}
+
+
+	/**
+	 * Get an AppointmentItem using soap
+	 * @param account
+	 * @param query
+	 * @param start
+	 * @param end
+	 * @return
+	 * @throws HarnessException
+	 */
 	public static AppointmentItem importFromSOAP(ZimbraAccount account, String query, ZDate start, ZDate end) throws HarnessException {
 		
 		try {
-			
 			account.soapSend(
 					"<SearchRequest xmlns='urn:zimbraMail' types='appointment' calExpandInstStart='"+ start.toMillis() +"' calExpandInstEnd='"+ end.toMillis() +"'>" +
 						"<query>"+ query +"</query>" +
@@ -130,9 +221,10 @@ public class AppointmentItem implements IItem {
 			
 			Element[] results = account.soapSelectNodes("//mail:SearchResponse/mail:appt");
 			if (results.length != 1)
-				throw new HarnessException("Query should return 1 result, not "+ results.length);
-	
-			String id = account.soapSelectValue("//mail:SearchResponse/mail:appt", "id");
+				//throw new HarnessException("Query should return 1 result, not "+ results.length);
+				return null;
+			
+			String id = account.soapSelectValue("//mail:appt", "id");
 			
 			account.soapSend(
 					"<GetAppointmentRequest xmlns='urn:zimbraMail' id='"+ id +"' includeContent='1'>" +
@@ -157,53 +249,398 @@ public class AppointmentItem implements IItem {
 	@Override
 	public String prettyPrint() {
 		StringBuilder sb = new StringBuilder();
-		sb.append(AppointmentItem.class.getSimpleName()).append('\n');
-		sb.append("Subject: ").append(dSubject).append('\n');
-		sb.append("Location: ").append(dLocation).append('\n');
-		sb.append("Start: ").append(dStart).append('\n');
-		sb.append("End: ").append(dEnd).append('\n');
+		sb.append(MailItem.class.getSimpleName()).append('\n');
+		sb.append('\n').append(prettyPrintSOAP());
+		sb.append('\n').append(prettyPrintGUI());
 		return (sb.toString());
 	}
 
+	public String prettyPrintSOAP() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("SOAP Data:\n");
+		sb.append("Subject: ").append(dSubject).append('\n');
+		sb.append("Fragment: ").append(dFragment).append('\n');
+		sb.append("Attendees: ").append(dAttendees).append('\n');
+		sb.append("Optional: ").append(dOptionals).append('\n');
+		sb.append("Location: ").append(dLocation).append('\n');
+		sb.append("Equipment: ").append(dEquipment).append('\n');
+		sb.append("Start Time: ").append(dStartTime).append('\n');	
+		sb.append("End Time: ").append(dEndTime).append('\n');
+		sb.append("Display: ").append(dDisplay).append('\n');
+		sb.append("Calendar: ").append(dFolder).append('\n');
+		sb.append("Repeat: ").append(dRepeat).append('\n');
+		sb.append("Reminder: ").append(dReminder).append('\n');
+		sb.append("Content: ").append(dContent).append('\n');
+		sb.append("Is Allday: ").append(dIsAllDay).append('\n');
+		sb.append("Is Private: ").append(dIsPrivate).append('\n');
+		sb.append("Is Tagged: ").append(dIsTagged).append('\n');
+		sb.append("Is Recurring: ").append(dRecurring).append('\n');		
+		sb.append("Has Attachments: ").append(dHasAttachments).append('\n');
+		return (sb.toString());
+	}
+
+	public String prettyPrintGUI() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("GUI Data:\n");
+		sb.append("Subject: ").append(gSubject).append('\n');
+		sb.append("Fragment: ").append(gFragment).append('\n');
+		sb.append("Attendees: ").append(gAttendees).append('\n');
+		sb.append("Optional: ").append(gOptionals).append('\n');
+		sb.append("Location: ").append(gLocation).append('\n');
+		sb.append("Equipment: ").append(gEquipment).append('\n');		
+		sb.append("Start Time: ").append(gStartTime).append('\n');
+		sb.append("End Time: ").append(gEndTime).append('\n');
+		sb.append("Display: ").append(gDisplay).append('\n');
+		sb.append("Calendar: ").append(gFolder).append('\n');
+		sb.append("Repeat: ").append(gRepeat).append('\n');
+		sb.append("Reminder: ").append(gReminder).append('\n');
+		sb.append("Content: ").append(gContent).append('\n');
+		sb.append("Is Allday: ").append(gIsAllDay).append('\n');
+		sb.append("Is Private: ").append(gIsPrivate).append('\n');
+		sb.append("Is Tagged: ").append(gIsTagged).append('\n');
+		sb.append("Is Recurring: ").append(gIsRecurring).append('\n');		
+		sb.append("Has Attachments: ").append(gHasAttachments).append('\n');
+		return (sb.toString());
+	}
+
+	// --------------------- SOAP -----------------------------------
+	public String getSubject() {
+		return (dSubject);
+	}
+	
 	public void setSubject(String subject) {
 		dSubject = subject;
 	}
 	
-	public String getSubject() {
-		return (dSubject);
+	public String getFragment() {
+		return (dFragment);
+	}
+	
+	public void setFragment(String subject) {
+		dFragment = subject;
+	}
+	
+	public String getAttendees() {
+		return (dAttendees);
+	}
+	
+	public void setAttendees(String attendees) {
+		dAttendees = attendees;
+	}
+	
+	public String getOptional() {
+		return (dOptionals);
+	}
+	
+	public void setOptional(String optional) {
+		dOptionals = optional;
+	}
+	
+	public String getLocation() {
+		return (dLocation);
 	}
 	
 	public void setLocation(String location) {
 		dLocation = location;
 	}
 	
-	public String getLocation() {
-		return (dLocation);
+	public String getEquipment() {
+		return (dEquipment);
 	}
 
-	public void setContent(String content) {
-		dContent = content;
+	public void setEquipment(String equipment) {
+		dEquipment = equipment;
 	}
 	
 	public String getContent() {
 		return (dContent);
 	}
 
-	public void setStartTime(ZDate date) {
-		dStart = date;
+	public void setContent(String content) {
+		dContent = content;
 	}
 	
 	public ZDate getStartTime() {
-		return (dStart);
+		return (dStartTime);
 	}
 
-	public void setEndTime(ZDate date) {
-		dEnd = date;
+	public void setStartTime(ZDate date) {
+		dStartTime = date;
 	}
 	
 	public ZDate getEndTime() {
-		return (dEnd);
+		return (dEndTime);
 	}
+	
+	public void setEndTime(ZDate date) {
+		dEndTime = date;
+	}
+
+	public String getDisplay() {
+		return (dDisplay);
+	}
+
+	public void setDisplay(String display) {
+		dDisplay = display;
+	}
+
+	public void setFolder(String id) {
+		dFolder = id;
+	}
+	
+	public String getReminder() {
+		return (dReminder);
+	}
+
+	public void setReminder(String reminder) {
+		dReminder = reminder;
+	}
+	
+	public boolean getIsAllDay() {
+		return (dIsAllDay);
+	}
+	
+	public boolean setIsAllDay(boolean isAllDay) {
+		dIsAllDay = true;
+		return (dIsAllDay);
+	}
+	
+	public String getRecurring() {
+		return (dRecurring);
+	}
+	
+	public String setRecurring(String recurringType, String endBy) {
+		dRecurring = recurringType + "," + endBy;
+		return dRecurring;
+	}
+	
+	public String setRecurring(String recurringType, int noOfOccurrences) {
+		dRecurring = recurringType + "," + noOfOccurrences;
+		return dRecurring;
+	}
+	
+	public boolean getIsPrivate() {
+		return (dIsPrivate);
+	}
+	
+	public boolean setIsPrivate(boolean isPrivate) {
+		dIsPrivate = true;
+		return (dIsPrivate);
+	}
+	
+	public boolean getIsChecked() {
+		return (dIsChecked);
+	}
+	
+	public boolean setIsChecked() {
+		return (dIsChecked);
+	}
+
+	public boolean getIsTagged() {
+		return (dIsTagged);
+	}
+	
+	public boolean setIsTagged() {
+		return (dIsTagged);
+	}
+
+	public boolean getHasAttachments() {
+		return (dHasAttachments);
+	}
+	
+	public boolean setHasAttachments() {
+		return (dHasAttachments);
+	}
+
+	// --------------------- GUI -----------------------------------
+	public String getGSubject() {
+		return (gSubject);
+	}
+	
+	public void setGSubject(String subject) {
+		gSubject = subject;
+	}
+	
+	public String getGFragment() {
+		return (gFragment);
+	}
+	
+	public void setGFragment(String subject) {
+		gFragment = subject;
+	}
+	
+	public String getGAttendees() {
+		return (gAttendees);
+	}
+	
+	public void setGAttendees(String attendees) {
+		gAttendees = attendees;
+	}
+	
+	public String getGOptional() {
+		return (gOptionals);
+	}
+	
+	public void setGOptional(String optional) {
+		gOptionals = optional;
+	}
+	
+	public String getGLocation() {
+		return (gLocation);
+	}
+	
+	public void setGLocation(String location) {
+		gLocation = location;
+	}
+	
+	public String getGEquipment() {
+		return (gEquipment);
+	}
+	
+	public void setGEquipment(String equipment) {
+		gEquipment = equipment;
+	}
+	
+	public String getGContent() {
+		return (gContent);
+	}
+	
+	public void setGContent(String content) {
+		gContent = content;
+	}
+	
+	public String getGStartDate() {
+		return (gStartDate);
+	}
+	
+	public void setGStartDate(String string) {
+		gStartDate = string;
+	}
+	
+	public String getGEndDate() {
+		return (gEndDate);
+	}
+	
+	public void setGEndDate(String string) {
+		gEndDate = string;
+	}
+	
+	public ZDate getGStartTime() {
+		return (gStartTime);
+	}
+	
+	public void setGStartTime(ZDate date) {
+		gStartTime = date;
+	}
+	
+	public ZDate getGEndTime() {
+		return (gEndTime);
+	}
+	
+	public void setGEndTime(ZDate date) {
+		gEndTime = date;
+	}
+	
+	public String getGDisplay() {
+		return (gDisplay);
+	}
+
+	public void setGDisplay(String display) {
+		gDisplay = display;
+	}
+	
+	public String getGFolder() {
+		return (gFolder);
+	}
+
+	public void setGFolder(String folder) {
+		gFolder = folder;
+	}
+	
+	public String getGReminder() {
+		return (gReminder);
+	}
+
+	public void setGReminder(String reminder) {
+		gReminder = reminder;
+	}
+	
+	public boolean getGIsAllDay() {
+		return (gIsAllDay);
+	}
+	
+	public boolean setGIsAllDay() {
+		return (gIsAllDay);
+	}
+	
+	public boolean getGIsRecurring() {
+		return (gIsRecurring);
+	}
+	
+	public boolean setGIsRecurring(boolean b) {
+		return (gIsRecurring);
+	}
+	
+	public boolean getGIsPrivate() {
+		return (gIsPrivate);
+	}
+	
+	public boolean setGIsPrivate() {
+		return (gIsPrivate);
+	}
+	
+	public boolean getGIsChecked() {
+		return (gIsChecked);
+	}
+
+	public boolean setGIsChecked(boolean b) {
+		return (gIsChecked);
+	}
+	
+	public boolean getGIsTagged() {
+		return (gIsTagged);
+	}
+
+	public boolean setGIsTagged() {
+		return (gIsTagged);
+	}
+	
+	public boolean getGHasAttachments() {
+		return (gHasAttachments);
+	}
+	
+	public boolean setGHasAttachments(boolean b) {
+		return (gHasAttachments);
+	}
+	
+	public String getFolder() {
+		return (dFolder);
+	}
+
+	public boolean getGHasAttachment() {
+		return (gHasAttachments);
+	}
+
+	public void setGIsTagged(boolean tagged) {
+		gIsTagged = tagged;		
+	}
+
+	public void setGHasAttachment(boolean hasAttachment) {
+		gHasAttachments = hasAttachment;
+	}
+
+	public void setGIsAllDay(boolean allDay) {
+		gIsAllDay = allDay;
+	}
+
+	public void setGStatus(String status) {
+		gStatus = status;
+	}
+
+	public String getGStatus() {
+		return (gStatus);
+	}
+
 
 	/**
 	 * Create a single-day appointment on the server
@@ -300,6 +737,17 @@ public class AppointmentItem implements IItem {
 
 		return (result);
 
+	}
+
+	
+	private static String StringListToCommaSeparated(List<String> strings) {
+		StringBuilder sb = new StringBuilder("");
+		String delimiter = ""; // First entry does not get a comma
+		for ( String s : strings ) {
+			sb.append(delimiter).append(s);
+			delimiter = ","; // Next entry, if any, will get a comma
+		}
+		return (sb.toString());
 	}
 
 }

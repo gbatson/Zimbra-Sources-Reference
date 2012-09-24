@@ -51,7 +51,7 @@ public class OptionsViewModel: BaseViewModel
         ImportOOOOptions = config.ImportOptions.OOO;
         SetNextState();
 
-        MigrateONRAfter = config.AdvancedImportOptions.MigrateOnOrAfter.ToLongDateString();
+        MigrateONRAfter = config.AdvancedImportOptions.MigrateOnOrAfter.ToShortDateString();
         IsOnOrAfter = config.AdvancedImportOptions.IsOnOrAfter;
         MaxMessageSize = config.AdvancedImportOptions.MaxMessageSize;
         IsSkipPrevMigratedItems = config.AdvancedImportOptions.IsSkipPrevMigratedItems;
@@ -63,13 +63,14 @@ public class OptionsViewModel: BaseViewModel
             LoggingVerbose = config.GeneralOptions.Verbose;
             LogLevel = config.GeneralOptions.LogLevel;
             MaxThreadCount = config.GeneralOptions.MaxThreadCount;
+            MaxErrorCount = config.GeneralOptions.MaxErrorCount;
         }
 
         string returnval = "";
 
         returnval = ConvertToCSV(config.AdvancedImportOptions.FoldersToSkip, ",");
         FoldersToSkip = returnval;
-  
+        savedDomain = config.UserProvision.DestinationDomain;
     }
 
     private void Load()
@@ -163,6 +164,30 @@ public class OptionsViewModel: BaseViewModel
 
     private void Next()
     {
+        bool mmsError = false;
+        if (IsMaxMessageSize)
+        {
+            if (MaxMessageSize.Length == 0)
+            {
+                mmsError = true;
+            }
+            else
+            {
+                try
+                {
+                    int msf = Int32.Parse(MaxMessageSize);
+                }
+                catch (Exception)
+                {
+                    mmsError = true;
+                }
+            }
+            if (mmsError)
+            {
+                MessageBox.Show("Please enter an integer value for maximum message size", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+        }
         if (isServer)
         {
             lb.SelectedIndex = 4;
@@ -299,14 +324,34 @@ public class OptionsViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("ImportNextButtonContent"));
         }
     }
+    private string dateFormatLabelContent;
+    public string DateFormatLabelContent
+    {
+        get { return dateFormatLabelContent; }
+        set
+        {
+            if (value == dateFormatLabelContent)
+                return;
+            dateFormatLabelContent = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("DateFormatLabelContent"));
+        }
+    }
     public string MigrateONRAfter {
         get { return m_config.AdvancedImportOptions.MigrateOnOrAfter.ToShortDateString(); }
         set
         {
             if (value == m_config.AdvancedImportOptions.MigrateOnOrAfter.ToShortDateString())
                 return;
-            m_config.AdvancedImportOptions.MigrateOnOrAfter = Convert.ToDateTime(value);
-
+            try
+            {
+                m_config.AdvancedImportOptions.MigrateOnOrAfter = Convert.ToDateTime(value);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Please enter a valid date in the indicated format", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
             OnPropertyChanged(new PropertyChangedEventArgs("MigrateONRAfter"));
         }
     }
@@ -438,6 +483,18 @@ public class OptionsViewModel: BaseViewModel
             m_config.GeneralOptions.MaxThreadCount = value;
 
             OnPropertyChanged(new PropertyChangedEventArgs("MaxThreadCount"));
+        }
+    }
+    public Int32 MaxErrorCount
+    {
+        get { return m_config.GeneralOptions.MaxErrorCount; }
+        set
+        {
+            if (value == m_config.GeneralOptions.MaxErrorCount)
+                return;
+            m_config.GeneralOptions.MaxErrorCount = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("MaxErrorCount"));
         }
     }
     private bool oenableNext;

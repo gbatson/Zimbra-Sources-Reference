@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,6 +38,11 @@ public class Cos extends ZAttrCos {
         super(name, id, attrs, prov);
         resetData();
     }
+    
+    @Override
+    public EntryType getEntryType() {
+        return EntryType.COS;
+    }
 
     public void modify(Map<String, Object> attrs) throws ServiceException {
         getProvisioning().modifyAttrs(this, attrs);
@@ -70,6 +75,7 @@ public class Cos extends ZAttrCos {
     }
     
     public boolean isDefaultCos() {
-        return getName().equals(Provisioning.DEFAULT_COS_NAME);
+        return getName().equals(Provisioning.DEFAULT_COS_NAME) ||
+                getName().equals(Provisioning.DEFAULT_EXTERNAL_COS_NAME);
     }
 }

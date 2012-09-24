@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -22,84 +22,83 @@ import com.zimbra.cs.mailbox.MailItem;
 import java.util.*;
 
 /**
- * @author tim
+ * This Grouper buffers a "chunk" of hits, pre-loading their MailItem objects from the DB.
  *
- * This Grouper buffers a "chunk" of hits, pre-loading their 
- * MailItem objects from the DB. 
- * 
- * This is done so that we can lower the number of SELECT calls to the DB
- * by batch-fetching the Message objects from the store 
+ * This is done so that we can lower the number of SELECT calls to the DB by batch-fetching the Message objects from the
+ * store.
+ *
+ * @author tim
  */
-class ItemPreloadingGrouper extends BufferingResultsGrouper {
+final class ItemPreloadingGrouper extends BufferingResultsGrouper {
 
-    private int mChunkSize;
-    private boolean mInDumpster;
-    private OperationContext mOpContext;
+    private final int chunkSize;
+    private final boolean inDumpster;
+    private final OperationContext opContext;
 
     ItemPreloadingGrouper(ZimbraQueryResults results, int chunkSize, Mailbox mbox, boolean inDumpster) {
         super(results);
-        mChunkSize = chunkSize;
-        mOpContext = mbox.getOperationContext();
-        mInDumpster = inDumpster;
-        assert(mChunkSize > 0);
+        assert(chunkSize > 0);
+        this.chunkSize = chunkSize;
+        opContext = mbox.getOperationContext();
+        this.inDumpster = inDumpster;
     }
-    
-    protected boolean bufferHits() throws ServiceException
-    {
-        if (mBufferedHit.size() > 0){
+
+    @Override
+    protected boolean bufferHits() throws ServiceException {
+        if (bufferedHit.size() > 0){
             return true;
         }
-        
-        if (!mHits.hasNext()) {
+
+        if (!hits.hasNext()) {
             return false;
         }
-        
+
         ArrayList<ZimbraHit>toLoad = new ArrayList<ZimbraHit>();
-        
+
         // FIXME: only preloading for the first mailbox right now
         // ...if this were a cross-mailbox-search, we'd be more efficient
         // if we broke things up into a hash of one load-list-per-mailbox and
         // then did preloading there...but for now we won't worry about it
-        ZimbraHit firstHit = mHits.peekNext();
+        ZimbraHit firstHit = hits.peekNext();
         Mailbox mbx = firstHit.getMailbox();
-        
+
         int numLoaded = 0;
         do {
-            ZimbraHit nextHit = mHits.getNext();
-            mBufferedHit.add(nextHit);
+            ZimbraHit nextHit = hits.getNext();
+            bufferedHit.add(nextHit);
 
             if (nextHit.getMailbox() == mbx && mbx != null) {
                 toLoad.add(nextHit);
             }
-             
+
             numLoaded++;
-        } while (numLoaded < mChunkSize && mHits.hasNext());
-        
+        } while (numLoaded < chunkSize && hits.hasNext());
+
         preload(mbx, toLoad);
 
         return true;
     }
-    
-    private void preload(Mailbox mbox, ArrayList /* ZimbraHit */ hits) throws ServiceException {
+
+    private void preload(Mailbox mbox, List<ZimbraHit> hits) throws ServiceException {
         int unloadedIds[] = new int[hits.size()];
         int numToLoad = 0;
         for (int i = 0; i < hits.size(); i++) {
-            ZimbraHit cur = (ZimbraHit) hits.get(i);
+            ZimbraHit cur = hits.get(i);
             if (!cur.itemIsLoaded()) {
                 numToLoad++;
                 unloadedIds[i] = cur.getItemId();
             } else {
                 unloadedIds[i] = Mailbox.ID_AUTO_INCREMENT;
             }
-//            unloadedIds[i] = cur.itemIsLoaded() ? Mailbox.ID_AUTO_INCREMENT : cur.getItemId();
         }
 
         if (numToLoad > 0) {
-            MailItem[] items;
-            items = mbox.getItemById(mOpContext, unloadedIds, MailItem.TYPE_UNKNOWN, mInDumpster);
-            for (int i = 0; i < hits.size(); ++i)
-                if (items[i] != null)
-                    ((ZimbraHit) hits.get(i)).setItem(items[i]);
+            MailItem[] items = mbox.getItemById(opContext, unloadedIds, MailItem.Type.UNKNOWN, inDumpster);
+            for (int i = 0; i < hits.size(); ++i) {
+                if (items[i] != null) {
+                    hits.get(i).setItem(items[i]);
+                }
+            }
         }
     }
 }

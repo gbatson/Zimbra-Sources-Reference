@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,7 +32,7 @@ public class LmtpAddress {
     private boolean mSkipFilters = false;
     private String mFolder = null;
     private String mFlags = null;
-    private String mTags = null;
+    private String[] mTags = null;
 
     private boolean mOnLocalServer = true;
     private String mRemoteServer; // if mOnLocalServer is false
@@ -92,11 +92,11 @@ public class LmtpAddress {
 	return mFlags;
     }
     
-    public void setTags(String tags) {
+    public void setTags(String[] tags) {
 	mTags = tags;
     }
     
-    public String getTags() {
+    public String[] getTags() {
 	return mTags;
     }
     
@@ -400,7 +400,6 @@ public class LmtpAddress {
 
     private boolean parseQuotedLocalPart() {
 	if (debug) say("parsing quoted local part");
-	int soffset = offset;
 
 	int ch = next();
 	if (ch != '"') {
@@ -408,23 +407,39 @@ public class LmtpAddress {
 	    return false;
 	}
 
+    int soffset = offset;
 	while (!eos()) {
 	    ch = next();
 	    if (ch == '\\') {
-		ch = next();
-		if (ch == -1) {
-		    if (debug) say("escape at end of string");
-		    return false;
-		}
-	    } else if (ch == '"') {
-		mLocalPart = new String(array, soffset, offset - soffset);
-		if (debug) say("successfully processed quoted local part");
-		return true;
-	    }
+            ch = next();
+            if (ch == -1) {
+                if (debug) say("escape at end of string");
+                return false;
+            }
+        } else if (ch == '"') {
+            // exclude enclosing quotes
+            mLocalPart = new String(array, soffset, offset - 1 - soffset);
+            // remove backslash from quoted-pairs
+            mLocalPart = decodeQuotedPairs(mLocalPart);
+            if (debug) say("successfully processed quoted local part");
+            return true;
+        }
 	}
 
 	if (debug) say("no end of quote found");
 	return false;
+    }
+
+    private static String decodeQuotedPairs(String s) {
+    StringBuilder sb = new StringBuilder(s);
+    int i = 0;
+    while (i < sb.length()) {
+        if ('\\' == sb.charAt(i)) {
+            sb.deleteCharAt(i);
+        }
+        i++;
+    }
+    return sb.toString();
     }
 
     private boolean parsePlainLocalPart() {

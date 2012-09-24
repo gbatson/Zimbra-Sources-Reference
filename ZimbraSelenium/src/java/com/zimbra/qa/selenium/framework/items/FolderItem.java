@@ -1,29 +1,14 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
 package com.zimbra.qa.selenium.framework.items;
-
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
@@ -35,11 +20,14 @@ import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST
  * @author Matt Rhoades
  *
  */
-public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IItem {
+public class FolderItem extends AFolderItem implements IItem, IOctListViewItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
 	private boolean _isDesktopClientFolder = false;
 	private boolean _isDesktopLocalFolder = false;
-
+    
+	// a place holder for virtual folder "Distribution Lists"
+	public static FolderItem DistributionListFolder= new FolderItem();
+    
 	public boolean isDesktopClientFolder() {
       return _isDesktopClientFolder;
    }
@@ -58,9 +46,9 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		public static final SystemFolder Briefcase = new SystemFolder("Briefcase");
 		public static final SystemFolder Calendar = new SystemFolder("Calendar");
 		public static final SystemFolder Chats = new SystemFolder("Chats");
-		public static final SystemFolder Contacts = new SystemFolder("Contacts");
+		public static final SystemFolder Contacts = new SystemFolder("Contacts","zti__main_Contacts__7");
 		public static final SystemFolder Drafts = new SystemFolder("Drafts");
-		public static final SystemFolder EmailedContacts = new SystemFolder("Emailed Contacts");
+		public static final SystemFolder EmailedContacts = new SystemFolder("Emailed Contacts","zti__main_Contacts__13");
 		public static final SystemFolder Inbox = new SystemFolder("Inbox");
 		public static final SystemFolder Junk = new SystemFolder("Junk");
 		public static final SystemFolder Sent = new SystemFolder("Sent");
@@ -68,11 +56,21 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		public static final SystemFolder Trash = new SystemFolder("Trash");
 				
 		private String name;
+		private String id;
 
 		private SystemFolder(String foldername) {
 			name = foldername;
 		}
-	
+
+		private SystemFolder(String foldername, String id) {
+			name = foldername;
+			this.id=id;
+		}
+
+		public String getId(){
+			return id;
+		}
+		
 		public String getName() {
 			return name;
 		}
@@ -124,6 +122,17 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 
 	public void gSetIsExpanded(boolean expanded) {
 		gIsExpanded = expanded;
+	}
+	
+	/**
+	 * Whether or not the folder is currently selected
+	 */
+	protected boolean gIsSelected = false;
+	public boolean gGetIsSelected() {
+		return (gIsSelected);
+	}
+	public void gSetIsSelected(boolean selected) {
+		gIsSelected = selected;
 	}
 
 	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
@@ -215,14 +224,12 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		FolderItem item = null;
 		
 		try {
-			
-			item = new FolderItem();
-			item.setId(fElement.getAttribute("id"));
-			item.setName(fElement.getAttribute("name"));
-			item.setParentId(fElement.getAttribute("l"));
+
+			item = CreateFolderItem(fElement);
 
 			item._isDesktopClientFolder = isDesktopFolder;
 			item._isDesktopLocalFolder = isDesktopLocalFolder;
+			
 			return (item);
 			
 		} catch (NumberFormatException e) {
@@ -230,7 +237,8 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		} catch (ServiceException e) {
 			throw new HarnessException("Unable to create FolderItem", e);
 		} finally {
-			if ( item != null )	logger.info(item.prettyPrint());
+			if (item != null)
+				logger.info(item.prettyPrint());
 		}
 	}
 
@@ -238,6 +246,25 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
    throws HarnessException {
 	   return importFromSOAP(response, false, false);
 	}
+
+	protected static FolderItem CreateFolderItem(Element e)
+			throws ServiceException {
+		FolderItem item = null;
+
+		item = new FolderItem();
+		item.setId(e.getAttribute("id"));
+		item.setName(e.getAttribute("name"));
+		item.setParentId(e.getAttribute("l"));
+
+		// sub folders
+		List<AFolderItem> subFolders = new ArrayList<AFolderItem>();
+		for (Element child : e.listElements(MailConstants.E_FOLDER))
+			subFolders.add(CreateFolderItem(child));
+
+		item.setSubfolders(subFolders);
+
+		return (item);
+	}	
 
 	/**
     * Import a system folder (i.e. Inbox, Sent, Trash, Contacts, etc.) with specified destination type
@@ -292,8 +319,9 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		account.soapSend("<GetFolderRequest xmlns='urn:zimbraMail'/>", destType, accountName);
 		String id = account.soapSelectValue("//mail:folder[@name='"+ name +"']", "id");
 
+		// cannot find folder name on the server
 		if (id == null) {
-         throw new HarnessException("Folder with name: " + name + " is not found...");
+           return null;
 		}
 
 		// Get just the folder specified
@@ -341,6 +369,39 @@ public class FolderItem extends com.zimbra.soap.mail.type.Folder implements IIte
 		sb.append("Parent ID: ").append(super.getParentId()).append('\n');
 		return (sb.toString());
 	}
+
+	/////////
+	// IListViewItem: Start
+	/////////
+	
+	private String ListViewIcon = null;
+	private String ListViewName = null;
+
+	@Override
+	public String getListViewIcon() throws HarnessException {
+		return (ListViewIcon);
+	}
+
+	@Override
+	public String getListViewName() throws HarnessException {
+		return (ListViewName);
+	}
+
+	
+	@Override
+	public void setListViewIcon(String icon) throws HarnessException {
+		ListViewIcon = icon;
+	}
+
+	@Override
+	public void setListViewName(String name) throws HarnessException {
+		ListViewName = name;
+	}
+
+	/////////
+	// IListViewItem: End
+	/////////
+	
 
 
 }

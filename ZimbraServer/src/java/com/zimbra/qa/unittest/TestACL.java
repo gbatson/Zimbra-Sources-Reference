@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,18 +20,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletResponse;
-
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.HttpMethod;
-import org.apache.commons.httpclient.HttpState;
-
 import junit.framework.TestCase;
 import junit.framework.AssertionFailedError;
 
-import com.zimbra.common.auth.ZAuthToken;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.CliUtil;
 import com.zimbra.common.util.ZimbraLog;
 
@@ -39,7 +33,6 @@ import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.AccessManager.ViaGrant;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
-import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
@@ -47,10 +40,6 @@ import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.CacheEntry;
-import com.zimbra.cs.account.Provisioning.CacheEntryBy;
-import com.zimbra.cs.account.Provisioning.CacheEntryType;
-import com.zimbra.cs.account.Provisioning.GranteeBy;
-import com.zimbra.cs.account.Provisioning.TargetBy;
 import com.zimbra.cs.account.Zimlet;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.CheckAttrRight;
@@ -61,14 +50,15 @@ import com.zimbra.cs.account.accesscontrol.AllowedAttrs;
 import com.zimbra.cs.account.accesscontrol.RightCommand;
 import com.zimbra.cs.account.accesscontrol.RightManager;
 import com.zimbra.cs.account.accesscontrol.RightModifier;
-import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.account.accesscontrol.Rights.User;
 import com.zimbra.cs.account.accesscontrol.ACLUtil;
 import com.zimbra.cs.account.accesscontrol.ACLAccessManager;
 import com.zimbra.cs.account.accesscontrol.TargetType;
-import com.zimbra.cs.account.accesscontrol.UserRight;
 import com.zimbra.cs.account.accesscontrol.ZimbraACE;
 import com.zimbra.cs.service.AuthProvider;
+import com.zimbra.qa.unittest.prov.ldap.ACLTestUtil;
+import com.zimbra.soap.admin.type.CacheEntryType;
+import com.zimbra.soap.type.TargetBy;
 
 
 public abstract class TestACL extends TestCase {
@@ -109,7 +99,7 @@ public abstract class TestACL extends TestCase {
             
             // create a system admin account
             Map<String, Object> attrs = new HashMap<String, Object>();
-            attrs.put(Provisioning.A_zimbraIsAdminAccount, Provisioning.TRUE);
+            attrs.put(Provisioning.A_zimbraIsAdminAccount, ProvisioningConstants.TRUE);
             String sysAdminEmail = getEmailAddr("sysadmin");
             mSysAdminAcct = mProv.createAccount(sysAdminEmail, PASSWORD, attrs);
                 
@@ -158,11 +148,11 @@ public abstract class TestACL extends TestCase {
         return localPart + "@" + DOMAIN_NAME;
     }
     
-    protected static String getEmailAddr(String testCaseName, String localPartSuffix) {
+    protected static String getEmailAddr(String testCaseName, String localPartSufix) {
         if (testCaseName == null)
-            return localPartSuffix + "@" + DOMAIN_NAME;
+            return localPartSufix + "@" + DOMAIN_NAME;
         else
-            return testCaseName + "-" + localPartSuffix + "@" + DOMAIN_NAME;
+            return testCaseName + "-" + localPartSufix + "@" + DOMAIN_NAME;
     }
     
     protected static String getSubDomainName(String testCaseName) {
@@ -174,7 +164,7 @@ public abstract class TestACL extends TestCase {
     }
     
     protected Account keyAccount(String name, String accesKey) {
-        AuthToken authToken = new TestACAccessKey.KeyAuthToken(name, accesKey);
+        AuthToken authToken = new ACLTestUtil.KeyAuthToken(name, accesKey);
         return new GuestAccount(authToken);
     }
     
@@ -192,43 +182,37 @@ public abstract class TestACL extends TestCase {
     
     protected Account createAdminAccount(String email) throws ServiceException {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsAdminAccount, Provisioning.TRUE);
-        return mProv.createAccount(email, PASSWORD, attrs);
-    }
-    
-    protected Account createDelegatedAdminAccount(String email) throws ServiceException {
-        Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsDelegatedAdminAccount, Provisioning.TRUE);
+        attrs.put(Provisioning.A_zimbraIsAdminAccount, ProvisioningConstants.TRUE);
         return mProv.createAccount(email, PASSWORD, attrs);
     }
     
     protected DistributionList createAdminGroup(String email) throws ServiceException {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsAdminGroup, Provisioning.TRUE);
+        attrs.put(Provisioning.A_zimbraIsAdminGroup, ProvisioningConstants.TRUE);
         return mProv.createDistributionList(email, attrs);
     }
     
     protected void flushAccountCache(Account acct) throws ServiceException {
-        mProv.flushCache(CacheEntryType.account, new CacheEntry[]{new CacheEntry(CacheEntryBy.id, acct.getId())});
+        mProv.flushCache(CacheEntryType.account, new CacheEntry[]{new CacheEntry(Key.CacheEntryBy.id, acct.getId())});
     }
     
     protected void makeAccountAdmin(Account acct) throws ServiceException {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsAdminAccount, Provisioning.TRUE);
+        attrs.put(Provisioning.A_zimbraIsAdminAccount, ProvisioningConstants.TRUE);
         mProv.modifyAttrs(acct, attrs);
         flushAccountCache(acct);
     }
     
     protected void makeGroupAdmin(DistributionList group) throws ServiceException {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsAdminGroup, Provisioning.TRUE);
+        attrs.put(Provisioning.A_zimbraIsAdminGroup, ProvisioningConstants.TRUE);
         mProv.modifyAttrs(group, attrs);
         mProv.flushCache(CacheEntryType.group, null);
     }
     
     protected void makeGroupNonAdmin(DistributionList group) throws ServiceException {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsAdminGroup, Provisioning.FALSE);
+        attrs.put(Provisioning.A_zimbraIsAdminGroup, ProvisioningConstants.FALSE);
         mProv.modifyAttrs(group, attrs);
         mProv.flushCache(CacheEntryType.group, null);
     }
@@ -662,7 +646,7 @@ public abstract class TestACL extends TestCase {
         
         RightCommand.grantRight(mProv, authedAcct,
                                 targetType.getCode(), TargetBy.name, target==null?null:target.getName(),
-                                granteeType.getCode(), GranteeBy.name, grantee.getName(), null,
+                                granteeType.getCode(), Key.GranteeBy.name, grantee.getName(), null,
                                 right.getName(), grant.toRightModifier());
     }
     
@@ -673,7 +657,7 @@ public abstract class TestACL extends TestCase {
 
         RightCommand.grantRight(mProv, authedAcct,
                       targetType.getCode(), TargetBy.name, target==null?null:target.getName(),
-                      granteeType.getCode(), GranteeBy.name, grantee.getName(), null,
+                      granteeType.getCode(), Key.GranteeBy.name, grantee.getName(), null,
                       right.getName(), RightModifier.RM_CAN_DELEGATE);
     }
         
@@ -700,7 +684,7 @@ public abstract class TestACL extends TestCase {
         
         RightCommand.revokeRight(mProv, authedAcct,
                                  targetType.getCode(), TargetBy.name, target==null?null:target.getName(),
-                                 granteeType.getCode(), GranteeBy.name, grantee.getName(),
+                                 granteeType.getCode(), Key.GranteeBy.name, grantee.getName(),
                                  right.getName(), grant.toRightModifier());
     }
     
@@ -711,7 +695,7 @@ public abstract class TestACL extends TestCase {
 
         RightCommand.revokeRight(mProv, authedAcct,
                       targetType.getCode(), TargetBy.name, target==null?null:target.getName(),
-                      granteeType.getCode(), GranteeBy.name, grantee.getName(),
+                      granteeType.getCode(), Key.GranteeBy.name, grantee.getName(),
                       right.getName(), RightModifier.RM_CAN_DELEGATE);
     }
     
@@ -738,7 +722,7 @@ public abstract class TestACL extends TestCase {
   Note: do *not* copy it to /Users/pshao/p4/main/ZimbraServer/conf
         that could accidently generate a RightDef.java with our test rights.
         
-  cp /Users/pshao/p4/main/ZimbraServer/data/unittest/*.xml /opt/zimbra/conf/rights
+  cp /Users/pshao/p4/main/ZimbraServer/data/unittest/ldap/rights-unittest.xml /opt/zimbra/conf/rights
   and
   uncomment sCoreRightDefFiles.add("rights-unittest.xml"); in RightManager
   
@@ -754,14 +738,7 @@ public abstract class TestACL extends TestCase {
         CliUtil.toolSetup("INFO");
         // ZimbraLog.toolSetupLog4j("DEBUG", "/Users/pshao/sandbox/conf/log4j.properties.phoebe");
         
-        // run all ACL tests
-        TestUtil.runTest(TestACLGrantee.class);    // all user rights for now
-        TestUtil.runTest(TestACLPrecedence.class); // all user rights for now
-        
         if (mAM instanceof ACLAccessManager) {
-            TestUtil.runTest(TestACLTarget.class);
-            TestUtil.runTest(TestACLAttrRight.class);
-            TestUtil.runTest(TestACLRight.class);
             TestUtil.runTest(TestACLGrant.class);
         }
     }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.RemoteServiceException;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
@@ -58,7 +59,7 @@ public class OfflineChangePassword extends DocumentHandler {
         String status = "fail";
         try {
             if (prov.isZcsAccount(acct)) {
-                attrs.put(OfflineConstants.A_offlineAccountSetup, Provisioning.TRUE); //flag so modify validates
+                attrs.put(OfflineConstants.A_offlineAccountSetup, ProvisioningConstants.TRUE); //flag so modify validates
                 attrs.put(OfflineConstants.A_offlineRemotePassword, newPass);
                 prov.modifyAttrs(acct, attrs);
                 status = "success";

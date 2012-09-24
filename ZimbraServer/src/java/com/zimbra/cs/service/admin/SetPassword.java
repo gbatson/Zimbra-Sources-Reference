@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,8 +25,8 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.CalendarResourceBy;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.CalendarResourceBy;
 import com.zimbra.cs.account.Provisioning.SetPasswordResult;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
@@ -63,14 +63,16 @@ public class SetPassword extends AdminDocumentHandler {
         if (account == null)
             throw AccountServiceException.NO_SUCH_ACCOUNT(id);
         
+        boolean enforcePasswordPolicy;
         if (account.isCalendarResource()) {
             // need a CalendarResource instance for RightChecker
             CalendarResource resource = prov.get(CalendarResourceBy.id, id);
-            checkCalendarResourceRight(zsc, resource, Admin.R_setCalendarResourcePassword);
-        } else
-            checkAccountRight(zsc, account, Admin.R_setAccountPassword);
- 
-        SetPasswordResult result = prov.setPassword(account, newPassword);
+            enforcePasswordPolicy = checkCalendarResourceRights(zsc, resource);
+        } else {
+            enforcePasswordPolicy = checkAccountRights(zsc, account);
+        }
+        
+        SetPasswordResult result = prov.setPassword(account, newPassword, enforcePasswordPolicy);
         
         ZimbraLog.security.info(ZimbraLog.encodeAttrs(
                 new String[] {"cmd", "SetPassword","name", account.getName()}));
@@ -85,11 +87,58 @@ public class SetPassword extends AdminDocumentHandler {
         
 	    return response;
 	}
+	
+	/*
+	 * returns whether password strength policies should be enforced for the authed user
+	 * 
+	 * returns false if user can setAccountPassword
+	 * returns true if user cannot setAccountPassword but can changeAccountPassword
+	 * 
+	 * throws PERM_DENIED if user doesn't have either right
+	 */
+	private boolean checkAccountRights(ZimbraSoapContext zsc, Account acct) 
+	throws ServiceException {
+	    try {
+	        checkAccountRight(zsc, acct, Admin.R_setAccountPassword);
+	        return false;
+	    } catch (ServiceException e) {
+	        if (ServiceException.PERM_DENIED.equals(e.getCode())) {
+	            checkAccountRight(zsc, acct, Admin.R_changeAccountPassword);
+	            return true;
+	        } else {
+	            throw e;
+	        }
+	    }
+	}
 
+	/*
+     * returns whether password strength policies should be enforced for the authed user
+     * 
+     * returns false if user can setCalendarResourcePassword
+     * returns true if user cannot setCalendarResourcePassword but can changeCalendarResourcePassword
+     * 
+     * throws PERM_DENIED if user doesn't have either right
+     */
+    private boolean checkCalendarResourceRights(ZimbraSoapContext zsc, CalendarResource cr) 
+    throws ServiceException {
+        try {
+            checkCalendarResourceRight(zsc, cr, Admin.R_setCalendarResourcePassword);
+            return false;
+        } catch (ServiceException e) {
+            if (ServiceException.PERM_DENIED.equals(e.getCode())) {
+                checkCalendarResourceRight(zsc, cr, Admin.R_changeCalendarResourcePassword);
+                return true;
+            } else {
+                throw e;
+            }
+        }
+    }
     
     @Override
     public void docRights(List<AdminRight> relatedRights, List<String> notes) {
         relatedRights.add(Admin.R_setAccountPassword);
+        relatedRights.add(Admin.R_changeAccountPassword);
         relatedRights.add(Admin.R_setCalendarResourcePassword);
+        relatedRights.add(Admin.R_changeCalendarResourcePassword);
     }
 }

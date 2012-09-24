@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,8 +17,12 @@ package com.zimbra.cs.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.Security;
 import java.util.Timer;
 
+import org.apache.mina.core.buffer.IoBuffer;
+
+import com.zimbra.common.calendar.WellKnownTimeZones;
 import com.zimbra.common.lmtp.SmtpToLmtp;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
@@ -26,21 +30,21 @@ import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.util.ZimbraHttpConnectionManager;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AttributeManager;
+import com.zimbra.cs.account.AutoProvisionThread;
+import com.zimbra.cs.account.ExternalAccountManagerTask;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.accesscontrol.RightManager;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
-import com.zimbra.cs.account.ldap.ZimbraLdapContext;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.db.Versions;
 import com.zimbra.cs.extension.ExtensionUtil;
-import com.zimbra.cs.im.IMRouter;
-import com.zimbra.cs.im.ZimbraIM;
-import com.zimbra.cs.index.MailboxIndex;
+import com.zimbra.cs.iochannel.MessageChannel;
+import com.zimbra.cs.mailbox.MailboxIndex;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.PurgeThread;
 import com.zimbra.cs.mailbox.ScheduledTaskManager;
-import com.zimbra.cs.mailbox.calendar.WellKnownTimeZones;
+import com.zimbra.cs.mailbox.acl.AclPushTask;
 import com.zimbra.cs.memcached.MemcachedConnector;
 import com.zimbra.cs.redolog.RedoLogProvider;
 import com.zimbra.cs.server.ServerManager;
@@ -49,7 +53,6 @@ import com.zimbra.cs.session.SessionCache;
 import com.zimbra.cs.session.WaitSetMgr;
 import com.zimbra.cs.stats.ZimbraPerf;
 import com.zimbra.cs.store.StoreManager;
-import com.zimbra.cs.store.file.Volume;
 import com.zimbra.znative.Util;
 
 /**
@@ -57,7 +60,7 @@ import com.zimbra.znative.Util;
  * by any process that adds mail items.  Services under control include redo
  * logging and indexing.
  */
-public class Zimbra {
+public final class Zimbra {
     private static boolean sInited = false;
     private static boolean sIsMailboxd = false;
 
@@ -118,7 +121,7 @@ public class Zimbra {
 
     private static void checkForClasses() {
         checkForClass("javax.activation.DataSource", "activation.jar");
-        checkForClass("javax.mail.internet.MimeMessage", "mail.jar");
+        checkForClass("javax.mail.internet.MimeMessage", "javamail-1.4.3.jar");
         checkForClass("com.zimbra.znative.IO", "zimbra-native.jar");
     }
 
@@ -162,7 +165,6 @@ public class Zimbra {
 
         app.initializeZimbraDb(forMailboxd);
 
-        AttributeManager.setMinimize(forMailboxd);
 
         if (!Versions.checkVersions()) {
             Zimbra.halt("Data version mismatch.  Reinitialize or upgrade the backend data store.");
@@ -179,11 +181,23 @@ public class Zimbra {
         }
 
         Provisioning prov = Provisioning.getInstance();
-        if (prov instanceof LdapProvisioning) {
-            ZimbraLdapContext.waitForServer();
+        if (prov instanceof LdapProv) {
+            ((LdapProv) prov).waitForLdapServer();
             if (forMailboxd) {
-                AttributeManager.loadLdapSchemaExtensionAttrs((LdapProvisioning)prov);
+                AttributeManager.loadLdapSchemaExtensionAttrs((LdapProv) prov);
             }
+        }
+
+        if( Provisioning.getInstance().getLocalServer().isMailSSLClientCertOCSPEnabled()) {
+            // Activate OCSP
+            Security.setProperty("ocsp.enable", "true");
+            // Activate CRLDP
+            System.setProperty("com.sun.security.enableCRLDP", "true");
+        }else {
+            // Disable OCSP
+            Security.setProperty("ocsp.enable", "false");
+            // Disable CRLDP
+            System.setProperty("com.sun.security.enableCRLDP", "false");
         }
 
         try {
@@ -194,11 +208,9 @@ public class Zimbra {
 
         ZimbraHttpConnectionManager.startReaperThread();
 
+        ExtensionUtil.initAll();
+
         try {
-            if (forMailboxd) {
-                // band-aid for bug 65232
-                Volume.reloadVolumes();
-            }
             StoreManager.getInstance().startup();
         } catch (IOException e) {
             throw ServiceException.FAILURE("Unable to initialize StoreManager.", e);
@@ -214,8 +226,6 @@ public class Zimbra {
         if (app.supports(EhcacheManager.class.getName())) {
             EhcacheManager.getInstance().startup();
         }
-
-        ExtensionUtil.initAll();
 
         // ZimletUtil.loadZimlets();
 
@@ -236,16 +246,12 @@ public class Zimbra {
         if (sIsMailboxd) {
             SessionCache.startup();
 
+            Server server = Provisioning.getInstance().getLocalServer();
+
             if (!redoLog.isSlave()) {
-                Server server = Provisioning.getInstance().getLocalServer();
-
                 boolean useDirectBuffers = server.isMailUseDirectBuffers();
-                org.apache.mina.common.ByteBuffer.setUseDirectBuffers(useDirectBuffers);
+                IoBuffer.setUseDirectBuffer(useDirectBuffers);
                 ZimbraLog.misc.info("MINA setUseDirectBuffers(" + useDirectBuffers + ")");
-
-                if (app.supports(ZimbraIM.class.getName()) && server.getBooleanAttr(Provisioning.A_zimbraXMPPEnabled, false)) {
-                    ZimbraIM.startup();
-                }
 
                 ServerManager.getInstance().startServers();
             }
@@ -266,12 +272,33 @@ public class Zimbra {
                 PurgeThread.startup();
             }
 
+            if (app.supports(AutoProvisionThread.class.getName())) {
+                AutoProvisionThread.switchAutoProvThreadIfNecessary();
+            }
 
             if (LC.smtp_to_lmtp_enabled.booleanValue()) {
                 int smtpPort = LC.smtp_to_lmtp_port.intValue();
                 int lmtpPort = Provisioning.getInstance().getLocalServer().getLmtpBindPort();
                 SmtpToLmtp smtpServer = SmtpToLmtp.startup(smtpPort, "localhost", lmtpPort);
                 smtpServer.setRecipientValidator(new SmtpRecipientValidator());
+            }
+
+            if (app.supports(AclPushTask.class)) {
+                long pushInterval = server.getSharingUpdatePublishInterval();
+                sTimer.schedule(new AclPushTask(), pushInterval, pushInterval);
+            }
+
+            if (app.supports(ExternalAccountManagerTask.class)) {
+                long interval = server.getExternalAccountStatusCheckInterval();
+                sTimer.schedule(new ExternalAccountManagerTask(), interval, interval);
+            }
+
+            if (prov.getLocalServer().isMessageChannelEnabled()) {
+                try {
+                    MessageChannel.getInstance().startup();
+                } catch (IOException e) {
+                    ZimbraLog.misc.warn("can't start notification channels", e);
+                }
             }
 
             // should be last, so that other subsystems can add dynamic stats counters
@@ -293,6 +320,7 @@ public class Zimbra {
 
         if (sIsMailboxd) {
             PurgeThread.shutdown();
+            AutoProvisionThread.shutdown();
         }
 
         ZimbraApplication app = ZimbraApplication.getInstance();
@@ -315,20 +343,12 @@ public class Zimbra {
                 ServerManager.getInstance().stopServers();
             }
 
-            if (app.supports(ZimbraIM.class.getName())) {
-                ZimbraIM.shutdown();
-            }
-
             SessionCache.shutdown();
         }
 
         MailboxIndex.shutdown();
 
         if (sIsMailboxd) {
-            if (app.supports(IMRouter.class.getName())) {
-            	IMRouter.getInstance().shutdown();
-            }
-
             redoLog.shutdown();
         }
 
@@ -355,7 +375,7 @@ public class Zimbra {
 
         try {
             DbPool.shutdown();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
         }
     }
 

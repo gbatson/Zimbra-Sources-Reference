@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -422,9 +422,10 @@ public class SyncExceptionHandler extends IOExceptionHandler {
             mm.setText(buf.toString());
             mm.saveChanges(); //must call this to update the headers
 
-            //save failure alert to "Sync Failures" folder
+            // save failure alert to ""Sync Failures" folder
             ParsedMessage pm = new ParsedMessage(mm, true);
-            dmbx.addMessage(new ChangeTrackingMailbox.TracelessContext(), pm, DesktopMailbox.ID_FOLDER_INBOX, true, Flag.BITMASK_UNREAD, null);
+            DeliveryOptions dopt = new DeliveryOptions().setFolderId(DesktopMailbox.ID_FOLDER_FAILURE).setNoICal(true).setFlags(Flag.BITMASK_UNREAD);
+            dmbx.addMessage(new ChangeTrackingMailbox.TracelessContext(), pm, dopt, null);
         } catch (Exception e) {
             OfflineLog.offline.warn("can't save failure report", e);
         }
@@ -442,9 +443,10 @@ public class SyncExceptionHandler extends IOExceptionHandler {
             mm.setText(message);
             mm.saveChanges(); //must call this to update the headers
 
-            //save failure alert to "Sync Failures" folder
+            // save failure alert to "Sync Failures" folder
             ParsedMessage pm = new ParsedMessage(mm, true);
-            dmbx.addMessage(new ChangeTrackingMailbox.TracelessContext(), pm, DesktopMailbox.ID_FOLDER_FAILURE, true, Flag.BITMASK_UNREAD, null);
+            DeliveryOptions dopt = new DeliveryOptions().setFolderId(DesktopMailbox.ID_FOLDER_FAILURE).setNoICal(true).setFlags(Flag.BITMASK_UNREAD);
+            dmbx.addMessage(new ChangeTrackingMailbox.TracelessContext(), pm, dopt, null);
         } catch (Exception e) {
             OfflineLog.offline.warn("can't save failure report for id=" + id, e);
         }

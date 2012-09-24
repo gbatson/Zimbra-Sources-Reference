@@ -1,35 +1,22 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.core;
 
+import java.awt.Toolkit;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.*;
-
 import org.apache.log4j.*;
-import org.testng.ITestContext;
-import org.testng.ITestNGMethod;
-import org.testng.ITestResult;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriverBackedSelenium;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.remote.RemoteWebDriver;
+import org.testng.*;
 import org.testng.annotations.*;
 import org.xml.sax.SAXException;
-
 import com.thoughtworks.selenium.*;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
-import com.zimbra.qa.selenium.framework.core.Repository;
+import com.zimbra.qa.selenium.framework.core.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.OperatingSystem.OsType;
@@ -86,18 +73,20 @@ import com.zimbra.qa.selenium.projects.ajax.ui.DialogError.DialogErrorID;
  *
  */
 public class AjaxCommonTest {
+	
 	protected static Logger logger = LogManager.getLogger(AjaxCommonTest.class);
 	public final boolean isRunningDesktopTest = ZimbraSeleniumProperties.getStringProperty(
 			ZimbraSeleniumProperties.getLocalHost() + ".desktop.test", "false").toLowerCase().equals("true") ? true : false;
 
-	private static DefaultSelenium _selenium = null;
-
+	private WebDriverBackedSelenium _webDriverBackedSelenium = null;
+	private WebDriver _webDriver = null;
+	
 	/**
 	 * The AdminConsole application object
 	 */
 	protected AppAjaxClient app = null;
 
-	protected static OsType osType = null;
+	protected OsType osType = null;
 	private final static String _accountFlavor = "Zimbra";
 	public final static String defaultAccountName = ZimbraSeleniumProperties.getUniqueString();
 	private Repository _repository = new Repository();
@@ -189,15 +178,49 @@ public class AjaxCommonTest {
 		{
 			
 			ZimbraSeleniumProperties.setAppType(ZimbraSeleniumProperties.AppType.AJAX);
-
-
-			_selenium = ClientSessionFactory.session().selenium();
-			_selenium.start();
-			_selenium.windowMaximize();
-			_selenium.windowFocus();
-			_selenium.allowNativeXpath("true");
-			_selenium.setTimeout("30000");// Use 30 second timeout for opening the browser
-
+			DefaultSelenium _selenium = null;
+			
+			if (ZimbraSeleniumProperties.isWebDriver()) {
+				_webDriver = ClientSessionFactory.session().webDriver();
+				
+				/*
+				Set<String> handles = _webDriver.getWindowHandles(); 
+				String script = "if (window.screen){var win = window.open(window.location); win.moveTo(0,0);win.resizeTo(window.screen.availWidth, window.screen.availHeight);};"; 
+				((JavascriptExecutor) _webDriver).executeScript(script); 
+				Set<String> newHandles = _webDriver.getWindowHandles(); 
+				newHandles.removeAll(handles); 
+				_webDriver.switchTo().window(newHandles.iterator().next());
+							 							 
+				_webDriver.manage().window().setSize(new Dimension(800,600));
+				 
+				Selenium selenium = new WebDriverBackedSelenium(_webDriver, _webDriver.getCurrentUrl());
+				selenium.windowMaximize();
+						
+				int width = Integer.parseInt(selenium.getEval("screen.width;"));
+				int height = Integer.parseInt(selenium.getEval("screen.height;"));
+				_webDriver.manage().window().setPosition(new Point(0, 0));
+				_webDriver.manage().window().setSize(new Dimension(width,height));
+				*/
+				
+				Capabilities cp =  ((RemoteWebDriver)_webDriver).getCapabilities();
+				 if (cp.getBrowserName().equals(DesiredCapabilities.firefox().getBrowserName())||cp.getBrowserName().equals(DesiredCapabilities.chrome().getBrowserName())||cp.getBrowserName().equals(DesiredCapabilities.internetExplorer().getBrowserName())){				
+					_webDriver.manage().window().setPosition(new Point(0, 0));
+					_webDriver.manage().window().setSize(new Dimension((int)Toolkit.getDefaultToolkit().getScreenSize().getWidth(),(int)Toolkit.getDefaultToolkit().getScreenSize().getHeight()));
+				}								
+			} else if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()) {
+				_webDriverBackedSelenium = ClientSessionFactory.session()
+						.webDriverBackedSelenium();
+				_webDriverBackedSelenium.windowMaximize();
+				_webDriverBackedSelenium.windowFocus();
+				_webDriverBackedSelenium.setTimeout("30000");// Use 30 second timeout for
+			} else {
+				_selenium = ClientSessionFactory.session().selenium();
+				_selenium.start();
+				_selenium.windowMaximize();
+				_selenium.windowFocus();
+				_selenium.allowNativeXpath("true");
+				_selenium.setTimeout("30000");// Use 30 second timeout for opening the browser
+			}
 			// Dynamic wait for App to be ready
 			int maxRetry = 10;
 			int retry = 0;
@@ -207,7 +230,16 @@ public class AjaxCommonTest {
 				{
 					logger.info("Retry #" + retry);
 					retry ++;
-					_selenium.open(ZimbraSeleniumProperties.getBaseURL());
+					
+					if (ZimbraSeleniumProperties.isWebDriver()) {
+						//_webDriver.get(ZimbraSeleniumProperties.getBaseURL());
+						_webDriver.navigate().to(ZimbraSeleniumProperties.getBaseURL());
+					} 
+					else if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()) 
+						_webDriverBackedSelenium.open(ZimbraSeleniumProperties.getBaseURL());
+					else
+						_selenium.open(ZimbraSeleniumProperties.getBaseURL());
+
 					appIsReady = true;
 				} catch (SeleniumException e) {
 					if (retry == maxRetry) {
@@ -226,8 +258,7 @@ public class AjaxCommonTest {
 		} catch (SeleniumException e) {
 			throw new HarnessException("Unable to open app", e);
 		} catch (Exception e) {
-			logger.info(e.getMessage());
-			e.printStackTrace();
+			logger.warn(e);
 		}
 
 		logger.info("commonTestBeforeSuite: finish");		
@@ -281,8 +312,7 @@ public class AjaxCommonTest {
 		.append("?at=")
 		.append(zdp.getSerialNumber()).toString();
 		logger.debug("Selenium is opening: " + accountUrl);
-		logger.debug("Selenium is: " + _selenium);
-		_selenium.open(accountUrl);
+		ClientSessionFactory.session().selenium().open(accountUrl);
 		GeneralUtility.waitForElementPresent(app.zPageLogin,
 				PageLogin.Locators.zBtnLoginDesktop);
 	}
@@ -314,7 +344,7 @@ public class AjaxCommonTest {
 		logger.info("accountDeleteUrl: " + accountDeleteUrl);
 		GeneralUtility.doHttpPost(accountDeleteUrl);
 
-		_selenium.refresh();
+		ClientSessionFactory.session().selenium().refresh();
 		GeneralUtility.waitForElementPresent(app.zPageLogin,
 				PageLogin.Locators.zAddNewAccountButton);
 	}
@@ -393,28 +423,17 @@ public class AjaxCommonTest {
 			logger.debug("commonTestBeforeMethod: AccountZWC is not currently logged in");
 
 			if ( app.zPageMain.zIsActive() )
-				app.zPageMain.zLogout();
-			app.zPageLogin.zLogin(ZimbraAccount.AccountZWC());
-
-			// Confirm
-			if ( !ZimbraAccount.AccountZWC().equals(app.zGetActiveAccount())) {
-				throw new HarnessException("Unable to authenticate as "+ ZimbraAccount.AccountZWC().EmailAddress);
-			}
-
-			// Handle http://wiki.zimbra.com/wiki/File:ZimbraSeleniumScreenshotPopups1.jpeg
-			// START REF: https://bugzilla.zimbra.com/show_bug.cgi?id=63711
-			// Depending on how bug 63711 is implemented, need to add/update/remove the 
-			// code below.  Checking for a dialog after login is too generic - it
-			// could miss other un-wanted dialog boxes that are bugs.
-			//
-			DialogError dialog = app.zPageMain.zGetErrorDialog(DialogErrorID.ZmMsgDialog);
-			if ( dialog.zIsActive() ) {
-				dialog.zClickButton(Button.B_OK);
-			}
-			//
-			// END REF: https://bugzilla.zimbra.com/show_bug.cgi?id=63711
-
-			
+				try{
+					app.zPageMain.zLogout();
+					
+				}catch(Exception ex){
+					if ( !app.zPageLogin.zIsActive()) {
+			            logger.error("Login page is not active ", ex);
+			           
+			            app.zPageLogin.sOpen(ZimbraSeleniumProperties.getLogoutURL());            
+			            app.zPageLogin.sOpen(ZimbraSeleniumProperties.getBaseURL());
+			        }
+				}							
 		}
 
 		// If a startingPage is defined, then make sure we are on that page
@@ -433,7 +452,32 @@ public class AjaxCommonTest {
 
 		}
 
+		// Check for error dialogs
+		boolean check = "true".equals( ZimbraSeleniumProperties.getStringProperty("dialog.error.beforetest.check", "true") );
+		boolean dismiss = "true".equals( ZimbraSeleniumProperties.getStringProperty("dialog.error.beforetest.dismiss", "false") );
+		if ( check ) {
+
+			AbsDialog dialog = app.zPageMain.zGetErrorDialog(DialogErrorID.Zimbra);
+			if ( (dialog != null) && (dialog.zIsActive()) ) {
+
+				// Error dialog is visible.
+				if ( dismiss ) {
+
+					// Dismiss the dialog and carry on
+					dialog.zClickButton(Button.B_OK);
+
+				} else {
+
+					// Throw an exception (all future tests will likely be skipped)
+					throw new HarnessException("Error Dialog is visible");
+
+				}
+
+
+			}
+		}	
 		
+
 		// Make sure any extra compose tabs are closed
 		app.zPageMain.zCloseComposeTabs();
 
@@ -454,14 +498,17 @@ public class AjaxCommonTest {
 	public void commonTestAfterSuite() throws HarnessException {	
 		logger.info("commonTestAfterSuite: start");
 
-
-		ClientSessionFactory.session().selenium().stop();
-
+		if (ZimbraSeleniumProperties.isWebDriver()) {
+			_webDriver.quit();
+		} else if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()) {
+			_webDriverBackedSelenium.stop();
+		} else {
+			ClientSessionFactory.session().selenium().stop();
+		}
+		
 		_repository.endRepository();
 
 		logger.info("commonTestAfterSuite: finish");
-
-
 
 	}
 
@@ -499,20 +546,45 @@ public class AjaxCommonTest {
 		logger.info("commonTestAfterMethod: start");
 
 		String testCaseResult = String.valueOf(testResult.getStatus());
-      Repository.testCaseEnd(testCaseResult);
+		Repository.testCaseEnd(testCaseResult);
 
+		// If neither the main page or login page are active, then
+		// The app may be in a confused state.
+		//
+		// Clear the cookies and reload
+		//
+		if ( (!app.zPageMain.zIsActive()) && (!app.zPageLogin.zIsActive()) ) {
+            logger.error("Neither login page nor main page were active.  Reload app.", new Exception());
+            // app.zPageLogin.sDeleteAllVisibleCookies();
+            app.zPageLogin.sOpen(ZimbraSeleniumProperties.getLogoutURL());            
+            app.zPageLogin.sOpen(ZimbraSeleniumProperties.getBaseURL());
+        }
+		
 		logger.info("commonTestAfterMethod: finish");
 	}
 
-   /**
-    * Performance test after method
-    */
-   @AfterMethod(groups={"performance"})
-   public void performanceTestAfterMethod() {
 
-      // Resetting the account to flush after each performance test method,
-      // so that the next test is running with new account
-      ZimbraAccount.ResetAccountZWC();
+    /**
+     * Performance test after method
+     */
+    @AfterMethod(groups={"performance"})
+    public void performanceTestAfterMethod() {
 
-   }
+       // Resetting the account to flush after each performance test method,
+       // so that the next test is running with new account
+       ZimbraAccount.ResetAccountZWC();
+
+    }
+	
+	public void ModifyAccountPreferences(String string) throws HarnessException {
+		StringBuilder settings = new StringBuilder();
+		for (Map.Entry<String, String> entry : startingAccountPreferences.entrySet()) {
+			settings.append(String.format("<a n='%s'>%s</a>", entry.getKey(), entry.getValue()));
+		}		
+		ZimbraAdminAccount.GlobalAdmin().soapSend(
+				"<ModifyAccountRequest xmlns='urn:zimbraAdmin'>"
+				+		"<id>"+ string +"</id>"
+				+		settings.toString()
+				+	"</ModifyAccountRequest>");
+	}
 }

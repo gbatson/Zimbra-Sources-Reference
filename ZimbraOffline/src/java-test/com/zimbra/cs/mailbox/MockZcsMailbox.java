@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -79,9 +79,9 @@ public class MockZcsMailbox extends ZcsMailbox {
     public void addStubTag(String name, Integer id) throws ServiceException {
         UnderlyingData data = new UnderlyingData();
         data.id          = id;
-        data.type        = MailItem.TYPE_TAG;
+        data.type        = MailItem.Type.TAG.toByte();
         data.name        = name;
-        data.subject     = name;
+//        data.subject     = name;
         Tag tag = new Tag(this, data);
         tagsByName.put(name, tag);
     }

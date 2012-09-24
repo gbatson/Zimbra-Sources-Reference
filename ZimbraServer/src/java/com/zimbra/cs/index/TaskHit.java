@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,15 +17,14 @@ package com.zimbra.cs.index;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Task;
 import com.zimbra.cs.mailbox.calendar.Invite;
 
 public final class TaskHit extends CalendarItemHit {
 
-    TaskHit(ZimbraQueryResultsImpl results, Mailbox mbx, int mailItemId, Task task) {
-        super(results, mbx, mailItemId, task);
+    TaskHit(ZimbraQueryResultsImpl results, Mailbox mbx, int id, Task task, Object sortValue) {
+        super(results, mbx, id, task, sortValue);
     }
 
     public long getDueTime() throws ServiceException {
@@ -81,39 +80,39 @@ public final class TaskHit extends CalendarItemHit {
     }
 
     @Override
-    public Object getSortField(SortBy sortOrder) throws ServiceException {
-        switch (sortOrder.getType()) {
-            case TASK_DUE_ASCENDING:
-            case TASK_DUE_DESCENDING:
+    public Object getSortField(SortBy sort) throws ServiceException {
+        switch (sort) {
+            case TASK_DUE_ASC:
+            case TASK_DUE_DESC:
                 return getDueTime();
-            case TASK_STATUS_ASCENDING:
-            case TASK_STATUS_DESCENDING:
+            case TASK_STATUS_ASC:
+            case TASK_STATUS_DESC:
                 return getStatus();
-            case TASK_PERCENT_COMPLETE_ASCENDING:
-            case TASK_PERCENT_COMPLETE_DESCENDING:
+            case TASK_PERCENT_COMPLETE_ASC:
+            case TASK_PERCENT_COMPLETE_DESC:
                 return getCompletionPercentage();
             default:
-                return super.getSortField(sortOrder);
+                return super.getSortField(sort);
         }
     }
 
     @Override
-    int compareBySortField(SortBy sortOrder, ZimbraHit other) throws ServiceException {
-        switch (sortOrder.getType()) {
-            case TASK_DUE_ASCENDING:
+    int compareTo(SortBy sort, ZimbraHit other) throws ServiceException {
+        switch (sort) {
+            case TASK_DUE_ASC:
                 return compareByDueDate(true, this, other);
-            case TASK_DUE_DESCENDING:
+            case TASK_DUE_DESC:
                 return compareByDueDate(false, this, other);
-            case TASK_STATUS_ASCENDING:
+            case TASK_STATUS_ASC:
                 return compareByStatus(true, this, other);
-            case TASK_STATUS_DESCENDING:
+            case TASK_STATUS_DESC:
                 return compareByStatus(false, this, other);
-            case TASK_PERCENT_COMPLETE_ASCENDING:
+            case TASK_PERCENT_COMPLETE_ASC:
                 return compareByCompletionPercent(true, this, other);
-            case TASK_PERCENT_COMPLETE_DESCENDING:
+            case TASK_PERCENT_COMPLETE_DESC:
                 return compareByCompletionPercent(false, this, other);
             default:
-                return super.compareBySortField(sortOrder, other);
+                return super.compareTo(sort, other);
         }
     }
 

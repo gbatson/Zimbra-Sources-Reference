@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
+import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -27,21 +28,26 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.dbcp.DelegatingConnection;
 import org.apache.commons.pool.impl.GenericObjectPool;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.db.DbPool.PoolConfig;
 
-public class SQLite extends Db {
+public final class SQLite extends Db {
 
     private static final String PRAGMA_JOURNAL_MODE_DEFAULT = "DELETE";
     private static final String PRAGMA_SYNCHRONOUS_DEFAULT  = "FULL";
@@ -59,9 +65,13 @@ public class SQLite extends Db {
         mErrorCodes.put(Db.Error.FOREIGN_KEY_CHILD_EXISTS, "foreign key");
         mErrorCodes.put(Db.Error.FOREIGN_KEY_NO_PARENT, "foreign key");
         mErrorCodes.put(Db.Error.TOO_MANY_SQL_PARAMS, "too many SQL variables");
+        mErrorCodes.put(Db.Error.BUSY, "SQLITE_BUSY");
+        mErrorCodes.put(Db.Error.LOCKED, "database is locked");
+        mErrorCodes.put(Db.Error.CANTOPEN, "SQLITE_CANTOPEN");
     }
-    
-    @Override boolean supportsCapability(Db.Capability capability) {
+
+    @Override
+    boolean supportsCapability(Db.Capability capability) {
         switch (capability) {
             case AVOID_OR_IN_WHERE_CLAUSE:   return false;
             case BITWISE_OPERATIONS:         return true;
@@ -83,31 +93,42 @@ public class SQLite extends Db {
             case ROW_LEVEL_LOCKING:          return false;
             case UNIQUE_NAME_INDEX:          return false;
             case SQL_PARAM_LIMIT:            return true;
+            case DUMPSTER_TABLES:            return false;
         }
         return false;
     }
 
-    @Override boolean compareError(SQLException e, Error error) {
+    @Override
+    boolean compareError(SQLException e, Error error) {
         // XXX: the SQLite JDBC driver doesn't yet expose SQLite error codes, which sucks
         String code = mErrorCodes.get(error);
-        return code != null && e.getMessage().contains(code);
+        return code != null && e.getMessage() != null && e.getMessage().contains(code);
     }
 
-    @Override String forceIndexClause(String index) {
+    @Override
+    String forceIndexClause(String index) {
         // don't think we can direct the sqlite optimizer...
         return "";
     }
 
-    @Override String getIFNULLClause(String expr1, String expr2) {
+    @Override
+    String getIFNULLClause(String expr1, String expr2) {
         return "IFNULL(" + expr1 + ", " + expr2 + ")";
     }
 
-    @Override PoolConfig getPoolConfig() {
+    @Override
+    public String bitAND(String expr1, String expr2) {
+        return expr1 + " & " + expr2;
+    }
+
+    @Override
+    PoolConfig getPoolConfig() {
         return new SQLiteConfig();
     }
 
 
-    @Override void startup(org.apache.commons.dbcp.PoolingDataSource pool, int poolSize) throws SQLException {
+    @Override
+    void startup(org.apache.commons.dbcp.PoolingDataSource pool, int poolSize) throws SQLException {
         cacheSize = LC.sqlite_cache_size.value();
         if (cacheSize.equals("0"))
             cacheSize = null;
@@ -123,7 +144,8 @@ public class SQLite extends Db {
         super.startup(pool, poolSize);
     }
 
-    @Override void postCreate(java.sql.Connection conn) throws SQLException {
+    @Override
+    void postCreate(Connection conn) throws SQLException {
         try {
             conn.setAutoCommit(true);
             pragmas(conn, null);
@@ -132,9 +154,9 @@ public class SQLite extends Db {
         }
     }
 
-    private void pragma(java.sql.Connection conn, String dbname, String key, String value) throws SQLException {
+    private void pragma(Connection conn, String dbname, String key, String value) throws SQLException {
         PreparedStatement stmt = null;
-        
+
         try {
             String prefix = dbname == null || dbname.equals("zimbra") ? "" : dbname + ".";
             (stmt = conn.prepareStatement("PRAGMA " + prefix + key +
@@ -144,7 +166,7 @@ public class SQLite extends Db {
         }
     }
 
-    void pragmas(java.sql.Connection conn, String dbname) throws SQLException {
+    void pragmas(Connection conn, String dbname) throws SQLException {
         /*
          * auto_vacuum causes databases to be locked permanently
          * pragma(conn, dbname, "auto_vacuum", "2");
@@ -164,15 +186,15 @@ public class SQLite extends Db {
 
     private static final int MAX_ATTACHED_DATABASES = readConfigInt("sqlite_max_attached_databases", "max # of attached databases", 7);
 
-    private static final HashMap<java.sql.Connection, LinkedHashMap<String, String>> sAttachedDatabases =
-            new HashMap<java.sql.Connection, LinkedHashMap<String, String>>(DEFAULT_CONNECTION_POOL_SIZE);
+    private static final HashMap<Connection, LinkedHashMap<String, String>> sAttachedDatabases =
+            new HashMap<Connection, LinkedHashMap<String, String>>(DEFAULT_CONNECTION_POOL_SIZE);
 
-    private LinkedHashMap<String, String> getAttachedDatabases(Connection conn) {
+    private LinkedHashMap<String, String> getAttachedDatabases(DbConnection conn) {
         return sAttachedDatabases.get(getInnermostConnection(conn.getConnection()));
     }
 
-    private java.sql.Connection getInnermostConnection(java.sql.Connection conn) {
-        java.sql.Connection retVal = null;
+    private Connection getInnermostConnection(Connection conn) {
+        Connection retVal = null;
         if (conn instanceof DebugConnection)
             retVal = ((DebugConnection) conn).getConnection();
         if (conn instanceof DelegatingConnection)
@@ -180,7 +202,8 @@ public class SQLite extends Db {
         return retVal == null ? conn : retVal;
     }
 
-    @Override public void optimize(Connection conn, String dbname, int level)
+    @Override
+    public void optimize(DbConnection conn, String dbname, int level)
         throws ServiceException {
         try {
             boolean autocommit = conn.getConnection().getAutoCommit();
@@ -219,8 +242,9 @@ public class SQLite extends Db {
                 (level > 0 ? "vacuum" : "analyze") + ' ' + dbname + " error", e);
         }
     }
-    
-    @Override public void registerDatabaseInterest(Connection conn, String dbname) throws SQLException, ServiceException {
+
+    @Override
+    public void registerDatabaseInterest(DbConnection conn, String dbname) throws SQLException, ServiceException {
         LinkedHashMap<String, String> attachedDBs = getAttachedDatabases(conn);
         if (attachedDBs != null && attachedDBs.containsKey(dbname))
             return;
@@ -229,7 +253,7 @@ public class SQLite extends Db {
         if (attachedDBs != null && attachedDBs.size() >= MAX_ATTACHED_DATABASES) {
             for (Iterator<String> it = attachedDBs.keySet().iterator(); attachedDBs.size() >= MAX_ATTACHED_DATABASES && it.hasNext(); ) {
                 String name = it.next();
-                
+
                 if (!name.equals("zimbra") && detachDatabase(conn, name))
                     it.remove();
             }
@@ -237,7 +261,7 @@ public class SQLite extends Db {
         attachDatabase(conn, dbname);
     }
 
-    void attachDatabase(Connection conn, String dbname) throws SQLException, ServiceException {
+    void attachDatabase(DbConnection conn, String dbname) throws SQLException, ServiceException {
         PreparedStatement stmt = null;
         boolean autocommit = true;
         try {
@@ -263,7 +287,7 @@ public class SQLite extends Db {
             }
             DbPool.quietCloseStatement(stmt);
         }
-        
+
         LinkedHashMap<String, String> attachedDBs = getAttachedDatabases(conn);
         if (attachedDBs != null) {
             attachedDBs.put(dbname, null);
@@ -274,7 +298,7 @@ public class SQLite extends Db {
         }
     }
 
-    private boolean detachDatabase(Connection conn, String dbname) throws ServiceException {
+    private boolean detachDatabase(DbConnection conn, String dbname) throws ServiceException {
         PreparedStatement stmt = null;
         boolean autocommit = true;
         try {
@@ -305,24 +329,77 @@ public class SQLite extends Db {
         }
     }
 
-//    @Override void preClose(Connection conn) {
-//        LinkedHashMap<String, String> attachedDBs = getAttachedDatabases(conn);
-//        if (attachedDBs == null)
-//            return;
-//
-//        // simplest solution it to just detach all the active databases every time we close the connection
-//        for (Iterator<String> it = attachedDBs.keySet().iterator(); it.hasNext(); ) {
-//            if (detachDatabase(conn, it.next()))
-//                it.remove();
-//        }
-//    }
+    private void releaseMboxDbLock(Integer mboxId) {
+        if (mboxId != null) {
+            ReentrantLock lock = null;
+            lock = lockMap.get(mboxId);
+            if (lock != null && lock.isHeldByCurrentThread()) {
+                lock.unlock();
+                ZimbraLog.dbconn.trace("unlocked mbox %d",mboxId);
+            }
+        }
+    }
 
-    @Override public boolean databaseExists(Connection conn, String dbname) throws ServiceException {
+    @Override
+    void preClose(DbConnection conn) {
+        releaseMboxDbLock(conn.mboxId);
+    }
+
+
+    private static ConcurrentMap<Integer, ReentrantLock> lockMap = new ConcurrentHashMap<Integer, ReentrantLock>();
+
+    private boolean checkLockMap(int mboxId) {
+        for (Entry<Integer, ReentrantLock> entry : lockMap.entrySet()) {
+            if (entry.getKey().intValue() != mboxId && entry.getValue().isHeldByCurrentThread()) {
+                ZimbraLog.dbconn.debug("already holding db lock for mbox %d",entry.getKey());
+                if (entry.getKey().intValue() != -1) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Override
+    void preOpen(Integer mboxId) {
+        ZimbraLog.dbconn.trace("trying to lock mbox %d",mboxId);
+        assert(checkLockMap(mboxId));
+        ReentrantLock lock = lockMap.get(mboxId);
+        if (lock == null) {
+            lock = new ReentrantLock();
+            ReentrantLock added = lockMap.putIfAbsent(mboxId, lock);
+            if (added != null) {
+                lock = added;
+            }
+        }
+        boolean locked = false;
+        long timeoutSecs = 180;
+        //lock with timeout in case external call sites cause a deadlock
+        //(e.g. one site locks some object before opening connection; another incorrectly locks same object after opening connection)
+        //in case of timeout we'll fall through and let sqlite_busy retry handler sort it out
+        try {
+            locked = lock.tryLock(timeoutSecs, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+        }
+        if (!locked) {
+            ZimbraLog.dbconn.warn("Unable to get db lock for mbox %d",mboxId);
+        } else {
+            ZimbraLog.dbconn.trace("locked mbox %d",mboxId);
+        }
+    }
+
+    @Override
+    void abortOpen(Integer mboxId) {
+        releaseMboxDbLock(mboxId);
+    }
+
+    @Override
+    public boolean databaseExists(DbConnection conn, String dbname) throws ServiceException {
         if (!new File(getDatabaseFilename(dbname)).exists())
             return false;
 
         // since it's so easy to end up with an empty SQLite database, make
-        // sure that at least one table exists 
+        // sure that at least one table exists
         PreparedStatement stmt = null;
         ResultSet rs = null;
         boolean autocommit = true;
@@ -358,7 +435,7 @@ public class SQLite extends Db {
     private ConcurrentMap<String,Boolean> deleted = new ConcurrentHashMap<String, Boolean>();
 
     @Override
-    void deleteDatabaseFile(Connection conn, String dbname) {
+    void deleteDatabaseFile(DbConnection conn, String dbname) {
         assert(dbname != null && !dbname.trim().equals(""));
         try {
             detachDatabase(conn, dbname);
@@ -381,7 +458,7 @@ public class SQLite extends Db {
             mDriverClassName = "org.sqlite.JDBC";
             mPoolSize = DEFAULT_CONNECTION_POOL_SIZE;
             mRootUrl = null;
-            mConnectionUrl = "jdbc:sqlite:" + getDatabaseFilename("zimbra"); 
+            mConnectionUrl = "jdbc:sqlite:" + getDatabaseFilename("zimbra");
             mLoggerUrl = null;
             mSupportsStatsCallback = false;
             mDatabaseProperties = getSQLiteProperties();
@@ -413,15 +490,18 @@ public class SQLite extends Db {
     }
 
 
-    @Override public void flushToDisk() {
+    @Override
+    public void flushToDisk() {
         // not really implemented
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "SQLite";
     }
 
-    @Override protected int getInClauseBatchSize() {
+    @Override
+    protected int getInClauseBatchSize() {
         return 200;
     }
     
@@ -447,7 +527,7 @@ public class SQLite extends Db {
             String redoVer = com.zimbra.cs.redolog.Version.latest().toString();
             String outStr = "-- AUTO-GENERATED .SQL FILE - Generated by the SQLite versions tool\n" +
                 "INSERT INTO config(name, value, description) VALUES\n" +
-                "\t('db.version', '" + Versions.DB_VERSION + "', 'db schema version');\n" + 
+                "\t('db.version', '" + Versions.DB_VERSION + "', 'db schema version');\n" +
                 "INSERT INTO config(name, value, description) VALUES\n" +
                 "\t('index.version', '" + Versions.INDEX_VERSION + "', 'index version');\n" +
                 "INSERT INTO config(name, value, description) VALUES\n" +
@@ -461,5 +541,26 @@ public class SQLite extends Db {
             e.printStackTrace();
             System.exit(-1);
         }
+    }
+
+    @Override
+    public String concat(String... fieldsToConcat) {
+        Joiner joiner = Joiner.on(" || ").skipNulls();
+        return joiner.join(fieldsToConcat);
+    }
+
+    @Override
+    public String sign(String field) {
+        return "CASE WHEN(" + field + ")>0 THEN '1' WHEN(" + field + ")<0 THEN '-1' ELSE '0' END";
+    }
+
+    @Override
+    public String lpad(String field, int padSize, String padString) {
+        return "SUBSTR('" + Strings.repeat(padString, padSize) + "' || " + field + ", -" + padSize + ", " + padSize + ")";
+    }
+
+    @Override
+    public String limit(int offset, int limit) {
+        return "LIMIT " + offset + "," + limit;
     }
 }

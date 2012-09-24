@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,11 +20,11 @@ import java.util.List;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
-import com.zimbra.cs.account.DataSource.ConnectionType;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.offline.common.OfflineConstants;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZFolder;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 public class MailBean extends FormBean {
     public MailBean() {}
@@ -41,7 +41,7 @@ public class MailBean extends FormBean {
     protected String host = "";
     protected String port = "";
 
-    protected DataSource.ConnectionType connectionType = ConnectionType.cleartext;
+    protected ConnectionType connectionType = ConnectionType.cleartext;
     
     protected long syncFreqSecs = OfflineConstants.DEFAULT_SYNC_FREQ / 1000;
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,10 +15,10 @@
 
 package com.zimbra.cs.datasource.offline;
 
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.DataSource.DataImport;
-import com.zimbra.cs.account.DataSource.Type;
 import com.zimbra.cs.account.offline.OfflineDataSource;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.mailbox.Flag;
@@ -52,7 +52,7 @@ public class OfflineDataSourceManager extends DataSourceManager {
     public DataImport getDataImport(DataSource ds) throws ServiceException {
         if (ds instanceof OfflineDataSource) {
             OfflineDataSource ods = (OfflineDataSource) ds;
-            if (ds.getType() == Type.imap) {
+            if (ds.getType() == DataSourceType.imap) {
                 if (ods.isYahoo()) {
                     return new YMailImport(ods);
                 } else if (ods.isGmail()) {
@@ -60,7 +60,7 @@ public class OfflineDataSourceManager extends DataSourceManager {
                 } else {
                     return OfflineImport.imapImport(ods);
                 }
-            } else if (ds.getType() == Type.yab) {
+            } else if (ds.getType() == DataSourceType.yab) {
 //                return new YabImport(ods);
                 return new YContactImport(ods);
             }

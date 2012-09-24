@@ -39,6 +39,7 @@ public class IntroViewModel: BaseViewModel
         this.GetIntroUserMigCommand = new ActionCommand(this.GetIntroUserMig, () => true);
         this.GetIntroServerMigCommand = new ActionCommand(this.GetIntroServerMig, () => true);
         this.NextCommand = new ActionCommand(this.Next, () => true);
+        Application.Current.Properties["sdp"] = shortDatePattern;
     }
 
     public UsersViewModel GetUsersViewModel()
@@ -119,7 +120,7 @@ public class IntroViewModel: BaseViewModel
             catch (Exception e)
             {
                 
-                string error = " Migrationwrapper cannot be initialised ,Migration dll cannot be loaded";
+                string error = "Migration cannot be initialized.  ";
                 error += e.Message;
                 MessageBox.Show(error, "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
@@ -129,6 +130,15 @@ public class IntroViewModel: BaseViewModel
 
         // Get data to initialize the profile combo boxes
         string[] profiles = mw.GetListofMapiProfiles();
+
+        // FBS bug 74917 -- 6/1/12
+        if (profiles == null)
+        {
+            profiles = new string[1];
+            profiles[0] = "No profiles";
+        }
+        ////
+
         if (profiles[0].IndexOf("No profiles") != -1)
         {
             string msg = "No Exchange profiles exist.  ";
@@ -149,6 +159,16 @@ public class IntroViewModel: BaseViewModel
         }
         else
         {
+            // FBS bug 75936 -- 7/9/12
+            if (isServer)
+            {
+                m_configViewModelS.ProfileList.Clear();
+            }
+            else
+            {
+                m_configViewModelU.ProfileList.Clear();
+            }
+            ///////
             foreach (string s in profiles)
             {
                 if (s.IndexOf("GetListofMapiProfiles Exception") != -1)
@@ -239,6 +259,8 @@ public class IntroViewModel: BaseViewModel
         BaseViewModel.isServer = true;          // because we start out with Server on -- wouldn't get set by command
         IsServerMigration = true;
         IsUserMigration = false;
+        savedDomain = "";
+        ZimbraValues.GetZimbraValues().ClientVersion = BuildNum;
 
         m_configViewModelS = new ConfigViewModelS();
         m_configViewModelS.Name = "ConfigViewModelS";
@@ -298,6 +320,7 @@ public class IntroViewModel: BaseViewModel
         m_optionsViewModel.LoggingVerbose = false;
         m_optionsViewModel.LogLevel = LogLevel.Info.ToString();
         m_optionsViewModel.MaxThreadCount = 0;
+        m_optionsViewModel.MaxErrorCount = 0;
         m_optionsViewModel.OEnableRulesAndOOO = true;
         m_optionsViewModel.OEnableNext = true;
         m_optionsViewModel.MigrateONRAfter = (DateTime.Now.AddMonths(-3)).ToShortDateString();
@@ -352,6 +375,8 @@ public class IntroViewModel: BaseViewModel
             TheViews.Add(m_usersViewModel);
             TheViews.Add(m_scheduleViewModel);
             TheViews.Add(m_resultsViewModel);
+            m_optionsViewModel.DateFormatLabelContent = "(" + shortDatePattern + ")";
+            m_scheduleViewModel.DateFormatLabelContent2 = "(" + shortDatePattern + ")";
             m_optionsViewModel.ImportNextButtonContent = "Next >";
         }
         else
@@ -363,6 +388,7 @@ public class IntroViewModel: BaseViewModel
             TheViews.Add(m_configViewModelUDest);
             TheViews.Add(m_optionsViewModel);
             TheViews.Add(m_resultsViewModel);
+            m_optionsViewModel.DateFormatLabelContent = "(" + shortDatePattern + ")";
             m_optionsViewModel.ImportNextButtonContent = "Migrate";
         }
     }

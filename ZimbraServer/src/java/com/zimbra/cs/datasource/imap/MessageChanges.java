@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -50,21 +50,24 @@ class MessageChanges {
         // Find tombstones and modified items since specified change id
         List<Integer> tombstones;
         List<Integer> modifiedItems;
-        
-        synchronized (mbox) {
+
+        mbox.lock.lock();
+        try {
             lastChangeId = mbox.getLastChangeID();
             if (lastChangeId <= changeId) {
                 return this; // No changes
             }
-            tombstones = mbox.getTombstones(changeId).getIds(MailItem.TYPE_MESSAGE);
-            modifiedItems = mbox.getModifiedItems(null, changeId, MailItem.TYPE_MESSAGE).getFirst();
+            tombstones = mbox.getTombstones(changeId).getIds(MailItem.Type.MESSAGE);
+            modifiedItems = mbox.getModifiedItems(null, changeId, MailItem.Type.MESSAGE).getFirst();
+        } finally {
+            mbox.lock.release();
         }
         if ((tombstones == null || tombstones.isEmpty()) && modifiedItems.isEmpty()) {
             return this; // No changes
         }
 
         changes = new ArrayList<MessageChange>();
-        
+
         // Find messages deleted from this folder
         if (tombstones != null) {
             for (int id : tombstones) {
@@ -82,7 +85,7 @@ class MessageChanges {
                 changes.add(change);
             }
         }
-        
+
         return this;
     }
 
@@ -115,7 +118,7 @@ class MessageChanges {
     public boolean hasChanges() {
         return changes != null && !changes.isEmpty();
     }
-    
+
     public Collection<MessageChange> getChanges() {
         if (changes == null) {
             changes = new ArrayList<MessageChange>();
@@ -147,7 +150,7 @@ class MessageChanges {
             return null;
         }
     }
-    
+
     private ImapMessage getTracker(int msgId) throws ServiceException {
         try {
             return new ImapMessage(ds, msgId);

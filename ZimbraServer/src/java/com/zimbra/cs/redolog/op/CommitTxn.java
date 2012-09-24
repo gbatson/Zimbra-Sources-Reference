@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoCommitCallback;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
@@ -35,39 +36,35 @@ import com.zimbra.cs.redolog.RedoLogOutput;
  */
 public class CommitTxn extends ControlOp {
 
-    private int mTxnOpCode;
+    private MailboxOperation mTxnOpCode;
 
     public CommitTxn() {
-        mTxnOpCode = OP_UNKNOWN;
+        super(MailboxOperation.CommitTxn);
 	}
 
     public CommitTxn(RedoableOp changeEntry) {
-    	super(changeEntry.getTransactionId());
+    	super(MailboxOperation.CommitTxn, changeEntry.getTransactionId());
         setMailboxId(changeEntry.getMailboxId());
-        mTxnOpCode = changeEntry.getOpCode();
+        mTxnOpCode = changeEntry.getOperation();
         mCommitCallback = changeEntry.mCommitCallback;
     }
 
-    public int getOpCode() {
-		return OP_COMMIT_TXN;
-	}
-
-    public int getTxnOpCode() {
+    public MailboxOperation getTxnOpCode() {
         return mTxnOpCode;
     }
 
     protected String getPrintableData() {
         StringBuffer sb = new StringBuffer("txnType=");
-        sb.append(getOpClassName(mTxnOpCode));
+        sb.append(mTxnOpCode.name());
         return sb.toString();
     }
 
     protected void serializeData(RedoLogOutput out) throws IOException {
-        out.writeInt(mTxnOpCode);
+        out.writeInt(mTxnOpCode.getCode());
     }
 
     protected void deserializeData(RedoLogInput in) throws IOException {
-        mTxnOpCode = in.readInt();
+        mTxnOpCode = MailboxOperation.fromInt(in.readInt());
     }
 
     /**

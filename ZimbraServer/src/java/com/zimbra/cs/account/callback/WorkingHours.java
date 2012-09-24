@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -27,17 +27,23 @@ public class WorkingHours extends AttributeCallback {
     // Each day of the week must be specified exactly once.
     // 
     @Override
-    public void preModify(Map context, String attrName, Object attrValue, Map attrsToModify, Entry entry, boolean isCreate)
+    public void preModify(CallbackContext context, String attrName, Object attrValue, 
+            Map attrsToModify, Entry entry)
     throws ServiceException {
-        if (attrValue == null) return;  // Allow unsetting.
-        if (!(attrValue instanceof String))
+        if (attrValue == null) {
+            return;  // Allow unsetting.
+        }
+        if (!(attrValue instanceof String)) {
             throw ServiceException.INVALID_REQUEST(attrValue + " is a single-valued string", null);
+        }
         String value = (String) attrValue;
-        if (value.length() == 0) return;  // Allow unsetting.
+        if (value.length() == 0) {
+            return;  // Allow unsetting.
+        }
         com.zimbra.cs.fb.WorkingHours.validateWorkingHoursPref(value);
     }
 
     @Override
-    public void postModify(Map context, String attrName, Entry entry, boolean isCreate) {
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 }

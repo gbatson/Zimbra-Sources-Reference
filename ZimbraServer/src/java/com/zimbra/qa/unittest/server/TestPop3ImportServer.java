@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,22 +22,22 @@ import java.util.Set;
 
 import junit.framework.TestCase;
 
-import com.zimbra.cs.zclient.ZDataSource;
-import com.zimbra.cs.zclient.ZFilterRules;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZPop3DataSource;
+import com.zimbra.client.ZDataSource;
+import com.zimbra.client.ZFilterRules;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZPop3DataSource;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
-import com.zimbra.cs.account.ldap.LdapUtil;
 import com.zimbra.cs.db.DbPop3Message;
-import com.zimbra.cs.im.IMPersona;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.qa.unittest.TestUtil;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 
 public class TestPop3ImportServer extends TestCase {
@@ -135,7 +135,6 @@ public class TestPop3ImportServer extends TestCase {
         
         // Store bogus POP3 message row and delete mailbox
         DbPop3Message.storeUid(mbox, "TestPop3Import", "uid1", Mailbox.ID_FOLDER_INBOX);
-        IMPersona.deleteIMPersona(account.getName());
         mbox.deleteMailbox();
     }
     
@@ -186,21 +185,21 @@ public class TestPop3ImportServer extends TestCase {
         Account account = TestUtil.getAccount(USER_NAME);
         int port = Integer.parseInt(TestUtil.getServerAttr(Provisioning.A_zimbraPop3BindPort));
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraDataSourceEnabled, LdapUtil.LDAP_FALSE);
+        attrs.put(Provisioning.A_zimbraDataSourceEnabled, ProvisioningConstants.FALSE);
         attrs.put(Provisioning.A_zimbraDataSourceHost, "localhost");
         attrs.put(Provisioning.A_zimbraDataSourcePort, Integer.toString(port));
         attrs.put(Provisioning.A_zimbraDataSourceUsername, "user1");
         attrs.put(Provisioning.A_zimbraDataSourcePassword, "test123");
         attrs.put(Provisioning.A_zimbraDataSourceFolderId, Integer.toString(Mailbox.ID_FOLDER_INBOX));
         attrs.put(Provisioning.A_zimbraDataSourceConnectionType, "cleartext");
-        attrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer, LdapUtil.LDAP_FALSE);
-        prov.createDataSource(account, DataSource.Type.pop3, DATA_SOURCE_NAME, attrs);
+        attrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer, ProvisioningConstants.FALSE);
+        prov.createDataSource(account, DataSourceType.pop3, DATA_SOURCE_NAME, attrs);
     }
     
     private DataSource getDataSource() throws Exception {
         Provisioning prov = Provisioning.getInstance();
         Account account = TestUtil.getAccount(USER_NAME);
-        return prov.get(account, DataSourceBy.name, DATA_SOURCE_NAME);
+        return prov.get(account, Key.DataSourceBy.name, DATA_SOURCE_NAME);
     }
     
     private void cleanUp() throws Exception {

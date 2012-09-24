@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -36,8 +36,8 @@ public class TagSyncTest {
 
     private static String accountId;
 
-    private static final String V8 = "8.0.0";
-    private static final String V7 = "7.0.0";
+    private static final String V_OTHER = "7.0.0";
+    private static final String V_CURRENT = "8.0.0";
     private static MockDataSourceDbMapping mockMapping = new MockDataSourceDbMapping();
 
     @BeforeClass
@@ -66,17 +66,17 @@ public class TagSyncTest {
 
     @Test
     public void mappingNotRequired() throws ServiceException {
-        Assert.assertFalse(initTagSync(V7).isMappingRequired());
+        Assert.assertFalse(initTagSync(V_CURRENT).isMappingRequired());
     }
 
     @Test
     public void mappingRequired() throws ServiceException {
-        Assert.assertTrue(initTagSync(V8).isMappingRequired());
+        Assert.assertTrue(initTagSync(V_OTHER).isMappingRequired());
     }
 
     @Test
     public void mappingRequiredNewId() throws ServiceException {
-        TagSync tagSync = initTagSync(V7);
+        TagSync tagSync = initTagSync(V_CURRENT);
         Assert.assertFalse(tagSync.isMappingRequired());
         Assert.assertTrue(tagSync.isMappingRequired(12342512));
         Assert.assertTrue(tagSync.isMappingRequired());
@@ -85,7 +85,7 @@ public class TagSyncTest {
 
     @Test
     public void mapNewTag() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         int remoteId = 9999999;
         Assert.assertFalse(tagSync.mappingExists(remoteId));
         tagSync.mapTag(remoteId, 123);
@@ -94,7 +94,7 @@ public class TagSyncTest {
 
     @Test
     public void removeMapping() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         int remoteId = 9999999;
         Assert.assertFalse(tagSync.mappingExists(remoteId));
         tagSync.mapTag(remoteId, 123);
@@ -105,7 +105,7 @@ public class TagSyncTest {
 
     @Test
     public void lookupRemote() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         int remoteId = 9999999;
         int localId = 67;
         tagSync.mapTag(remoteId, localId);
@@ -114,7 +114,7 @@ public class TagSyncTest {
 
     @Test
     public void lookupLocal() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         int remoteId = 9999999;
         int localId = 67;
         tagSync.mapTag(remoteId, localId);
@@ -123,7 +123,7 @@ public class TagSyncTest {
 
     @Test
     public void lookupLists() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         int[] localIds = {65, 72, 100};
         int[] remoteIds = {1234512,938291,123412};
         int i = 0;
@@ -144,7 +144,7 @@ public class TagSyncTest {
 
     @Test
     public void lookupByName() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(accountId);
         int[] localIds = {65, 72, 100};
         int[] remoteIds = {1234512,938291,123412};
@@ -166,9 +166,9 @@ public class TagSyncTest {
 
     @Test
     public void overflowTag() throws ServiceException {
-        TagSync tagSync = initTagSync(V8);
+        TagSync tagSync = initTagSync(V_OTHER);
         int i = 0;
-        for (i = Tag.TAG_ID_OFFSET ; i < Tag.MAX_TAG_COUNT+Tag.TAG_ID_OFFSET; i++) {
+        for (i = TagSync.TAG_ID_OFFSET ; i < TagSync.MAX_TAG_COUNT + TagSync.TAG_ID_OFFSET; i++) {
             tagSync.mapTag(100000+i, i);
         }
         boolean found = false;

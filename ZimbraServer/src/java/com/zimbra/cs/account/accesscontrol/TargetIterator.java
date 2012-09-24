@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.CalendarResource;
@@ -25,16 +26,23 @@ import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AclGroups;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
+import com.zimbra.cs.account.Provisioning.GroupMembership;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
+import com.zimbra.cs.ldap.LdapTODO.*;
 
-public abstract class TargetIterator{
+@ACLTODO   // check refs of targetType.dl and handle the same for group
+
+/**
+ * @author pshao
+ */
+public abstract class TargetIterator {
     protected Provisioning mProv;
     protected TargetType mCurTargetType;
     protected Entry mTarget;
@@ -67,7 +75,8 @@ public abstract class TargetIterator{
         mTarget = target;
     }
     
-    static TargetIterator getTargetIeterator(Provisioning prov, Entry target, boolean expandGroups) throws ServiceException {
+    static TargetIterator getTargetIeterator(Provisioning prov, Entry target, boolean expandGroups) 
+    throws ServiceException {
         /*
          * tested in the order of how often acl are checked on each target types in normal 
          * server operation pattern.
@@ -79,34 +88,33 @@ public abstract class TargetIterator{
          */
         TargetIterator iter = null;
         
-        if (target instanceof CalendarResource)
+        if (target instanceof CalendarResource) {
             iter = new TargetIterator.AccountTargetIterator(prov, target, expandGroups);
-        else if (target instanceof Account)
+        } else if (target instanceof Account) {
             iter =  new TargetIterator.AccountTargetIterator(prov, target, expandGroups);
-        else if (target instanceof Domain)
+        } else if (target instanceof Domain) {
             iter =  new TargetIterator.DomainTargetIterator(prov, target);
-        else if (target instanceof Cos)
+        } else if (target instanceof Cos) {
             iter =  new TargetIterator.CosTargetIterator(prov, target);
-        else if (target instanceof DistributionList) {
-            // This path is called from AccessManager.canDo, the target object can be a 
-            // DistributionList obtained from prov.get(DistributionListBy).  
-            // We require one from prov.getAclGroup(DistributionListBy) here, 
-            // call getAclGroup if it is not yet an ACL group.
-            if (!((DistributionList)target).isAclGroup())
-                target = prov.getAclGroup(DistributionListBy.id, ((DistributionList)target).getId());
+        } else if (target instanceof DistributionList) {
             iter =  new TargetIterator.DistributionListTargetIterator(prov, target, expandGroups);
-        } else if (target instanceof Server)
+        } else if (target instanceof DynamicGroup) {
+            iter =  new TargetIterator.DynamicGroupTargetIterator(prov, target);
+        } else if (target instanceof Server) {
             iter =  new TargetIterator.ServerTargetIterator(prov, target);
-        else if (target instanceof Config)
+        } else if (target instanceof UCService) {
+            iter =  new TargetIterator.UCServiceTargetIterator(prov, target);
+        } else if (target instanceof Config) {
             iter =  new TargetIterator.ConfigTargetIterator(prov, target);
-        else if (target instanceof GlobalGrant)
+        } else if (target instanceof GlobalGrant) {
             iter =  new TargetIterator.GlobalGrantTargetIterator(prov, target);
-        else if (target instanceof Zimlet)
+        } else if (target instanceof Zimlet) {
             iter =  new TargetIterator.ZimletTargetIterator(prov, target);
-        else if (target instanceof XMPPComponent)
+        } else if (target instanceof XMPPComponent) {
             iter =  new TargetIterator.XMPPComponentTargetIterator(prov, target);
-        else
+        } else {
             throw ServiceException.FAILURE("internal error", null);
+        }
         
         /*
          * consume the first target, which is the perspective target itself, because RightChecker.canDo 
@@ -122,7 +130,7 @@ public abstract class TargetIterator{
     
     public static class AccountTargetIterator extends TargetIterator {
         private boolean mExpandGroups;
-        private AclGroups mGroups = null;
+        private GroupMembership mGroups = null;
         private int mIdxInGroups = 0;
         
         AccountTargetIterator(Provisioning prov, Entry target, boolean expandGroups) {
@@ -147,20 +155,28 @@ public abstract class TargetIterator{
                 grantedOn = mTarget;
                 
             } else if (mCurTargetType == TargetType.dl) {
+                //
+                // will handle both static and dynamic groups here
+                //
+                
                 if (mGroups == null) {
                     // LdapProvisioning.getAclGroups will do a LDAP search
                     // if the AclGroups is not computed/cached yet.  
                     // Do not even go there if we are a pseudo object,
                     // just create an empty AclGroups and all our TargetIterator
                     // flow will be the same.
-                    if (mTarget instanceof PseudoTarget.PseudoAccount)    
-                        mGroups = new AclGroups();
-                    else        
-                        mGroups =  mProv.getAclGroups((Account)mTarget, false);
+                    if (mTarget instanceof PseudoTarget.PseudoAccount) {
+                        mGroups = new GroupMembership();
+                    } else {
+                        // get all static and dynamic groups the account belongs
+                        mGroups =  mProv.getGroupMembership((Account)mTarget, false);
+                    }
                 }
                 
                 if (mIdxInGroups < mGroups.groupIds().size()) {
-                    grantedOn = mProv.getAclGroup(DistributionListBy.id, mGroups.groupIds().get(mIdxInGroups));
+                    // get the group
+                    grantedOn = mProv.getGroupBasic(Key.DistributionListBy.id, 
+                            mGroups.groupIds().get(mIdxInGroups));
                     mIdxInGroups++;
                 } else {
                     mCurTargetType = TargetType.domain;
@@ -192,7 +208,7 @@ public abstract class TargetIterator{
     
     public static class DistributionListTargetIterator extends TargetIterator {
         private boolean mExpandGroups;
-        private AclGroups mGroups = null;
+        private GroupMembership mGroups = null;
         private int mIdxInGroups = 0;
         
         DistributionListTargetIterator(Provisioning prov, Entry target, boolean expandGroups) {
@@ -224,13 +240,13 @@ public abstract class TargetIterator{
                     // just create an empty AclGroups and all our TargetIterator
                     // flow will be the same.
                     if (mTarget instanceof PseudoTarget.PseudoDistributionList)
-                        mGroups = new AclGroups();
+                        mGroups = new GroupMembership();
                     else        
-                        mGroups =  mProv.getAclGroups((DistributionList)mTarget, false);
+                        mGroups =  mProv.getGroupMembership((DistributionList)mTarget, false);
                 }
                 
                 if (mIdxInGroups < mGroups.groupIds().size()) {
-                    grantedOn = mProv.getAclGroup(DistributionListBy.id, mGroups.groupIds().get(mIdxInGroups));
+                    grantedOn = mProv.getDLBasic(Key.DistributionListBy.id, mGroups.groupIds().get(mIdxInGroups));
                     mIdxInGroups++;
                 } else {
                     mCurTargetType = TargetType.domain;
@@ -258,17 +274,59 @@ public abstract class TargetIterator{
         }
     }
         
+    public static class DynamicGroupTargetIterator extends TargetIterator {
+        private GroupMembership mGroups = null;
+        private int mIdxInGroups = 0;
+        
+        DynamicGroupTargetIterator(Provisioning prov, Entry target) {
+            super(prov, TargetType.group, target);
+        }
+        
+        @Override
+        Entry next() throws ServiceException {
+            if (mNoMore)
+                return null;
+            
+            Entry grantedOn = null;
+            
+            if (!mCheckedSelf) {
+                mCurTargetType = TargetType.domain;
+                
+                mCheckedSelf = true;
+                grantedOn = mTarget;
+                
+            } else if (mCurTargetType == TargetType.domain) {
+                mCurTargetType = TargetType.global;
+                
+                Domain pseudoDomain = null;
+                if (mTarget instanceof PseudoTarget.PseudoDynamicGroup)
+                    pseudoDomain = ((PseudoTarget.PseudoDynamicGroup)mTarget).getPseudoDomain();
+                
+                if (pseudoDomain != null)
+                    grantedOn = next();
+                else
+                    grantedOn = mProv.getDomain((DynamicGroup)mTarget);
+                
+            } else if (mCurTargetType == TargetType.global) {
+                mNoMore = true;
+                grantedOn = mProv.getGlobalGrant();
+            }
+                
+            return grantedOn;
+        }
+    }
+    
     public static class ConfigTargetIterator extends TargetIterator {
         
         ConfigTargetIterator(Provisioning prov, Entry target) {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.config, target);
         }
     }
     
     public static class CosTargetIterator extends TargetIterator {
         
         CosTargetIterator(Provisioning prov, Entry target) {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.cos, target);
         }
     }
     
@@ -277,7 +335,7 @@ public abstract class TargetIterator{
         private List<Domain> mSuperDomains;
         
         DomainTargetIterator(Provisioning prov, Entry target) throws ServiceException {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.domain, target);
             
             mCurSuperDomain = 0;
             mSuperDomains = new ArrayList<Domain>();
@@ -288,7 +346,7 @@ public abstract class TargetIterator{
             int nextDot = 0;
             while ((nextDot = domainName.indexOf('.')) != -1) { // if nextDot is -l we've reached the top
                 domainName = domainName.substring(nextDot+1);
-                Domain parentDomain = mProv.getDomain(Provisioning.DomainBy.name, domainName, true); // check negative cache
+                Domain parentDomain = mProv.getDomain(Key.DomainBy.name, domainName, true); // check negative cache
                 if (parentDomain != null)
                     mSuperDomains.add(parentDomain);
             }
@@ -321,28 +379,35 @@ public abstract class TargetIterator{
     public static class ServerTargetIterator extends TargetIterator {
         
         ServerTargetIterator(Provisioning prov, Entry target) {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.server, target);
+        }
+    }
+    
+    public static class UCServiceTargetIterator extends TargetIterator {
+        
+        UCServiceTargetIterator(Provisioning prov, Entry target) {
+            super(prov, TargetType.ucservice, target);
         }
     }
     
     public static class XMPPComponentTargetIterator extends TargetIterator {
         
         XMPPComponentTargetIterator(Provisioning prov, Entry target) {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.xmppcomponent, target);
         }
     }
     
     public static class ZimletTargetIterator extends TargetIterator {
         
         ZimletTargetIterator(Provisioning prov, Entry target) {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.zimlet, target);
         }
     }
     
     public static class GlobalGrantTargetIterator extends TargetIterator {
         
         GlobalGrantTargetIterator(Provisioning prov, Entry target) {
-            super(prov, TargetType.account, target);
+            super(prov, TargetType.global, target);
         }
         
         @Override

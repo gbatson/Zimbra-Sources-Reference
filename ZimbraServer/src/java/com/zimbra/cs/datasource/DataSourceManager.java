@@ -1,19 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.datasource;
 
+import com.zimbra.soap.admin.type.DataSourceType;
+import com.zimbra.common.account.ZAttrProvisioning.AccountStatus;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.DateUtil;
@@ -25,13 +27,9 @@ import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.DataSource.DataImport;
 import com.zimbra.cs.account.DataSourceConfig;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
-import com.zimbra.cs.account.ZAttrProvisioning.AccountStatus;
 import com.zimbra.cs.datasource.imap.ImapSync;
-import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbPool;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.db.DbScheduledTask;
 import com.zimbra.cs.extension.ExtensionUtil;
 import com.zimbra.cs.gal.GalImport;
@@ -52,7 +50,7 @@ import static java.util.Collections.newSetFromMap;
 import static java.util.concurrent.Executors.newCachedThreadPool;
 
 public class DataSourceManager {
-    
+
     private static DataSourceManager sInstance;
 
     // accountId -> dataSourceId -> ImportStatus
@@ -83,7 +81,7 @@ public class DataSourceManager {
     public static void deleteManaged(String accountId, String dataSourceId) {
         sManagedDataSources.remove(key(accountId, dataSourceId));
     }
-    
+
     public static boolean isManaged(DataSource ds) {
         return sManagedDataSources.contains(key(ds.getAccountId(), ds.getId()));
     }
@@ -110,15 +108,23 @@ public class DataSourceManager {
             return null;
         }
     }
-    
+
+    /**
+     * @param ds not used
+     * @param folder not used
+     */
     public boolean isSyncCapable(DataSource ds, Folder folder) {
         return true;
     }
-    
+
+    /**
+     * @param ds not used
+     * @param folder not used
+     */
     public boolean isSyncEnabled(DataSource ds, Folder folder) {
         return true;
     }
-    
+
     public synchronized static DataSourceManager getInstance() {
         if (sInstance == null) {
             String className = LC.zimbra_class_datasourcemanager.value();
@@ -146,12 +152,11 @@ public class DataSourceManager {
     public static DataSourceConfig getConfig() {
         return getInstance().config;
     }
-    
-    public Mailbox getMailbox(DataSource ds)
-    throws ServiceException {
+
+    public Mailbox getMailbox(DataSource ds) throws ServiceException {
         return MailboxManager.getInstance().getMailboxByAccount(ds.getAccount());
     }
-    
+
     public DataImport getDataImport(DataSource ds) throws ServiceException {
         switch (ds.getType()) {
         case pop3:
@@ -169,26 +174,25 @@ public class DataSourceManager {
             try {
                 String className = LC.data_source_xsync_class.value();
                 if (className != null && className.length() > 0) {
-                    Class cmdClass = null;
+                    Class<?> cmdClass = null;
                     try {
                         cmdClass = Class.forName(className);
                     } catch (ClassNotFoundException x) {
                         cmdClass = ExtensionUtil.findClass(className);
                     }
-                    Constructor constructor = cmdClass.getConstructor(new Class[] {DataSource.class});
-                    return (DataImport)constructor.newInstance(ds);
+                    Constructor<?> constructor = cmdClass.getConstructor(new Class[] {DataSource.class});
+                    return (DataImport) constructor.newInstance(ds);
                 }
             } catch (Exception x) {
                 ZimbraLog.datasource.warn("Failed instantiating xsync class: %s", ds, x);
             }
         default:
             // yab is handled by OfflineDataSourceManager
-            throw new IllegalArgumentException(
-                "Unknown data import type: " + ds.getType());
+            throw new IllegalArgumentException("Unknown data import type: " + ds.getType());
         }
     }
 
-    public static String getDefaultImportClass(DataSource.Type ds) {
+    public static String getDefaultImportClass(DataSourceType ds) {
         switch (ds) {
         case caldav:
             return CalDavDataImport.class.getName();
@@ -223,10 +227,10 @@ public class DataSourceManager {
         }
         return allStatus;
     }
-    
+
     public static ImportStatus getImportStatus(Account account, DataSource ds) {
         ImportStatus importStatus;
-        
+
         synchronized (sImportStatus) {
             Map<String, ImportStatus> isMap = sImportStatus.get(account.getId());
             if (isMap == null) {
@@ -239,7 +243,7 @@ public class DataSourceManager {
                 isMap.put(ds.getId(), importStatus);
             }
         }
-        
+
         return importStatus;
     }
 
@@ -247,6 +251,7 @@ public class DataSourceManager {
         ZimbraLog.datasource.debug("Requesting async import for DataSource %s", ds.getId());
 
         executor.submit(new Runnable() {
+            @Override
             public void run() {
                 try {
                     // todo exploit comonality with DataSourceTask
@@ -277,10 +282,9 @@ public class DataSourceManager {
         importData(fs, null, fullSync);
     }
 
-    
+
     /**
-     * Executes the data source's <code>MailItemImport</code> implementation
-     * to import data in the current thread.
+     * Executes the data source's {@link MailItemImport} implementation to import data in the current thread.
      */
     public static void importData(DataSource ds, List<Integer> folderIds, boolean fullSync) throws ServiceException {
 
@@ -290,10 +294,10 @@ public class DataSourceManager {
             ZimbraLog.datasource.info("Account is not active. Skipping import.");
             return;
         }
-        if (DataSourceManager.getInstance().getMailbox(ds).getMailboxLock() != null) {
+        if (DataSourceManager.getInstance().getMailbox(ds).getMaintenance() != null) {
             ZimbraLog.datasource.info("Mailbox is in maintenance mode. Skipping import.");
             return;
-        } 
+        }
         ImportStatus importStatus = getImportStatus(ds.getAccount(), ds);
         synchronized (importStatus) {
             if (importStatus.isRunning()) {
@@ -306,12 +310,12 @@ public class DataSourceManager {
             importStatus.mSuccess = false;
             importStatus.mError = null;
         }
-                
+
         boolean success = false;
         String error = null;
 
         addManaged(ds);
-        
+
         try {
             ZimbraLog.datasource.info("Importing data for data source '%s'", ds.getName());
             getInstance().getDataImport(ds).importData(folderIds, fullSync);
@@ -330,7 +334,7 @@ public class DataSourceManager {
             }
         }
     }
-    
+
     public static void resetErrorStatus(DataSource ds) {
         if (ds.getAttr(Provisioning.A_zimbraDataSourceFailingSince) != null ||
             ds.getAttr(Provisioning.A_zimbraDataSourceLastError) != null) {
@@ -344,7 +348,7 @@ public class DataSourceManager {
             }
         }
     }
-    
+
     private static void setErrorStatus(DataSource ds, String error) {
         Map<String, Object> attrs = new HashMap<String, Object>();
         attrs.put(Provisioning.A_zimbraDataSourceLastError, error);
@@ -357,7 +361,7 @@ public class DataSourceManager {
             ZimbraLog.datasource.warn("Unable to set error status for data source %s.", ds.getName());
         }
     }
-    
+
     private static String generateErrorMessage(Throwable t) {
         StringBuilder buf = new StringBuilder();
         while (t != null) {
@@ -381,11 +385,11 @@ public class DataSourceManager {
         ScheduledTaskManager.cancel(DataSourceTask.class.getName(), dsId, mbox.getId(), false);
         DbScheduledTask.deleteTask(DataSourceTask.class.getName(), dsId);
     }
-    
+
     public static DataSourceTask getTask(Mailbox mbox, String dsId) {
         return (DataSourceTask) ScheduledTaskManager.getTask(DataSourceTask.class.getName(), dsId, mbox.getId());
     }
-    
+
     /**
      * Cancels scheduling for this <tt>DataSource</tt>
      *
@@ -395,12 +399,12 @@ public class DataSourceManager {
      */
     public static void cancelSchedule(Account account, String dsId)
     throws ServiceException {
-    	updateSchedule(account, null, dsId, true);
+        updateSchedule(account, null, dsId, true);
     }
-    
+
     /**
      * Cancels scheduling for this <tt>DataSource</tt>
-     * 
+     *
      * @param account Account for the DataSource, cannot be null
      * @param ds The DataSource, cannot be null
      * @throws ServiceException
@@ -411,10 +415,10 @@ public class DataSourceManager {
     }
 
     /**
-     * 
+     *
      * Updates scheduling data for this <tt>DataSource</tt> both in memory and in the
      * <tt>data_source_task</tt> database table.
-     * 
+     *
      * @param account Account for the DataSource, cannot be null.
      * @param ds The DataSource.  Ignored if cancelSchedule is true.
      * @param dsId zimbraId of the DataSource.
@@ -428,15 +432,15 @@ public class DataSourceManager {
         }
         String accountId = account.getId();
         ZimbraLog.datasource.debug("Updating schedule for account %s, data source %s", accountId, dsId);
-        
+
         int mboxId = MailboxManager.getInstance().lookupMailboxId(account.getId());
         if (mboxId == -1)
-        	return;
+            return;
 
         if (cancelSchedule) {
             ZimbraLog.datasource.info(
                 "Data source %s was deleted.  Deleting scheduled task.", dsId);
-            ScheduledTaskManager.cancel(DataSourceTask.class.getName(), dsId, mboxId, false); 
+            ScheduledTaskManager.cancel(DataSourceTask.class.getName(), dsId, mboxId, false);
             DbScheduledTask.deleteTask(DataSourceTask.class.getName(), dsId);
             deleteManaged(accountId, dsId);
             return;
@@ -448,25 +452,23 @@ public class DataSourceManager {
             DbScheduledTask.deleteTask(DataSourceTask.class.getName(), dsId);
             return;
         }
-        
+
         ZimbraLog.datasource.info("Updating schedule for data source %s", ds.getName());
-        synchronized (DbMailbox.getSynchronizer()) {
-            Connection conn = null;
-            try {
-                conn = DbPool.getConnection();
-                ScheduledTaskManager.cancel(conn, DataSourceTask.class.getName(), ds.getId(), mboxId, false);
-                if (ds.isScheduled()) {
-                    DataSourceTask task = new DataSourceTask(mboxId, accountId, dsId, ds.getPollingInterval());
-                    ZimbraLog.datasource.debug("Scheduling %s", task);
-                    ScheduledTaskManager.schedule(conn, task);
-                }
-                conn.commit();
-            } catch (ServiceException e) {
-                ZimbraLog.datasource.warn("Unable to schedule data source %s", ds.getName(), e);
-                DbPool.quietRollback(conn);
-            } finally {
-                DbPool.quietClose(conn);
+        DbConnection conn = null;
+        try {
+            conn = DbPool.getConnection();
+            ScheduledTaskManager.cancel(conn, DataSourceTask.class.getName(), ds.getId(), mboxId, false);
+            if (ds.isScheduled()) {
+                DataSourceTask task = new DataSourceTask(mboxId, accountId, dsId, ds.getPollingInterval());
+                ZimbraLog.datasource.debug("Scheduling %s", task);
+                ScheduledTaskManager.schedule(conn, task);
             }
+            conn.commit();
+        } catch (ServiceException e) {
+            ZimbraLog.datasource.warn("Unable to schedule data source %s", ds.getName(), e);
+            DbPool.quietRollback(conn);
+        } finally {
+            DbPool.quietClose(conn);
         }
     }
 }

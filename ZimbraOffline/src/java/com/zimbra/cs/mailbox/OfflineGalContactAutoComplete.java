@@ -15,6 +15,8 @@
 package com.zimbra.cs.mailbox;
 
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.mailbox.ContactAutoComplete.AutoCompleteResult;
+import com.zimbra.cs.mailbox.ContactAutoComplete.ContactEntry;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class OfflineGalContactAutoComplete extends ContactAutoComplete {

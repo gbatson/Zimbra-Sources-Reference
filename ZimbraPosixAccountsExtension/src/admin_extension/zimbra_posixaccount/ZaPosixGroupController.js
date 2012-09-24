@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -144,20 +144,6 @@ function () {
 	this._UICreated = true;
 }
 
-ZaPosixGroupController.prototype.saveButtonListener = 
-function(ev) {
-	try {
-		if(this._saveChanges()) {
-			this._view.setDirty(false);
-			if(this._toolbar)
-				this._toolbar.getButton(ZaOperation.SAVE).setEnabled(false);		
-		}
-	} catch (ex) {
-		this._handleException(ex, "ZaDomainController.prototype.saveButtonListener", null, false);
-	}
-	return;
-}
-
 ZaPosixGroupController.prototype._saveChanges =
 function () {
 	//check if the XForm has any errors
@@ -230,7 +216,7 @@ function () {
 		return false;
 	}
 		
-	this._view.setDirty(false);	
+	this._contentView.setDirty(false);	
 	return true;
 }
 

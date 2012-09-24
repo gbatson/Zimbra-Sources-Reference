@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -30,34 +30,22 @@ public class PresetRight extends AdminRight {
         return true;
     }
     
+    //
+    // TODO: disguise group target as dl for R_checkRightGrp right
+    //
     
-    // don't allow an account right to be granted on calendar resource and vice versa
-    // it is only allowed for user rights
-    // TODO: revisit, may be able to do with just removing account from setInheritedByTargetTypes for calresource
-    //       and remove this very ugly check.   
-    //       warning, need to examine all call sites of inherited by/from
-    private boolean mutualExcludeAccountAndCalResource(TargetType targetType) {
-        return ((mTargetType == TargetType.account && targetType == TargetType.calresource) ||
-                (mTargetType == TargetType.calresource && targetType == TargetType.account));
+    @Override
+    Set<TargetType> getGrantableTargetTypes() {
+        Set<TargetType> targetTypes = new HashSet<TargetType>();
+        for (TargetType targetType : mTargetType.inheritFrom()) {
+            targetTypes.add(targetType);
+        }
+        return targetTypes;
     }
     
     @Override
     boolean grantableOnTargetType(TargetType targetType) {
-        
-        if (mutualExcludeAccountAndCalResource(targetType))
-            return false;
-        
         return targetType.isInheritedBy(mTargetType);
-    }
-    
-    @Override
-    protected Set<TargetType> getGrantableTargetTypes() {
-        Set<TargetType> targetTypes = new HashSet<TargetType>();
-        for (TargetType targetType : mTargetType.inheritFrom()) {
-            if (!mutualExcludeAccountAndCalResource(targetType))
-                targetTypes.add(targetType);
-        }
-        return targetTypes;
     }
     
     @Override

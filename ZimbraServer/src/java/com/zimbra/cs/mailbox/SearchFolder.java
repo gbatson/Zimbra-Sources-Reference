@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,6 +19,7 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
 import com.zimbra.cs.session.PendingModifications.Change;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -38,8 +39,9 @@ public final class SearchFolder extends Folder {
 
     public SearchFolder(Mailbox mbox, UnderlyingData data) throws ServiceException {
         super(mbox, data);
-        if (mData.type != TYPE_SEARCHFOLDER)
+        if (mData.type != Type.SEARCHFOLDER.toByte()) {
             throw new IllegalArgumentException();
+        }
     }
 
     /** Returns the query associated with this search folder. */
@@ -73,10 +75,10 @@ public final class SearchFolder extends Folder {
 
     /** Returns whether the folder can contain objects of the given type.
      *  Search folders may only contain other search folders. */
-    @Override boolean canContain(byte type) {
-        return (type == TYPE_SEARCHFOLDER);
+    @Override
+    boolean canContain(MailItem.Type type) {
+        return (type == Type.SEARCHFOLDER);
     }
-
 
     /** Creates a new SearchFolder and persists it to the database.  A
      *  real nonnegative item ID must be supplied from a previous call to
@@ -106,36 +108,41 @@ public final class SearchFolder extends Folder {
      * @see #validateItemName(String)
      * @see #validateQuery(String)
      * @see #canContain(byte) */
-    static SearchFolder create(int id, Folder parent, String name, String query, String types, String sort, int flags, Color color, CustomMetadata custom)
-    throws ServiceException {
-        if (parent == null || !parent.canContain(TYPE_SEARCHFOLDER))
+    static SearchFolder create(int id, String uuid, Folder parent, String name, String query, String types, String sort, int flags,
+            Color color, CustomMetadata custom) throws ServiceException {
+        if (parent == null || !parent.canContain(Type.SEARCHFOLDER)) {
             throw MailServiceException.CANNOT_CONTAIN();
-        if (!parent.canAccess(ACL.RIGHT_INSERT))
+        }
+        if (!parent.canAccess(ACL.RIGHT_INSERT)) {
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions on the parent folder");
+        }
         name = validateItemName(name);
         query = validateQuery(query);
-        if (parent.findSubfolder(name) != null)
+        if (parent.findSubfolder(name) != null) {
             throw MailServiceException.ALREADY_EXISTS(name);
-        if (types != null && types.trim().equals(""))
+        }
+        if (types != null && types.trim().equals("")) {
             types = null;
-        if (sort != null && sort.trim().equals(""))
+        }
+        if (sort != null && sort.trim().equals("")) {
             sort = null;
-
+        }
         Mailbox mbox = parent.getMailbox();
         UnderlyingData data = new UnderlyingData();
-        data.id          = id;
-        data.type        = TYPE_SEARCHFOLDER;
-        data.folderId    = parent.getId();
-        data.parentId    = parent.getId();
-        data.date        = mbox.getOperationTimestamp();
-        data.flags = (flags | Flag.flagsToBitmask(mbox.getAccount().getDefaultFolderFlags())) & Flag.FLAGS_FOLDER;
-        data.name        = name;
-        data.subject     = name;
-        data.metadata    = encodeMetadata(color, 1, custom, query, types, sort);
+        data.uuid = uuid;
+        data.id = id;
+        data.type = Type.SEARCHFOLDER.toByte();
+        data.folderId = parent.getId();
+        data.parentId = parent.getId();
+        data.date = mbox.getOperationTimestamp();
+        data.setFlags((flags | Flag.toBitmask(mbox.getAccount().getDefaultFolderFlags())) & Flag.FLAGS_FOLDER);
+        data.name = name;
+        data.setSubject(name);
+        data.metadata = encodeMetadata(color, 1, 1, custom, query, types, sort);
         data.contentChanged(mbox);
         ZimbraLog.mailop.info("Adding SearchFolder %s: id=%d, parentId=%d, parentName=%s.",
-            name, data.id, parent.getId(), parent.getName());
-        DbMailItem.create(mbox, data, null);
+                name, data.id, parent.getId(), parent.getName());
+        new DbMailItem(mbox).create(data);
 
         SearchFolder search = new SearchFolder(mbox, data);
         search.finishCreation(parent);
@@ -160,15 +167,18 @@ public final class SearchFolder extends Folder {
      *    <li><code>service.PERM_DENIED</code> - if you don't have
      *        sufficient permissions</ul> */
     void changeQuery(String query, String types, String sort) throws ServiceException {
-        if (!isMutable())
+        if (!isMutable()) {
             throw MailServiceException.IMMUTABLE_OBJECT(mId);
-        if (!canAccess(ACL.RIGHT_WRITE))
+        }
+        if (!canAccess(ACL.RIGHT_WRITE)) {
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions on the search folder");
+        }
         query = validateQuery(query);
 
-        if (query.equals(mQuery) && getReturnTypes().equals(types) && getSortField().equals(sort))
+        if (query.equals(mQuery) && getReturnTypes().equals(types) && getSortField().equals(sort)) {
             return;
-        markItemModified(Change.MODIFIED_QUERY);
+        }
+        markItemModified(Change.QUERY);
         mQuery = query;
         mTypes = types;
         mSort  = sort;
@@ -202,19 +212,19 @@ public final class SearchFolder extends Folder {
     }
 
     @Override Metadata encodeMetadata(Metadata meta) {
-        return encodeMetadata(meta, mRGBColor, mVersion, mExtendedData, mQuery, mTypes, mSort);
+        return encodeMetadata(meta, mRGBColor, mMetaVersion, mVersion, mExtendedData, mQuery, mTypes, mSort);
     }
 
-    private static String encodeMetadata(Color color, int version, CustomMetadata custom, String query, String types, String sort) {
+    private static String encodeMetadata(Color color, int metaVersion, int version, CustomMetadata custom, String query, String types, String sort) {
         CustomMetadataList extended = (custom == null ? null : custom.asList());
-        return encodeMetadata(new Metadata(), color, version, extended, query, types, sort).toString();
+        return encodeMetadata(new Metadata(), color, metaVersion, version, extended, query, types, sort).toString();
     }
 
-    static Metadata encodeMetadata(Metadata meta, Color color, int version, CustomMetadataList extended, String query, String types, String sort) {
+    static Metadata encodeMetadata(Metadata meta, Color color, int metaVersion, int version, CustomMetadataList extended, String query, String types, String sort) {
         meta.put(Metadata.FN_QUERY, query);
         meta.put(Metadata.FN_TYPES, types);
         meta.put(Metadata.FN_SORT,  sort);
-        return MailItem.encodeMetadata(meta, color, version, extended);
+        return MailItem.encodeMetadata(meta, color, null, metaVersion,  version, extended);
     }
 
 

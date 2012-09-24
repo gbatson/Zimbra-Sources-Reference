@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,390 +15,296 @@
 
 package com.zimbra.cs.index;
 
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.WellKnownTimeZones;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.MailItem;
-import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
-import com.zimbra.cs.mailbox.calendar.WellKnownTimeZones;
+import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.service.mail.CalendarUtils;
-import com.zimbra.cs.service.mail.Search;
 import com.zimbra.cs.service.mail.ToXML.OutputParticipants;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.soap.ZimbraSoapContext;
 
-
 /**
- * Simple class that encapsulates all of the parameters involved in a Search request.
- * Not used everywhere, need to convert all code to use this....
+ * Encapsulates all parameters in a search request.
  * <p>
- * To initialize, set:
- * <ul>
- *  <li>query str
- *  <li>offset
- *  <li>limit
- *  <li>typesStr (sets type value)
- *  <li>sortByStr (sets sortBy value)
- * </ul>
- * <p>
- * IMPORTANT NOTE: if you add new {@link SearchParams}, you MUST add
- * parsing/serialization code to the {@link SearchParams#encodeParams(Element)}
- * and {@link SearchParams#parse(Element, ZimbraSoapContext, String)}) APIs.
+ * IMPORTANT NOTE: if you add new parameters, you MUST add parsing/serialization code to the
+ * {@link #encodeParams(Element)} and {@link #parse(Element, ZimbraSoapContext, String)}) APIs.
  * This IS NOT optional and will break cross-server search if you do not comply.
  */
 public final class SearchParams implements Cloneable {
 
     private static final int MAX_OFFSET = 10000000; // 10M
     private static final int MAX_LIMIT = 10000000; // 10M
+    private final static Pattern LOCALE_PATTERN = Pattern.compile("([a-zA-Z]{2})(?:[-_]([a-zA-Z]{2})([-_](.+))?)?");
 
-    public static final class ExpandResults {
-        /**
-         * Don't expand any hits.
-         */
-        public static ExpandResults NONE = new ExpandResults("none");
+    private ZimbraSoapContext requestContext;
 
-        /**
-         * Expand the first hit.
-         */
-        public static ExpandResults FIRST = new ExpandResults("first");
+    /**
+     * this parameter is intentionally NOT encoded into XML, it is encoded manually by the ProxiedQueryResults proxying
+     * code.
+     */
+    private int hopCount = 0;
+    private String defaultField = "content:";
+    private String queryString;
+    private int offset;
+    private int limit;
+    private ExpandResults inlineRule;
+    private boolean markRead = false;
+    private int maxInlinedLength;
+    private boolean wantHtml = false;
+    private boolean wantExpandGroupInfo = false;
+    private boolean neuterImages = false;
+    private Set<String> inlinedHeaders;
+    private boolean recipients = false;
+    private long calItemExpandStart = -1;
+    private long calItemExpandEnd = -1;
+    private boolean inDumpster = false;  // search live data or dumpster data
 
-        /**
-         * For searchConv, expand the members of the conversation that match
-         * the search.
-         */
-        public static ExpandResults HITS = new ExpandResults("hits");
+    /** If FALSE, then items with the \Deleted tag set are not returned. */
+    private boolean includeTagDeleted = false;
+    /** If FALSE, then items with the \Muted tag set are not returned. */
+    private boolean includeTagMuted = true;
+    private Set<TaskHit.Status> allowableTaskStatuses; // if NULL, allow all
 
-        /**
-         * Expand ALL hits.
-         */
-        public static ExpandResults ALL = new ExpandResults("all");
+    /**
+     * timezone that the query should be parsed in (for date/time queries).
+     */
+    private TimeZone timezone;
+    private Locale locale;
+    private SortBy sortBy;
+    private Set<MailItem.Type> types = EnumSet.noneOf(MailItem.Type.class); // types to seach for
+    private Cursor cursor;
+    private boolean prefetch = true;
+    private Fetch fetch = Fetch.NORMAL;
+    private boolean quick = false; // whether or not to skip the catch-up index prior to search
 
-        private final String mRep;
-        private ItemId mItemId;
+    public boolean isQuick() {
+        return quick;
+    }
 
-        private ExpandResults(String rep) {
-            mRep = rep;
-        }
-
-        private ExpandResults setId(ItemId iid) {
-            mItemId = iid;
-            return this;
-        }
-
-        public boolean matches(MailItem item) {
-            return mItemId != null && item != null && matches(new ItemId(item));
-        }
-
-        public boolean matches(ItemId iid) {
-            return iid != null && iid.equals(mItemId);
-        }
-
-        public static ExpandResults valueOf(String value, ZimbraSoapContext zsc)
-            throws ServiceException {
-
-            if (value == null) {
-                return NONE;
-            }
-
-            value = value.trim().toLowerCase();
-            if (value.equals("none") || value.equals("0") || value.equals("false")) {
-                return NONE;
-            } else if (value.equals("first") || value.equals("1")) {
-                return FIRST;
-            } else if (value.equals("hits")) {
-                return HITS;
-            } else if (value.equals("all")) {
-                return ALL;
-            }
-
-            ItemId iid = null;
-            try {
-                iid = new ItemId(value, zsc);
-            } catch (Exception e) {
-            }
-            if (iid != null) {
-                return new ExpandResults(value).setId(iid);
-            } else {
-                throw ServiceException.INVALID_REQUEST(
-                        "invalid 'fetch' value: " + value, null);
-            }
-        }
-
-        @Override
-        public String toString() {
-            return mRep;
-        }
+    public void setQuick(boolean value) {
+        quick = value;
     }
 
     public ZimbraSoapContext getRequestContext() {
-        return mRequestContext;
+        return requestContext;
     }
 
     public int getHopCount() {
-        return mHopCount;
+        return hopCount;
     }
 
     public long getCalItemExpandStart() {
-        return mCalItemExpandStart;
+        return calItemExpandStart;
     }
 
     public long getCalItemExpandEnd() {
-        return mCalItemExpandEnd;
+        return calItemExpandEnd;
     }
 
-    public String getQueryStr() {
-        return mQueryStr;
+    public String getQueryString() {
+        return queryString;
     }
 
-    public String getTypesStr() {
-        return mGroupByStr;
-    }
-
-    public byte[] getTypes() {
+    public Set<MailItem.Type> getTypes() {
         return types;
     }
 
-    public String getSortByStr() {
-        return mSortByStr;
-    }
-
     public SortBy getSortBy() {
-        return mSortBy;
+        return sortBy;
     }
 
     public ExpandResults getInlineRule() {
-        return mInlineRule;
+        return inlineRule;
     }
 
     public boolean getMarkRead() {
-        return mMarkRead;
+        return markRead;
     }
 
     public int getMaxInlinedLength() {
-        return mMaxInlinedLength;
+        return maxInlinedLength;
     }
 
     public boolean getWantHtml() {
-        return mWantHtml;
+        return wantHtml;
+    }
+
+    public boolean getWantExpandGroupInfo() {
+        return wantExpandGroupInfo;
     }
 
     public boolean getNeuterImages() {
-        return mNeuterImages;
+        return neuterImages;
     }
 
     public Set<String> getInlinedHeaders() {
-        return mInlinedHeaders;
+        return inlinedHeaders;
     }
 
     public OutputParticipants getWantRecipients() {
-        return mRecipients ? OutputParticipants.PUT_RECIPIENTS : OutputParticipants.PUT_SENDERS;
+        return recipients ? OutputParticipants.PUT_RECIPIENTS : OutputParticipants.PUT_SENDERS;
     }
 
     public TimeZone getTimeZone() {
-        return mTimeZone;
+        return timezone;
     }
 
     public Locale getLocale() {
-        return mLocale;
+        return locale;
     }
 
     public boolean getPrefetch() {
-        return mPrefetch;
+        return prefetch;
     }
 
-    public Mailbox.SearchResultMode getMode() {
-        return mMode;
-    }
-
-    public boolean getEstimateSize() {
-        return mEstimateSize;
+    public Fetch getFetchMode() {
+        return fetch;
     }
 
     public String getDefaultField() {
-        return mDefaultField;
+        return defaultField;
     }
 
     public final boolean getIncludeTagDeleted() {
-        return mIncludeTagDeleted;
+        return includeTagDeleted;
+    }
+
+    public final boolean getIncludeTagMuted() {
+        return includeTagMuted;
     }
 
     public Set<TaskHit.Status> getAllowableTaskStatuses() {
-        return mAllowableTaskStatuses;
+        return allowableTaskStatuses;
     }
 
     public int getLimit() {
-        return mLimit;
+        return limit;
     }
 
     public int getOffset() {
-        return mOffset;
-    }
-
-    // cursor parameters:
-    public ItemId getPrevMailItemId() {
-        return mPrevMailItemId;
-    }
-
-    public String getPrevSortValueStr() {
-        return mPrevSortValueStr;
-    }
-
-    public long getPrevSortValueLong() {
-        return mPrevSortValueLong;
-    }
-
-    public int getPrevOffset() {
-        return mPrevOffset;
-    }
-
-    public boolean hasEndSortValue() {
-        return mEndSortValueStr != null;
-    }
-
-    public String getEndSortValueStr() {
-        return mEndSortValueStr;
-    }
-
-    public long getEndSortValueLong() {
-        return mEndSortValueLong;
+        return offset;
     }
 
     public boolean inDumpster() {
-        return mInDumpster;
+        return inDumpster;
     }
 
-    public void setInDumpster(boolean inDumpster) {
-        mInDumpster = inDumpster;
+    public void setInDumpster(boolean value) {
+        inDumpster = value;
     }
 
-    public void setHopCount(int hopCount) {
-        mHopCount = hopCount;
+    public void setHopCount(int value) {
+        hopCount = value;
     }
 
-    public void setQueryStr(String queryStr) {
-        mQueryStr = queryStr;
+    public void setQueryString(String value) {
+        queryString = value;
     }
 
-    public void setOffset(int offset) {
-        mOffset = offset; if (mOffset > MAX_OFFSET) mOffset = MAX_OFFSET;
+    public void setOffset(int value) {
+        offset = Math.min(value, MAX_OFFSET);
     }
 
-    public void setLimit(int limit) {
-        mLimit = limit; if (mLimit > MAX_LIMIT) mLimit = MAX_LIMIT;
+    public void setLimit(int value) {
+        limit = Math.min(value, MAX_LIMIT);
     }
 
-    public void setDefaultField(String field) {
-        // yes, it MUST end with the ':'
-        if (field.charAt(field.length()-1) != ':') {
-            field = field + ':';
+    public void setDefaultField(String value) {
+        if (!value.endsWith(":")) {
+            value = value + ':'; // MUST end with the ':'
         }
-        mDefaultField = field;
+        defaultField = value;
     }
 
-    public final void setIncludeTagDeleted(boolean includeTagDeleted) {
-        mIncludeTagDeleted = includeTagDeleted;
+    public final void setIncludeTagDeleted(boolean value) {
+        includeTagDeleted = value;
     }
 
-    public void setAllowableTaskStatuses(Set<TaskHit.Status> statuses) {
-        mAllowableTaskStatuses = statuses;
+    public final void setIncludeTagMuted(boolean value) {
+        includeTagMuted = value;
     }
 
-    /**
-     * Set the range of dates over which we want to expand out the instances of
-     * any returned CalendarItem objects.
-     *
-     * @param calItemExpandStart
-     */
-    public void setCalItemExpandStart(long calItemExpandStart) {
-        mCalItemExpandStart = calItemExpandStart;
+    public void setAllowableTaskStatuses(Set<TaskHit.Status> value) {
+        allowableTaskStatuses = value;
     }
 
     /**
-     * Set the range of dates over which we want to expand out the instances of
-     * any returned CalendarItem objects.
-     *
-     * @param calItemExpandStart
+     * Set the range of dates over which we want to expand out the instances of any returned CalendarItem objects.
      */
-    public void setCalItemExpandEnd(long calItemExpandEnd) {
-        mCalItemExpandEnd = calItemExpandEnd;
+    public void setCalItemExpandStart(long value) {
+        calItemExpandStart = value;
     }
 
     /**
-     * Since the results are iterator-based, the "limit" is really the same as
-     * the chunk size + offset ie, the limit is used to tell the system
-     * approximately how many results you want and it tries to get them
-     * in a single chunk --- but it isn't until you do the results iteration
-     * that the limit is enforced.
-     *
-     * @param chunkSize
+     * Set the range of dates over which we want to expand out the instances of any returned CalendarItem objects.
      */
-    public void setChunkSize(int chunkSize) {
-        setLimit(chunkSize + mOffset);
+    public void setCalItemExpandEnd(long value) {
+        calItemExpandEnd = value;
     }
 
-    public void setTypesStr(String groupByStr) throws ServiceException {
-        mGroupByStr = groupByStr;
-        byte[] typesToSet = MailboxIndex.parseTypesString(getTypesStr());
-        setTypesInternal(typesToSet);
+    /**
+     * Since the results are iterator-based, the {@code limit} is really the same as the {@code chunk size + offset}
+     * i.e. the limit is used to tell the system approximately how many results you want and it tries to get them in a
+     * single chunk, but it isn't until you do the results iteration that the limit is enforced.
+     */
+    public void setChunkSize(int value) {
+        setLimit(value + offset);
     }
 
-    public void setTypes(byte[] _types) {
-        boolean atFirst = true;
-        StringBuilder s = new StringBuilder();
-        for (byte b : _types) {
-            if (!atFirst) {
-                s.append(',');
-            }
-            s.append(MailItem.getNameForType(b));
-            atFirst = false;
+    public void setTypes(String value) throws ServiceException {
+        try {
+            setTypes(MailItem.Type.setOf(value));
+        } catch (IllegalArgumentException e) {
+            throw MailServiceException.INVALID_TYPE(e.getMessage());
         }
-        mGroupByStr = s.toString();
-        setTypesInternal(_types);
     }
 
-    private void setTypesInternal(byte[] _types) {
-        types = _types;
+    public void setTypes(Set<MailItem.Type> value) {
+        types = value;
         checkForLocalizedContactSearch();
     }
 
     private boolean isSystemDefaultLocale() {
-        if (mLocale == null) {
+        if (locale == null) {
             return true;
         }
-
         // Gets the current value of the default locale for this instance of the Java Virtual Machine.
-        Locale systemDefaultLocale = Locale.getDefault();
-
-        return mLocale.equals(systemDefaultLocale);
+        return locale.equals(Locale.getDefault());
     }
 
     private void checkForLocalizedContactSearch() {
         if (DebugConfig.enableContactLocalizedSort) {
-
             // FIXME: for bug 41920, disable localized contact sorting
             // bug 22665 - if searching ONLY for contacts, and locale is not EN, used localized re-sort
-            if (types != null && types.length == 1 &&
-                    types[0] == MailItem.TYPE_CONTACT && !isSystemDefaultLocale()) {
-                if (mLocale != null) {
-                    if (mSortBy != null) {
-                        if (mSortBy.getType() == SortBy.Type.NAME_ASCENDING) {
-                            mSortBy = new LocalizedSortBy(SortBy.Type.NAME_LOCALIZED_ASCENDING,
-                                    null, SortBy.SortCriterion.NAME,
-                                    SortBy.SortDirection.ASCENDING, mLocale);
-                        } else if (mSortBy.getType() == SortBy.Type.NAME_DESCENDING) {
-                            mSortBy = new LocalizedSortBy(SortBy.Type.NAME_LOCALIZED_DESCENDING,
-                                    null, SortBy.SortCriterion.NAME,
-                                    SortBy.SortDirection.DESCENDING, mLocale);
+            if (types.size() == 1 && types.contains(MailItem.Type.CONTACT) && !isSystemDefaultLocale()) {
+                if (locale != null) {
+                    if (sortBy != null) {
+                        switch (sortBy) {
+                            case NAME_ASC:
+                                sortBy = SortBy.NAME_LOCALIZED_ASC;
+                                break;
+                            case NAME_DESC:
+                                sortBy = SortBy.NAME_LOCALIZED_DESC;
+                                break;
                         }
                     }
                 }
@@ -406,401 +312,246 @@ public final class SearchParams implements Cloneable {
         }
     }
 
-    public void setSortBy(SortBy sortBy) {
-        mSortBy = sortBy;
-        mSortByStr = mSortBy.toString();
+    public void setSortBy(SortBy value) {
+        sortBy = value;
         checkForLocalizedContactSearch();
     }
 
-    public void setSortByStr(String sortByStr) {
-        mSortByStr = sortByStr;
-        SortBy sb = SortBy.lookup(sortByStr);
-        if (sb == null) {
-            sb = SortBy.DATE_DESCENDING;
+    public void setSortBy(String value) {
+        SortBy sort = SortBy.of(value);
+        if (sort == null) {
+            sort = SortBy.DATE_DESC;
         }
-        setSortBy(sb);
+        setSortBy(sort);
     }
 
-    public void setInlineRule(ExpandResults fetch) {
-        mInlineRule = fetch;
+    public void setInlineRule(ExpandResults value) {
+        inlineRule = value;
     }
 
-    public void setMarkRead(boolean read) {
-        mMarkRead = read;
+    public void setMarkRead(boolean value) {
+        markRead = value;
     }
 
-    public void setMaxInlinedLength(int maxSize) {
-        mMaxInlinedLength = maxSize;
+    public void setMaxInlinedLength(int value) {
+        maxInlinedLength = value;
     }
 
-    public void setWantHtml(boolean html) {
-        mWantHtml = html;
+    public void setWantHtml(boolean value) {
+        wantHtml = value;
     }
 
-    public void setNeuterImages(boolean neuter) {
-        mNeuterImages = neuter;
+    public void setWantExpandGroupInfo(boolean value) {
+        wantExpandGroupInfo = value;
     }
 
-    public void addInlinedHeader(String name) {
-        if (mInlinedHeaders == null) {
-            mInlinedHeaders = new HashSet<String>();
+    public void setNeuterImages(boolean value) {
+        neuterImages = value;
+    }
+
+    public void addInlinedHeader(String value) {
+        if (inlinedHeaders == null) {
+            inlinedHeaders = new HashSet<String>();
         }
-        mInlinedHeaders.add(name);
+        inlinedHeaders.add(value);
     }
 
-    public void setWantRecipients(boolean recips) {
-        mRecipients = recips;
+    public void setWantRecipients(boolean value) {
+        recipients = value;
     }
 
-    public void setTimeZone(TimeZone tz) {
-        mTimeZone = tz;
+    public void setTimeZone(TimeZone value) {
+        timezone = value;
     }
 
-    public void setLocale(Locale loc) {
-        mLocale = loc;
+    public void setLocale(Locale value) {
+        locale = value;
         checkForLocalizedContactSearch();
     }
 
-    public boolean hasCursor() {
-        return mHasCursor;
-    }
-
-    public void setCursor(ItemId prevMailItemId, String prevSort,
-            int prevOffset, String endSort) {
-        mHasCursor = true;
-        mPrevMailItemId = prevMailItemId;
-        mPrevSortValueStr = prevSort;
-        try {
-            mPrevSortValueLong = Long.parseLong(prevSort);
-        } catch (NumberFormatException e) {
-            mPrevSortValueLong = 0;
-        }
-        mPrevOffset = prevOffset;
-        mEndSortValueStr = endSort;
-        mEndSortValueLong = -1;
-        if (mEndSortValueStr != null) {
-            try {
-                mEndSortValueLong = Long.parseLong(mEndSortValueStr);
-            } catch (NumberFormatException e) {
-                mEndSortValueLong = Long.MAX_VALUE;
-            }
-        }
-    }
-
-    public void clearCursor() {
-        mHasCursor = false;
-        mPrevOffset = 0;
-        mPrevMailItemId = null;
-        mPrevSortValueStr = null;
-        mPrevSortValueLong = 0;
-        mEndSortValueStr = null;
-        mEndSortValueLong = -1;
-    }
-
-    public void setPrefetch(boolean truthiness) {
-        mPrefetch = truthiness;
-    }
-
-    public void setMode(Mailbox.SearchResultMode mode) {
-        mMode = mode;
+    public Cursor getCursor() {
+        return cursor;
     }
 
     /**
-     * @param estimateSize if true, the server will attempt to calculate a size
-     *  estimate for the entire result set. Caller must fetch the first hit (via
-     *  getNext() or getFirstHit() before the estimate is made. The estimate
-     *  will be correct for a DB-only query and it may be wildly off for
-     *  a remote or join query.
+     * Sets the cursor, or null to clear.
      */
-    public void setEstimateSize(boolean estimateSize) {
-        mEstimateSize = estimateSize;
+    public void setCursor(Cursor value) {
+        cursor = value;
+    }
+
+    public void setPrefetch(boolean value) {
+        prefetch = value;
+    }
+
+    public void setFetchMode(Fetch value) {
+        fetch = value;
     }
 
     /**
-     * Encode the necessary parameters into a <SearchRequest> (or similar
-     * element) in cases where we have to proxy a search request over to
-     * a remote server.
+     * Encode the necessary parameters into a {@code <SearchRequest>} (or similar element) in cases where we have to
+     * proxy a search request over to a remote server.
      * <p>
-     * Note that not all parameters are encoded here -- some params (like
-     * offset, limit, etc) are changed by the entity doing the search proxying,
-     * and so they are set at that level.
+     * Note that not all parameters are encoded here -- some params (like cursor, etc) are changed by the entity
+     * doing the search proxying, and so they are set at that level.
      *
-     * @param searchElt This object's parameters are added as attributes (or
-     *  sub-elements) of this parameter
+     * @param el This object's parameters are added as attributes (or sub-elements) of this parameter
      */
-    public void encodeParams(Element searchElt) {
-        if (mAllowableTaskStatuses != null) {
-            StringBuilder taskStatusStr = new StringBuilder();
-            for (TaskHit.Status s : mAllowableTaskStatuses) {
-                if (taskStatusStr.length() > 0) {
-                    taskStatusStr.append(",");
-                }
-                taskStatusStr.append(s.name());
-            }
-            searchElt.addAttribute(MailConstants.A_ALLOWABLE_TASK_STATUS,
-                    taskStatusStr.toString());
+    public void encodeParams(Element el) {
+        if (allowableTaskStatuses != null) {
+            el.addAttribute(MailConstants.A_ALLOWABLE_TASK_STATUS, Joiner.on(',').join(allowableTaskStatuses));
         }
-        searchElt.addAttribute(MailConstants.A_INCLUDE_TAG_DELETED,
-                getIncludeTagDeleted());
-        searchElt.addAttribute(MailConstants.A_CAL_EXPAND_INST_START,
-                getCalItemExpandStart());
-        searchElt.addAttribute(MailConstants.A_CAL_EXPAND_INST_END,
-                getCalItemExpandEnd());
-        searchElt.addAttribute(MailConstants.E_QUERY, getQueryStr(),
-                Element.Disposition.CONTENT);
-        searchElt.addAttribute(MailConstants.A_SEARCH_TYPES, getTypesStr());
-        searchElt.addAttribute(MailConstants.A_SORTBY, getSortByStr());
-        if (getInlineRule() != null)
-            searchElt.addAttribute(MailConstants.A_FETCH,
-                    getInlineRule().toString());
-        searchElt.addAttribute(MailConstants.A_MARK_READ, getMarkRead());
-        searchElt.addAttribute(MailConstants.A_MAX_INLINED_LENGTH,
-                getMaxInlinedLength());
-        searchElt.addAttribute(MailConstants.A_WANT_HTML, getWantHtml());
-        searchElt.addAttribute(MailConstants.A_NEUTER, getNeuterImages());
+        el.addAttribute(MailConstants.A_INCLUDE_TAG_DELETED, getIncludeTagDeleted());
+        el.addAttribute(MailConstants.A_INCLUDE_TAG_MUTED, getIncludeTagMuted());
+        el.addAttribute(MailConstants.A_CAL_EXPAND_INST_START, getCalItemExpandStart());
+        el.addAttribute(MailConstants.A_CAL_EXPAND_INST_END, getCalItemExpandEnd());
+        el.addAttribute(MailConstants.E_QUERY, getQueryString(), Element.Disposition.CONTENT);
+        el.addAttribute(MailConstants.A_SEARCH_TYPES, MailItem.Type.toString(types));
+        if (sortBy != null) {
+            el.addAttribute(MailConstants.A_SORTBY, sortBy.toString());
+        }
+        if (getInlineRule() != null) {
+            el.addAttribute(MailConstants.A_FETCH, getInlineRule().toString());
+        }
+        el.addAttribute(MailConstants.A_MARK_READ, getMarkRead());
+        el.addAttribute(MailConstants.A_MAX_INLINED_LENGTH, getMaxInlinedLength());
+        el.addAttribute(MailConstants.A_WANT_HTML, getWantHtml());
+        el.addAttribute(MailConstants.A_NEED_EXP, getWantExpandGroupInfo());
+        el.addAttribute(MailConstants.A_NEUTER, getNeuterImages());
         if (getInlinedHeaders() != null) {
-            for (String name : getInlinedHeaders())
-                searchElt.addElement(MailConstants.A_HEADER).addAttribute(
-                        MailConstants.A_ATTRIBUTE_NAME, name);
+            for (String name : getInlinedHeaders()) {
+                el.addElement(MailConstants.A_HEADER).addAttribute(MailConstants.A_ATTRIBUTE_NAME, name);
+            }
         }
-        searchElt.addAttribute(MailConstants.A_RECIPIENTS, mRecipients);
+        el.addAttribute(MailConstants.A_RECIPIENTS, recipients);
 
         if (getLocale() != null) {
-            searchElt.addElement(MailConstants.E_LOCALE).setText(getLocale().toString());
+            el.addElement(MailConstants.E_LOCALE).setText(getLocale().toString());
         }
-        searchElt.addAttribute(MailConstants.A_PREFETCH, getPrefetch());
-        searchElt.addAttribute(MailConstants.A_RESULT_MODE, getMode().name());
-        searchElt.addAttribute(MailConstants.A_ESTIMATE_SIZE, getEstimateSize());
-        searchElt.addAttribute(MailConstants.A_FIELD, getDefaultField());
+        el.addAttribute(MailConstants.A_PREFETCH, getPrefetch());
+        el.addAttribute(MailConstants.A_RESULT_MODE, getFetchMode().name());
+        el.addAttribute(MailConstants.A_FIELD, getDefaultField());
 
-        searchElt.addAttribute(MailConstants.A_QUERY_LIMIT, mLimit);
-        searchElt.addAttribute(MailConstants.A_QUERY_OFFSET, mOffset);
+        el.addAttribute(MailConstants.A_QUERY_LIMIT, limit);
+        el.addAttribute(MailConstants.A_QUERY_OFFSET, offset);
 
-        searchElt.addAttribute(MailConstants.A_IN_DUMPSTER, mInDumpster);
+        el.addAttribute(MailConstants.A_IN_DUMPSTER, inDumpster);
+        if (quick) {
+            el.addAttribute(MailConstants.A_QUICK, quick);
+        }
 
-        // skip limit
-        // skip offset
         // skip cursor data
     }
 
     /**
-     * Parse the search parameters from a <SearchRequest> or similar element.
+     * Parse the search parameters from a {@code <SearchRequest>} or similar element.
      *
-     * @param requesthttp
-     *            The <SearchRequest> itself, or similar element (<SearchConvRequest>, etc)
-     * @param requestedAccount
-     *            The account who's mailbox we should search in
-     * @param zsc
-     *            The SoapContext of the request.
-     * @return
-     * @throws ServiceException
+     * @param request {@code <SearchRequest>} itself, or similar element ({@code <SearchConvRequest>}, etc)
+     * @param requestedAccount account who's mailbox we should search in
+     * @param zsc SoapContext of the request
      */
-    public static SearchParams parse(Element request, ZimbraSoapContext zsc,
-            String defaultQueryStr) throws ServiceException {
+    public static SearchParams parse(Element request, ZimbraSoapContext zsc, String defaultQueryStr)
+            throws ServiceException {
         SearchParams params = new SearchParams();
 
-        params.mRequestContext = zsc;
+        params.requestContext = zsc;
         params.setHopCount(zsc.getHopCount());
-        params.setIncludeTagDeleted(request.getAttributeBool(
-                MailConstants.A_INCLUDE_TAG_DELETED, false));
-        String allowableTasks = request.getAttribute(
-                MailConstants.A_ALLOWABLE_TASK_STATUS, null);
+        params.setCalItemExpandStart(request.getAttributeLong(MailConstants.A_CAL_EXPAND_INST_START, -1));
+        params.setCalItemExpandEnd(request.getAttributeLong(MailConstants.A_CAL_EXPAND_INST_END, -1));
+        String query = request.getAttribute(MailConstants.E_QUERY, defaultQueryStr);
+        if (query == null) {
+            throw ServiceException.INVALID_REQUEST("no query submitted and no default query found", null);
+        }
+        params.setQueryString(query);
+        params.setInDumpster(request.getAttributeBool(MailConstants.A_IN_DUMPSTER, false));
+        params.setQuick(request.getAttributeBool(MailConstants.A_QUICK, false));
+        String types = request.getAttribute(MailConstants.A_SEARCH_TYPES, request.getAttribute(MailConstants.A_GROUPBY, null));
+        if (Strings.isNullOrEmpty(types)) {
+            params.setTypes(EnumSet.of(params.isQuick() ? MailItem.Type.MESSAGE : MailItem.Type.CONVERSATION));
+        } else {
+            params.setTypes(types);
+        }
+        params.setSortBy(request.getAttribute(MailConstants.A_SORTBY, null));
+
+        params.setIncludeTagDeleted(request.getAttributeBool(MailConstants.A_INCLUDE_TAG_DELETED, false));
+        params.setIncludeTagMuted(request.getAttributeBool(MailConstants.A_INCLUDE_TAG_MUTED, true));
+        String allowableTasks = request.getAttribute(MailConstants.A_ALLOWABLE_TASK_STATUS, null);
         if (allowableTasks != null) {
-            params.mAllowableTaskStatuses = new HashSet<TaskHit.Status>();
-            String[] split = allowableTasks.split(",");
-            if (split != null) {
-                for (String s : split) {
-                    try {
-                        TaskHit.Status status = TaskHit.Status.valueOf(s.toUpperCase());
-                        params.mAllowableTaskStatuses.add(status);
-                    } catch (IllegalArgumentException e) {
-                        ZimbraLog.index.debug("Skipping unknown task completion status: " + s);
-                    }
+            params.allowableTaskStatuses = new HashSet<TaskHit.Status>();
+            for (String task : Splitter.on(',').split(allowableTasks)) {
+                try {
+                    TaskHit.Status status = TaskHit.Status.valueOf(task.toUpperCase());
+                    params.allowableTaskStatuses.add(status);
+                } catch (IllegalArgumentException e) {
+                    ZimbraLog.index.debug("Skipping unknown task completion status: %s", task);
                 }
             }
         }
-        params.setCalItemExpandStart(request.getAttributeLong(
-                MailConstants.A_CAL_EXPAND_INST_START, -1));
-        params.setCalItemExpandEnd(request.getAttributeLong(
-                MailConstants.A_CAL_EXPAND_INST_END, -1));
-        String query = request.getAttribute(MailConstants.E_QUERY, defaultQueryStr);
-        if (query == null) {
-            throw ServiceException.INVALID_REQUEST(
-                    "no query submitted and no default query found", null);
-        }
-        params.setInDumpster(request.getAttributeBool(MailConstants.A_IN_DUMPSTER, false));
-        params.setQueryStr(query);
-        params.setTypesStr(request.getAttribute(MailConstants.A_SEARCH_TYPES,
-                request.getAttribute(MailConstants.A_GROUPBY,
-                        Search.DEFAULT_SEARCH_TYPES)));
-        params.setSortByStr(request.getAttribute(MailConstants.A_SORTBY,
-                SortBy.DATE_DESCENDING.toString()));
 
-        params.setInlineRule(ExpandResults.valueOf(
-                request.getAttribute(MailConstants.A_FETCH, null), zsc));
+        params.setInlineRule(ExpandResults.valueOf(request.getAttribute(MailConstants.A_FETCH, null), zsc));
         if (params.getInlineRule() != ExpandResults.NONE) {
-            params.setMarkRead(request.getAttributeBool(
-                    MailConstants.A_MARK_READ, false));
-            params.setMaxInlinedLength((int) request.getAttributeLong(
-                    MailConstants.A_MAX_INLINED_LENGTH, -1));
-            params.setWantHtml(request.getAttributeBool(
-                    MailConstants.A_WANT_HTML, false));
-            params.setNeuterImages(request.getAttributeBool(
-                    MailConstants.A_NEUTER, true));
-            for (Element elt : request.listElements(MailConstants.A_HEADER))
-                params.addInlinedHeader(elt.getAttribute(
-                        MailConstants.A_ATTRIBUTE_NAME));
+            params.setMarkRead(request.getAttributeBool(MailConstants.A_MARK_READ, false));
+            params.setMaxInlinedLength((int) request.getAttributeLong(MailConstants.A_MAX_INLINED_LENGTH, -1));
+            params.setWantHtml(request.getAttributeBool(MailConstants.A_WANT_HTML, false));
+            params.setWantExpandGroupInfo(request.getAttributeBool(MailConstants.A_NEED_EXP, false));
+            params.setNeuterImages(request.getAttributeBool(MailConstants.A_NEUTER, true));
+            for (Element elt : request.listElements(MailConstants.A_HEADER)) {
+                params.addInlinedHeader(elt.getAttribute(MailConstants.A_ATTRIBUTE_NAME));
+            }
         }
-        params.setWantRecipients(request.getAttributeBool(
-                MailConstants.A_RECIPIENTS, false));
+        params.setWantRecipients(request.getAttributeBool(MailConstants.A_RECIPIENTS, false));
 
-        // <tz>
-        Element tzElt = request.getOptionalElement(MailConstants.E_CAL_TZ);
-        if (tzElt != null) {
-            params.setTimeZone(parseTimeZonePart(tzElt));
+        Element tz = request.getOptionalElement(MailConstants.E_CAL_TZ);
+        if (tz != null) {
+            params.setTimeZone(parseTimeZonePart(tz));
         }
 
-        // <loc>
-        Element locElt = request.getOptionalElement(MailConstants.E_LOCALE);
-        if (locElt != null) {
-            params.setLocale(parseLocale(locElt));
+        Element locale = request.getOptionalElement(MailConstants.E_LOCALE);
+        if (locale != null) {
+            params.setLocale(parseLocale(locale.getText()));
         }
 
-        params.setPrefetch(request.getAttributeBool(
-                MailConstants.A_PREFETCH, true));
-        params.setMode(Mailbox.SearchResultMode.get(request.getAttribute(
-                MailConstants.A_RESULT_MODE, null)));
+        params.setPrefetch(request.getAttributeBool(MailConstants.A_PREFETCH, true));
+        String fetch = request.getAttribute(MailConstants.A_RESULT_MODE, null);
+        if (!Strings.isNullOrEmpty(fetch)) {
+            try {
+                params.setFetchMode(Fetch.valueOf(fetch.toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw ServiceException.INVALID_REQUEST("Invalid " + MailConstants.A_RESULT_MODE, e);
+            }
+        }
 
-        // field
         String field = request.getAttribute(MailConstants.A_FIELD, null);
-        if (field != null)
+        if (field != null) {
             params.setDefaultField(field);
+        }
 
         params.setLimit(parseLimit(request));
-        params.setOffset(parseOffset(request));
+        params.setOffset(request.getAttributeInt(MailConstants.A_QUERY_OFFSET, 0));
 
         Element cursor = request.getOptionalElement(MailConstants.E_CURSOR);
         if (cursor != null) {
-            parseCursor(cursor, zsc.getRequestedAccountId(), params);
+            params.parseCursor(cursor, zsc.getRequestedAccountId());
         }
 
         return params;
     }
 
     /**
-     * Parse cursor element and set cursor info in SearchParams object
+     * Parse a cursor element.
      *
-     * @param cursor
-     *            cursor element taken from a <SearchRequest>
-     * @param acctId
-     *            requested account id
-     * @param params
-     *            SearchParams object to set cursor info to
-     * @return
-     * @throws ServiceException
+     * @param cursor cursor element taken from a {@code <SearchRequest>}
+     * @param acctId requested account id
      */
-    public static void parseCursor(Element cursor, String  acctId,
-            SearchParams params) throws ServiceException {
-        boolean useCursorToNarrowDbQuery = true;
-
-        // in some cases we cannot use cursors, even if they are requested.
-        //
-        //  -- Task-sorts cannot be used with cursors (bug 23427) at all
-        //
-        //  -- Conversation mode can use cursors to find the right location in the
-        //     hits, but we *can't* use a constrained-offset query to find the right place
-        //     in the search results....in Conv mode we need to walk through all the results
-        //     so that we can guarantee that we only return each Conversation once in
-        //     a given results set
-        //
-        {
-            // bug: 23427 -- TASK sorts are incompatible with CURSORS, since cursors require
-            //               real (db-visible) sort fields
-            switch (params.getSortBy().getType()) {
-                case TASK_DUE_ASCENDING:
-                case TASK_DUE_DESCENDING:
-                case TASK_PERCENT_COMPLETE_ASCENDING:
-                case TASK_PERCENT_COMPLETE_DESCENDING:
-                case TASK_STATUS_ASCENDING:
-                case TASK_STATUS_DESCENDING:
-                case NAME_LOCALIZED_ASCENDING:
-                case NAME_LOCALIZED_DESCENDING:
-                    useCursorToNarrowDbQuery = false;
-            }
-
-            // bug 35039 - using cursors with conversation-coalescing leads to convs
-            //             appearing on multiple pages
-            for (byte b : params.getTypes()) {
-                if (b == MailItem.TYPE_CONVERSATION) {
-                    useCursorToNarrowDbQuery = false;
-                }
-            }
-        }
-
-        String cursorStr = cursor.getAttribute(MailConstants.A_ID);
-        ItemId prevMailItemId = null;
-        if (cursorStr != null) {
-            prevMailItemId = new ItemId(cursorStr, acctId);
-        }
-
-        int prevOffset = 0;
-        String sortVal = cursor.getAttribute(MailConstants.A_SORTVAL);
-
-        String endSortVal = cursor.getAttribute(MailConstants.A_ENDSORTVAL, null);
-        params.setCursor(prevMailItemId, sortVal, prevOffset, endSortVal);
-
-        String addedPart = null;
-
-        if (useCursorToNarrowDbQuery) {
-            switch (params.getSortBy().getType()) {
-                case NONE:
-                    throw new IllegalArgumentException(
-                            "Invalid request: cannot use cursor with SortBy=NONE");
-                case DATE_ASCENDING:
-                    addedPart = "date:" + quote(">=", sortVal) +
-                        (endSortVal != null ? " date:" + quote("<", endSortVal) : "");
-                    break;
-                case DATE_DESCENDING:
-                    addedPart = "date:" + quote("<=", sortVal) +
-                        (endSortVal != null ? " date:" + quote(">", endSortVal) : "");
-                    break;
-                case SUBJ_ASCENDING:
-                    addedPart = "subject:" + quote(">=", sortVal) +
-                        (endSortVal != null ? " subject:" + quote("<", endSortVal) : "");
-                    break;
-                case SUBJ_DESCENDING:
-                    addedPart = "subject:" + quote("<=", sortVal) +
-                        (endSortVal != null ? " subject:" + quote(">", endSortVal) : "");
-                    break;
-                case SIZE_ASCENDING:
-                    // hackaround because "size:>=" doesn't parse but "size:>" does
-                    sortVal = "" + (Long.parseLong(sortVal) - 1);
-                    addedPart = "size:" + quote(">", sortVal) +
-                        (endSortVal != null ? " size:" + quote("<", endSortVal) : "");
-                    break;
-                case SIZE_DESCENDING:
-                    // hackaround because "size:<=" doesn't parse but "size:<" does
-                    sortVal = "" + (Long.parseLong(sortVal) + 1);
-                    addedPart = "size:" + quote("<", sortVal) +
-                        (endSortVal != null ? " size:" + quote(">", endSortVal) : "");
-                    break;
-                case NAME_ASCENDING:
-                    addedPart = "from:" + quote(">=", sortVal) +
-                        (endSortVal != null ? " from:" + quote("<", endSortVal) : "");
-                    break;
-                case NAME_DESCENDING:
-                    addedPart = "from:" + quote("<=", sortVal) +
-                        (endSortVal != null ? " from:" + quote(">", endSortVal) : "");
-                    break;
-            }
-        }
-
-        if (addedPart != null) {
-            params.setQueryStr("(" + params.getQueryStr() + ")" + addedPart);
-        }
+    public void parseCursor(Element el, String acctId) throws ServiceException {
+        cursor = new Cursor();
+        cursor.itemId = new ItemId(el.getAttribute(MailConstants.A_ID), acctId);
+        cursor.sortValue = el.getAttribute(MailConstants.A_SORTVAL, null); // optional
+        cursor.endSortValue = el.getAttribute(MailConstants.A_ENDSORTVAL, null); // optional
+        cursor.includeOffset = el.getAttributeBool(MailConstants.A_INCLUDE_OFFSET, false); // optional
     }
 
-    private static java.util.TimeZone parseTimeZonePart(Element tzElt) throws ServiceException {
+    private static TimeZone parseTimeZonePart(Element tzElt) throws ServiceException {
         String id = tzElt.getAttribute(MailConstants.A_ID);
 
         // is it a well-known timezone?  if so then we're done here
@@ -820,227 +571,225 @@ public final class SearchParams implements Cloneable {
         return CalendarUtils.parseTzElement(tzElt);
     }
 
-    private static final String LOCALE_PATTERN = "([a-zA-Z]{2})(?:[-_]([a-zA-Z]{2})([-_](.+))?)?";
-    private final static Pattern sLocalePattern = Pattern.compile(LOCALE_PATTERN);
+    static Locale parseLocale(String src) {
+        if (Strings.isNullOrEmpty(src)) {
+            return null;
+        }
+        Matcher matcher = LOCALE_PATTERN.matcher(src);
+        if (matcher.lookingAt()) {
+            String lang = null;
+            String country = null;
+            String variant = null;
+            if (matcher.start(1) >= 0) {
+                lang = matcher.group(1);
+            }
 
-    private static Locale parseLocale(Element localeElt) {
-        String locStr = localeElt.getText();
-        return lookupLocaleFromString(locStr);
-    }
+            if (Strings.isNullOrEmpty(lang)) {
+                return null;
+            }
 
-    private static Locale lookupLocaleFromString(String locStr) {
-        if (locStr != null && locStr.length() > 0) {
-            Matcher m = sLocalePattern.matcher(locStr);
-            if (m.lookingAt()) {
-                String lang=null, country=null, variant=null;
+            if (matcher.start(2) >= 0) {
+                country = matcher.group(2);
+            }
 
-                if (m.start(1) != -1) {
-                    lang = locStr.substring(m.start(1), m.end(1));
-                }
+            if (matcher.start(4) >= 0) {
+                variant = matcher.group(4);
+            }
 
-                if (lang == null || lang.length() <= 0) {
-                    return null;
-                }
-
-                if (m.start(2) != -1) {
-                    country = locStr.substring(m.start(2), m.end(2));
-                }
-
-                if (m.start(4) != -1) {
-                    variant = locStr.substring(m.start(4), m.end(4));
-                }
-
-                if (variant != null && country != null &&
-                        variant.length() > 0 && country.length() > 0) {
-                    return new Locale(lang, country, variant);
-                }
-
-                if (country != null && country.length() > 0) {
-                    return new Locale(lang, country);
-                }
-
+            if (Strings.isNullOrEmpty(country)) {
                 return new Locale(lang);
+            } else if (Strings.isNullOrEmpty(variant)) {
+                return new Locale(lang, country);
+            } else {
+                return new Locale(lang, country, variant);
             }
         }
         return null;
     }
 
-    public static void main(String args[]) {
-        {
-            Locale l = lookupLocaleFromString("da");
-            System.out.println(" got locale: " + l);
-        }
-        {
-            Locale l = lookupLocaleFromString("da_DK");
-            System.out.println(" got locale: " + l);
-        }
-        {
-            Locale l = lookupLocaleFromString("en");
-            System.out.println(" got locale: " + l);
-        }
-        {
-            Locale l = lookupLocaleFromString("en_US-MAC");
-            System.out.println(" got locale: " + l);
-        }
-    }
-
-    private static final String quote(String s1, String s2) {
-        // escape quotation marks and quote the whole string
-        String in = s1 + s2;
-        in = in.replace("\"", "\\\"");
-        return "\"" + in + "\"";
-    }
-
     private static int parseLimit(Element request) throws ServiceException {
-        int limit = (int) request.getAttributeLong(MailConstants.A_QUERY_LIMIT, -1);
+        int limit = request.getAttributeInt(MailConstants.A_QUERY_LIMIT, -1);
         if (limit <= 0) {
-            limit = 30;
-        }
-        if (limit > 1000) {
+            limit = 10;
+        } else if (limit > 1000) {
             limit = 1000;
         }
         return limit;
     }
 
-    private static int parseOffset(Element request) throws ServiceException {
-        // Lookup the offset= and limit= parameters in the soap request
-        return (int) request.getAttributeLong(MailConstants.A_QUERY_OFFSET, 0);
-    }
-
     @Override
     public Object clone() {
-        SearchParams o = new SearchParams();
-
-        o.mRequestContext = mRequestContext;
-        o.mHopCount = mHopCount;
-        o.mDefaultField = mDefaultField;
-        o.mQueryStr = mQueryStr;
-        o.mOffset = mOffset;
-        o.mLimit = mLimit;
-        o.mInlineRule = mInlineRule;
-        o.mMarkRead = mMarkRead;
-        o.mMaxInlinedLength = mMaxInlinedLength;
-        o.mWantHtml = mWantHtml;
-        o.mNeuterImages = mNeuterImages;
-        o.mInlinedHeaders = mInlinedHeaders;
-        o.mRecipients = mRecipients;
-        o.mCalItemExpandStart = mCalItemExpandStart;
-        o.mCalItemExpandEnd = mCalItemExpandEnd;
-        o.mIncludeTagDeleted = mIncludeTagDeleted;
-        o.mTimeZone = mTimeZone;
-        o.mLocale = mLocale;
-        o.mHasCursor = mHasCursor;
-        o.mPrevMailItemId = mPrevMailItemId;
-        o.mPrevSortValueStr = mPrevSortValueStr;
-        o.mPrevSortValueLong = mPrevSortValueLong;
-        o.mPrevOffset = mPrevOffset;
-        o.mEndSortValueStr = mEndSortValueStr;
-        o.mEndSortValueLong = mEndSortValueLong;
-        o.mGroupByStr = mGroupByStr;
-        o.mSortByStr = mSortByStr;
-        o.mSortBy = mSortBy;
-        o.types = types;
-        o.mPrefetch = mPrefetch;
-        o.mMode = mMode;
-        o.mEstimateSize = mEstimateSize;
-        if (mAllowableTaskStatuses != null) {
-            o.mAllowableTaskStatuses = new HashSet<TaskHit.Status>();
-            o.mAllowableTaskStatuses.addAll(mAllowableTaskStatuses);
+        SearchParams result = new SearchParams();
+        result.requestContext = requestContext;
+        result.hopCount = hopCount;
+        result.defaultField = defaultField;
+        result.queryString = queryString;
+        result.offset = offset;
+        result.limit = limit;
+        result.inlineRule = inlineRule;
+        result.maxInlinedLength = maxInlinedLength;
+        result.wantHtml = wantHtml;
+        result.wantExpandGroupInfo = wantExpandGroupInfo;
+        result.neuterImages = neuterImages;
+        result.inlinedHeaders = inlinedHeaders;
+        result.recipients = recipients;
+        result.calItemExpandStart = calItemExpandStart;
+        result.calItemExpandEnd = calItemExpandEnd;
+        result.includeTagDeleted = includeTagDeleted;
+        result.includeTagMuted = includeTagMuted;
+        result.timezone = timezone;
+        result.locale = locale;
+        result.sortBy = sortBy;
+        result.types = types;
+        result.prefetch = prefetch;
+        result.fetch = fetch;
+        if (allowableTaskStatuses != null) {
+            result.allowableTaskStatuses = new HashSet<TaskHit.Status>(allowableTaskStatuses);
         }
-        o.mInDumpster = mInDumpster;
-
-        return o;
+        if (cursor != null) {
+            result.cursor = new Cursor(cursor);
+        }
+        result.inDumpster = inDumpster;
+        return result;
     }
 
-    private ZimbraSoapContext mRequestContext;
+    public static final class ExpandResults {
+        /**
+         * Don't expand any hits.
+         */
+        public static final ExpandResults NONE = new ExpandResults("none");
+
+        /**
+         * Expand the first hit.
+         */
+        public static final ExpandResults FIRST = new ExpandResults("first");
+
+        /**
+         * Expand all unread messages.
+         */
+        public static final ExpandResults UNREAD = new ExpandResults("unread");
+
+        /**
+         * Expand all unread messages, or the first hit if there are no unread messages.
+         */
+        public static final ExpandResults UNREAD_FIRST = new ExpandResults("unread-first");
+
+        /**
+         * For searchConv, expand the members of the conversation that match the search.
+         */
+        public static final ExpandResults HITS = new ExpandResults("hits");
+
+        /**
+         * Expand ALL hits.
+         */
+        public static final ExpandResults ALL = new ExpandResults("all");
+
+        private static final Map<String, ExpandResults> MAP = ImmutableMap.<String, ExpandResults>builder()
+            .put(NONE.name, NONE).put("0", NONE).put("false", NONE)
+            .put(FIRST.name, FIRST).put("1", FIRST)
+            .put(UNREAD.name, UNREAD).put("u", UNREAD)
+            .put(UNREAD_FIRST.name, UNREAD_FIRST).put("u1", UNREAD_FIRST)
+            .put(HITS.name, HITS)
+            .put(ALL.name, ALL)
+            .build();
+
+        private final String name;
+        private ItemId itemId;
+
+        private ExpandResults(String name) {
+            this.name = name;
+        }
+
+        private ExpandResults(String name, ItemId id) {
+            this.name = name;
+            this.itemId = id;
+        }
+
+        public boolean matches(MailItem item) {
+            return itemId != null && item != null && matches(new ItemId(item));
+        }
+
+        public boolean matches(ItemId id) {
+            return id != null && id.equals(itemId);
+        }
+
+        public static ExpandResults valueOf(String value, ZimbraSoapContext zsc) throws ServiceException {
+            if (value == null) {
+                return NONE;
+            }
+            value = value.toLowerCase();
+            ExpandResults result = MAP.get(value);
+            if (result != null) {
+                return result;
+            }
+            try {
+                return new ExpandResults(value, new ItemId(value, zsc));
+            } catch (Exception e) {
+                throw ServiceException.INVALID_REQUEST("invalid 'fetch' value: " + value, null);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
 
     /**
-     * this parameter is intentionally NOT encoded into XML, it is encoded
-     * manually by the ProxiedQueryResults proxying code
+     * A cursor can be specified by itemId and sortValue. These should be enough for us to find out place in the
+     * previous result set, even if entries have been added or removed from the result set. If the client doesn't know
+     * sortValue, e.g. changing the sort field from date to subject, it may leave it null, then the server fetches the
+     * item by the specified itemId, and sets the sortValue accordingly. If the item no longer exist when fetching it,
+     * the cursor gets cleared.
      */
-    private int mHopCount = 0;
+    public static final class Cursor {
+        private ItemId itemId; // item ID of the last item in the previous result set
+        private String sortValue; // sort value of the last item in the previous result set
+        private String endSortValue; // sort value (exclusive) to stop the cursor
+        private boolean includeOffset = false; // whether or not to include the cursor offset in the response
 
-    private String mDefaultField = "content:";
-    private String mQueryStr;
-    private int mOffset;
-    private int mLimit;
-    private ExpandResults mInlineRule = null;
-    private boolean mMarkRead = false;
-    private int mMaxInlinedLength;
-    private boolean mWantHtml = false;
-    private boolean mNeuterImages = false;
-    private Set<String> mInlinedHeaders = null;
-    private boolean mRecipients = false;
-    private long mCalItemExpandStart = -1;
-    private long mCalItemExpandEnd = -1;
-    private boolean mInDumpster = false;  // search live data or dumpster data
+        private Cursor() {
+        }
 
-    /**
-     * if FALSE, then items with the /Deleted tag set are not returned.
-     */
-    private boolean mIncludeTagDeleted = false;
-    private Set<TaskHit.Status> mAllowableTaskStatuses = null; // if NULL, allow all
+        private Cursor(Cursor src) {
+            itemId = src.itemId;
+            sortValue = src.sortValue;
+            endSortValue = src.endSortValue;
+            includeOffset = src.includeOffset;
+        }
 
-    /**
-     * timezone that the query should be parsed in (for date/time queries).
-     */
-    private TimeZone mTimeZone = null;
-    private Locale mLocale  = null;
+        public ItemId getItemId() {
+            return itemId;
+        }
 
-    private boolean mHasCursor = false;
+        public String getSortValue() {
+            return sortValue;
+        }
 
-    /////////////////////
-    // "Cursor" Data -- the three pieces of info below are enough for us to find out place in
-    // the previous result set, even if entries have been added or removed from the result
-    // set:
-    /**
-     * the mail item ID of the last item in the previous result set.
-     */
-    private ItemId mPrevMailItemId;
+        public void setSortValue(String value) {
+            sortValue = value;
+        }
 
-    /**
-     * the sort value of the last item in the previous result set.
-     */
-    private String mPrevSortValueStr;
+        public String getEndSortValue() {
+            return endSortValue;
+        }
 
-    /**
-     * the sort value of the last item in the previous result set.
-     */
-    private long mPrevSortValueLong;
+        public boolean isIncludeOffset() {
+            return includeOffset;
+        }
+    }
 
-    /**
-     * the offset of the last item in the previous result set.
-     */
-    private int mPrevOffset;
-
-    /**
-     * where to end the search. Hits >= this value are NOT included in
-     * the result set.
-     */
-    private String mEndSortValueStr;
-
-    /**
-     * where to end the search. Hits >= this value are NOT included in
-     * the result set.
-     */
-    private long mEndSortValueLong;
-
-
-    // unparsed -- these need to go away!
-    private String mGroupByStr;
-    private String mSortByStr;
-
-    // parsed:
-    private SortBy mSortBy;
-    private byte[] types; // types to seach for
-
-    private boolean mPrefetch = true;
-    private Mailbox.SearchResultMode mMode = Mailbox.SearchResultMode.NORMAL;
-
-    /**
-     * ask or a size estimate. Note that this might have a nontrivial
-     * performance impact.
-     */
-    private boolean mEstimateSize = false;
+    public enum Fetch {
+        /* Everything. */
+        NORMAL,
+        /* Only IMAP data. */
+        IMAP,
+        /* Only the metadata modification sequence number. */
+        MODSEQ,
+        /* Only the ID of the item's parent (-1 if no parent). */
+        PARENT,
+        /* Only ID. */
+        IDS;
+    }
 
 }

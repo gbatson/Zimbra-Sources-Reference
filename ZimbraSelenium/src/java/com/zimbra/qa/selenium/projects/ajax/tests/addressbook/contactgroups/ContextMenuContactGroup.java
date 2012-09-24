@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contactgroups;
 
 
@@ -66,12 +50,11 @@ public class ContextMenuContactGroup extends AjaxCommonTest  {
         // Right click to show the menu
         ContextMenu contextMenu= (ContextMenu) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, group.fileAs); 
       
-        
+        // Get the list of context menu items   
         ArrayList <ContextMenuItem> list = contextMenu.zListGetContextMenuItems(PageAddressbook.CONTEXT_MENU.class);
         
          //verify all items in the context menu list
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_SEARCH),"Verify contact search in context menu");
-        ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_ADVANCED_SEARCH),"Verify advanced search in context menu");
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_NEW_EMAIL),"Verify new email in context menu");
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_EDIT),"Verify edit contact group  in context menu");
         
@@ -91,7 +74,6 @@ public class ContextMenuContactGroup extends AjaxCommonTest  {
 
         //Verify Find Email & Advanced SEarch is disable 
         ZAssert.assertFalse(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_SEARCH),"Verify contact search is disabled");
-        ZAssert.assertFalse(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_ADVANCED_SEARCH),"Verify advanced search is disabled");
         ZAssert.assertFalse(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_FORWARD),"Verify forward email is disabled");
         
         
@@ -112,7 +94,7 @@ public class ContextMenuContactGroup extends AjaxCommonTest  {
         
         //Verify group's emails displayed in the "To" field
         for (int i=0; i<group.dlist.size(); i++) {
-           ZAssert.assertTrue(app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField).contains(group.dlist.get(i)), "Verify contact email displayed in field To - expected " + group.dlist.get(i) + " - was " + app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField));
+           ZAssert.assertTrue(app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField).contains(group.dlist.get(i).email), "Verify contact email displayed in field To - expected " + group.dlist.get(i) + " - was " + app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField));
         }
         
         //TODO: Verify send email

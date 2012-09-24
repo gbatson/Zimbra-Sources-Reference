@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -47,10 +47,23 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+import com.google.common.io.Closeables;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.SignatureUtil;
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZCalendar;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.L10nUtil;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.L10nUtil.MsgKey;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.zmime.ZMimeBodyPart;
@@ -60,17 +73,13 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.cs.account.Signature;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailSender;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.service.FileUploadServlet.Upload;
@@ -80,6 +89,17 @@ import com.zimbra.cs.util.JMSession;
 import com.zimbra.cs.util.Zimbra;
 
 public class CalendarMailSender {
+
+    /** Returns a {@link MailSender} object that can be used to send calendar messages.  Calendar emails
+     * must always allow send-on-behalf-of because an attendee may forward any received invite to any
+     * other user using send-on-behalf-of mechanism.  Microsoft Outlook client works this way and ZCS
+     * does the same for compatibility.
+     */
+    public static MailSender getCalendarMailSender(Mailbox mbox) throws ServiceException {
+        MailSender sender = mbox.getMailSender();
+        sender.setCalendarMode(true);
+        return sender;
+    }
 
     // custom email header indicating this invite email is intended for another user
     public static final String X_ZIMBRA_CALENDAR_INTENDED_FOR = "X-Zimbra-Calendar-Intended-For";
@@ -179,23 +199,54 @@ public class CalendarMailSender {
         return createCalendarMessage(authAccount, from, sender, rcpts, subject, sb.toString(), null, inv.getUid(), iCal);
     }
 
-    public static MimeMessage createDefaultReply(Account fromAccount, Account authAccount, boolean asAdmin,
-                                                 boolean onBehalfOf,
+    public static MimeMessage createDefaultReply(Account fromAccount, String fromIdentityId,
+                                                 Account authAccount, String authIdentityId,
+                                                 boolean asAdmin, boolean onBehalfOf,
                                                  CalendarItem calItem, Invite inv,
                                                  MimeMessage mmInv, String replySubject, Verb verb,
                                                  String additionalMsgBody, ZVCalendar iCal)
     throws ServiceException {
-        return createDefaultReply(fromAccount, authAccount, asAdmin, onBehalfOf, calItem, inv, mmInv,
-                                  replySubject, verb, false, additionalMsgBody, iCal);
+        return createDefaultReply(fromAccount, fromIdentityId, authAccount, authIdentityId,
+                                  asAdmin, onBehalfOf, calItem, inv, mmInv,
+                                  replySubject, verb, false, additionalMsgBody, iCal, false);
     }
 
-    public static MimeMessage createDefaultReply(Account fromAccount, Account authAccount, boolean asAdmin,
-                                                 boolean onBehalfOf,
-                                                 CalendarItem calItem, Invite inv,
-                                                 MimeMessage mmInv, String replySubject, Verb verb,
-                                                 boolean partialAccept,
-                                                 String additionalMsgBody, ZVCalendar iCal)
+    private static MimeMessage createDefaultReply(Account fromAccount, String fromIdentityId,
+                                                  Account authAccount, String authIdentityId,
+                                                  boolean asAdmin, boolean onBehalfOf,
+                                                  CalendarItem calItem, Invite inv,
+                                                  MimeMessage mmInv, String replySubject, Verb verb,
+                                                  boolean partialAccept,
+                                                  String additionalMsgBody, ZVCalendar iCal,
+                                                  boolean addSignature)
     throws ServiceException {
+        Identity fromIdentity = null;
+        if (fromIdentityId != null) {
+            fromIdentity = fromAccount.getIdentityById(fromIdentityId);
+            if (fromIdentity == null) {
+                ZimbraLog.calendar.warn("No such identity " + fromIdentityId + " for account " + fromAccount.getName());
+                fromIdentity = getTargetedIdentity(fromAccount, inv);
+            }
+        } else {
+            fromIdentity = getTargetedIdentity(fromAccount, inv);
+        }
+        Identity authIdentity = null;
+        if (authIdentityId != null) {
+            authIdentity = authAccount.getIdentityById(authIdentityId);
+            if (authIdentity == null) {
+                ZimbraLog.calendar.warn("No such identity " + authIdentityId + " for account " + authAccount.getName());
+                if (authAccount.equals(fromAccount))
+                    authIdentity = fromIdentity;
+                else
+                    authIdentity = getTargetedIdentity(authAccount, inv);
+            }
+        } else {
+            if (authAccount.equals(fromAccount))
+                authIdentity = fromIdentity;
+            else
+                authIdentity = getTargetedIdentity(authAccount, inv);
+        }
+
         Locale lc;
         InternetAddress organizerAddress;
         if (inv.hasOrganizer()) {
@@ -208,7 +259,10 @@ public class CalendarMailSender {
             lc = authAccount.getLocale();
         }
 
-        String fromDisplayName = fromAccount.getAttr(Provisioning.A_displayName, fromAccount.getName());
+        String fromDisplayName = fromIdentity.getAttr(Provisioning.A_zimbraPrefFromDisplay);
+        if (fromDisplayName == null) {
+            fromDisplayName = fromAccount.getAttr(Provisioning.A_displayName, fromAccount.getName());
+        }
         StringBuilder replyText = new StringBuilder();
         boolean isResourceAccount = fromAccount instanceof CalendarResource;
 
@@ -251,9 +305,31 @@ public class CalendarMailSender {
             replyText.append(additionalMsgBody).append("\r\n");
         }
 
+        // signature can come above or below original invite text
+        boolean sigAboveOriginal = true;
+        String sigText = null;
+        if (addSignature) {
+            String sigStyle = fromAccount.getAttr(Provisioning.A_zimbraPrefMailSignatureStyle, "outlook");
+            sigAboveOriginal = sigStyle.equalsIgnoreCase("outlook");
+            String sigKey;
+            if (VERB_DECLINE.equals(verb))
+                sigKey = Provisioning.A_zimbraPrefCalendarAutoDeclineSignatureId;
+            else
+                sigKey = Provisioning.A_zimbraPrefCalendarAutoAcceptSignatureId;
+            sigText = getSignatureText(fromAccount, fromIdentity, sigKey);
+            if (sigAboveOriginal && sigText != null && sigText.length() > 0) {
+                replyText.append(sigText).append("\r\n");
+            }
+        }
+
         boolean allowPrivateAccess = calItem != null ? calItem.allowPrivateAccess(authAccount, asAdmin) : true;
         if (inv.isPublic() || allowPrivateAccess) {
             attachInviteSummary(replyText, inv, mmInv, lc);
+        }
+
+        if (addSignature && !sigAboveOriginal && sigText != null && sigText.length() > 0) {
+            replyText.append("\r\n-------------------------\r\n\r\n");
+            replyText.append(sigText).append("\r\n");
         }
 
         List<Address> toList = new ArrayList<Address>(1);
@@ -261,8 +337,8 @@ public class CalendarMailSender {
             toList.add(organizerAddress);
         Address senderAddr = null;
         if (onBehalfOf)
-            senderAddr = AccountUtil.getFriendlyEmailAddress(authAccount);
-        return createCalendarMessage(authAccount, AccountUtil.getFriendlyEmailAddress(fromAccount),
+            senderAddr = authIdentity.getFriendlyEmailAddress();
+        return createCalendarMessage(authAccount, fromIdentity.getFriendlyEmailAddress(),
                 senderAddr, toList, replySubject, replyText.toString(), null, inv.getUid(), iCal);
     }
 
@@ -282,6 +358,7 @@ public class CalendarMailSender {
                     MsgKey.calendarResourceReplyOriginalInviteSeparatorLabel, lc));
             sb.append("-----\r\n\r\n");
             sb.append(notes);
+            sb.append("\r\n\r\n");
         }
     }
 
@@ -581,8 +658,8 @@ public class CalendarMailSender {
         }
     }
 
-    public static MimeMessage createForwardedInviteMessage(MimeMessage mmOrig, String origSenderEmail, String forwarderEmail, String[] forwardTo)
-    throws ServiceException {
+    public static MimeMessage createForwardedInviteMessage(MimeMessage mmOrig, String origSenderEmail,
+            String forwarderEmail, String[] forwardTo) {
         List<Address> rcpts = new ArrayList<Address>();
         for (String to : forwardTo) {
             try {
@@ -595,7 +672,7 @@ public class CalendarMailSender {
             return null;
         MimeMessage mm = null;
         try {
-            mm = new MimeMessage(mmOrig);
+            mm = new ZMimeMessage(mmOrig);
             mm.removeHeader("To");
             mm.removeHeader("Cc");
             mm.removeHeader("Bcc");
@@ -691,10 +768,7 @@ public class CalendarMailSender {
             } catch (IOException e) {
                 throw ServiceException.FAILURE("Error writing iCalendar", e);
             } finally {
-                if (writer != null)
-                    try {
-                        writer.close();
-                    } catch (IOException e) {}
+                Closeables.closeQuietly(writer);
             }
             mm.setText(writer.toString());
 
@@ -713,21 +787,31 @@ public class CalendarMailSender {
             Address toAddr, Invite inv, MsgKey bodyTextKey)
     throws ServiceException {
         Locale locale = !onBehalfOf ? fromAccount.getLocale() : senderAccount.getLocale();
+
+        Identity fromIdentity = getTargetedIdentity(fromAccount, inv);
+        StringBuilder replyText = new StringBuilder();
+
+        String sigText = getSignatureText(fromAccount, fromIdentity, Provisioning.A_zimbraPrefCalendarAutoDenySignatureId);
+        if (sigText == null || sigText.length() < 1)
+            sigText = L10nUtil.getMessage(bodyTextKey, locale);
+        if (sigText != null && sigText.length() > 0)
+            replyText.append(sigText).append("\r\n");
+        attachInviteSummary(replyText, inv, null, locale);
+
         String subject = L10nUtil.getMessage(MsgKey.calendarReplySubjectDecline, locale) + ": " + inv.getName();
-        String text = L10nUtil.getMessage(bodyTextKey, locale);
         String uid = inv.getUid();
         ParsedDateTime exceptDt = null;
         if (inv.hasRecurId())
             exceptDt = inv.getRecurId().getDt();
         Invite replyInv = replyToInvite(fromAccount, senderAccount, onBehalfOf, allowPrivateAccess, inv, VERB_DECLINE, subject, exceptDt);
         ZVCalendar iCal = replyInv.newToICalendar(true);
-        Address fromAddr = AccountUtil.getFriendlyEmailAddress(fromAccount);
+        Address fromAddr = fromIdentity.getFriendlyEmailAddress();
         Address senderAddr = null;
         if (onBehalfOf)
             senderAddr = AccountUtil.getFriendlyEmailAddress(senderAccount);
         List<Address> toAddrs = new ArrayList<Address>(1);
         toAddrs.add(toAddr);
-        return createCalendarMessage(senderAccount, fromAddr, senderAddr, toAddrs, subject, text, null, uid, iCal);
+        return createCalendarMessage(senderAccount, fromAddr, senderAddr, toAddrs, subject, replyText.toString(), null, uid, iCal);
     }
 
     public static void sendInviteDeniedMessage(
@@ -754,8 +838,8 @@ public class CalendarMailSender {
             @Override
             public void run() {
                 try {
-                    mbox.getMailSender().setSendPartial(true).sendMimeMessage(octxt, mbox, true, mm, null, null,
-                            origMsgId, MailSender.MSGTYPE_REPLY, null, false);
+                    MailSender mailSender = getCalendarMailSender(mbox).setSendPartial(true);
+                    mailSender.sendMimeMessage(octxt, mbox, true, mm, null, origMsgId, MailSender.MSGTYPE_REPLY, null, false);
                 } catch (ServiceException e) {
                     ZimbraLog.calendar.warn("Ignoring error while sending permission-denied auto reply", e);
                 } catch (OutOfMemoryError e) {
@@ -768,17 +852,17 @@ public class CalendarMailSender {
         senderThread.start();
     }
 
-    public static void sendInviteForwardMessage(
-            final OperationContext octxt, final Mailbox mbox, final ItemId origMsgId, final MimeMessage mm)
-    throws ServiceException {
+    public static void sendInviteAutoForwardMessage(
+            final OperationContext octxt, final Mailbox mbox, final ItemId origMsgId, final MimeMessage mm) {
         // Send in a separate thread to avoid nested transaction error when saving a copy to Sent folder.
         Runnable r = new Runnable() {
             @Override
             public void run() {
                 try {
-                    MailSender sender = mbox.getMailSender().setSaveToSent(true)
+                    MailSender sender = getCalendarMailSender(mbox).setSaveToSent(true)
                         .setOriginalMessageId(origMsgId).setReplyType(MailSender.MSGTYPE_REPLY)
-                        .setSendPartial(true).setSkipSendAsCheck(true);
+                        .setSendPartial(true);
+                    sender.setRedirectMode(true);  // Preserve original From and Sender to avoid confusing the delegate user.
                     sender.sendMimeMessage(octxt, mbox, mm);
                 } catch (ServiceException e) {
                     ZimbraLog.calendar.warn("Ignoring error while sending permission-denied auto reply", e);
@@ -793,20 +877,26 @@ public class CalendarMailSender {
     }
 
     /**
-     * Sends a message with partial send enabled.  If a partial send error occurs, logs an info
-     * message.
+     * Sends a message with partial send enabled.  If a partial send error occurs, logs an info message.
      */
-    public static ItemId sendPartial(OperationContext octxt, Mailbox mbox, MimeMessage mm,
-                                     List<InternetAddress> newContacts, List<Upload> uploads,
-                                     ItemId origMsgId, String replyType, String identityId,
-                                     boolean replyToSender, boolean suppressPartialAddressFailureException)
-    throws ServiceException {
+    public static ItemId sendPartial(OperationContext octxt, Mailbox mbox, MimeMessage mm, List<Upload> uploads,
+            ItemId origMsgId, String replyType, String identityId, boolean replyToSender) throws ServiceException {
+        return sendPartial(octxt, mbox, mm, uploads, origMsgId, replyType, identityId, replyToSender, false);
+    }
+
+    public static ItemId sendPartial(OperationContext octxt, Mailbox mbox, MimeMessage mm, List<Upload> uploads,
+            ItemId origMsgId, String replyType, String identityId, boolean replyToSender, boolean asAdmin) throws ServiceException {
         ItemId id = null;
         try {
-            id = mbox.getMailSender().setSendPartial(true).sendMimeMessage(
-                octxt, mbox, mm, newContacts, uploads, origMsgId, replyType, identityId, replyToSender);
+            MailSender mailSender = getCalendarMailSender(mbox).setSendPartial(true);
+            if (asAdmin) {
+                mailSender.setSkipHeaderUpdate(true);
+                id = mailSender.sendMimeMessage(octxt, mbox, Boolean.FALSE, mm, uploads, origMsgId, replyType, null, replyToSender);
+            } else {
+                id = mailSender.sendMimeMessage(octxt, mbox, mm, uploads, origMsgId, replyType, identityId, replyToSender);
+            }
         } catch (MailServiceException e) {
-            if (suppressPartialAddressFailureException && e.getCode().equals(MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE)) {
+            if (e.getCode().equals(MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE)) {
                 ZimbraLog.calendar.info("Unable to send to some addresses: " + e);
             } else {
                 throw e;
@@ -853,7 +943,7 @@ public class CalendarMailSender {
         Invite reply =
             new Invite(oldInv.getItemType(), ICalTok.REPLY.toString(),
                        new TimeZoneMap(
-                               ICalTimeZone.getAccountTimeZone(onBehalfOf ? authAcct : acct)),
+                               Util.getAccountTimeZone(onBehalfOf ? authAcct : acct)),
                        oldInv.isOrganizer());
         reply.setLocalOnly(false);  // suppress X-ZIMBRA-LOCAL-ONLY property
 
@@ -865,10 +955,10 @@ public class CalendarMailSender {
             identity = acct.getIdentityById(identityId);
             if (identity == null) {
                 ZimbraLog.calendar.warn("No such identity " + identityId + " for account " + acct.getName());
-                identity = acct.getDefaultIdentity();
+                identity = getTargetedIdentity(acct, oldInv);
             }
         } else {
-            identity = acct.getDefaultIdentity();
+            identity = getTargetedIdentity(acct, oldInv);
         }
         String identityAddr = identity.getAttr(Provisioning.A_zimbraPrefFromAddress);
         String identityCn = identity.getAttr(Provisioning.A_zimbraPrefFromDisplay);
@@ -969,10 +1059,11 @@ public class CalendarMailSender {
         }
     }
 
-    public static MimeMessage createResourceAutoReply(OperationContext octxt, Mailbox mbox,
-                                                      Verb verb, boolean partialAccept,
+    public static MimeMessage createResourceAutoReply(OperationContext octxt, String fromIdentityId, String authIdentityId,
+                                                      Mailbox mbox, Verb verb, boolean partialAccept,
                                                       String additionalMsgBody, CalendarItem calItem,
-                                                      Invite inv, Invite[] replies, MimeMessage mmInv)
+                                                      Invite inv, Invite[] replies, MimeMessage mmInv,
+                                                      boolean addSignature)
     throws ServiceException {
         boolean onBehalfOf = false;
         Account acct = mbox.getAccount();
@@ -1011,17 +1102,70 @@ public class CalendarMailSender {
                 iCal.addComponent(cancelComp);
             }
         }
-        return createDefaultReply(acct, authAcct, asAdmin, onBehalfOf, calItem, inv, mmInv,
-                                  replySubject, verb, partialAccept, additionalMsgBody, iCal);
+        return createDefaultReply(acct, fromIdentityId, authAcct, authIdentityId, asAdmin, onBehalfOf, calItem, inv, mmInv,
+                                  replySubject, verb, partialAccept, additionalMsgBody, iCal, addSignature);
     }
 
+    public static MimeMessage createForwardNotifyMessage(Account senderAcct, Account toAcct, String to, Address[] rcpts, Invite inv) throws MessagingException, ServiceException {
+        MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSession());
+        Locale lc = toAcct.getLocale();
+        mm.setSubject(L10nUtil.getMessage(MsgKey.calendarForwardNotificationSubject, lc, inv.getName()), MimeConstants.P_CHARSET_UTF8);
+        mm.setSentDate(new Date());
+        String postmaster = senderAcct.getAttr(Provisioning.A_zimbraNewMailNotificationFrom);
+        Map<String, String> vars = new HashMap<String, String>();
+        vars.put("RECIPIENT_DOMAIN", senderAcct.getDomainName());
+        postmaster = StringUtil.fillTemplate(postmaster, vars);        
+        mm.setSender(new JavaMailInternetAddress(postmaster));
+        mm.setFrom(new JavaMailInternetAddress(senderAcct.getName()));
+        mm.setRecipient(RecipientType.TO, new JavaMailInternetAddress(to));
+        
+        MimeMultipart mmp = new ZMimeMultipart("alternative");
+        mm.setContent(mmp);
+        
+        String sender = senderAcct.getCn() + " <" +senderAcct.getName() + ">";
+        String time = FriendlyCalendaringDescription.getTimeDisplayString(inv.getStartTime(), inv.getEndTime(),
+                inv.isRecurrence(), inv.isAllDayEvent(), lc, toAcct);
+        StringBuilder sb = new StringBuilder();
+        StringBuilder sbHtml = new StringBuilder();
+        for (Address rcpt : rcpts) {
+            sb.append(rcpt.toString()).append("\n\t");
+            InternetAddress address = new JavaMailInternetAddress(rcpt.toString());
+            sbHtml.append("<a href=\"mailto:").append(address.getAddress()).append("\">");
+            if (address.getPersonal() != null) {
+                sbHtml.append(address.getPersonal()).append("</a>").append("<br>");
+            } else {
+                sbHtml.append(address.getAddress()).append("</a>").append("<br>");
+            }
+        }
+        String recipients = sb.toString();
+        String recipientsHtml = sbHtml.toString();
+        if (inv.isRecurrence()) {
+            ZRecur zr = FriendlyCalendaringDescription.getRecur(inv);
+            time += " (" + FriendlyCalendaringDescription.getRecurrenceDisplayString(zr, inv.getStartTime().getCalendarCopy(), lc) + ")";
+        }
+        String text = L10nUtil.getMessage(MsgKey.calendarForwardNotificationBody, lc, sender, inv.getName(), time, recipients);
+        MimeBodyPart textPart = new ZMimeBodyPart();
+        textPart.setText(text, MimeConstants.P_CHARSET_UTF8);
+        mmp.addBodyPart(textPart);
+
+        sender = "<a href=\"mailto:" + senderAcct.getName() + "\">" + senderAcct.getCn() + "</a>";
+        String html = L10nUtil.getMessage(MsgKey.calendarForwardNotificationBodyHtml, lc, sender, inv.getName(), time, recipientsHtml);
+        MimeBodyPart htmlPart = new ZMimeBodyPart();
+        htmlPart.setContent(html, MimeConstants.CT_TEXT_HTML + "; " + MimeConstants.P_CHARSET + "=" + MimeConstants.P_CHARSET_UTF8);
+        mmp.addBodyPart(htmlPart);
+
+        mm.saveChanges();
+        return mm;
+    }
+    
     public static void sendResourceAutoReply(final OperationContext octxt, final Mailbox mbox,
-                                             final boolean saveToSent,
-                                             Verb verb, boolean partialAccept,
+                                             final boolean saveToSent, Verb verb, boolean partialAccept,
                                              String additionalMsgBody, CalendarItem calItem,
                                              Invite inv, Invite[] replies, MimeMessage mmInv)
     throws ServiceException {
-        final MimeMessage mm = createResourceAutoReply(octxt, mbox, verb, partialAccept, additionalMsgBody, calItem, inv, replies, mmInv);
+        Identity iden = getTargetedIdentity(mbox.getAccount(), inv);
+        final MimeMessage mm = createResourceAutoReply(octxt, iden.getId(), iden.getId(), mbox, verb, partialAccept,
+                additionalMsgBody, calItem, inv, replies, mmInv, true);
         final String replyType = MailSender.MSGTYPE_REPLY;
         final int invId = inv.getMailItemId();
 
@@ -1030,8 +1174,8 @@ public class CalendarMailSender {
             @Override
             public void run() {
                 try {
-                    mbox.getMailSender().setSendPartial(true).sendMimeMessage(octxt, mbox, saveToSent, mm, null, null,
-                            new ItemId(mbox, invId), replyType, null, false);
+                    MailSender mailSender = getCalendarMailSender(mbox).setSendPartial(true);
+                    mailSender.sendMimeMessage(octxt, mbox, saveToSent, mm, null, new ItemId(mbox, invId), replyType, null, false);
                 } catch (ServiceException e) {
                     ZimbraLog.calendar.warn("Ignoring error while sending auto accept/decline reply", e);
                 } catch (OutOfMemoryError e) {
@@ -1042,6 +1186,36 @@ public class CalendarMailSender {
         Thread senderThread = new Thread(r, "CalendarAutoAcceptDeclineReplySender");
         senderThread.setDaemon(true);
         senderThread.start();
+    }
+
+    // Returns the Identity of the account that matches the attendee address in the invite.
+    // Default identity is returned if no attendee matches any identity.
+    private static Identity getTargetedIdentity(Account acct, Invite invite) throws ServiceException {
+        ZAttendee addressedAtt = invite.getMatchingAttendee(acct);
+        if (addressedAtt != null && addressedAtt.getAddress() != null) {
+            String addr = addressedAtt.getAddress();
+            List<Identity> idens = Provisioning.getInstance().getAllIdentities(acct);
+            for (Identity iden : idens) {
+                String idenAddr = iden.getAttr(Provisioning.A_zimbraPrefFromAddress);
+                if (addr.equalsIgnoreCase(idenAddr)) {
+                    return iden;
+                }
+            }
+        }
+        return acct.getDefaultIdentity();
+    }
+
+    private static String getSignatureText(Account acct, Identity identity, String signatureKey) throws ServiceException {
+        String sigId = identity.getAttr(signatureKey);
+        if (sigId == null)
+            return null;
+        Signature sig = Provisioning.getInstance().get(acct, Key.SignatureBy.id, sigId);
+        if (sig == null) {
+            ZimbraLog.calendar.warn("No such signature " + sigId + " for account " + acct.getName());
+            return null;
+        }
+        String attr = SignatureUtil.mimeTypeToAttrName(MimeConstants.CT_TEXT_PLAIN);
+        return sig.getAttr(attr, null);
     }
 
     private static class HtmlPartDataSource implements DataSource {

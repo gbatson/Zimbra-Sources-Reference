@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,7 +21,9 @@ import java.util.Map;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.auth.ZAuthToken;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
@@ -38,12 +40,12 @@ import com.zimbra.cs.account.soap.SoapProvisioning;
 
 public class TestAccess extends TestCase {
     private String TEST_ID;
-    private static String TEST_NAME = "test-access";
+    private static String TEST_CLASS_NAME = "test-access";
     
     private SoapAdminUser mProvAdmin;
     private SoapUser mSoapUser1;
     
-    private static int sBrainDeadSingleThreadRandom = 0;
+    private static int sDummyRandom = 0;
         
     private static String PASSWORD = "test123";
     private String DOMAIN_NAME;
@@ -62,7 +64,7 @@ public class TestAccess extends TestCase {
         mProvAdmin = new SoapAdminUser("admin");
         mProvAdmin.auth();
 
-        DOMAIN_NAME = TestProvisioningUtil.baseDomainName(TEST_NAME, TEST_ID);
+        DOMAIN_NAME = TestProvisioningUtil.baseDomainName(TEST_CLASS_NAME, TEST_ID);
         ACCT_1_EMAIL = "acct-1@" + DOMAIN_NAME;
         ACCT_2_EMAIL = "acct-2@" + DOMAIN_NAME;
         
@@ -151,8 +153,8 @@ public class TestAccess extends TestCase {
                 attrs.put(Provisioning.A_zimbraDataSourcePort, "8888");
                 attrs.put(Provisioning.A_zimbraDataSourceUsername, "my-pop3-name");
                 attrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer, "TRUE");
-                dataSource = createDataSource(get(Provisioning.AccountBy.name, acctName), 
-                                              DataSource.Type.pop3, dataSourceName, attrs);
+                dataSource = createDataSource(get(Key.AccountBy.name, acctName), 
+                                              DataSourceType.pop3, dataSourceName, attrs);
             } catch (ServiceException e) {
                 e.printStackTrace();
                 fail();
@@ -162,7 +164,7 @@ public class TestAccess extends TestCase {
     }
     
     private static String random() {
-        String r = "" + (sBrainDeadSingleThreadRandom++);
+        String r = "" + (sDummyRandom++);
         // System.out.println("===== " + r + " =====");
         return r;
     }
@@ -291,7 +293,7 @@ public class TestAccess extends TestCase {
     
     public void DeleteIdentity(Role role, Perm perm) throws Exception {
         String identityName = "identity-delete-"+random();
-        mProvAdmin.createIdentity(mProvAdmin.get(Provisioning.AccountBy.id, ACCT_1_ID), identityName, new HashMap<String, Object>());
+        mProvAdmin.createIdentity(mProvAdmin.get(Key.AccountBy.id, ACCT_1_ID), identityName, new HashMap<String, Object>());
         
         XMLElement req = new XMLElement(AccountConstants.DELETE_IDENTITY_REQUEST);
         Element identity = req.addElement(AccountConstants.E_IDENTITY);
@@ -301,7 +303,7 @@ public class TestAccess extends TestCase {
     
     public void DeleteSignature(Role role, Perm perm) throws Exception {
         String signatureName = "signature-delete-"+random();
-        Signature signature = mProvAdmin.createSignature(mProvAdmin.get(Provisioning.AccountBy.id, ACCT_1_ID), signatureName, new HashMap<String, Object>());
+        Signature signature = mProvAdmin.createSignature(mProvAdmin.get(Key.AccountBy.id, ACCT_1_ID), signatureName, new HashMap<String, Object>());
         
         XMLElement req = new XMLElement(AccountConstants.DELETE_SIGNATURE_REQUEST);
         Element identity = req.addElement(AccountConstants.E_SIGNATURE);
@@ -375,7 +377,7 @@ public class TestAccess extends TestCase {
     
     public void ModifyIdentity(Role role, Perm perm) throws Exception {
         String identityName = "identity-modify-"+random();
-        mProvAdmin.createIdentity(mProvAdmin.get(Provisioning.AccountBy.id, ACCT_1_ID), identityName, new HashMap<String, Object>());
+        mProvAdmin.createIdentity(mProvAdmin.get(Key.AccountBy.id, ACCT_1_ID), identityName, new HashMap<String, Object>());
         
         XMLElement req = new XMLElement(AccountConstants.MODIFY_IDENTITY_REQUEST);
         Element identity = req.addElement(AccountConstants.E_IDENTITY);
@@ -398,7 +400,7 @@ public class TestAccess extends TestCase {
     
     public void ModifySignature(Role role, Perm perm) throws Exception {
         String signatureName = "signature-modify-"+random();
-        Signature signature = mProvAdmin.createSignature(mProvAdmin.get(Provisioning.AccountBy.id, ACCT_1_ID), signatureName, new HashMap<String, Object>());
+        Signature signature = mProvAdmin.createSignature(mProvAdmin.get(Key.AccountBy.id, ACCT_1_ID), signatureName, new HashMap<String, Object>());
         
         XMLElement req = new XMLElement(AccountConstants.MODIFY_SIGNATURE_REQUEST);
         Element identity = req.addElement(AccountConstants.E_SIGNATURE);

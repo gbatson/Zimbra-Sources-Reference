@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -32,13 +32,13 @@ class OfflineCos extends Cos {
 
     static OfflineCos instantiate(Provisioning prov) {
         try {
-            Map<String, Object> attrs = DbOfflineDirectory.readDirectoryEntry(EntryType.COS, OfflineProvisioning.A_offlineDn, "default");
+            Map<String, Object> attrs = DbOfflineDirectory.readDirectoryEntry(OfflineProvisioning.EntryType.COS, OfflineProvisioning.A_offlineDn, "default");
             if (attrs == null) {
                 attrs = new HashMap<String, Object>(3);
                 attrs.put(Provisioning.A_cn, "default");
                 attrs.put(Provisioning.A_objectClass, "zimbraCOS");
                 attrs.put(Provisioning.A_zimbraId, UUID.randomUUID().toString());
-                DbOfflineDirectory.createDirectoryEntry(EntryType.COS, "default", attrs, false);
+                DbOfflineDirectory.createDirectoryEntry(OfflineProvisioning.EntryType.COS, "default", attrs, false);
             }
             
             //make sure auth token doesn't expire too soon

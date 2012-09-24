@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.account.accesscontrol;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
@@ -25,16 +26,18 @@ import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
-import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AclGroups;
+import com.zimbra.cs.account.Provisioning.GroupMembership;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 
+/**
+ * @author pshao
+ */
 public class PseudoTarget {
     
     static class PseudoZimbraId {
@@ -56,6 +59,7 @@ public class PseudoTarget {
             entry instanceof PseudoCos ||
             entry instanceof PseudoDomain ||
             entry instanceof PseudoServer ||
+            entry instanceof PseudoUCService ||
             entry instanceof PseudoXMPPComponent ||
             entry instanceof PseudoZimlet) {
             return true;
@@ -77,7 +81,7 @@ public class PseudoTarget {
     
     static class PseudoAccount extends Account {
         Domain mPseudoDomain;
-        AclGroups mAclGroups;
+        GroupMembership mAclGroups;
         
         PseudoAccount(String name, String id, Map<String, Object> attrs, Map<String, Object> defaults, 
                 Provisioning prov, Domain pseudoDomain) {
@@ -94,14 +98,14 @@ public class PseudoTarget {
         PseudoAccount(String name, String id, Map<String, Object> attrs, Map<String, Object> defaults, 
                 Provisioning prov, DistributionList group) throws ServiceException {
             super(name, id, attrs, defaults, prov);
-            mAclGroups = prov.getAclGroups(group, false);
+            mAclGroups = prov.getGroupMembership(group, false);
         }
         
         Domain getPseudoDomain() {
             return mPseudoDomain;
         }
         
-        AclGroups getAclGroups() {
+        GroupMembership getAclGroups() {
             return mAclGroups;
         }
     }
@@ -109,8 +113,8 @@ public class PseudoTarget {
     static class PseudoCalendarResource extends CalendarResource {
         Domain mPseudoDomain;
         
-        public PseudoCalendarResource(String name, String id, Map<String, Object> attrs, Map<String, Object> defaults, 
-                Provisioning prov, Domain pseudoDomain) {
+        public PseudoCalendarResource(String name, String id, Map<String, Object> attrs, 
+                Map<String, Object> defaults, Provisioning prov, Domain pseudoDomain) {
             super(name, id, attrs, defaults, prov);
             mPseudoDomain = pseudoDomain;
         }
@@ -134,6 +138,20 @@ public class PseudoTarget {
         }
     }
     
+    static class PseudoDynamicGroup extends DynamicGroup {
+        Domain mPseudoDomain;
+        
+        public PseudoDynamicGroup(String name, String id, Map<String, Object> attrs, 
+                Provisioning prov, Domain pseudoDomain) {
+            super(name, id, attrs, prov);
+            mPseudoDomain = pseudoDomain;
+        }
+        
+        Domain getPseudoDomain() {
+            return mPseudoDomain;
+        }
+    }
+    
     static class PseudoCos extends Cos{
         private PseudoCos(String name, String id, Map<String,Object> attrs, Provisioning prov) {
             super(name, id, attrs, prov);
@@ -141,14 +159,23 @@ public class PseudoTarget {
     }
     
     static class PseudoDomain extends Domain {
-        private PseudoDomain(String name, String id, Map<String, Object> attrs, Map<String, Object> defaults, Provisioning prov) {
+        private PseudoDomain(String name, String id, Map<String, Object> attrs, 
+                Map<String, Object> defaults, Provisioning prov) {
             super(name, id, attrs, defaults, prov);
         }
     }
     
     static class PseudoServer extends Server {
-        private PseudoServer(String name, String id, Map<String,Object> attrs, Map<String,Object> defaults, Provisioning prov) {
+        private PseudoServer(String name, String id, Map<String,Object> attrs, 
+                Map<String,Object> defaults, Provisioning prov) {
             super(name, id, attrs, defaults, prov);
+        }
+    }
+    
+    static class PseudoUCService extends UCService {
+        private PseudoUCService(String name, String id, Map<String,Object> attrs, 
+                Provisioning prov) {
+            super(name, id, attrs, prov);
         }
     }
     
@@ -185,14 +212,15 @@ public class PseudoTarget {
      * @return
      * @throws ServiceException
      */
-    public static Domain createPseudoDomain(Provisioning prov, String domainName) throws ServiceException {
+    public static Domain createPseudoDomain(Provisioning prov, String domainName) 
+    throws ServiceException {
         return (Domain)createPseudoTarget(prov, TargetType.domain, null, null, false, null, null, domainName);
     }
     
     public static Entry createPseudoTarget(Provisioning prov,
             TargetType targetType, 
-            DomainBy domainBy, String domainStr, boolean createPseudoDomain,
-            CosBy cosBy, String cosStr) throws ServiceException {
+            Key.DomainBy domainBy, String domainStr, boolean createPseudoDomain,
+            Key.CosBy cosBy, String cosStr) throws ServiceException {
         return createPseudoTarget(prov, targetType, domainBy, domainStr, createPseudoDomain, cosBy, cosStr, null);
     }
     
@@ -226,8 +254,8 @@ public class PseudoTarget {
      */
     public static Entry createPseudoTarget(Provisioning prov,
             TargetType targetType, 
-            DomainBy domainBy, String domainStr, boolean createPseudoDomain,
-            CosBy cosBy, String cosStr,
+            Key.DomainBy domainBy, String domainStr, boolean createPseudoDomain,
+            Key.CosBy cosBy, String cosStr,
             String domainName) throws ServiceException {
         
         Entry targetEntry = null;
@@ -241,17 +269,20 @@ public class PseudoTarget {
         Domain domain = null;
         if (targetType == TargetType.account ||
             targetType == TargetType.calresource ||
-            targetType == TargetType.dl) {
+            targetType == TargetType.dl ||
+            targetType == TargetType.group) {
             
-            if (createPseudoDomain)
-                domain = pseudoDomain = (Domain)createPseudoTarget(prov, TargetType.domain, null, null, false, null, null);
-            else {
+            if (createPseudoDomain) {
+                domain = pseudoDomain = (Domain)createPseudoTarget(prov, 
+                        TargetType.domain, null, null, false, null, null);
+            } else {
                 if (domainBy == null || domainStr == null)
                     throw ServiceException.INVALID_REQUEST("domainBy and domain identifier is required", null);
                 domain = prov.get(domainBy, domainStr);
             }
-            if (domain == null)
+            if (domain == null) {
                 throw AccountServiceException.NO_SUCH_DOMAIN(domainStr);
+            }
         }
         
         switch (targetType) {
@@ -260,29 +291,36 @@ public class PseudoTarget {
             Cos cos = null;
             if (cosBy != null && cosStr != null) {
                 cos = prov.get(cosBy, cosStr);
-                if (cos == null)
+                if (cos == null) {
                     throw AccountServiceException.NO_SUCH_COS(cosStr);
+                }
                 attrMap.put(Provisioning.A_zimbraCOSId, cos.getId());
             } else {
-                String domainCosId = domain != null ? domain.getAttr(Provisioning.A_zimbraDomainDefaultCOSId, null) : null;
-                if (domainCosId != null) cos = prov.get(CosBy.id, domainCosId);
-                if (cos == null) cos = prov.get(CosBy.name, Provisioning.DEFAULT_COS_NAME);
+                String domainCosId = domain != null ? 
+                        domain.getAttr(Provisioning.A_zimbraDomainDefaultCOSId, null) : null;
+                if (domainCosId != null) {
+                    cos = prov.get(Key.CosBy.id, domainCosId);
+                }
+                if (cos == null) { 
+                    cos = prov.get(Key.CosBy.name, Provisioning.DEFAULT_COS_NAME);
+                }
             }
             
-            if (targetType == TargetType.account)
+            if (targetType == TargetType.account) {
                 targetEntry = new PseudoAccount("pseudo@"+domain.getName(),
                                            zimbraId,
                                            attrMap,
                                            cos.getAccountDefaults(),
                                            prov,
                                            pseudoDomain);
-            else
+            } else {
                 targetEntry = new PseudoCalendarResource("pseudo@"+domain.getName(),
                                            zimbraId,
                                            attrMap,
                                            cos.getAccountDefaults(),
                                            prov,
                                            pseudoDomain);
+            }
             break;
             
         case cos:  
@@ -290,15 +328,19 @@ public class PseudoTarget {
             break;
         case dl:
             targetEntry = new PseudoDistributionList("pseudo@"+domain.getName(), zimbraId, attrMap, prov, pseudoDomain);
-            DistributionList dl = (DistributionList)targetEntry;
-            dl.turnToAclGroup();
             break;
+        case group:
+            targetEntry = new PseudoDynamicGroup("pseudo@"+domain.getName(), zimbraId, attrMap, prov, pseudoDomain);
+            break;    
         case domain:
             String name = domainName == null ? "pseudo.pseudo" : domainName;
             targetEntry = new PseudoDomain(name, zimbraId, attrMap, config.getDomainDefaults(), prov);
             break;
         case server:  
             targetEntry = new PseudoServer("pseudo.pseudo", zimbraId, attrMap, config.getServerDefaults(), prov);
+            break;
+        case ucservice:  
+            targetEntry = new PseudoUCService("pseudo", zimbraId, attrMap, prov);
             break;
         case xmppcomponent:
             targetEntry = new PseudoXMPPComponent("pseudo", zimbraId, attrMap, prov);

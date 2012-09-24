@@ -1,33 +1,37 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-/*
- * Created on Jul 3, 2005
- */
 package com.zimbra.cs.mailbox;
 
 import com.google.common.base.Objects;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
 import com.zimbra.cs.service.util.ItemId;
+import com.zimbra.cs.session.PendingModifications.Change;
 
+/**
+ * @since Jul 3, 2005
+ */
 public class Mountpoint extends Folder {
 
     private String mOwnerId;
     private int    mRemoteId;
+    private String mRemoteUuid;
+    private boolean mReminderEnabled;
 
     Mountpoint(Mailbox mbox, UnderlyingData ud) throws ServiceException {
         super(mbox, ud);
@@ -49,6 +53,13 @@ public class Mountpoint extends Folder {
         return mRemoteId;
     }
 
+    /** Returns the UUID of the remote shared item pointed to by
+     *  this <code>Mountpoint</code>.
+     */
+    public String getRemoteUuid() {
+        return mRemoteUuid;
+    }
+
     /** Returns the {@link ItemId} of the remote shared item referenced by
      *  this <code>Mountpoint</code>.
      *
@@ -56,6 +67,14 @@ public class Mountpoint extends Folder {
      * @see Mountpoint#getRemoteId() */
     public ItemId getTarget() {
         return new ItemId(mOwnerId, mRemoteId);
+    }
+
+    /** Returns true if reminders are enabled on the shared calendar.
+     *
+     * @return
+     */
+    public boolean isReminderEnabled() {
+        return mReminderEnabled;
     }
 
     /** @return TRUE if this mountpoint points to its owner's mailbox */
@@ -85,7 +104,7 @@ public class Mountpoint extends Folder {
     @Override boolean trackUnread()     { return false; }
     @Override boolean canParent(MailItem child)  { return false; }
     @Override boolean canContain(MailItem child) { return false; }
-    @Override boolean canContain(byte type)      { return false; }
+    @Override boolean canContain(MailItem.Type type) { return false; }
 
     /** Creates a new Mountpoint pointing at a remote item and persists it
      *  to the database.  A real nonnegative item ID must be supplied from
@@ -99,6 +118,7 @@ public class Mountpoint extends Folder {
      * @param view      The (optional) default object type for the folder.
      * @param flags     Folder flags (e.g. {@link Flag#BITMASK_CHECKED}).
      * @param color     The new mountpoint's color.
+     * @param reminderEnabled Whether calendar reminders are enabled
      * @param custom    An optional extra set of client-defined metadata.
      * @perms {@link ACL#RIGHT_INSERT} on the parent folder
      * @throws ServiceException   The following error codes are possible:<ul>
@@ -115,67 +135,80 @@ public class Mountpoint extends Folder {
      *        sufficient permissions</ul>
      * @see #validateItemName(String)
      * @see #canContain(byte) */
-    static Mountpoint create(int id, Folder parent, String name, String ownerId, int remoteId, byte view, int flags, Color color, CustomMetadata custom)
-    throws ServiceException {
-        if (parent == null || ownerId == null || remoteId <= 0)
+    static Mountpoint create(int id, String uuid, Folder parent, String name, String ownerId, int remoteId, String remoteUuid,
+            Type view, int flags, Color color, boolean reminderEnabled, CustomMetadata custom) throws ServiceException {
+        if (parent == null || ownerId == null || remoteId <= 0) {
             throw ServiceException.INVALID_REQUEST("invalid parameters when creating mountpoint", null);
-        if (!parent.canAccess(ACL.RIGHT_INSERT))
+        }
+        if (!parent.canAccess(ACL.RIGHT_INSERT)) {
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions on the parent folder");
-        if (parent == null || !parent.canContain(TYPE_MOUNTPOINT))
+        }
+        if (!parent.canContain(Type.MOUNTPOINT)) {
             throw MailServiceException.CANNOT_CONTAIN();
+        }
         name = validateItemName(name);
-        if (view != TYPE_UNKNOWN)
-            validateType(view);
-        if (parent.findSubfolder(name) != null)
+        if (parent.findSubfolder(name) != null) {
             throw MailServiceException.ALREADY_EXISTS(name);
+        }
         Mailbox mbox = parent.getMailbox();
 
         UnderlyingData data = new UnderlyingData();
-        data.id       = id;
-        data.type     = TYPE_MOUNTPOINT;
+        data.uuid = uuid;
+        data.id = id;
+        data.type = Type.MOUNTPOINT.toByte();
         data.folderId = parent.getId();
         data.parentId = data.folderId;
-        data.date     = mbox.getOperationTimestamp();
-        data.flags    = flags & Flag.FLAGS_FOLDER;
-        data.name     = name;
-        data.subject  = name;
-        data.metadata = encodeMetadata(color, 1, custom, view, ownerId, remoteId);
+        data.date = mbox.getOperationTimestamp();
+        data.setFlags(flags & Flag.FLAGS_FOLDER);
+        data.name = name;
+        data.setSubject(name);
+        data.metadata = encodeMetadata(color, 1, 1, custom, view, ownerId, remoteId, remoteUuid, reminderEnabled);
         data.contentChanged(mbox);
         ZimbraLog.mailop.info("Adding Mountpoint %s: id=%d, parentId=%d, parentName=%s.",
-            name, data.id, parent.getId(), parent.getName());
-        DbMailItem.create(mbox, data, null);
+                name, data.id, parent.getId(), parent.getName());
+        new DbMailItem(mbox).create(data);
 
         Mountpoint mpt = new Mountpoint(mbox, data);
         mpt.finishCreation(parent);
         return mpt;
     }
 
-    @Override void delete(DeleteScope scope, boolean writeTombstones) throws ServiceException {
+    @Override
+    void delete(boolean writeTombstones) throws ServiceException {
         if (!getFolder().canAccess(ACL.RIGHT_DELETE))
             throw ServiceException.PERM_DENIED("you do not have sufficient permissions on the parent folder");
-        deleteSingleFolder(writeTombstones);
+        super.delete(writeTombstones);
     }
 
 
-    @Override void decodeMetadata(Metadata meta) throws ServiceException {
+    @Override
+    void decodeMetadata(Metadata meta) throws ServiceException {
         super.decodeMetadata(meta);
         mOwnerId = meta.get(Metadata.FN_ACCOUNT_ID);
         mRemoteId = (int) meta.getLong(Metadata.FN_REMOTE_ID);
+        mRemoteUuid = meta.get(Metadata.FN_REMOTE_UUID, null);
+        mReminderEnabled = meta.getBool(Metadata.FN_REMINDER_ENABLED, false);
     }
 
-    @Override Metadata encodeMetadata(Metadata meta) {
-        return encodeMetadata(meta, mRGBColor, mVersion, mExtendedData, mAttributes, mDefaultView, mOwnerId, mRemoteId);
+    @Override
+    Metadata encodeMetadata(Metadata meta) {
+        return encodeMetadata(meta, mRGBColor, mMetaVersion, mVersion, mExtendedData, attributes, defaultView, mOwnerId, mRemoteId, mRemoteUuid, mReminderEnabled);
     }
 
-    private static String encodeMetadata(Color color, int version, CustomMetadata custom, byte view, String owner, int remoteId) {
+    private static String encodeMetadata(Color color, int metaVersion, int version, CustomMetadata custom, Type view, String owner,
+            int remoteId, String remoteUuid, boolean reminderEnabled) {
         CustomMetadataList extended = (custom == null ? null : custom.asList());
-        return encodeMetadata(new Metadata(), color, version, extended, (byte) 0, view, owner, remoteId).toString();
+        return encodeMetadata(new Metadata(), color, metaVersion, version, extended, (byte) 0, view, owner, remoteId, remoteUuid, reminderEnabled).toString();
     }
 
-    static Metadata encodeMetadata(Metadata meta, Color color, int version, CustomMetadataList extended, byte attrs, byte view, String owner, int remoteId) {
+    static Metadata encodeMetadata(Metadata meta, Color color, int metaVersion, int version, CustomMetadataList extended, byte attrs,
+            Type view, String owner, int remoteId, String remoteUuid, boolean reminderEnabled) {
         meta.put(Metadata.FN_ACCOUNT_ID, owner);
         meta.put(Metadata.FN_REMOTE_ID, remoteId);
-        return Folder.encodeMetadata(meta, color, version, extended, attrs, view, null, null, 0, 0, 0, 0, 0, 0, 0);
+        meta.put(Metadata.FN_REMOTE_UUID, remoteUuid);
+        if (reminderEnabled)
+            meta.put(Metadata.FN_REMINDER_ENABLED, reminderEnabled);
+        return Folder.encodeMetadata(meta, color, metaVersion, version, extended, attrs, view, null, null, 0, 0, 0, 0, 0, 0, 0, null, false);
     }
 
     @Override
@@ -183,7 +216,51 @@ public class Mountpoint extends Folder {
         Objects.ToStringHelper helper = Objects.toStringHelper(this);
         helper.add(CN_NAME, getName());
         appendCommonMembers(helper);
-        helper.add(CN_ATTRIBUTES, mAttributes);
+        helper.add(CN_ATTRIBUTES, attributes);
+        helper.add("reminder", mReminderEnabled);
         return helper.toString();
+    }
+
+    /**
+     * Enables/disables showing reminders for items in shared calendar.
+     */
+    void enableReminder(boolean enable) throws ServiceException {
+        if (!isMutable()) {
+            throw MailServiceException.IMMUTABLE_OBJECT(mId);
+        }
+        if (!canAccess(ACL.RIGHT_WRITE)) {
+            throw ServiceException.PERM_DENIED("you do not have the required rights on the mountpoint");
+        }
+        if (mReminderEnabled == enable) {
+            return;
+        }
+        markItemModified(Change.SHAREDREM);
+        mReminderEnabled = enable;
+        saveMetadata();
+    }
+
+    /** Sets the folder's UIDNEXT item ID highwater mark to one more than
+     *  the Mailbox's last assigned item ID. */
+    /**
+     * Sets the owner and item id of the remote folder this mountpoint points to.
+     * @param ownerId account id of the owner of the remote folder
+     * @param remoteId numeric item id of the remote folder
+     * @throws ServiceException
+     */
+    void setRemoteInfo(String ownerId, int remoteId) throws ServiceException {
+        if (mOwnerId.equalsIgnoreCase(ownerId) && mRemoteId == remoteId) {
+            // no change
+            return;
+        }
+        mOwnerId = ownerId;
+        mRemoteId = remoteId;
+        markItemModified(Change.METADATA);
+        saveMetadata();
+    }
+
+    @Override
+    protected void checkItemCreationAllowed() throws ServiceException {
+        // check nothing
+        // external account mailbox can have mountpoints
     }
 }

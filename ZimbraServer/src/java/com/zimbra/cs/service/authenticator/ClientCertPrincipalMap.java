@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.service.authenticator;
 
 import java.security.cert.X509Certificate;
@@ -24,6 +8,8 @@ import java.util.regex.Pattern;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -31,9 +17,8 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.SearchOptions;
-import com.zimbra.cs.account.ldap.LdapFilter;
+import com.zimbra.cs.account.SearchAccountsOptions;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 import com.zimbra.cs.service.authenticator.SSOAuthenticator.ZimbraPrincipal;
 
 public class ClientCertPrincipalMap {
@@ -179,19 +164,17 @@ public class ClientCertPrincipalMap {
         @Override
         ZimbraPrincipal apply(X509Certificate cert) throws ServiceException {
             String filter = expandFilter(cert);
-            filter = "(&" + LdapFilter.allAccounts() + filter + ")";
-            ZimbraLog.account.debug(LOG_PREFIX + "search account by expanded filter: " + filter);
+            ZimbraLog.account.debug(LOG_PREFIX + 
+                    "search account by expanded filter(prepended with account objectClass filter): " + filter);
             
-            SearchOptions options = new SearchOptions();
-           
-            options.setMaxResults(1);
-            // options.setFlags(Provisioning.SA_ACCOUNT_FLAG | Provisioning.SA_CALENDAR_RESOURCE_FLAG);
-            options.setFlags(Provisioning.SO_NO_FIXUP_OBJECTCLASS);
-            options.setQuery(filter);
+            SearchAccountsOptions searchOpts = new SearchAccountsOptions();
+            searchOpts.setMaxResults(1);
+            searchOpts.setFilterString(FilterId.ACCOUNT_BY_SSL_CLENT_CERT_PRINCIPAL_MAP, filter);
             
             // should return at most one entry.  If more than one entries were matched,
             // TOO_MANY_SEARCH_RESULTS will be thrown
-            List<NamedEntry> entries = Provisioning.getInstance().searchDirectory(options);
+            List<NamedEntry> entries = Provisioning.getInstance().searchDirectory(searchOpts);
+            
             if (entries.size() == 1) {
                 Account acct = (Account) entries.get(0);
                 return new ZimbraPrincipal(filter, acct);
@@ -299,7 +282,7 @@ public class ClientCertPrincipalMap {
         Provisioning prov = Provisioning.getInstance();
         
         String virtualHostName = HttpUtil.getVirtualHost(req);
-        Entry entry = prov.get(Provisioning.DomainBy.virtualHostname, virtualHostName);
+        Entry entry = prov.get(DomainBy.virtualHostname, virtualHostName);
         if (entry == null) {
             entry = prov.getConfig();
         }

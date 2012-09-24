@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,9 +20,10 @@ import java.util.HashSet;
 import org.dom4j.Element;
 import org.dom4j.QName;
 
+import com.zimbra.common.calendar.ZCalendar;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.dav.DavElements;
-import com.zimbra.cs.mailbox.calendar.ZCalendar;
+import com.zimbra.cs.dav.caldav.Range.TimeRange;
 
 /*
  * draft-dusseault-caldav section 9.7

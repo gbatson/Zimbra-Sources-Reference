@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -23,6 +23,8 @@ import javax.servlet.ServletContext;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.CacheEntryBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
@@ -32,8 +34,6 @@ import com.zimbra.cs.account.CacheExtension;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Provisioning.CacheEntry;
-import com.zimbra.cs.account.Provisioning.CacheEntryBy;
-import com.zimbra.cs.account.Provisioning.CacheEntryType;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.PermissionCache;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
@@ -44,6 +44,7 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.util.SkinUtil;
 import com.zimbra.soap.SoapServlet;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.admin.type.CacheEntryType;
 import com.zimbra.cs.account.Config;
 
 public class FlushCache extends AdminDocumentHandler {
@@ -106,6 +107,9 @@ public class FlushCache extends AdminDocumentHandler {
 			case acl:
 				PermissionCache.invalidateCache();
 				break;
+			case all:
+				flushLdapCache(cacheType, eCache);
+				Provisioning.getInstance().refreshValidators(); // refresh other bits of cached license data
 			case galgroup:
 				GalGroup.flushCache(getCacheEntries(eCache));
 				break;
@@ -139,7 +143,7 @@ public class FlushCache extends AdminDocumentHandler {
             entries = new CacheEntry[eEntries.size()];
             int i = 0;
             for (Element eEntry : eEntries) {
-                entries[i++] = new CacheEntry(CacheEntryBy.valueOf(eEntry.getAttribute(AdminConstants.A_BY)),
+                entries[i++] = new CacheEntry(Key.CacheEntryBy.valueOf(eEntry.getAttribute(AdminConstants.A_BY)),
                         eEntry.getText());
             }
         }

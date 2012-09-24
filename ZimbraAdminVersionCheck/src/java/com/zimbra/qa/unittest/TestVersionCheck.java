@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.unittest;
 
 import java.io.File;
@@ -22,32 +6,36 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-
 import java.util.Map;
+
+import junit.framework.TestCase;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentHelper;
 import org.dom4j.io.XMLWriter;
 
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.Version;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.Server;
 import com.zimbra.cs.client.LmcSession;
-import com.zimbra.cs.service.versioncheck.VersionCheck;
-import com.zimbra.cs.service.versioncheck.VersionCheckService;
-import com.zimbra.cs.versioncheck.VersionUpdate;
 import com.zimbra.cs.client.soap.LmcVersionCheckRequest;
 import com.zimbra.cs.client.soap.LmcVersionCheckResponse;
-import junit.framework.TestCase;
+import com.zimbra.cs.service.versioncheck.VersionCheck;
 import com.zimbra.cs.util.BuildInfo;
-import com.zimbra.common.localconfig.LC;
+import com.zimbra.cs.versioncheck.VersionUpdate;
 /**
  * @author Greg Solovyev
  */
 public class TestVersionCheck extends TestCase {
     private String versionCheckURL;
     private String lastResponse;
+    private boolean httpEnabled = true;
+    @Override
     public void setUp() throws Exception {
         Provisioning prov = Provisioning.getInstance();
         Config config;
@@ -55,9 +43,16 @@ public class TestVersionCheck extends TestCase {
         this.versionCheckURL = config.getAttr(Provisioning.A_zimbraVersionCheckURL);
         this.lastResponse = config.getAttr(Provisioning.A_zimbraVersionCheckLastResponse);
         Map<String, String> attrs = new HashMap<String, String>();
-        attrs.put(Provisioning.A_zimbraVersionCheckURL, "http://localhost/zimbra/testversion.xml");
+        Server server = prov.getLocalServer();
+        attrs.put(Provisioning.A_zimbraVersionCheckURL, "http://localhost:"+server.getAttr(Provisioning.A_zimbraMailPort, "80")+"/zimbra/testversion.xml");
         prov.modifyAttrs(config, attrs, true);
         generateTestVersionXML();
+        String mode = server.getAttr(Provisioning.A_zimbraMailMode, "");
+        if ("http".equals(mode) || "both".equals(mode)) {
+            httpEnabled = true;
+        } else {
+            httpEnabled = false;
+        }
     }
 
     private void generateTestVersionXML() {
@@ -81,7 +76,7 @@ public class TestVersionCheck extends TestCase {
             updateEl.addAttribute("updateURL", "http://www.zimbra.com/community/downloads.html");
             updateEl.addAttribute("description", "description");
             updatesEl.add(updateEl);
-            
+
             updateEl = DocumentHelper.createElement("update");
             updateEl.addAttribute("type", "minor");
             updateEl.addAttribute("shortversion",String.format("%s.%d.0", BuildInfo.MAJORVERSION,Integer.parseInt(BuildInfo.MINORVERSION)+1));
@@ -93,7 +88,7 @@ public class TestVersionCheck extends TestCase {
             updateEl.addAttribute("updateURL", "http://www.zimbra.com/community/downloads.html");
             updateEl.addAttribute("description", "description");
             updatesEl.add(updateEl);
-            
+
             updateEl = DocumentHelper.createElement("update");
             updateEl.addAttribute("type", "micro");
             updateEl.addAttribute("shortversion",String.format("%s.%s.%d", BuildInfo.MAJORVERSION,BuildInfo.MINORVERSION,Integer.parseInt(BuildInfo.MICROVERSION)+1));
@@ -105,7 +100,7 @@ public class TestVersionCheck extends TestCase {
             updateEl.addAttribute("updateURL", "http://www.zimbra.com/community/downloads.html");
             updateEl.addAttribute("description", "description");
             updatesEl.add(updateEl);
-            
+
             updateEl = DocumentHelper.createElement("update");
             updateEl.addAttribute("type", "build");
             updateEl.addAttribute("shortversion",String.format("%s.%s.%s", BuildInfo.MAJORVERSION,BuildInfo.MINORVERSION,Integer.toString(Integer.parseInt(BuildInfo.MICROVERSION)+1)));
@@ -124,7 +119,7 @@ public class TestVersionCheck extends TestCase {
 			fail();
 		}
     }
-    
+
     private void cleanup() throws Exception {
         Provisioning prov = Provisioning.getInstance();
         Config config;
@@ -137,14 +132,19 @@ public class TestVersionCheck extends TestCase {
         testxmlfile.delete();
     }
 
+    @Override
     public void tearDown() throws Exception {
         cleanup();
     }
 
     public void testSOAP() throws Exception {
+        if (!httpEnabled) {
+            ZimbraLog.test.warn("http is not enabled on this server, skipping version test");
+            return;
+        }
         LmcSession session = TestUtil.getAdminSoapSession();
         LmcVersionCheckRequest checkRequest = new LmcVersionCheckRequest();
-        checkRequest.setAction(VersionCheckService.VERSION_CHECK_CHECK);//this should retreive the new version from http://localhost:7070/zimbra/test/testversion.xml
+        checkRequest.setAction(AdminConstants.VERSION_CHECK_CHECK);//this should retreive the new version from http://localhost/zimbra/test/testversion.xml
         checkRequest.setSession(session);
         String url = TestUtil.getAdminSoapUrl();
         LmcVersionCheckResponse resp = (LmcVersionCheckResponse) checkRequest.invoke(url);
@@ -160,7 +160,7 @@ public class TestVersionCheck extends TestCase {
 
         //check response from admin service
         LmcVersionCheckRequest versionRequest = new LmcVersionCheckRequest();
-        versionRequest.setAction(VersionCheckService.VERSION_CHECK_STATUS);
+        versionRequest.setAction(AdminConstants.VERSION_CHECK_STATUS);
         versionRequest.setSession(session);
         LmcVersionCheckResponse versionResp = (LmcVersionCheckResponse)versionRequest.invoke(url);
         //the test xml should contain one major update, one minor update and two micro updates (critical and non-critical)
@@ -199,6 +199,10 @@ public class TestVersionCheck extends TestCase {
     }
 
     public void testCheckVersion() throws Exception {
+        if (!httpEnabled) {
+            ZimbraLog.test.warn("http is not enabled on this server, skipping version test");
+            return;
+        }
         //the idea is to test retreiving an XML and putting it into LDAP
         VersionCheck.checkVersion(); //this should retreive the new version from http://localhost/zimbra/test/testversion.xml
         Provisioning prov = Provisioning.getInstance();
@@ -209,9 +213,9 @@ public class TestVersionCheck extends TestCase {
         assertNotNull(resp);
         Element respDoc = Element.parseXML(resp);
         assertNotNull(respDoc);
-        boolean hasUpdates = respDoc.getAttributeBool(VersionCheck.A_VERSION_CHECK_STATUS, false);
+        boolean hasUpdates = respDoc.getAttributeBool(AdminConstants.A_VERSION_CHECK_STATUS, false);
         assertTrue("Update XML document status is not 1 or true",hasUpdates);
-        Element eUpdates = respDoc.getElement(VersionCheck.E_UPDATES);
+        Element eUpdates = respDoc.getElement(AdminConstants.E_UPDATES);
         assertNotNull(eUpdates);
         int counter=0;
         int majorCounter=0;
@@ -220,7 +224,7 @@ public class TestVersionCheck extends TestCase {
         int buildCounter=0;
         for (Element e : eUpdates.listElements()) {
             counter++;
-            String updateType = e.getAttribute(VersionCheck.A_UPDATE_TYPE);
+            String updateType = e.getAttribute(AdminConstants.A_UPDATE_TYPE);
             if(updateType.equalsIgnoreCase("major")) {
                 majorCounter++;
             } else if (updateType.equalsIgnoreCase("minor")) {

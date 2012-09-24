@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -31,6 +15,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 
 	public static class Locators {
 		public static final String zDialogClass = "DwtDialog";
+		public static final String zDialogTitleClass = "css=td[class=DwtDialogTitle]";
 		public static final String zDialogButtonsClass = "DwtDialogButtonBar";
 		public static final String zDialogContentClassId = "DwtDialogBody";
 	}
@@ -49,7 +34,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 	public boolean zIsActive() throws HarnessException {
 		logger.info(myPageName() + " zIsActive()");
 
-		String locator = "class=" + Locators.zDialogClass;
+		String locator = Locators.zDialogTitleClass;
 
 		if (!this.sIsElementPresent(locator)) {
 			return (false); // Not even present
@@ -86,9 +71,6 @@ public class DialogAddVersionNotes extends AbsDialog {
 		// Default behavior, click the locator
 		
 		// Make sure the locator was set
-		if (locator == null) {
-			throw new HarnessException("Button " + button + " not implemented");
-		}
 		
 		// Make sure the locator exists
 		if (!this.sIsElementPresent(locator)) {
@@ -121,7 +103,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 		String locator = "css=div[class=" + Locators.zDialogContentClassId
 				+ "] textarea[id$='notes']";
 
-		if (!this.sIsElementPresent(locator))
+		if (!this.zWaitForElementPresent(locator,"10000"))
 			throw new HarnessException("unable to find body field " + locator);
 
 		this.sFocus(locator);
@@ -131,7 +113,7 @@ public class DialogAddVersionNotes extends AbsDialog {
 
 	public void zDismissAddVersionNotesDlg(String parentWindow)
 			throws HarnessException {
-		zSelectWindow(PageBriefcase.pageTitle);
+		sSelectWindow(PageBriefcase.pageTitle);
 		//SleepUtil.sleepSmall();
 		if (zIsWindowOpen(parentWindow)) {
 			zSelectWindow(parentWindow);

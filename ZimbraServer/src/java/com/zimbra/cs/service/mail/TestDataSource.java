@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,6 +14,9 @@
  */
 package com.zimbra.cs.service.mail;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DataSourceBy;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -22,7 +25,6 @@ import com.zimbra.common.util.SystemUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -47,13 +49,13 @@ public class TestDataSource extends MailDocumentHandler {
         
         // Parse request
         Element eDataSource = CreateDataSource.getDataSourceElement(request);
-        DataSource.Type type = DataSource.Type.fromString(eDataSource.getName());
+        DataSourceType type = DataSourceType.fromString(eDataSource.getName());
 
         String id = eDataSource.getAttribute(MailConstants.A_ID, null);
         String password = null;
         if (id != null) {
             // Testing existing data source
-            DataSource dsOrig = prov.get(account, DataSourceBy.id, id);
+            DataSource dsOrig = prov.get(account, Key.DataSourceBy.id, id);
             Map<String, Object> origAttrs = dsOrig.getAttrs();
             for (String key : origAttrs.keySet()) {
                 if (key.equals(Provisioning.A_zimbraDataSourcePassword)) {

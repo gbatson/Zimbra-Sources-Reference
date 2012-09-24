@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,7 @@ package com.zimbra.cs.mime.handler;
 
 import java.io.InputStream;
 
+import javax.activation.DataSource;
 import javax.mail.internet.InternetHeaders;
 
 import org.apache.lucene.document.Document;
@@ -51,10 +52,14 @@ public class MessageRFC822Handler extends MimeHandler {
      */
     @Override
     protected String getContentImpl() throws MimeHandlerException {
+        DataSource ds = getDataSource();
+        if (ds == null) {
+            return null;
+        }
         InputStream is = null;
         String content = null;
         try {
-            is = getDataSource().getInputStream();
+            is = ds.getInputStream();
             if (is == null) {
                 return null;
             }

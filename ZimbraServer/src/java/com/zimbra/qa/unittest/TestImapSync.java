@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,11 +15,10 @@
 package com.zimbra.qa.unittest;
 
 import org.junit.*;
-import org.junit.Test;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZDataSource;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZImapDataSource;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZDataSource;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZImapDataSource;
 import com.zimbra.cs.mailclient.imap.ImapConnection;
 import com.zimbra.cs.mailclient.imap.ImapConfig;
 import com.zimbra.cs.mailclient.imap.ListData;
@@ -28,6 +27,7 @@ import com.zimbra.cs.mailclient.MailConfig;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 import java.io.IOException;
 import java.util.List;
@@ -102,9 +102,9 @@ public class TestImapSync {
     }
 
     private ZDataSource createDataSource() throws Exception {
-        DataSource.ConnectionType ctype =
+        ConnectionType ctype =
             config.getSecurity() == MailConfig.Security.SSL ?
-                DataSource.ConnectionType.ssl : DataSource.ConnectionType.cleartext;
+                ConnectionType.ssl : ConnectionType.cleartext;
         String id = localMailbox.createDataSource(
             new ZImapDataSource(
                 "TestImapSync", true, config.getHost(), config.getPort(),

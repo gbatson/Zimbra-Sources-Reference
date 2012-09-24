@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -79,7 +79,7 @@ ZaPosixGroupXFormView.myXFormModifier = function(xFormObject,entry) {
 			items: [
 				{type:_GROUP_,	numCols:4,colSizes:["32px","350px","100px","250px"],
 					items: [
-						{type:_AJX_IMAGE_, src:"COS_32", label:null},
+						{type:_AJX_IMAGE_, src:"Domain_32", label:null},
 						{type:_OUTPUT_, ref:ZaPosixGroup.A_PosixGroupName, label:null,cssClass:"AdminTitle", rowSpan:2},				
 						{type:_OUTPUT_, ref:ZaPosixGroup.A_sambaSID, label:"sambaSID"}
 					]

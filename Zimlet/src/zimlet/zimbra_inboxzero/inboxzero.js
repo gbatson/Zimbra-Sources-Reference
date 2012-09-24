@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 InboxZero = function() {
     ZmZimletBase.call(this);
     this._msgResponseMap = {};
@@ -136,7 +122,11 @@ InboxZero.prototype.onMsgView = function(msg, oldMsg, msgView) {
 
                 var button = toolbar.getButton(zmop);
                 this._initControl(button, category);
-                button.setMenu(this._createMenu(category, button));
+				var menu = this._createMenu(category, button);
+				if(menu) {
+					button.setMenu(menu);
+				}
+
                 button.addSelectionListener(listener);
 
                 // set button to last used state
@@ -170,7 +160,12 @@ InboxZero.prototype.onSendMsgSuccess = function(controller, msg) {
 };
 
 InboxZero.prototype.onSaveApptSuccess = function(controller, calItem, result) {
-//    console.log("onSaveApptSuccess: ",arguments);
+    // bug 72822, only archive the original mail when the task is saved
+    var msg = calItem._relatedMsg;
+    if (msg) {
+        this._archive(msg, null);
+        calItem._relatedMsg = null;
+    }
 };
 
 //
@@ -263,19 +258,11 @@ InboxZero.prototype._delete = function(msg, callback) {
 };
 
 InboxZero.prototype._do = function(msg, callback) {
-    var doCallback = new AjxCallback(this, this._doWithPrefix, ["", msg, callback]);
-    this._archive(msg, doCallback);
-};
-
-InboxZero.prototype._doWithPrefix = function(prefix, msg, callback) {
-    // NOTE: This won't help in this case because the new task won't have
-    // NOTE: any relationship to the original message.
-//    this._msgResponseMap[msg.id] = { msg:msg, callback:callback };
-
     AjxDispatcher.require(["TasksCore", "Tasks"]);
     var task = new ZmTask();
     task.setEndDate(AjxDateUtil.roundTimeMins(new Date, 30));
-    task.setFromMailMessage(msg, prefix+msg.subject);
+    task.setFromMailMessage(msg, msg.subject);
+    task._relatedMsg = msg;
     appCtxt.getApp(ZmApp.TASKS).getTaskController().show(task, ZmCalItem.MODE_NEW, true);
 };
 
@@ -542,7 +529,7 @@ InboxZero.prototype._createFoldersDone = function(callback, resp) {
 
 InboxZero.prototype.__selectNext = function() {
     var controller = appCtxt.getCurrentController();
-    controller._listView[controller._currentView]._itemToSelect = controller._getNextItemToSelect();
+    controller.getListView()._itemToSelect = controller._getNextItemToSelect();
 };
 
 /**

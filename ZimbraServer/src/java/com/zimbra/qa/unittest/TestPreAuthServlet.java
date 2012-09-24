@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.httpclient.Header;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.HttpMethod;
@@ -29,19 +28,18 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.PreAuthKey;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.ldap.LdapConstants;
 
 import junit.framework.TestCase;
-import junit.framework.TestSuite;
 
 public class TestPreAuthServlet extends TestCase {
 
     String setUpDomain() throws Exception {
         String domainName = TestUtil.getDomain();
-        Domain domain = Provisioning.getInstance().get(DomainBy.name, domainName);
+        Domain domain = Provisioning.getInstance().get(Key.DomainBy.name, domainName);
         String preAuthKey = PreAuthKey.generateRandomPreAuthKey();
         Map<String, Object> attrs = new HashMap<String, Object>();
         attrs.put(Provisioning.A_zimbraPreAuthKey, preAuthKey);
@@ -49,7 +47,7 @@ public class TestPreAuthServlet extends TestCase {
         return preAuthKey;
     }
     
-    String genPreAuthUrl(String preAuthKey, String user, boolean admin, boolean shouldFail) throws Exception {
+    public static String genPreAuthUrl(String preAuthKey, String user, boolean admin, boolean shouldFail) throws Exception {
         
         HashMap<String,String> params = new HashMap<String,String>();
         String acctName = TestUtil.getAddress(user);
@@ -191,7 +189,7 @@ public class TestPreAuthServlet extends TestCase {
         int lockoutAfterNumFailures = 3;
         
         // setup lockout config attrs
-        attrs.put(Provisioning.A_zimbraPasswordLockoutEnabled, LdapUtil.LDAP_TRUE);
+        attrs.put(Provisioning.A_zimbraPasswordLockoutEnabled, LdapConstants.LDAP_TRUE);
         attrs.put(Provisioning.A_zimbraPasswordLockoutDuration, "1m");
         attrs.put(Provisioning.A_zimbraPasswordLockoutMaxFailures, lockoutAfterNumFailures+"");
         attrs.put(Provisioning.A_zimbraPasswordLockoutFailureLifetime, "30s");

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,7 +14,7 @@
  */
 package com.zimbra.cs.nginx;
 
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.ldap.LdapConstants;
 
 public class DomainExternalRouteInfo extends LookupEntry {
     
@@ -43,8 +43,8 @@ public class DomainExternalRouteInfo extends LookupEntry {
                             String imapSSLHostname) {
         super(domainName);
         
-        mUseExternalRoute = LdapUtil.LDAP_TRUE.equals(useExternalRoute);
-        mUseExternalRouteIfAccountNotExist = LdapUtil.LDAP_TRUE.equals(useExternalRouteIfAccountNotExist);
+        mUseExternalRoute = LdapConstants.LDAP_TRUE.equals(useExternalRoute);
+        mUseExternalRouteIfAccountNotExist = LdapConstants.LDAP_TRUE.equals(useExternalRouteIfAccountNotExist);
         
         mPop3Port        = pop3Port;
         mPop3SSLPort     = pop3SSLPort;

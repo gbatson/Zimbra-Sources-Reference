@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -45,6 +45,7 @@ ZmTreeController = function(type) {
 	// common listeners
 	this._listeners = {};
 	this._listeners[ZmOperation.DELETE]			= new AjxListener(this, this._deleteListener);
+	this._listeners[ZmOperation.DELETE_WITHOUT_SHORTCUT]			= new AjxListener(this, this._deleteListener);
 	this._listeners[ZmOperation.MOVE]			= new AjxListener(this, this._moveListener);
 	this._listeners[ZmOperation.EXPAND_ALL]		= new AjxListener(this, this._expandAllListener);
 	this._listeners[ZmOperation.MARK_ALL_READ]	= new AjxListener(this, this._markAllReadListener);
@@ -206,10 +207,13 @@ function(params) {
 		params.dataTree = dataTree;
 		var setting = ZmOrganizer.OPEN_SETTING[this.type];
 		params.collapsed = (!isMultiAccountZimlet && (!(!setting || (appCtxt.get(setting, null, account) !== false)))); // yikes!
+
 		var overview = this._opc.getOverview(id);
-		if (overview.showNewButtons) {
-			this._setupNewOp(params);
+
+		if (overview && overview.showNewButtons && this.type != ZmOrganizer.ZIMLET && this.type != ZmId.ORG_PREF_PAGE ) { 
+			this._setupOptButton(params);
 		}
+
 		this._treeView[id].set(params);
 		this._checkTreeView(id);
 	}
@@ -318,19 +322,35 @@ function(parent, opId, visible) {
  * 
  * @private
  */
-ZmTreeController.prototype._setupNewOp =
+ZmTreeController.prototype._setupOptButton =
 function(params) {
-	var newOp = ZmOrganizer.NEW_OP[this.type];
-	if (newOp) {
-		var newSetting = ZmOperation.SETTING[newOp];
-		if (!newSetting || appCtxt.get(newSetting)) {
-			var tooltipKey = ZmOperation.getProp(newOp, "tooltipKey");
-			params.newButton = {
-				image: ZmOperation.getProp(newOp, "image"),
-				tooltip: tooltipKey ? ZmMsg[tooltipKey] : null,
-				callback: new AjxCallback(this, this._newListener)
-			};
-		}
+	var tooltipKey = ZmOperation.getProp(ZmOperation.OPTIONS, "tooltipKey");
+	params.optButton = {
+		image: ZmOperation.getProp(ZmOperation.OPTIONS, "image"),
+		tooltip: tooltipKey ? ZmMsg[tooltipKey] : null,
+		callback: new AjxCallback(this, this._dispOpts)
+	};
+};
+
+/**
+ * Shows options for header item
+ *
+ * @param {Hash}	params		a hash of parameters
+ * 
+ * @private
+ */
+
+ZmTreeController.prototype._dispOpts =
+function(ev){
+
+	var treeItem = ev.dwtObj;
+
+       var type = treeItem && treeItem.getData(ZmTreeView.KEY_TYPE);
+       if (!type) { return; }
+
+       var actionMenu = this._getHeaderActionMenu(ev);
+       if (actionMenu) {
+		actionMenu.popup(0, ev.docX, ev.docY);
 	}
 };
 
@@ -495,6 +515,10 @@ function(overviewId) {
 		allowedSubTypes: this._getAllowedSubTypes()
 	};
 	params.id = ZmId.getTreeId(overviewId, params.type);
+	if (params.type && params.type.match(/TASK|ADDRBOOK|FOLDER|BRIEFCASE|CALENDAR|PREF_PAGE/) && 
+			(!params.headerClass || params.headerClass == "overviewHeader")){
+		params.headerClass = "FirstOverviewHeader overviewHeader";
+	}
 	var treeView = this._createTreeView(params);
 	treeView.addSelectionListener(new AjxListener(this, this._treeViewListener));
 	treeView.addTreeListener(new AjxListener(this, this._treeListener));
@@ -581,7 +605,11 @@ ZmTreeController.prototype._createActionMenu =
 function(parent, menuItems) {
 	if (!menuItems) return;
 
-	var actionMenu = new ZmActionMenu({parent:parent, menuItems:menuItems});
+	var map = appCtxt.getCurrentController() && appCtxt.getCurrentController().getKeyMapName();
+	var id = map ? ("ZmActionMenu_" + map):Dwt.getNextId("ZmActionMenu_")
+	id = (map && this.type) ? id + "_" + this.type : id;
+	var actionMenu = new ZmActionMenu({parent:parent, menuItems:menuItems, id: id});
+
 	menuItems = actionMenu.opList;
 	for (var i = 0; i < menuItems.length; i++) {
 		var menuItem = menuItems[i];
@@ -638,7 +666,7 @@ function(params) {
 	var funcName = ZmOrganizer.CREATE_FUNC[this.type];
 	if (funcName) {
 		var func = eval(funcName);
-		func(params);
+		return func(params);
 	}
 };
 
@@ -663,10 +691,10 @@ function(organizer) {
     var recursive = false;
     organizer.empty(recursive);
 	var ctlr = appCtxt.getCurrentController();
-	if (ctlr && ctlr._getSearchFolderId) {
+	if (ctlr && ctlr._getSearchFolderId && ctlr.getListView) {
 		var folderId = ctlr._getSearchFolderId();
 		if (folderId && (folderId == organizer.id)) {
-			var view = ctlr.getCurrentView();
+			var view = ctlr.getListView();
 			view._resetList();
 			view._setNoResultsHtml();
 		}
@@ -695,8 +723,8 @@ function(organizer, name) {
  * @private
  */
 ZmTreeController.prototype._doMove =
-function(organizer, folder) {
-	organizer.move(folder);
+function(organizer, folder, folderName) {
+	organizer.move(folder, false, null, null, folderName);
 };
 
 /**
@@ -772,8 +800,10 @@ function(ev) {
 	var overviewId = this._actionedOverviewId = treeItem.getData(ZmTreeView.KEY_ID);
 	var overview = this._opc.getOverview(overviewId);
 	if (!overview) { return; }
+    var targetElement = DwtUiEvent.getTargetWithProp(ev, "id");
+    var isContextCmd = (ev.detail ==  DwtTree.ITEM_SELECTED) && treeItem._extraCell && targetElement &&  (treeItem._extraCell.id == targetElement.id);
 
-	if (ev.detail == DwtTree.ITEM_ACTIONED) {
+	if ((ev.detail == DwtTree.ITEM_ACTIONED) || (isContextCmd)) {
 		// right click
 		if (overview.actionSupported) {
 			var actionMenu = (item.nId == ZmOrganizer.ID_ROOT || item.isDataSource(ZmAccount.TYPE_IMAP))
@@ -804,7 +834,7 @@ function(ev, overview, treeItem, item) {
 	overview.itemSelected(treeItem);
 
 	if (ev.kbNavEvent) {
-		DwtControl._scrollIntoView(treeItem._itemDiv, overview.getHtmlElement());
+		Dwt.scrollIntoView(treeItem._itemDiv, overview.getHtmlElement());
 		ZmController.noFocus = true;
 	}
 
@@ -897,7 +927,7 @@ function(ev) {
 			setExpanded = (setExpanded === "true");
 		}
 		if (setExpanded != isExpand) { //set only if changed (ZmSetting.prototype.setValue is supposed to not send a request if no change, but it might have bugs)
-			appCtxt.set(ZmSetting.FOLDERS_EXPANDED, isExpand, folderId);
+			appCtxt.set(ZmSetting.FOLDERS_EXPANDED, isExpand, folderId, null, null, null, overview.skipImplicit);
 		}
 
 		// check if any of this treeItem's children need to be expanded as well
@@ -996,10 +1026,19 @@ function(ev, treeView, overviewId) {
 				} else {
 					node = this._addNew(treeView, parentNode, organizer, idx); // add to new parent
 				}
+                this.createDataSource(organizer);
 			} else if (ev.event == ZmEvent.E_MOVE) {
+				var selectedItem = treeView.getSelected();
+				if (AjxUtil.isArray1(selectedItem)) { //make sure this tree is not a checked style one (no idea where we have that, but see the getSelected code
+					selectedItem = null;
+				}
 				node.dispose();
 				if (parentNode) {
 					node = this._addNew(treeView, parentNode, organizer, idx); // add to new parent
+				}
+				//highlight the current chosen one again, in case it was moved, thus losing selection
+				if (!treeView.getSelected() && selectedItem) { //if item was selected but now it is not
+					treeView.setSelected(selectedItem.id, true, true);
 				}
 			}
 			if (parentNode) {
@@ -1011,7 +1050,7 @@ function(ev, treeView, overviewId) {
 			this._evHandled[overviewId] = true;
 		} else if (ev.event == ZmEvent.E_MODIFY) {
 			if (!fields) { return; }
-			if (fields[ZmOrganizer.F_TOTAL] || fields[ZmOrganizer.F_SIZE]) {
+			if (fields[ZmOrganizer.F_TOTAL] || fields[ZmOrganizer.F_SIZE] || fields[ZmOrganizer.F_UNREAD] || fields[ZmOrganizer.F_NAME]) {
 				node.setToolTipContent(organizer.getToolTip(true));
 				if (appCtxt.multiAccounts && organizer.type == ZmOrganizer.FOLDER) {
 					appCtxt.getApp(ZmApp.MAIL).getOverviewContainer().updateTooltip(organizer.nId);
@@ -1103,6 +1142,11 @@ function(ev, account) {
 
 	ZmController.showDialog(newDialog, this._newCb, this._pendingActionData, account);
 	newDialog.registerCallback(DwtDialog.CANCEL_BUTTON, this._clearDialog, this, newDialog);
+};
+
+ZmTreeController.prototype.createDataSource =
+function(organizer) {
+    //override
 };
 
 /**

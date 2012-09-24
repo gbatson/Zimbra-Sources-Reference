@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 
 import org.apache.commons.codec.binary.Base64;
+
+import com.zimbra.cs.ldap.unboundid.InMemoryLdapServer;
 
 public class PasswordUtil {
     
@@ -53,9 +55,15 @@ public class PasswordUtil {
             try {
                 MessageDigest md = MessageDigest.getInstance("SHA1");
                 if (salt == null) {
-                    salt = new byte[SALT_LEN];
-                    SecureRandom sr = new SecureRandom();
-                    sr.nextBytes(salt);
+                    
+                    if (InMemoryLdapServer.isOn()) {
+                        // use a fixed salt
+                        salt = new byte[]{127,127,127,127};
+                    } else {
+                        salt = new byte[SALT_LEN];
+                        SecureRandom sr = new SecureRandom();
+                        sr.nextBytes(salt);
+                    }
                 } 
                 md.update(password.getBytes("UTF-8"));
                 md.update(salt);

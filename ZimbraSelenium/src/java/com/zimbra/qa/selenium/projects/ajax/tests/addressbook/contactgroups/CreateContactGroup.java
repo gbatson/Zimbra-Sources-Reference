@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contactgroups;
 
 
@@ -166,7 +150,7 @@ public class CreateContactGroup extends AjaxCommonTest  {
 
 	@Test(	description = "Create a contact group with GAL + existing contacts + new emails",
 			groups = { "functional" })
-	public void GroupOfGAL_ExistingContact_sNewEmail() throws HarnessException {			
+	public void GroupOfGAL_ExistingContact_NewEmail() throws HarnessException {			
 		//Create random contact group data 
 		ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
 	
@@ -225,9 +209,8 @@ public class CreateContactGroup extends AjaxCommonTest  {
 		//open contact group form
 		FormContactGroupNew formGroup = (FormContactGroupNew)app.zPageAddressbook.zToolbarPressPulldown(Button.B_NEW, Button.O_NEW_CONTACTGROUP);
         
-		//verify Save, Delete All, and Add (email) buttons disabled		
+		//verify Save and Add (email) buttons disabled		
 		ZAssert.assertFalse(formGroup.sIsVisible(Toolbar.SAVE), "Verify contact button Save disabled ");
-		ZAssert.assertFalse(formGroup.sIsVisible(FormContactGroupNew.Locators.zDeleteAllButton), "Verify contact button Delete All disabled ");
 		ZAssert.assertFalse(formGroup.sIsVisible(FormContactGroupNew.Locators.zAddNewButton), "Verify contact button Add disabled ");
 		
 		

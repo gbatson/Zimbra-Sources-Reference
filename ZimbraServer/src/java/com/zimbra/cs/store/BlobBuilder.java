@@ -1,43 +1,42 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.store;
 
-import com.zimbra.common.localconfig.LC;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.util.ByteUtil;
-import com.zimbra.cs.localconfig.DebugConfig;
-
-import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.FileOutputStream;
-import java.io.File;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.nio.channels.FileChannel;
-import java.nio.ByteBuffer;
 import java.util.zip.GZIPOutputStream;
+
+import com.zimbra.common.localconfig.DebugConfig;
+import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.ZimbraLog;
 
 public class BlobBuilder {
     protected Blob blob;
     private long sizeHint;
     protected boolean disableCompression;
     private boolean disableDigest;
-    private StorageCallback storageCallback;
     private MessageDigest digest;
     private OutputStream out;
     private FileChannel fc;
@@ -64,21 +63,16 @@ public class BlobBuilder {
         return totalBytes;
     }
 
-    public BlobBuilder setStorageCallback(StorageCallback callback) {
-        this.storageCallback = callback;
-        return this;
-    }
-
     /**
      * This method is called by the redolog code, so that we don't double-compress
      * blobs that are already stored in compressed format in the redolog.  In this
-     * case we write the data directly to disk and don't calculate the size or digest.  
+     * case we write the data directly to disk and don't calculate the size or digest.
      */
     public BlobBuilder disableCompression(boolean disable) {
         this.disableCompression = disable;
         return this;
     }
-    
+
     protected int getCompressionThreshold() {
         return 0;
     }
@@ -87,20 +81,22 @@ public class BlobBuilder {
         this.disableDigest = disable;
         return this;
     }
-    
+
     public BlobBuilder init() throws IOException, ServiceException {
         if (!disableDigest) {
             try {
-                digest = MessageDigest.getInstance("SHA1");
+                digest = MessageDigest.getInstance("SHA-256");
             } catch (NoSuchAlgorithmException e) {
-                throw ServiceException.FAILURE("SHA1 digest not found", e);
+                throw ServiceException.FAILURE("SHA-256 digest not found", e);
             }
         }
 
-        FileOutputStream fos = new FileOutputStream(blob.getFile());
-        out = fos;
-        fc = fos.getChannel();
-        
+        // this is ugly, but it makes it possible to derive from BlobBuilder
+        // add use OutputStream other than FileOutputStream, in particular
+        // this enables implementation of MockBlobBuilder
+        out = createOutputStream(blob.getFile());
+        fc = getFileChannel();
+
         if (useCompression()) {
             buf = new byte[getCompressionThreshold()];
         } else {
@@ -110,8 +106,18 @@ public class BlobBuilder {
                 blob.setCompressed(false);
             }
         }
-        
+
         return this;
+    }
+
+    protected OutputStream createOutputStream(File file) throws FileNotFoundException
+    {
+        return new FileOutputStream(file);
+    }
+
+    protected FileChannel getFileChannel()
+    {
+        return ((FileOutputStream)out).getChannel();
     }
 
     @SuppressWarnings("unused")
@@ -133,13 +139,13 @@ public class BlobBuilder {
     public BlobBuilder append(byte[] b) throws IOException {
         return append(b, 0, b.length);
     }
-    
+
     public BlobBuilder append(byte[] b, int off, int len) throws IOException {
         if (finished)
             throw new IllegalStateException("BlobBuilder is finished");
 
         checkInitialized();
-        
+
         if (!compressionThresholdExceeded && useCompression()) {
             if (bufLen + len <= getCompressionThreshold()) {
                 // Read into buffer.
@@ -148,7 +154,7 @@ public class BlobBuilder {
                 totalBytes = bufLen;
                 return this;
             }
-            
+
             // This call exceeded compression threshold.  Compress the stream and
             // write everything that we've read so far.
             out = new GZIPOutputStream(out);
@@ -156,19 +162,16 @@ public class BlobBuilder {
             blob.setCompressed(true);
             compressionThresholdExceeded = true;
         }
-        
+
         writeToFile(b, off, len);
         totalBytes += len;
         return this;
     }
-    
+
     private void writeToFile(byte[] b, int off, int len) throws IOException {
         if (len > 0) {
             try {
                 out.write(b, off, len);
-                if (storageCallback != null) {
-                    storageCallback.wrote(blob, b, off, len);
-                }
                 if (digest != null) {
                     digest.update(b, off, len);
                 }
@@ -178,7 +181,7 @@ public class BlobBuilder {
             }
         }
     }
-    
+
     public BlobBuilder append(ByteBuffer bb) throws IOException {
         if (!bb.hasArray()) {
             throw new IllegalArgumentException("ByteBuffer must have backing array");
@@ -202,7 +205,9 @@ public class BlobBuilder {
     public Blob finish() throws IOException, ServiceException {
         if (finished)
             return blob;
-        
+
+        checkInitialized();
+
         if (useCompression() && !compressionThresholdExceeded) {
             // Data was completely read into the buffer.  Write the uncompressed
             // data to the file.
@@ -213,7 +218,9 @@ public class BlobBuilder {
         try {
             if (!DebugConfig.disableMessageStoreFsync) {
                 out.flush();
-                fc.force(true);
+                if (fc != null) {
+                    fc.force(true);
+                }
             }
         } catch (IOException e) {
             dispose();

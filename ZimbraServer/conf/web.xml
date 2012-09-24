@@ -12,6 +12,37 @@
   <description>SOAP Service</description>
   
   <filter>
+    <filter-name>DoSFilter</filter-name>
+    <filter-class>com.zimbra.cs.servlet.DoSFilter</filter-class>
+    
+    <init-param>
+     <param-name>maxRequestsPerSec</param-name>
+     <param-value>30</param-value>
+    </init-param>
+    
+    <init-param>
+     <param-name>remotePort</param-name>
+     <param-value>true</param-value>
+    </init-param>
+    
+    <init-param>
+     <param-name>ipWhitelist</param-name>
+     <param-value>127.0.0.1</param-value>
+    </init-param>
+    
+    <init-param>
+     <param-name>maxRequestMs</param-name>
+     <param-value>9223372036854775807</param-value>
+    </init-param>
+    
+  </filter>
+  
+  <filter-mapping>
+    <filter-name>DoSFilter</filter-name>
+    <url-pattern>/*</url-pattern>
+  </filter-mapping>
+  
+  <filter>
     <filter-name>ThrottlingFilter</filter-name>
     <filter-class>com.zimbra.cs.servlet.ThrottlingFilter</filter-class>
   </filter>
@@ -38,11 +69,11 @@
   
   <filter>
     <filter-name>GzipFilter</filter-name>
-    <filter-class>org.mortbay.servlet.jetty.IncludableGzipFilter</filter-class>
+    <filter-class>org.eclipse.jetty.servlets.IncludableGzipFilter</filter-class>
 
     <init-param>
       <param-name>mimeTypes</param-name>
-      <param-value>application/soap+xml,application/vnd.ms-sync.wbxml</param-value>
+      <param-value>application/soap+xml</param-value>
     </init-param>
 
     <init-param>
@@ -68,6 +99,30 @@
   <filter-mapping>
     <filter-name>GzipFilter</filter-name>
     <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+  <filter>
+    <filter-name>ZimbraSyncGzipFilter</filter-name>
+    <filter-class>org.eclipse.jetty.servlets.IncludableGzipFilter</filter-class>
+
+    <init-param>
+      <param-name>mimeTypes</param-name>
+      <param-value>text/plain,text/html,application/pdf,application/vnd.ms-sync.wbxml,application/vnd.ms-sync.multipart,application/msword,application/vnd.ms-excel,application/vnd.ms-powerpoint</param-value>
+    </init-param>
+
+    <init-param>
+      <param-name>minGzipSize</param-name>
+      <param-value>2048</param-value>
+    </init-param>
+
+    <init-param>
+      <param-name>uncheckedPrintWriter</param-name>
+      <param-value>true</param-value>
+    </init-param>
+  </filter>
+  <filter-mapping>
+    <filter-name>ZimbraSyncGzipFilter</filter-name>
+    <url-pattern>/extension/zimbrasync/*</url-pattern>
   </filter-mapping>
 
   <filter>
@@ -137,11 +192,7 @@
       <param-name>engine.handler.1</param-name>
       <param-value>com.zimbra.cs.service.mail.MailService</param-value>
     </init-param>
-    <init-param>
-      <param-name>engine.handler.2</param-name>
-      <param-value>com.zimbra.cs.service.im.IMService</param-value>
-    </init-param>
-    <load-on-startup>3</load-on-startup>
+    <load-on-startup>2</load-on-startup>
   </servlet>
 
   <servlet>
@@ -164,11 +215,16 @@
       <param-name>engine.handler.2</param-name>
       <param-value>com.zimbra.cs.service.mail.MailService</param-value>
     </init-param>
+    <load-on-startup>3</load-on-startup>
+  </servlet>
+
+  <servlet>
+    <servlet-name>WsdlServlet</servlet-name>
+    <servlet-class>com.zimbra.soap.WsdlServlet</servlet-class>
     <init-param>
-      <param-name>engine.handler.3</param-name>
-      <param-value>com.zimbra.cs.service.im.IMService</param-value>
+      <param-name>allowed.ports</param-name>
+      <param-value>80, 443, 7070, 7443, 7071</param-value>
     </init-param>
-    <load-on-startup>4</load-on-startup>
   </servlet>
 
   <servlet>
@@ -202,6 +258,16 @@
   <servlet>
     <servlet-name>PreAuthServlet</servlet-name>
     <servlet-class>com.zimbra.cs.service.PreAuthServlet</servlet-class>
+    <init-param>
+      <param-name>allowed.ports</param-name>
+      <param-value>80, 443, 7070, 7443, 7071</param-value>
+    </init-param>
+    <load-on-startup>5</load-on-startup>
+  </servlet>
+
+  <servlet>
+    <servlet-name>ExternalUserProvServlet</servlet-name>
+    <servlet-class>com.zimbra.cs.service.ExternalUserProvServlet</servlet-class>
     <init-param>
       <param-name>allowed.ports</param-name>
       <param-value>80, 443, 7070, 7443, 7071</param-value>
@@ -305,7 +371,17 @@
     <servlet-class>com.zimbra.cs.dav.service.DavServlet</servlet-class>
     <init-param>
       <param-name>allowed.ports</param-name>
-      <param-value>443, 7070, 7071</param-value>
+      <param-value>443, 7070, 7071, 7443</param-value>
+    </init-param>
+    <load-on-startup>9</load-on-startup>
+  </servlet>
+  
+  <servlet>
+    <servlet-name>DavWellKnownServlet</servlet-name>
+    <servlet-class>com.zimbra.cs.dav.service.DavWellKnownServlet</servlet-class>
+    <init-param>
+      <param-name>allowed.ports</param-name>
+      <param-value>443, 7070, 7071, 7443</param-value>
     </init-param>
     <load-on-startup>9</load-on-startup>
   </servlet>
@@ -344,6 +420,16 @@
     <servlet-class>com.zimbra.cs.servlet.RobotsServlet</servlet-class>
     <load-on-startup>11</load-on-startup>
   </servlet>
+  
+  <servlet>
+    <servlet-name>AutoDiscoverServlet</servlet-name>
+    <servlet-class>com.zimbra.cs.service.AutoDiscoverServlet</servlet-class>
+    <init-param>
+      <param-name>allowed.ports</param-name>
+      <param-value>80, 443, 7070, 7071, 7443</param-value>
+    </init-param>
+    <load-on-startup>12</load-on-startup>
+  </servlet>
 
   <servlet-mapping>
     <servlet-name>ExtensionDispatcherServlet</servlet-name>
@@ -358,6 +444,11 @@
   <servlet-mapping>
     <servlet-name>AdminServlet</servlet-name>
     <url-pattern>/admin/soap/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet-mapping>
+    <servlet-name>WsdlServlet</servlet-name>
+    <url-pattern>/wsdl/*</url-pattern>
   </servlet-mapping>
 
   <servlet-mapping>
@@ -391,6 +482,11 @@
   </servlet-mapping>
 
   <servlet-mapping>
+    <servlet-name>ExternalUserProvServlet</servlet-name>
+    <url-pattern>/extuserprov/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet-mapping>
     <servlet-name>CertAuthServlet</servlet-name>
     <url-pattern>/certauth/*</url-pattern>
   </servlet-mapping>
@@ -404,7 +500,7 @@
     <servlet-name>SpnegoAuthServlet</servlet-name>
     <url-pattern>/spnego/</url-pattern>
   </servlet-mapping>
-  
+
   <servlet-mapping>
     <servlet-name>SpnegoAuthServlet</servlet-name>
     <url-pattern>/spnego</url-pattern>
@@ -444,6 +540,11 @@
     <servlet-name>DavServlet</servlet-name>
     <url-pattern>/dav/*</url-pattern>
   </servlet-mapping>
+  
+  <servlet-mapping>
+    <servlet-name>DavWellKnownServlet</servlet-name>
+    <url-pattern>/.well-known/*</url-pattern>
+  </servlet-mapping>
 
   <servlet-mapping>
     <servlet-name>ZimletResources</servlet-name>
@@ -454,4 +555,11 @@
     <servlet-name>RobotsServlet</servlet-name>
     <url-pattern>/robots.txt</url-pattern>
   </servlet-mapping>
+
+  <servlet-mapping>
+    <servlet-name>AutoDiscoverServlet</servlet-name>
+    <url-pattern>/autodiscover/*</url-pattern>
+  </servlet-mapping>
+  
+  <!--  additional servlets -->
 </web-app>

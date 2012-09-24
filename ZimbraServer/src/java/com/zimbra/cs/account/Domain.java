@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,17 +20,17 @@
  */
 package com.zimbra.cs.account;
 
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.StringUtil;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.Provisioning.GalSearchType;
-import com.zimbra.cs.account.Provisioning.GalMode;
-import com.zimbra.cs.account.Provisioning.SearchGalResult;
-import com.zimbra.cs.account.ZAttrProvisioning.DomainStatus;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.zimbra.common.account.ZAttrProvisioning.DomainStatus;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.Provisioning.GalMode;
+import com.zimbra.cs.account.Provisioning.SearchGalResult;
+import com.zimbra.soap.type.GalSearchType;
 
 /**
  * @author schemers
@@ -51,6 +51,11 @@ public class Domain extends ZAttrDomain {
             resetData();
     }
 
+    @Override
+    public EntryType getEntryType() {
+        return EntryType.DOMAIN;
+    }
+    
     public void modify(Map<String, Object> attrs) throws ServiceException {
         getProvisioning().modifyAttrs(this, attrs);
     }
@@ -86,25 +91,9 @@ public class Domain extends ZAttrDomain {
     public List getAllDistributionLists() throws ServiceException {
         return getProvisioning().getAllDistributionLists(this);
     }
-
-    public List<NamedEntry> searchAccounts(String query, String returnAttrs[], String sortAttr, boolean sortAscending, int flags) throws ServiceException {
-        return getProvisioning().searchAccounts(this, query, returnAttrs, sortAttr, sortAscending, flags);
-    }
-
-    public List searchCalendarResources(EntrySearchFilter filter, String returnAttrs[], String sortAttr, boolean sortAscending) throws ServiceException {
-        return getProvisioning().searchCalendarResources(this, filter, returnAttrs, sortAttr, sortAscending);
-    }
-
-    public SearchGalResult searchGal(String query, GalSearchType type, String token) throws ServiceException {
-        return getProvisioning().searchGal(this, query, type, token);
-    }
-
-    public SearchGalResult searchGal(String query, GalSearchType type, String token, GalContact.Visitor visitor) throws ServiceException {
-        return getProvisioning().searchGal(this, query, type, token, visitor);
-    }
-
-    public SearchGalResult searchGal(String query, GalSearchType type, GalMode mode, String token) throws ServiceException {
-        return getProvisioning().searchGal(this, query, type, mode, token);
+    
+    public String getGalSearchBase(String searchBaseSpec) throws ServiceException {
+        throw ServiceException.FAILURE("unsupported", null);
     }
 
     @Override
@@ -153,4 +142,5 @@ public class Domain extends ZAttrDomain {
         return Provisioning.DomainType.local == domainType;
     }
 
+    
 }

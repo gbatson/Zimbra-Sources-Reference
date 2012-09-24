@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -65,7 +65,7 @@ public final class LocalData {
         throw new IllegalArgumentException(
             "Address book sync not supported for specified data source");
     }
-    
+
     private static Log getLog(OfflineDataSource ds) {
         if (ds.isYahoo()) return OfflineLog.yab;
         if (ds.isGmail()) return OfflineLog.gab;
@@ -77,9 +77,9 @@ public final class LocalData {
         if (ss == null) return true;
         int seq = ss.getLastModSequence();
         return seq <= 0 || getModifiedContacts(seq).size() > 0 ||
-            getTombstones(seq, MailItem.TYPE_CONTACT).size() > 0;
+            getTombstones(seq, MailItem.Type.CONTACT).size() > 0;
     }
-    
+
     public Map<Integer, Change> getContactChanges(int seq)
         throws ServiceException {
         Map<Integer, Change> changes = new HashMap<Integer, Change>();
@@ -97,7 +97,7 @@ public final class LocalData {
                 changes.put(id, Change.add(id));
             }
         }
-        for (int id : getTombstones(seq, MailItem.TYPE_CONTACT)) {
+        for (int id : getTombstones(seq, MailItem.Type.CONTACT)) {
             if (hasMapping(id)) {
                 changes.put(id, Change.delete(id));
             }
@@ -109,7 +109,7 @@ public final class LocalData {
         return id == Mailbox.ID_FOLDER_CONTACTS ||
                id == Mailbox.ID_FOLDER_AUTO_CONTACTS && syncAutoContacts();
     }
-    
+
     private boolean syncAutoContacts() {
         return ds.isGmail();
     }
@@ -118,16 +118,15 @@ public final class LocalData {
         return DbDataSource.hasMapping(ds, id);
     }
 
-    private List<Integer> getTombstones(int seq, byte type)
-        throws ServiceException {
+    private List<Integer> getTombstones(int seq, MailItem.Type type) throws ServiceException {
         List<Integer> ids = mbox.getTombstones(seq).getIds(type);
         return ids != null ? ids : Collections.<Integer>emptyList();
     }
 
     private List<Integer> getModifiedContacts(int seq) throws ServiceException {
-        return mbox.getModifiedItems(CONTEXT, seq, MailItem.TYPE_CONTACT).getFirst();
+        return mbox.getModifiedItems(CONTEXT, seq, MailItem.Type.CONTACT).getFirst();
     }
-    
+
     public String getData(DataSourceItem dsi) throws ServiceException {
         return dsi.md != null ? dsi.md.get(key) : null;
     }
@@ -140,7 +139,7 @@ public final class LocalData {
     public DataSourceItem getMapping(int itemId) throws ServiceException {
         return DbDataSource.getMapping(ds, itemId);
     }
-    
+
     public void deleteMapping(int itemId) throws ServiceException {
         deleteMapping(itemId, false);
     }
@@ -180,7 +179,7 @@ public final class LocalData {
     public Contact createContact(ParsedContact pc) throws ServiceException {
         return createContact(pc, Mailbox.ID_FOLDER_CONTACTS);
     }
-    
+
     public Contact createContact(ParsedContact pc, int folderId) throws ServiceException {
         Contact contact = mbox.createContact(CONTEXT, pc, folderId, null);
         log.debug("Created new contact: id = %d", contact.getId());
@@ -197,7 +196,7 @@ public final class LocalData {
             Contact contact = getContact(id);
             // Don't delete contacts moved outside contact folder
             if (isContactsFolder(contact.getFolderId())) {
-                mbox.delete(CONTEXT, id, MailItem.TYPE_CONTACT);
+                mbox.delete(CONTEXT, id, MailItem.Type.CONTACT);
                 log.debug("Deleted contact: id = %d", id);
             }
         } catch (MailServiceException.NoSuchItemException e) {
@@ -206,9 +205,9 @@ public final class LocalData {
 
     public void moveContact(int id, int targetFolderId) throws ServiceException {
         log.debug("Moving contact id %d -> folder %d", id, targetFolderId);
-        mbox.move(null, id, MailItem.TYPE_CONTACT, targetFolderId);
+        mbox.move(null, id, MailItem.Type.CONTACT, targetFolderId);
     }
-    
+
     public void deleteMissingContacts(Set<String> remoteIds) throws ServiceException {
         for (DataSourceItem dsi : getAllContactMappings()) {
             if (!remoteIds.contains(dsi.remoteId)) {
@@ -217,7 +216,7 @@ public final class LocalData {
             }
         }
     }
-    
+
     public ContactGroup getContactGroup(int id) throws ServiceException {
         try {
             Contact contact = getContact(id);
@@ -234,7 +233,7 @@ public final class LocalData {
         log.debug("Updating contact group: id = " + id);
         mbox.modifyContact(CONTEXT, id, group.getParsedContact());
     }
-    
+
     public int createContactGroup(String remoteId, ContactGroup group)
         throws ServiceException {
         Contact contact = createContact(group.getParsedContact());
@@ -246,7 +245,7 @@ public final class LocalData {
 
     public void deleteContactGroup(int id) throws ServiceException {
         log.debug("Deleting contact group: id = " + id);
-        mbox.delete(CONTEXT, id, MailItem.TYPE_CONTACT);
+        mbox.delete(CONTEXT, id, MailItem.Type.CONTACT);
         deleteMapping(id);
     }
 
@@ -272,13 +271,16 @@ public final class LocalData {
 
     public void resetData() throws ServiceException {
         log.info("Resetting address book data for data source: %s", ds.getName());
-        synchronized (mbox) {
+        mbox.lock.lock();
+        try {
             mbox.emptyFolder(CONTEXT, Mailbox.ID_FOLDER_CONTACTS, true);
             if (syncAutoContacts()) {
                 mbox.emptyFolder(CONTEXT, Mailbox.ID_FOLDER_AUTO_CONTACTS, true);
             }
             mbox.setConfig(CONTEXT, key, null);
             DbDataSource.deleteAllMappingsInFolder(ds, Mailbox.ID_FOLDER_CONTACTS);
+        } finally {
+            mbox.lock.release();
         }
     }
 
@@ -294,3 +296,4 @@ public final class LocalData {
     public Log getLog() { return log; }
 
 }
+

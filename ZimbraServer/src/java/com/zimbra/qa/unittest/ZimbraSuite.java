@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,15 +19,17 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import org.junit.runner.JUnitCore;
-
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+
+import org.junit.runner.JUnitCore;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.extension.ExtensionUtil;
+import com.zimbra.qa.unittest.server.TestCalDavImportServer;
 import com.zimbra.qa.unittest.server.TestDataSourceServer;
+import com.zimbra.qa.unittest.server.TestDocumentServer;
 import com.zimbra.qa.unittest.server.TestNotificationServer;
 import com.zimbra.qa.unittest.server.TestPop3ImportServer;
 
@@ -51,6 +53,7 @@ public class ZimbraSuite extends TestSuite
         sClasses.add(TestTags.class);
         sClasses.add(TestItemCache.class);
         sClasses.add(TestFolders.class);
+        sClasses.add(TestFolderACLCache.class);
         sClasses.add(TestSpellCheck.class);
         sClasses.add(TestAuthentication.class);
         sClasses.add(TestAccount.class);
@@ -90,19 +93,26 @@ public class ZimbraSuite extends TestSuite
         sClasses.add(TestIndex.class);
         sClasses.add(TestParsedMessage.class);
         sClasses.add(TestUserServlet.class);
+        sClasses.add(TestWsdlServlet.class);
         sClasses.add(TestDocument.class);
+        sClasses.add(TestDocumentServer.class);
         sClasses.add(TestFileUpload.class);
         sClasses.add(TestFilterExisting.class);
         sClasses.add(TestSpam.class);
         sClasses.add(TestMailSender.class);
         sClasses.add(TestGetMsg.class);
-        sClasses.add(TestFileDescriptorCache.class);
         sClasses.add(TestMountpoint.class);
         sClasses.add(TestZClient.class);
         sClasses.add(TestLog.class);
         sClasses.add(TestSaveDraft.class);
+        sClasses.add(TestServerStats.class);
+        sClasses.add(TestJaxbProvisioning.class);
+        sClasses.add(TestAclPush.class);
+        sClasses.add(TestCalDavImportServer.class);
         sClasses.add(TestContactCSV.class);
-    };
+        sClasses.add(TestStoreManager.class);
+        sClasses.add(TestSoapHarvest.class);
+    }
 
     /**
      * Used by extensions to add additional tests to the main test suite.
@@ -133,7 +143,7 @@ public class ZimbraSuite extends TestSuite
                         testName, ZimbraSuite.class.getName());
                 }
             } else {
-                Class<? extends TestCase> testClass = null;
+                Class<? extends TestCase> testClass;
                 try {
                     testClass = Class.forName(testName).asSubclass(TestCase.class);
                 } catch (ClassNotFoundException e) {

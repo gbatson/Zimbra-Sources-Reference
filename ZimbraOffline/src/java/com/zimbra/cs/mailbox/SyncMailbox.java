@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,8 +25,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.google.common.primitives.Ints;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
-import com.zimbra.common.util.LruMap;
 import com.zimbra.common.util.SpoolingCache;
+import com.zimbra.common.util.UUIDUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.offline.OfflineAccount;
@@ -34,7 +34,7 @@ import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbOfflineMailbox;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.util.TypedIdList;
 import com.zimbra.cs.offline.OfflineLog;
@@ -44,6 +44,7 @@ import com.zimbra.cs.redolog.op.DeleteItem;
 import com.zimbra.cs.redolog.op.DeleteMailbox;
 import com.zimbra.cs.session.PendingModifications;
 import com.zimbra.cs.session.PendingModifications.Change;
+import com.zimbra.cs.session.PendingModifications.ModificationKey;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.store.StoreManager.StoreFeature;
@@ -94,17 +95,22 @@ public abstract class SyncMailbox extends DesktopMailbox {
     }
 
     @Override
-    protected synchronized void initialize() throws ServiceException {
-        super.initialize();
+    protected void initialize() throws ServiceException {
+        lock.lock();
+        try {
+            super.initialize();
 
-        Folder userRoot = getFolderById(ID_FOLDER_USER_ROOT);
+            Folder userRoot = getFolderById(ID_FOLDER_USER_ROOT);
 
-        Folder.create(ID_FOLDER_FAILURE, this, userRoot, FAILURE_PATH,
-            Folder.FOLDER_IS_IMMUTABLE, MailItem.TYPE_MESSAGE, 0,
-            MailItem.DEFAULT_COLOR_RGB, null, null);
-        Folder.create(ID_FOLDER_OUTBOX, this, userRoot, OUTBOX_PATH,
-            Folder.FOLDER_IS_IMMUTABLE, MailItem.TYPE_MESSAGE, 0,
-            MailItem.DEFAULT_COLOR_RGB, null, null);
+            Folder.create(ID_FOLDER_FAILURE, UUIDUtil.generateUUID(), this, userRoot, FAILURE_PATH,
+                Folder.FOLDER_IS_IMMUTABLE, MailItem.Type.MESSAGE, 0,
+                MailItem.DEFAULT_COLOR_RGB, null, null, null);
+            Folder.create(ID_FOLDER_OUTBOX, UUIDUtil.generateUUID(), this, userRoot, OUTBOX_PATH,
+                Folder.FOLDER_IS_IMMUTABLE, MailItem.Type.MESSAGE, 0,
+                MailItem.DEFAULT_COLOR_RGB, null, null, null);
+        } finally {
+            lock.release();
+        }
     }
 
     @Override
@@ -117,8 +123,9 @@ public abstract class SyncMailbox extends DesktopMailbox {
     }
 
     boolean lockMailboxToSync() {
-        if (isDeleting() || !OfflineSyncManager.getInstance().isServiceActive(false))
+        if (isDeleting() || !OfflineSyncManager.getInstance().isServiceActive(false)) {
             return false;
+        }
         return isSyncRunning.compareAndSet(false, true);
     }
 
@@ -140,9 +147,12 @@ public abstract class SyncMailbox extends DesktopMailbox {
         if (!isDeleting.compareAndSet(false, true)) {
             return;
         }
-        synchronized (this) {
+        lock.lock();
+        try {
             cancelCurrentTask();
             beginMaintenance(); // mailbox maintenance will cause sync to stop when writing
+        } finally {
+            lock.release();
         }
         synchronized (syncLock) { // wait for any hot sync thread to unwind
             endMaintenance(true);
@@ -150,8 +160,9 @@ public abstract class SyncMailbox extends DesktopMailbox {
         try {
             resetSyncStatus();
         } catch (ServiceException x) {
-            if (!x.getCode().equals(AccountServiceException.NO_SUCH_ACCOUNT))
+            if (!x.getCode().equals(AccountServiceException.NO_SUCH_ACCOUNT)) {
                 OfflineLog.offline.warn(x);
+            }
         }
 
         MailboxManager mm = MailboxManager.getInstance();
@@ -163,13 +174,13 @@ public abstract class SyncMailbox extends DesktopMailbox {
         deleteThisMailbox(deleteBlobs);
     }
 
-    private synchronized String unhookMailboxForDeletion()
-        throws ServiceException {
+    private String unhookMailboxForDeletion() throws ServiceException {
         String accountId = getAccountId();
         boolean success = false;
 
-        if (accountId.endsWith(DELETING_MID_SUFFIX))
+        if (accountId.endsWith(DELETING_MID_SUFFIX)) {
             return accountId;
+        }
         accountId = accountId + ":" + getId() + DELETING_MID_SUFFIX;
         try {
             beginTransaction("replaceAccountId", null);
@@ -190,7 +201,10 @@ public abstract class SyncMailbox extends DesktopMailbox {
         SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs = null;
 
         boolean success = false;
-        synchronized (this) {
+
+        lock.lock();
+        try {
+
             try {
                 beginTransaction("deleteMailbox", null, redoRecorder);
                 redoRecorder.log();
@@ -199,7 +213,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
                     blobs = DbMailItem.getAllBlobs(this);
                 }
 
-                Connection conn = getOperationConnection();
+                DbConnection conn = getOperationConnection();
 
                 synchronized (MailboxManager.getInstance()) {
                     DbMailbox.deleteMailbox(conn, this);
@@ -210,18 +224,11 @@ public abstract class SyncMailbox extends DesktopMailbox {
             } catch (Exception e) {
                 ZimbraLog.store.warn("Unable to delete mailbox data", e);
             } finally {
-                try {
-                    endTransaction(success);
-                } catch (ServiceException se) {
-                    //snapshotCounts() can try to operate on deleted db, which is bad
-                    //this can leave spurious ":deleted" rows in directory but otherwise harmless
-                    ZimbraLog.store.warn("ServiceException ending mbox delete transation",se);
-                }
+                endTransaction(success);
             }
 
             try {
-                if (mIndexHelper != null)
-                    mIndexHelper.deleteIndex();
+                index.deleteIndex();
             } catch (Exception e) {
                 ZimbraLog.store.warn("Unable to delete index data", e);
             }
@@ -233,6 +240,8 @@ public abstract class SyncMailbox extends DesktopMailbox {
                     ZimbraLog.store.warn("Unable to delete message data", e);
                 }
             }
+        } finally {
+            lock.release();
 
             if (blobs != null) {
                 blobs.cleanup();
@@ -248,58 +257,68 @@ public abstract class SyncMailbox extends DesktopMailbox {
         OfflineYAuth.deleteRawAuthManager(this);
     }
 
-    public synchronized void cancelCurrentTask() {
-        if (currentTask != null)
-            currentTask.cancel();
-
-        currentTask = null;
+    public void cancelCurrentTask() {
+        lock.lock();
+        try {
+            if (currentTask != null) {
+                currentTask.cancel();
+            }
+            currentTask = null;
+        } finally {
+            lock.release();
+        }
     }
 
-    protected synchronized void initSyncTimer() throws ServiceException {
-        if (isGalAcct || isMPAcct)
-            return;
-
-        cancelCurrentTask();
-        currentTask = new TimerTask() {
-            @Override
-            public void run() {
-                boolean doGC;
-                long now;
-
-                if (ZimbraApplication.getInstance().isShutdown()) {
-                    cancelCurrentTask();
-                    return;
-                }
-                try {
-                    syncOnTimer();
-                    now = System.currentTimeMillis();
-                    if (lastOptimizeTime == 0) {
-                        lastOptimizeTime = now - OPTIMIZE_INTERVAL +
-                            30 * Constants.MILLIS_PER_MINUTE;
-                    } else if (now - lastOptimizeTime > OPTIMIZE_INTERVAL) {
-                        optimize(null, 0);
-                        lastOptimizeTime = now;
-                    }
-                } catch (Throwable e) { // don't let exceptions kill the timer
-                    if (e instanceof OutOfMemoryError)
-                        Zimbra.halt("caught out of memory error", e);
-                    else if (OfflineSyncManager.getInstance().isServiceActive(false))
-                        OfflineLog.offline.warn("caught exception in timer ", e);
-                }
-                synchronized (lastGC) {
-                    now = System.currentTimeMillis();
-                    doGC = now - lastGC.get() > 5 * 60 * Constants.MILLIS_PER_SECOND;
-                    if (doGC) {
-                        System.gc();
-                        lastGC.set(now);
-                    }
-                }
+    protected void initSyncTimer() throws ServiceException {
+        lock.lock();
+        try {
+            if (isGalAcct || isMPAcct) {
+                return;
             }
-        };
+            cancelCurrentTask();
+            currentTask = new TimerTask() {
+                @Override
+                public void run() {
+                    boolean doGC;
+                    long now;
+
+                    if (ZimbraApplication.getInstance().isShutdown()) {
+                        cancelCurrentTask();
+                        return;
+                    }
+                    try {
+                        syncOnTimer();
+                        now = System.currentTimeMillis();
+                        if (lastOptimizeTime == 0) {
+                            lastOptimizeTime = now - OPTIMIZE_INTERVAL + 30 * Constants.MILLIS_PER_MINUTE;
+                        } else if (now - lastOptimizeTime > OPTIMIZE_INTERVAL) {
+                            optimize(0);
+                            lastOptimizeTime = now;
+                        }
+                    } catch (Throwable e) { // don't let exceptions kill the timer
+                        if (e instanceof OutOfMemoryError) {
+                            Zimbra.halt("caught out of memory error", e);
+                        } else if (OfflineSyncManager.getInstance().isServiceActive(false)) {
+                            OfflineLog.offline.warn("caught exception in timer ", e);
+                        }
+                    }
+                    synchronized (lastGC) {
+                        now = System.currentTimeMillis();
+                        doGC = now - lastGC.get() > 5 * 60 * Constants.MILLIS_PER_SECOND;
+                        if (doGC) {
+                            System.gc();
+                            lastGC.set(now);
+                        }
+                    }
+                }
+            };
 
         timer = new Timer("sync-mbox-" + getAccount().getName());
         timer.schedule(currentTask, 10 * Constants.MILLIS_PER_SECOND,
             5 * Constants.MILLIS_PER_SECOND);
+        } finally {
+            lock.release();
+        }
     }
 
     public boolean deleteMsginFolder(long cutoffTime, Folder folder, Set<Folder> visible)
@@ -316,32 +335,32 @@ public abstract class SyncMailbox extends DesktopMailbox {
             if (!isVisible && subfolders.isEmpty())
                 return false;
 
-            if (isVisible && folder.getType() == MailItem.TYPE_FOLDER) {
+            if (isVisible && folder.getType() == MailItem.Type.FOLDER) {
                 if (folder.getId() != Mailbox.ID_FOLDER_TAGS) {
                     TypedIdList idlist;
                     boolean success = false;
                     synchronized (this) {
                         try {
                             beginTransaction("listMessageItemsforgivenDate", getOperationContext());
-                            idlist = DbMailItem.listItems(folder, cutoffTime, MailItem.TYPE_MESSAGE, true, true);
+                            idlist = DbMailItem.listItems(folder, cutoffTime, MailItem.Type.MESSAGE, true, true);
                             success = true;
                         } finally {
                             endTransaction(success);
                         }
                     }
 
-                    List<Integer> items = idlist.getAll();
+                    List<Integer> items = idlist.getAllIds();
                     if (items != null && !items.isEmpty()) {
                         for (int id : items) {
                             MailItem item;
                             success = false;
-                            DeleteItem redoRecorder = new DeleteItem(this.getId(), Ints.toArray(items), MailItem.TYPE_MESSAGE, getOperationTargetConstraint());
+                            DeleteItem redoRecorder = new DeleteItem(this.getId(), Ints.toArray(items), MailItem.Type.MESSAGE, getOperationTargetConstraint());
                             synchronized (this) {
                                 try {
                                     beginTransaction("delete", getOperationContext(), redoRecorder);
                                     try {
-                                        item = getItemById(id, MailItem.TYPE_UNKNOWN);
-                                        item.delete(MailItem.DeleteScope.ENTIRE_ITEM, false);
+                                        item = getItemById(id, MailItem.Type.UNKNOWN);
+                                        item.delete(false);
                                     } catch (NoSuchItemException nsie) {
                                         continue;
                                     }
@@ -367,8 +386,7 @@ public abstract class SyncMailbox extends DesktopMailbox {
 
     protected abstract void syncOnTimer();
 
-    public abstract void sync(boolean isOnRequest, boolean isDebugTraceOn)
-        throws ServiceException;
+    public abstract void sync(boolean isOnRequest, boolean isDebugTraceOn) throws ServiceException;
 
     public abstract boolean isAutoSyncDisabled();
 
@@ -388,8 +406,9 @@ public abstract class SyncMailbox extends DesktopMailbox {
                 if ((item.getId() >= FIRST_USER_ID || item instanceof Tag) && item.getFolderId() != ID_FOLDER_FAILURE) {
                     itemCreated(item);
                     trackChangeNew(item);
-                    if (item.getFolderId() == ID_FOLDER_OUTBOX)
+                    if (item.getFolderId() == ID_FOLDER_OUTBOX) {
                         outboxed = true;
+                    }
                 }
             }
         }
@@ -401,24 +420,15 @@ public abstract class SyncMailbox extends DesktopMailbox {
                 MailItem item = (MailItem) change.what;
                 if ((item.getId() >= FIRST_USER_ID || item instanceof Tag) && item.getFolderId() != ID_FOLDER_FAILURE) {
                     trackChangeModified(item, change.why);
-                    if (item.getFolderId() == ID_FOLDER_OUTBOX)
+                    if (item.getFolderId() == ID_FOLDER_OUTBOX) {
                         outboxed = true;
+                    }
                 }
             }
         }
         if (pms.deleted != null) {
-            for (Object delete : pms.deleted.values()) {
-                int itemId = -1;
-                if (delete instanceof MailItem) {
-                    MailItem item = (MailItem) delete;
-                    if (item.getFolderId() == ID_FOLDER_FAILURE) {
-                        continue;
-                    }
-                    itemId = item.getId();
-                } else if (delete instanceof Integer) {
-                    itemId = ((Integer) delete).intValue();
-                }
-                if (itemId >= FIRST_USER_ID || Tag.validateId(itemId)) {
+            for (ModificationKey key : pms.deleted.keySet()) {
+                if (key.getItemId() >= FIRST_USER_ID) {
                     trackChangeDeleted();
                 }
             }
@@ -435,14 +445,4 @@ public abstract class SyncMailbox extends DesktopMailbox {
     void trackChangeDeleted() throws ServiceException {}
 
     void itemCreated(MailItem item) throws ServiceException {}
-
-    private final LruMap<Integer, Object> transientItems = new LruMap<Integer, Object>(16);
-
-    synchronized void trackTransientItem(int itemId) {
-        transientItems.put(Integer.valueOf(itemId), new Object());
-    }
-
-    synchronized boolean isTransientItem(int itemId) {
-        return transientItems.containsKey(Integer.valueOf(itemId));
-    }
 }

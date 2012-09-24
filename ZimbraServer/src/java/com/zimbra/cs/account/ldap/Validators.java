@@ -1,51 +1,49 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.ldap;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.naming.NamingEnumeration;
-import javax.naming.NamingException;
-import javax.naming.directory.Attribute;
-import javax.naming.directory.Attributes;
-import javax.naming.directory.SearchControls;
-import javax.naming.directory.SearchResult;
-
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AttributeClass;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.CountObjectsType;
+import com.zimbra.cs.ldap.IAttributes;
+import com.zimbra.cs.ldap.ZLdapFilter;
+import com.zimbra.cs.ldap.SearchLdapOptions.SearchLdapVisitor;
+import com.zimbra.cs.ldap.ZLdapFilterFactory;
+import com.zimbra.soap.admin.type.CountObjectsType;
 
-final class Validators {
+final public class Validators {
 
     private Validators() {
     }
 
     // cache the result for 1 min unless the count is within 5 of the limit.
-    static class DomainAccountValidator implements Provisioning.ProvisioningValidator {
+    public static class DomainAccountValidator implements Provisioning.ProvisioningValidator {
         private static final long LDAP_CHECK_INTERVAL  = 60 * 1000;  // 1 min
         private static final long NUM_ACCT_THRESHOLD = 5;
 
@@ -72,15 +70,19 @@ final class Validators {
                 return;
 
             if (args.length > 1 && args[1] instanceof String[] &&
-                    Arrays.asList((String[]) args[1]).contains(LdapProvisioning.C_zimbraCalendarResource)) {
+                    Arrays.asList((String[]) args[1]).contains(AttributeClass.OC_zimbraCalendarResource)) {
                 return; // as in LicenseManager, don't want to count calendar resources
             }
 
             if (args.length > 2 && args[2] instanceof Map) {
                 @SuppressWarnings("unchecked")
                 Map<String, Object> acctAttrs = (Map<String, Object>) args[2];
-                if (isSystemProperty(acctAttrs))
+                if (isSystemProperty(acctAttrs)) {
                     return;
+                }
+                if (isExternalVirtualAccount(acctAttrs)) {
+                    return;
+                }
             }
 
             String emailAddr = (String)args[0];
@@ -92,7 +94,7 @@ final class Validators {
             if (domain == null)
                 return;
 
-            Domain d = prov.get(Provisioning.DomainBy.name, domain);
+            Domain d = prov.get(Key.DomainBy.name, domain);
             if (d == null)
                 return;
 
@@ -104,7 +106,7 @@ final class Validators {
             long now = System.currentTimeMillis();
             if (now > getNextCheck()) {
                 try {
-                    mLastUserCount = prov.countObjects(CountObjectsType.userAccounts, d);
+                    mLastUserCount = prov.countObjects(CountObjectsType.userAccount, d, null);
                 } catch (ServiceException e) {
                     Throwable cause = e.getCause();
                     String causeMsg = cause.getMessage();
@@ -144,11 +146,19 @@ final class Validators {
         o = attrs.get(Provisioning.A_objectClass);
         if (o instanceof String[]) {
             Set<String> ocs = new HashSet<String>(Arrays.asList((String[])o));
-            if (ocs.contains(LdapProvisioning.C_zimbraCalendarResource))
+            if (ocs.contains(AttributeClass.OC_zimbraCalendarResource))
                 return true;
         }
 
         return false;
+    }
+
+    private static boolean isExternalVirtualAccount(Map<String, Object> attrs) {
+        if (attrs == null) {
+            return false;
+        }
+        Object o = attrs.get(Provisioning.A_zimbraIsExternalVirtualAccount);
+        return o != null && "true".equalsIgnoreCase(o.toString());
     }
 
 
@@ -159,7 +169,7 @@ final class Validators {
      *
      * @author pfnguyen
      */
-    static class DomainMaxAccountsValidator implements Provisioning.ProvisioningValidator {
+    public static class DomainMaxAccountsValidator implements Provisioning.ProvisioningValidator {
 
         @Override
         public void refresh() {
@@ -190,8 +200,12 @@ final class Validators {
 
             @SuppressWarnings("unchecked")
             Map<String, Object> attrs = (Map<String, Object>) args[1];
-            if (isSystemProperty(attrs))
+            if (isSystemProperty(attrs)) {
                 return;
+            }
+            if (isExternalVirtualAccount(attrs)) {
+                return;
+            }
 
             Account account = null;
             if (args.length == 3)
@@ -204,13 +218,13 @@ final class Validators {
             if (domainName == null)
                 return;
 
-            Domain domain = prov.get(Provisioning.DomainBy.name, domainName);
+            Domain domain = prov.get(Key.DomainBy.name, domainName);
             if (domain == null)
                 return;
 
             String defaultCosId = domain.getAttr(Provisioning.A_zimbraDomainDefaultCOSId);
             if (defaultCosId == null) {
-                Cos defaultCos = prov.get(CosBy.name, Provisioning.DEFAULT_COS_NAME);
+                Cos defaultCos = prov.get(Key.CosBy.name, Provisioning.DEFAULT_COS_NAME);
                 if (defaultCos != null)
                     defaultCosId = defaultCos.getId();
             }
@@ -234,13 +248,15 @@ final class Validators {
             for (Map.Entry<String,Integer> e : featureLimitMap.entrySet())
                 featureCountMap.put(e.getKey(), 0);
             
-            boolean isModifyingCosId = (attrs.get(Provisioning.A_zimbraCOSId) != null);
+            boolean isModifyingCosId = (attrs != null && attrs.get(Provisioning.A_zimbraCOSId) != null);
             boolean isCreatingEntry = CREATE_ACCOUNT_CHECK_DOMAIN_COS_AND_FEATURE.equals(action);
             
-            String desiredCosId;
+            String desiredCosId = null;
             
             if (isModifyingCosId || isCreatingEntry) {
-                desiredCosId = (String) attrs.get(Provisioning.A_zimbraCOSId);
+                if (attrs != null) {
+                    desiredCosId = (String) attrs.get(Provisioning.A_zimbraCOSId);
+                }
                 if (desiredCosId == null) {
                     desiredCosId = defaultCosId;
                 }
@@ -259,11 +275,13 @@ final class Validators {
             Set<String> cosFeatures = getCosFeatures(prov, cosFeatureMap, desiredCosId, defaultCosId);
             Set<String> desiredFeatures = new HashSet<String>();
             // add all new requested features
-            for (Map.Entry<String,Object> entry : attrs.entrySet()) {
-                String k = entry.getKey();
-                if (featureLimitMap.containsKey(k)
-                        && "true".equalsIgnoreCase(entry.getValue().toString())) {
-                        desiredFeatures.add(k);
+            if (attrs != null) {
+                for (Map.Entry<String,Object> entry : attrs.entrySet()) {
+                    String k = entry.getKey();
+                    if (featureLimitMap.containsKey(k)
+                            && "true".equalsIgnoreCase(entry.getValue().toString())) {
+                            desiredFeatures.add(k);
+                    }
                 }
             }
             // add all features in new cos
@@ -305,7 +323,9 @@ final class Validators {
                     ZimbraLog.account.debug("COS change info [%s:%s], desired features %s",
                             originalCosId, desiredCosId, desiredFeatures);
                 }
+                
                 buildDomainCounts(prov, domainName, defaultCosId, cosCountMap, featureCountMap, cosFeatureMap);
+                               
                 if (ZimbraLog.account.isDebugEnabled())
                     ZimbraLog.account.debug("COS/Feature limits: %s + %s", cosLimitMap, featureLimitMap);
                 if (desiredCosId != null && !desiredCosId.equals(originalCosId)
@@ -336,7 +356,7 @@ final class Validators {
             if (!cosFeatureMap.containsKey(cosId)) {
                 Cos cos = null;
                 if (cosId != null)
-                    cos = prov.get(CosBy.id, cosId);
+                    cos = prov.get(Key.CosBy.id, cosId);
                 if (cos == null) {
                     if (defaultCosId != null) {
                         ZimbraLog.account.debug("COS id %s not found, reverting to %s", cosId, defaultCosId);
@@ -376,7 +396,114 @@ final class Validators {
             map.put(parts[0], max);
         }
 
+        private static class BuildDomainCounts extends SearchLdapVisitor {
+            
+            private Provisioning prov;
+            private String domain;
+            private String defaultCos;
+            private Map<String,Integer> cosCount;
+            private Map<String,Integer> featureCount; 
+            private Map<String,Set<String>> cosFeatureMap;
+            
+            private BuildDomainCounts(Provisioning prov, String domain, String defaultCos,
+                    Map<String,Integer> cosCount, Map<String,Integer> featureCount, 
+                    Map<String,Set<String>> cosFeatureMap) {
+                this.prov = prov;
+                this.domain = domain;
+                this.defaultCos = defaultCos;
+                this.cosCount = cosCount;
+                this.featureCount = featureCount;
+                this.cosFeatureMap = cosFeatureMap;
+            }
+            
+            void search() throws ServiceException {
+                LdapProv ldapProv = (LdapProv) prov;
+                String searchBaseDN = ldapProv.getDIT().domainToAccountSearchDN(domain);
+                ZLdapFilter query = ZLdapFilterFactory.getInstance().allNonSystemAccounts();
+                
+                ldapProv.searchLdapOnReplica(searchBaseDN, query, null, this);
+                ZimbraLog.account.debug("COS/Feature counts: %s + %s", cosCount, featureCount);
+            }
+            
+            @Override
+            public void visit(String dn, Map<String, Object> attrs, IAttributes ldapAttrs) {
+                try {
+                    visitInternal(dn, attrs, ldapAttrs);
+                } catch (ServiceException e) {
+                    ZimbraLog.account.error("encountered error, entry skipped ", e);
+                }
+            }
+            
+            private void visitInternal(String dn, Map<String, Object> attrs, IAttributes ldapAttrs) throws ServiceException {
+                
+                List<String> objectclass = ldapAttrs.getMultiAttrStringAsList(
+                        Provisioning.A_objectClass, IAttributes.CheckBinary.NOCHECK);
+                if (objectclass == null || objectclass.size() == 0) {
+                    ZimbraLog.account.error("DN: " + dn + ": does not have objectclass!");
+                    return;
+                }
+                
+                if (objectclass.contains(AttributeClass.OC_zimbraAccount)) {
+                    String cosId = ldapAttrs.getAttrString(Provisioning.A_zimbraCOSId);
+                    if (cosId == null) {
+                        cosId = defaultCos;
+                    }
+
+                    // invalid COS id will revert to default COS id, however, this counter will count
+                    // the invalid ID and not count the reverted default ID.  i.e. 100 accounts with
+                    // invalid IDs will be counted as 100 accounts with invalid IDs and not properly
+                    // counted as 100 accounts in the default COS
+                    incrementCount(cosCount, cosId);
+                    Set<String> cosFeatures = getCosFeatures(prov, cosFeatureMap, cosId, defaultCos);
+
+                    Set<String> acctFeatures = new HashSet<String>();
+                    for (Map.Entry<String, Object> attr : attrs.entrySet()) { 
+                        String attrName = attr.getKey();
+                        Object attrValue = attr.getValue();
+                        
+                        String value = null;
+                        if (attrValue instanceof String) {
+                            value = (String) attrValue;
+                        }
+                                                
+                        if (attrName.toLowerCase().startsWith("zimbrafeature")
+                                && attrName.toLowerCase().endsWith("enabled")
+                                && "true".equalsIgnoreCase(value))
+                            acctFeatures.add(attrName);
+                    }
+                    if (cosFeatures != null)
+                        acctFeatures.addAll(cosFeatures);
+                    for (String feature : acctFeatures)
+                        incrementCount(featureCount, feature);
+                }
+            }
+        }
+                
+        private static void incrementCount(Map<String,Integer> map, String key) {
+            if (key == null || !map.containsKey(key))
+                return; // not something that we care about
+            map.put(key, map.get(key) + 1);
+        }
+        
+        // new way to search LDAP after the SDK work
+        private void buildDomainCounts(Provisioning prov, String domain, String defaultCos,
+                Map<String,Integer> cosCount, Map<String,Integer> featureCount, Map<String,Set<String>> cosFeatureMap)
+        throws ServiceException {
+            BuildDomainCounts counts = new BuildDomainCounts(prov, domain, defaultCos,
+                    cosCount, featureCount, cosFeatureMap);
+            counts.search();
+        }
+        
+        
+        //
+        // old code before LDAP SDK refactoring - keep in tact for now.
+        // There are some existing bugs predate the SDK work. 
+        // keep the old code for now so when bugs are reported we can quickly test 
+        // to tell if a bug is a regression introduced by the SDK word.
+        // 
+        // 
         // mostly pawned off from LdapProvisioning.countAccounts(domain)
+        /*
         private void buildDomainCounts(Provisioning prov, String domain, String defaultCos,
                 Map<String,Integer> cosCount, Map<String,Integer> featureCount, Map<String,Set<String>> cosFeatureMap)
         throws ServiceException {
@@ -459,10 +586,7 @@ final class Validators {
             if (ZimbraLog.account.isDebugEnabled())
                 ZimbraLog.account.debug("COS/Feature counts: %s + %s", cosCount, featureCount);
         }
-        private static void incrementCount(Map<String,Integer> map, String key) {
-            if (key == null || !map.containsKey(key))
-                return; // not something that we care about
-            map.put(key, map.get(key) + 1);
-        }
+        */
+
     }
 }

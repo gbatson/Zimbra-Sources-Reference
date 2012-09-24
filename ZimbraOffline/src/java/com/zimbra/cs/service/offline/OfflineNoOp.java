@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,8 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import org.eclipse.jetty.continuation.ContinuationSupport;
+
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -30,12 +32,14 @@ public class OfflineNoOp extends NoOp {
     private static final String TIME_KEY = "ZDNoOpStartTime";
 
 	public Element handle(Element request, Map<String, Object> context) throws ServiceException {
-		if (!context.containsKey(SoapServlet.IS_RESUMED_REQUEST))
+        HttpServletRequest servletRequest = (HttpServletRequest) context.get(SoapServlet.SERVLET_REQUEST);
+        boolean isResumed = !ContinuationSupport.getContinuation(servletRequest).isInitial();
+        if (!isResumed) {
 			OfflineSyncManager.getInstance().clientPing();
+        }
         boolean wait = request.getAttributeBool(MailConstants.A_WAIT, false);
         long start = System.currentTimeMillis();
-        HttpServletRequest servletRequest = (HttpServletRequest) context.get(SoapServlet.SERVLET_REQUEST);
-        if (!context.containsKey(SoapServlet.IS_RESUMED_REQUEST)) {
+        if (!isResumed) {
             servletRequest.setAttribute(TIME_KEY, start);
         }
 		Element response = super.handle(request, context);

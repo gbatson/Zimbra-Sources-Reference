@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,15 +17,15 @@ package com.zimbra.cs.service.mail;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZCalendarBuilder;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZCalendarBuilder;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -40,6 +40,7 @@ public class ICalReply extends MailDocumentHandler {
 
         Element icalElem = request.getElement(MailConstants.E_CAL_ICAL);
         String icalStr = icalElem.getText();
+        String sender = icalElem.getAttribute(MailConstants.E_CAL_ATTENDEE, null);
         ZVCalendar cal = ZCalendarBuilder.build(icalStr);
 
         List<Invite> invites =
@@ -52,7 +53,7 @@ public class ICalReply extends MailDocumentHandler {
             }
         }
         for (Invite inv : invites) {
-            mbox.processICalReply(octxt, inv);
+            mbox.processICalReply(octxt, inv, sender);
         }
 
         Element response = getResponseElement(zsc);

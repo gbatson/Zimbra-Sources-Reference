@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -31,11 +31,13 @@ import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.cs.account.ZimbraAuthToken;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.auth.AuthContext;
+import com.zimbra.cs.account.auth.AuthMechanism.AuthMech;
 import com.zimbra.cs.session.Session;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.util.AccountUtil;
@@ -125,7 +127,7 @@ public class Auth extends AdminDocumentHandler {
                     // not found, try applying virtual host name
                     if (acct == null) {
                         if (virtualHost != null) {
-                            Domain d = prov.get(DomainBy.virtualHostname, virtualHost);
+                            Domain d = prov.get(Key.DomainBy.virtualHostname, virtualHost);
                             if (d != null)
                                 value = value + "@" + d.getName();
                         }                    
@@ -148,9 +150,11 @@ public class Auth extends AdminDocumentHandler {
                 authCtxt.put(AuthContext.AC_REMOTE_IP, context.get(SoapEngine.SOAP_REQUEST_IP));
                 authCtxt.put(AuthContext.AC_ACCOUNT_NAME_PASSEDIN, valuePassedIn);
                 authCtxt.put(AuthContext.AC_USER_AGENT, zsc.getUserAgent());
+                authCtxt.put(AuthContext.AC_AS_ADMIN, Boolean.TRUE);
                 prov.authAccount(acct, password, AuthContext.Protocol.soap, authCtxt);
                 checkAdmin(acct);
-                at = AuthProvider.getAuthToken(acct, true);
+                AuthMech authedByMech = (AuthMech) authCtxt.get(AuthContext.AC_AUTHED_BY_MECH);
+                at = AuthProvider.getAuthToken(acct, true, authedByMech);
 
             } catch (ServiceException se) {
                 ZimbraLog.security.warn(ZimbraLog.encodeAttrs(
@@ -159,10 +163,11 @@ public class Auth extends AdminDocumentHandler {
             }
         }
 
-        return doResponse(at, zsc, context, acct);
+        return doResponse(request, at, zsc, context, acct);
     }
 
-    private AuthToken dummyYCCTokenTestNeverCallMe(Element authTokenEl) throws ServiceException, AuthTokenException  {
+    private AuthToken dummyYCCTokenTestNeverCallMe(Element authTokenEl) 
+    throws ServiceException, AuthTokenException  {
         String atType = authTokenEl.getAttribute(AdminConstants.A_TYPE);
         if ("YAHOO_CALENDAR_AUTH_PROVIDER".equals(atType)) {
             for (Element a : authTokenEl.listElements(AdminConstants.E_A)) {
@@ -171,7 +176,7 @@ public class Auth extends AdminDocumentHandler {
                 if ("ADMIN_AUTH_KEY".equals(name) &&
                         "1210713456+dDedin1lO8d1_j8Kl.vl".equals(value)) {
                     Account acct = Provisioning.getInstance().get(AccountBy.name, "admin@phoebe.mac");
-                    return new ZimbraAuthToken(acct, true);
+                    return new ZimbraAuthToken(acct, true, null);
                 }
             }
         }
@@ -187,7 +192,8 @@ public class Auth extends AdminDocumentHandler {
             throw ServiceException.PERM_DENIED("not an admin account");
     }
 
-    private Element doResponse(AuthToken at, ZimbraSoapContext zsc, Map<String, Object> context, Account acct) throws ServiceException {
+    private Element doResponse(Element request, AuthToken at, ZimbraSoapContext zsc, 
+            Map<String, Object> context, Account acct) throws ServiceException {
         Element response = zsc.createElement(AdminConstants.AUTH_RESPONSE);
         at.encodeAuthResp(response, true);
 
@@ -197,15 +203,15 @@ public class Auth extends AdminDocumentHandler {
          */
         HttpServletRequest httpReq = (HttpServletRequest)context.get(SoapServlet.SERVLET_REQUEST);
         HttpServletResponse httpResp = (HttpServletResponse)context.get(SoapServlet.SERVLET_RESPONSE);
-        at.encode(httpResp, true, ZimbraCookie.secureCookie(httpReq));
+        boolean rememberMe = request.getAttributeBool(AdminConstants.A_PERSIST_AUTH_TOKEN_COOKIE, false);
+        at.encode(httpResp, true, ZimbraCookie.secureCookie(httpReq), rememberMe);
         
         response.addAttribute(AdminConstants.E_LIFETIME, at.getExpires() - System.currentTimeMillis(), Element.Disposition.CONTENT);
 
-        boolean isDomainAdmin = acct.getBooleanAttr(Provisioning.A_zimbraIsDomainAdminAccount, false);
-        response.addElement(AdminConstants.E_A).addAttribute(AdminConstants.A_N, Provisioning.A_zimbraIsDomainAdminAccount).setText(isDomainAdmin+"");
         Session session = updateAuthenticatedAccount(zsc, at, context, true);
-        if (session != null)
+        if (session != null) {
             ZimbraSoapContext.encodeSession(response, session.getSessionId(), session.getSessionType());
+        }
         return response;
     }
 

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -44,11 +44,13 @@ public class CalSummaryMemcachedCache {
     CalSummaryMemcachedCache() {
         ZimbraMemcachedClient memcachedClient = MemcachedConnector.getClient();
         CalSummarySerializer serializer = new CalSummarySerializer();
-        mMemcachedLookup = new BigByteArrayMemcachedMap<CalSummaryKey, CalendarData>(memcachedClient, serializer); 
+        mMemcachedLookup = new BigByteArrayMemcachedMap<CalSummaryKey, CalendarData>(memcachedClient, serializer);
     }
 
     private static class CalSummarySerializer implements ByteArraySerializer<CalendarData> {
-        
+        CalSummarySerializer() { }
+
+        @Override
         public byte[] serialize(CalendarData value) {
             try {
                 return value.encodeMetadata().toString().getBytes("utf-8");
@@ -58,6 +60,7 @@ public class CalSummaryMemcachedCache {
             }
         }
 
+        @Override
         public CalendarData deserialize(byte[] bytes) throws ServiceException {
             if (bytes != null) {
                 String encoded;
@@ -107,8 +110,8 @@ public class CalSummaryMemcachedCache {
                 Object whatChanged = change.what;
                 if (whatChanged instanceof Folder) {
                     Folder folder = (Folder) whatChanged;
-                    byte viewType = folder.getDefaultView();
-                    if (viewType == MailItem.TYPE_APPOINTMENT || viewType == MailItem.TYPE_TASK) {
+                    MailItem.Type viewType = folder.getDefaultView();
+                    if (viewType == MailItem.Type.APPOINTMENT || viewType == MailItem.Type.TASK) {
                         CalSummaryKey key = new CalSummaryKey(folder.getMailbox().getAccountId(), folder.getId());
                         keysToInvalidate.add(key);
                     }
@@ -116,28 +119,17 @@ public class CalSummaryMemcachedCache {
             }
         }
         if (mods.deleted != null) {
-            // This code gets called even for non-calendar items, for example it's called for every email
-            // being emptied from Trash.  But there's no way to short circuit out of here because the delete
-            // notification doesn't tell us the item type of what's being deleted.  Oh well.
-            for (Map.Entry<ModificationKey, Object> entry : mods.deleted.entrySet()) {
-                Object deletedObj = entry.getValue();
-                if (deletedObj instanceof Folder) {
-                    Folder folder = (Folder) deletedObj;
-                    byte viewType = folder.getDefaultView();
-                    if (viewType == MailItem.TYPE_APPOINTMENT || viewType == MailItem.TYPE_TASK) {
-                        CalSummaryKey key = new CalSummaryKey(folder.getMailbox().getAccountId(), folder.getId());
-                        keysToInvalidate.add(key);
-                    }
-                } else if (deletedObj instanceof Integer) {
+            for (Map.Entry<ModificationKey, Change> entry : mods.deleted.entrySet()) {
+                MailItem.Type type = (MailItem.Type) entry.getValue().what;
+                if (type == MailItem.Type.FOLDER) {
                     // We only have item id.  Assume it's a folder id and issue a delete.
                     String acctId = entry.getKey().getAccountId();
-                    if (acctId == null) continue;  // just to be safe
-                    int itemId = ((Integer) deletedObj).intValue();
-                    CalSummaryKey key = new CalSummaryKey(acctId, itemId);
+                    if (acctId == null)
+                        continue;  // just to be safe
+                    CalSummaryKey key = new CalSummaryKey(acctId, entry.getKey().getItemId());
                     keysToInvalidate.add(key);
                 }
                 // Let's not worry about hard deletes of invite/reply emails.  It has no practical benefit.
-                // Besides, when deletedObj is an Integer, we can't tell if it's a calendaring Message.
             }
         }
         try {

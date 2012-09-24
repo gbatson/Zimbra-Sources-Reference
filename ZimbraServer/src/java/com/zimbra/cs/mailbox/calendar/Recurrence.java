@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,17 +19,22 @@ import java.util.*;
 
 import java.text.ParseException;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.ParsedDuration;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZWeekDay;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.util.ListUtil;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Metadata;
 import com.zimbra.cs.mailbox.CalendarItem.Instance;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
 
 
 /**
@@ -651,7 +656,7 @@ public class Recurrence
             }
 
             // WKST
-            ZRecur.ZWeekDay wkst = mRecur.getWkSt();
+            ZWeekDay wkst = mRecur.getWkSt();
             if (wkst != null) {
                 rule.addElement(MailConstants.E_CAL_RULE_WKST).
                     addAttribute(MailConstants.A_CAL_RULE_DAY, wkst.toString());
@@ -1566,6 +1571,14 @@ public class Recurrence
                     tzids.add(tz.getID());
             }
         }
+        
+        ParsedDateTime recurStart = recur.getStartTime();
+        if (recurStart != null) {
+            ICalTimeZone tz = recurStart.getTimeZone();
+            if (tz != null)
+                tzids.add(tz.getID());
+        }
+
         return tzids;
     }
 
@@ -1597,8 +1610,8 @@ public class Recurrence
     public static void main(String[] args) throws Exception {
         ICalTimeZone pacific = new ICalTimeZone(
                 "America/Los_Angeles",
-                -28800000, "19710101T020000", "FREQ=YEARLY;WKST=MO;INTERVAL=1;BYMONTH=11;BYDAY=1SU", "PST",
-                -25200000, "19710101T020000", "FREQ=YEARLY;WKST=MO;INTERVAL=1;BYMONTH=3;BYDAY=2SU", "PDT");
+                -28800000, "16010101T020000", "FREQ=YEARLY;WKST=MO;INTERVAL=1;BYMONTH=11;BYDAY=1SU", "PST",
+                -25200000, "16010101T020000", "FREQ=YEARLY;WKST=MO;INTERVAL=1;BYMONTH=3;BYDAY=2SU", "PDT");
         TimeZoneMap tzmap = new TimeZoneMap(pacific);
         String str = "TZID=\"" + pacific.getID() + "\":20090105T120000";
         ParsedDateTime dtStart = ParsedDateTime.parse(str, tzmap);

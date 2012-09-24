@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -42,7 +42,7 @@ import com.zimbra.cs.db.DbDataSource.DataSourceItem;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailItem.QueryParams;
 import com.zimbra.cs.db.DbPool;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
@@ -70,6 +70,7 @@ public class GalSyncSAXHandler implements ElementHandler {
     public GalSyncSAXHandler(OfflineAccount galAccount, Mailbox galMbox, boolean fullSync) throws ServiceException {
         this.galAccount = galAccount;
         this.fullSync = fullSync;
+        prov = OfflineProvisioning.getOfflineInstance();        
         this.galMbox = galMbox;
         this.context = new OperationContext(galMbox);
         this.ds = GalSyncUtil.createDataSourceForAccount(galAccount);
@@ -118,7 +119,6 @@ public class GalSyncSAXHandler implements ElementHandler {
         }
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public void onEnd(ElementPath elPath) { // TODO: add trace logging;
         String path = elPath.getPath();
@@ -187,7 +187,7 @@ public class GalSyncSAXHandler implements ElementHandler {
         if (iid > 0) {
             // always delete mapping first, so that in case of crash, unmapped contacts can be cleaned up in runMaintenance()
             DbDataSource.deleteMapping(ds, iid);
-            galMbox.delete(context, iid, MailItem.TYPE_CONTACT);
+            galMbox.delete(context, iid, MailItem.Type.CONTACT);
             OfflineLog.offline.debug("Offline GAL contact deleted: " + Integer.toString(iid) + ", " + id);
         }
     }
@@ -198,15 +198,15 @@ public class GalSyncSAXHandler implements ElementHandler {
         QueryParams params = new QueryParams();
         params.setFolderIds(folderIds);
 
-        Connection conn = null;
+        DbConnection conn = null;
         Set<Integer> galItemIds = null;
-        synchronized (galMbox) {
-            try {
-                conn = DbPool.getConnection();
-                galItemIds = DbMailItem.getIds(galMbox, conn, params, false);
-            } finally {
-                DbPool.quietClose(conn);
-            }
+        galMbox.lock.lock();
+        try {
+            conn = DbPool.getConnection();
+            galItemIds = DbMailItem.getIds(galMbox, conn, params, false);
+        } finally {
+            DbPool.quietClose(conn);
+            galMbox.lock.release();
         }
         if (galItemIds == null || galItemIds.size() == 0) {
             return;
@@ -233,7 +233,7 @@ public class GalSyncSAXHandler implements ElementHandler {
                         + ", falling back to full sync.");
             } else {
                 for (Integer id : galItemIds) {
-                    galMbox.delete(context, id.intValue(), MailItem.TYPE_CONTACT);
+                    galMbox.delete(context, id.intValue(), MailItem.Type.CONTACT);
                 }
                 OfflineLog.offline.debug("Offline GAL deleted " + Integer.toString(galItemIds.size())
                         + " unmapped items.");
@@ -251,7 +251,7 @@ public class GalSyncSAXHandler implements ElementHandler {
         try {
             OfflineLog.offline.debug("Offline GAL running maintenance");
             removeUnmapped();
-            galMbox.optimize(null, 0);
+            galMbox.optimize(0);
             prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountLastRefresh,
                     Long.toString(System.currentTimeMillis()));
         } catch (ServiceException e) {
@@ -261,34 +261,30 @@ public class GalSyncSAXHandler implements ElementHandler {
 
     private void saveUnparsedContact(String id, Map<String, String> map) throws ServiceException, IOException {
         boolean success = false;
-        synchronized (galMbox) {
-            try {
-                galMbox.beginTransaction("saveUnparsedContact", null);
-                GalSyncUtil.fillContactAttrMap(map);
-                ParsedContact contact = new ParsedContact(map);
-                String logstr = GalSyncUtil.getContactLogStr(contact);
-                if (fullSync) {
+        try {
+            galMbox.beginTransaction("saveUnparsedContact", null);
+            GalSyncUtil.fillContactAttrMap(map);
+            ParsedContact contact = new ParsedContact(map);
+            String logstr = GalSyncUtil.getContactLogStr(contact);
+            if (fullSync) {
+                GalSyncUtil.createContact(this.galMbox, this.context, this.syncFolder, this.ds, contact, id, logstr);
+            } else {
+                int itemId = GalSyncUtil.findContact(id, ds);
+                if (itemId > 0) {
+                    try {
+                        galMbox.modifyContact(context, itemId, contact);
+                        OfflineLog.offline.debug("Offline GAL contact modified: " + logstr);
+                    } catch (MailServiceException.NoSuchItemException e) {
+                        OfflineLog.offline.warn("Offline GAL modify error - no such contact: " + logstr + " itemId=" + Integer.toString(itemId));
+                    }
                     GalSyncUtil
                             .createContact(this.galMbox, this.context, this.syncFolder, this.ds, contact, id, logstr);
                 } else {
-                    int itemId = GalSyncUtil.findContact(id, ds);
-                    if (itemId > 0) {
-                        try {
-                            galMbox.modifyContact(context, itemId, contact);
-                            OfflineLog.offline.debug("Offline GAL contact modified: " + logstr);
-                        } catch (MailServiceException.NoSuchItemException e) {
-                            OfflineLog.offline.warn("Offline GAL modify error - no such contact: " + logstr
-                                    + " itemId=" + Integer.toString(itemId));
-                        }
-                    } else {
-                        GalSyncUtil.createContact(this.galMbox, this.context, this.syncFolder, this.ds, contact, id,
-                                logstr);
-                    }
                 }
-                success = true;
-            } finally {
-                galMbox.endTransaction(success);
             }
+            success = true;
+        } finally {
+            galMbox.endTransaction(success);
         }
     }
 

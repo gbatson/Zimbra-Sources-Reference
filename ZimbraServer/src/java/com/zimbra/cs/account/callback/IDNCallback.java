@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -27,14 +27,16 @@ import com.zimbra.cs.account.AttributeManager.IDNType;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.IDNUtil;
 
-
+/**
+ * Convert unicode address to ASCII (ACE)
+ *
+ */
 public class IDNCallback extends AttributeCallback {
 
-    /**
-     * check to make sure zimbraMailHost points to a valid server zimbraServiceHostname
-     */
-    public void preModify(Map context, String attrName, Object value,
-            Map attrsToModify, Entry entry, boolean isCreate) throws ServiceException {
+    @Override
+    public void preModify(CallbackContext context, String attrName, Object value,
+            Map attrsToModify, Entry entry) 
+    throws ServiceException {
         
         MultiValueMod mod = multiValueMod(attrsToModify, attrName);
         IDNType idnType = AttributeManager.idnType(AttributeManager.getInstance(), attrName);
@@ -49,8 +51,9 @@ public class IDNCallback extends AttributeCallback {
                 if (addr.charAt(0) == '@') {
                     // meant for catchall addresses
                     asciiName = "@" + IDNUtil.toAsciiDomainName(addr.substring(1));
-                } else
+                } else {
                     asciiName = IDNUtil.toAscii(addr, idnType);
+                }
                 
                 asciiValues.add(asciiName);
             }
@@ -61,7 +64,7 @@ public class IDNCallback extends AttributeCallback {
         }
     }
 
-    public void postModify(Map context, String attrName, Entry entry, boolean isCreate) {
-
+    @Override
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 }

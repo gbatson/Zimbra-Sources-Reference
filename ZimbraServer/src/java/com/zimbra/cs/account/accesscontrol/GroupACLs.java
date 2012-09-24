@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.account.accesscontrol;
 
 import java.util.ArrayList;
@@ -24,6 +10,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Entry;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
 
@@ -55,7 +42,7 @@ public class GroupACLs {
         }
     }
     
-    private boolean applies(DistributionList grantedOn, ZimbraACE ace) {
+    private boolean applies(Group grantedOn, ZimbraACE ace) {
         if (!ace.disinheritSubGroups()) {
             return true;
         }
@@ -71,7 +58,7 @@ public class GroupACLs {
         }
     }
     
-    void collectACL(DistributionList grantedOn, boolean skipPositiveGrants) 
+    void collectACL(Group grantedOn, boolean skipPositiveGrants) 
     throws ServiceException {
         
         Set<ZimbraACE> allowedNotDelegable = ACLUtil.getAllowedNotDelegableACEs(grantedOn);

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,11 +15,11 @@
 
 package com.zimbra.cs.index;
 
+import java.util.Set;
+
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.index.ResultValidator.QueryResult;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.Mailbox.SearchResultMode;
 
 /**
  * A {@link QueryOperation} is a part of a Search request -- there are
@@ -78,8 +78,7 @@ public abstract class QueryOperation implements Cloneable, ZimbraQueryResults {
      * @return search results
      * @throws ServiceException if an error occurred
      */
-    final ZimbraQueryResults run(Mailbox mbox, SearchParams params,
-            int chunkSize) throws ServiceException {
+    final ZimbraQueryResults run(Mailbox mbox, SearchParams params, int chunkSize) throws ServiceException {
         mIsToplevelQueryOp = true;
 
         chunkSize++; // one extra for checking the "more" flag at the end of the results
@@ -91,16 +90,11 @@ public abstract class QueryOperation implements Cloneable, ZimbraQueryResults {
         }
 
         Grouping retType = Grouping.ITEM; //MailboxIndex.SEARCH_RETURN_DOCUMENTS;
-        byte[] types = params.getTypes();
-        for (int i = 0; i < types.length; i++) {
-            if (types[i] == MailItem.TYPE_CONVERSATION) {
-                retType = Grouping.CONVERSATION; //MailboxIndex.SEARCH_RETURN_CONVERSATIONS;
-                break;
-            }
-            if (types[i] == MailItem.TYPE_MESSAGE) {
-                retType = Grouping.MESSAGE; // MailboxIndex.SEARCH_RETURN_MESSAGES;
-                break;
-            }
+        Set<MailItem.Type> types = params.getTypes();
+        if (types.contains(MailItem.Type.CONVERSATION)) {
+            retType = Grouping.CONVERSATION; //MailboxIndex.SEARCH_RETURN_CONVERSATIONS;
+        } else if (types.contains(MailItem.Type.MESSAGE)) {
+            retType = Grouping.MESSAGE; // MailboxIndex.SEARCH_RETURN_MESSAGES;
         }
 
         // set me to TRUE if you're returning Conversations or something which could benefit from preloading
@@ -111,48 +105,42 @@ public abstract class QueryOperation implements Cloneable, ZimbraQueryResults {
         boolean usePreloadingGrouper = true;
 
         // don't preload if all we want is IDs!
-        if (params.getMode() == SearchResultMode.IDS) {
+        if (params.getFetchMode() == SearchParams.Fetch.IDS) {
             usePreloadingGrouper = false;
         }
 
         ZimbraQueryResultsImpl results = null;
         switch (retType) {
-            case CONVERSATION: // MailboxIndex.SEARCH_RETURN_CONVERSATIONS:
+            case CONVERSATION:
                 if (params.getPrefetch() && usePreloadingGrouper) {
                     chunkSize+= 2; // one for the ConvQueryResults, one for the Grouper
-                    results = new ConvQueryResults(
-                            new ItemPreloadingGrouper(this, chunkSize, mbox, params.inDumpster()),
-                            types, params.getSortBy(), params.getMode());
+                    results = new ConvQueryResults(new ItemPreloadingGrouper(this, chunkSize, mbox,
+                            params.inDumpster()), types, params.getSortBy(), params.getFetchMode());
                     chunkSize *= MESSAGES_PER_CONV_ESTIMATE; // guess 2 msgs per conv
                 } else {
                     chunkSize++; // one for the ConvQueryResults
-                    results = new ConvQueryResults(this, types,
-                            params.getSortBy(), params.getMode());
+                    results = new ConvQueryResults(this, types, params.getSortBy(), params.getFetchMode());
                     chunkSize *= MESSAGES_PER_CONV_ESTIMATE;
                 }
                 preloadOuterResults = true;
                 break;
-            case MESSAGE: //MailboxIndex.SEARCH_RETURN_MESSAGES:
+            case MESSAGE:
                 if (params.getPrefetch()  && usePreloadingGrouper) {
                     chunkSize += 2; // one for the MsgQueryResults, one for the Grouper
-                    results = new MsgQueryResults(
-                            new ItemPreloadingGrouper(this, chunkSize, mbox, params.inDumpster()),
-                            types, params.getSortBy(), params.getMode());
+                    results = new MsgQueryResults(new ItemPreloadingGrouper(this, chunkSize, mbox, params.inDumpster()),
+                            types, params.getSortBy(), params.getFetchMode());
                 } else {
                     chunkSize++; // one for the MsgQueryResults
-                    results = new MsgQueryResults(this, types,
-                            params.getSortBy(), params.getMode());
+                    results = new MsgQueryResults(this, types, params.getSortBy(), params.getFetchMode());
                 }
                 break;
-            case ITEM: //MailboxIndex.SEARCH_RETURN_DOCUMENTS:
+            case ITEM:
                 if (params.getPrefetch() && usePreloadingGrouper) {
                     chunkSize++; // one for the grouper
-                    results = new UngroupedQueryResults(
-                            new ItemPreloadingGrouper(this, chunkSize, mbox, params.inDumpster()),
-                            types, params.getSortBy(), params.getMode());
+                    results = new UngroupedQueryResults(new ItemPreloadingGrouper(this, chunkSize, mbox,
+                            params.inDumpster()), types, params.getSortBy(), params.getFetchMode());
                 } else {
-                    results = new UngroupedQueryResults(this, types,
-                            params.getSortBy(), params.getMode());
+                    results = new UngroupedQueryResults(this, types, params.getSortBy(), params.getFetchMode());
                 }
                 break;
             default:
@@ -187,12 +175,6 @@ public abstract class QueryOperation implements Cloneable, ZimbraQueryResults {
     protected abstract void begin(QueryContext ctx) throws ServiceException;
 
     @Override
-    public ZimbraHit getFirstHit() throws ServiceException {
-        resetIterator();
-        return getNext();
-    }
-
-    @Override
     public ZimbraHit skipToHit(int hitNo) throws ServiceException {
         resetIterator();
         for (int i = 0; i < hitNo; i++) {
@@ -204,7 +186,7 @@ public abstract class QueryOperation implements Cloneable, ZimbraQueryResults {
         return getNext();
     }
 
-    abstract QueryTargetSet getQueryTargets();
+    abstract Set<QueryTarget> getQueryTargets();
 
     @Override
     public Object clone() {

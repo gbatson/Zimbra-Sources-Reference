@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,10 +15,13 @@
 
 package com.zimbra.cs.mailbox;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.net.ConnectException;
+import java.io.InputStream;
+import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -36,75 +39,88 @@ import javax.mail.Transport;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
+import com.google.common.base.Joiner;
+import com.google.common.base.Objects;
+import com.google.common.base.Strings;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.mime.shim.JavaMailInternetHeaders;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ArrayUtil;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.ListUtil;
+import com.zimbra.common.util.Pair;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.SystemUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
+import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.IdentityBy;
-import com.zimbra.cs.account.accesscontrol.Rights.User;
 import com.zimbra.cs.filter.RuleManager;
-import com.zimbra.cs.index.ContactHit;
-import com.zimbra.cs.index.SortBy;
-import com.zimbra.cs.index.ZimbraHit;
-import com.zimbra.cs.index.ZimbraQueryResults;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
+import com.zimbra.cs.mailbox.Threader.ThreadIndex;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.MimeVisitor;
-import com.zimbra.cs.mime.ParsedAddress;
-import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.FileUploadServlet;
 import com.zimbra.cs.service.FileUploadServlet.Upload;
+import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 import com.zimbra.cs.util.BuildInfo;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZContactHit;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZSearchHit;
-import com.zimbra.cs.zclient.ZSearchParams;
-import com.zimbra.cs.zclient.ZSearchResult;
 
 public class MailSender {
 
-    public static final String MSGTYPE_REPLY = Flag.getAbbreviation(Flag.ID_FLAG_REPLIED) + "";
-    public static final String MSGTYPE_FORWARD = Flag.getAbbreviation(Flag.ID_FLAG_FORWARDED) + "";
+    public static final String MSGTYPE_REPLY = String.valueOf(Flag.toChar(Flag.ID_REPLIED));
+    public static final String MSGTYPE_FORWARD = String.valueOf(Flag.toChar(Flag.ID_FORWARDED));
 
     private Boolean mSaveToSent;
-    private Collection<InternetAddress> mSaveContacts;
     private Collection<Upload> mUploads;
     private ItemId mOriginalMessageId;
     private String mReplyType;
     private Identity mIdentity;
     private Boolean mSendPartial;
     private boolean mReplyToSender = false;
-    private boolean mSkipSendAsCheck = false;
+    private boolean mRedirectMode = false;
+    private boolean mCalendarMode = false;
+    private boolean mSkipHeaderUpdate = false;
     private List<String> mSmtpHosts = new ArrayList<String>();
     private Session mSession;
     private boolean mTrackBadHosts = true;
     private int mCurrentHostIndex = 0;
     private List<String> mRecipients = new ArrayList<String>();
     private String mEnvelopeFrom;
-    private ItemId savedDraftId;
+    private String mDsn;
 
-    public MailSender()  { }
+    public MailSender()  {
+        mSession = JMSession.getSession();
+    }
 
-    /**
-     * Specifies the contacts to save in the <tt>Emailed Contacts</tt> folder.
-     * @param savedContacts contacts or <tt>null</tt>
-     */
-    public MailSender setSaveContacts(Collection<InternetAddress> saveContacts) {
-        mSaveContacts = saveContacts;
+    public static enum DsnNotifyOption {
+        NEVER,
+        SUCCESS,
+        FAILURE,
+        DELAY
+    }
+
+    public MailSender setDsnNotifyOptions(DsnNotifyOption... dsnNotifyOptions) {
+        if (dsnNotifyOptions == null || dsnNotifyOptions.length == 0) {
+            mDsn = null;
+        } else {
+            List<DsnNotifyOption> listOptions = Arrays.asList(dsnNotifyOptions);
+            if (listOptions.size() > 1 && listOptions.contains(DsnNotifyOption.NEVER))
+                throw new IllegalArgumentException("DSN option 'NEVER' cannot be combined with others");
+            mDsn = StringUtil.join(",", dsnNotifyOptions);
+        }
         return this;
     }
 
@@ -164,11 +180,33 @@ public class MailSender {
     }
 
     /**
-     * @param skip if <tt>true</tt>, don't confirm that the user can send
-     * the message from the specified address.  The default is <tt>false</tt>.
+     * Redirect mode allows any value for From and Sender headers.  This mode should
+     * be used only for redirecting/bouncing mail.
      */
-    public MailSender setSkipSendAsCheck(boolean skip) {
-        mSkipSendAsCheck = skip;
+    public MailSender setRedirectMode(boolean onoff) {
+        mRedirectMode = onoff;
+        return this;
+    }
+
+    /**
+     * Calendar mode allows anyone to send on behalf of anyone else without having
+     * the sendOnBehalfOf right granted.  This seemingly contradictory behavior is
+     * necessary to remain compatible with Outlook's invite forwarding mechanism.
+     * @param onoff
+     * @return
+     */
+    public MailSender setCalendarMode(boolean onoff) {
+        mCalendarMode = onoff;
+        return this;
+    }
+
+    /**
+     * @param skip if <tt>true</tt>, leave message headers untouched during
+     * the mail send process.  That is, do not update the Date, From, Sender,
+     * etc. headers.  The default is <tt>false</tt>.
+     */
+    public MailSender setSkipHeaderUpdate(boolean skip) {
+        mSkipHeaderUpdate = skip;
         return this;
     }
 
@@ -193,19 +231,20 @@ public class MailSender {
 
     /**
      * Sets an alternate JavaMail <tt>Session</tt> and SMTP hosts
-     * that will be used to send the message.  The default behavior
-     * is to use SMTP settings from the <tt>Session<tt> on the {@link MimeMessage}.
+     * that will be used to send the message from the account's
+     * domain.  The default behavior is to use SMTP settings from
+     * the <tt>Session<tt> on the {@link MimeMessage}.
+     * @throws ServiceException
      */
-    public MailSender setSession(Session session, Collection<String> smtpHosts) {
-        if (session == null) {
-            throw new NullPointerException("session cannot be null");
+    public MailSender setSession(Account account) throws ServiceException {
+        try {
+            mSession = JMSession.getSmtpSession(account);
+        } catch (MessagingException e) {
+            throw ServiceException.FAILURE("Unable to get SMTP session for " + account, e);
         }
-        if (smtpHosts == null || smtpHosts.isEmpty()) {
-            throw new IllegalArgumentException("no hosts specified");
-        }
-        mSession = session;
+        Domain domain = Provisioning.getInstance().getDomain(account);
         mSmtpHosts.clear();
-        mSmtpHosts.addAll(smtpHosts);
+        mSmtpHosts.addAll(JMSession.getSmtpHosts(domain));
         return this;
     }
 
@@ -266,13 +305,6 @@ public class MailSender {
     }
 
     /**
-     * Getter for Collection of contacts to save - exposed for OfflineMailSender
-     */
-    protected Collection<InternetAddress> getSaveContacts() {
-        return mSaveContacts;
-    }
-
-    /**
      * Getter for original message Id - exposed for OfflineMailSender
      */
     protected ItemId getOriginalMessageId() {
@@ -291,18 +323,6 @@ public class MailSender {
      */
     protected Identity getIdentity() {
         return mIdentity;
-    }
-
-    /**
-     * Set the draftId associated with the message we are sending
-     */
-    public MailSender setSavedDraftId(ItemId draftId) {
-        this.savedDraftId = draftId;
-        return this;
-    }
-
-    protected ItemId getSavedDraftId() {
-        return savedDraftId;
     }
 
     /**
@@ -339,7 +359,7 @@ public class MailSender {
 
     /**
      * Get recipient addresses from either the member variable or the message.
-     * @throws MessagingException 
+     * @throws MessagingException
      */
     protected Address[] getRecipients(final MimeMessage mm) throws MessagingException {
         Address[] rcptAddresses = null;
@@ -353,7 +373,7 @@ public class MailSender {
         }
         return rcptAddresses;
     }
-    
+
     /**
      * Getter for Collection of uploads - exposed for OfflineMailSender
      */
@@ -370,19 +390,17 @@ public class MailSender {
     /**
      * Sets member variables and sends the message.
      */
-    public ItemId sendMimeMessage(OperationContext octxt, Mailbox mbox, MimeMessage mm,
-                                  List<InternetAddress> newContacts, List<Upload> uploads,
-                                  ItemId origMsgId, String replyType, String identityId,
-                                  boolean replyToSender)
-    throws ServiceException {
+    public ItemId sendMimeMessage(OperationContext octxt, Mailbox mbox, MimeMessage mm, List<Upload> uploads,
+            ItemId origMsgId, String replyType, String identityId, boolean replyToSender) throws ServiceException {
         Account authuser = octxt == null ? null : octxt.getAuthenticatedUser();
-        if (authuser == null)
+        if (authuser == null) {
             authuser = mbox.getAccount();
+        }
         Identity identity = null;
-        if (identityId != null)
-            identity = Provisioning.getInstance().get(authuser, IdentityBy.id, identityId);
-
-        return sendMimeMessage(octxt, mbox, null, mm, newContacts, uploads, origMsgId, replyType, identity, replyToSender);
+        if (identityId != null) {
+            identity = Provisioning.getInstance().get(authuser, Key.IdentityBy.id, identityId);
+        }
+        return sendMimeMessage(octxt, mbox, null, mm, uploads, origMsgId, replyType, identity, replyToSender);
     }
 
     protected static class RollbackData {
@@ -390,18 +408,25 @@ public class MailSender {
         ZMailbox zmbox;
         ItemId msgId;
 
-        RollbackData(Mailbox m, int i)  { mbox = m;  msgId = new ItemId(mbox, i); }
-        RollbackData(Message msg)       { mbox = msg.getMailbox();  msgId = new ItemId(msg); }
+        RollbackData(Mailbox m, int i) {
+            mbox = m;  msgId = new ItemId(mbox, i);
+        }
+
+        RollbackData(Message msg) {
+            mbox = msg.getMailbox();  msgId = new ItemId(msg);
+        }
+
         RollbackData(ZMailbox z, Account a, String s) throws ServiceException {
             zmbox = z;  msgId = new ItemId(s, a.getId());
         }
 
         public void rollback() {
             try {
-                if (mbox != null)
-                    mbox.delete(null, msgId.getId(), MailItem.TYPE_MESSAGE);
-                else
+                if (mbox != null) {
+                    mbox.delete(null, msgId.getId(), MailItem.Type.MESSAGE);
+                } else {
                     zmbox.deleteMessage("" + msgId);
+                }
             } catch (ServiceException e) {
                 ZimbraLog.smtp.warn("ignoring error while deleting saved sent message: " + msgId, e);
             }
@@ -412,11 +437,9 @@ public class MailSender {
      * Sets member variables and sends the message.
      */
     public ItemId sendMimeMessage(OperationContext octxt, Mailbox mbox, Boolean saveToSent, MimeMessage mm,
-                                  Collection<InternetAddress> saveContacts, Collection<Upload> uploads,
-                                  ItemId origMsgId, String replyType, Identity identity, boolean replyToSender)
-    throws ServiceException {
+            Collection<Upload> uploads, ItemId origMsgId, String replyType, Identity identity, boolean replyToSender)
+            throws ServiceException {
         mSaveToSent = saveToSent;
-        mSaveContacts = saveContacts;
         mUploads = uploads;
         mOriginalMessageId = origMsgId;
         mReplyType = replyType;
@@ -436,28 +459,30 @@ public class MailSender {
             if (size == -1) {
                 size = (int) ByteUtil.getDataLength(Mime.getInputStream(mm));
             }
-            
-            if (size > maxSize) {
+
+            if (size > maxSize)
                 throw MailServiceException.MESSAGE_TOO_BIG(maxSize, size);
-            }
 
             Account acct = mbox.getAccount();
             Account authuser = octxt == null ? null : octxt.getAuthenticatedUser();
             boolean isAdminRequest = octxt == null ? false : octxt.isUsingAdminPrivileges();
-            if (authuser == null)
+            if (authuser == null) {
                 authuser = acct;
+            }
             boolean isDelegatedRequest = !acct.getId().equalsIgnoreCase(authuser.getId());
 
-            if (mSaveToSent == null)
-                mSaveToSent = authuser.getBooleanAttr(Provisioning.A_zimbraPrefSaveToSent, true);
+            if (mSaveToSent == null) {
+                mSaveToSent = authuser.isPrefSaveToSent();
+            }
 
             // slot the message in the parent's conversation if subjects match
             int convId = Mailbox.ID_AUTO_INCREMENT;
-            if (mOriginalMessageId != null && !isDelegatedRequest && mOriginalMessageId.belongsTo(mbox))
+            if (mOriginalMessageId != null && !isDelegatedRequest && mOriginalMessageId.belongsTo(mbox)) {
                 convId = mbox.getConversationIdFromReferent(mm, mOriginalMessageId.getId());
+            }
 
             // set the From, Sender, Date, Reply-To, etc. headers
-            updateHeaders(mm, acct, authuser, octxt, octxt != null ? octxt.getRequestIP() : null, mReplyToSender, mSkipSendAsCheck);
+            updateHeaders(mm, acct, authuser, octxt, octxt != null ? octxt.getRequestIP() : null, mReplyToSender);
 
             // Determine envelope sender.
             if (mEnvelopeFrom == null) {
@@ -466,17 +491,20 @@ public class MailSender {
                 } else {
                     // Set envelope sender to Sender or From, in that order.
                     Address envAddress = mm.getSender();
-                    if (envAddress == null)
+                    if (envAddress == null) {
                         envAddress = ArrayUtil.getFirstElement(mm.getFrom());
-                    if (envAddress != null)
+                    }
+                    if (envAddress != null) {
                         mEnvelopeFrom = ((InternetAddress) envAddress).getAddress();
+                    }
                 }
             }
 
             // run any pre-send/pre-save MIME mutators
             try {
-                for (Class<? extends MimeVisitor> vclass : MimeVisitor.getMutators())
+                for (Class<? extends MimeVisitor> vclass : MimeVisitor.getMutators()) {
                     vclass.newInstance().accept(mm);
+                }
             } catch (Exception e) {
                 ZimbraLog.smtp.warn("failure to modify outbound message; aborting send", e);
                 throw ServiceException.FAILURE("mutator error; aborting send", e);
@@ -489,16 +517,30 @@ public class MailSender {
             LinkedList<RollbackData> rollbacks = new LinkedList<RollbackData>();
             Object authMailbox = isDelegatedRequest ? null : mbox;
 
+            // Bug: 66823
+            // createAutoContact() uses Lucene search to determine whether the address to be added in emailed contact;
+            // If the user has SaveInSent preference set, a copy of the message is stored on Sent folder. With
+            // zimbraBatchedIndexingSize is set to 1 or, with any search request the item stored in the sent folder
+            // gets indexed right away which causes createAutoContact() to skip the sender addresses to be added.
+            // To avoid this problem; let's determine a list of new address which we might need to add to emailed
+            // contact later before we add the message to sent folder.
+            Collection<Address> newAddrs = Collections.emptySet();
+            Address[] rcptAddresses = getRecipients(mm);
+            if (rcptAddresses != null && rcptAddresses.length > 0)
+                newAddrs = mbox.newContactAddrs(Arrays.asList(rcptAddresses));
+
             // if requested, save a copy of the message to the Sent Mail folder
             ParsedMessage pm = null;
             ItemId returnItemId = null;
             if (mSaveToSent) {
-                if (mIdentity == null)
+                if (mIdentity == null) {
                     mIdentity = Provisioning.getInstance().getDefaultIdentity(authuser);
+                }
 
                 // figure out where to save the save-to-sent copy
-                if (authMailbox == null)
+                if (authMailbox == null) {
                     authMailbox = getAuthenticatedMailbox(octxt, authuser, isAdminRequest);
+                }
 
                 if (authMailbox instanceof Mailbox) {
                     Mailbox mboxSave = (Mailbox) authMailbox;
@@ -508,7 +550,8 @@ public class MailSender {
                     // save it to the requested folder
                     int sentFolderId = getSentFolderId(mboxSave, mIdentity);
                     if (DebugConfig.disableOutgoingFilter) {
-                        Message msg = mboxSave.addMessage(octxt, pm, sentFolderId, true, flags, null, convId);
+                        DeliveryOptions dopt = new DeliveryOptions().setFolderId(sentFolderId).setNoICal(true).setFlags(flags).setConversationId(convId);
+                        Message msg = mboxSave.addMessage(octxt, pm, dopt, null);
                         RollbackData rollback = new RollbackData(msg);
                         rollbacks.add(rollback);
                         returnItemId = rollback.msgId;
@@ -518,7 +561,9 @@ public class MailSender {
                         // pick one (say first) item id to return
                         for (ItemId itemId : addedItemIds) {
                             rollbacks.add(new RollbackData(mboxSave, itemId.getId()));
-                            if (returnItemId == null) returnItemId = itemId;
+                            if (returnItemId == null) {
+                                returnItemId = itemId;
+                            }
                         }
                     }
                 } else if (authMailbox instanceof ZMailbox) {
@@ -536,15 +581,17 @@ public class MailSender {
 
             // for delegated sends where the authenticated user is reflected in the Sender header (c.f. updateHeaders),
             //   automatically save a copy to the "From" user's mailbox
-            if (hasRecipients && isDelegatedRequest && mm.getSender() != null && acct.getBooleanAttr(Provisioning.A_zimbraPrefSaveToSent, true)) {
+            if (hasRecipients && isDelegatedRequest && mm.getSender() != null && acct.isPrefSaveToSent()) {
                 int flags = Flag.BITMASK_UNREAD | Flag.BITMASK_FROM_ME;
                 // save the sent copy using the target's credentials, as the sender doesn't necessarily have write access
                 OperationContext octxtTarget = new OperationContext(acct);
-                if (pm == null || pm.isAttachmentIndexingEnabled() != mbox.attachmentsIndexingEnabled())
+                if (pm == null || pm.isAttachmentIndexingEnabled() != mbox.attachmentsIndexingEnabled()) {
                     pm = new ParsedMessage(mm, mm.getSentDate().getTime(), mbox.attachmentsIndexingEnabled());
+                }
                 int sentFolderId = getSentFolderId(mbox, Provisioning.getInstance().getDefaultIdentity(acct));
                 if (DebugConfig.disableOutgoingFilter) {
-                    Message msg = mbox.addMessage(octxtTarget, pm, sentFolderId, true, flags, null, convId);
+                    DeliveryOptions dopt = new DeliveryOptions().setFolderId(sentFolderId).setNoICal(true).setFlags(flags).setConversationId(convId);
+                    Message msg = mbox.addMessage(octxt, pm, dopt, null);
                     rollbacks.add(new RollbackData(msg));
                 } else {
                     List<ItemId> addedItemIds =
@@ -560,7 +607,11 @@ public class MailSender {
                 mSession.getProperties().setProperty(JMSession.SMTP_SEND_PARTIAL_PROPERTY, mSendPartial.toString());
                 mSession.getProperties().setProperty(JMSession.SMTPS_SEND_PARTIAL_PROPERTY, mSendPartial.toString());
             }
-            
+
+            // If DSN is specified, set it in the JavaMail session.
+            if (mDsn != null && mSession != null)
+                mSession.getProperties().setProperty("mail.smtp.dsn.notify", mDsn);
+
             // actually send the message via SMTP
             Collection<Address> sentAddresses = sendMessage(mbox, mm, rollbacks);
 
@@ -574,28 +625,43 @@ public class MailSender {
             }
 
             // check if this is a reply, and if so flag the msg appropriately
-            if (mOriginalMessageId != null)
+            if (mOriginalMessageId != null) {
                 updateRepliedStatus(octxt, authuser, isAdminRequest, mbox);
+            }
 
             // we can now purge the uploaded attachments
-            if (mUploads != null)
+            if (mUploads != null) {
                 FileUploadServlet.deleteUploads(mUploads);
+            }
 
             // save new contacts and update rankings
             // skip this step if this is a delegate request (bug 44329)
             if (!isDelegatedRequest && !sentAddresses.isEmpty() && octxt != null) {
+                assert(authMailbox == mbox);
                 try {
                     ContactRankings.increment(octxt.getAuthenticatedUser().getId(), sentAddresses);
                 } catch (Exception e) {
-                    ZimbraLog.smtp.error("unable to update contact rankings", e);
+                    ZimbraLog.smtp.error("Failed to update contact rankings", e);
                 }
-                if (mSaveContacts != null)
-                    saveNewContacts(mSaveContacts, octxt, authMailbox);
+                if (authuser.isPrefAutoAddAddressEnabled()) {
+                    //intersect the lists;
+                    newAddrs.retainAll(sentAddresses);
 
-                // disable server side detection of new contacts
-                if (false && authuser.getBooleanAttr(Provisioning.A_zimbraPrefAutoAddAddressEnabled, false)) {
-                    Collection<InternetAddress> newContacts = getNewContacts(sentAddresses, authuser, octxt, authMailbox);
-                    saveNewContacts(newContacts, octxt, authMailbox);
+                    // convert JavaMail Address to Zimbra InternetAddress
+                    List<com.zimbra.common.mime.InternetAddress> iaddrs =
+                        new ArrayList<com.zimbra.common.mime.InternetAddress>(newAddrs.size());
+                    for (Address addr : newAddrs) {
+                        if (addr instanceof InternetAddress) {
+                            InternetAddress iaddr = (InternetAddress) addr;
+                            iaddrs.add(new com.zimbra.common.mime.InternetAddress(
+                                    iaddr.getPersonal(), iaddr.getAddress()));
+                        }
+                    }
+                    try {
+                        mbox.createAutoContact(octxt, iaddrs);
+                    } catch (IOException e) {
+                        ZimbraLog.smtp.warn("Failed to auto-add contact addrs=%s", iaddrs, e);
+                    }
                 }
             }
 
@@ -606,12 +672,7 @@ public class MailSender {
             Address[] validUnsentAddrs = sfe.getValidUnsentAddresses();
             if (invalidAddrs != null && invalidAddrs.length > 0) {
                 StringBuilder msg = new StringBuilder("Invalid address").append(invalidAddrs.length > 1 ? "es: " : ": ");
-                for (int i = 0; i < invalidAddrs.length; i++) {
-                    if (i > 0)
-                        msg.append(",");
-                    msg.append(invalidAddrs[i]);
-                }
-                msg.append(".  ").append(sfe.toString());
+                msg.append(Joiner.on(",").join(invalidAddrs)).append(".  ").append(sfe.toString());
 
                 if (isSendPartial())
                     throw MailServiceException.SEND_PARTIAL_ADDRESS_FAILURE(msg.toString(), sfe, invalidAddrs, validUnsentAddrs);
@@ -624,7 +685,7 @@ public class MailSender {
             throw ServiceException.FAILURE("Unable to send message", ioe);
         } catch (MessagingException me) {
             Exception chained = me.getNextException();
-            if (chained instanceof ConnectException || chained instanceof UnknownHostException) {
+            if (chained instanceof SocketException || chained instanceof UnknownHostException) {
                 throw MailServiceException.TRY_AGAIN("Unable to connect to the MTA", chained);
             } else {
                 throw ServiceException.FAILURE("Unable to send message", me);
@@ -649,10 +710,12 @@ public class MailSender {
                     return null;
 
                 AuthToken authToken = null;
-                if (octxt != null)
+                if (octxt != null) {
                     authToken = octxt.getAuthToken(false);
-                if (authToken == null)
+                }
+                if (authToken == null) {
                     authToken = AuthProvider.getAuthToken(authuser, isAdminRequest);
+                }
 
                 ZMailbox.Options options = new ZMailbox.Options(authToken.toZAuthToken(), uri);
                 options.setNoSession(true);
@@ -680,12 +743,15 @@ public class MailSender {
             } catch (MessagingException e) {
                 msg.append(e);
             }
-            if (origMsgId != null)
+            if (origMsgId != null) {
                 msg.append(", origMsgId=" + origMsgId);
-            if (uploads != null && uploads.size() > 0)
-                msg.append(", uploads=" + uploads);
-            if (replyType != null)
+            }
+            if (replyType != null) {
                 msg.append(", replyType=" + replyType);
+            }
+            if (uploads != null && uploads.size() > 0) {
+                msg.append(", uploads=" + uploads);
+            }
             ZimbraLog.smtp.info(msg);
         }
     }
@@ -699,111 +765,212 @@ public class MailSender {
     }
 
     void updateHeaders(MimeMessage mm, Account acct, Account authuser, OperationContext octxt, String originIP,
-                       boolean replyToSender, boolean skipSendAsCheck)
-    throws MessagingException, ServiceException {
+            boolean replyToSender) throws MessagingException, ServiceException {
+        if (mSkipHeaderUpdate) {
+            return;
+        }
         Provisioning prov = Provisioning.getInstance();
         if (originIP != null) {
-            boolean addOriginatingIP = prov.getConfig().getBooleanAttr(Provisioning.A_zimbraSmtpSendAddOriginatingIP, true);
-            if (addOriginatingIP)
+            boolean addOriginatingIP = prov.getConfig().isSmtpSendAddOriginatingIP();
+            if (addOriginatingIP) {
                 mm.addHeader(X_ORIGINATING_IP, formatXOrigIpHeader(originIP));
+            }
         }
 
-        boolean addMailer = prov.getConfig().getBooleanAttr(Provisioning.A_zimbraSmtpSendAddMailer, true);
+        boolean addMailer = prov.getConfig().isSmtpSendAddMailer();
         if (addMailer) {
             String ua = octxt != null ? octxt.getUserAgent() : null;
             String mailer = "Zimbra " + BuildInfo.VERSION + (ua == null ? "" : " (" + ua + ")");
             mm.addHeader(X_MAILER, mailer);
         }
 
-        if (prov.getConfig().getBooleanAttr(Provisioning.A_zimbraSmtpSendAddAuthenticatedUser, false))
+        if (prov.getConfig().isSmtpSendAddAuthenticatedUser()) {
             mm.addHeader(X_AUTHENTICATED_USER, authuser.getName());
-
-        boolean overrideFromHeader;
-        if (skipSendAsCheck) {
-            overrideFromHeader = false;
-        } else {
-            overrideFromHeader = true;
-            try {
-                // Deny send-as, but allow send-on-behalf-of.
-                String senderHdr = mm.getHeader("Sender", null);
-                if (senderHdr != null && !senderHdr.equals("")) {
-                    // In send-on-behalf-of, Sender header must be an allowed address to send from.
-                    InternetAddress sender = new JavaMailInternetAddress(senderHdr);
-                    if (AccountUtil.allowFromAddress(acct, sender.getAddress()))
-                        overrideFromHeader = false;
-                } else {
-                    // In plain send, From header must be an allowed address to send from.
-                    String fromHdr = mm.getHeader("From", null);
-                    if (fromHdr != null && !fromHdr.equals("")) {
-                        InternetAddress from = new JavaMailInternetAddress(fromHdr);
-                        if (AccountUtil.allowFromAddress(acct, from.getAddress())) {
-                            overrideFromHeader = false;
-                        }
-                    }
-                }
-            } catch (Exception e) { }
-        }
-
-        // we need to set the Sender to the authenticated user for delegated sends by non-admins
-        boolean isAdminRequest = octxt == null ? false : octxt.isUsingAdminPrivileges();
-        boolean isDelegatedRequest = !acct.getId().equalsIgnoreCase(authuser.getId());
-        boolean canSendAs = !isDelegatedRequest || AccessManager.getInstance().canDo(authuser, acct, User.R_sendAs, isAdminRequest);
-
-        InternetAddress sender = null;
-        if (skipSendAsCheck) {
-            Address addr = mm.getSender();
-            if (addr != null && addr instanceof InternetAddress)
-                sender = (InternetAddress) addr;
-        } else {
-            sender = canSendAs ? null : AccountUtil.getFriendlyEmailAddress(authuser);
-            // if the call doesn't require a Sender but the caller supplied one, pass it through if it's acceptable
-            Address addr = mm.getSender();
-            if (addr != null && addr instanceof InternetAddress) {
-                if (AccountUtil.addressMatchesAccountOrSendAs(authuser, ((InternetAddress) addr).getAddress()))
-                    sender = (InternetAddress) addr;
-            }
         }
 
         // set various headers on the outgoing message
-        if (overrideFromHeader)
-            mm.setFrom(AccountUtil.getFriendlyEmailAddress(acct));
-        mm.setSentDate(new Date());
+        InternetAddress from = (InternetAddress) ArrayUtil.getFirstElement(mm.getFrom());
+        InternetAddress sender = (InternetAddress) mm.getSender();
+        if (mRedirectMode) {
+            // Don't touch the message at all in redirect mode.
+        } else {
+            Pair<InternetAddress, InternetAddress> fromsender = getSenderHeaders(from, sender, acct, authuser,
+                    octxt != null ? octxt.isUsingAdminPrivileges() : false);
+            from = fromsender.getFirst();
+            sender = fromsender.getSecond();
+        }
+        mm.setFrom(from);
         mm.setSender(sender);
+
+        mm.setSentDate(new Date());
         if (sender == null) {
             Address[] existingReplyTos = mm.getReplyTo();
             if (existingReplyTos == null || existingReplyTos.length == 0) {
-                String replyTo = acct.getAttr(Provisioning.A_zimbraPrefReplyToAddress);
-                if (replyTo != null && !replyTo.trim().equals(""))
+                String replyTo = acct.getPrefReplyToAddress();
+                if (replyTo != null && !replyTo.trim().isEmpty()) {
                     mm.setHeader("Reply-To", replyTo);
+                }
             }
         } else {
-            if (replyToSender)
+            if (replyToSender) {
                 mm.setReplyTo(new Address[] {sender});
+            }
         }
 
+        updateReferenceHeaders(mm, octxt, authuser);
+
         mm.saveChanges();
+    }
+
+    /** Determines an acceptable set of {@code From} and {@code Sender} header
+     *  values for a message.  The message's existing {@code from} and {@code
+     *  sender} values are examined in light of the authenticated account's
+     *  settings and are reset to the account's default return address if
+     *  they aren't acceptable.
+     * @return a {@link Pair} containing the approved {@code from} and {@code
+     *         sender} header addresses, in that order. */
+    public Pair<InternetAddress, InternetAddress> getSenderHeaders(InternetAddress from, InternetAddress sender,
+            Account acct, Account authuser, boolean asAdmin) throws ServiceException {
+        if (authuser.isAllowAnyFromAddress()) {
+            return new Pair<InternetAddress, InternetAddress>(from, sender);
+        }
+        if (from == null && sender == null) {
+            return new Pair<InternetAddress, InternetAddress>(AccountUtil.getFriendlyEmailAddress(authuser), null);
+        }
+        if (Objects.equal(sender, from)) { // no need for matching Sender and From addresses
+            sender = null;
+        }
+        if (from == null && sender != null) {  // if only one value is given, set From and unset Sender
+            from = sender;
+            sender = null;
+        }
+        AccessManager amgr = AccessManager.getInstance();
+        if (sender == null &&  // send-as requested
+            (AccountUtil.addressMatchesAccount(authuser, from.getAddress()) ||  // either it's my address
+             amgr.canSendAs(authuser, acct, from.getAddress(), asAdmin))) {           // or I've been granted permission
+            return new Pair<InternetAddress, InternetAddress>(from, null);
+        }
+        if (sender != null) {
+            // send-obo requested.
+            // Restrict Sender value to owned addresses.  Not even zimbraAllowFromAddress is acceptable.
+            AccountAddressMatcher matcher = new AccountAddressMatcher(authuser, true);
+            if (!matcher.matches(sender.getAddress())) {
+                sender = AccountUtil.getFriendlyEmailAddress(authuser);
+            }
+        } else {
+            // Downgrade disallowed send-as to send-obo.
+            sender = AccountUtil.getFriendlyEmailAddress(authuser);
+        }
+        if (mCalendarMode) {
+            // In calendar mode any user may send on behalf of any other user.
+            return new Pair<InternetAddress, InternetAddress>(from, sender);
+        } else if (amgr.canSendOnBehalfOf(authuser, acct, from.getAddress(), asAdmin)) {
+            // Allow based on rights granted.
+            return new Pair<InternetAddress, InternetAddress>(from, sender);
+        } else if (AccountUtil.isAllowedDataSourceSendAddress(authuser, from.getAddress())) {
+            // Allow send-obo if address is a pop/imap/caldav data source address. (bugs 38813/46378)
+            return new Pair<InternetAddress, InternetAddress>(from, sender);
+        } else {
+            // Not allowed to use the requested From value.  Send as self.
+            return new Pair<InternetAddress, InternetAddress>(sender, null);
+        }
+    }
+
+    protected void updateReferenceHeaders(MimeMessage mm, OperationContext octxt, Account authuser) {
+        boolean isReply = mOriginalMessageId != null && (MSGTYPE_REPLY.equals(mReplyType) || MSGTYPE_FORWARD.equals(mReplyType));
+
+        try {
+            String irt = mm.getHeader("In-Reply-To", null);
+            String refs = mm.getHeader("References", null);
+            String tindex = mm.getHeader("Thread-Index", null);
+            String ttopic = mm.getHeader("Thread-Topic", null);
+
+            if (!isReply) {
+                if (Strings.isNullOrEmpty(tindex) || Strings.isNullOrEmpty(ttopic)) {
+                    // generate new Thread-Topic and Thread-Index headers
+                    mm.setHeader("Thread-Topic", ThreadIndex.newThreadTopic(mm.getSubject()));
+                    mm.setHeader("Thread-Index", ThreadIndex.newThreadIndex());
+                }
+                return;
+            }
+
+            if (!Strings.isNullOrEmpty(irt) && !Strings.isNullOrEmpty(refs) && !Strings.isNullOrEmpty(tindex) && !Strings.isNullOrEmpty(ttopic))
+                return;
+
+            // fetch the parent message's headers (no such item just short circuits the header update)
+            JavaMailInternetHeaders hblock;
+            if (mOriginalMessageId.isLocal()) {
+                Mailbox mbox = MailboxManager.getInstance().getMailboxByAccountId(mOriginalMessageId.getAccountId());
+                Message msg = mbox.getMessageById(octxt, mOriginalMessageId.getId());
+                InputStream is = msg.getContentStream();
+                try {
+                    hblock = new JavaMailInternetHeaders(is);
+                } finally {
+                    ByteUtil.closeStream(is);
+                }
+            } else {
+                AuthToken authToken = octxt == null ? null : octxt.getAuthToken(false);
+                if (authToken == null) {
+                    boolean isAdminRequest = octxt == null ? false : octxt.isUsingAdminPrivileges();
+                    authToken = AuthProvider.getAuthToken(authuser, isAdminRequest);
+                }
+                // using the sync formatter is suboptimal, but it should work
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("fmt", "sync");  params.put("body", "0");  params.put("nohdr", "1");
+                byte[] content = UserServlet.getRemoteContent(authToken, mOriginalMessageId, params);
+                hblock = new JavaMailInternetHeaders(new ByteArrayInputStream(content));
+            }
+
+            // set headers appropriately, but don't override headers explicitly set by the sender...
+            String parentMsgid = ListUtil.getFirstElement(Mime.getReferences(hblock, "Message-ID"));
+            if (Strings.isNullOrEmpty(irt) && !Strings.isNullOrEmpty(parentMsgid)) {
+                mm.setHeader("In-Reply-To", "<" + parentMsgid + ">");
+            }
+            if (Strings.isNullOrEmpty(refs) && !Strings.isNullOrEmpty(parentMsgid)) {
+                List<String> parentRefs = Mime.getReferences(hblock, "References");
+                // keep the references list from growing too big, but also keep the root intact
+                while (parentRefs.size() > 7) {
+                    parentRefs.remove(1);
+                }
+                parentRefs.add(parentMsgid);
+                mm.setHeader("References", "<" + Joiner.on("> <").join(parentRefs) + ">");
+            }
+            if (Strings.isNullOrEmpty(ttopic)) {
+                String parentTopic = hblock.getHeader("Thread-Topic", null);
+                mm.setHeader("Thread-Topic", Strings.isNullOrEmpty(parentTopic) ? ThreadIndex.newThreadTopic(mm.getSubject()) : parentTopic);
+            }
+            if (Strings.isNullOrEmpty(tindex)) {
+                byte[] parentIndex = ThreadIndex.parseHeader(hblock.getHeader("Thread-Index", null));
+                mm.setHeader("Thread-Index", parentIndex == null ? ThreadIndex.newThreadIndex() : ThreadIndex.addChild(parentIndex));
+            }
+        } catch (Exception e) {
+            // if the message goes out with minimal threading headers, so be it
+        }
     }
 
     protected void updateRepliedStatus(OperationContext octxt, Account authuser, boolean isAdminRequest, Mailbox mboxPossible) {
         try {
             Object target = null;
-            if (mboxPossible != null && mOriginalMessageId.belongsTo(mboxPossible))
+            if (mboxPossible != null && mOriginalMessageId.belongsTo(mboxPossible)) {
                 target = mboxPossible;
-            else
+            } else {
                 target = getTargetMailbox(octxt, authuser, isAdminRequest, Provisioning.getInstance().get(AccountBy.id, mOriginalMessageId.getAccountId()));
+            }
 
             if (target instanceof Mailbox) {
                 Mailbox mbox = (Mailbox) target;
-                if (MSGTYPE_REPLY.equals(mReplyType))
-                    mbox.alterTag(octxt, mOriginalMessageId.getId(), MailItem.TYPE_MESSAGE, Flag.ID_FLAG_REPLIED, true);
-                else if (MSGTYPE_FORWARD.equals(mReplyType))
-                    mbox.alterTag(octxt, mOriginalMessageId.getId(), MailItem.TYPE_MESSAGE, Flag.ID_FLAG_FORWARDED, true);
+                if (MSGTYPE_REPLY.equals(mReplyType)) {
+                    mbox.alterTag(octxt, mOriginalMessageId.getId(), MailItem.Type.MESSAGE, Flag.FlagInfo.REPLIED, true, null);
+                } else if (MSGTYPE_FORWARD.equals(mReplyType)) {
+                    mbox.alterTag(octxt, mOriginalMessageId.getId(), MailItem.Type.MESSAGE, Flag.FlagInfo.FORWARDED, true, null);
+                }
             } else if (target instanceof ZMailbox) {
                 ZMailbox zmbx = (ZMailbox) target;
-                if (MSGTYPE_REPLY.equals(mReplyType))
-                    zmbx.tagMessage(mOriginalMessageId.toString(), "" + Flag.ID_FLAG_REPLIED, true);
-                else if (MSGTYPE_FORWARD.equals(mReplyType))
-                    zmbx.tagMessage(mOriginalMessageId.toString(), "" + Flag.ID_FLAG_FORWARDED, true);
+                if (MSGTYPE_REPLY.equals(mReplyType)) {
+                    zmbx.tagMessage(mOriginalMessageId.toString(), "" + Flag.ID_REPLIED, true);
+                } else if (MSGTYPE_FORWARD.equals(mReplyType)) {
+                    zmbx.tagMessage(mOriginalMessageId.toString(), "" + Flag.ID_FORWARDED, true);
+                }
             }
         } catch (ServiceException e) {
             // this is not an error case:
@@ -824,7 +991,10 @@ public class MailSender {
             // Initialize recipient addresses
             Address[] rcptAddresses = getRecipients(mm);
 
-            while (rcptAddresses != null && rcptAddresses.length > 0) {
+            if (rcptAddresses == null || rcptAddresses.length == 0)
+                throw new SendFailedException("No recipient addresses");
+
+            while (true) {
                 try {
                     logMessage(mm, hostname, mOriginalMessageId, mUploads, mReplyType);
                     if (hostname != null) {
@@ -835,10 +1005,10 @@ public class MailSender {
                     Collections.addAll(sentAddresses, rcptAddresses);
                     break;
                 } catch (SendFailedException sfe) {
-                    throw sfe; 
+                    throw sfe;
                 } catch (MessagingException e) {
                     Exception chained = e.getNextException();
-                    if (chained instanceof ConnectException || chained instanceof UnknownHostException) {
+                    if (chained instanceof SocketException || chained instanceof UnknownHostException) {
                         String hostString = (hostname != null ? " " + hostname : "");
                         ZimbraLog.smtp.warn("Unable to connect to SMTP server%s: %s.", hostString, chained.toString());
 
@@ -859,20 +1029,27 @@ public class MailSender {
             //skip roll backs for partial send failure cases!
             if (isSendPartial())
                 throw new SafeSendFailedException(e);
-            
-            for (RollbackData rdata : rollbacks)
-                if (rdata != null)
+
+            for (RollbackData rdata : rollbacks) {
+                if (rdata != null) {
                     rdata.rollback();
+                }
+            }
+
             throw new SafeSendFailedException(e);
         } catch (MessagingException e) {
-            for (RollbackData rdata : rollbacks)
-                if (rdata != null)
+            for (RollbackData rdata : rollbacks) {
+                if (rdata != null) {
                     rdata.rollback();
+                }
+            }
             throw new SafeMessagingException(e);
         } catch (RuntimeException e) {
-            for (RollbackData rdata : rollbacks)
-                if (rdata != null)
+            for (RollbackData rdata : rollbacks) {
+                if (rdata != null) {
                     rdata.rollback();
+                }
+            }
             throw e;
         }
         return sentAddresses;
@@ -892,7 +1069,7 @@ public class MailSender {
             mSession.getProperties().setProperty("mail.smtp.from", mEnvelopeFrom);
         }
         ZimbraLog.smtp.debug("Sending message %s to SMTP host %s with properties: %s",
-            mm.getMessageID(), hostname, mSession.getProperties());
+                             mm.getMessageID(), hostname, mSession.getProperties());
         Transport transport = mSession.getTransport("smtp");
         try {
             transport.connect();
@@ -933,7 +1110,7 @@ public class MailSender {
                 return;  // Good, we have an MTA that we can connect to.
             } catch (MessagingException e) {
                 Exception chained = e.getNextException();
-                if (chained instanceof ConnectException || chained instanceof UnknownHostException) {
+                if (chained instanceof SocketException || chained instanceof UnknownHostException) {
                     if (connectError == null) {
                         connectError = e;
                     }
@@ -950,107 +1127,21 @@ public class MailSender {
         throw ServiceException.FAILURE("unable to connect to MTA", connectError);
     }
 
-    public List<InternetAddress> getNewContacts(Collection<Address> contacts, Account authuser, OperationContext octxt, Object authmbox) {
-        if (contacts.isEmpty())
-            return Collections.emptyList();
-
-        HashMap<String,InternetAddress> newContacts = new HashMap<String,InternetAddress>();
-        Collection<String> emailKeys = new ContactAutoComplete(authuser, octxt).getEmailKeys();
-        StringBuilder buf = new StringBuilder();
-        boolean first = true;
-        for (Address addr : contacts) {
-            if (addr instanceof InternetAddress) {
-                InternetAddress iaddr = (InternetAddress)addr;
-                String email = iaddr.getAddress();
-                newContacts.put(email, iaddr);
-                for (String emailKey : emailKeys) {
-                    if (first)
-                        first = false;
-                    else
-                        buf.append(" OR ");
-                    buf.append("#").append(emailKey).append(":").append(email);
-                }
-            }
-        }
-
-        byte[] types = { MailItem.TYPE_CONTACT };
-        String query = buf.toString();
+    /**
+     * Send the MimeMessage via external relay MTA configured on the server.
+     * @param mm
+     * @throws ServiceException
+     */
+    public static void relayMessage(MimeMessage mm) throws MessagingException, ServiceException {
+        Session session = JMSession.getRelaySession();
+        ZimbraLog.smtp.debug("Sending message %s with properties: %s",
+                mm.getMessageID(), session.getProperties());
+        Transport transport = session.getTransport("smtp");
         try {
-            if (authmbox instanceof Mailbox) {
-                Mailbox mbox = (Mailbox) authmbox;
-                ZimbraQueryResults qres = null;
-                try {
-                    qres = mbox.search(octxt, query, types, SortBy.NONE, contacts.size());
-                    while (qres.hasNext()) {
-                        ZimbraHit hit = qres.getNext();
-                        if (hit instanceof ContactHit) {
-                            Contact c = ((ContactHit) hit).getContact();
-                            for (String emailKey : emailKeys) {
-                                String v = c.get(emailKey);
-                                if (v != null)
-                                    newContacts.remove(v);
-                            }
-                        }
-                    }
-                } finally {
-                    if (qres != null)
-                        try { qres.doneWithSearchResults(); } catch (Exception e) {}
-                }
-            } else if (authmbox instanceof ZMailbox) {
-                ZMailbox zmbox = (ZMailbox) authmbox;
-                ZSearchResult res = zmbox.search(new ZSearchParams(query));
-                for (ZSearchHit hit: res.getHits()) {
-                    if (hit instanceof ZContactHit) {
-                        ZContactHit c = (ZContactHit)hit;
-                        String v = c.getEmail();
-                        if (v != null)
-                            newContacts.remove(v);
-                        v = c.getEmail2();
-                        if (v != null)
-                            newContacts.remove(v);
-                        v = c.getEmail3();
-                        if (v != null)
-                            newContacts.remove(v);
-                        v = c.getWorkEmail1();
-                        if (v != null)
-                            newContacts.remove(v);
-                        v = c.getWorkEmail2();
-                        if (v != null)
-                            newContacts.remove(v);
-                        v = c.getWorkEmail3();
-                        if (v != null)
-                            newContacts.remove(v);
-                    }
-                }
-            }
-        } catch (ServiceException e) {
-            ZimbraLog.smtp.warn("ignoring error while auto-adding contact", e);
-            newContacts.clear();
-        } catch (IOException e) {
-            ZimbraLog.smtp.warn("ignoring error while auto-adding contact", e);
-            newContacts.clear();
-        }
-
-        List<InternetAddress> ret = new ArrayList<InternetAddress>();
-        if (!newContacts.isEmpty())
-            ret.addAll(newContacts.values());
-        return ret;
-    }
-
-    public static void saveNewContacts(Collection<InternetAddress> newContacts, OperationContext octxt, Object authMailbox) {
-        for (InternetAddress inetaddr : newContacts) {
-            ZimbraLog.smtp.debug("adding new contact: " + inetaddr);
-            Map<String, String> fields = new ParsedAddress(inetaddr).getAttributes();
-            try {
-                if (authMailbox instanceof Mailbox) {
-                    ParsedContact pc = new ParsedContact(fields);
-                    ((Mailbox) authMailbox).createContact(octxt, pc, Mailbox.ID_FOLDER_AUTO_CONTACTS, null);
-                } else if (authMailbox instanceof ZMailbox) {
-                    ((ZMailbox) authMailbox).createContact("" + Mailbox.ID_FOLDER_AUTO_CONTACTS, null, fields);
-                }
-            } catch (ServiceException e) {
-                ZimbraLog.smtp.warn("ignoring error while auto-adding contact", e);
-            }
+            transport.connect();
+            transport.sendMessage(mm, mm.getAllRecipients());
+        } finally {
+            transport.close();
         }
     }
 
@@ -1092,8 +1183,9 @@ public class MailSender {
                 if (n instanceof MessagingException) {
                     MessagingException mex = (MessagingException) n;
                     n = mex.getNextException();
-                    if (n != null)
+                    if (n != null) {
                         more++;
+                    }
                 } else {
                     // n != null && !(n instanceof MessagingException)
                     break;
@@ -1112,8 +1204,9 @@ public class MailSender {
             // pretty much a copy of Throwable.toString()
             sb.append(e.getClass().getName());
             String message = e.getLocalizedMessage();
-            if (message != null)
+            if (message != null) {
                 sb.append(": ").append(message);
+            }
             return sb;
         }
     }

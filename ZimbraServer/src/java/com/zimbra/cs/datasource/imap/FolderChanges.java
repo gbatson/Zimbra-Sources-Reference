@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -45,13 +45,16 @@ class FolderChanges {
         List<Integer> tombstones;
         List<Folder> modifiedFolders;
 
-        synchronized (mbox) {
+        mbox.lock.lock();
+        try {
             lastChangeId = mbox.getLastChangeID();
             if (lastChangeId <= lastSync) {
                 return this; // No changes
             }
-            tombstones = mbox.getTombstones(lastSync).getIds(MailItem.TYPE_FOLDER);
+            tombstones = mbox.getTombstones(lastSync).getIds(MailItem.Type.FOLDER);
             modifiedFolders = mbox.getModifiedFolders(lastSync);
+        } finally {
+            mbox.lock.release();
         }
         if ((tombstones == null || tombstones.isEmpty()) && modifiedFolders.isEmpty()) {
             return this; // No changes

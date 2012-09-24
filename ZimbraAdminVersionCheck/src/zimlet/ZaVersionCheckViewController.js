@@ -1,10 +1,10 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Zimbra Collaboration Suite Web Client
+ * Copyright (C) 2005, 2006, 2007, 2008 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * The contents of this file are subject to the Yahoo! Public License
+ * Version 1.0 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 
@@ -24,24 +24,25 @@ ZaVersionCheckViewController = function(appCtxt, container) {
 	ZaXFormViewController.call(this, appCtxt, container, "ZaVersionCheckViewController");
 	this._UICreated = false;
 	this.objType = ZaEvent.S_GLOBALCONFIG;
-	this.tabConstructor = ZaVersionCheckXFormView;					
+	this.tabConstructor = ZaVersionCheckXFormView;
+	this._helpURL = [location.pathname, ZaUtil.HELP_URL, ZaVersionCheckViewController.helpURL, "?locid=", AjxEnv.DEFAULT_LOCALE].join("");
+	this._helpButtonText = ZaMsg.zimbraHelpCenter;
 }
 
 ZaVersionCheckViewController.prototype = new ZaXFormViewController();
 ZaVersionCheckViewController.prototype.constructor = ZaVersionCheckViewController;
-ZaController.initToolbarMethods["ZaVersionCheckViewController"] = new Array();
+ZaVersionCheckViewController.helpURL = "monitoring/getting_latest_software_updates.htm";
+ZaController.initPopupMenuMethods["ZaVersionCheckViewController"] = new Array();
 ZaController.setViewMethods["ZaVersionCheckViewController"] = [];
 ZaController.changeActionsStateMethods["ZaVersionCheckViewController"] = new Array();
 
-ZaVersionCheckViewController.initToolbarMethod =
+
+ZaVersionCheckViewController.initPopupMenuMethod =
 function () {
-	this._toolbarOperations[ZaOperation.SAVE] = new ZaOperation(ZaOperation.SAVE, ZaMsg.TBB_Save, ZaMsg.ALTBB_Save_tt, "Save", "SaveDis", new AjxListener(this, this.saveButtonListener));    			
-	this._toolbarOperations[ZaOperation.VERSION_CHECK] = new ZaOperation(ZaOperation.VERSION_CHECK, com_zimbra_adminversioncheck.CheckNow, com_zimbra_adminversioncheck.CheckNow_tt, "Refresh", "Refresh", new AjxListener(this, this.checkNowListener));
-	
-	this._toolbarOrder.push(ZaOperation.SAVE);
-	this._toolbarOrder.push(ZaOperation.VERSION_CHECK);
+	this._popupOperations[ZaOperation.SAVE] = new ZaOperation(ZaOperation.SAVE, ZaMsg.TBB_Save, ZaMsg.ALTBB_Save_tt, "Save", "SaveDis", new AjxListener(this, this.saveButtonListener));
+	this._popupOperations[ZaOperation.VERSION_CHECK] = new ZaOperation(ZaOperation.VERSION_CHECK, com_zimbra_adminversioncheck.CheckNow, com_zimbra_adminversioncheck.CheckNow_tt, "Refresh", "Refresh", new AjxListener(this, this.checkNowListener));
 }
-ZaController.initToolbarMethods["ZaVersionCheckViewController"].push(ZaVersionCheckViewController.initToolbarMethod);
+ZaController.initPopupMenuMethods["ZaVersionCheckViewController"].push(ZaVersionCheckViewController.initPopupMenuMethod);
 
 ZaVersionCheckViewController.prototype.checkNowListener =
 function(ev) {
@@ -70,30 +71,19 @@ function(ev) {
 
 ZaVersionCheckViewController.setViewMethod = function (item) {
     if(!this._UICreated) {
-    	this._initToolbar();
+//    	this._initToolbar();
     	
+        
 			//always add Help button at the end of the toolbar		
-		this._toolbarOperations[ZaOperation.NONE] = new ZaOperation(ZaOperation.NONE);
-		this._toolbarOperations[ZaOperation.HELP] = new ZaOperation(ZaOperation.HELP, ZaMsg.TBB_Help, ZaMsg.TBB_Help_tt, "Help", "Help", new AjxListener(this, this._helpButtonListener));							
-		this._toolbarOrder.push(ZaOperation.NONE);
-		this._toolbarOrder.push(ZaOperation.HELP);
-		this._toolbar = new ZaToolBar(this._container, this._toolbarOperations, this._toolbarOrder);
-	
+	    this._initPopupMenu();
 		this._contentView = this._view = new this.tabConstructor(this._container,item);
 		var elements = new Object();
 		elements[ZaAppViewMgr.C_APP_CONTENT] = this._view;
-		elements[ZaAppViewMgr.C_TOOLBAR_TOP] = this._toolbar;
-		var tabParams = {
-			openInNewTab: false,
-			tabId: this.getContentViewId(),
-			tab: this.getMainTab()
-		}
-		ZaApp.getInstance().createView(this.getContentViewId(), elements, tabParams) ;
+        ZaApp.getInstance().getAppViewMgr().createView(this.getContentViewId(), elements);
 		this._UICreated = true;
 		ZaApp.getInstance()._controllers[this.getContentViewId ()] = this ;
 	}
 	ZaApp.getInstance().pushView(this.getContentViewId());
-	this._toolbar.getButton(ZaOperation.SAVE).setEnabled(false);
 	item.load();
 	try {
 		item[ZaModel.currentTab] = "1"
@@ -175,8 +165,8 @@ ZaVersionCheckViewController.changeActionsStateMethod = function () {
 	if(!this._currentObject)
 		return;
 		
-	if(this._toolbarOperations[ZaOperation.SAVE])	
-		this._toolbarOperations[ZaOperation.SAVE].enabled = false;
+	if(this._popupOperations[ZaOperation.SAVE])	
+		this._popupOperations[ZaOperation.SAVE].enabled = false;
 }
 ZaController.changeActionsStateMethods["ZaVersionCheckViewController"].push(ZaVersionCheckViewController.changeActionsStateMethod);
 

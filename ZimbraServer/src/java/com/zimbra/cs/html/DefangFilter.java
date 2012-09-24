@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -85,8 +85,9 @@ public class DefangFilter extends DefaultFilter {
     private static final Pattern AV_SCRIPT_TAG = Pattern.compile("</?script/?>", Pattern.CASE_INSENSITIVE);
     
     // regex for URLs href. TODO: beef this up
-	private static final Pattern VALID_EXT_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
-    private static final Pattern VALID_INT_IMG = Pattern.compile("^data:|^cid:|\\.(jpg|jpeg|png|gif)$");
+    private static final Pattern VALID_EXT_URL = Pattern.compile("^(https?://[\\w-].*|mailto:.*|notes:.*|smb:.*|ftp:.*|gopher:.*|news:.*|tel:.*|callto:.*|webcal:.*|feed:.*:|file:.*|#.+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern VALID_INT_IMG = Pattern.compile("^data:|^cid:");
+    private static final Pattern VALID_IMG_FILE = Pattern.compile("\\.(jpg|jpeg|png|gif)$");
 
     //
     // Data
@@ -239,7 +240,7 @@ public class DefangFilter extends DefaultFilter {
             acceptElement("button", CORE_LANG+KBD+"disabled,name,type,value");
             acceptElement("fieldset", CORE_LANG);
             acceptElement("form", CORE_LANG+"action,accept,acceptcharset,enctype,method,name,target");
-            acceptElement("input", CORE_LANG+"accept,align,alt,checked,disabled,maxlength,name,readonly,size,type,value,src");
+            acceptElement("input", CORE_LANG+"accept,align,alt,checked,disabled,maxlength,name,readonly,size,src,type,value");
             acceptElement("legend", CORE_LANG+"align");
             acceptElement("map", CORE_LANG+"name");
             acceptElement("optgroup", CORE_LANG+"disabled,label");
@@ -555,14 +556,18 @@ public class DefangFilter extends DefaultFilter {
             }
             if (mNeuterImages) {
                 String srcValue = Strings.nullToEmpty(attributes.getValue("src"));
-                if((eName.equals("img") || eName.equals("input")) && 
-                 (VALID_EXT_URL.matcher(srcValue).find() || // check for valid urls, and definitely defang
-                 !VALID_INT_IMG.matcher(srcValue).find())) { 
-                        neuterTag(attributes, "src");    
+                if (eName.equals("img") || eName.equals("input")) {
+                    if (VALID_EXT_URL.matcher(srcValue).find() ||
+                       (!VALID_INT_IMG.matcher(srcValue).find() &&
+                       !VALID_IMG_FILE.matcher(srcValue).find())) {
+                            neuterTag(attributes, "src", "df");
+                        } else if (!VALID_INT_IMG.matcher(srcValue).find() &&
+                                VALID_IMG_FILE.matcher(srcValue).find()) {
+                            neuterTag(attributes, "src", "pn");
+                        }
                 }
-                neuterTag(attributes, "background");
+                neuterTag(attributes, "background", "df");
             }
-
             return true;
         } else if (elementRemoved(element.rawname)) {
             mRemovalElementName = element.rawname;
@@ -592,8 +597,8 @@ public class DefangFilter extends DefaultFilter {
     /**
      * @param attributes
      */
-    private void neuterTag(XMLAttributes attributes, String aName) {
-        String df_aName = "df"+aName;
+    private void neuterTag(XMLAttributes attributes, String aName, String prefix) {
+        String df_aName = prefix + aName;
         int dfIndex = attributes.getIndex(df_aName);
         int index = attributes.getIndex(aName);
         if (index != -1) {
@@ -656,7 +661,8 @@ public class DefangFilter extends DefaultFilter {
         // case that its an inline image
         if(aName.equals("src")) {
             if (!(VALID_EXT_URL.matcher(value).find() ||
-                VALID_INT_IMG.matcher(value).find())) {
+                VALID_INT_IMG.matcher(value).find() ||
+                VALID_IMG_FILE.matcher(value).find())) {
                 attributes.setValue(i, "#");
                 return false;
             }

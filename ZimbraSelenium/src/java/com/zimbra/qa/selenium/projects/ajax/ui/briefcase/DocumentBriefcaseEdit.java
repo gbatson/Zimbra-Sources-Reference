@@ -1,26 +1,13 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
+
+import org.openqa.selenium.WebElement;
 
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.IItem;
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
 import com.zimbra.qa.selenium.framework.ui.AbsForm;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseNew.Field;
 
@@ -93,8 +80,14 @@ public class DocumentBriefcaseEdit extends AbsForm {
 
 			this.sMouseOver(nameFieldLocator);
 			this.sFocus(nameFieldLocator);
-			this.zClickAt(nameFieldLocator,"0,0");
+			this.zClickAt(nameFieldLocator, "0,0");
+			
+			if (ZimbraSeleniumProperties.isWebDriver()) {
+				this.clearField(nameFieldLocator);
+			}
+			
 			this.sType(nameFieldLocator, value);
+			
 			logger.info("typed: " + value);
 
 		} else if (field == Field.Body) {
@@ -105,29 +98,48 @@ public class DocumentBriefcaseEdit extends AbsForm {
 			if (!this.sIsElementPresent(iframeLocator))
 				throw new HarnessException("Locator is not present: "
 						+ iframeLocator);
+			if (ZimbraSeleniumProperties.isWebDriver()) {
+				// String locator = Locators.zBodyField;
+				// sSelectFrame(Locators.zFrame);
+				// this.sType(locator, value);
 
-			this.sMouseOver(iframeLocator);
-			this.sFocus(iframeLocator);
-			this.zClickAt(iframeLocator,"0,0");
-			
-			this
-					.sGetEval("var bodytext=\""
-							+ value
-							+ "\";"
-							+ "var iframe_locator=\""
-							+ iframeLocator
-							+ "\";"
-							+ "var iframe_body=selenium.browserbot.findElement(iframe_locator).contentWindow.document.body;"
-							+ "if (browserVersion.isFirefox || browserVersion.isChrome){iframe_body.textContent=bodytext;}"
-							+ "else if(browserVersion.isIE){iframe_body.innerText=bodytext;}"
-							+ "else {iframe_body.innerText=bodytext;}");
+				WebElement we = getElement(iframeLocator);
+				this.sMouseOver(iframeLocator);
+				this.sFocus(iframeLocator);
+				this.zClickAt(iframeLocator, "0,0");
+
+				this.executeScript(
+						"var bodytext=\""
+								+ value
+								+ "\";"								
+								+ "var iframe_body=arguments[0].contentWindow.document.body;"
+								+ "if (navigator.userAgent.indexOf('Firefox')!=-1 || navigator.userAgent.indexOf('Chrome')!=-1){iframe_body.innerHTML=bodytext;}"
+								+ "else if(navigator.userAgent.indexOf('MSIE')!=-1){iframe_body.innerHTML=bodytext;}"
+								+ "else {iframe_body.innerHTML=bodytext;}", we);
+
+			} else {
+				this.sMouseOver(iframeLocator);
+				this.sFocus(iframeLocator);
+				this.zClickAt(iframeLocator, "0,0");
+
+				this.sGetEval("var bodytext=\""
+						+ value
+						+ "\";"
+						+ "var iframe_locator=\""
+						+ iframeLocator
+						+ "\";"
+						+ "var iframe_body=selenium.browserbot.findElement(iframe_locator).contentWindow.document.body;"
+						+ "if (browserVersion.isFirefox || browserVersion.isChrome){iframe_body.textContent=bodytext;}"
+						+ "else if(browserVersion.isIE){iframe_body.innerText=bodytext;}"
+						+ "else {iframe_body.innerText=bodytext;}");
+			}
 		} else {
 			throw new HarnessException("Not implemented field: " + field);
 		}
 
 		this.zWaitForBusyOverlay();
 	}
-	
+
 	@Override
 	public void zSubmit() throws HarnessException {
 		zSelectWindow(docItem.getName());
@@ -145,7 +157,7 @@ public class DocumentBriefcaseEdit extends AbsForm {
 					+ Locators.zSaveAndCloseIconBtn);
 
 		// Click on it
-		zClickAt(Locators.zSaveAndCloseIconBtn,"0,0");
+		zClickAt(Locators.zSaveAndCloseIconBtn, "0,0");
 		// this.sMouseDown(Locators.zSaveAndCloseIconBtn);
 		// this.sMouseUp(Locators.zSaveAndCloseIconBtn);
 

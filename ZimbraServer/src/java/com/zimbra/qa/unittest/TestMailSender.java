@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,7 +14,6 @@
  */
 package com.zimbra.qa.unittest;
 
-import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -152,7 +151,7 @@ extends TestCase {
         MessageBuilder builder = new MessageBuilder().withFrom(from).withToRecipient(RECIPIENT_NAME)
             .withSubject(subject).withBody("Who are you?");
         String content = builder.create();
-        MimeMessage msg = new FixedMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
+        MimeMessage msg = new FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(content.getBytes()));
 
         account.setSmtpRestrictEnvelopeFrom(true);
 
@@ -165,7 +164,7 @@ extends TestCase {
         assertTrue(getHeaderValue(smtp.getDataLines(), "From").contains(account.getName()));
 
         // Restrict envelope sender, allow custom from.
-        msg = new FixedMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
+        msg = new FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(content.getBytes()));
         account.setAllowAnyFromAddress(true);
         smtp = startDummySmtpServer(null, null);
         mbox.getMailSender().sendMimeMessage(null, mbox, msg);
@@ -182,7 +181,7 @@ extends TestCase {
         assertTrue(getHeaderValue(smtp.getDataLines(), "From").contains(account.getName()));
 
         // Don't restrict envelope sender, allow custom from.
-        msg = new FixedMimeMessage(JMSession.getSession(), new ByteArrayInputStream(content.getBytes()));
+        msg = new FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(content.getBytes()));
         account.setAllowAnyFromAddress(true);
         smtp = startDummySmtpServer(null, null);
         mbox.getMailSender().sendMimeMessage(null, mbox, msg);
@@ -221,8 +220,8 @@ extends TestCase {
 
         boolean foundRecipient = false;
         for (Argument arg : e.getArgs()) {
-            if (arg.mName.equals("invalid")) {
-                assertEquals(invalidRecipient, arg.mValue);
+            if (arg.name.equals("invalid")) {
+                assertEquals(invalidRecipient, arg.value);
                 foundRecipient = true;
             }
         }
@@ -232,9 +231,15 @@ extends TestCase {
     @Override
     public void tearDown()
     throws Exception {
+        cleanUp();
         TestUtil.setServerAttr(Provisioning.A_zimbraSmtpPort, mOriginalSmtpPort);
         TestUtil.setServerAttr(Provisioning.A_zimbraSmtpSendPartial, mOriginalSmtpSendPartial);
         TestUtil.setAccountAttr(SENDER_NAME, Provisioning.A_zimbraAllowAnyFromAddress, mOriginalAllowAnyFrom);
+    }
+    private void cleanUp()
+    throws Exception {
+        TestUtil.deleteTestData(SENDER_NAME, NAME_PREFIX);
+        TestUtil.deleteTestData(RECIPIENT_NAME, NAME_PREFIX);
     }
 
     public static void main(String[] args)

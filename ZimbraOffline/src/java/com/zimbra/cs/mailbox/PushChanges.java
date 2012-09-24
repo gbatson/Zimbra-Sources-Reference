@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,8 +18,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -34,12 +34,13 @@ import javax.mail.internet.MimeMessage;
 
 import org.dom4j.QName;
 
-import com.zimbra.common.mailbox.ContactConstants;
+import com.google.common.collect.ImmutableSet;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.Element.XMLElement;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.util.BigByteBuffer;
@@ -56,6 +57,7 @@ import com.zimbra.cs.mailbox.Contact.Attachment;
 import com.zimbra.cs.mailbox.InitialSync.InviteMimeLocator;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.calendar.Invite;
+import com.zimbra.cs.mailbox.util.TagUtil;
 import com.zimbra.cs.mailbox.util.TypedIdList;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedContact;
@@ -70,7 +72,6 @@ import com.zimbra.cs.service.mail.ToXML;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class PushChanges {
@@ -107,64 +108,44 @@ public class PushChanges {
     }
 
     /** The bitmask of all message changes that we propagate to the server. */
-    static final int MESSAGE_CHANGES = Change.MODIFIED_UNREAD | Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS |
-                                       Change.MODIFIED_FOLDER | Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT;
+    static final int MESSAGE_CHANGES = Change.UNREAD | Change.FLAGS | Change.TAGS | Change.FOLDER | Change.COLOR |
+            Change.CONTENT;
 
     /** The bitmask of all chat changes that we propagate to the server. */
-    static final int CHAT_CHANGES = Change.MODIFIED_UNREAD | Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS |
-                                    Change.MODIFIED_FOLDER | Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT;
+    static final int CHAT_CHANGES = Change.UNREAD | Change.FLAGS | Change.TAGS | Change.FOLDER | Change.COLOR |
+            Change.CONTENT;
 
     /** The bitmask of all contact changes that we propagate to the server. */
-    static final int CONTACT_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS | Change.MODIFIED_FOLDER |
-                                       Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT;
+    static final int CONTACT_CHANGES = Change.FLAGS | Change.TAGS | Change.FOLDER | Change.COLOR | Change.CONTENT;
 
     /** The bitmask of all folder changes that we propagate to the server. */
-    static final int FOLDER_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_FOLDER | Change.MODIFIED_NAME |
-                                      Change.MODIFIED_COLOR | Change.MODIFIED_URL    | Change.MODIFIED_ACL;
+    static final int FOLDER_CHANGES = Change.FLAGS | Change.FOLDER | Change.NAME | Change.COLOR | Change.URL |
+            Change.ACL | Change.RETENTION_POLICY;
 
     /** The bitmask of all search folder changes that we propagate to the server. */
-    static final int SEARCH_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_FOLDER | Change.MODIFIED_NAME |
-                                      Change.MODIFIED_COLOR | Change.MODIFIED_QUERY;
+    static final int SEARCH_CHANGES = Change.FLAGS | Change.FOLDER | Change.NAME | Change.COLOR | Change.QUERY;
 
     /** The bitmask of all tag changes that we propagate to the server. */
-    static final int TAG_CHANGES = Change.MODIFIED_NAME | Change.MODIFIED_COLOR;
+    static final int TAG_CHANGES = Change.NAME | Change.COLOR;
 
     /** The bitmask of all appointment changes that we propagate to the server. */
-    static final int APPOINTMENT_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS | Change.MODIFIED_FOLDER |
-                                           Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT | Change.MODIFIED_INVITE;
+    static final int APPOINTMENT_CHANGES = Change.FLAGS | Change.TAGS | Change.FOLDER | Change.COLOR | Change.CONTENT |
+            Change.INVITE;
 
     /** The bitmask of all document changes that we propagate to the server. */
-    static final int DOCUMENT_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS | Change.MODIFIED_FOLDER |
-                                        Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT | Change.MODIFIED_NAME;
+    static final int DOCUMENT_CHANGES = Change.FLAGS | Change.TAGS | Change.FOLDER | Change.COLOR | Change.CONTENT |
+            Change.NAME;
 
-    /** A list of all the "leaf types" (i.e. non-folder types) that we
-     *  synchronize with the server. */
-    private static final byte[] PUSH_LEAF_TYPES = new byte[] {
-        MailItem.TYPE_TAG,
-        MailItem.TYPE_CONTACT,
-        MailItem.TYPE_MESSAGE,
-        MailItem.TYPE_CHAT,
-        MailItem.TYPE_APPOINTMENT,
-        MailItem.TYPE_TASK,
-        MailItem.TYPE_WIKI,
-        MailItem.TYPE_DOCUMENT
-    };
+    /** A list of all the "leaf types" (i.e. non-folder types) that we synchronize with the server. */
+    private static final Set<MailItem.Type> PUSH_LEAF_TYPES = EnumSet.of(MailItem.Type.TAG, MailItem.Type.CONTACT,
+            MailItem.Type.MESSAGE, MailItem.Type.CHAT, MailItem.Type.APPOINTMENT, MailItem.Type.TASK,
+            MailItem.Type.DOCUMENT);
 
     /** The set of all the MailItem types that we synchronize with the server. */
-    static final Set<Byte> PUSH_TYPES_SET = new HashSet<Byte>(Arrays.asList(
-        MailItem.TYPE_FOLDER,
-        MailItem.TYPE_SEARCHFOLDER,
-        MailItem.TYPE_TAG,
-        MailItem.TYPE_CONTACT,
-        MailItem.TYPE_MESSAGE,
-        MailItem.TYPE_CHAT,
-        MailItem.TYPE_APPOINTMENT,
-        MailItem.TYPE_TASK,
-        MailItem.TYPE_WIKI,
-        MailItem.TYPE_DOCUMENT,
-        MailItem.TYPE_MOUNTPOINT
-    ));
-
+    static final Set<MailItem.Type> PUSH_TYPES = ImmutableSet.of(MailItem.Type.FOLDER, MailItem.Type.SEARCHFOLDER,
+            MailItem.Type.TAG, MailItem.Type.CONTACT, MailItem.Type.MESSAGE, MailItem.Type.CHAT,
+            MailItem.Type.APPOINTMENT, MailItem.Type.TASK, MailItem.Type.DOCUMENT,
+            MailItem.Type.MOUNTPOINT);
 
     private static final TracelessContext sContext = new TracelessContext();
 
@@ -207,7 +188,8 @@ public class PushChanges {
         List<Pair<Integer, Integer>> simpleUnreadChanges = null; //list of Pair<itemId,modSequence> for items marked unread locally
         Map<Integer, List<Pair<Integer, Integer>>> simpleFolderMoveChanges = null; //list of Pair<itemId,modSequence> for items locally moved, sorted by folderId in map
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             limit = ombx.getLastChangeID();
             tombstones = ombx.getTombstones(0);
             changes = ombx.getLocalChanges(sContext);
@@ -216,6 +198,8 @@ public class PushChanges {
                 simpleUnreadChanges = ombx.getSimpleUnreadChanges(sContext, true);
                 simpleFolderMoveChanges = ombx.getFolderMoveChanges(sContext);
             }
+        } finally {
+            ombx.lock.release();
         }
 
         OfflineSyncManager.getInstance().continueOK();
@@ -225,72 +209,77 @@ public class PushChanges {
         boolean hasDeletes = !tombstones.isEmpty();
 
         // because tags reuse IDs, we need to do tag deletes before any other changes (especially tag creates)
-        List<Integer> tagDeletes = tombstones.getIds(MailItem.TYPE_TAG);
+        List<Integer> tagDeletes = tombstones.getIds(MailItem.Type.TAG);
         if (tagDeletes != null && !tagDeletes.isEmpty()) {
             Element request = new Element.XMLElement(MailConstants.TAG_ACTION_REQUEST);
             request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_HARD_DELETE).addAttribute(MailConstants.A_ID, concatenateIds(getTagSync().remoteIds(tagDeletes)));
             ombx.sendRequest(request);
             OfflineLog.offline.debug("push: pushed tag deletes: " + tagDeletes);
-
-            tombstones.remove(MailItem.TYPE_TAG);
+            tombstones.remove(MailItem.Type.TAG);
         }
 
         // do folder ops top-down so that we don't get dinged when folders switch places
         if (!changes.isEmpty()) {
-            if (changes.getIds(MailItem.TYPE_FOLDER) != null || changes.getIds(MailItem.TYPE_SEARCHFOLDER) != null || changes.getIds(MailItem.TYPE_MOUNTPOINT) != null) {
+            if (changes.getIds(MailItem.Type.FOLDER) != null || changes.getIds(MailItem.Type.SEARCHFOLDER) != null ||
+                    changes.getIds(MailItem.Type.MOUNTPOINT) != null) {
                 for (Folder folder : ombx.getFolderById(sContext, Mailbox.ID_FOLDER_ROOT).getSubfolderHierarchy()) {
                     if (changes.remove(folder.getType(), folder.getId())) {
                         switch (folder.getType()) {
-                            case MailItem.TYPE_SEARCHFOLDER:  syncSearchFolder(folder.getId());  break;
-                            case MailItem.TYPE_MOUNTPOINT:
-                            case MailItem.TYPE_FOLDER:        syncFolder(folder.getId(), true, null);        break;
+                            case SEARCHFOLDER:
+                                syncSearchFolder(folder.getId());
+                                break;
+                            case MOUNTPOINT:
+                            case FOLDER:
+                                syncFolder(folder.getId(), true, null);
+                                break;
                         }
                     }
                 }
-                changes.remove(MailItem.TYPE_SEARCHFOLDER);  changes.remove(MailItem.TYPE_MOUNTPOINT);  changes.remove(MailItem.TYPE_FOLDER);
+                changes.remove(MailItem.Type.SEARCHFOLDER);
+                changes.remove(MailItem.Type.MOUNTPOINT);
+                changes.remove(MailItem.Type.FOLDER);
             }
         }
 
         // make sure that tags are synced before subsequent item updates
-        List<Integer> changedTags = changes.getIds(MailItem.TYPE_TAG);
+        List<Integer> changedTags = changes.getIds(MailItem.Type.TAG);
         if (changedTags != null) {
-            for (int id : changedTags)
+            for (int id : changedTags) {
                 syncTag(id);
-            changes.remove(MailItem.TYPE_TAG);
+            }
+            changes.remove(MailItem.Type.TAG);
         }
 
         // Do simple change batch push first
         Set<Integer> batched = new HashSet<Integer>();
         if (simpleReadChanges != null && simpleReadChanges.size() > 0) {
             OfflineSyncManager.getInstance().continueOK();
-            pushSimpleChanges(simpleReadChanges, Change.MODIFIED_UNREAD, false, 0, batched);
+            pushSimpleChanges(simpleReadChanges, Change.UNREAD, false, 0, batched);
         }
 
         if (simpleUnreadChanges != null && simpleUnreadChanges.size() > 0) {
             OfflineSyncManager.getInstance().continueOK();
-            pushSimpleChanges(simpleUnreadChanges, Change.MODIFIED_UNREAD, true, 0, batched);
+            pushSimpleChanges(simpleUnreadChanges, Change.UNREAD, true, 0, batched);
         }
 
         if (simpleFolderMoveChanges != null && simpleFolderMoveChanges.size() > 0) {
             Set<Integer> folders = simpleFolderMoveChanges.keySet();
             for (int folderId : folders) {
                 OfflineSyncManager.getInstance().continueOK();
-                pushSimpleChanges(simpleFolderMoveChanges.get(folderId), Change.MODIFIED_FOLDER, false, folderId, batched);
+                pushSimpleChanges(simpleFolderMoveChanges.get(folderId), Change.FOLDER, false, folderId, batched);
             }
         }
 
         // modifies must come after folder and tag creates so that move/tag ops can succeed
         if (!changes.isEmpty()) {
-            for (byte type : PUSH_LEAF_TYPES) {
+            for (MailItem.Type type : PUSH_LEAF_TYPES) {
                 List<Integer> ids = changes.getIds(type);
-                if (ids == null)
+                if (ids == null) {
                     continue;
+                }
                 for (int id : ids) {
                     if (OfflineSyncManager.getInstance().isInSkipList(id)) {
                         OfflineLog.offline.warn("Skipped push item id=%d per zdesktop_sync_skip_idlist", id);
-                        continue;
-                    } else if (ombx.isTransientItem(id)) {
-                        OfflineLog.offline.debug("skipped push transient item id=%d", id);
                         continue;
                     }
 
@@ -301,13 +290,24 @@ public class PushChanges {
 
                     try {
                         switch (type) {
-                            case MailItem.TYPE_TAG:         syncTag(id);          break;
-                            case MailItem.TYPE_CONTACT:     syncContact(id);      break;
-                            case MailItem.TYPE_MESSAGE:     syncMessage(id);      break;
-                            case MailItem.TYPE_APPOINTMENT: syncCalendarItem(id, true); break;
-                            case MailItem.TYPE_TASK:        syncCalendarItem(id, false); break;
-                            case MailItem.TYPE_WIKI:
-                            case MailItem.TYPE_DOCUMENT:    syncDocument(id, tombstones);     break;
+                            case TAG:
+                                syncTag(id);
+                                break;
+                            case CONTACT:
+                                syncContact(id);
+                                break;
+                            case MESSAGE:
+                                syncMessage(id);
+                                break;
+                            case APPOINTMENT:
+                                syncCalendarItem(id, true);
+                                break;
+                            case TASK:
+                                syncCalendarItem(id, false);
+                                break;
+                            case DOCUMENT:
+                                syncDocument(id, tombstones);
+                                break;
                         }
                     } catch (Exception x) {
                         if (!SyncExceptionHandler.isRecoverableException(ombx, id, "PushChanges.sync", x)) {
@@ -323,7 +323,7 @@ public class PushChanges {
         if (!tombstones.isEmpty()) {
             OfflineSyncManager.getInstance().continueOK();
 
-            String ids = concatenateIds(tombstones.getAll());
+            String ids = concatenateIds(tombstones.getAllIds());
             Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
             request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_HARD_DELETE).addAttribute(MailConstants.A_ID, ids);
             ombx.sendRequest(request);
@@ -355,7 +355,7 @@ public class PushChanges {
     private int sendPendingMessages(boolean isOnRequest) throws ServiceException {
         int totalSent = 0;
         OfflineSyncManager syncMan = OfflineSyncManager.getInstance();
-        for (Iterator<Integer> iterator = OutboxTracker.iterator(ombx, isOnRequest ? 0L : ombx.getSyncFrequency());    iterator.hasNext();) {
+        for (Iterator<Integer> iterator = OutboxTracker.iterator(ombx, isOnRequest ? 0L : ombx.getSyncFrequency());	iterator.hasNext();) {
             int id = iterator.next();
             try {
                 Message msg = ombx.getMessageById(sContext, id);
@@ -395,14 +395,14 @@ public class PushChanges {
                     ++totalSent;
 
                     // remove the draft from the outbox
-                    ombx.delete(sContext, id, MailItem.TYPE_MESSAGE);
+                    ombx.delete(sContext, id, MailItem.Type.MESSAGE);
                     OfflineLog.offline.debug("push: deleted pending draft (" + id + ')');
                 } catch (ServiceException x) {
                     if ((x instanceof ZClientException || x instanceof SoapFaultException) && !x.isReceiversFault() &&
                             !x.getCode().equals(ZClientException.IO_ERROR) && !x.getCode().equals(ZClientException.UPLOAD_FAILED)) { //supposedly this is client fault
                         OfflineLog.offline.debug("push: failed to send mail (" + id + "): " + msg.getSubject(), x);
 
-                        ombx.move(sContext, id, MailItem.TYPE_MESSAGE, Mailbox.ID_FOLDER_DRAFTS); //move message back to drafts folder;
+                        ombx.move(sContext, id, MailItem.Type.MESSAGE, Mailbox.ID_FOLDER_DRAFTS); //move message back to drafts folder;
 
                         // we need to tell user of the failure
                         try {
@@ -431,7 +431,8 @@ public class PushChanges {
 
                             mm.saveChanges(); //must call this to update the headers
                             ParsedMessage pm = new ParsedMessage(mm, true);
-                            ombx.addMessage(sContext, pm, DesktopMailbox.ID_FOLDER_INBOX, true, Flag.BITMASK_UNREAD, null);
+                            DeliveryOptions dopt = new DeliveryOptions().setFolderId(Mailbox.ID_FOLDER_INBOX).setNoICal(true).setFlags(Flag.BITMASK_UNREAD);
+                            ombx.addMessage(sContext, pm, dopt, null);
                         } catch (Exception e) {
                             OfflineLog.offline.warn("can't save warning of failed push (" + id + ")" + msg.getSubject(), e);
                         }
@@ -499,8 +500,8 @@ public class PushChanges {
      * @param folderId  The location of the created/updated item.
      * @return A {@link Pair} containing the new item's ID and content change
      *         sequence for creates, or <tt>null</tt> for updates. */
-    private Pair<Integer,Integer> pushRequest(Element request, boolean create, int id, byte type, String name, int folderId)
-    throws ServiceException {
+    private Pair<Integer,Integer> pushRequest(Element request, boolean create, int id, MailItem.Type type, String name,
+            int folderId) throws ServiceException {
         SoapFaultException originalException = null;
         try {
             // try to create/update the item as requested
@@ -524,26 +525,30 @@ public class PushChanges {
             query.addElement(MailConstants.E_ITEM).addAttribute(MailConstants.A_FOLDER, folderId).addAttribute(MailConstants.A_NAME, name);
             Element conflict = ombx.sendRequest(query).listElements().get(0);
             int conflictId = (int) conflict.getAttributeLong(MailConstants.A_ID);
-            byte conflictType = Sync.typeForElementName(conflict.getName());
+            MailItem.Type conflictType = Sync.typeForElementName(conflict.getName());
 
             // rename the conflicting item out of the way
             Element rename = null;
             switch (conflictType) {
-                case MailItem.TYPE_MOUNTPOINT:
-                case MailItem.TYPE_SEARCHFOLDER:
-                case MailItem.TYPE_FOLDER:  rename = new Element.XMLElement(MailConstants.FOLDER_ACTION_REQUEST);  break;
-
-                case MailItem.TYPE_TAG:     rename = new Element.XMLElement(MailConstants.TAG_ACTION_REQUEST);  break;
-
-                case MailItem.TYPE_DOCUMENT:
-                case MailItem.TYPE_WIKI:    rename = new Element.XMLElement(MailConstants.WIKI_ACTION_REQUEST);  break;
-
-                default:                    rename = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);  break;
+                case MOUNTPOINT:
+                case SEARCHFOLDER:
+                case FOLDER:
+                    rename = new Element.XMLElement(MailConstants.FOLDER_ACTION_REQUEST);
+                    break;
+                case TAG:
+                    rename = new Element.XMLElement(MailConstants.TAG_ACTION_REQUEST);
+                    break;
+                default:
+                    rename = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+                    break;
             }
-            rename.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_RENAME).addAttribute(MailConstants.A_ID, conflictId)
-                                                   .addAttribute(MailConstants.A_FOLDER, folderId).addAttribute(MailConstants.A_NAME, conflictRename);
+            rename.addElement(MailConstants.E_ACTION)
+                .addAttribute(MailConstants.A_OPERATION, ItemAction.OP_RENAME)
+                .addAttribute(MailConstants.A_ID, conflictId)
+                .addAttribute(MailConstants.A_FOLDER, folderId)
+                .addAttribute(MailConstants.A_NAME, conflictRename);
             ombx.sendRequest(rename);
-            OfflineLog.offline.info("push: renamed remote " + MailItem.getNameForType(conflictType) + " (" + conflictId + ") to " + folderId + '/' + conflictRename);
+            OfflineLog.offline.info("push: renamed remote " + conflictType + " (" + conflictId + ") to " + folderId + '/' + conflictRename);
 
             // retry the original create/update
             return sendRequest(request, create, id, type, name);
@@ -554,7 +559,7 @@ public class PushChanges {
         }
 
         ombx.rename(null, id, type, conflictRename, folderId);
-        OfflineLog.offline.info("push: renamed local " + MailItem.getNameForType(type) + " (" + id + ") to " + folderId + '/' + conflictRename);
+        OfflineLog.offline.info("push: renamed local " + type + " (" + id + ") to " + folderId + '/' + conflictRename);
         throw originalException;
     }
 
@@ -569,16 +574,17 @@ public class PushChanges {
      * @param name     The name of the created/updated item (for logging).
      * @return A {@link Pair} containing the new item's ID and content change
      *         sequence for creates, or <tt>null</tt> for updates. */
-    private Pair<Integer,Integer> sendRequest(Element request, boolean create, int id, byte type, String name) throws ServiceException {
+    private Pair<Integer,Integer> sendRequest(Element request, boolean create, int id, MailItem.Type type, String name)
+            throws ServiceException {
         // try to create/update the item as requested
         Element response = ombx.sendRequest(request);
         if (create) {
             int newId = (int) response.getElement(Sync.elementNameForType(type)).getAttributeLong(MailConstants.A_ID);
             int newRevision = (int) response.getElement(Sync.elementNameForType(type)).getAttributeLong(MailConstants.A_REVISION, -1);
-            OfflineLog.offline.debug("push: created " + MailItem.getNameForType(type) + " (" + newId + ") from local (" + id + (name == null ? ")" : "): " + name));
+            OfflineLog.offline.debug("push: created " + type + " (" + newId + ") from local (" + id + (name == null ? ")" : "): " + name));
             return new Pair<Integer,Integer>(newId, newRevision);
         } else {
-            OfflineLog.offline.debug("push: updated " + MailItem.getNameForType(type) + " (" + id + (name == null ? ")" : "): " + name));
+            OfflineLog.offline.debug("push: updated " + type + " (" + id + (name == null ? ")" : "): " + name));
             return null;
         }
     }
@@ -590,15 +596,19 @@ public class PushChanges {
         int flags, parentId;
         byte colorByte = 0;
         String colorStr = null;
-        MailItem.Color color;
+        Color color;
         String name, query, searchTypes, sort;
         boolean create = false;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             SearchFolder search = ombx.getSearchFolderById(sContext, id);
-
-            name = search.getName();    flags = search.getInternalFlagBitmask();
-            color = search.getRgbColor();  parentId = search.getFolderId();
-            query = search.getQuery();  searchTypes = search.getReturnTypes();  sort = search.getSortField();
+            name = search.getName();
+            flags = search.getInternalFlagBitmask();
+            color = search.getRgbColor();
+            parentId = search.getFolderId();
+            query = search.getQuery();
+            searchTypes = search.getReturnTypes();
+            sort = search.getSortField();
 
             if (color.hasMapping()) {
                 colorByte = color.getMappedColor();
@@ -606,37 +616,45 @@ public class PushChanges {
             else {
                 colorStr = color.toString();
             }
-            int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_SEARCHFOLDER);
-            if ((mask & Change.MODIFIED_CONFLICT) != 0) {
+            int mask = ombx.getChangeMask(sContext, id, MailItem.Type.SEARCHFOLDER);
+            if ((mask & Change.CONFLICT) != 0) {
                 // this is a new search folder; need to push to the server
                 request = new Element.XMLElement(MailConstants.CREATE_SEARCH_FOLDER_REQUEST);
                 action = request.addElement(MailConstants.E_SEARCH);
                 create = true;
             }
-            if (create || (mask & Change.MODIFIED_FLAGS) != 0)
-                action.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
-            if (create || (mask & Change.MODIFIED_FOLDER) != 0)
+            if (create || (mask & Change.FLAGS) != 0) {
+                action.addAttribute(MailConstants.A_FLAGS, Flag.toString(flags));
+            }
+            if (create || (mask & Change.FOLDER) != 0) {
                 action.addAttribute(MailConstants.A_FOLDER, parentId);
-            if (create || (mask & Change.MODIFIED_COLOR) != 0) {
+            }
+            if (create || (mask & Change.COLOR) != 0) {
                 if (color.hasMapping()) {
                     action.addAttribute(MailConstants.A_COLOR, colorByte);
-                }
-                else {
+                } else {
                     action.addAttribute(MailConstants.A_RGB, colorStr);
                 }
             }
-            if (create || (mask & Change.MODIFIED_NAME) != 0)
+            if (create || (mask & Change.NAME) != 0) {
                 action.addAttribute(MailConstants.A_NAME, name);
-            if (create || (mask & Change.MODIFIED_QUERY) != 0)
-                action.addAttribute(MailConstants.A_QUERY, query).addAttribute(MailConstants.A_SEARCH_TYPES, searchTypes).addAttribute(MailConstants.A_SORT_FIELD, sort);
+            }
+            if (create || (mask & Change.QUERY) != 0) {
+                action.addAttribute(MailConstants.A_QUERY, query)
+                    .addAttribute(MailConstants.A_SEARCH_TYPES, searchTypes)
+                    .addAttribute(MailConstants.A_SORT_FIELD, sort);
+            }
+        } finally {
+            ombx.lock.release();
         }
 
         try {
-            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_SEARCHFOLDER, name, parentId);
+            Pair<Integer, Integer> createData = pushRequest(request, create, id, MailItem.Type.SEARCHFOLDER, name, parentId);
             if (create) {
                 // make sure the old item matches the new item...
-                if (!ombx.renumberItem(sContext, id, MailItem.TYPE_SEARCHFOLDER, createData.getFirst()))
+                if (!ombx.renumberItem(sContext, id, MailItem.Type.SEARCHFOLDER, createData.getFirst())) {
                     return true;
+                }
                 id = createData.getFirst();
             }
         } catch (SoapFaultException sfe) {
@@ -645,21 +663,38 @@ public class PushChanges {
             OfflineLog.offline.info("push: remote search folder " + id + " has been deleted; skipping");
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             SearchFolder search = ombx.getSearchFolderById(sContext, id);
             // check to see if the search was changed while we were pushing the update...
             int mask = 0;
-            if (flags != search.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;
-            if (parentId != search.getFolderId())          mask |= Change.MODIFIED_NAME;
-            if (!color.equals(search.getRgbColor()))       mask |= Change.MODIFIED_COLOR;
-            if (!name.equals(search.getName()))            mask |= Change.MODIFIED_NAME;
-            if (!query.equals(search.getQuery()))              mask |= Change.MODIFIED_QUERY;
-            if (!searchTypes.equals(search.getReturnTypes()))  mask |= Change.MODIFIED_QUERY;
-            if (!sort.equals(search.getSortField()))           mask |= Change.MODIFIED_QUERY;
+            if (flags != search.getInternalFlagBitmask())  {
+                mask |= Change.FLAGS;
+            }
+            if (parentId != search.getFolderId()) {
+                mask |= Change.NAME;
+            }
+            if (!color.equals(search.getRgbColor())) {
+                mask |= Change.COLOR;
+            }
+            if (!name.equals(search.getName())) {
+                mask |= Change.NAME;
+            }
+            if (!query.equals(search.getQuery())) {
+                mask |= Change.QUERY;
+            }
+            if (!searchTypes.equals(search.getReturnTypes())) {
+                mask |= Change.QUERY;
+            }
+            if (!sort.equals(search.getSortField())) {
+                mask |= Change.QUERY;
+            }
 
             // update or clear the change bitmask
-            ombx.setChangeMask(sContext, id, MailItem.TYPE_SEARCHFOLDER, mask);
+            ombx.setChangeMask(sContext, id, MailItem.Type.SEARCHFOLDER, mask);
             return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
     }
 
@@ -671,11 +706,12 @@ public class PushChanges {
         int flags, parentId;
         byte colorByte = 0;
         String colorStr = null;
-        MailItem.Color color;
+        Color color;
         String name, url;
         boolean create = false;
         Folder folder = null;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             folder = ombx.getFolderById(sContext, id);
             name = folder.getName();  parentId = folder.getFolderId();  flags = folder.getInternalFlagBitmask();
             url = folder.getUrl();    color = folder.getRgbColor();
@@ -688,60 +724,68 @@ public class PushChanges {
             }
             int mask = 0;
             switch (folder.getType()) {
-            case MailItem.TYPE_MOUNTPOINT:
-                mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_MOUNTPOINT);
-                break;
-            case MailItem.TYPE_FOLDER:
-                mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_FOLDER);
-                break;
+                case MOUNTPOINT:
+                    mask = ombx.getChangeMask(sContext, id, MailItem.Type.MOUNTPOINT);
+                    break;
+                case FOLDER:
+                    mask = ombx.getChangeMask(sContext, id, MailItem.Type.FOLDER);
+                    break;
             }
-            if ((mask & Change.MODIFIED_CONFLICT) != 0) {
+            if ((mask & Change.CONFLICT) != 0) {
                 // this is a new folder; need to push to the server
                 elementName = MailConstants.CREATE_FOLDER_REQUEST;
                 request = zsc != null ? zsc.createElement(elementName) : new Element.XMLElement(elementName);
-                action = request.addElement(MailConstants.E_FOLDER).addAttribute(MailConstants.A_DEFAULT_VIEW, MailItem.getNameForType(folder.getDefaultView()));
+                action = request.addElement(MailConstants.E_FOLDER).addAttribute(MailConstants.A_DEFAULT_VIEW,
+                        folder.getDefaultView().toString());
                 create = true;
             }
-            if (create || (mask & Change.MODIFIED_FLAGS) != 0)
-                action.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
-            if (create || (mask & Change.MODIFIED_FOLDER) != 0)
+            if (create || (mask & Change.FLAGS) != 0) {
+                action.addAttribute(MailConstants.A_FLAGS, Flag.toString(flags));
+            }
+            if (create || (mask & Change.FOLDER) != 0) {
                 action.addAttribute(MailConstants.A_FOLDER, parentId);
-            if (create || (mask & Change.MODIFIED_COLOR) != 0) {
+            }
+            if (create || (mask & Change.COLOR) != 0) {
                 if (color.hasMapping()) {
                     action.addAttribute(MailConstants.A_COLOR, colorByte);
-                }
-                else {
+                } else {
                     action.addAttribute(MailConstants.A_RGB, colorStr);
                 }
             }
-            if (create || (mask & Change.MODIFIED_NAME) != 0)
+            if (create || (mask & Change.NAME) != 0) {
                 action.addAttribute(MailConstants.A_NAME, name);
-            if (create || (mask & Change.MODIFIED_URL) != 0)
+            }
+            if (create || (mask & Change.URL) != 0) {
                 action.addAttribute(MailConstants.A_URL, url);
+            }
             // FIXME: does not support ACL sync at all...
+        } finally {
+            ombx.lock.release();
         }
 
         try {
             Pair<Integer,Integer> createData = null;
             switch (folder.getType()) {
-            case MailItem.TYPE_MOUNTPOINT:
-                createData = pushRequest(request, create, id, MailItem.TYPE_MOUNTPOINT, name, parentId);
-                break;
-            case MailItem.TYPE_FOLDER:
-                createData = pushRequest(request, create, id, MailItem.TYPE_FOLDER, name, parentId);
-                break;
+                case MOUNTPOINT:
+                    createData = pushRequest(request, create, id, MailItem.Type.MOUNTPOINT, name, parentId);
+                    break;
+                case FOLDER:
+                    createData = pushRequest(request, create, id, MailItem.Type.FOLDER, name, parentId);
+                    break;
             }
             if (create) {
                 // make sure the old item matches the new item...
                 switch (folder.getType()) {
-                case MailItem.TYPE_MOUNTPOINT:
-                    if (!ombx.renumberItem(sContext, id, MailItem.TYPE_MOUNTPOINT, createData.getFirst()))
-                        return true;
-                    break;
-                case MailItem.TYPE_FOLDER:
-                    if (!ombx.renumberItem(sContext, id, MailItem.TYPE_FOLDER, createData.getFirst()))
-                        return true;
-                    break;
+                    case MOUNTPOINT:
+                        if (!ombx.renumberItem(sContext, id, MailItem.Type.MOUNTPOINT, createData.getFirst())) {
+                            return true;
+                        }
+                        break;
+                    case FOLDER:
+                        if (!ombx.renumberItem(sContext, id, MailItem.Type.FOLDER, createData.getFirst())) {
+                            return true;
+                        }
+                        break;
                 }
                 id = createData.getFirst();
             }
@@ -755,39 +799,54 @@ public class PushChanges {
             OfflineLog.offline.info("push: remote folder " + id + " has been deleted; skipping");
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             folder = ombx.getFolderById(sContext, id);
             // check to see if the folder was changed while we were pushing the update...
             int mask = 0;
-            if (flags != folder.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;
-            if (parentId != folder.getFolderId())          mask |= Change.MODIFIED_NAME;
-            if (!color.equals(folder.getRgbColor()))       mask |= Change.MODIFIED_COLOR;
-            if (!name.equals(folder.getName()))            mask |= Change.MODIFIED_NAME;
-            if (!url.equals(folder.getUrl()))              mask |= Change.MODIFIED_URL;
-
+            if (flags != folder.getInternalFlagBitmask()) {
+                mask |= Change.FLAGS;
+            }
+            if (parentId != folder.getFolderId()) {
+                mask |= Change.NAME;
+            }
+            if (!color.equals(folder.getRgbColor())) {
+                mask |= Change.COLOR;
+            }
+            if (!name.equals(folder.getName())) {
+                mask |= Change.NAME;
+            }
+            if (!url.equals(folder.getUrl())) {
+                mask |= Change.URL;
+            }
             // update or clear the change bitmask
             switch (folder.getType()) {
-            case MailItem.TYPE_MOUNTPOINT:
-                ombx.setChangeMask(sContext, id, MailItem.TYPE_MOUNTPOINT, mask);
-                break;
-            case MailItem.TYPE_FOLDER:
-                ombx.setChangeMask(sContext, id, MailItem.TYPE_FOLDER, mask);
-                break;
+                case MOUNTPOINT:
+                    ombx.setChangeMask(sContext, id, MailItem.Type.MOUNTPOINT, mask);
+                    break;
+                case FOLDER:
+                    ombx.setChangeMask(sContext, id, MailItem.Type.FOLDER, mask);
+                    break;
             }
             return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
     }
 
     private boolean syncTag(int id) throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.TAG_ACTION_REQUEST);
-        Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, getTagSync().remoteTagId(id));
+        Element action = request.addElement(MailConstants.E_ACTION)
+                .addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE)
+                .addAttribute(MailConstants.A_ID, getTagSync().remoteTagId(id));
 
         byte colorByte = 0;
         String colorStr = null;
-        MailItem.Color color;
+        Color color;
         String name;
         boolean create = false;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             Tag tag = ombx.getTagById(sContext, id);
             color = tag.getRgbColor(); name = tag.getName();
 
@@ -797,8 +856,8 @@ public class PushChanges {
             else {
                 colorStr = color.toString();
             }
-            int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_TAG);
-            if ((mask & Change.MODIFIED_CONFLICT) != 0) {
+            int mask = ombx.getChangeMask(sContext, id, MailItem.Type.TAG);
+            if ((mask & Change.CONFLICT) != 0) {
                 // this is a new tag; need to push to the server
                 request = new Element.XMLElement(MailConstants.CREATE_TAG_REQUEST);
                 action = request.addElement(MailConstants.E_TAG);
@@ -810,59 +869,63 @@ public class PushChanges {
             } else {
                 action.addAttribute(MailConstants.A_RGB, colorStr);
             }
-            if (create || (mask & Change.MODIFIED_NAME) != 0)
+            if (create || (mask & Change.NAME) != 0) {
                 action.addAttribute(MailConstants.A_NAME, name);
+            }
+        } finally {
+            ombx.lock.release();
         }
 
         try {
-            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_TAG, name, Mailbox.ID_FOLDER_TAGS);
+            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.Type.TAG, name, Mailbox.ID_FOLDER_TAGS);
             if (create) {
-                int newId = getTagSync().getOrMapLocalIdFromRemote(createData.getFirst(), id);
-                // first, deal with more headaches caused by reusing tag ids
-                if (id != newId && DeltaSync.getTag(ombx, newId) != null) {
-                    int renumber = DeltaSync.getAvailableTagId(ombx);
-                    if (renumber < 0)
-                        ombx.delete(sContext, newId, MailItem.TYPE_TAG);
-                    else
-                        ombx.renumberItem(sContext, newId, MailItem.TYPE_TAG, renumber);
-                }
+                int newId = createData.getFirst();
                 // make sure the old item matches the new item...
-                if (!ombx.renumberItem(sContext, id, MailItem.TYPE_TAG, newId))
+                if (!ombx.renumberItem(sContext, id, MailItem.Type.TAG, newId)) {
                     return true;
+                }
                 id = newId;
             }
         } catch (SoapFaultException sfe) {
-            if (!sfe.getCode().equals(MailServiceException.NO_SUCH_TAG))
+            if (!sfe.getCode().equals(MailServiceException.NO_SUCH_TAG)) {
                 throw sfe;
+            }
             OfflineLog.offline.info("push: remote tag " + id + " has been deleted; skipping");
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             Tag tag = ombx.getTagById(sContext, id);
             // check to see if the tag was changed while we were pushing the update...
             int mask = 0;
-            if (!color.equals(tag.getRgbColor()))  mask |= Change.MODIFIED_COLOR;
-            if (!name.equals(tag.getName()))       mask |= Change.MODIFIED_NAME;
-
+            if (!color.equals(tag.getRgbColor())) {
+                mask |= Change.COLOR;
+            }
+            if (!name.equals(tag.getName())) {
+                mask |= Change.NAME;
+            }
             // update or clear the change bitmask
-            ombx.setChangeMask(sContext, id, MailItem.TYPE_TAG, mask);
+            ombx.setChangeMask(sContext, id, MailItem.Type.TAG, mask);
             return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
     }
 
-    private void pushSimpleChanges(List<Pair<Integer, Integer>> changes, int changeMask, boolean isUnread, int folderId, Set<Integer> doneSet) throws ServiceException {
+    private void pushSimpleChanges(List<Pair<Integer, Integer>> changes, int changeMask, boolean isUnread, int folderId,
+            Set<Integer> doneSet) throws ServiceException {
         assert (changes != null && changes.size() > 0);
-        assert (changeMask == Change.MODIFIED_UNREAD || changeMask == Change.MODIFIED_FOLDER); //only these two are considered simple
+        assert (changeMask == Change.UNREAD || changeMask == Change.FOLDER); //only these two are considered simple
 
         Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
         Element action = request.addElement(MailConstants.E_ACTION);
 
         switch (changeMask) {
-            case Change.MODIFIED_FOLDER:
+            case Change.FOLDER:
                 action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_MOVE);
                 action.addAttribute(MailConstants.A_FOLDER, folderId);
                 break;
-            case Change.MODIFIED_UNREAD:
+            case Change.UNREAD:
                 action.addAttribute(MailConstants.A_OPERATION, (isUnread ? "!" : "") + ItemAction.OP_READ);
                 break;
             default:
@@ -887,7 +950,8 @@ public class PushChanges {
             return;
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             Map<Integer, Integer> refresh = ombx.getItemModSequences(sContext, ids);
             for (Pair<Integer, Integer> pair : changes) {
                 int id = pair.getFirst();
@@ -896,7 +960,7 @@ public class PushChanges {
                     if (newModSequence.intValue() == pair.getSecond()) {
                         //because we know the item hasn't changed since we last checked,
                         //and we know it was a simple change, we can simply clear the mask.
-                        ombx.setChangeMask(sContext, id, MailItem.TYPE_UNKNOWN, 0);
+                        ombx.setChangeMask(sContext, id, MailItem.Type.UNKNOWN, 0);
                         doneSet.add(id);
                     } else {
                         OfflineLog.offline.debug("push: item " + id + " further modified from local during push");
@@ -905,6 +969,8 @@ public class PushChanges {
                     OfflineLog.offline.debug("push: item " + id + " deleted from local during push");
                 }
             }
+        } finally {
+            ombx.lock.release();
         }
     }
 
@@ -913,16 +979,18 @@ public class PushChanges {
         Element cnElem = request.addElement(MailConstants.E_CONTACT).addAttribute(MailConstants.A_ID, id);
 
         int flags, folderId;
-        long date, tags;
+        String[] tags;
+        long date;
         byte colorByte = 0;
         String colorStr = null;
-        MailItem.Color color;
+        Color color;
         boolean create = false;
         Contact cn = null;
         int mask = 0;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             cn = ombx.getContactById(sContext, id);
-            date = cn.getDate();    flags = cn.getFlagBitmask();  tags = cn.getTagBitmask();
+            date = cn.getDate();    flags = cn.getFlagBitmask();  tags = cn.getTags();
             color = cn.getRgbColor();  folderId = cn.getFolderId();
 
             if (color.hasMapping()) {
@@ -931,53 +999,46 @@ public class PushChanges {
             else {
                 colorStr = color.toString();
             }
-            mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_CONTACT);
-            if ((mask & Change.MODIFIED_CONFLICT) != 0) {
+            mask = ombx.getChangeMask(sContext, id, MailItem.Type.CONTACT);
+            if ((mask & Change.CONFLICT) != 0) {
                 // this is a new contact; need to push to the server
                 request = new Element.XMLElement(MailConstants.CREATE_CONTACT_REQUEST);
                 cnElem = request.addElement(MailConstants.E_CONTACT);
                 create = true;
             }
 
-            if (create || (mask & Change.MODIFIED_CONTENT) != 0) {
+            if (create || (mask & Change.CONTENT) != 0) {
                 for (Map.Entry<String, String> field : cn.getFields().entrySet()) {
                     String name = field.getKey(), value = field.getValue();
-                    if (name == null || name.trim().equals("") || value == null || value.equals(""))
+                    if (name == null || name.trim().equals("") || value == null || value.equals("")) {
                         continue;
-                    if (name.equals(ContactConstants.A_dlist) && ombx.getRemoteServerVersion().getMajor() >= 8) {
-                        Set<String> emails = new HashSet<String>();
-                        emails.addAll(Arrays.asList(value.trim().split(",")));
-                        for(String email : emails) {
-                            if(email.contains("@")) {
-                                XMLElement mTarget = new XMLElement(MailConstants.E_CONTACT_GROUP_MEMBER);
-                                mTarget.addAttribute(MailConstants.A_VALUE, email);
-                                mTarget.addAttribute(MailConstants.A_CONTACT_TYPE, "I");
-                                cnElem.addElement(mTarget);
-                            }
-                        }
-                    } else {
-                        cnElem.addKeyValuePair(name, value);
                     }
+                    cnElem.addKeyValuePair(name, value);
                 }
             } else {
                 request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
                 cnElem = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
             }
 
-            if (create || (mask & Change.MODIFIED_FLAGS) != 0)
-                cnElem.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
-            if (create || (mask & Change.MODIFIED_TAGS) != 0)
-                cnElem = getTagSync().addOutboundTagsAttr(cnElem, cn.getTagString());
-            if (create || (mask & Change.MODIFIED_FOLDER) != 0)
+            if (create || (mask & Change.FLAGS) != 0) {
+                cnElem.addAttribute(MailConstants.A_FLAGS, Flag.toString(flags));
+            }
+            if (create || (mask & Change.TAGS) != 0) {
+                cnElem.addAttribute(MailConstants.A_TAG_NAMES, TagUtil.encodeTags(tags));
+                cnElem.addAttribute(MailConstants.A_TAGS, TagUtil.getTagIdString(cn));
+            }
+            if (create || (mask & Change.FOLDER) != 0) {
                 cnElem.addAttribute(MailConstants.A_FOLDER, folderId);
-            if (create || (mask & Change.MODIFIED_COLOR) != 0) {
+            }
+            if (create || (mask & Change.COLOR) != 0) {
                 if (color.hasMapping()) {
                     cnElem.addAttribute(MailConstants.A_COLOR, colorByte);
-                }
-                else {
+                } else {
                     cnElem.addAttribute(MailConstants.A_RGB, colorStr);
                 }
             }
+        } finally {
+            ombx.lock.release();
         }
 
         try {
@@ -990,13 +1051,14 @@ public class PushChanges {
                 }
             }
 
-            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_CONTACT, null, folderId);
+            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.Type.CONTACT, null, folderId);
             if (create) {
                 // make sure the old item matches the new item...
-                if (!ombx.renumberItem(sContext, id, MailItem.TYPE_CONTACT, createData.getFirst()))
+                if (!ombx.renumberItem(sContext, id, MailItem.Type.CONTACT, createData.getFirst())) {
                     return true;
+                }
                 id = createData.getFirst();
-            } else if ((mask & Change.MODIFIED_FOLDER) != 0) {
+            } else if ((mask & Change.FOLDER) != 0) {
                 Element moveRequest = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
                 moveRequest.addElement(MailConstants.E_ACTION)
                     .addAttribute(MailConstants.A_OPERATION, ItemAction.OP_MOVE).addAttribute(MailConstants.A_ID, id)
@@ -1011,74 +1073,32 @@ public class PushChanges {
             throw ServiceException.FAILURE("Unable to sync contact.", e);
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             cn = ombx.getContactById(sContext, id);
             // check to see if the contact was changed while we were pushing the update...
             mask = 0;
-            if (flags != cn.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;
-            if (tags != cn.getTagBitmask())            mask |= Change.MODIFIED_TAGS;
-            if (folderId != cn.getFolderId())          mask |= Change.MODIFIED_FOLDER;
-            if (!color.equals(cn.getRgbColor()))       mask |= Change.MODIFIED_COLOR;
-            if (date != cn.getDate())                  mask |= Change.MODIFIED_CONTENT;
-
-            // update or clear the change bitmask
-            ombx.setChangeMask(sContext, id, MailItem.TYPE_CONTACT, mask);
-            return (mask == 0);
-        }
-    }
-
-    private boolean syncWikiItem(WikiItem item, boolean create) throws ServiceException {
-        int id = item.getId();
-        Element request = new Element.XMLElement(MailConstants.SAVE_WIKI_REQUEST);
-        Element w = request.addElement(MailConstants.E_WIKIWORD);
-        w.addAttribute(MailConstants.A_NAME, item.getName());
-        if (!create) {
-            w.addAttribute(MailConstants.A_ID, id);
-            w.addAttribute(MailConstants.A_VERSION, ombx.getLastSyncedVersionForMailItem(id));
-        }
-        w.addAttribute(MailConstants.A_FOLDER, item.getFolderId());
-        try {
-            w.setText(new String((item).getContent(), "UTF-8"));
-        } catch (IOException e) {}
-        Element response = null;
-        boolean retry = false;
-        while (response == null) {
-            try {
-                response = ombx.sendRequest(request);
-            } catch (SoapFaultException e) {
-                if (e.getCode().equals(MailServiceException.ALREADY_EXISTS) ||
-                        e.getCode().equals(MailServiceException.MODIFY_CONFLICT)) {
-                    String iid = e.getArgumentValue("id");
-                    String v = e.getArgumentValue("ver");
-                    w.addAttribute(MailConstants.A_ID, iid);
-                    w.addAttribute(MailConstants.A_VERSION, v);
-                    if (!retry) {
-                        response = null;
-                        ArrayList<SyncExceptionHandler.Revision> revisions = new ArrayList<SyncExceptionHandler.Revision>();
-                        int firstV = ombx.getLastSyncedVersionForMailItem(id);
-                        int lastV = Integer.parseInt(v);
-                        for (int i = firstV+1; i <= lastV; i++) {
-                            SyncExceptionHandler.Revision rev = new SyncExceptionHandler.Revision();
-                            rev.editor = "";
-                            rev.version = i;
-                            rev.modifiedDate = 0;
-                            revisions.add(rev);
-                        }
-                        SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
-                    }
-                    retry = true;
-                }
+            if (flags != cn.getInternalFlagBitmask()) {
+                mask |= Change.FLAGS;
             }
+            if (!TagUtil.tagsMatch(tags, cn.getTags())) {
+                mask |= Change.TAGS;
+            }
+            if (folderId != cn.getFolderId()) {
+                mask |= Change.FOLDER;
+            }
+            if (!color.equals(cn.getRgbColor())) {
+                mask |= Change.COLOR;
+            }
+            if (date != cn.getDate()) {
+                mask |= Change.CONTENT;
+            }
+            // update or clear the change bitmask
+            ombx.setChangeMask(sContext, id, MailItem.Type.CONTACT, mask);
+            return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
-        w = response.getElement(MailConstants.E_WIKIWORD);
-        int newid = (int)w.getAttributeLong(MailConstants.A_ID);
-        int ver = (int)w.getAttributeLong(MailConstants.A_VERSION);
-        if (create) {
-            if (!ombx.renumberItem(sContext, id, MailItem.TYPE_WIKI, newid))
-                return true;
-        }
-        ombx.setSyncedVersionForMailItem("" + id, ver);
-        return true;
     }
 
     private boolean syncDocument(int id, TypedIdList tombstones) throws ServiceException {
@@ -1088,64 +1108,70 @@ public class PushChanges {
         }
         MailItem item = null;
         boolean create = false;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             if (id > ZcsMailbox.FIRST_OFFLINE_ITEM_ID) {
                 create = true;
             }
-            item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
+            item = ombx.getItemById(sContext, id, MailItem.Type.UNKNOWN);
+        } finally {
+            ombx.lock.release();
         }
 
         String digest = item.getDigest();
         String name = item.getName();
-        byte type = item.getType();
+        MailItem.Type type = item.getType();
 
-        if (!ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
-                type == MailItem.TYPE_WIKI) {
-            syncWikiItem((WikiItem)item, create);
-        } else {
-            RevisionInfo lastRev = null;
-            if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
-                    !create) {
-                List<RevisionInfo> revInfo = checkDocumentSyncConflict(item);
-                if (revInfo.size() > 0) {
-                    //list documents always returns newest first
-                    lastRev = revInfo.get(0);
-                }
+        RevisionInfo lastRev = null;
+        if (ombx.getRemoteServerVersion().isAtLeast(InitialSync.sDocumentSyncHistoryVersion) &&
+                !create) {
+            List<RevisionInfo> revInfo = checkDocumentSyncConflict(item);
+            if (revInfo.size() > 0) {
+                //list documents always returns newest first
+                lastRev = revInfo.get(0);
             }
-            //only upload document if we have a newer revision or modified content
-            if (lastRev == null || !(lastRev.getVersion() == item.getVersion() && lastRev.getTimestamp() == item.getDate())) {
-                Pair<Integer,Integer> resp = ombx.sendMailItem(item);
-                if (create) {
-                    if (!ombx.renumberItem(sContext, id, type, resp.getFirst()))
-                        return true;
-                    id = resp.getFirst();
-                    List<Integer> tombstonedDocs = tombstones.getIds(MailItem.TYPE_DOCUMENT);
-                    if (tombstonedDocs != null && tombstonedDocs.indexOf(id) > -1) {
-                        ombx.removePendingDelete(sContext, id, type);
-                        tombstonedDocs.remove(Integer.valueOf(id)); //remove(Object o), not remote(int idx)!!
-                        if (tombstonedDocs.isEmpty()) {
-                            tombstones.remove(MailItem.TYPE_DOCUMENT);
-                        }
+        }
+        //only upload document if we have a newer revision or modified content
+        if (lastRev == null || !(lastRev.getVersion() == item.getVersion() && lastRev.getTimestamp() == item.getDate())) {
+            Pair<Integer,Integer> resp = ombx.sendMailItem(item);
+            if (create) {
+                if (!ombx.renumberItem(sContext, id, type, resp.getFirst()))
+                    return true;
+                id = resp.getFirst();
+                List<Integer> tombstonedDocs = tombstones.getIds(MailItem.Type.DOCUMENT);
+                if (tombstonedDocs != null && tombstonedDocs.indexOf(id) > -1) {
+                    ombx.removePendingDelete(sContext, id, type);
+                    tombstonedDocs.remove(Integer.valueOf(id)); //remove(Object o), not remote(int idx)!!
+                    if (tombstonedDocs.isEmpty()) {
+                        tombstones.remove(MailItem.Type.DOCUMENT);
                     }
                 }
-                ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
             }
-            //set tags
-            Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
-            Element action = request.addElement(MailConstants.E_ACTION);
-            action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
-            action = getTagSync().addOutboundTagsAttr(action, item.getTagString());
-            action.addAttribute(MailConstants.A_ID, id);
-            ombx.sendRequest(request);
+            ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
         }
+        //set tags
+        Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+        Element action = request.addElement(MailConstants.E_ACTION);
+        action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
+        action.addAttribute(MailConstants.A_TAG_NAMES, TagUtil.encodeTags(item.getTags()));
+        action.addAttribute(MailConstants.A_TAGS, TagUtil.getTagIdString(item));
+        action.addAttribute(MailConstants.A_ID, id);
+        ombx.sendRequest(request);
 
-        synchronized (ombx) {
-            item = ombx.getItemById(sContext, id, MailItem.TYPE_UNKNOWN);
+        ombx.lock.lock();
+        try {
+            item = ombx.getItemById(sContext, id, MailItem.Type.UNKNOWN);
             int mask = 0;
-            if (!StringUtil.equal(digest, item.getDigest()))  mask |= Change.MODIFIED_CONTENT;
-            if (!StringUtil.equal(name, item.getName()))      mask |= Change.MODIFIED_NAME;
-            ombx.setChangeMask(sContext, id, MailItem.TYPE_DOCUMENT, mask);
+            if (!StringUtil.equal(digest, item.getDigest())) {
+                mask |= Change.CONTENT;
+            }
+            if (!StringUtil.equal(name, item.getName())) {
+                mask |= Change.NAME;
+            }
+            ombx.setChangeMask(sContext, id, MailItem.Type.DOCUMENT, mask);
             return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
     }
 
@@ -1169,10 +1195,10 @@ public class PushChanges {
                 SyncExceptionHandler.Revision rev = new SyncExceptionHandler.Revision();
                 rev.editor = e.getAttribute(MailConstants.A_CREATOR);
                 rev.version = (int)e.getAttributeLong(MailConstants.A_VERSION);
-                rev.modifiedDate = e.getAttributeLong(MailConstants.A_MODIFIED_DATE);
+                rev.modifiedDate = e.getAttributeLong(MailConstants.A_DATE);
                 revisions.add(rev);
             }
-            revInfo.add(new RevisionInfo(ver, e.getAttributeLong(MailConstants.A_MODIFIED_DATE), (int) e.getAttributeLong(MailConstants.A_FOLDER)));
+            revInfo.add(new RevisionInfo(ver, e.getAttributeLong(MailConstants.A_DATE), (int) e.getAttributeLong(MailConstants.A_FOLDER)));
         }
         if (conflict) {
             SyncExceptionHandler.logDocumentEditConflict(ombx, item, revisions);
@@ -1182,25 +1208,28 @@ public class PushChanges {
 
     private boolean syncMessage(int id) throws ServiceException {
         Element request = new Element.XMLElement(MailConstants.MSG_ACTION_REQUEST);
-        Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
+        Element action = request.addElement(MailConstants.E_ACTION)
+                .addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE)
+                .addAttribute(MailConstants.A_ID, id);
 
         int flags, folderId;
-        long tags;
+        String[] tags;
         String digest;
         byte colorByte = 0;
         String colorStr = null;
-        MailItem.Color color;
+        Color color;
         boolean create = false;
         boolean upload = false;
         Message msg = null;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             try {
                 msg = ombx.getMessageById(sContext, id);
             } catch (NoSuchItemException x) {
                 OfflineLog.offline.debug("push: message %d deleted before push", id);
                 return false;
             }
-            digest = msg.getDigest();  flags = msg.getFlagBitmask();  tags = msg.getTagBitmask();
+            digest = msg.getDigest();  flags = msg.getFlagBitmask();  tags = msg.getTags();
             color = msg.getRgbColor();    folderId = msg.getFolderId();
 
             if (color.hasMapping()) {
@@ -1212,41 +1241,49 @@ public class PushChanges {
             if (folderId == DesktopMailbox.ID_FOLDER_OUTBOX)
                 return false; //don't mind anything left over in Outbox, most likely sending message failed due to server side issues
 
-            int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_MESSAGE);
-            if ((mask & Change.MODIFIED_CONFLICT) != 0) {
+            int mask = ombx.getChangeMask(sContext, id, MailItem.Type.MESSAGE);
+            if ((mask & Change.CONFLICT) != 0) {
                 // this is a new message; need to push to the server
                 request = new Element.XMLElement(msg.isDraft() ? MailConstants.SAVE_DRAFT_REQUEST : MailConstants.ADD_MSG_REQUEST);
                 action = request.addElement(MailConstants.E_MSG);
-                if (msg.isDraft() && !msg.getDraftOrigId().equals(""))
+                if (msg.isDraft() && !msg.getDraftOrigId().isEmpty()) {
                     action.addAttribute(MailConstants.A_REPLY_TYPE, msg.getDraftReplyType()).addAttribute(MailConstants.A_ORIG_ID, msg.getDraftOrigId());
-                else if (!msg.isDraft())
+                } else if (!msg.isDraft()) {
                     action.addAttribute(MailConstants.A_DATE, msg.getDate());
+                }
                 upload = true;
                 create = true;
-            } else if ((mask & Change.MODIFIED_CONTENT) != 0) {
+            } else if ((mask & Change.CONTENT) != 0) {
                 // for draft message content changes, need to go through the SaveDraft door instead of the MsgAction door
-                if (!msg.isDraft())
+                if (!msg.isDraft()) {
                     throw MailServiceException.IMMUTABLE_OBJECT(id);
+                }
                 request = new Element.XMLElement(MailConstants.SAVE_DRAFT_REQUEST);
                 action = request.addElement(MailConstants.E_MSG).addAttribute(MailConstants.A_ID, id);
                 upload = true;
             }
-            if (create || (mask & Change.MODIFIED_FLAGS | Change.MODIFIED_UNREAD) != 0)
-                action.addAttribute(MailConstants.A_FLAGS, Flag.bitmaskToFlags(flags));
-            if (create || (mask & Change.MODIFIED_TAGS) != 0)
-                action = getTagSync().addOutboundTagsAttr(action, msg.getTagString());
-            if (create || (mask & Change.MODIFIED_FOLDER) != 0)
+            if (create || (mask & Change.FLAGS | Change.UNREAD) != 0) {
+                action.addAttribute(MailConstants.A_FLAGS, Flag.toString(flags));
+            }
+            if (create || (mask & Change.TAGS) != 0) {
+                action.addAttribute(MailConstants.A_TAG_NAMES, TagUtil.encodeTags(msg.getTags()));
+                action.addAttribute(MailConstants.A_TAGS, TagUtil.getTagIdString(msg));
+            }
+            if (create || (mask & Change.FOLDER) != 0) {
                 action.addAttribute(MailConstants.A_FOLDER, folderId);
-            if (create || (mask & Change.MODIFIED_COLOR) != 0) {
+            }
+            if (create || (mask & Change.COLOR) != 0) {
                 if (color.hasMapping()) {
                     action.addAttribute(MailConstants.A_COLOR, colorByte);
-                }
-                else {
+                } else {
                     action.addAttribute(MailConstants.A_RGB, colorStr);
                 }
             }
-            if (msg.isDraft() && (create || (mask & Change.MODIFIED_CONTENT) != 0) && msg.getDraftAutoSendTime() != 0)
+            if (msg.isDraft() && (create || (mask & Change.CONTENT) != 0) && msg.getDraftAutoSendTime() != 0) {
                 action.addAttribute(MailConstants.A_AUTO_SEND_TIME, msg.getDraftAutoSendTime());
+            }
+        } finally {
+            ombx.lock.release();
         }
 
         try {
@@ -1256,10 +1293,10 @@ public class PushChanges {
                 action.addAttribute(MailConstants.A_ATTACHMENT_ID, attachId);
             }
 
-            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.TYPE_MESSAGE, null, folderId);
+            Pair<Integer,Integer> createData = pushRequest(request, create, id, MailItem.Type.MESSAGE, null, folderId);
             if (create) {
                 // make sure the old item matches the new item...
-                if (!ombx.renumberItem(sContext, id, MailItem.TYPE_MESSAGE, createData.getFirst()))
+                if (!ombx.renumberItem(sContext, id, MailItem.Type.MESSAGE, createData.getFirst()))
                     return true;
                 id = createData.getFirst();
             }
@@ -1282,14 +1319,15 @@ public class PushChanges {
                 //message is still there but the attachment is changed
                 OfflineLog.offline.debug("push: message %d is still there but the attachment is removed", id);
                 //our intention is to just change lastChangeTime, so that the updated content/attachments is pushed
-                ombx.trackChangeModified(msg, Change.UNMODIFIED);
+                ombx.trackChangeModified(msg, Change.NONE);
                 return false;
             } else {
                 throw e;
             }
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             try {
                 msg = ombx.getMessageById(sContext, id);
             } catch (NoSuchItemException x) {
@@ -1298,38 +1336,50 @@ public class PushChanges {
             }
             // check to see if the message was changed while we were pushing the update...
             int mask = 0;
-            if (flags != msg.getFlagBitmask())    mask |= Change.MODIFIED_FLAGS;
-            if (tags != msg.getTagBitmask())      mask |= Change.MODIFIED_TAGS;
-            if (folderId != msg.getFolderId())    mask |= Change.MODIFIED_FOLDER;
-            if (!color.equals(msg.getRgbColor()))  mask |= Change.MODIFIED_COLOR;
-            if (!StringUtil.equal(digest, msg.getDigest()))  mask |= Change.MODIFIED_CONTENT;
-
+            if (flags != msg.getFlagBitmask()) {
+                mask |= Change.FLAGS;
+            }
+            if (!TagUtil.tagsMatch(tags, msg.getTags())) {
+                mask |= Change.TAGS;
+            }
+            if (folderId != msg.getFolderId()) {
+                mask |= Change.FOLDER;
+            }
+            if (!color.equals(msg.getRgbColor())) {
+                mask |= Change.COLOR;
+            }
+            if (!StringUtil.equal(digest, msg.getDigest())) {
+                mask |= Change.CONTENT;
+            }
             // update or clear the change bitmask
-            ombx.setChangeMask(sContext, id, MailItem.TYPE_MESSAGE, mask);
+            ombx.setChangeMask(sContext, id, MailItem.Type.MESSAGE, mask);
             return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
     }
 
     private boolean syncCalendarItem(int id, boolean isAppointment) throws ServiceException {
-
         int flags, folderId;
-        long date, tags;
+        long date;
+        String[] tags;
         byte colorByte = 0;
         String colorStr = null;
-        MailItem.Color color;
+        Color color;
         int mask;
 
         Element request = null;
         boolean create = false;
         String name = null;
         String uid = null;
-        byte type = isAppointment ? MailItem.TYPE_APPOINTMENT : MailItem.TYPE_TASK;
+        MailItem.Type type = isAppointment ? MailItem.Type.APPOINTMENT : MailItem.Type.TASK;
         CalendarItem cal = null;
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             cal = ombx.getCalendarItemById(sContext, id);
             name = cal.getSubject();
             date = cal.getDate();
-            tags = cal.getTagBitmask();
+            tags = cal.getTags();
             flags = cal.getFlagBitmask();
             folderId = cal.getFolderId();
             color = cal.getRgbColor();
@@ -1342,29 +1392,39 @@ public class PushChanges {
             else {
                 colorStr = color.toString();
             }
-            if ((mask & Change.MODIFIED_CONFLICT) != 0 || (mask & Change.MODIFIED_CONTENT) != 0 || (mask & Change.MODIFIED_INVITE) != 0) { // need to push to the server
+            if ((mask & Change.CONFLICT) != 0 || (mask & Change.CONTENT) != 0 || (mask & Change.INVITE) != 0) { // need to push to the server
                 request = new Element.XMLElement(isAppointment ? MailConstants.SET_APPOINTMENT_REQUEST : MailConstants.SET_TASK_REQUEST);
                 ToXML.encodeCalendarItemSummary(request, new ItemIdFormatter(true), ombx.getOperationContext(), cal, ToXML.NOTIFY_FIELDS, true);
-                request = InitialSync.makeSetCalRequest(request.getElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK), new LocalInviteMimeLocator(ombx), getZMailbox(), ombx.getOfflineAccount(), isAppointment, true, getTagSync());
+                request = InitialSync.makeSetCalRequest(
+                        request.getElement(isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK),
+                        new LocalInviteMimeLocator(ombx), getZMailbox(), ombx.getOfflineAccount(), isAppointment, true,
+                        getTagSync());
                 create = true; //content mod is considered same as create since we use SetAppointment for both
             } else {
                 request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
-                Element action = request.addElement(MailConstants.E_ACTION).addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE).addAttribute(MailConstants.A_ID, id);
-                if ((mask & Change.MODIFIED_TAGS) != 0)
-                    action = getTagSync().addOutboundTagsAttr(action, cal.getTagString());
-                if ((mask & Change.MODIFIED_FLAGS) != 0)
+                Element action = request.addElement(MailConstants.E_ACTION)
+                        .addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE)
+                        .addAttribute(MailConstants.A_ID, id);
+                if ((mask & Change.TAGS) != 0) {
+                    action.addAttribute(MailConstants.A_TAG_NAMES, TagUtil.encodeTags(cal.getTags()));
+                    action.addAttribute(MailConstants.A_TAGS, TagUtil.getTagIdString(cal));
+                }
+                if ((mask & Change.FLAGS) != 0) {
                     action.addAttribute(MailConstants.A_FLAGS, cal.getFlagString());
-                if ((mask & Change.MODIFIED_FOLDER) != 0)
+                }
+                if ((mask & Change.FOLDER) != 0) {
                     action.addAttribute(MailConstants.A_FOLDER, folderId);
-                if ((mask & Change.MODIFIED_COLOR) != 0) {
+                }
+                if ((mask & Change.COLOR) != 0) {
                     if (color.hasMapping()) {
                         action.addAttribute(MailConstants.A_COLOR, colorByte);
-                    }
-                    else {
+                    } else {
                         action.addAttribute(MailConstants.A_RGB, colorStr);
                     }
                 }
             }
+        } finally {
+            ombx.lock.release();
         }
 
         try {
@@ -1386,7 +1446,7 @@ public class PushChanges {
                             assert(uidSame);
                         } else if (cal.getId() != calItem.getId()) {
                             OfflineLog.offline.warn("Deleting ZD cal item %d with same UID as existing %d",cal.getId(), calItem.getId());
-                            ombx.delete(sContext, cal, null);
+                            ombx.delete(sContext, cal.getId(), cal.getType(), null);
                         }
                     } catch (NoSuchItemException nsie) {
                         if (!ombx.renumberItem(sContext, id, type, serverItemId))
@@ -1403,19 +1463,31 @@ public class PushChanges {
             OfflineLog.offline.info("push: remote calendar item " + id + " has been deleted; skipping");
         }
 
-        synchronized (ombx) {
+        ombx.lock.lock();
+        try {
             cal = ombx.getCalendarItemById(sContext, id);
             // check to see if the calendar item was changed while we were pushing the update...
             mask = 0;
-            if (flags != cal.getInternalFlagBitmask())  mask |= Change.MODIFIED_FLAGS;
-            if (tags != cal.getTagBitmask())            mask |= Change.MODIFIED_TAGS;
-            if (folderId != cal.getFolderId())          mask |= Change.MODIFIED_FOLDER;
-            if (!color.equals(cal.getRgbColor()))       mask |= Change.MODIFIED_COLOR;
-            if (date != cal.getDate())                  mask |= Change.MODIFIED_CONTENT;
-
+            if (flags != cal.getInternalFlagBitmask()) {
+                mask |= Change.FLAGS;
+            }
+            if (!TagUtil.tagsMatch(tags, cal.getTags())) {
+                mask |= Change.TAGS;
+            }
+            if (folderId != cal.getFolderId()) {
+                mask |= Change.FOLDER;
+            }
+            if (!color.equals(cal.getRgbColor())) {
+                mask |= Change.COLOR;
+            }
+            if (date != cal.getDate()) {
+                mask |= Change.CONTENT;
+            }
             // update or clear the change bitmask
             ombx.setChangeMask(sContext, id, type, mask);
             return (mask == 0);
+        } finally {
+            ombx.lock.release();
         }
     }
 }

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -82,14 +82,14 @@ public final class ImapResponse {
             is.skipChar(' ');
             data = Flags.read(is);
             break;
-        case LIST: case LSUB:
+        case LIST: case LSUB: case XLIST:
             // "LIST" SP mailbox-list / "LSUB" SP mailbox-list
             // mailbox-list    = "(" [mbx-list-flags] ")" SP
             //                   (DQUOTE QUOTED-CHAR DQUOTE / nil) SP mailbox
             is.skipChar(' ');
             data = ListData.read(is);
             break;
-        case SEARCH:
+        case SEARCH: case SORT:
             // "SEARCH" *(SP nz-number)
             data = readSearchData(is);
             break;

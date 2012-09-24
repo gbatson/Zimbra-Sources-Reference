@@ -1,24 +1,8 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
 
+import java.util.List;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.Test;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
@@ -31,20 +15,20 @@ import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseEdit;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseNew;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DocumentBriefcaseOpen;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
 
-public class EditDocument extends AjaxCommonTest {
+public class EditDocument extends FeatureBriefcaseTest {
 
 	public EditDocument() {
 		logger.info("New " + EditDocument.class.getCanonicalName());
 
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = null;
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");			
 	}
 
 	@Test(description = "Create document through SOAP - edit name & verify through GUI", groups = { "smoke" })
@@ -95,8 +79,9 @@ public class EditDocument extends AjaxCommonTest {
 			app.zPageBriefcase.zSelectWindow(docItem1.getName());
 
 			// Fill out the document with the new data
-			documentBriefcaseEdit.typeDocumentName(docItem2.getName());
-
+			//documentBriefcaseEdit.typeDocumentName(docItem2.getName());
+			documentBriefcaseEdit.zFillField(DocumentBriefcaseNew.Field.Name, docItem2.getName());
+			
 			// Save and close
 			documentBriefcaseEdit.zSubmit();
 		} catch (Exception ex) {
@@ -167,6 +152,8 @@ public class EditDocument extends AjaxCommonTest {
 		// Click on created document
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem1);
 
+		SleepUtil.sleepVerySmall();
+		
 		// Click on Edit document icon in toolbar
 		DocumentBriefcaseEdit documentBriefcaseEdit = (DocumentBriefcaseEdit) app.zPageBriefcase
 				.zToolbarPressButton(Button.B_EDIT_FILE, docItem1);
@@ -189,7 +176,7 @@ public class EditDocument extends AjaxCommonTest {
 			throw new HarnessException("error in editing document "
 					+ docItem1.getName(), ex);
 		} finally {
-			app.zPageBriefcase.zSelectWindow(PageBriefcase.pageTitle);
+			app.zPageBriefcase.sSelectWindow(PageBriefcase.pageTitle);
 		}
 
 		// refresh briefcase page
@@ -203,10 +190,15 @@ public class EditDocument extends AjaxCommonTest {
 
 		// Click on open in a separate window icon in toolbar
 		DocumentBriefcaseOpen documentBriefcaseOpen;
-		documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 					.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW,
 							docItem2);
-	
+		else
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+					.zToolbarPressPulldown(Button.B_ACTIONS,
+							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem2);
+
 		app.zPageBriefcase.isOpenDocLoaded(docItem2);
 
 		String name = "";
@@ -310,11 +302,15 @@ public class EditDocument extends AjaxCommonTest {
 
 		// Click on open in a separate window icon in toolbar
 		DocumentBriefcaseOpen documentBriefcaseOpen;
-		
-		documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 					.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW,
 							docItem);
-	
+		else
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+					.zToolbarPressPulldown(Button.B_ACTIONS,
+							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem);
+
 		app.zPageBriefcase.isOpenDocLoaded(docItem);
 
 		String text = "";
@@ -369,7 +365,6 @@ public class EditDocument extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, briefcaseFolder, true);
 
 		// Click on created document
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, docItem);
 
 		// Click on Edit document icon in toolbar
@@ -409,10 +404,15 @@ public class EditDocument extends AjaxCommonTest {
 
 		// Click on open in a separate window icon in toolbar
 		DocumentBriefcaseOpen documentBriefcaseOpen;
-		documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
 					.zToolbarPressButton(Button.B_OPEN_IN_SEPARATE_WINDOW,
 							docItem);
-	
+		else
+			documentBriefcaseOpen = (DocumentBriefcaseOpen) app.zPageBriefcase
+					.zToolbarPressPulldown(Button.B_ACTIONS,
+							Button.B_LAUNCH_IN_SEPARATE_WINDOW, docItem);
+
 		app.zPageBriefcase.isOpenDocLoaded(docItem);
 
 		String text = "";
@@ -488,7 +488,8 @@ public class EditDocument extends AjaxCommonTest {
 			editDocName = "editDocName"
 					+ ZimbraSeleniumProperties.getUniqueString();
 
-			documentBriefcaseEdit.typeDocumentName(editDocName);
+			//documentBriefcaseEdit.typeDocumentName(editDocName);
+			documentBriefcaseEdit.zFillField(DocumentBriefcaseNew.Field.Name, editDocName);
 
 			// Save and close
 			documentBriefcaseEdit.zSubmit();
@@ -533,8 +534,7 @@ public class EditDocument extends AjaxCommonTest {
 		logger.info("Checking for the opened window ...");
 
 		// Check if the window is still open
-		String[] windows = ClientSessionFactory.session().selenium()
-				.getAllWindowNames();
+		List<String> windows = app.zPageBriefcase.sGetAllWindowNames();
 		for (String window : windows) {
 			if (!window.isEmpty() && !window.contains("null")
 					&& !window.contains(PageBriefcase.pageTitle)

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,36 +17,31 @@ package com.zimbra.cs.account.callback;
 import java.util.Map;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AttributeCallback;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.account.ldap.LdapProv;
 
 public class AdminGroup extends AttributeCallback {
 
     @Override
-    public void preModify(Map context, String attrName, Object attrValue,
-            Map attrsToModify, Entry entry, boolean isCreate)
-            throws ServiceException {
-        // TODO Auto-generated method stub
-
+    public void preModify(CallbackContext context, String attrName, Object attrValue,
+            Map attrsToModify, Entry entry)
+    throws ServiceException {
     }
     
     @Override
-    public void postModify(Map context, String attrName, Entry entry,
-            boolean isCreate) {
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
         
         if (!(entry instanceof DistributionList))
             return;
              
         Provisioning prov = Provisioning.getInstance();
-        if (!(prov instanceof LdapProvisioning))
+        if (!(prov instanceof LdapProv))
             return;
         
         DistributionList group = (DistributionList)entry;
-        LdapProvisioning ldapProv = (LdapProvisioning)prov;
-        ldapProv.removeFromCache(group);
+        ((LdapProv) prov).removeFromCache(group);
     }
 }

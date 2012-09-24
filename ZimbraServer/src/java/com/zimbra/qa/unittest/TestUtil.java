@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,10 +17,13 @@ package com.zimbra.qa.unittest;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +39,45 @@ import junit.framework.Assert;
 
 import org.junit.runner.JUnitCore;
 
+import com.google.common.io.Closeables;
+import com.zimbra.client.ZContact;
+import com.zimbra.client.ZDataSource;
+import com.zimbra.client.ZDateTime;
+import com.zimbra.client.ZDocument;
+import com.zimbra.client.ZEmailAddress;
+import com.zimbra.client.ZFilterRule;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZGetInfoResult;
+import com.zimbra.client.ZGetMessageParams;
+import com.zimbra.client.ZGrant.GranteeType;
+import com.zimbra.client.ZIdentity;
+import com.zimbra.client.ZInvite;
+import com.zimbra.client.ZInvite.ZAttendee;
+import com.zimbra.client.ZInvite.ZClass;
+import com.zimbra.client.ZInvite.ZComponent;
+import com.zimbra.client.ZInvite.ZOrganizer;
+import com.zimbra.client.ZInvite.ZParticipantStatus;
+import com.zimbra.client.ZInvite.ZRole;
+import com.zimbra.client.ZInvite.ZStatus;
+import com.zimbra.client.ZInvite.ZTransparency;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMailbox.ContactSortBy;
+import com.zimbra.client.ZMailbox.OwnerBy;
+import com.zimbra.client.ZMailbox.SharedItemBy;
+import com.zimbra.client.ZMailbox.ZAppointmentResult;
+import com.zimbra.client.ZMailbox.ZImportStatus;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage.AttachedMessagePart;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage.MessagePart;
+import com.zimbra.client.ZMessage;
+import com.zimbra.client.ZMessage.ZMimePart;
+import com.zimbra.client.ZMountpoint;
+import com.zimbra.client.ZSearchHit;
+import com.zimbra.client.ZSearchParams;
+import com.zimbra.client.ZTag;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.lmtp.LmtpClient;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
@@ -57,8 +99,6 @@ import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.soap.SoapProvisioning;
 import com.zimbra.cs.client.LmcSession;
@@ -70,51 +110,19 @@ import com.zimbra.cs.client.soap.LmcSoapClientException;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraHit;
 import com.zimbra.cs.index.ZimbraQueryResults;
+import com.zimbra.cs.mailbox.DeliveryOptions;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mime.ParsedMessage;
+import com.zimbra.cs.store.StoreManager;
+import com.zimbra.cs.store.file.FileBlobStore;
 import com.zimbra.cs.util.BuildInfo;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZContact;
-import com.zimbra.cs.zclient.ZDataSource;
-import com.zimbra.cs.zclient.ZDateTime;
-import com.zimbra.cs.zclient.ZDocument;
-import com.zimbra.cs.zclient.ZEmailAddress;
-import com.zimbra.cs.zclient.ZFilterRule;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZGetInfoResult;
-import com.zimbra.cs.zclient.ZGetMessageParams;
-import com.zimbra.cs.zclient.ZGrant.GranteeType;
-import com.zimbra.cs.zclient.ZIdentity;
-import com.zimbra.cs.zclient.ZInvite;
-import com.zimbra.cs.zclient.ZInvite.ZAttendee;
-import com.zimbra.cs.zclient.ZInvite.ZClass;
-import com.zimbra.cs.zclient.ZInvite.ZComponent;
-import com.zimbra.cs.zclient.ZInvite.ZOrganizer;
-import com.zimbra.cs.zclient.ZInvite.ZParticipantStatus;
-import com.zimbra.cs.zclient.ZInvite.ZRole;
-import com.zimbra.cs.zclient.ZInvite.ZStatus;
-import com.zimbra.cs.zclient.ZInvite.ZTransparency;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMailbox.ContactSortBy;
-import com.zimbra.cs.zclient.ZMailbox.OwnerBy;
-import com.zimbra.cs.zclient.ZMailbox.SharedItemBy;
-import com.zimbra.cs.zclient.ZMailbox.ZAppointmentResult;
-import com.zimbra.cs.zclient.ZMailbox.ZImportStatus;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.AttachedMessagePart;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.MessagePart;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZMessage.ZMimePart;
-import com.zimbra.cs.zclient.ZMountpoint;
-import com.zimbra.cs.zclient.ZSearchHit;
-import com.zimbra.cs.zclient.ZSearchParams;
-import com.zimbra.cs.zclient.ZTag;
 
 /**
  * @author bburtin
@@ -126,41 +134,31 @@ extends Assert {
 
     public static boolean accountExists(String userName)
     throws ServiceException {
-        String address = getAddress(userName);
-        Account account = Provisioning.getInstance().get(AccountBy.name, address);
-        return (account != null);
+        return AccountTestUtil.accountExists(userName);
     }
 
     public static Account getAccount(String userName)
     throws ServiceException {
-        String address = getAddress(userName);
-        return Provisioning.getInstance().get(AccountBy.name, address);
+        return AccountTestUtil.getAccount(userName);
     }
 
     public static String getDomain()
     throws ServiceException {
-        Config config = Provisioning.getInstance().getConfig(Provisioning.A_zimbraDefaultDomainName);
-        String domain = config.getAttr(Provisioning.A_zimbraDefaultDomainName, null);
-        assert(domain != null && domain.length() > 0);
-        return domain;
+        return AccountTestUtil.getDomain();
     }
 
     public static Mailbox getMailbox(String userName)
     throws ServiceException {
-        Account account = getAccount(userName);
-        return MailboxManager.getInstance().getMailboxByAccount(account);
+        return AccountTestUtil.getMailbox(userName);
     }
 
     public static String getAddress(String userName)
     throws ServiceException {
-        if (userName.contains("@"))
-            return userName;
-        else
-            return userName + "@" + getDomain();
+        return AccountTestUtil.getAddress(userName);
     }
 
     public static String getAddress(String userName, String domainName) {
-        return userName + "@" + domainName;
+        return AccountTestUtil.getAddress(userName, domainName);
     }
 
     public static String getSoapUrl() {
@@ -227,7 +225,8 @@ extends Assert {
     throws Exception {
         String message = getTestMessage(subject, null, null, new Date(timestamp));
         ParsedMessage pm = new ParsedMessage(message.getBytes(), timestamp, false);
-        return mbox.addMessage(null, pm, folderId, false, Flag.BITMASK_UNREAD, null);
+        DeliveryOptions dopt = new DeliveryOptions().setFolderId(folderId).setFlags(Flag.BITMASK_UNREAD);
+        return mbox.addMessage(null, pm, dopt, null);
     }
 
     public static String getTestMessage(String subject)
@@ -346,23 +345,21 @@ extends Assert {
     /**
      * Searches a mailbox and returns the id's of all matching items.
      */
-    public static List<Integer> search(Mailbox mbox, String query, byte type)
-    throws ServiceException, IOException {
-        return search(mbox, query, new byte[] { type });
+    public static List<Integer> search(Mailbox mbox, String query, MailItem.Type type) throws ServiceException {
+        return search(mbox, query, Collections.singleton(type));
     }
 
     /**
      * Searches a mailbox and returns the id's of all matching items.
      */
-    public static List<Integer> search(Mailbox mbox, String query, byte[] types)
-    throws ServiceException, IOException {
+    public static List<Integer> search(Mailbox mbox, String query, Set<MailItem.Type> types) throws ServiceException {
         List<Integer> ids = new ArrayList<Integer>();
-        ZimbraQueryResults r = mbox.search(new OperationContext(mbox), query, types, SortBy.DATE_DESCENDING, 100);
+        ZimbraQueryResults r = mbox.index.search(new OperationContext(mbox), query, types, SortBy.DATE_DESC, 100);
         while (r.hasNext()) {
             ZimbraHit hit = r.getNext();
             ids.add(new Integer(hit.getItemId()));
         }
-        r.doneWithSearchResults();
+        Closeables.closeQuietly(r);
         return ids;
     }
 
@@ -477,7 +474,7 @@ extends Assert {
      */
     public static void deleteTestData(String userName, String subjectSubstring)
     throws ServiceException {
-        ZMailbox mbox = TestUtil.getZMailbox(userName);
+        ZMailbox mbox = getZMailbox(userName);
 
         deleteMessages(mbox, "is:anywhere " + subjectSubstring);
 
@@ -531,7 +528,8 @@ extends Assert {
             mbox.deleteItem(StringUtil.join(",", ids), null);
         }
 
-        mbox.emptyDumpster();
+        ZMailbox adminMbox = getZMailboxAsAdmin(userName);
+        adminMbox.emptyDumpster();
     }
 
     private static void deleteMessages(ZMailbox mbox, String query)
@@ -587,6 +585,15 @@ extends Assert {
         options.setAccountBy(AccountBy.name);
         options.setPassword(DEFAULT_PASSWORD);
         options.setUri(getSoapUrl());
+        return ZMailbox.getMailbox(options);
+    }
+
+    public static ZMailbox getZMailboxAsAdmin(String username)
+    throws ServiceException {
+        ZAuthToken adminAuthToken = newSoapProvisioning().getAuthToken();
+        ZMailbox.Options options = new ZMailbox.Options(adminAuthToken, getSoapUrl());
+        options.setTargetAccount(getAddress(username));
+        options.setTargetAccountBy(AccountBy.name);
         return ZMailbox.getMailbox(options);
     }
 
@@ -700,7 +707,7 @@ extends Assert {
     throws ServiceException {
         Provisioning prov = Provisioning.getInstance();
         Account account = getAccount(userName);
-        DataSource ds = prov.get(account, DataSourceBy.name, dataSourceName);
+        DataSource ds = prov.get(account, Key.DataSourceBy.name, dataSourceName);
         Map<String, Object> attrs = new HashMap<String, Object>();
         attrs.put(attrName, attrValue);
         prov.modifyAttrs(ds, attrs);
@@ -787,7 +794,8 @@ extends Assert {
         remoteMbox.modifyFolderGrant(
             remoteFolder.getId(), GranteeType.all, null, "rwidx", null);
         return localMbox.createMountpoint(Integer.toString(Mailbox.ID_FOLDER_USER_ROOT),
-            mountpointName, null, null, null, OwnerBy.BY_ID, remoteInfo.getId(), SharedItemBy.BY_ID, remoteFolder.getId());
+            mountpointName, null, null, null,
+            OwnerBy.BY_ID, remoteInfo.getId(), SharedItemBy.BY_ID, remoteFolder.getId(), false);
     }
 
     /**
@@ -1035,8 +1043,14 @@ extends Assert {
 
     public static ZDocument createDocument(ZMailbox mbox, String folderId, String name, String contentType, byte[] content)
     throws ServiceException {
+        return createDocument(mbox, folderId, name, contentType, content, false);
+    }
+
+    public static ZDocument createDocument(ZMailbox mbox, String folderId, String name,
+                                           String contentType, byte[] content, boolean isNote)
+    throws ServiceException {
         String attachId = mbox.uploadAttachment(name, content, contentType, 0);
-        String docId = mbox.createDocument(folderId, name, attachId);
+        String docId = mbox.createDocument(folderId, name, attachId, isNote);
         return mbox.getDocument(docId);
     }
 
@@ -1049,5 +1063,36 @@ extends Assert {
         }
         Assert.fail("Could not find default identity for " + mbox.getName());
         return null;
+    }
+
+    public static boolean checkLocalBlobs() {
+        //some tests check disk for blob files. these tests only work with FileBlobStore
+        return StoreManager.getInstance() instanceof FileBlobStore;
+    }
+
+    public static byte[] readInputStream(InputStream is) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        int i = -1;
+        while ((i = is.read()) >= 0) {
+            baos.write(i);
+        }
+        return baos.toByteArray();
+    }
+
+    public static boolean bytesEqual(byte[] b1, InputStream is) throws IOException {
+        return bytesEqual(b1, readInputStream(is));
+    }
+
+    public static boolean bytesEqual(byte[] b1, byte[] b2) {
+        if (b1.length != b2.length) {
+            return false;
+        } else {
+            for (int i = 0; i < b1.length; i++) {
+                if (b1[i] != b2[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,25 +18,21 @@
  */
 package com.zimbra.cs.service.admin;
 
-import java.util.List;
-import java.util.Map;
-
-import com.zimbra.cs.account.Account;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.AdminConstants;
+import com.zimbra.common.soap.Element;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.AccountServiceException;
-import com.zimbra.cs.account.AttributeClass;
-import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.soap.AdminConstants;
-import com.zimbra.common.soap.Element;
 import com.zimbra.soap.ZimbraSoapContext;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author schemers
@@ -55,7 +51,7 @@ public class ModifyDomain extends AdminDocumentHandler {
 	    String id = request.getAttribute(AdminConstants.E_ID);
 	    Map<String, Object> attrs = AdminService.getAttrs(request);
 	    
-	    Domain domain = prov.get(DomainBy.id, id);
+	    Domain domain = prov.get(Key.DomainBy.id, id);
         if (domain == null)
             throw AccountServiceException.NO_SUCH_DOMAIN(id);
         
@@ -65,8 +61,9 @@ public class ModifyDomain extends AdminDocumentHandler {
         checkDomainRight(zsc, domain, attrs);
         
         // check to see if domain default cos is being changed, need right on new cos 
-        checkCos(zsc, attrs);
-        
+        checkCos(zsc, attrs, Provisioning.A_zimbraDomainDefaultCOSId);
+        checkCos(zsc, attrs, Provisioning.A_zimbraDomainDefaultExternalUserCOSId);
+
         // pass in true to checkImmutable
         prov.modifyAttrs(domain, attrs, true);
 
@@ -78,8 +75,9 @@ public class ModifyDomain extends AdminDocumentHandler {
 	    return response;
 	}
 	
-    private void checkCos(ZimbraSoapContext zsc, Map<String, Object> attrs) throws ServiceException {
-        String newDomainCosId = ModifyAccount.getStringAttrNewValue(Provisioning.A_zimbraDomainDefaultCOSId, attrs);
+    private void checkCos(ZimbraSoapContext zsc, Map<String, Object> attrs, String defaultCOSIdAttrName)
+            throws ServiceException {
+        String newDomainCosId = ModifyAccount.getStringAttrNewValue(defaultCOSIdAttrName, attrs);
         if (newDomainCosId == null)
             return;  // not changing it
         
@@ -89,7 +87,7 @@ public class ModifyDomain extends AdminDocumentHandler {
             return; 
         } 
 
-        Cos cos = prov.get(CosBy.id, newDomainCosId);
+        Cos cos = prov.get(Key.CosBy.id, newDomainCosId);
         if (cos == null) {
             throw AccountServiceException.NO_SUCH_COS(newDomainCosId);
         }

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.File;
@@ -43,7 +27,7 @@ import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.apache.log4j.BasicConfigurator;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
-import org.dom4j.DocumentException;
+import org.dom4j.InvalidXPathException;
 
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.net.SocketFactories;
@@ -54,6 +38,7 @@ import com.zimbra.common.soap.SoapParseException;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.soap.SoapUtil;
 import com.zimbra.common.soap.Element.ContainerException;
+import com.zimbra.common.soap.XmlParseException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.qa.selenium.framework.core.*;
 import com.zimbra.qa.selenium.framework.ui.I18N;
@@ -71,15 +56,13 @@ public class ZimbraAccount {
 	public String ZimbraMailHost = null;
 	public String ZimbraMailClientHost = null;
 	public String ZimbraId = null;
-	public String CN = null;
-	public String DisplayName = null;
 	public String EmailAddress = null;
 	public String Password = null;
 	public boolean accountIsDirty = false;
 	protected String ZimbraPrefLocale = Locale.getDefault().toString();
 	protected String MyAuthToken = null;
 	protected String MyClientAuthToken = null;
-	public Map<String, String> preferences = null;
+	protected Map<String, String> preferences = new HashMap<String, String>();
 	public final static String clientAccountName = "local@host.local";
 
 	/*
@@ -96,14 +79,17 @@ public class ZimbraAccount {
 	 */
 	public ZimbraAccount(String email, String password) {
 
-		if ( email == null ) {
-			CN = ZimbraSeleniumProperties.getStringProperty("locale").toLowerCase().replace("_", "") + ZimbraSeleniumProperties.getUniqueString();
-			DisplayName = CN;
-			email = CN + "@" + ZimbraSeleniumProperties.getStringProperty("testdomain", "testdomain.com");
-		} else {
-			CN = email.split("@")[0];
-			DisplayName = CN;
+		try {
+			if ( email == null ) {
+				setPref("displayName", ZimbraSeleniumProperties.getStringProperty("locale").toLowerCase().replace("_", "") + ZimbraSeleniumProperties.getUniqueString());
+				email = getPref("displayName") + "@" + ZimbraSeleniumProperties.getStringProperty("testdomain", "testdomain.com");
+			} else {
+				setPref("displayName", email.split("@")[0]);
+			}
+		} catch (HarnessException e) {
+			logger.error(e);
 		}
+		
 		EmailAddress = email;
 
 		if ( password == null ) {
@@ -254,10 +240,6 @@ public class ZimbraAccount {
 		put("zimbraPrefWarnOnExit","FALSE");
 	}};
 
-	/**
-	 * A list of domains that exist on the server, so the harness doesn't need to resend GetDomainrequest/CreateDomainRequest
-	 */
-	protected static List<String> domainList = new ArrayList<String>();
 
 	/**
 	 * Creates the account on the ZCS using CreateAccountRequest
@@ -265,31 +247,11 @@ public class ZimbraAccount {
 	public ZimbraAccount provision() {
 		try {
 
+			
 			// Make sure domain exists
-			String domain = EmailAddress.split("@")[1];
-
-			if ( !domainList.contains(domain) ) {
-
-				// Check if the domain exists
-				ZimbraAdminAccount.GlobalAdmin().soapSend(
-						"<GetDomainRequest xmlns='urn:zimbraAdmin'>"
-						+		"<domain by='name'>"+ domain +"</domain>"
-						+	"</GetDomainRequest>");
-				Element response = ZimbraAdminAccount.GlobalAdmin().soapSelectNode("//admin:GetDomainResponse/admin:domain", 1);
-
-				if ( response == null ) {
-
-					// If the domain does not exist, create it
-					ZimbraAdminAccount.GlobalAdmin().soapSend(
-							"<CreateDomainRequest xmlns='urn:zimbraAdmin'>"
-							+		"<name>"+ domain +"</name>"
-							+	"</CreateDomainRequest>");
-
-				}	
-
-				domainList.add(domain);
-
-			}
+			ZimbraDomain domain = new ZimbraDomain( EmailAddress.split("@")[1]);
+			domain.provision();
+			
 
 
 			// Build the list of default preferences
@@ -297,7 +259,9 @@ public class ZimbraAccount {
 			for (Map.Entry<String, String> entry : accountAttrs.entrySet()) {
 				prefs.append(String.format("<a n='%s'>%s</a>", entry.getKey(), entry.getValue()));
 			}
-			prefs.append(String.format("<a n='%s'>%s</a>", "displayName", DisplayName));
+			for (Map.Entry<String, String> entry : preferences.entrySet()) {
+				prefs.append(String.format("<a n='%s'>%s</a>", entry.getKey(), entry.getValue()));
+			}
 
 			// Create the account
 			ZimbraAdminAccount.GlobalAdmin().soapSend(
@@ -312,6 +276,15 @@ public class ZimbraAccount {
 
 			if ( (createAccountResponse == null) || (createAccountResponse.length == 0)) {
 
+				Element[] soapFault = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//soap:Fault");
+				if ( soapFault != null && soapFault.length > 0 ) {
+				
+					String error = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//zimbra:Code", null);
+					throw new HarnessException("Unable to create account: "+ error);
+					
+				}
+				
+				
 				logger.error("Error occured during account provisioning, perhaps account already exists: "+ EmailAddress);
 				ZimbraAdminAccount.GlobalAdmin().soapSend(
 						"<GetAccountRequest xmlns='urn:zimbraAdmin'>"
@@ -345,12 +318,25 @@ public class ZimbraAccount {
 				ZimbraPrefLocale = Locale.getDefault().toString();
 			}
 
+			if ( ZimbraSeleniumProperties.getStringProperty("soap.trace.enabled", "false").toLowerCase().equals("true") ) {
+				
+				ZimbraAdminAccount.GlobalAdmin().soapSend(
+							"<AddAccountLoggerRequest xmlns='urn:zimbraAdmin'>"
+						+		"<account by='name'>"+ EmailAddress + "</account>"
+						+		"<logger category='zimbra.soap' level='trace'/>"
+						+	"</AddAccountLoggerRequest>");
+
+			}
+			
 			// Start: Dev environment hack
 			if ( DevEnvironment.isUsingDevEnvironment() ) {
 				ZimbraMailHost = "localhost";
 			}
 			// End: Dev environment hack
 
+			
+			// Sync the GAL to put the account into the list
+			domain.syncGalAccount();
 
 		} catch (HarnessException e) {
 
@@ -502,9 +488,7 @@ public class ZimbraAccount {
 			output = temp.toString().split(";");
 
 		} catch (ServiceException se) {
-			se.printStackTrace();
-			throw new HarnessException("Getting service exception while getting available zimlets: " +
-					se.getMessage());
+			throw new HarnessException("Getting service exception while getting available zimlets", se);
 		}
 
 		accountIsDirty = true;
@@ -579,6 +563,31 @@ public class ZimbraAccount {
 		return (value);
 	}
 
+	/**
+	 * Set a user preference.  This method only changes the ZimbraAccount object.  The
+	 * harness must still call ModifyPrefsRequest, CreateAccountRequest, ModifyAccountRequest,
+	 * etc.
+	 * 
+	 */
+	public void setPref(String key, String value) throws HarnessException {
+
+		preferences.put(key, value);
+		
+	}
+	
+	public String getPref(String key) throws HarnessException {
+		
+		return (preferences.get(key));
+		
+	}
+	
+	public void clearPref(String key) throws HarnessException {
+		
+		if ( preferences.containsKey(key) ) {
+			preferences.remove(key);
+		}
+		
+	}
 
 	/**
 	 * Get this Account's Locale Preference (zimbraPrefLocale)
@@ -709,7 +718,7 @@ public class ZimbraAccount {
 			if ( !(this instanceof ZimbraAdminAccount) ) {
 				ExecuteHarnessMain.tracer.trace(EmailAddress +" sends "+ Element.parseXML(request).getName());
 			}
-		} catch (DocumentException e) {
+		} catch (XmlParseException e) {
 			ExecuteHarnessMain.tracer.warn("Unable to parse "+ request);
 		}
 
@@ -749,7 +758,7 @@ public class ZimbraAccount {
 			if ( attr == null ) {
 				value = e.getText();
 			} else {
-				value = e.getAttribute("attr", null);
+				value = e.getAttribute(attr, null);
 			}
 
 			if ( value == null )
@@ -817,6 +826,8 @@ public class ZimbraAccount {
 		protected Element responseEnvelope;
 		protected Element requestContext;
 		protected Element requestBody;
+
+		private static final Element[] EMPTY_ELEMENT_ARRAY = new Element[0];
 
 		protected URI mURI = null;
 
@@ -967,7 +978,7 @@ public class ZimbraAccount {
 
 				 return (sendSOAP(host, requestContext, Element.parseXML(request), destinationType));
 
-			 } catch (DocumentException e) {
+			 } catch (XmlParseException e) {
 				 throw new HarnessException("Unable to parse request "+ request, e);
 			 } catch (ContainerException e) {
 				 throw new HarnessException("Unable to parse request "+ request, e);
@@ -1059,8 +1070,6 @@ public class ZimbraAccount {
 			 // If the current SOAP request matches any of the "queue" requests, set matched=true
 			 for (String request : requests) {
 				 Element[] nodes = selectNodes(requestEnvelope, "//"+ request);
-				 if ( nodes == null )
-					 continue;
 				 if ( nodes.length > 0 ) {
 					 Stafpostqueue sp = new Stafpostqueue();
 					 sp.waitForPostqueue();
@@ -1088,8 +1097,6 @@ public class ZimbraAccount {
 		  */
 		 public static Element selectNode(Element context, String xpath) {
 			 Element[] nodes = selectNodes(context, xpath);
-			 if (nodes == null)
-				 return (null);
 			 if (nodes.length == 0)
 				 return (null);
 			 return (nodes[0]);        		
@@ -1099,35 +1106,33 @@ public class ZimbraAccount {
 		  * Return an array of elements from the context that match the xpath
 		  * @param context
 		  * @param xpath
-		  * @return
+		  * @return An Array of elements that match the xpath (empty array if none)
+		 * @throws HarnessException 
 		  * @throws HarnessException 
 		  */
-		 @SuppressWarnings("unchecked")
 		 public static Element[] selectNodes(Element context, String xpath) {
 			 if ( context == null )
-				 return (null);
-			 org.dom4j.Element d4context = context.toXML();
-			 org.dom4j.XPath Xpath = d4context.createXPath(xpath);
-			 Xpath.setNamespaceURIs(getURIs());
-			 org.dom4j.Node node;
-			 List dom4jElements = Xpath.selectNodes(d4context);
+				 return (SoapClient.EMPTY_ELEMENT_ARRAY);
 
-			 List<Element> zimbraElements = new ArrayList<Element>();
-			 Iterator iter = dom4jElements.iterator();
-			 while (iter.hasNext()) {
-				 node = (org.dom4j.Node)iter.next();
-				 if (node instanceof org.dom4j.Element) {
-					 Element zimbraElement = Element.convertDOM((org.dom4j.Element) node);
-					 zimbraElements.add(zimbraElement);
+			 try {
+				 org.dom4j.Element d4context = context.toXML();
+				 org.dom4j.XPath Xpath = d4context.createXPath(xpath);
+				 Xpath.setNamespaceURIs(getURIs());
+				 
+				 List<Element> zimbraElements = new ArrayList<Element>();
+
+				 for (Object o : Xpath.selectNodes(d4context)) {
+					 if ( o instanceof org.dom4j.Element ) {
+						 zimbraElements.add(Element.convertDOM((org.dom4j.Element) o));
+					 }
 				 }
-			 }
+				 
+				 return (zimbraElements.toArray(new Element[zimbraElements.size()]));
 
-			 int size = zimbraElements.size();
-			 Element[] retVal = new Element[size];
-			 for (int i = 0; i < size; i++) {
-				 retVal[i] = zimbraElements.get(i);
+			 } catch (InvalidXPathException e) {
+				 LogManager.getRootLogger().error("Unable to select nodes", e);
+				 throw e;
 			 }
-			 return (retVal);
 		 }
 
 		 /**
@@ -1149,8 +1154,6 @@ public class ZimbraAccount {
 		  */
 		 public Element selectNode(Element context, String xpath, int index) {
 			 Element[] nodes = selectNodes(context, xpath);
-			 if (nodes == null)
-				 return (null);
 			 if ( nodes.length < index )
 				 return (null);
 			 return (nodes[index - 1]);
@@ -1182,10 +1185,6 @@ public class ZimbraAccount {
 				 elements = selectNodes(context, xpath);
 
 			 }
-
-			 // Make sure we have elements
-			 if ( elements == null )
-				 return (null);
 
 			 // Make sure we have at least the specified index
 			 if ( elements.length < index )
@@ -1352,25 +1351,25 @@ public class ZimbraAccount {
 		  */    	
 
 		 private static Map<String, String> mURIs = null;
+		 static {
+			 mURIs = new HashMap<String, String>();
+			 mURIs.put("zimbra", "urn:zimbra");
+			 mURIs.put("acct", "urn:zimbraAccount");
+			 mURIs.put("mail", "urn:zimbraMail");
+			 mURIs.put("offline", "urn:zimbraOffline");
+			 mURIs.put("admin", "urn:zimbraAdmin");
+			 mURIs.put("voice", "urn:zimbraVoice");
+			 mURIs.put("im", "urn:zimbraIM");
+			 mURIs.put("mapi", "urn:zimbraMapi");
+			 mURIs.put("sync", "urn:zimbraSync");
+			 mURIs.put("cs", "urn:zimbraCS");
+			 mURIs.put("test", "urn:zimbraTestHarness");
+			 mURIs.put("soap", "http://www.w3.org/2003/05/soap-envelope");
+			 mURIs.put("soap12", "http://www.w3.org/2003/05/soap-envelope");
+			 mURIs.put("soap11", "http://schemas.xmlsoap.org/soap/envelope/");
+		 }
 		 @SuppressWarnings("unchecked")
-		 private static Map getURIs() {
-			 if (mURIs == null) {
-				 mURIs = new HashMap<String, String>();
-				 mURIs.put("zimbra", "urn:zimbra");
-				 mURIs.put("acct", "urn:zimbraAccount");
-				 mURIs.put("mail", "urn:zimbraMail");
-				 mURIs.put("offline", "urn:zimbraOffline");
-				 mURIs.put("admin", "urn:zimbraAdmin");
-				 mURIs.put("voice", "urn:zimbraVoice");
-				 mURIs.put("im", "urn:zimbraIM");
-				 mURIs.put("mapi", "urn:zimbraMapi");
-				 mURIs.put("sync", "urn:zimbraSync");
-				 mURIs.put("cs", "urn:zimbraCS");
-				 mURIs.put("test", "urn:zimbraTestHarness");
-				 mURIs.put("soap", "http://www.w3.org/2003/05/soap-envelope");
-				 mURIs.put("soap12", "http://www.w3.org/2003/05/soap-envelope");
-				 mURIs.put("soap11", "http://schemas.xmlsoap.org/soap/envelope/");
-			 }
+		private static Map getURIs() {
 			 return mURIs;
 		 }
 
@@ -1380,7 +1379,6 @@ public class ZimbraAccount {
 
 		private static final String X_ORIGINATING_IP = "X-Originating-IP";
 
-		private boolean mKeepAlive;
 		private int mRetryCount;
 		private int mTimeout;
 		private String mUri;
@@ -1476,7 +1474,6 @@ public class ZimbraAccount {
 
 		private void commonInit(String uri) {
 			mUri = uri;
-			mKeepAlive = false;
 			mRetryCount = 3;
 			setTimeout(0);
 		}
@@ -1504,23 +1501,6 @@ public class ZimbraAccount {
 		  */
 		 public int getRetryCount() {
 			 return mRetryCount;
-		 }
-
-		 /**
-		  * Whether or not to keep the connection alive in between
-		  * invoke calls.
-		  *
-		  * <p> Default value is <code>false</code>.
-		  */
-		 private void setKeepAlive(boolean keepAlive) {
-			 this.mKeepAlive = keepAlive;
-		 }
-
-		 /**
-		  * Get the mKeepAlive value.
-		  */
-		 private boolean getKeepAlive() {
-			 return mKeepAlive;
 		 }
 
 		 /**
@@ -1612,7 +1592,8 @@ public class ZimbraAccount {
 			 }
 		 }
 
-		 protected Element parseSoapResponse(String envelopeStr, boolean raw) throws SoapParseException, SoapFaultException {
+		@Override
+        protected Element parseSoapResponse(String envelopeStr, boolean raw) throws SoapParseException, SoapFaultException {
 			 Element env;
 			 try {
 				 if (envelopeStr.trim().startsWith("<")) {
@@ -1621,7 +1602,7 @@ public class ZimbraAccount {
 				 } else {
 					 env = Element.parseJSON(envelopeStr);
 				 }
-			 } catch (DocumentException de) {
+			 } catch (XmlParseException e) {
 				 throw new SoapParseException("unable to parse response", envelopeStr);
 			 }
 
@@ -1632,7 +1613,7 @@ public class ZimbraAccount {
 
 
 	}
-
+	
 	/**
 	 * @param args
 	 * @throws HarnessException 

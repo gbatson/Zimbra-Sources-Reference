@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,14 +17,13 @@ package com.zimbra.cs.service.admin;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.GalSearchType;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.gal.GalSearchControl;
@@ -32,6 +31,7 @@ import com.zimbra.cs.gal.GalSearchParams;
 import com.zimbra.cs.gal.GalSearchResultCallback;
 import com.zimbra.common.soap.Element;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.GalSearchType;
 
 /**
  * @since May 26, 2004
@@ -53,7 +53,7 @@ public class SearchGal extends AdminGalDocumentHandler {
 
         String domainName = request.getAttribute(AdminConstants.A_DOMAIN);
         Provisioning prov = Provisioning.getInstance();
-        Domain domain = prov.get(DomainBy.name, domainName);
+        Domain domain = prov.get(Key.DomainBy.name, domainName);
         if (domain == null)
             throw AccountServiceException.NO_SUCH_DOMAIN(domainName);
 
@@ -62,7 +62,7 @@ public class SearchGal extends AdminGalDocumentHandler {
         String name = request.getAttribute(AdminConstants.E_NAME, "");
         int limit = (int) request.getAttributeLong(AdminConstants.A_LIMIT, 0);
         String typeStr = request.getAttribute(AdminConstants.A_TYPE, GalSearchType.account.name());
-        Provisioning.GalSearchType type = Provisioning.GalSearchType.fromString(typeStr);
+        GalSearchType type = GalSearchType.fromString(typeStr);
         
         String galAcctId = request.getAttribute(AccountConstants.A_GAL_ACCOUNT_ID, null);
         

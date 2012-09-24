@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,14 +21,22 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.Element.XMLElement;
+
+import com.zimbra.soap.admin.type.Attr;
+import com.zimbra.soap.admin.type.AccountInfo;
 
 class SoapAccount extends Account implements SoapEntry {
         
     SoapAccount(String name, String id, Map<String, Object> attrs, Provisioning prov) {
         super(name, id, attrs, null, prov);
+    }
+
+    SoapAccount(AccountInfo accountInfo, Provisioning prov) throws ServiceException {
+        super(accountInfo.getName(), accountInfo.getId(),
+                Attr.collectionToMap(accountInfo.getAttrList()), null, prov);
     }
 
     SoapAccount(Element e, Provisioning prov) throws ServiceException {

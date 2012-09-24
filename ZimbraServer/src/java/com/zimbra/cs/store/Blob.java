@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -27,6 +27,7 @@ import java.util.zip.GZIPInputStream;
 
 import org.apache.commons.io.FileUtils;
 
+import com.google.common.base.Objects;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.FileUtil;
 import com.zimbra.common.zmime.ZSharedFileInputStream;
@@ -52,6 +53,12 @@ public class Blob {
 
         this.file = file;
         this.path = file.getAbsolutePath();
+    }
+
+    protected Blob(File file, long rawSize, String digest) {
+        this(file);
+        this.rawSize = rawSize;
+        this.digest = digest;
     }
 
     public File getFile() {
@@ -81,7 +88,7 @@ public class Blob {
         return compressed;
     }
 
-    /** Returns the SHA1 digest of this blob's uncompressed data,
+    /** Returns the SHA-256 digest of this blob's uncompressed data,
      *  encoded in base64. */
     public String getDigest() throws IOException {
         if (digest == null) {
@@ -109,7 +116,7 @@ public class Blob {
             // Get the stream using the local method.  FileBlobStore.getContent()
             // can call getDigest(), which could result in an infinite loop.
             in = getInputStream();
-            MessageDigest md = MessageDigest.getInstance("SHA1");
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
             byte[] buffer = new byte[1024];
             int numBytes;
             long totalBytes = 0;
@@ -166,6 +173,9 @@ public class Blob {
     }
 
     @Override public String toString() {
-        return "Blob: { path=" + path + ", size=" + rawSize + ", compressed=" + compressed + " }";
+        return Objects.toStringHelper(this)
+            .add("path", path)
+            .add("size", rawSize)
+            .add("compressed", compressed).toString();
     }
 }

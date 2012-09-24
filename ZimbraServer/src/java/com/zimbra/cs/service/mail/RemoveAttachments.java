@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -83,13 +83,13 @@ public class RemoveAttachments extends MailDocumentHandler {
             } else {
                 DeliveryOptions dopt = new DeliveryOptions();
                 dopt.setFolderId(msg.getFolderId()).setNoICal(true);
-                dopt.setFlags(msg.getFlagBitmask()).setTagString(msg.getTagString());
+                dopt.setFlags(msg.getFlagBitmask()).setTags(msg.getTags());
                 if (msg.getConversationId() > 0)
                     dopt.setConversationId(msg.getConversationId());
                 // FIXME: copy custom metadata to new item
-                msg = mbox.addMessage(octxt, pm, dopt);
+                msg = mbox.addMessage(octxt, pm, dopt, null);
                 // and clean up the existing message...
-                mbox.delete(octxt, iid.getId(), MailItem.TYPE_MESSAGE);
+                mbox.delete(octxt, iid.getId(), MailItem.Type.MESSAGE);
             }
         } catch (IOException ioe) {
             throw ServiceException.FAILURE("error reading existing message blob", ioe);
@@ -101,13 +101,13 @@ public class RemoveAttachments extends MailDocumentHandler {
 
         Element response = zsc.createElement(MailConstants.REMOVE_ATTACHMENTS_RESPONSE);
         // FIXME: inefficient -- this recalculates the MimeMessage (but RemoveAttachments is called rarely)
-        ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true);
+        ToXML.encodeMessageAsMP(response, ifmt, octxt, msg, null, -1, true, true, null, true, false);
         return response;
     }
 
     private static class PartIdComparator implements Comparator<String> {
-        PartIdComparator()  { }
 
+        @Override
         public int compare(String o1, String o2) {
             // short-circuit simple comparisons
             if (o1.equalsIgnoreCase(o2))  return 0;

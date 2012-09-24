@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,16 +16,18 @@ package com.zimbra.cs.mailbox.calendar;
 
 import java.util.List;
 
+import com.zimbra.common.calendar.CalendarUtil;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZParameter;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
-import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.service.mail.ToXML;
+import com.zimbra.soap.JaxbUtil;
+import com.zimbra.soap.mail.type.CalOrganizer;
 
 public class ZOrganizer extends CalendarUser {
     public ZOrganizer(String address, String cn) {
@@ -57,7 +59,33 @@ public class ZOrganizer extends CalendarUser {
         return ICalTok.ORGANIZER;
     }
 
+    // Note: CalOrganizer represents an organizer in the "urn:zimbraMail"
+    //       namespace.
+    public CalOrganizer toJaxb() {
+        CalOrganizer org = new CalOrganizer();
+        String str = getAddress();
+        org.setAddress(IDNUtil.toUnicode(str));
+        org.setUrl(str); // for backward compatibility
+        if (hasCn())
+            org.setDisplayName(getCn());
+        if (hasSentBy())
+            org.setSentBy(getSentBy());
+        if (hasDir())
+            org.setDir(getDir());
+        if (hasLanguage())
+            org.setLanguage(getLanguage());
+        org.setXParams(ToXML.jaxbXParams(xparamsIterator()));
+        return org;
+    }
+
     public Element toXml(Element parent) {
+        // TODO:  See Bug 61429.  This can be called for SOAP headers in
+        // namespace "urn:Zimbra" as well as for namespace "urn:ZimbraMail",
+        // so, we cannot just use one JAXB object to represent an organizer.
+        // return JaxbUtil.addChildElementFromJaxb(parent,
+        //         MailConstants.E_CAL_ORGANIZER, MailConstants.NAMESPACE_STR,
+        //          toJaxb());
+        // Perhaps could use parent.getQName() to determine the namespace?
         Element orgElt = parent.addUniqueElement(MailConstants.E_CAL_ORGANIZER);
         String str = getAddress();
         orgElt.addAttribute(MailConstants.A_ADDRESS, IDNUtil.toUnicode(str));
@@ -71,7 +99,7 @@ public class ZOrganizer extends CalendarUser {
         if (hasLanguage())
             orgElt.addAttribute(MailConstants.A_CAL_LANGUAGE, getLanguage());
 
-        ToXML.encodeXParams(orgElt, xparamsIterator());
+        CalendarUtil.encodeXParams(orgElt, xparamsIterator());
 
         return orgElt;
     }
@@ -90,7 +118,7 @@ public class ZOrganizer extends CalendarUser {
         String dir = element.getAttribute(MailConstants.A_CAL_DIR, null);
         String lang = element.getAttribute(MailConstants.A_CAL_LANGUAGE, null);
 
-        List<ZParameter> xparams = CalendarUtils.parseXParams(element);
+        List<ZParameter> xparams = CalendarUtil.parseXParams(element);
 
         ZOrganizer org = new ZOrganizer(address, cn, sentBy, dir, lang, xparams);
         return org;

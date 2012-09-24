@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.ZimletConstants;
 
 /**
  * 
@@ -54,19 +55,19 @@ public class ZimletDescription extends ZimletMeta {
 	}
 
 	protected void validateElement(Element elem) throws ZimletException {
-		if (elem.getName().equals(ZIMLET_TAG_CONTENT_OBJECT)) {
+		if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_CONTENT_OBJECT)) {
 			mContentObject = elem.toString();
-		} else if (elem.getName().equals(ZIMLET_TAG_PANEL_ITEM)) {
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_PANEL_ITEM)) {
 			mPanelItem = elem.toString();
-		} else if (elem.getName().equals(ZIMLET_TAG_SERVER_EXTENSION)) {
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_SERVER_EXTENSION)) {
 			parseServerExtension(elem);
-		} else if (elem.getName().equals(ZIMLET_TAG_SCRIPT)) {
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_SCRIPT)) {
 			parseResource(elem);
-		} else if (elem.getName().equals(ZIMLET_TAG_CSS)) {
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_CSS)) {
 			parseCss(elem);
-		} else if (elem.getName().equals(ZIMLET_TAG_TARGET)) {
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_TARGET)) {
 			mTargets.add(elem.getText());
-		} else if (elem.getName().equals(ZIMLET_DISABLE_UI_UNDEPLOY)) {
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_DISABLE_UI_UNDEPLOY)) {
 			mDisableUIUndeploy = elem.getText();
 		}
 	}
@@ -80,16 +81,16 @@ public class ZimletDescription extends ZimletMeta {
 	}
 	
 	private void parseServerExtension(Element serverExt) throws ZimletException {
-		assert(serverExt.getName().equals(ZIMLET_TAG_SERVER_EXTENSION));
-		String val = serverExt.getAttribute(ZIMLET_ATTR_HAS_KEYWORD, "");
+		assert(serverExt.getName().equals(ZimletConstants.ZIMLET_TAG_SERVER_EXTENSION));
+		String val = serverExt.getAttribute(ZimletConstants.ZIMLET_ATTR_HAS_KEYWORD, "");
 		if (val.length() > 0) {
 			mKeyword = val;
 		}
-		val = serverExt.getAttribute(ZIMLET_ATTR_EXTENSION_CLASS, "");
+		val = serverExt.getAttribute(ZimletConstants.ZIMLET_ATTR_EXTENSION_CLASS, "");
 		if (val.length() > 0) {
 			mExtensionClass = val;
 		}
-		val = serverExt.getAttribute(ZIMLET_ATTR_REGEX, "");
+		val = serverExt.getAttribute(ZimletConstants.ZIMLET_ATTR_REGEX, "");
 		if (val.length() > 0) {
 			mExtensionClass = ZIMLET_REGEX_EXTENSION_CLASS;
 			mRegexString = val;

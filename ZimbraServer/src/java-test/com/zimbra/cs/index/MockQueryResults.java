@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,27 +17,33 @@ package com.zimbra.cs.index;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.cs.mailbox.MailItem;
 
 /**
  * Mock implementation of {@link ZimbraQueryResults} for testing.
  *
  * @author ysasaki
  */
-public class MockQueryResults implements ZimbraQueryResults {
+public final class MockQueryResults extends ZimbraQueryResultsImpl {
 
-    private final SortBy sortOrder;
     private List<ZimbraHit> hits = new ArrayList<ZimbraHit>();
     private int next = 0;
     private final List<QueryInfo> queryInfo = new ArrayList<QueryInfo>();
 
-    public MockQueryResults(SortBy sort) {
-        sortOrder = sort;
+    public MockQueryResults(Set<MailItem.Type> types, SortBy sort) {
+        super(types, sort, SearchParams.Fetch.NORMAL);
     }
 
     public void add(ZimbraHit hit) {
         hits.add(hit);
+    }
+
+    @Override
+    public long getCursorOffset() {
+        return -1;
     }
 
     @Override
@@ -56,12 +62,6 @@ public class MockQueryResults implements ZimbraQueryResults {
     }
 
     @Override
-    public ZimbraHit getFirstHit() throws ServiceException {
-        resetIterator();
-        return getNext();
-    }
-
-    @Override
     public ZimbraHit skipToHit(int hitNo) throws ServiceException {
         next = hitNo;
         return getNext();
@@ -73,23 +73,13 @@ public class MockQueryResults implements ZimbraQueryResults {
     }
 
     @Override
-    public void doneWithSearchResults() throws ServiceException {
+    public void close() {
         hits = null;
-    }
-
-    @Override
-    public SortBy getSortBy() {
-        return sortOrder;
     }
 
     @Override
     public List<QueryInfo> getResultInfo() {
         return queryInfo;
-    }
-
-    @Override
-    public int estimateResultSize() throws ServiceException {
-        return hits.size();
     }
 
 }

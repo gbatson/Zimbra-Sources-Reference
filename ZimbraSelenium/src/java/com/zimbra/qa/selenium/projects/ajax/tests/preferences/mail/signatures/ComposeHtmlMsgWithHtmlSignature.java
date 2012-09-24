@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.mail.signatures;
 
 import java.util.HashMap;
@@ -38,7 +22,7 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
 public class ComposeHtmlMsgWithHtmlSignature extends AjaxCommonTest {
 	String sigName = "signame" + ZimbraSeleniumProperties.getUniqueString();
-	String sigBody = "Signature<strong>bold"+ ZimbraSeleniumProperties.getUniqueString() + "</strong>Signature";
+	String sigBody = "signature<b>bold"+ ZimbraSeleniumProperties.getUniqueString() + "</b>signature";
 	String contentHTML = XmlStringUtil.escapeXml("<html>" + "<head></head>"
 			+ "<body>" + sigBody + "</body>" + "</html>");
 
@@ -82,7 +66,8 @@ public class ComposeHtmlMsgWithHtmlSignature extends AjaxCommonTest {
 		MailItem mail = new MailItem();
 		mail.dToRecipients.add(new RecipientItem(ZimbraAccount.AccountZWC()));
 		mail.dSubject = "subject" + ZimbraSeleniumProperties.getUniqueString();
-		mail.dBodyHtml = "body<strong>bold"+ ZimbraSeleniumProperties.getUniqueString()+"</strong>body";
+		//mail.dBodyHtml = "body<b>bold"+ ZimbraSeleniumProperties.getUniqueString()+"</b>body";
+		mail.dBodyHtml = "bodybold"+ ZimbraSeleniumProperties.getUniqueString()+"body";
 
 		// Open the new mail form
 		FormMailNew mailform = (FormMailNew) app.zPageMail.zToolbarPressButton(Button.B_NEW);
@@ -92,10 +77,7 @@ public class ComposeHtmlMsgWithHtmlSignature extends AjaxCommonTest {
 		mailform.zFill(mail);
 
 		//click Signature drop down and add signature
-		app.zPageMail.zToolbarPressPulldown(Button.B_SIGNATURE,Button.O_ADD_SIGNATURE,this.sigName);
-
-		// Add signature		
-		//	app.zPageMail.zClick("css=td[id*='_title']td:contains('"+ this.sigName + "')");
+		app.zPageMail.zToolbarPressPulldown(Button.B_OPTIONS,Button.O_ADD_SIGNATURE,this.sigName);
 
 		// Send the message
 		mailform.zSubmit();
@@ -113,12 +95,14 @@ public class ComposeHtmlMsgWithHtmlSignature extends AjaxCommonTest {
 		MailItem received = MailItem.importFromSOAP(getMsgResponse);
 
 		// Verify TO, Subject,html Body,html signature
+		logger.info(received.dBodyHtml.toLowerCase());
+		logger.info(mail.dBodyHtml);
 
 		ZAssert.assertEquals(received.dFromRecipient.dEmailAddress, app.zGetActiveAccount().EmailAddress,"Verify the from field is correct");
 		ZAssert.assertEquals(received.dToRecipients.get(0).dEmailAddress,ZimbraAccount.AccountZWC().EmailAddress,"Verify the to field is correct");
 		ZAssert.assertEquals(received.dSubject, mail.dSubject,"Verify the subject field is correct");
-		ZAssert.assertStringContains(received.dBodyHtml, mail.dBodyHtml,"Verify the body content is correct");
-		ZAssert.assertStringContains(received.dBodyHtml, this.sigBody,"Verify the signature is correct");
+		ZAssert.assertStringContains(received.dBodyHtml.toLowerCase(), mail.dBodyHtml,"Verify the body content is correct");
+		ZAssert.assertStringContains(received.dBodyHtml.toLowerCase(), this.sigBody,"Verify the signature is correct");
 
 	}
 

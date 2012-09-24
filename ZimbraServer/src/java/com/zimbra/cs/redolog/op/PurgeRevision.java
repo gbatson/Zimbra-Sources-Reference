@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@ import java.io.IOException;
 
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -27,17 +28,16 @@ public class PurgeRevision extends RedoableOp {
     protected int mRev;
     protected boolean mIncludeOlderRevisions;
 
-    public PurgeRevision() { }
+    public PurgeRevision() {
+        super(MailboxOperation.PurgeRevision);
+    }
 
     public PurgeRevision(int mailboxId, int id, int rev, boolean includeOlderRevisions) {
+        this();
         setMailboxId(mailboxId);
         mId = id;
         mRev = rev;
         mIncludeOlderRevisions = includeOlderRevisions;
-    }
-
-    @Override public int getOpCode() {
-        return OP_PURGE_REVISION;
     }
 
     @Override protected String getPrintableData() {

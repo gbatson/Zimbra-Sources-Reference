@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,8 +26,10 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DataSourceBy;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.cs.account.offline.OfflineSoapProvisioning;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.offline.common.OfflineConstants;
@@ -64,7 +66,7 @@ public class JspProvStub {
         for (Account account : accounts) {
             String dsName = account.getAttr(OfflineConstants.A_offlineDataSourceName, null);
             if (dsName != null) {
-                DataSource ds = prov.get(account, Provisioning.DataSourceBy.name, dsName);
+                DataSource ds = prov.get(account, Key.DataSourceBy.name, dsName);
                 if (ds != null)
                     dataSources.add(ds);
             }
@@ -95,7 +97,7 @@ public class JspProvStub {
     }
 
     public void modifyOfflineAccount(String accountId, Map<String, Object> attrs) throws ServiceException {
-        Account account = prov.get(Provisioning.AccountBy.id, accountId);
+        Account account = prov.get(Key.AccountBy.id, accountId);
         prov.modifyAttrs(account, attrs, true);
     }
 
@@ -109,16 +111,16 @@ public class JspProvStub {
 
     public DataSource getOfflineDataSource(String accountId) throws ServiceException {
         Account account = prov.get(AccountBy.id, accountId);
-        return prov.get(account, DataSourceBy.name, account.getAttr(OfflineConstants.A_offlineDataSourceName));
+        return prov.get(account, Key.DataSourceBy.name, account.getAttr(OfflineConstants.A_offlineDataSourceName));
     }
 
     public DataSource getOfflineCalendarDataSource(String accountId) throws ServiceException {
         Account account = prov.get(AccountBy.id, accountId);
         String dsName = account.getAttr(OfflineConstants.A_offlineDataSourceName) + OfflineConstants.CALDAV_DS;
-        return prov.get(account, DataSourceBy.name, dsName);
+        return prov.get(account, Key.DataSourceBy.name, dsName);
     }
 
-    public Account createOfflineDataSource(String dsName, String email, DataSource.Type dsType,
+    public Account createOfflineDataSource(String dsName, String email, DataSourceType dsType,
             Map<String, Object> dsAttrs) throws ServiceException {
         dsAttrs.put(OfflineConstants.A_offlineDataSourceName, dsName);
         dsAttrs.put(OfflineConstants.A_offlineDataSourceType, dsType.toString());
@@ -128,7 +130,7 @@ public class JspProvStub {
 
     public void createOfflineCalendarDataSource(String accountId, Map<String, Object> dsAttrs) throws ServiceException {
         Account account = prov.get(AccountBy.id, accountId);
-        DataSource.Type dsType = DataSource.Type.caldav;
+        DataSourceType dsType = DataSourceType.caldav;
         String name = account.getAttr(OfflineConstants.A_offlineDataSourceName) + OfflineConstants.CALDAV_DS;
         dsAttrs.put(Provisioning.A_zimbraDataSourceName, name);
         dsAttrs.put(OfflineConstants.A_offlineDataSourceName, name);

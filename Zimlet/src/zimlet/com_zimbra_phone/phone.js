@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,34 +22,7 @@ Com_Zimbra_Phone.prototype.constructor = Com_Zimbra_Phone;
 // Consts
 Com_Zimbra_Phone.PEOPLE_SEARCH_TOOLBAR_ID	= "phone";
 
-Com_Zimbra_Phone.prototype.match =
-function(line, startIndex) {
-	var a = this.regexps;
-	var ret = null;
-	for (var i = 0; i < a.length; ++i) {
-		var re = a[i];
-		re.lastIndex = startIndex;
-		var m = re.exec(line);
-        if (m) {
-            if (!ret || m.index < ret.index) {
-                ret = m;
-            }
-        }
-	}
-	return ret;
-};
 
-Com_Zimbra_Phone.prototype.init =
-function() {
-	var regexps = [
-        new RegExp("\\b" + this.getMessage("localPhoneRegEx") + "\\b","ig")
-    ];
-	this.regexps = regexps;
-	this.countryCode = this.getMessage("countryCode");
-	if(!this.countryCode) {
-		this.countryCode = 1;
-	}
-};
 
 Com_Zimbra_Phone.prototype._getHtmlContent =
 function(html, idx, phone, context) {
@@ -148,3 +121,23 @@ function(phoneIn) {
 	}
 	return "callto:" + phone;
 };
+
+Com_Zimbra_Phone.prototype.match = function(line, startIndex) {
+	var re = this.RE;
+	re.lastIndex = startIndex;
+	var m = re.exec(line);
+	if (!m) { return m; }
+
+	var phone = m[0];
+	// bug 73264, don't identify long digit sequence (length > 10) without separators as phone number
+	if (phone.length > 10 &&
+		phone[0] != "+"   &&
+		!(AjxUtil.arrayContains(phone, " ")) &&
+		!(AjxUtil.arrayContains(phone, ".")) &&
+		!(AjxUtil.arrayContains(phone, "-"))) {
+			return null;
+	} else {
+		m[0] = phone;
+		return m;
+	}
+}

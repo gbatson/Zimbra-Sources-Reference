@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
 
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -70,9 +54,14 @@ public class DialogCheckInFile extends AbsDialog {
 		String locator = null;
 
 		if (button == Button.B_CANCEL) {
+			/*
 			locator = Locators.zDialogClass
 			+ " div[class='" + Locators.zDialogButtonsClass
-			+ "'] td[class=ZWidgetTitle]:contains(Cancel)";			
+			+ "'] td[class=ZWidgetTitle]:contains(Cancel)";		
+			*/
+			locator = "//div[@class='DwtDialog']"
+					+ "//*[contains(@class,'ZWidgetTitle') and contains(text(),'Cancel')]";
+
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
 		}
@@ -80,14 +69,11 @@ public class DialogCheckInFile extends AbsDialog {
 		// Default behavior, click the locator
 		
 		// Make sure the locator was set
-		if (locator == null) {
-			throw new HarnessException("Button " + button + " not implemented");
-		}
-
+	
 		// Make sure the locator exists
-		if (!this.sIsElementPresent(locator)) {
+		if (!this.sIsVisible(locator)) {
 			throw new HarnessException("Button " + button + " locator "
-					+ locator + " not present!");
+					+ locator + " not visible!");
 		}
 		
 		// if(zIsActive())

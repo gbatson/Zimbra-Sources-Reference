@@ -48,7 +48,7 @@ public class WebServiceClient
         HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(this.Url);
 
         webRequest.ContentType = "application/soap+xml; charset=\"utf-8\"";
-        webRequest.UserAgent = "Zimbra Systems Client";
+        webRequest.UserAgent = "ZimbraMigration" + "/" + ZimbraValues.GetZimbraValues().ClientVersion; 
         webRequest.Method = "POST";
         webRequest.Proxy = null;
         return webRequest;
@@ -122,7 +122,7 @@ public class WebServiceClient
         HttpWebRequest webRequest = (HttpWebRequest)WebRequest.Create(this.Url);
 
         webRequest.CookieContainer = cookieContainer;
-        webRequest.UserAgent = "Zimbra Systems Client";
+        webRequest.UserAgent = "ZimbraMigration" + "/" + ZimbraValues.GetZimbraValues().ClientVersion;
         webRequest.Method = "POST";
         webRequest.Proxy = null;
         return webRequest;
@@ -152,8 +152,10 @@ public class WebServiceClient
         // Create the request
         HttpWebRequest webReq = this.CreateWebRequestRaw(authtoken, isServerMig);
         string boundary = "--B-00=_" + DateTime.Now.Ticks.ToString("x");
-        string endBoundary = Environment.NewLine + Environment.NewLine + "--" + boundary +
-            "--" + Environment.NewLine;
+        //string endBoundary = Environment.NewLine + Environment.NewLine + "--" + boundary +
+        //    "--" + Environment.NewLine;
+        string endBoundary = Environment.NewLine + "--" + boundary +
+            "--" + Environment.NewLine; // FBS bug 73727 -- 5/29/12 -- removed extra "Environment.NewLine +" 
 
         webReq.ContentType = "multipart/form-data; boundary=" + boundary;
 

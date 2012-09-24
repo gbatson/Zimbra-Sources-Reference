@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -38,13 +38,16 @@ abstract class ImapSearch {
 
     static String sequenceAsSearchTerm(ImapFolder i4folder, TreeSet<ImapMessage> i4set, boolean abbreviateAll) {
         i4set.remove(null);
-        if (i4set.isEmpty())
+        if (i4set.isEmpty()) {
             return "item:none";
-        else if (abbreviateAll && isAllMessages(i4folder, i4set))
+        } else if (abbreviateAll && isAllMessages(i4folder, i4set)) {
             return "item:all";
+        }
+
         StringBuilder sb = new StringBuilder("item:{");
-        for (ImapMessage i4msg : i4set)
+        for (ImapMessage i4msg : i4set) {
             sb.append(sb.length() == 6 ? "" : ",").append(i4msg.msgId);
+        }
         return sb.append('}').toString();
     }
 
@@ -53,10 +56,11 @@ abstract class ImapSearch {
     }
 
     static String stringAsSearchTerm(String content, boolean wildcard) {
-        content = content.replace('*', ' ').replace('"', ' ');
-        if (wildcard && (content.length() == 0 || !Character.isWhitespace(content.charAt(content.length() - 1))))
-            content += '*';
-        return '"' + content + '"';
+        String sanitized = content.replace('*', ' ').replace('"', ' ');
+        if (wildcard && (sanitized.length() == 0 || !Character.isWhitespace(sanitized.charAt(sanitized.length() - 1)))) {
+            sanitized += '*';
+        }
+        return '"' + sanitized + '"';
     }
 
 
@@ -68,17 +72,51 @@ abstract class ImapSearch {
         }
 
         @Override boolean canBeRunLocally() {
-            for (ImapSearch i4search : mChildren)
-                if (!i4search.canBeRunLocally())
+            for (ImapSearch i4search : mChildren) {
+                if (!i4search.canBeRunLocally()) {
                     return false;
+                }
+            }
             return true;
         }
 
         @Override boolean requiresMODSEQ() {
-            for (ImapSearch i4search : mChildren)
-                if (i4search.requiresMODSEQ())
+            for (ImapSearch i4search : mChildren) {
+                if (i4search.requiresMODSEQ()) {
                     return true;
+                }
+            }
             return false;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mChildren == null) ? 0 : mChildren.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            LogicalOperation other = (LogicalOperation) obj;
+            if (mChildren == null) {
+                if (other.mChildren != null) {
+                    return false;
+                }
+            } else if (!mChildren.equals(other.mChildren)) {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -87,18 +125,21 @@ abstract class ImapSearch {
 
         @Override String toZimbraSearch(ImapFolder i4folder) throws ImapParseException {
             StringBuilder search = new StringBuilder("(");
-            for (ImapSearch i4search : mChildren)
+            for (ImapSearch i4search : mChildren) {
                 search.append(search.length() == 1 ? "" : " ").append(i4search.toZimbraSearch(i4folder));
+            }
             return search.append(')').toString();
         }
 
         @Override ImapMessageSet evaluate(ImapFolder i4folder) throws ImapParseException {
             ImapMessageSet matched = null;
             for (ImapSearch i4search : mChildren) {
-                if (matched == null)
+                if (matched == null) {
                     matched = i4search.evaluate(i4folder);
-                else
+                } else {
                     matched.retainAll(i4search.evaluate(i4folder));
+                }
+
                 if (matched.isEmpty())
                     break;
             }
@@ -111,18 +152,21 @@ abstract class ImapSearch {
 
         @Override String toZimbraSearch(ImapFolder i4folder) throws ImapParseException {
             StringBuilder search = new StringBuilder("(");
-            for (ImapSearch i4search : mChildren)
+            for (ImapSearch i4search : mChildren) {
                 search.append(search.length() == 1 ? "(" : " or (").append(i4search.toZimbraSearch(i4folder)).append(')');
+            }
             return search.append(')').toString();
         }
 
         @Override ImapMessageSet evaluate(ImapFolder i4folder) throws ImapParseException {
             ImapMessageSet matched = null;
             for (ImapSearch i4search : mChildren) {
-                if (matched == null)
+                if (matched == null) {
                     matched = i4search.evaluate(i4folder);
-                else
+                } else {
                     matched.addAll(i4search.evaluate(i4folder));
+                }
+
                 if (isAllMessages(i4folder, matched))
                     break;
             }
@@ -149,12 +193,32 @@ abstract class ImapSearch {
         @Override boolean canBeRunLocally()                     { return true; }
         @Override String toZimbraSearch(ImapFolder i4folder)    { return "item:all"; }
         @Override ImapMessageSet evaluate(ImapFolder i4folder)  { return i4folder.getAllMessages(); }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof AllSearch;
+        }
+
+        @Override
+        public int hashCode() {
+            return getClass().hashCode();
+        }
     }
 
     static class NoneSearch extends ImapSearch {
         @Override boolean canBeRunLocally()                     { return true; }
         @Override String toZimbraSearch(ImapFolder i4folder)    { return "item:none"; }
         @Override ImapMessageSet evaluate(ImapFolder i4folder)  { return new ImapMessageSet(); }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof NoneSearch;
+        }
+
+        @Override
+        public int hashCode() {
+            return getClass().hashCode();
+        }
     }
 
     static class SequenceSearch extends ImapSearch {
@@ -172,6 +236,40 @@ abstract class ImapSearch {
         @Override ImapMessageSet evaluate(ImapFolder i4folder) throws ImapParseException {
             return i4folder.getSubsequence(mTag, mSubSequence, mIsUidSearch, true);
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + (mIsUidSearch ? 1231 : 1237);
+            result = prime * result + ((mSubSequence == null) ? 0 : mSubSequence.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            SequenceSearch other = (SequenceSearch) obj;
+            if (mIsUidSearch != other.mIsUidSearch) {
+                return false;
+            }
+            if (mSubSequence == null) {
+                if (other.mSubSequence != null) {
+                    return false;
+                }
+            } else if (!mSubSequence.equals(other.mSubSequence)) {
+                return false;
+            }
+            return true;
+        }
     }
 
     static class FlagSearch extends ImapSearch {
@@ -182,23 +280,57 @@ abstract class ImapSearch {
 
         @Override String toZimbraSearch(ImapFolder i4folder) {
             ImapFlag i4flag = i4folder.getFlagByName(mFlagName);
-            if (i4flag == null)
+            if (i4flag == null) {
                 return "item:none";
+            }
             String prefix = i4flag.mPositive ? "" : "(-", suffix = i4flag.mPositive ? "" : ")";
-            if (i4flag.mPermanent)
+            if (i4flag.mPermanent) {
                 return prefix + "tag:" + i4flag.mName + suffix;
+            }
             return prefix + sequenceAsSearchTerm(i4folder, i4folder.getFlaggedMessages(i4flag), true) + suffix;
         }
 
         @Override ImapMessageSet evaluate(ImapFolder i4folder) {
             ImapFlag i4flag = i4folder.getFlagByName(mFlagName);
-            if (i4flag == null)
+            if (i4flag == null) {
                 return new ImapMessageSet();
-            if (i4flag.mPositive)
+            } else if (i4flag.mPositive) {
                 return i4folder.getFlaggedMessages(i4flag);
-            ImapMessageSet matched = i4folder.getAllMessages();
-            matched.removeAll(i4folder.getFlaggedMessages(i4flag));
-            return matched;
+            } else {
+                ImapMessageSet matched = i4folder.getAllMessages();
+                matched.removeAll(i4folder.getFlaggedMessages(i4flag));
+                return matched;
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mFlagName == null) ? 0 : mFlagName.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            FlagSearch other = (FlagSearch) obj;
+            if (mFlagName == null) {
+                if (other.mFlagName != null) {
+                    return false;
+                }
+            } else if (!mFlagName.equals(other.mFlagName)) {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -220,21 +352,65 @@ abstract class ImapSearch {
         }
 
         @Override String toZimbraSearch(ImapFolder i4folder)  {
-            if (mTimestamp < 0)
+            if (mTimestamp < 0) {
                 return (mRelation == Relation.after ? "item:all" : "item:none");
-            else if (mTimestamp > System.currentTimeMillis() + 36 * Constants.MILLIS_PER_MONTH)
+            } else if (mTimestamp > System.currentTimeMillis() + 36 * Constants.MILLIS_PER_MONTH) {
                 return (mRelation == Relation.before ? "item:all" : "item:none");
-            else
+            } else {
                 return mRelation + DateFormat.getDateInstance(DateFormat.SHORT).format(mDate);
+            }
         }
 
         @Override ImapMessageSet evaluate(ImapFolder i4folder) {
-            if (mTimestamp < 0)
+            if (mTimestamp < 0) {
                 return (mRelation == Relation.after ? i4folder.getAllMessages() : new ImapMessageSet());
-            else if (mTimestamp > System.currentTimeMillis() + 36 * Constants.MILLIS_PER_MONTH)
+            } else if (mTimestamp > System.currentTimeMillis() + 36 * Constants.MILLIS_PER_MONTH) {
                 return (mRelation == Relation.before ? i4folder.getAllMessages() : new ImapMessageSet());
-            else
+            } else {
                 throw new UnsupportedOperationException("evaluate of " + toZimbraSearch(i4folder));
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mDate == null) ? 0 : mDate.hashCode());
+            result = prime * result + ((mRelation == null) ? 0 : mRelation.hashCode());
+            result = prime * result + (int) (mTimestamp ^ (mTimestamp >>> 32));
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            DateSearch other = (DateSearch) obj;
+            if (mDate == null) {
+                if (other.mDate != null) {
+                    return false;
+                }
+            } else if (!mDate.equals(other.mDate)) {
+                return false;
+            }
+            if (mRelation == null) {
+                if (other.mRelation != null) {
+                    return false;
+                }
+            } else if (!mRelation.equals(other.mRelation)) {
+                return false;
+            }
+            if (mTimestamp != other.mTimestamp) {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -248,26 +424,77 @@ abstract class ImapSearch {
         @Override ImapMessageSet evaluate(ImapFolder i4folder) {
             throw new UnsupportedOperationException("evaluate of " + toZimbraSearch(i4folder));
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + mOffset;
+            result = prime * result + ((mRelation == null) ? 0 : mRelation.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            RelativeDateSearch other = (RelativeDateSearch) obj;
+            if (mOffset != other.mOffset) {
+                return false;
+            }
+            if (mRelation == null) {
+                if (other.mRelation != null) {
+                    return false;
+                }
+            } else if (!mRelation.equals(other.mRelation)) {
+                return false;
+            }
+            return true;
+        }
     }
 
     static class ModifiedSearch extends ImapSearch {
         private int mChangedSince;
         ModifiedSearch(int changeId)  { mChangedSince = changeId; }
 
-        @Override boolean requiresMODSEQ()   { return true; }
-        @Override boolean canBeRunLocally()  { return false; }
-        @Override String toZimbraSearch(ImapFolder i4folder) {
-            ImapFlagCache i4cache = i4folder.getTagset();
-            StringBuilder query = new StringBuilder("(modseq:>").append(mChangedSince);
-            if (i4cache.getMaximumModseq() > mChangedSince) {
-                for (ImapFlag i4flag : i4cache)
-                    if (i4flag.mModseq > mChangedSince)
-                        query.append(" or tag:").append(i4flag.mName);
-            }
-            return query.append(')').toString();
-        }
+        @Override boolean requiresMODSEQ()                    { return true; }
+        @Override boolean canBeRunLocally()                   { return false; }
+        @Override String toZimbraSearch(ImapFolder i4folder)  { return "(modseq:>" + mChangedSince + ")"; }
         @Override ImapMessageSet evaluate(ImapFolder i4folder) {
             throw new UnsupportedOperationException("evaluate of " + toZimbraSearch(i4folder));
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + mChangedSince;
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            ModifiedSearch other = (ModifiedSearch) obj;
+            if (mChangedSince != other.mChangedSince) {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -282,6 +509,40 @@ abstract class ImapSearch {
         @Override ImapMessageSet evaluate(ImapFolder i4folder) {
             throw new UnsupportedOperationException("evaluate of " + toZimbraSearch(i4folder));
         }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mRelation == null) ? 0 : mRelation.hashCode());
+            result = prime * result + (int) (mSize ^ (mSize >>> 32));
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            SizeSearch other = (SizeSearch) obj;
+            if (mRelation == null) {
+                if (other.mRelation != null) {
+                    return false;
+                }
+            } else if (!mRelation.equals(other.mRelation)) {
+                return false;
+            }
+            if (mSize != other.mSize) {
+                return false;
+            }
+            return true;
+        }
     }
 
     static class ContentSearch extends ImapSearch {
@@ -294,6 +555,36 @@ abstract class ImapSearch {
             if (canBeRunLocally())
                 return i4folder.getAllMessages();
             throw new UnsupportedOperationException("evaluate of " + toZimbraSearch(i4folder));
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mValue == null) ? 0 : mValue.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            ContentSearch other = (ContentSearch) obj;
+            if (mValue == null) {
+                if (other.mValue != null) {
+                    return false;
+                }
+            } else if (!mValue.equals(other.mValue)) {
+                return false;
+            }
+            return true;
         }
     }
 
@@ -328,16 +619,56 @@ abstract class ImapSearch {
             }
 
             @Override public String toString()  { return mKey; }
+
+            @Override
+            public int hashCode() {
+                final int prime = 31;
+                int result = 1;
+                result = prime * result + ((mField == null) ? 0 : mField.hashCode());
+                result = prime * result + ((mKey == null) ? 0 : mKey.hashCode());
+                return result;
+            }
+
+            @Override
+            public boolean equals(Object obj) {
+                if (this == obj) {
+                    return true;
+                }
+                if (obj == null) {
+                    return false;
+                }
+                if (getClass() != obj.getClass()) {
+                    return false;
+                }
+                Header other = (Header) obj;
+                if (mField == null) {
+                    if (other.mField != null) {
+                        return false;
+                    }
+                } else if (!mField.equals(other.mField)) {
+                    return false;
+                }
+                if (mKey == null) {
+                    if (other.mKey != null) {
+                        return false;
+                    }
+                } else if (!mKey.equals(other.mKey)) {
+                    return false;
+                }
+                return true;
+            }
         };
 
         private Header mHeader;
         private String mValue;
         private boolean mPrefixSearch = true;
         HeaderSearch(Header header, String value) {
-            while (value.startsWith("<") || value.startsWith(">") || value.startsWith("="))
+            while (value.startsWith("<") || value.startsWith(">") || value.startsWith("=")) {
                 value = value.substring(1);
+            }
             if (header == Header.MSGID && value.endsWith(">")) {
-                value = value.substring(0, value.length() - 1);  mPrefixSearch = false;
+                value = value.substring(0, value.length() - 1);
+                mPrefixSearch = false;
             }
             mValue = value;  mHeader = header;
         }
@@ -345,12 +676,55 @@ abstract class ImapSearch {
         @Override boolean canBeRunLocally()  { return false; }
         @Override String toZimbraSearch(ImapFolder i4folder) {
             String value = stringAsSearchTerm(mValue, mPrefixSearch);
-            if ((mHeader == Header.FROM || mHeader == Header.TO || mHeader == Header.CC) && mValue.indexOf('@') == -1)
+            if ((mHeader == Header.FROM || mHeader == Header.TO || mHeader == Header.CC) && mValue.indexOf('@') == -1) {
                 value += " or " + stringAsSearchTerm('@' + mValue);
+            }
             return mHeader + ":(" + value + ")";
         }
         @Override ImapMessageSet evaluate(ImapFolder i4folder) {
             throw new UnsupportedOperationException("evaluate of " + toZimbraSearch(i4folder));
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + ((mHeader == null) ? 0 : mHeader.hashCode());
+            result = prime * result + (mPrefixSearch ? 1231 : 1237);
+            result = prime * result + ((mValue == null) ? 0 : mValue.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (getClass() != obj.getClass()) {
+                return false;
+            }
+            HeaderSearch other = (HeaderSearch) obj;
+            if (mHeader == null) {
+                if (other.mHeader != null) {
+                    return false;
+                }
+            } else if (!mHeader.equals(other.mHeader)) {
+                return false;
+            }
+            if (mPrefixSearch != other.mPrefixSearch) {
+                return false;
+            }
+            if (mValue == null) {
+                if (other.mValue != null) {
+                    return false;
+                }
+            } else if (!mValue.equals(other.mValue)) {
+                return false;
+            }
+            return true;
         }
     }
 }

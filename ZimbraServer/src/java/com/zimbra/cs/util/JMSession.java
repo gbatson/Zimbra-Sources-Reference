@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,18 +15,19 @@
 
 package com.zimbra.cs.util;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 
+import javax.mail.Authenticator;
 import javax.mail.MessagingException;
 import javax.mail.NoSuchProviderException;
+import javax.mail.PasswordAuthentication;
 import javax.mail.Session;
 
+import com.zimbra.common.account.ZAttrProvisioning.ShareNotificationMtaConnectionType;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
@@ -95,6 +96,27 @@ public final class JMSession {
     }
 
     /**
+     * Returns the JavaMail SMTP {@link Session} with settings from the given
+     * account and its domain.
+     */
+    public static Session getSmtpSession(Account account) throws MessagingException {
+        Domain domain = null;
+        if (account != null) {
+            try {
+                domain = Provisioning.getInstance().getDomain(account);
+            } catch (ServiceException e) {
+                ZimbraLog.smtp.warn("Unable to look up domain for account %s.", account.getName(), e);
+            }
+        }
+
+        Session session = getSmtpSession(domain);
+        if (account != null && account.isSmtpEnableTrace()) {
+            session.setDebug(true);
+        }
+        return session;
+    }
+
+    /**
      * Returns a new JavaMail {@link Session} that has the latest SMTP settings
      * from LDAP. Settings are retrieved from the local server and overridden by
      * the domain.
@@ -103,9 +125,92 @@ public final class JMSession {
      */
     private static Session getSmtpSession(Domain domain) throws MessagingException {
         Server server;
-        String smtpHost = null;
         try {
             server = Provisioning.getInstance().getLocalServer();
+        } catch (ServiceException e) {
+            throw new MessagingException("Unable to initialize JavaMail session", e);
+        }
+
+        Properties props = getJavaMailSessionProperties(server, domain);
+        Session session = Session.getInstance(props);
+        setProviders(session);
+        if (LC.javamail_smtp_debug.booleanValue()) {
+            session.setDebug(true);
+        }
+        return session;
+    }
+
+
+    /**
+     * Returns a new JavaMail {@link Session} that is configured to connect to
+     * relay MTA.
+     */
+    public static Session getRelaySession() throws MessagingException {
+        Provisioning prov = Provisioning.getInstance();
+        Server server;
+        String relayHost = null;
+        int relayPort;
+        boolean useSmtpAuth;
+        boolean useTls;
+
+        try {
+            server = prov.getLocalServer();
+            relayHost = server.getShareNotificationMtaHostname();
+            relayPort = server.getShareNotificationMtaPort();
+            useSmtpAuth = server.isShareNotificationMtaAuthRequired();
+            useTls = server.getShareNotificationMtaConnectionType() == ShareNotificationMtaConnectionType.STARTTLS;
+        } catch (ServiceException e) {
+            throw new MessagingException("Unable to identify local server", e);
+        }
+        if (relayHost == null || relayPort == 0) {
+            return getSmtpSession();
+        }
+
+        Properties props = getJavaMailSessionProperties(server, null);
+        props.setProperty("mail.smtp.host", relayHost);
+        props.setProperty("mail.smtp.port", "" + relayPort);
+        Authenticator auth = null;
+
+        if (useSmtpAuth) {
+            String account = server.getShareNotificationMtaAuthAccount();
+            String password = server.getShareNotificationMtaAuthPassword();
+            if (account == null || password == null) {
+                ZimbraLog.smtp.warn(Provisioning.A_zimbraShareNotificationMtaAuthRequired + " is enabled but account or password is unset");
+            } else {
+                props.setProperty("mail.smtp.auth", "" + useSmtpAuth);
+                props.setProperty("mail.smtp.sasl.enable", "" + useSmtpAuth);
+                auth = new SmtpAuthenticator(account, password);
+            }
+        }
+
+        if (useTls) {
+            props.setProperty("mail.smtp.starttls.enable", "" + useTls);
+        }
+
+        Session session = (auth == null) ? Session.getInstance(props) : Session.getInstance(props, auth);
+        setProviders(session);
+        if (LC.javamail_smtp_debug.booleanValue()) {
+            session.setDebug(true);
+        }
+        return session;
+    }
+
+    private static class SmtpAuthenticator extends Authenticator {
+        private final String username;
+        private final String password;
+        public SmtpAuthenticator(String username, String password) {
+            this.username = username;  this.password = password;
+        }
+        @Override
+        protected PasswordAuthentication getPasswordAuthentication() {
+            return new PasswordAuthentication(username, password);
+        }
+    }
+
+    private static Properties getJavaMailSessionProperties(Server server, Domain domain) throws MessagingException {
+        String smtpHost = null;
+
+        try {
             smtpHost = getRandomSmtpHost(domain);
         } catch (ServiceException e) {
             throw new MessagingException("Unable to initialize JavaMail session", e);
@@ -117,7 +222,6 @@ public final class JMSession {
             }
             throw new MessagingException(msg);
         }
-
         Properties props = new Properties(sSession.getProperties());
         props.setProperty("mail.smtp.host", smtpHost);
         props.setProperty("mail.smtp.port", getValue(server, domain, Provisioning.A_zimbraSmtpPort));
@@ -139,33 +243,7 @@ public final class JMSession {
             props.setProperty("mail.host", domain.getName());
         }
 
-        Session session = Session.getInstance(props);
-        setProviders(session);
-        if (LC.javamail_smtp_debug.booleanValue()) {
-            session.setDebug(true);
-        }
-
-        return session;
-    }
-
-    /**
-     * Returns the JavaMail SMTP {@link Session} with settings from the given
-     * account and its domain.
-     */
-    public static Session getSmtpSession(Account account) throws MessagingException {
-        Domain domain = null;
-        if (account != null) {
-            try {
-                domain = Provisioning.getInstance().getDomain(account);
-            } catch (ServiceException e) {
-                ZimbraLog.smtp.warn("Unable to look up domain for account %s.", account.getName(), e);
-            }
-        }
-        Session session = getSmtpSession(domain);
-        if (account != null && account.isSmtpEnableTrace()) {
-            session.setDebug(true);
-        }
-        return session;
+        return props;
     }
 
     /**
@@ -202,26 +280,9 @@ public final class JMSession {
      * @param domain the domain, or <tt>null</tt> to use server settings
      */
     private static String getRandomSmtpHost(Domain domain) throws ServiceException {
-        String[] hosts = lookupSmtpHosts(domain);
-        if (hosts.length == 0) {
-            return null;
-        }
-
-        if (hosts.length == 1) {
-            if (isHostBad(hosts[0])) {
-                return null;
-            } else {
-                return hosts[0];
-            }
-        }
-
-
-        List<String> hostList = Arrays.asList(hosts);
-        Collections.shuffle(hostList);
-        for (String currentHost : hostList) {
-            if (!isHostBad(currentHost)) {
-                return currentHost;
-            }
+        List<String> hostList = getSmtpHosts(domain);
+        if (hostList.size() > 0) {
+            return hostList.get(0);
         }
         return null;
     }
@@ -237,13 +298,14 @@ public final class JMSession {
      * Returns a new set that contains all SMTP hosts, not including
      * hosts that were marked as bad with {@link #markSmtpHostBad}.
      */
-    public static Set<String> getSmtpHosts(Domain domain) throws ServiceException {
-        Set<String> hosts = new HashSet<String>();
+    public static List<String> getSmtpHosts(Domain domain) throws ServiceException {
+        List<String> hosts = new ArrayList<String>();
         for (String host : lookupSmtpHosts(domain)) {
             if (!isHostBad(host)) {
                 hosts.add(host);
             }
         }
+        Collections.shuffle(hosts);
         return hosts;
     }
 

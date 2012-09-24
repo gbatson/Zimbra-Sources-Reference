@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -67,9 +67,9 @@ public class SyncSession {
     private static class Stats {
         int added, updated, deleted;
 
+        @Override
         public String toString() {
-            return String.format(
-                "%d added, %d updated, and %d deleted", added, updated, deleted);
+            return String.format("%d added, %d updated, and %d deleted", added, updated, deleted);
         }
     }
 
@@ -125,14 +125,16 @@ public class SyncSession {
         String revGrp = state.getlastRevisionGroup();
         DateTime lastRevGrp = revGrp != null ? DateTime.parseDateTime(revGrp) : null;
         // Get the system group for all new contacts
-        List<ContactGroupEntry> groups = service.getGroupFeed(lastRevGrp, null).getEntries();
+        List<ContactGroupEntry> groups = service.getGroupFeed(null, lastRev).getEntries();
+        // Get the system group for all new contacts
         myContactsUrl = getSystemGroupUrl(groups, "Contacts");
         if(myContactsUrl == null) {
             myContactsUrl = state.getlastContactURL();
         }
         LOG.debug("System group 'My Contacts' url = " + myContactsUrl);
         int seq = state.getLastModSequence();
-        synchronized (mbox) {
+        mbox.lock.lock();
+        try {
             // Get local changes since last sync (none if resetting)
             localChanges = reset ?
                 new HashMap<Integer, Change>() : localData.getContactChanges(seq);
@@ -155,6 +157,8 @@ public class SyncSession {
             }
             state.setLastContactURL(myContactsUrl);
             state.setLastModSequence(mbox.getLastChangeID());
+        } finally {
+            mbox.lock.release();
         }
         localData.saveState(state);
     }
@@ -170,7 +174,7 @@ public class SyncSession {
         return updated;
     }
 
-	private static long getLastUpdated(List<ContactEntry> contacts) {
+    private static long getLastUpdated(List<ContactEntry> contacts) {
         long updated = 0;
         for (ContactEntry contact : contacts) {
             long time = contact .getUpdated().getValue();
@@ -199,8 +203,7 @@ public class SyncSession {
         return ids;
     }
 
-    private void processGroups(List<ContactGroupEntry> entries)
-        throws ServiceException, IOException {
+    private void processGroups(List<ContactGroupEntry> entries) throws ServiceException {
         LOG.debug("Found %d remote contact group(s)", entries.size());
         Stats stats = new Stats();
         // Get all existing contact groups
@@ -348,8 +351,7 @@ public class SyncSession {
         LOG.debug("Processed remote contact changes: " + stats);
     }
 
-    private void processRemoteContact(ContactEntry entry, DataSourceItem dsi, Stats stats)
-        throws IOException, ServiceException {
+    private void processRemoteContact(ContactEntry entry, DataSourceItem dsi, Stats stats) throws ServiceException {
         if (isTraceEnabled()) {
             LOG.debug("Processing remote contact entry:\n%s", service.pp(entry));
         }
@@ -415,7 +417,7 @@ public class SyncSession {
         ContactEntry oldEntry = getEntry(dsi, ContactEntry.class);
         return oldEntry == null || !oldEntry.getUpdated().equals(entry.getUpdated());
     }
-    
+
     private int getLocalFolderId(ContactEntry entry) {
         if (entry.hasGroupMembershipInfos()) {
             for (GroupMembershipInfo gmi : entry.getGroupMembershipInfos()) {

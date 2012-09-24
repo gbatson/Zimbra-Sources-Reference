@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,10 +28,8 @@ DwtUiEvent = function(init) {
 DwtUiEvent.prototype = new DwtEvent;
 DwtUiEvent.prototype.constructor = DwtUiEvent;
 
-DwtUiEvent.prototype.toString = 
-function() {
-	return "DwtUiEvent";
-}
+DwtUiEvent.prototype.isDwtUiEvent;
+DwtUiEvent.prototype.toString = function() { return "DwtUiEvent"; }
 
 DwtUiEvent.prototype.reset =
 function() {
@@ -107,13 +105,14 @@ function(ev, useRelatedTarget)  {
  * @param ev				[Event]		DHTML event
  * @param prop				[string]	the name of a property
  * @param useRelatedTarget	[boolean]*	if true, return element that was related to this event;
+ * @param value				[string]*	expected value of given property
  */
 DwtUiEvent.getTargetWithProp =
-function(ev, prop, useRelatedTarget)  {
+function(ev, prop, useRelatedTarget, value)  {
 	var htmlEl = DwtUiEvent.getTarget(ev, useRelatedTarget);
 	while (htmlEl) {
-		var value = Dwt.getAttr(htmlEl, prop);
-		if (value != null && value !== "") {
+		var elValue = Dwt.getAttr(htmlEl, prop);
+		if (elValue != null && elValue !== "" && (!value || (elValue == value))) {
 			return htmlEl;
 		}
 		htmlEl = htmlEl.parentNode;
@@ -201,7 +200,7 @@ function(ev, obj) {
 	if (ev.offsetX != null) {
 		this.elementX = ev.offsetX;
 		this.elementY = ev.offsetY;
-	} else if (ev.layerX != null) {
+	} else if (!AjxEnv.isWebKitBased && ev.layerX != null) {
 		this.elementX = ev.layerX;
 		this.elementY = ev.layerY;
 	} else { // fail hard for others
@@ -226,7 +225,9 @@ function(ev, stopPropagation, allowDefault, dontCallPreventDefault) {
 
 DwtUiEvent.setDhtmlBehaviour =
 function(dhtmlEv, stopPropagation, allowDefault, dontCallPreventDefault) {
-	dhtmlEv = dhtmlEv || window.event;
+
+	dhtmlEv = DwtUiEvent.getEvent(dhtmlEv);
+	if (!dhtmlEv) { return; }
 
 	// stopPropagation is referring to the function found in Mozilla's event object
 	if (dhtmlEv.stopPropagation != null) {

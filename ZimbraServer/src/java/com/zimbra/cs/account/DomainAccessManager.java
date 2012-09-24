@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,10 +17,13 @@ package com.zimbra.cs.account;
 
 import java.util.Map;
 import java.util.Set;
+
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.EmailUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.accesscontrol.Right;
+import com.zimbra.cs.account.names.NameUtil;
 
 public class DomainAccessManager extends AccessManager {
 
@@ -92,8 +95,12 @@ public class DomainAccessManager extends AccessManager {
     }
 
     private boolean canAccessDomainInternal(AuthToken at, String domainName) throws ServiceException {
-        if (at.isAdmin()) return true;
-        if (!at.isDomainAdmin()) return false;
+        if (at.isAdmin()) {
+            return true;
+        }
+        if (!at.isDomainAdmin()) {
+            return false;
+        }
         return getDomain(at).getName().equalsIgnoreCase(domainName);
     }
 
@@ -132,6 +139,31 @@ public class DomainAccessManager extends AccessManager {
         }
         return false;
     }
+    
+
+    @Override
+    public boolean canCreateGroup(AuthToken at, String groupEmail)
+            throws ServiceException {
+        return false;
+    }
+    
+    @Override
+    public boolean canCreateGroup(Account credentials, String groupEmail)
+            throws ServiceException {
+        return false;
+    }
+    
+    @Override
+    public boolean canAccessGroup(AuthToken at, Group group)
+            throws ServiceException {
+        return false;
+    }
+    
+    @Override
+    public boolean canAccessGroup(Account credentials, Group group, boolean asAdmin)
+            throws ServiceException {
+        return false;
+    }
 
     public boolean canAccessEmail(AuthToken at, String email) throws ServiceException {
         String parts[] = EmailUtil.getLocalPartAndDomain(email);
@@ -139,7 +171,7 @@ public class DomainAccessManager extends AccessManager {
             throw ServiceException.INVALID_REQUEST("must be valid email address: "+email, null);
         
         // check for family mailbox
-        Account targetAcct = Provisioning.getInstance().get(Provisioning.AccountBy.name, email, at);
+        Account targetAcct = Provisioning.getInstance().get(Key.AccountBy.name, email, at);
         if (targetAcct != null) {
             if (isParentOf(at, targetAcct))
                 return true;
@@ -159,7 +191,7 @@ public class DomainAccessManager extends AccessManager {
     public static boolean canSetMailQuota(AuthToken at, Account targetAccount, long quota) throws ServiceException {
         if (at.isAdmin()) return true;
         
-        Account adminAccount = Provisioning.getInstance().get(Provisioning.AccountBy.id,  at.getAccountId(), at);
+        Account adminAccount = Provisioning.getInstance().get(Key.AccountBy.id,  at.getAccountId(), at);
         if (adminAccount == null) return false;
 
         // 0 is unlimited
@@ -233,6 +265,5 @@ public class DomainAccessManager extends AccessManager {
     public boolean canSetAttrs(AuthToken grantee, Entry target, Map<String, Object> attrs, boolean asAdmin) throws ServiceException {
         return false;
     }
-
     
 }

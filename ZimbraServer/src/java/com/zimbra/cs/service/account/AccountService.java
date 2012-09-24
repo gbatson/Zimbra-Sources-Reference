@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -39,6 +39,7 @@ import com.zimbra.common.soap.Element.KeyValuePair;
  */
 public class AccountService implements DocumentService {
 
+    @Override
     public void registerHandlers(DocumentDispatcher dispatcher) {
 
         // auth
@@ -53,10 +54,10 @@ public class AccountService implements DocumentService {
         dispatcher.registerHandler(AccountConstants.GET_INFO_REQUEST, new GetInfo());
         dispatcher.registerHandler(AccountConstants.GET_ACCOUNT_INFO_REQUEST, new GetAccountInfo());
 
-        dispatcher.registerHandler(AccountConstants.SEARCH_GAL_REQUEST, new SearchGal());
         dispatcher.registerHandler(AccountConstants.AUTO_COMPLETE_GAL_REQUEST, new AutoCompleteGal());
-        dispatcher.registerHandler(AccountConstants.SYNC_GAL_REQUEST, new SyncGal());
         dispatcher.registerHandler(AccountConstants.SEARCH_CALENDAR_RESOURCES_REQUEST, new SearchCalendarResources());
+        dispatcher.registerHandler(AccountConstants.SEARCH_GAL_REQUEST, new SearchGal());
+        dispatcher.registerHandler(AccountConstants.SYNC_GAL_REQUEST, new SyncGal());
 
         dispatcher.registerHandler(AccountConstants.MODIFY_PROPERTIES_REQUEST, new ModifyProperties());
         dispatcher.registerHandler(AccountConstants.MODIFY_ZIMLET_PREFS_REQUEST, new ModifyZimletPrefs());
@@ -86,7 +87,19 @@ public class AccountService implements DocumentService {
         dispatcher.registerHandler(AccountConstants.MODIFY_WHITE_BLACK_LIST_REQUEST, new ModifyWhiteBlackList());
         
         // distribution list
+        dispatcher.registerHandler(AccountConstants.CREATE_DISTRIBUTION_LIST_REQUEST, new CreateDistributionList());
+        dispatcher.registerHandler(AccountConstants.DISTRIBUTION_LIST_ACTION_REQUEST, new DistributionListAction());
+        dispatcher.registerHandler(AccountConstants.GET_ACCOUNT_DISTRIBUTION_LISTS_REQUEST, new GetAccountDistributionLists());
+        dispatcher.registerHandler(AccountConstants.GET_DISTRIBUTION_LIST_REQUEST, new GetDistributionList());
         dispatcher.registerHandler(AccountConstants.GET_DISTRIBUTION_LIST_MEMBERS_REQUEST, new GetDistributionListMembers());
+        dispatcher.registerHandler(AccountConstants.SUBSCRIBE_DISTRIBUTION_LIST_REQUEST, new SubscribeDistributionList());
+        
+        // rights
+        dispatcher.registerHandler(AccountConstants.CHECK_RIGHTS_REQUEST, new CheckRights());
+        dispatcher.registerHandler(AccountConstants.DISCOVER_RIGHTS_REQUEST, new DiscoverRights());
+        dispatcher.registerHandler(AccountConstants.GET_RIGHTS_REQUEST, new GetRights());
+        dispatcher.registerHandler(AccountConstants.GRANT_RIGHTS_REQUEST, new GrantRights());
+        dispatcher.registerHandler(AccountConstants.REVOKE_RIGHTS_REQUEST, new RevokeRights());
         
         // misc
         dispatcher.registerHandler(AccountConstants.GET_VERSION_INFO_REQUEST, new GetVersionInfo());
@@ -113,6 +126,31 @@ public class AccountService implements DocumentService {
             String value = pair.getValue();
             if (!ignoreEmptyValues || (value != null && value.length() > 0))
                 StringUtil.addToMultiMap(result, name, value);
+        }
+        return result;
+    } 
+    
+    
+    /**
+     * parse key values pairs in the form of: 
+     *     <{elemName} {attrName}="{key}">{value}</{elemName}>
+     *     
+     *     e.g.
+     *     <a n="boo">bar</a>
+     *     
+     * @param parent
+     * @param elemName
+     * @param attrName
+     * @return
+     * @throws ServiceException
+     */
+    public static Map<String, Object> getKeyValuePairs(Element parent, String elemName, String attrName) 
+    throws ServiceException {
+        Map<String, Object> result = new HashMap<String, Object>();
+        for (Element eKV : parent.listElements(elemName)) {
+            String key = eKV.getAttribute(attrName);
+            String value = eKV.getText();
+            StringUtil.addToMultiMap(result, key, value);
         }
         return result;
     } 

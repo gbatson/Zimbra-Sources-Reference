@@ -1,19 +1,16 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
- */
-/*
- * Created on Jul 5, 2005
  */
 package com.zimbra.cs.mailbox;
 
@@ -23,18 +20,21 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
+import com.zimbra.common.util.StringUtil;
 import org.apache.commons.codec.binary.Hex;
 
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.ZimbraLog;
 
 /**
- * @author dkarp */
-public class ACL {
+ * @since Jul 5, 2005
+ * @author dkarp
+ */
+public final class ACL {
 
     /** The right to read a message, list a folder's contents, etc. */
     public static final short RIGHT_READ    = 0x0001;
@@ -80,28 +80,32 @@ public class ACL {
     public static final byte GRANTEE_GUEST    = 7;
     /** The grantee of these rights is a named non Zimbra user identified by the access key */
     public static final byte GRANTEE_KEY      = 8;
-	
+
 
     private static final int ACCESSKEY_SIZE_BYTES = 16;
-    
+
     public static class Grant {
         /** The zimbraId of the entry being granted rights. */
         private String mGrantee;
         /** The display name of the grantee, which is often the email address of grantee. */
-        private String mName;         
+        private String mName;
         /** The type of object the grantee's ID refers to.
          *  For instance, {@link ACL#GRANTEE_USER}. */
-        private byte mType;
-        /** A bitmask of the rights being granted.  For instance, 
+        private final byte mType;
+        /** A bitmask of the rights being granted.  For instance,
          *  <tt>{@link ACL#RIGHT_INSERT} | {@link ACL#RIGHT_READ}</tt>. */
         private short mRights;
         /** The password for guest accounts, or hex ascii string version of the accesskey for "key" grantees. */
         private String mSecret;
+        /** Time when this grant expires.
+         *  Value of 0 indicates that expiry is derived from ACL, except when {@link #mType} is
+         *  {@link ACL.GRANTEE_PUBLIC}. */
+        private long mExpiry = 0;
 
         /** Creates a new Grant object granting access to a user or class
          *  of users.  <tt>zimbraId</tt> may be <tt>null</tt>
          *  if the <tt>type</tt> is {@link ACL#GRANTEE_PUBLIC}.
-         * 
+         *
          * @param zimbraId  The zimbraId of the entry being granted rights.
          * @param type      The type of object the grantee's ID refers to.
          * @param rights    A bitmask of the rights being granted.
@@ -111,14 +115,15 @@ public class ACL {
             mType    = type;
             mRights  = (short) (rights & GRANTABLE_RIGHTS);
         }
-        Grant(String zimbraId, byte type, short rights, String secret) {
-        	this(zimbraId, type, rights);
+        Grant(String zimbraId, byte type, short rights, String secret, long expiry) {
+            this(zimbraId, type, rights);
             if (mType == GRANTEE_GUEST || mType == GRANTEE_KEY)
                 mSecret = secret;
+            mExpiry = expiry;
         }
 
         /** Creates a new Grant object from a decoded {@link Metadata} hash.
-         * 
+         *
          * @param meta  The Metadata object containing ACL data.
          * @throws ServiceException if any required fields are missing. */
         public Grant(Metadata meta) throws ServiceException {
@@ -128,9 +133,10 @@ public class ACL {
             if (hasGrantee())
                 mGrantee = meta.get(FN_GRANTEE);
             if (mType == ACL.GRANTEE_GUEST)
-            	mSecret = meta.get(FN_PASSWORD);
+                mSecret = meta.get(FN_PASSWORD, null);
             else if (mType == ACL.GRANTEE_KEY)
                 mSecret = meta.get(FN_ACCESSKEY);
+            mExpiry = meta.getLong(FN_EXPIRY, 0);
         }
 
         /** Returns true if there is an explicit grantee. */
@@ -141,19 +147,36 @@ public class ACL {
         public byte getGranteeType() { return mType; }
         /** Returns the bitmask of the rights granted. */
         public short getGrantedRights() { return mRights; }
-        
+
         /** Returns the rights granted to the given {@link Account} by this
          *  <tt>Grant</tt>.  If the grant does not apply to the Account,
          *  returns <tt>0</tt>. */
-        public short getGrantedRights(Account acct) throws ServiceException {
-            return matches(acct) ? mRights : 0;
+        public short getGrantedRights(Account acct, ACL acl) throws ServiceException {
+            return !isExpired(acl) && matches(acct) ? mRights : 0;
+        }
+
+        private boolean isExpired(ACL acl) {
+            long expiry = getEffectiveExpiry(acl);
+            return expiry != 0 && System.currentTimeMillis() > expiry;
+        }
+
+        public long getEffectiveExpiry(ACL acl) {
+            long expiry = mExpiry;
+            if (expiry == 0) {
+                if (mType == ACL.GRANTEE_GUEST || mType == ACL.GRANTEE_KEY) {
+                    expiry = acl.getGuestGrantExpiry();
+                } else if (mType != ACL.GRANTEE_PUBLIC) {
+                    expiry = acl.getInternalGrantExpiry();
+                }
+            }
+            return expiry;
         }
 
         /** Returns the display name of grantee. */
         public String getGranteeName() { return mName; }
         /** Sets the display name of grantee. */
         public void setGranteeName(String name) { mName = name; }
-        
+
         /** Returns whether this grant applies to the given {@link Account}.
          *  If <tt>acct</tt> is <tt>null</tt>, only return
          *  <tt>true</tt> if the grantee is {@link ACL#GRANTEE_PUBLIC}. */
@@ -163,10 +186,10 @@ public class ACL {
                 return mType == ACL.GRANTEE_PUBLIC;
             switch (mType) {
                 case ACL.GRANTEE_PUBLIC:   return true;
-                case ACL.GRANTEE_AUTHUSER: return !acct.getId().equals(GuestAccount.GUID_PUBLIC);
+                case ACL.GRANTEE_AUTHUSER: return isInternalAccount(acct);
                 case ACL.GRANTEE_COS:      return mGrantee.equals(getId(prov.getCOS(acct)));
-                case ACL.GRANTEE_DOMAIN:   return mGrantee.equals(getId(prov.getDomain(acct)));
-                case ACL.GRANTEE_GROUP:    return prov.inDistributionList(acct, mGrantee);
+                case ACL.GRANTEE_DOMAIN:   return matchesDomainGrantee(acct, prov);
+                case ACL.GRANTEE_GROUP:    return prov.inACLGroup(acct, mGrantee);
                 case ACL.GRANTEE_USER:     return mGrantee.equals(acct.getId());
                 case ACL.GRANTEE_GUEST:    return matchesGuestAccount(acct);
                 case ACL.GRANTEE_KEY:      return matchesAccessKey(acct);
@@ -174,18 +197,33 @@ public class ACL {
             }
         }
 
-        private boolean matchesGuestAccount(Account acct) {
-        	if (!(acct instanceof GuestAccount))
-        		return false;
-        	return ((GuestAccount) acct).matches(mGrantee, mSecret);
+        private boolean matchesDomainGrantee(Account acct, Provisioning prov) throws ServiceException {
+            return !acct.isIsExternalVirtualAccount() && mGrantee.equals(getId(prov.getDomain(acct)));
         }
-        
+
+        private boolean isInternalAccount(Account acct) {
+            return !acct.getId().equals(GuestAccount.GUID_PUBLIC) && !acct.isIsExternalVirtualAccount();
+        }
+
+        private boolean matchesGuestAccount(Account acct) {
+            if (acct instanceof GuestAccount) {
+                // Now that we can have virtual accounts, the secret is null/empty in virtual account
+                // sharing, and so we need to block access to GuestAccount(s)
+                if (!StringUtil.isNullOrEmpty(mSecret)) {
+                    return ((GuestAccount) acct).matches(mGrantee, mSecret);
+                }
+            } else if (acct.isIsExternalVirtualAccount()) {
+                return mGrantee.equalsIgnoreCase(acct.getExternalUserMailAddress());
+            }
+            return false;
+        }
+
         private boolean matchesAccessKey(Account acct) {
             if (!(acct instanceof GuestAccount))
                 return false;
             return ((GuestAccount) acct).matchesAccessKey(mGrantee, mSecret);
         }
-        
+
         /** Utility function: Returns the zimbraId for a null-checked LDAP
          *  entry. */
         private static final String getId(NamedEntry entry) {
@@ -197,19 +235,20 @@ public class ACL {
          *  is also OK) if the actual grantee is {@link ACL#GRANTEE_PUBLIC}.
          *  <tt>zimbraId</tt> must be {@link GuestAccount#GUID_AUTHUSER} if the actual
          *  grantee is {@link ACL#GRANTEE_AUTHUSER}.
-         * 
+         *
          * @param zimbraId  The zimbraId of the principal. */
         public boolean isGrantee(String zimbraId) {
-        	if (zimbraId == null || zimbraId.equals(GuestAccount.GUID_PUBLIC))
+            if (zimbraId == null || zimbraId.equals(GuestAccount.GUID_PUBLIC))
                 return (mType == GRANTEE_PUBLIC);
-        	else if (zimbraId.equals(GuestAccount.GUID_AUTHUSER))
+            else if (zimbraId.equals(GuestAccount.GUID_AUTHUSER))
                 return (mType == GRANTEE_AUTHUSER);
-            return zimbraId.equals(mGrantee);
+            return mType == GRANTEE_GUEST || mType == GRANTEE_KEY ?
+                    zimbraId.equalsIgnoreCase(mGrantee) : zimbraId.equals(mGrantee);
         }
 
         /** Updates the granted rights in the <tt>Grant</tt>.  The old
          *  set of rights is discarded.
-         * 
+         *
          * @param rights   A bitmask of the rights being granted.
          * @param inherit  Whether subfolders inherit these same rights.
          * @see ACL */
@@ -220,15 +259,27 @@ public class ACL {
         /** For grants to external users, sets the password/accesskey required to
          *  access the resource. */
         void setPassword(String password) {
-        	if ((mType == GRANTEE_GUEST || mType == GRANTEE_KEY) && password != null)
+            if ((mType == GRANTEE_GUEST || mType == GRANTEE_KEY) && password != null)
                 mSecret = password;
         }
-        
+
         /**
          * Only for grants to external users
          */
         public String getPassword() {
-        	return mSecret;
+            return mSecret;
+        }
+
+        /** Updates the expiry time for the grant.
+         *
+         * @param expiry
+         */
+        public void setExpiry(long expiry) {
+            mExpiry = expiry;
+        }
+
+        public long getExpiry() {
+            return mExpiry;
         }
 
 
@@ -238,6 +289,7 @@ public class ACL {
         private static final String FN_RIGHTS    = "r";
         private static final String FN_PASSWORD  = "a";
         private static final String FN_ACCESSKEY = "k";
+        private static final String FN_EXPIRY    = "e";
 
         /** Encapsulates this <tt>Grant</tt> as a {@link Metadata} object
          *  for serialization. */
@@ -248,22 +300,50 @@ public class ACL {
             meta.put(FN_TYPE,     mType);
             // FIXME: use "rwidxsca" instead of numeric value
             meta.put(FN_RIGHTS,   mRights);
-            
+
             if (mType == GRANTEE_KEY)
                 meta.put(FN_ACCESSKEY, mSecret);
             else
                 meta.put(FN_PASSWORD, mSecret);
-            
+            meta.put(FN_EXPIRY, mExpiry);
+
             return meta;
         }
     }
 
     /** The <tt>List</tt> of all {@link ACL.Grant}s set on an item. */
-    private List<Grant> mGrants = new ArrayList<Grant>(3);
-
+    private final List<Grant> mGrants = new ArrayList<Grant>(3);
+    /** Time when all grants to internal users or groups expire. Value of 0 indicates that they never expire. */
+    private long mInternalGrantExpiry = 0;
+    /** Time when all grants to guest/external users expire. Value of 0 indicates that they never expire. */
+    private long mGuestGrantExpiry = 0;
 
     public ACL()  { }
+
+    public ACL(long internalGrantExpiry, long guestGrantExpiry) {
+        mInternalGrantExpiry = internalGrantExpiry;
+        mGuestGrantExpiry = guestGrantExpiry;
+    }
+
     public ACL(MetadataList mlist) {
+        decodeGrants(mlist);
+    }
+
+    public ACL(Metadata meta) {
+        MetadataList mlist = null;
+        try {
+            mlist = meta.getList(FN_GRANTS, true);
+            mInternalGrantExpiry = meta.getLong(FN_INT_GRANT_EXPIRY, 0);
+            mGuestGrantExpiry = meta.getLong(FN_GST_GRANT_EXPIRY, 0);
+        } catch (ServiceException e) {
+            ZimbraLog.mailbox.warn("malformed ACL: " + meta, e);
+        }
+        if (mlist != null) {
+            decodeGrants(mlist);
+        }
+    }
+
+    private void decodeGrants(MetadataList mlist) {
         for (int i = 0; i < mlist.size(); i++) {
             try {
                 mGrants.add(new Grant(mlist.getMap(i)));
@@ -273,11 +353,19 @@ public class ACL {
         }
     }
 
+    public long getInternalGrantExpiry() {
+        return mInternalGrantExpiry;
+    }
+
+    public long getGuestGrantExpiry() {
+        return mGuestGrantExpiry;
+    }
+
     /** Returns the bitmask of rights granted to the user by the ACL, or
      *  <tt>null</tt> if there are no rights granted to anyone.  (Note that
      *  if rights are granted to <i>other</i> accounts but not to the
      *  specified user, returns <tt>0</tt>.)
-     * 
+     *
      * @param authuser   The user to gather rights for.
      * @return A <tt>Short</tt> containing the OR'ed-together rights
      *         granted to the user, or <tt>null</tt>. */
@@ -287,60 +375,90 @@ public class ACL {
 
         short rightsGranted = 0;
         for (Grant grant : mGrants)
-            rightsGranted |= grant.getGrantedRights(authuser);
+            rightsGranted |= grant.getGrantedRights(authuser, this);
         if ((rightsGranted & SUBFOLDER_RIGHTS) == SUBFOLDER_RIGHTS)
             rightsGranted |= RIGHT_SUBFOLDER;
 
-        return new Short(rightsGranted);
+        return Short.valueOf(rightsGranted);
     }
 
     /** Returns whether there are any grants encapsulated by this ACL. */
-    boolean isEmpty() {
+    public boolean isEmpty() {
         return mGrants.isEmpty();
+    }
+
+    public ACL.Grant grantAccess(String zimbraId, byte type, short rights, String secret)
+    throws ServiceException {
+        return grantAccess(zimbraId, type, rights, secret, 0);
     }
 
     /** Grants the specified set of rights to the target.  If another set
      *  of rights has already been granted to the exact given (id, type)
      *  pair, the previous set is revoked and the new set is granted.
-     * 
+     *
      * @param zimbraId  The zimbraId of the entry being granted rights.
      * @param type      The type of object the grantee's ID refers to.
-     * @param rights    A bitmask of the rights being granted. 
+     * @param rights    A bitmask of the rights being granted.
      * @param secret    password or accesskey
+     * @param expiry    time when grant expires
      * @return          the grant object
      */
-    public ACL.Grant grantAccess(String zimbraId, byte type, short rights, String secret)
+    public ACL.Grant grantAccess(String zimbraId, byte type, short rights, String secret, long expiry)
     throws ServiceException {
+
+        if (expiry != 0) {
+            if (type == ACL.GRANTEE_GUEST || type == ACL.GRANTEE_KEY) {
+                if (mGuestGrantExpiry != 0 && expiry > mGuestGrantExpiry) {
+                    throw ServiceException.PERM_DENIED("share expiration policy conflict");
+                }
+            } else if (type != ACL.GRANTEE_PUBLIC) {
+                // internal grantee
+                if (mInternalGrantExpiry != 0 && expiry > mInternalGrantExpiry) {
+                    throw ServiceException.PERM_DENIED("share expiration policy conflict");
+                }
+            }
+        }
+
         if (type == GRANTEE_AUTHUSER)
             zimbraId = GuestAccount.GUID_AUTHUSER;
         else if (type == GRANTEE_PUBLIC)
-        	zimbraId = GuestAccount.GUID_PUBLIC;
+            zimbraId = GuestAccount.GUID_PUBLIC;
         else if (zimbraId == null)
             throw ServiceException.INVALID_REQUEST("missing grantee id", null);
 
         // always generate a new key (if not provided) for updating or new key grants
         if (type == GRANTEE_KEY && secret == null)
             secret = generateAccessKey();
-            
+
         if (!mGrants.isEmpty()) {
-            for (Grant grant : mGrants)
+            for (Grant grant : mGrants) {
                 if (grant.isGrantee(zimbraId)) {
+                    if (grant.getGrantedRights() == rights &&
+                            ((type != GRANTEE_GUEST && type != GRANTEE_KEY) ||
+                                    StringUtil.equal(grant.getPassword(), secret)) &&
+                            (grant.getExpiry() == expiry)) {
+                        // same grant is already in the ACL
+                        throw MailServiceException.GRANTEE_EXISTS(zimbraId, null);
+
+                    }
                     grant.setRights(rights);
                     if (type == GRANTEE_GUEST || type == GRANTEE_KEY)
                         grant.setPassword(secret);
+                    grant.setExpiry(expiry);
                     return grant;
                 }
+            }
         }
-        
-        Grant grant = new Grant(zimbraId, type, rights, secret);
+
+        Grant grant = new Grant(zimbraId, type, rights, secret, expiry);
         mGrants.add(grant);
         return grant;
     }
 
     /** Removes the set of rights granted to the specified id.  If no rights
-     *  were previously granted to the target, no error is thrown and 
+     *  were previously granted to the target, no error is thrown and
      *  <tt>false</tt> is returned.
-     * 
+     *
      * @param zimbraId  The zimbraId of the entry being revoked rights.
      * @return whether an {@link Grant} was actually removed from the set. */
     public boolean revokeAccess(String zimbraId) {
@@ -355,13 +473,19 @@ public class ACL {
         return (mGrants.size() != count);
     }
 
-    /** Encapsulates this set of {@link ACL.Grant}s as a {@link MetadataList}
-     *  for serialization. */
-    public MetadataList encode() {
+    private static final String FN_GRANTS           = "g";
+    private static final String FN_INT_GRANT_EXPIRY = "ie";
+    private static final String FN_GST_GRANT_EXPIRY = "ge";
+
+    public Metadata encode() {
+        Metadata meta = new Metadata();
         MetadataList mlist = new MetadataList();
         for (Grant grant : mGrants)
             mlist.add(grant.encode());
-        return mlist;
+        meta.put(FN_GRANTS, mlist);
+        meta.put(FN_INT_GRANT_EXPIRY, mInternalGrantExpiry);
+        meta.put(FN_GST_GRANT_EXPIRY, mGuestGrantExpiry);
+        return meta;
     }
 
     @Override public String toString() {
@@ -423,7 +547,7 @@ public class ACL {
         if ((rights & RIGHT_SUBFOLDER) != 0)  sb.append(ABBR_CREATE_FOLDER);
         return sb.toString();
     }
-    
+
     public static byte stringToType(String typeStr) throws ServiceException {
         if (typeStr.equalsIgnoreCase("usr"))  return ACL.GRANTEE_USER;
         if (typeStr.equalsIgnoreCase("grp"))  return ACL.GRANTEE_GROUP;
@@ -447,13 +571,13 @@ public class ACL {
         if (type == ACL.GRANTEE_KEY)       return "key";
         return null;
     }
-    
+
     public static String generateAccessKey() {
         SecureRandom random = new SecureRandom();
         byte[] key = new byte[ACCESSKEY_SIZE_BYTES];
         random.nextBytes(key);
-        
+
         // in the form of e.g. 8d159aed5fb9431d8ac52db5e20baafb
-        return new String(Hex.encodeHex(key));  
+        return new String(Hex.encodeHex(key));
     }
 }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -37,15 +37,15 @@ public class GetAllFreeBusyProviders extends AdminDocumentHandler {
         Element response = zsc.createElement(AdminConstants.GET_ALL_FREE_BUSY_PROVIDERS_RESPONSE);
         
         for (FreeBusyProvider prov : FreeBusyProvider.getProviders()) {
-        	if (!(prov instanceof ExchangeEWSFreeBusyProvider )) {   	
-	            Element provElem = response.addElement(AdminConstants.E_PROVIDER);
-	            provElem.addAttribute(AdminConstants.A_NAME, prov.getName());
-	            provElem.addAttribute(AdminConstants.A_PROPAGATE, prov.registerForMailboxChanges());
-	            provElem.addAttribute(AdminConstants.A_START, prov.cachedFreeBusyStartTime());
-	            provElem.addAttribute(AdminConstants.A_END, prov.cachedFreeBusyEndTime());
-	            provElem.addAttribute(AdminConstants.A_QUEUE, prov.getQueueFilename());
-	            provElem.addAttribute(AdminConstants.A_PREFIX, prov.foreignPrincipalPrefix());
-        	}
+            if (!(prov instanceof ExchangeEWSFreeBusyProvider )) {
+                Element provElem = response.addElement(AdminConstants.E_PROVIDER);
+                provElem.addAttribute(AdminConstants.A_NAME, prov.getName());
+                provElem.addAttribute(AdminConstants.A_PROPAGATE, prov.registerForMailboxChanges());
+                provElem.addAttribute(AdminConstants.A_START, prov.cachedFreeBusyStartTime());
+                provElem.addAttribute(AdminConstants.A_END, prov.cachedFreeBusyEndTime());
+                provElem.addAttribute(AdminConstants.A_QUEUE, prov.getQueueFilename());
+                provElem.addAttribute(AdminConstants.A_PREFIX, prov.foreignPrincipalPrefix());
+            }
         }
 	    return response;
 	}

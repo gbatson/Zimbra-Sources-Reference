@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,9 @@ import java.io.InputStream;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.Server;
+import com.zimbra.cs.extension.ExtensionUtil;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.store.file.FileBlobStore;
@@ -39,7 +42,11 @@ public abstract class StoreManager {
                 String className = LC.zimbra_class_store.value();
                 try {
                     if (className != null && !className.equals("")) {
-                        sInstance = (StoreManager) Class.forName(className).newInstance();
+                        try {
+                            sInstance = (StoreManager) Class.forName(className).newInstance();
+                        } catch (ClassNotFoundException e) {
+                            sInstance = (StoreManager) ExtensionUtil.findClass(className).newInstance();
+                        }
                     } else {
                         sInstance = new FileBlobStore();
                     }
@@ -57,6 +64,19 @@ public abstract class StoreManager {
     public static void setInstance(StoreManager instance) {
         ZimbraLog.store.info("Setting StoreManager to " + instance.getClass().getName());
         sInstance = instance;
+    }
+
+    private static Integer diskStreamingThreshold;
+
+    public static int getDiskStreamingThreshold() throws ServiceException {
+        if (diskStreamingThreshold == null)
+            loadSettings();
+        return diskStreamingThreshold;
+    }
+
+    public static void loadSettings() throws ServiceException {
+        Server server = Provisioning.getInstance().getLocalServer();
+        diskStreamingThreshold = server.getMailDiskStreamingThreshold();
     }
 
     /**
@@ -77,7 +97,18 @@ public abstract class StoreManager {
         /** The store is reachable from any {@code mailboxd} host.  When
          *  moving mailboxes between hosts, the store should be left untouched,
          *  as there is no need to move the blobs along with the metadata. */
-        CENTRALIZED
+        CENTRALIZED,
+        /**
+         * The store supports resumable upload
+         */
+        RESUMABLE_UPLOAD,
+        /**
+         * The store supports deduping based on blob content; aka SIS create.
+         * If two users upload the same file, only one copy is stored.
+         * The remote store must track reference count internally
+         * and delete the actual file only when ref-count reaches 0
+         */
+        SINGLE_INSTANCE_SERVER_CREATE
     };
 
     /**
@@ -107,9 +138,9 @@ public abstract class StoreManager {
      * @throws IOException
      * @throws ServiceException
      */
-    public Blob storeIncoming(InputStream data, StorageCallback callback)
+    public Blob storeIncoming(InputStream data)
     throws IOException, ServiceException {
-        return storeIncoming(data, callback, false);
+        return storeIncoming(data, false);
     }
 
     /**
@@ -121,7 +152,7 @@ public abstract class StoreManager {
      * @throws IOException
      * @throws ServiceException
      */
-    public abstract Blob storeIncoming(InputStream data, StorageCallback callback, boolean storeAsIs)
+    public abstract Blob storeIncoming(InputStream data, boolean storeAsIs)
     throws IOException, ServiceException;
 
     /**
@@ -134,7 +165,7 @@ public abstract class StoreManager {
      * @param callback callback, or {@code null}
      * @param mbox the mailbox
      */
-    public abstract StagedBlob stage(InputStream data, long actualSize, StorageCallback callback, Mailbox mbox)
+    public abstract StagedBlob stage(InputStream data, long actualSize, Mailbox mbox)
     throws IOException, ServiceException;
 
     /**
@@ -146,9 +177,9 @@ public abstract class StoreManager {
      * @param callback callback, or {@code null}
      * @param mbox the mailbox
      */
-    public StagedBlob stage(InputStream data, StorageCallback callback, Mailbox mbox)
+    public StagedBlob stage(InputStream data, Mailbox mbox)
     throws IOException, ServiceException {
-        return stage(data, -1, callback, mbox);
+        return stage(data, -1, mbox);
     }
 
     /**
@@ -166,6 +197,7 @@ public abstract class StoreManager {
     /**
      * Create a copy in destMbox mailbox with message ID of destMsgId that
      * points to srcBlob.
+     * Implementations may choose to use linking where appropriate (i.e. files on same filesystem)
      * @param src
      * @param destMbox
      * @param destMsgId mail_item.id value for message in destMbox
@@ -180,6 +212,8 @@ public abstract class StoreManager {
     /**
      * Create a link in destMbox mailbox with message ID of destMsgId that
      * points to srcBlob.
+     * If staging creates permanent blobs, this just needs to return mailbox blob with pointer to location of staged blob
+     * If staging is done to temporary area such as our incoming directory this operation finishes it
      * @param src
      * @param destMbox
      * @param destMsgId mail_item.id value for message in destMbox
@@ -192,21 +226,8 @@ public abstract class StoreManager {
     throws IOException, ServiceException;
 
     /**
-     * Create a link in destMbox mailbox with message ID of destMsgId that
-     * points to srcBlob.
-     * @param src
-     * @param destMbox
-     * @param destMsgId mail_item.id value for message in destMbox
-     * @param destRevision mail_item.mod_content value for message in destMbox
-     * @return MailboxBlob object representing the linked blob
-     * @throws IOException
-     * @throws ServiceException
-     */
-    public abstract MailboxBlob link(MailboxBlob src, Mailbox destMbox, int destMsgId, int destRevision)
-    throws IOException, ServiceException;
-
-    /**
      * Rename a blob to a blob in mailbox directory.
+     * This effectively makes the StagedBlob permanent, implementations may not need to do anything if the stage operation creates permanent items
      * @param src
      * @param destMbox
      * @param destMsgId mail_item.id value for message in destMbox
@@ -362,4 +383,15 @@ public abstract class StoreManager {
      */
     public abstract boolean deleteStore(Mailbox mbox, Iterable<MailboxBlob.MailboxBlobInfo> blobs)
     throws IOException, ServiceException;
+
+    /**
+     * Create an IncomingBlob instance
+     * @param id
+     * @return
+     * @throws ServiceException
+     * @throws IOException
+     */
+    public IncomingBlob newIncomingBlob(String id, Object ctxt) throws IOException, ServiceException {
+        return new BufferingIncomingBlob(id, getBlobBuilder(), ctxt);
+    }
 }

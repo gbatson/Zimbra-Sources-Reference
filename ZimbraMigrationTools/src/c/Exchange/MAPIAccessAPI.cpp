@@ -882,7 +882,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             ad->Subject = mapiappointment.GetSubject();
             ad->Name = mapiappointment.GetSubject();
             ad->StartDate = mapiappointment.GetStartDate();
-            ad->StartDateCommon = mapiappointment.GetStartDateCommon();
+            ad->CalFilterDate = mapiappointment.GetCalFilterDate();
             ad->EndDate = mapiappointment.GetEndDate();
             ad->Location = mapiappointment.GetLocation();
             ad->PartStat = mapiappointment.GetResponseStatus();
@@ -894,6 +894,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             ad->organizer.nam = mapiappointment.GetOrganizerName();
             ad->organizer.addr = mapiappointment.GetOrganizerAddr();
             ad->Uid = mapiappointment.GetInstanceUID();
+            ad->vTags = pKeywords;
 	    
             // fill in attendees
             vector<Attendee*> v = mapiappointment.GetAttendees();
@@ -949,7 +950,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             td->Subject = mapitask.GetSubject();
             td->Importance = mapitask.GetImportance();
             td->TaskStart = mapitask.GetTaskStart();
-            td->TaskStartCommon = mapitask.GetTaskStartCommon();
+            td->TaskFilterDate = mapitask.GetTaskFilterDate();
             td->TaskDue = mapitask.GetTaskDue();
             td->Status = mapitask.GetTaskStatus();
             td->PercentComplete = mapitask.GetPercentComplete();
@@ -959,6 +960,7 @@ LPCWSTR MAPIAccessAPI::_GetItem(SBinary sbItemEID, BaseItemData &itemData)
             td->Mileage = mapitask.GetMileage();
             td->BillingInfo = mapitask.GetBillingInfo();
             td->ApptClass = mapitask.GetPrivate();
+            td->vTags = pKeywords;
             if (mapitask.IsTaskReminderSet())
             {
                 td->TaskFlagDueBy = mapitask.GetTaskFlagDueBy();

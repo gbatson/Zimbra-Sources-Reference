@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,9 +22,9 @@ import java.util.Set;
 
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMountpoint;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMountpoint;
 
 import junit.framework.TestCase;
 
@@ -44,10 +44,13 @@ extends TestCase {
     throws Exception {
         cleanUp();
     }
-    
+
+    public void testDummy() {
+    }
     /**
      * Tests {@link ZMailbox#getValidFolderIds(String)}.
      */
+
     public void testInvalidMountpoint()
     throws Exception {
         ZMailbox mbox = TestUtil.getZMailbox(USER_NAME);

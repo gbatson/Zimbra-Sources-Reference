@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -62,12 +46,12 @@ public class PageMail extends AbsTab {
 
 		public static final String zFoldersNewFolderDlg = "id=ztih__ZmNewFolderDialog__FOLDER_textCell";
 
-		public static final String zNewIconBtn 			= "id=zb__TV__NEW_MENU_left_icon";
+		public static final String zNewIconBtn 			= "id=zb__TV-main__NEW_MENU_left_icon";
 		public static final String zNewMenuIconBtn 		= "id=zb__CLV__NEW_MENU_left_icon";
 		public static final String zNewMenuBtn 			= "id=zb__CLV__NEW_MENU";
 		public static final String zNewMenuDropDown 	= "id=zb__CLV__NEW_MENU_dropdown";
 		public static final String zGetMailIconBtnCLVID 	= "zb__CLV__CHECK_MAIL_left_icon";
-		public static final String zGetMailIconBtnTVID 		= "zb__TV__CHECK_MAIL_left_icon";
+		public static final String zGetMailIconBtnTVID 		= "zb__TV-main__CHECK_MAIL_left_icon";
 		public static final String zGetMailIconBtn 		= "id=zb__CLV__CHECK_MAIL_left_icon";
 		public static final String zGetMailBtn 			= "id=zb__CLV__CHECK_MAIL";
 		public static final String zDeleteIconBtnID 	= "zb__CLV__DELETE_left_icon";
@@ -87,8 +71,8 @@ public class PageMail extends AbsTab {
 		public static final String zTagIconBtn 			= "id=zb__CLV__TAG_MENU_left_icon";
 		public static final String zTagBtn 				= "id=zb__CLV__TAG_MENU";
 		public static final String zTagMenuDropdownBtnID	= "zb__CLV__TAG_MENU_dropdown";
-		public static final String zDetachIconBtnID		= "zb__TV__DETACH_left_icon";
-		public static final String zDetachBtn 			= "id=zb__TV__DETACH";
+		public static final String zDetachIconBtnID		= "zb__TV-main__DETACH_left_icon";
+		public static final String zDetachBtn 			= "id=zb__TV-main__DETACH";
 		public static final String zDetachIconBtn2 		= "id=zb__CLV__DETACH_left_icon";
 		public static final String zDetachBtn2 			= "id=zb__CLV__DETACH";
 		public static final String zDetachBtn_ComposedMessage = "id=zb__COMPOSE1__DETACH_COMPOSE";
@@ -97,7 +81,7 @@ public class PageMail extends AbsTab {
 		public static final String zViewMenuDropdownBtnID	= "zb__CLV__VIEW_MENU_dropdown";
 
 		public static final String zViewMenuCLVBtnID	= zViewIconBtnID;
-		public static final String zViewMenuTVBtnID		= "zb__TV__VIEW_MENU_left_icon";
+		public static final String zViewMenuTVBtnID		= "zb__TV-main__VIEW_MENU_left_icon";
 
 
 		public static final String zCloseIconBtn_newWindow 		= "id=zb__MSG1__CLOSE_left_icon";
@@ -181,7 +165,7 @@ public class PageMail extends AbsTab {
 
 
 		public static final String zCLVRows			= "zl__CLV__rows";
-		public static final String zTVRows			= "zl__TV__rows";
+		public static final String zTVRows			= "zl__TV-main__rows";
 
 		public static class CONTEXT_MENU {
 			// TODO: Until https://bugzilla.zimbra.com/show_bug.cgi?id=56273 is fixed, ContextMenuItem will be defined using the text content
@@ -309,7 +293,7 @@ public class PageMail extends AbsTab {
 
 			String id;
 			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
-				id = "zb__TV__DELETE_left_icon";
+				id = "zb__TV-main__DELETE_left_icon";
 			} else {
 				id = "zb__CLV__DELETE_left_icon";
 			}
@@ -703,8 +687,8 @@ public class PageMail extends AbsTab {
 		String listLocator = null;
 		String rowLocator = null;
 		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-         listLocator = "//div[@id='zl__TV__rows']";
-         rowLocator = "//div[contains(@id, 'zli__TV__')]";
+         listLocator = "//div[@id='zl__TV-main__rows']";
+         rowLocator = "//div[contains(@id, 'zli__TV-main__')]";
       } else {
          listLocator = "//div[@id='zl__CLV__rows']";
          rowLocator = "//div[contains(@id, 'zli__CLV__')]";
@@ -738,7 +722,7 @@ public class PageMail extends AbsTab {
 			locator = "xpath=("+ msglocator +"//div[contains(@id, '__pr')])@class";
 			String priority = this.sGetAttribute(locator);
 			if ( priority.equals("ImgPriorityHigh_list") ) {
-				item.gPriority = "high";
+				item.gPriority = MailItem.Priority.High;
 			} else {
 				// TODO - handle other priorities
 			}
@@ -832,7 +816,7 @@ public class PageMail extends AbsTab {
 
 			// Is it expanded?
 			locator = convlocator + "//div[contains(@class, 'ImgNodeExpanded')]";
-			item.gIsExpanded = this.sIsElementPresent(locator);
+			// item.gIsExpanded = this.sIsElementPresent(locator);
 
 			// Is it flagged
 			// TODO: probably can't have boolean, need 'blank', 'disabled', 'red', and other states
@@ -845,7 +829,7 @@ public class PageMail extends AbsTab {
 				throw new HarnessException("Unable to locator priority field");
 			String priority = this.sGetAttribute("xpath="+locator+"@class");
 			if ( priority.equals("ImgPriorityHigh_list") ) {
-				item.gPriority = "high";
+				item.gPriority = MailItem.Priority.High;
 			} else {
 				// TODO - handle other priorities
 			}
@@ -926,8 +910,8 @@ public class PageMail extends AbsTab {
 	   //
 	   
 	   if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-	      listLocator = "//div[@id='zl__TV__rows']";
-	      rowLocator = "//div[contains(@id, 'zli__TV__')]";
+	      listLocator = "//div[@id='zl__TV-main__rows']";
+	      rowLocator = "//div[contains(@id, 'zli__TV-main__')]";
 	   } else {
 	      listLocator = "//div[@id='zl__CLV__rows']";
 	      rowLocator = "//div[contains(@id, 'zli__CLV__')]";
@@ -995,8 +979,8 @@ public class PageMail extends AbsTab {
 		//
 
 		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-			listLocator = "//div[@id='zl__TV__rows']";
-			rowLocator = "//div[contains(@id, 'zli__TV__')]";
+			listLocator = "//div[@id='zl__TV-main__rows']";
+			rowLocator = "//div[contains(@id, 'zli__TV-main__')]";
 		} else {
 			listLocator = "//div[@id='zl__CLV__rows']";
 			rowLocator = "//div[contains(@id, 'zli__CLV__')]";
@@ -1244,8 +1228,8 @@ public class PageMail extends AbsTab {
 		//
 
 		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-			listLocator = "//div[@id='zl__TV__rows']";
-			rowLocator = "//div[contains(@id, 'zli__TV__')]";
+			listLocator = "//div[@id='zl__TV-main__rows']";
+			rowLocator = "//div[contains(@id, 'zli__TV-main__')]";
 		} else {
 			listLocator = "//div[@id='zl__CLV__rows']";
 			rowLocator = "//div[contains(@id, 'zli__CLV__')]";

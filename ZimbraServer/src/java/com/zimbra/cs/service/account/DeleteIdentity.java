@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,6 +16,8 @@ package com.zimbra.cs.service.account;
 
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.IdentityBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.common.soap.Element;
@@ -23,7 +25,6 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.IdentityBy;
 import com.zimbra.soap.DocumentHandler;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -45,10 +46,10 @@ public class DeleteIdentity extends DocumentHandler {
         Identity ident = null;
         String idStr = eIdentity.getAttribute(AccountConstants.A_ID, null);
         if (idStr != null) {
-            ident = prov.get(account, IdentityBy.id, idStr);
+            ident = prov.get(account, Key.IdentityBy.id, idStr);
         } else {
             idStr = eIdentity.getAttribute(AccountConstants.A_NAME);
-            ident = prov.get(account, IdentityBy.name, idStr);
+            ident = prov.get(account, Key.IdentityBy.name, idStr);
         }
         
         if (ident != null)

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -26,8 +27,8 @@ import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ldap.LdapUtil;
 import com.zimbra.cs.datasource.DataSourceManager;
+import com.zimbra.cs.ldap.LdapUtil;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
@@ -50,7 +51,7 @@ public class CreateDataSource extends MailDocumentHandler {
         
         // Create the data source
         Element eDataSource = getDataSourceElement(request);
-        DataSource.Type type = DataSource.Type.fromString(eDataSource.getName());
+        DataSourceType type = DataSourceType.fromString(eDataSource.getName());
         Map<String, Object> dsAttrs = new HashMap<String, Object>();
 
         // Common attributes
@@ -58,9 +59,9 @@ public class CreateDataSource extends MailDocumentHandler {
         String name = eDataSource.getAttribute(MailConstants.A_NAME);
         dsAttrs.put(Provisioning.A_zimbraDataSourceFolderId, eDataSource.getAttribute(MailConstants.A_FOLDER));
         dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled,
-            LdapUtil.getBooleanString(eDataSource.getAttributeBool(MailConstants.A_DS_IS_ENABLED)));
+            LdapUtil.getLdapBooleanString(eDataSource.getAttributeBool(MailConstants.A_DS_IS_ENABLED)));
         dsAttrs.put(Provisioning.A_zimbraDataSourceImportOnly,
-                LdapUtil.getBooleanString(eDataSource.getAttributeBool(MailConstants.A_DS_IS_IMPORTONLY,false)));
+                LdapUtil.getLdapBooleanString(eDataSource.getAttributeBool(MailConstants.A_DS_IS_IMPORTONLY,false)));
         dsAttrs.put(Provisioning.A_zimbraDataSourceHost, eDataSource.getAttribute(MailConstants.A_DS_HOST));
         dsAttrs.put(Provisioning.A_zimbraDataSourcePort, eDataSource.getAttribute(MailConstants.A_DS_PORT));
         dsAttrs.put(Provisioning.A_zimbraDataSourceConnectionType, eDataSource.getAttribute(MailConstants.A_DS_CONNECTION_TYPE));
@@ -90,9 +91,9 @@ public class CreateDataSource extends MailDocumentHandler {
         ModifyDataSource.processCommonOptionalAttrs(dsAttrs, eDataSource);
         
         // POP3-specific attributes
-        if (type == DataSource.Type.pop3) {
+        if (type == DataSourceType.pop3) {
             dsAttrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer,
-                LdapUtil.getBooleanString(eDataSource.getAttributeBool(MailConstants.A_DS_LEAVE_ON_SERVER, true)));
+                LdapUtil.getLdapBooleanString(eDataSource.getAttributeBool(MailConstants.A_DS_LEAVE_ON_SERVER, true)));
         }
         
         DataSource ds = prov.createDataSource(account, type, name, dsAttrs);

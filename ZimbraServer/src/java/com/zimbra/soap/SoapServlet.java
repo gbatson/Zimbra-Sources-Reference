@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,7 +29,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.apache.commons.httpclient.HttpVersion;
 import org.apache.commons.httpclient.ProtocolException;
-import org.apache.log4j.PropertyConfigurator;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Function;
@@ -42,7 +41,6 @@ import com.zimbra.common.util.BufferStream;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.RemoteIP;
-import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.util.ZimbraServletOutputStream;
 import com.zimbra.cs.account.Provisioning;
@@ -53,7 +51,6 @@ import com.zimbra.cs.util.Zimbra;
 /**
  * The soap service servlet
  */
-
 public class SoapServlet extends ZimbraServlet {
     private static final long serialVersionUID = 38710345271877593L;
 
@@ -67,8 +64,6 @@ public class SoapServlet extends ZimbraServlet {
     public static final String SERVLET_REQUEST = "servlet.request";
     /** context name of servlet HTTP response */
     public static final String SERVLET_RESPONSE = "servlet.response";
-    /** If this is set, then this a RESUMED servlet request (Jetty Continuation) */
-    public static final String IS_RESUMED_REQUEST = "zimbra.resumedRequest";
     /** If this is a request sent to the admin port */
     public static final String IS_ADMIN_REQUEST = "zimbra.isadminreq";
 
@@ -89,15 +84,9 @@ public class SoapServlet extends ZimbraServlet {
     private static Log sLog = LogFactory.getLog(SoapServlet.class);
     private SoapEngine mEngine;
 
-    @Override public void init() throws ServletException {
-        // TODO we should have a ReloadConfig soap command that will reload
-        // on demand, instead of modifying and waiting for some time.
-        long watch = LC.zimbra_log4j_properties_watch.longValue();
-
-        if (watch > 0)
-            PropertyConfigurator.configureAndWatch(LC.zimbra_log4j_properties.value(), watch);
-        else
-            PropertyConfigurator.configure(LC.zimbra_log4j_properties.value());
+    @Override
+    public void init() throws ServletException {
+        LogFactory.init();
 
         String name = getServletName();
         ZimbraLog.soap.info("Servlet " + name + " starting up");
@@ -196,8 +185,8 @@ public class SoapServlet extends ZimbraServlet {
             if (servlet != null) {
                 ((SoapServlet) servlet).addService(service);
             } else {
-                sLog.debug("addService(" + servletName + ", " +
-                    StringUtil.getSimpleClassName(service) + "): servlet has not been initialized");
+                sLog.debug("addService(%s, %s): servlet has not been initialized",
+                        servletName, service.getClass().getSimpleName());
                 List<DocumentService> services = sExtraServices.get(servletName);
                 services.add(service);
             }
@@ -205,7 +194,7 @@ public class SoapServlet extends ZimbraServlet {
     }
 
     private void addService(DocumentService service) {
-        ZimbraLog.soap.info("Adding service " + StringUtil.getSimpleClassName(service) + " to " + getServletName());
+        ZimbraLog.soap.info("Adding service %s to %s", service.getClass().getSimpleName(), getServletName());
         service.registerHandlers(mEngine.getDocumentDispatcher());
     }
 
@@ -295,8 +284,6 @@ public class SoapServlet extends ZimbraServlet {
         remoteIp.addToLoggingContext();
 
         //checkAuthToken(req.getCookies(), context);
-        if (isResumed)
-            context.put(IS_RESUMED_REQUEST, "1");
 
         Element envelope = null;
         try {
@@ -311,8 +298,8 @@ public class SoapServlet extends ZimbraServlet {
             }
 
             // don't interfere with Jetty Continuations -- pass the exception right up
-            if (e.getClass().getName().equals("org.mortbay.jetty.RetryRequest"))
-                throw ((RuntimeException)e);
+            if (e.getClass().getName().equals("org.eclipse.jetty.continuation.ContinuationThrowable"))
+                throw (Error) e;
 
             ZimbraLog.soap.warn("handler exception", e);
             Element fault = SoapProtocol.Soap12.soapFault(ServiceException.FAILURE(e.toString(), e));
@@ -372,6 +359,8 @@ public class SoapServlet extends ZimbraServlet {
             byte[] soapBytes = envelope.toUTF8();
             resp.setContentLength(soapBytes.length);
             resp.getOutputStream().write(soapBytes);
+            resp.getOutputStream().flush();
         }
+        envelope.destroy();
     }
 }

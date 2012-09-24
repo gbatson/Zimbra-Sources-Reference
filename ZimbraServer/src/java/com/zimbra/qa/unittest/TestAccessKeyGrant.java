@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -48,12 +48,12 @@ import com.zimbra.cs.service.AuthProviderException;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZGrant;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMountpoint;
-import com.zimbra.cs.zclient.ZSearchParams;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZGrant;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMountpoint;
+import com.zimbra.client.ZSearchParams;
 
 /*
  * To test key grant:
@@ -171,7 +171,8 @@ public class TestAccessKeyGrant extends TestCase {
         }
 
         @Override
-        public void encode(HttpServletResponse resp, boolean isAdminReq, boolean secureCookie)
+        public void encode(HttpServletResponse resp, boolean isAdminReq, 
+                boolean secureCookie, boolean rememberMe)
                 throws ServiceException {
             // TODO Auto-generated method stub
             throw ServiceException.FAILURE("Not implemented", null);

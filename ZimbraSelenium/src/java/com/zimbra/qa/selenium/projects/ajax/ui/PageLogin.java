@@ -1,24 +1,8 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.*;
 
 
 public class PageLogin extends AbsTab {
@@ -26,7 +10,7 @@ public class PageLogin extends AbsTab {
 	public static class Locators {
 
 		// Buttons
-		public static final String zBtnLogin = "css=input[class='zLoginButton']";
+		public static final String zBtnLogin = "css=input[class*=LoginButton]";
 
 
 		// Desktop-specific
@@ -43,6 +27,9 @@ public class PageLogin extends AbsTab {
 		// Displayed text
 		public static final String zDisplayedusername = "css=form[name='loginForm'] label[for='username']";
 		public static final String zDisplayedcopyright = "css=div[class='copyright']";
+		
+		// Toolbar links
+		public static final String zLogoutLink = "css=[id='skin_container_logoff']>a";
 
 	}
 
@@ -132,13 +119,15 @@ public class PageLogin extends AbsTab {
 		sClick(Locators.zBtnLogin);
 
 		// Wait for the app to load
-		sWaitForPageToLoad();
-		((AppAjaxClient)MyApplication).zPageMain.zWaitForActive();
+		/* TODO: ... debugging to be removed */
+		//sWaitForPageToLoad();
+		
+		((AppAjaxClient)MyApplication).zPageMain.zWaitForActive(180000);
 
 		((AppAjaxClient)MyApplication).zSetActiveAcount(account);
 
 	}
-
+	
 	/**
 	 * Add the specified name to the login name field
 	 * @param name

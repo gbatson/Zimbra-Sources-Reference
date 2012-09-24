@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,7 +17,9 @@ package com.zimbra.cs.index;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
+import com.google.common.collect.ImmutableSet;
 import com.zimbra.cs.mailbox.Mailbox;
 
 /**
@@ -43,6 +45,11 @@ import com.zimbra.cs.mailbox.Mailbox;
 public final class NoTermQueryOperation extends QueryOperation {
 
     @Override
+    public long getCursorOffset() {
+        return -1;
+    }
+
+    @Override
     protected void begin(QueryContext ctx) {
         assert(context == null);
         context = ctx;
@@ -59,8 +66,7 @@ public final class NoTermQueryOperation extends QueryOperation {
     }
 
     @Override
-    QueryOperation ensureSpamTrashSetting(Mailbox mbox, boolean includeTrash,
-            boolean includeSpam) {
+    QueryOperation ensureSpamTrashSetting(Mailbox mbox, boolean includeTrash, boolean includeSpam) {
         return this;
     }
 
@@ -85,10 +91,8 @@ public final class NoTermQueryOperation extends QueryOperation {
     }
 
     @Override
-    QueryTargetSet getQueryTargets() {
-        QueryTargetSet toRet = new QueryTargetSet(1);
-        toRet.add(QueryTarget.UNSPECIFIED);
-        return toRet;
+    Set<QueryTarget> getQueryTargets() {
+        return ImmutableSet.of(QueryTarget.UNSPECIFIED);
     }
 
     @Override
@@ -126,17 +130,12 @@ public final class NoTermQueryOperation extends QueryOperation {
     }
 
     @Override
-    public void doneWithSearchResults() {
+    public void close() {
     }
 
     @Override
     public List<QueryInfo> getResultInfo() {
         return new ArrayList<QueryInfo>();
-    }
-
-    @Override
-    public int estimateResultSize() {
-        return 0;
     }
 
     @Override

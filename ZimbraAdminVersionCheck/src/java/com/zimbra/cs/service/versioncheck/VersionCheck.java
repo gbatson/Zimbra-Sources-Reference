@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.service.versioncheck;
 
 import java.io.IOException;
@@ -33,49 +17,36 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.XmlParseException;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.ServerBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.admin.AdminDocumentHandler;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.BuildInfo;
-import com.zimbra.cs.zclient.ZEmailAddress;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMailbox.Options;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.MessagePart;
+import com.zimbra.client.ZEmailAddress;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMailbox.Options;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage.MessagePart;
 import com.zimbra.soap.ZimbraSoapContext;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
 import org.apache.commons.httpclient.URIException;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.util.URIUtil;
-import org.dom4j.DocumentException;
 import com.zimbra.cs.httpclient.URLUtil;
 /**
  * @author Greg Solovyev
  */
 public class VersionCheck extends AdminDocumentHandler {
-	public static String E_UPDATES= "updates";
-	public static String E_UPDATE = "update";
-	public static String E_VERSION_CHECK = "versionCheck";
-	public static String A_VERSION_CHECK_STATUS = "status";
-	public static String A_UPDATE_TYPE = "type";
-	public static String A_CRITICAL = "critical";
-	public static String UPDATE_TYPE_MAJOR = "major";
-	public static String UPDATE_TYPE_MINOR = "minor";
-	public static String A_UPDATE_URL = "updateURL";
-	public static String A_DESCRIPTION = "description";
-	public static String A_SHORT_VERSION = "shortversion";
-	public static String A_VERSION = "version";
-	public static String A_RELEASE = "release";
-	public static String A_PLATFORM = "platform";
-	public static String A_BUILDTYPE = "buildtype";
+    public static String UPDATE_TYPE_MAJOR = "major";
+    public static String UPDATE_TYPE_MINOR = "minor";
 	
 	@Override
 	public Element handle(Element request, Map<String, Object> context)	throws ServiceException {
@@ -84,13 +55,13 @@ public class VersionCheck extends AdminDocumentHandler {
         Config config = prov.getConfig();
     	checkRight(zc, context, null, Admin.R_checkSoftwareUpdates);      
         String action = request.getAttribute(MailConstants.E_ACTION);
-    	Element response = zc.createElement(VersionCheckService.VC_RESPONSE);
-        if(action.equalsIgnoreCase(VersionCheckService.VERSION_CHECK_CHECK)) {
+    	Element response = zc.createElement(AdminConstants.VC_RESPONSE);
+        if(action.equalsIgnoreCase(AdminConstants.VERSION_CHECK_CHECK)) {
         	//check if we need to proxy to the updater server
         	String updaterServerId = config.getAttr(Provisioning.A_zimbraVersionCheckServer);
 
             if (updaterServerId != null) {
-                Server server = prov.get(ServerBy.id, updaterServerId);
+                Server server = prov.get(Key.ServerBy.id, updaterServerId);
                 if (server != null && !getLocalHostId().equalsIgnoreCase(server.getId()))
                     return proxyRequest(request, context, server);
             }
@@ -104,8 +75,8 @@ public class VersionCheck extends AdminDocumentHandler {
         	Element respDoc;
 			try {	
 				respDoc = Element.parseXML(resp);
-			} catch (DocumentException dex) {
-				throw VersionCheckException.INVALID_VC_RESPONSE(resp, dex);
+			} catch (XmlParseException ex) {
+				throw VersionCheckException.INVALID_VC_RESPONSE(resp, ex);
 			}
 			if(respDoc == null) {
 				throw ServiceException.FAILURE("error parsing  zimbraVersionCheckLastResponse config attribute. Attribute value is empty",null);
@@ -125,7 +96,7 @@ public class VersionCheck extends AdminDocumentHandler {
 			}
 			if (sendNotification) {
 				String fromEmail = config.getAttr(Provisioning.A_zimbraVersionCheckNotificationEmailFrom);
-				boolean hasUpdates = respDoc.getAttributeBool(A_VERSION_CHECK_STATUS, false);
+				boolean hasUpdates = respDoc.getAttributeBool(AdminConstants.A_VERSION_CHECK_STATUS, false);
 				if (hasUpdates) {
 					boolean hasCritical = false;
 					String msgTemplate = config.getAttr(Provisioning.A_zimbraVersionCheckNotificationBody);
@@ -135,7 +106,7 @@ public class VersionCheck extends AdminDocumentHandler {
 						String criticalStr = "";
 						String updateTemplate = null;
 						String prefix = null;
-						Element eUpdates = respDoc.getElement(E_UPDATES);
+						Element eUpdates = respDoc.getElement(AdminConstants.E_UPDATES);
 						int beginUpdateIndex,endUpdateIndex;
 						beginUpdateIndex = msgTemplate.indexOf("${BEGIN_UPDATE}");
 						endUpdateIndex = msgTemplate.indexOf("${END_UPDATE}",beginUpdateIndex);
@@ -151,9 +122,9 @@ public class VersionCheck extends AdminDocumentHandler {
 							updateTemplate = msgTemplate.substring(beginUpdateIndex, endUpdateIndex);
 							
 							int i=1;
-							for (Iterator<Element> iter = eUpdates.elementIterator(E_UPDATE); iter.hasNext();) {
+							for (Iterator<Element> iter = eUpdates.elementIterator(AdminConstants.E_UPDATE); iter.hasNext();) {
 								Element eUpdate = iter.next();
-								boolean isCritical = eUpdate.getAttributeBool(A_CRITICAL, false);
+								boolean isCritical = eUpdate.getAttributeBool(AdminConstants.A_CRITICAL, false);
 								if (isCritical)
 									hasCritical = true;
 
@@ -162,13 +133,13 @@ public class VersionCheck extends AdminDocumentHandler {
 								} else {
 									criticalStr = "non-critical";
 								}
-								msg = msg.concat(updateTemplate.replaceAll("\\$\\{UPDATE_URL\\}", eUpdate.getAttribute(A_UPDATE_URL))
-								.replaceAll("\\$\\{UPDATE_DESCRIPTION\\}", eUpdate.getAttribute(A_DESCRIPTION))
-								.replaceAll("\\$\\{UPDATE_VERSION\\}", eUpdate.getAttribute(A_VERSION))
-								.replaceAll("\\$\\{UPDATE_SHORT_VERSION\\}", eUpdate.getAttribute(A_SHORT_VERSION))
-								.replaceAll("\\$\\{UPDATE_RELEASE\\}", eUpdate.getAttribute(A_RELEASE))
-								.replaceAll("\\$\\{UPDATE_PLATFORM\\}", eUpdate.getAttribute(A_PLATFORM))
-								.replaceAll("\\$\\{UPDATE_BUILD_TYPE\\}", eUpdate.getAttribute(A_BUILDTYPE))
+								msg = msg.concat(updateTemplate.replaceAll("\\$\\{UPDATE_URL\\}", eUpdate.getAttribute(AdminConstants.A_UPDATE_URL))
+								.replaceAll("\\$\\{UPDATE_DESCRIPTION\\}", eUpdate.getAttribute(AdminConstants.A_DESCRIPTION))
+								.replaceAll("\\$\\{UPDATE_VERSION\\}", eUpdate.getAttribute(AdminConstants.A_VERSION))
+								.replaceAll("\\$\\{UPDATE_SHORT_VERSION\\}", eUpdate.getAttribute(AdminConstants.A_SHORT_VERSION))
+								.replaceAll("\\$\\{UPDATE_RELEASE\\}", eUpdate.getAttribute(AdminConstants.A_RELEASE))
+								.replaceAll("\\$\\{UPDATE_PLATFORM\\}", eUpdate.getAttribute(AdminConstants.A_PLATFORM))
+								.replaceAll("\\$\\{UPDATE_BUILD_TYPE\\}", eUpdate.getAttribute(AdminConstants.A_BUILDTYPE))
 								.replaceAll("\\$\\{IS_CRITICAL\\}", criticalStr)
 								.replaceAll("\\$\\{UPDATE_COUNTER\\}", Integer.toString(i))
 								.replaceAll("\\$\\{BEGIN_UPDATE\\}", "")
@@ -226,7 +197,7 @@ public class VersionCheck extends AdminDocumentHandler {
 				}
 			}
         	
-        } else if(action.equalsIgnoreCase(VersionCheckService.VERSION_CHECK_STATUS)) {
+        } else if(action.equalsIgnoreCase(AdminConstants.VERSION_CHECK_STATUS)) {
 			try {
 
 	        	String resp = config.getAttr(Provisioning.A_zimbraVersionCheckLastResponse);
@@ -234,38 +205,38 @@ public class VersionCheck extends AdminDocumentHandler {
 	        	if(resp != null) {
 		        	Element respDoc = Element.parseXML(resp);
 
-					hasUpdates = respDoc.getAttributeBool(A_VERSION_CHECK_STATUS, false);
-					Element elRespVersionCheck = response.addElement(E_VERSION_CHECK);
-					elRespVersionCheck.addAttribute(A_VERSION_CHECK_STATUS, hasUpdates);
+					hasUpdates = respDoc.getAttributeBool(AdminConstants.A_VERSION_CHECK_STATUS, false);
+					Element elRespVersionCheck = response.addElement(AdminConstants.E_VERSION_CHECK);
+					elRespVersionCheck.addAttribute(AdminConstants.A_VERSION_CHECK_STATUS, hasUpdates);
 					if(hasUpdates) {
-						Element eUpdates = respDoc.getElement(E_UPDATES);
-						Element elRespUpdates = elRespVersionCheck.addElement(E_UPDATES);
-			            for (Iterator<Element> iter = eUpdates.elementIterator(E_UPDATE); iter.hasNext(); ) {
+						Element eUpdates = respDoc.getElement(AdminConstants.E_UPDATES);
+						Element elRespUpdates = elRespVersionCheck.addElement(AdminConstants.E_UPDATES);
+			            for (Iterator<Element> iter = eUpdates.elementIterator(AdminConstants.E_UPDATE); iter.hasNext(); ) {
 			                Element eUpdate = iter.next();
-			                String updateType = eUpdate.getAttribute(A_UPDATE_TYPE);
-			                boolean isCritical = eUpdate.getAttributeBool(A_CRITICAL,false);
-			                String detailsUrl = eUpdate.getAttribute(A_UPDATE_URL);
-			                String description = eUpdate.getAttribute(A_DESCRIPTION);
-			                String version = eUpdate.getAttribute(A_VERSION);
-			                String release = eUpdate.getAttribute(A_RELEASE);
-			                String platform = eUpdate.getAttribute(A_PLATFORM);
-			                String buildtype = eUpdate.getAttribute(A_BUILDTYPE);
-			                String shortVersion = eUpdate.getAttribute(A_SHORT_VERSION);
+			                String updateType = eUpdate.getAttribute(AdminConstants.A_UPDATE_TYPE);
+			                boolean isCritical = eUpdate.getAttributeBool(AdminConstants.A_CRITICAL,false);
+			                String detailsUrl = eUpdate.getAttribute(AdminConstants.A_UPDATE_URL);
+			                String description = eUpdate.getAttribute(AdminConstants.A_DESCRIPTION);
+			                String version = eUpdate.getAttribute(AdminConstants.A_VERSION);
+			                String release = eUpdate.getAttribute(AdminConstants.A_RELEASE);
+			                String platform = eUpdate.getAttribute(AdminConstants.A_PLATFORM);
+			                String buildtype = eUpdate.getAttribute(AdminConstants.A_BUILDTYPE);
+			                String shortVersion = eUpdate.getAttribute(AdminConstants.A_SHORT_VERSION);
 			                
-			                Element elRespUpdate = elRespUpdates.addElement(E_UPDATE);
-			                elRespUpdate.addAttribute(A_UPDATE_TYPE,updateType);
-			                elRespUpdate.addAttribute(A_CRITICAL,isCritical);
-			                elRespUpdate.addAttribute(A_UPDATE_URL,detailsUrl);
-			                elRespUpdate.addAttribute(A_DESCRIPTION,description);
-			                elRespUpdate.addAttribute(A_SHORT_VERSION,shortVersion);
-			                elRespUpdate.addAttribute(A_RELEASE,release);
-			                elRespUpdate.addAttribute(A_VERSION,version);
-			                elRespUpdate.addAttribute(A_BUILDTYPE,buildtype);
-			                elRespUpdate.addAttribute(A_PLATFORM,platform);		                
-			            }					
+			                Element elRespUpdate = elRespUpdates.addElement(AdminConstants.E_UPDATE);
+			                elRespUpdate.addAttribute(AdminConstants.A_UPDATE_TYPE,updateType);
+			                elRespUpdate.addAttribute(AdminConstants.A_CRITICAL,isCritical);
+			                elRespUpdate.addAttribute(AdminConstants.A_UPDATE_URL,detailsUrl);
+			                elRespUpdate.addAttribute(AdminConstants.A_DESCRIPTION,description);
+			                elRespUpdate.addAttribute(AdminConstants.A_SHORT_VERSION,shortVersion);
+			                elRespUpdate.addAttribute(AdminConstants.A_RELEASE,release);
+			                elRespUpdate.addAttribute(AdminConstants.A_VERSION,version);
+			                elRespUpdate.addAttribute(AdminConstants.A_BUILDTYPE,buildtype);
+			                elRespUpdate.addAttribute(AdminConstants.A_PLATFORM,platform);
+			            }
 					}
 	        	}
-			} catch (DocumentException e) {
+			} catch (XmlParseException e) {
 				throw ServiceException.FAILURE("error parsing  zimbraVersionCheckLastResponse config attribute", e);
 			}
             
@@ -310,6 +281,7 @@ public class VersionCheck extends AdminDocumentHandler {
  * <updates>
  * <update type="minor" shortversion = "6.0.19" version = "6.0.19_GA_1841.RHEL4.NETWORK" release="20090921024654" critical="0|1" detailsURL="URL" description="text"/>
  * <update type="major" shortversion = "7.0.2" version = "7.0.2_GA_4045.RHEL4.NETWORK" release="20090921024654" critical="0|1" detailsURL="URL" description="text"/>
+ * <update type="patch" shortversion = "7.0.2" version = "7.0.2_GA_4045.RHEL4.NETWORK" release="20090921024654" critical="0|1" detailsURL="URL" description="text"/>
  * </updates>
  * </versionCheck>
  **/

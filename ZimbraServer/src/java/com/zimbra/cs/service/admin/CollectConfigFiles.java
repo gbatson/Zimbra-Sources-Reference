@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.ServerBy;
 import com.zimbra.common.mime.ContentDisposition;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
@@ -32,7 +34,6 @@ import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.ServerBy;
 
 public class CollectConfigFiles extends ZimbraServlet {
 	private static final String P_HOST = "host";
@@ -48,7 +49,7 @@ public class CollectConfigFiles extends ZimbraServlet {
 			//take the host name
 			Provisioning prov = Provisioning.getInstance();
 			String hostName = req.getParameter(P_HOST);
-			Server server = prov.get(ServerBy.name, hostName);
+			Server server = prov.get(Key.ServerBy.name, hostName);
 			if (server == null) {
 				throw ServiceException.INVALID_REQUEST("server with name " + hostName + " could not be found", null);
 			}		

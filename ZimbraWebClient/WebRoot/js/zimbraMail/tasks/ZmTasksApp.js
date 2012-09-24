@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -31,6 +31,13 @@ ZmTasksApp = function(container) {
 	ZmApp.call(this, ZmApp.TASKS, container);
 };
 
+ZmTasksApp.prototype = new ZmApp;
+ZmTasksApp.prototype.constructor = ZmTasksApp;
+
+ZmTasksApp.prototype.isZmTasksApp = true;
+ZmTasksApp.prototype.toString = function() { return "ZmTasksApp"; };
+
+
 // Organizer and item-related constants
 ZmEvent.S_TASK			= ZmId.ITEM_TASK;
 ZmItem.TASK				= ZmEvent.S_TASK;
@@ -43,20 +50,8 @@ ZmApp.SETTING[ZmApp.TASKS]		= ZmSetting.TASKS_ENABLED;
 ZmApp.LOAD_SORT[ZmApp.TASKS]	= 45;
 ZmApp.QS_ARG[ZmApp.TASKS]		= "tasks";
 
-ZmTasksApp.prototype = new ZmApp;
-ZmTasksApp.prototype.constructor = ZmTasksApp;
-
 ZmTasksApp.REMINDER_START_DELAY = 10000;
 
-/**
- * Returns a string representation of the object.
- * 
- * @return		{String}		a string representation of the object
- */
-ZmTasksApp.prototype.toString =
-function() {
-	return "ZmTasksApp";
-};
 
 // Construction
 
@@ -84,6 +79,9 @@ ZmTasksApp.prototype._registerSettings =
 function(settings) {
 	settings = settings || appCtxt.getSettings();
 	settings.registerSetting("READING_PANE_LOCATION_TASKS",		{name:"zimbraPrefTasksReadingPaneLocation", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING, defaultValue:ZmSetting.RP_BOTTOM, isImplicit:true});
+    settings.registerSetting("TASKS_FILTERBY",		{name:"zimbraPrefTasksFilterBy", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING, defaultValue:ZmSetting.TASK_FILTER_ALL, isImplicit:true});
+    if (!appCtxt.get(ZmSetting.HIGHLIGHT_OBJECTS))
+        settings.registerSetting("HIGHLIGHT_OBJECTS",               {name:"zimbraMailHighlightObjectsMaxSize", type:ZmSetting.T_COS, dataType:ZmSetting.D_INT, defaultValue:70});
 };
 
 ZmTasksApp.prototype._registerItems =
@@ -165,7 +163,6 @@ function() {
 							  defaultSearch:		ZmItem.TASK,
 							  organizer:			ZmOrganizer.TASKS,
 							  overviewTrees:		[ZmOrganizer.TASKS, ZmOrganizer.SEARCH, ZmOrganizer.TAG],
-							  assistants:			{"ZmTaskAssistant": ["TasksCore", "Tasks"]},
 							  newItemOps:			newItemOps,
 							  newOrgOps:			newOrgOps,
 							  actionCodes:			actionCodes,
@@ -173,7 +170,8 @@ function() {
 							  gotoActionCode:		ZmKeyMap.GOTO_TASKS,
 							  newActionCode:		ZmKeyMap.NEW_TASK,
 							  chooserSort:			35,
-							  defaultSort:			25
+							  defaultSort:			25,
+							  searchResultsTab:		true
 							  });
 };
 
@@ -191,6 +189,7 @@ ZmTasksApp.prototype.handleOp =
 function(op, params) {
 	switch (op) {
 		case ZmOperation.NEW_TASK: {
+            params = params || {};
 			var loadCallback = new AjxCallback(this, this._handleLoadNewTask, [params]);
 			AjxDispatcher.require(["TasksCore", "Tasks"], false, loadCallback, null, true);
 			break;
@@ -203,13 +202,9 @@ function(op, params) {
 	}
 };
 
-ZmTasksApp.prototype.getDefaultFolderId =
-function(op) {
-	return ZmOrganizer.ID_TASKS;
-};
-
 ZmTasksApp.prototype._handleLoadNewTask =
 function(params) {
+	params.folderId = params.folderId || this.getTaskListController()._folderId;
 	AjxDispatcher.run("GetTaskController").show((new ZmTask(null, null, params && params.folderId)));
 };
 
@@ -249,7 +244,7 @@ function(creates, force) {
 				this._handleCreateLink(create, ZmOrganizer.TASKS);
 			} else if (name == "task") {
 				// bug fix #29833 - always attempt to process new tasks
-				var taskList = this.getTaskListController().getList();
+				var taskList = AjxDispatcher.run("GetTaskListController").getList();
 				if (taskList) {
 					taskList.notifyCreate(create);
 				}
@@ -267,12 +262,23 @@ function(params, callback) {
 	AjxDispatcher.require(["TasksCore", "Tasks"], true, loadCallback, null, true);
 };
 
-
 ZmTasksApp.prototype._handleLoadLaunch =
 function(callback) {
 	var acct = this._getExternalAccount();
 	this.search(null, null, null, null, (acct && acct.name));
 	if (callback) { callback.run(); }
+};
+
+ZmTasksApp.prototype.getNewButtonProps =
+function() {
+	return {
+		text:		ZmMsg.newTask,
+		tooltip:	ZmMsg.createNewTask,
+		icon:		"NewTask",
+		iconDis:	"NewTaskDis",
+		defaultId:	ZmOperation.NEW_TASK,
+        disabled:	!this.containsWritableFolder()
+	};
 };
 
 /**
@@ -282,18 +288,31 @@ function(callback) {
  * @param	{AjxCallback}	callback		the callback
  */
 ZmTasksApp.prototype.showSearchResults =
-function(results, callback) {
-	var loadCallback = new AjxCallback(this, this._handleLoadShowSearchResults, [results, callback]);
+function(results, callback, searchResultsController) {
+	var loadCallback = this._handleLoadShowSearchResults.bind(this, results, callback, searchResultsController);
 	AjxDispatcher.require("Tasks", false, loadCallback, null, true);
 };
 
 ZmTasksApp.prototype._handleLoadShowSearchResults =
-function(results, callback) {
-	var folderId = results && results.search && results.search.singleTerm && results.search.folderId;
-	this.getTaskListController().show(results, folderId);
+function(results, callback, searchResultsController) {
+	var folderId = results && results.search && results.search.isSimple() && results.search.folderId;
+	var sessionId = searchResultsController ? searchResultsController.getCurrentViewId() : ZmApp.MAIN_SESSION;
+	var controller = AjxDispatcher.run("GetTaskListController", sessionId, searchResultsController);
+	controller.show(results, folderId);
 	this._setLoadedTime(this.toString(), new Date());
-	if (callback) callback.run();
+	if (callback) {
+		callback.run(controller);
+	}
 };
+
+ZmTasksApp.prototype.runRefresh =
+function() {
+	if (window.ZmTaskListController === undefined) { //app not loaded yet - no need to update anything.
+		return;
+	}
+	AjxDispatcher.run("GetTaskListController").runRefresh();
+};
+
 
 // common API shared by calendar app
 
@@ -304,7 +323,7 @@ function(results, callback) {
  */
 ZmTasksApp.prototype.getListController =
 function() {
-	return this.getTaskListController();
+	return AjxDispatcher.run("GetTaskListController");
 };
 
 /**
@@ -313,11 +332,10 @@ function() {
  * @return	{ZmTaskListController}	the controller
  */
 ZmTasksApp.prototype.getTaskListController =
-function() {
-	if (!this._taskListController) {
-		this._taskListController = new ZmTaskListController(this._container, this);
-	}
-	return this._taskListController;
+function(sessionId, searchResultsController) {
+	return this.getSessionController({controllerClass:			"ZmTaskListController",
+									  sessionId:				sessionId || ZmApp.MAIN_SESSION,
+									  searchResultsController:	searchResultsController});
 };
 
 /**
@@ -327,7 +345,8 @@ function() {
  */
 ZmTasksApp.prototype.getTaskController =
 function(sessionId) {
-	return this.getSessionController(ZmId.VIEW_TASKEDIT, "ZmTaskController", sessionId);
+	return this.getSessionController({controllerClass:	"ZmTaskController",
+									  sessionId:		sessionId});
 };
 
 /**
@@ -367,8 +386,11 @@ function(mailItem, date, subject) {
  */
 ZmTasksApp.prototype.search =
 function(folder, startDate, endDate, callback, accountName) {
+    var query = folder ? folder.createQuery() : "";
+    query = query || (appCtxt.isExternalAccount() ? "inid:" + this.getDefaultFolderId() : "in:tasks");
+
 	var params = {
-		query:			(folder ? folder.createQuery() : "in:tasks"),
+		query:			query,
 		types:			[ZmItem.TASK],
 		limit:			this.getLimit(),
 		searchFor:		ZmItem.TASK,
@@ -402,7 +424,7 @@ ZmTasksApp.prototype.getTaskFolderIds =
 function(localOnly) {
 	var folderIds = [];
 	if (AjxDispatcher.loaded("TasksCore")) {
-		folderIds = this.getTaskListController().getTaskFolderIds(localOnly);
+		folderIds = AjxDispatcher.run("GetTaskListController").getTaskFolderIds(localOnly);
 	} else {
 		// will be used in reminder dialog
 		this._folderNames = {};

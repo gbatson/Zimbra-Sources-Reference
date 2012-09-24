@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@ import java.util.List;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.session.SoapSession;
 
 public abstract class SoapContextExtension {
 	
@@ -34,16 +35,16 @@ public abstract class SoapContextExtension {
 		}
 	}
 	
-	public static void addExtensionHeaders(Element context, ZimbraSoapContext zsc, String requestedAccountId) throws ServiceException {
+	public static void addExtensionHeaders(Element context, ZimbraSoapContext zsc, SoapSession session) throws ServiceException {
 		SoapContextExtension[] exts = null;
 		synchronized (sExtensions) {
 			exts = new SoapContextExtension[sExtensions.size()];
 			sExtensions.toArray(exts); //make a copy so that we keep lock on addExtensionHeader calls
 		}
 		for (SoapContextExtension sce : exts) {
-			sce.addExtensionHeader(context, zsc, requestedAccountId);
+			sce.addExtensionHeader(context, zsc, session);
 		}
 	}
 
-	public abstract void addExtensionHeader(Element context, ZimbraSoapContext zsc,  String requestedAccountId) throws ServiceException;
+	public abstract void addExtensionHeader(Element context, ZimbraSoapContext zsc,  SoapSession session) throws ServiceException;
 }

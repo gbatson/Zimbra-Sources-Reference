@@ -2,7 +2,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -564,6 +564,7 @@ Start(int nextArg, int argc, char *argv[])
     AddArgFmt("-DSTART=%s/etc/start.config", MAILBOXD_HOME);
     AddArg("-jar");
     AddArgFmt("%s/start.jar", MAILBOXD_HOME);
+    AddArg("OPTIONS=Server,jsp,jmx,resources,websocket,ext,jta,plus,rewrite,setuid");
     AddArgFmt("%s/etc/jetty.properties", MAILBOXD_HOME);
     AddArgFmt("%s/etc/jetty-setuid.xml", MAILBOXD_HOME);
     AddArgFmt("%s/etc/jetty.xml", MAILBOXD_HOME);
@@ -697,7 +698,7 @@ Status()
 	syslog(LOG_ERR, "could not send signal 0 to manager process (pid=%d): %s", managerPid, strerror(errno));
 	exit(1);
     }
-    syslog(LOG_INFO, "status OK");
+    /* syslog(LOG_DEBUG, "status OK"); */
     exit(0);
 }
 
@@ -776,7 +777,7 @@ main(int argc, char *argv[])
 	syslog(LOG_INFO, "restart requested");
 	Restart();
     } else  if (strcmp(action, "status") == 0) {
-	syslog(LOG_INFO, "status requested");
+	/* syslog(LOG_DEBUG, "status requested"); */
 	Status();
     } else  if (strcmp(action, "threaddump") == 0) {
 	syslog(LOG_INFO, "threaddump requested");

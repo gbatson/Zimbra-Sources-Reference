@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,7 @@
  */
 package com.zimbra.cs.service.admin;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
@@ -28,15 +29,17 @@ import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.SearchOptions;
+import com.zimbra.cs.account.SearchDirectoryOptions;
+import com.zimbra.cs.account.SearchDirectoryOptions.MakeObjectOpt;
+import com.zimbra.cs.account.SearchDirectoryOptions.SortOpt;
 import com.zimbra.cs.account.accesscontrol.HardRules.HardRule;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.TargetType;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 import com.zimbra.cs.session.AdminSession;
 import com.zimbra.cs.session.Session;
 import com.zimbra.common.soap.Element;
@@ -72,12 +75,13 @@ public class SearchDirectory extends AdminDocumentHandler {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Provisioning prov = Provisioning.getInstance();
 
-        String query = request.getAttribute(AdminConstants.E_QUERY);
+        String query = request.getAttribute(AdminConstants.E_QUERY, null);
 
         int maxResults = (int) request.getAttributeLong(AdminConstants.A_MAX_RESULTS, MAX_SEARCH_RESULTS);
         int limit = (int) request.getAttributeLong(AdminConstants.A_LIMIT, Integer.MAX_VALUE);
-        if (limit == 0)
+        if (limit == 0) {
             limit = Integer.MAX_VALUE;
+        }
         int offset = (int) request.getAttributeLong(AdminConstants.A_OFFSET, 0);
         String domain = request.getAttribute(AdminConstants.A_DOMAIN, null);
         boolean applyCos = request.getAttributeBool(AdminConstants.A_APPLY_COS, true);
@@ -86,26 +90,21 @@ public class SearchDirectory extends AdminDocumentHandler {
         String sortBy = request.getAttribute(AdminConstants.A_SORT_BY, null);
         String types = request.getAttribute(AdminConstants.A_TYPES, "accounts");
         boolean sortAscending = request.getAttributeBool(AdminConstants.A_SORT_ASCENDING, true);
+        boolean isCountOnly = request.getAttributeBool(AdminConstants.A_COUNT_ONLY, false);
 
-        int flags = 0;
-        
-        if (types.indexOf("accounts") != -1) flags |= Provisioning.SA_ACCOUNT_FLAG;
-        if (types.indexOf("aliases") != -1) flags |= Provisioning.SA_ALIAS_FLAG;
-        if (types.indexOf("distributionlists") != -1) flags |= Provisioning.SA_DISTRIBUTION_LIST_FLAG;
-        if (types.indexOf("resources") != -1) flags |= Provisioning.SA_CALENDAR_RESOURCE_FLAG;
-        if (types.indexOf("domains") != -1) flags |= Provisioning.SA_DOMAIN_FLAG;
-        if (types.indexOf("coses") != -1) flags |= Provisioning.SD_COS_FLAG;
-        
-        // cannot specify a domain with the "coses" flag 
-        if (((flags & Provisioning.SD_COS_FLAG) == Provisioning.SD_COS_FLAG) &&
-            (domain != null))
+        Set<SearchDirectoryOptions.ObjectType> objTypes = SearchDirectoryOptions.ObjectType.fromCSVString(types);
+
+        // cannot specify a domain with the "coses" flag
+        if (objTypes.contains(SearchDirectoryOptions.ObjectType.coses) &&
+            (domain != null)) {
             throw ServiceException.INVALID_REQUEST("cannot specify domain with coses flag", null);
-
+        }
+        
         // add zimbraMailTransport if account is requested
         // it is needed for figuring out if the account is an "external"(not yet migrated) account.
         String attrsStr = origAttrsStr;
-        if ((flags & Provisioning.SA_ACCOUNT_FLAG) == Provisioning.SA_ACCOUNT_FLAG &&
-                attrsStr != null && !attrsStr.contains(Provisioning.A_zimbraMailTransport)) {
+        if (objTypes.contains(SearchDirectoryOptions.ObjectType.accounts) &&
+            attrsStr != null && !attrsStr.contains(Provisioning.A_zimbraMailTransport)) {
             attrsStr = attrsStr + "," + Provisioning.A_zimbraMailTransport;
         }
         
@@ -118,14 +117,14 @@ public class SearchDirectory extends AdminDocumentHandler {
         //
         // Note: isDomainAdminOnly *always* returns false for pure ACL based AccessManager 
         if (isDomainAdminOnly(zsc)) {
-            if ((flags & Provisioning.SA_DOMAIN_FLAG) == Provisioning.SA_DOMAIN_FLAG) {
+            if (objTypes.contains(SearchDirectoryOptions.ObjectType.domains)) {
                 if(query != null && query.length()>0) {
                     throw ServiceException.PERM_DENIED("cannot search for domains");
                 } else {
                     domain = getAuthTokenAccountDomain(zsc).getName();
                     Domain d = null;
                     if (domain != null) {
-                        d = prov.get(DomainBy.name, domain);
+                        d = prov.get(Key.DomainBy.name, domain);
                         if (d == null)
                             throw AccountServiceException.NO_SUCH_DOMAIN(domain);
                     }
@@ -136,7 +135,7 @@ public class SearchDirectory extends AdminDocumentHandler {
                 }
 
             }
-            if ((flags & Provisioning.SD_COS_FLAG) == Provisioning.SD_COS_FLAG)
+            if (objTypes.contains(SearchDirectoryOptions.ObjectType.coses))
                 throw ServiceException.PERM_DENIED("cannot search for coses");
 
             if (domain == null) {
@@ -148,7 +147,7 @@ public class SearchDirectory extends AdminDocumentHandler {
 
         Domain d = null;
         if (domain != null) {
-            d = prov.get(DomainBy.name, domain);
+            d = prov.get(Key.DomainBy.name, domain);
             if (d == null)
                 throw AccountServiceException.NO_SUCH_DOMAIN(domain);
         }
@@ -157,88 +156,89 @@ public class SearchDirectory extends AdminDocumentHandler {
         AdminAccessControl.SearchDirectoryRightChecker rightChecker = 
             new AdminAccessControl.SearchDirectoryRightChecker(aac, prov, reqAttrs);
         
-        List accounts;
+        List<NamedEntry> accounts;
         AdminSession session = (AdminSession) getSession(zsc, Session.Type.ADMIN);
         
-        // bug 36017.  
-        // See comment for Provisioning.SO_NO_ACCOUNT_DEFAULTS
-        // 
-        // We set defaults when accounts are paged back to the SOAP client.
-        //
-        // Account object returned from Provisioning.searchDirectory are not cached anywhere,
-        // they are just referenced here.
-        //
-        flags |= Provisioning.SO_NO_ACCOUNT_DEFAULTS;
-        
+        SearchDirectoryOptions options = new SearchDirectoryOptions();
+        options.setDomain(d);
+        options.setTypes(types);
+        options.setMaxResults(maxResults);
+        options.setFilterString(FilterId.ADMIN_SEARCH, query);
+        options.setReturnAttrs(attrs);
+        options.setSortOpt(sortAscending ? SortOpt.SORT_ASCENDING : SortOpt.SORT_DESCENDING);
+        options.setSortAttr(sortBy);
+        options.setConvertIDNToAscii(true); // query must be already RFC 2254 escaped
+            
+        // bug 36017. 
+        // defaults, if requested, are set when accounts are paged back to the SOAP client.
+        // objects returned from searchDirectory are not cached anywhere.
+        options.setMakeObjectOpt(MakeObjectOpt.NO_DEFAULTS);  
+            
         if (session != null) {
-            accounts = session.searchAccounts(d, query, attrs, sortBy, sortAscending, flags, offset, maxResults, rightChecker);
+            accounts = session.searchDirectory(options, offset, rightChecker);
         } else {
-            SearchOptions options = new SearchOptions();
-            options.setDomain(d);
-            options.setFlags(flags);
-            options.setMaxResults(maxResults);
-            options.setQuery(query);
-            options.setReturnAttrs(attrs);
-            options.setSortAscending(sortAscending);
-            options.setSortAttr(sortBy);
-            options.setConvertIDNToAscii(true);
             accounts = prov.searchDirectory(options);
             accounts = rightChecker.getAllowed(accounts);
         }
 
-        LdapProvisioning ldapProv = null;
-        if (prov instanceof LdapProvisioning)
-            ldapProv = (LdapProvisioning)prov;
-        
-        // use originally requested attrs for encoding
-        String[] origAttrs = origAttrsStr == null ? null : origAttrsStr.split(",");
-        Set<String> origReqAttrs = origAttrs == null ? null : new HashSet(Arrays.asList(origAttrs));
-        
-        int i, limitMax = offset+limit;
-        for (i=offset; i < limitMax && i < accounts.size(); i++) {
-            NamedEntry entry = (NamedEntry) accounts.get(i);
-            
-            boolean applyDefault = true;
-            
-            if (entry instanceof Account) {
-                applyDefault = applyCos;
-                setAccountDefaults(ldapProv, (Account)entry);
-            } else if (entry instanceof Domain) {
-                applyDefault = applyConfig;
-            }
-            
-            encodeEntry(prov, response, entry, applyDefault, origReqAttrs, aac);
-        }          
+        if (isCountOnly) {
+            response.addAttribute(AdminConstants.A_NUM, accounts.size());
+        } else {
+            // use originally requested attrs for encoding
+            String[] origAttrs = origAttrsStr == null ? null : origAttrsStr.split(",");
+            Set<String> origReqAttrs = origAttrs == null ? null : new HashSet(Arrays.asList(origAttrs));
 
-        response.addAttribute(AdminConstants.A_MORE, i < accounts.size());
-        response.addAttribute(AdminConstants.A_SEARCH_TOTAL, accounts.size());
+            int i, limitMax = offset+limit;
+            for (i=offset; i < limitMax && i < accounts.size(); i++) {
+                NamedEntry entry = (NamedEntry) accounts.get(i);
+
+                boolean applyDefault = true;
+
+                if (entry instanceof Account) {
+                    applyDefault = applyCos;
+                    setAccountDefaults((Account)entry);
+                } else if (entry instanceof Domain) {
+                    applyDefault = applyConfig;
+                }
+
+                encodeEntry(prov, response, entry, applyDefault, origReqAttrs, aac);
+            }
+
+            response.addAttribute(AdminConstants.A_MORE, i < accounts.size());
+            response.addAttribute(AdminConstants.A_SEARCH_TOTAL, accounts.size());
+        }
+
         return response;
     }
-    
-    private void setAccountDefaults(LdapProvisioning ldapProv, Account entry) throws ServiceException {
-        if (ldapProv == null)
-            return;
-        
+
+    private void setAccountDefaults(Account entry) throws ServiceException {
+       
         Boolean isDefaultSet = (Boolean)entry.getCachedData(SEARCH_DIRECTORY_ACCOUNT_DATA);
         if (isDefaultSet == null || isDefaultSet == Boolean.FALSE) {
-            ldapProv.setAccountDefaults((Account)entry, 0);
+            entry.setAccountDefaults(true);
             entry.setCachedData(SEARCH_DIRECTORY_ACCOUNT_DATA, Boolean.TRUE);
         }
     }
     
-    static void encodeEntry(Provisioning prov, Element parent, NamedEntry entry, boolean applyDefault, Set<String> reqAttrs, AdminAccessControl aac) 
+    static void encodeEntry(Provisioning prov, Element parent, NamedEntry entry, 
+            boolean applyDefault, Set<String> reqAttrs, AdminAccessControl aac) 
     throws ServiceException {
         if (entry instanceof CalendarResource) {
             ToXML.encodeCalendarResource(parent, (CalendarResource)entry, applyDefault, reqAttrs, 
-                    aac.getAttrRightChecker((CalendarResource)entry,
-                    EnumSet.of(HardRule.DELEGATED_ADMIN_CANNOT_ACCESS_GLOBAL_ADMIN))); // bug 64357
+                    aac.getAttrRightChecker((CalendarResource)entry, 
+                    EnumSet.of(HardRule.DELEGATED_ADMIN_CANNOT_ACCESS_GLOBAL_ADMIN))); // bug 64357));
         } else if (entry instanceof Account) {
             ToXML.encodeAccount(parent, (Account)entry, applyDefault, true, reqAttrs, 
-                    aac.getAttrRightChecker((Account)entry,
-                    EnumSet.of(HardRule.DELEGATED_ADMIN_CANNOT_ACCESS_GLOBAL_ADMIN))); // bug 64357
+                    aac.getAttrRightChecker((Account)entry, 
+                    EnumSet.of(HardRule.DELEGATED_ADMIN_CANNOT_ACCESS_GLOBAL_ADMIN))); // bug 64357));
         } else if (entry instanceof DistributionList) {
-            GetDistributionList.encodeDistributionList(parent, (DistributionList)entry, false, reqAttrs, 
-                    aac.getAttrRightChecker((DistributionList)entry));
+            GetDistributionList.encodeDistributionList(parent, (DistributionList)entry, false, 
+                    false, reqAttrs, aac.getAttrRightChecker((DistributionList)entry));
+        } else if (entry instanceof DynamicGroup) {
+            // TODO: can combine DistributionList and DynamicGroup after aac.getAttrRightChecker
+            // is fixed/implemented for DynamicGroup
+            GetDistributionList.encodeDistributionList(parent, (DynamicGroup)entry, false, 
+                    false, reqAttrs, null);  // TODO: FIXME (aac.getAttrRightChecker)!!!
         } else if (entry instanceof Alias) {
             encodeAlias(parent, prov, (Alias)entry, reqAttrs);
         } else if (entry instanceof Domain) {
@@ -249,15 +249,17 @@ public class SearchDirectory extends AdminDocumentHandler {
         }
     }
 
-    private static void encodeAlias(Element e, Provisioning prov, Alias a, Set<String> reqAttrs) throws ServiceException {
+    private static void encodeAlias(Element e, Provisioning prov, Alias a, Set<String> reqAttrs) 
+    throws ServiceException {
         Element ealias = e.addElement(AdminConstants.E_ALIAS);
         ealias.addAttribute(AdminConstants.A_NAME, a.getUnicodeName());
         ealias.addAttribute(AdminConstants.A_ID, a.getId());
         ealias.addAttribute(AdminConstants.A_TARGETNAME, a.getTargetUnicodeName(prov));
         
         TargetType tt = a.getTargetType(prov);
-        if (tt != null)
+        if (tt != null) {
             ealias.addAttribute(AdminConstants.A_TYPE, tt.getCode());
+        }
         
         Map attrs = a.getUnicodeAttrs();
         

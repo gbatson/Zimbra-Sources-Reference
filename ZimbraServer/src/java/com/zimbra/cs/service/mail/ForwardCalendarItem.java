@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -36,30 +36,32 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZParameter;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.Pair;
 import com.zimbra.common.zmime.ZMimeBodyPart;
 import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.cs.account.Account;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.CalendarDataSource;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 import com.zimbra.cs.mailbox.calendar.RecurId;
-import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
 import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.service.util.ItemId;
@@ -100,8 +102,10 @@ public class ForwardCalendarItem extends CalendarRequest {
             ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, mbox, msgElem,
                 null, ParseMimeMessage.NO_INV_ALLOWED_PARSER, parsedMessageData);
 
-        MimeMessage[] fwdMsgs = null;
-        synchronized(mbox) {
+        List<MimeMessage> fwdMsgs = new ArrayList<MimeMessage>();
+        List<MimeMessage> notifyMsgs = new ArrayList<MimeMessage>();
+        mbox.lock.lock();
+        try {
             CalendarItem calItem = mbox.getCalendarItemById(octxt, iid.getId());
             if (calItem == null) {
                 throw MailServiceException.NO_SUCH_CALITEM(iid.toString(), "Could not find calendar item");
@@ -122,7 +126,9 @@ public class ForwardCalendarItem extends CalendarRequest {
             }
             if (rid == null) {
                 // Forwarding entire appointment
-                fwdMsgs = getSeriesFwdMsgs(octxt, senderAcct, calItem, mm);
+                Pair<List<MimeMessage>, List<MimeMessage>> pair = getSeriesFwdMsgs(octxt, senderAcct, calItem, mm);
+                fwdMsgs.addAll(pair.getFirst());
+                notifyMsgs.addAll(pair.getSecond());
             } else {
                 // Forwarding an instance
                 Invite inv = calItem.getInvite(rid);
@@ -130,39 +136,48 @@ public class ForwardCalendarItem extends CalendarRequest {
                 if (inv != null) {
                     mmInv = calItem.getSubpartMessage(inv.getMailItemId());
                 } else {
-                    if (rid != null) {
-                        // No invite found matching the RECURRENCE-ID.  It must be a non-exception instance.
-                        // Create an invite based on the series invite.
-                        Invite seriesInv = calItem.getDefaultInviteOrNull();
-                        if (seriesInv == null)
-                            throw ServiceException.INVALID_REQUEST("Instance specified but no recurrence series found", null);
-                        Invite exceptInv = seriesInv.newCopy();
-                        exceptInv.clearAlarms();
-                        exceptInv.setRecurrence(null);
-                        exceptInv.setRecurId(rid);
-                        long now = octxt != null ? octxt.getTimestamp() : System.currentTimeMillis();
-                        exceptInv.setDtStamp(now);
-                        ParsedDateTime dtStart = rid.getDt();
-                        ParsedDateTime dtEnd = dtStart.add(exceptInv.getEffectiveDuration());
-                        exceptInv.setDtStart(dtStart);
-                        exceptInv.setDtEnd(dtEnd);
-                        inv = exceptInv;
+                    assert(rid != null);
+                    // No invite found matching the RECURRENCE-ID.  It must be a non-exception instance.
+                    // Create an invite based on the series invite.
+                    Invite seriesInv = calItem.getDefaultInviteOrNull();
+                    if (seriesInv == null)
+                        throw ServiceException.INVALID_REQUEST("Instance specified but no recurrence series found", null);
+                    Invite exceptInv = seriesInv.newCopy();
+                    exceptInv.clearAlarms();
+                    exceptInv.setRecurrence(null);
+                    exceptInv.setRecurId(rid);
+                    long now = octxt != null ? octxt.getTimestamp() : System.currentTimeMillis();
+                    exceptInv.setDtStamp(now);
+                    ParsedDateTime dtStart = rid.getDt();
+                    ParsedDateTime dtEnd = dtStart.add(exceptInv.getEffectiveDuration());
+                    exceptInv.setDtStart(dtStart);
+                    exceptInv.setDtEnd(dtEnd);
+                    inv = exceptInv;
 
-                        // Carry over the MimeMessage/ParsedMessage to preserve any attachments.
-                        mmInv = calItem.getSubpartMessage(seriesInv.getMailItemId());
-                    } else {
-                        // No RECURRENCE-ID given and no invite found.
-                        throw ServiceException.INVALID_REQUEST("Invite not found for the requested RECURRENCE-ID", null);
-                    }
+                    // Carry over the MimeMessage/ParsedMessage to preserve any attachments.
+                    mmInv = calItem.getSubpartMessage(seriesInv.getMailItemId());
                 }
                 ZVCalendar cal = inv.newToICalendar(true);
-                MimeMessage mmFwd = getInstanceFwdMsg(senderAcct, inv, cal, mmInv, mm);
-                fwdMsgs = new MimeMessage[] { mmFwd };
+                Pair<MimeMessage, MimeMessage> pair = getInstanceFwdMsg(senderAcct, inv, cal, mmInv, mm);
+                if (pair.getFirst() != null) {
+                    fwdMsgs.add(pair.getFirst());
+                }
+                if (pair.getSecond() != null) {
+                    notifyMsgs.add(pair.getSecond());
+                }
+                    
             }
+        } finally {
+            mbox.lock.release();
         }
 
         for (MimeMessage mmFwd : fwdMsgs) {
             sendFwdMsg(octxt, mbox, mmFwd);
+        }
+        
+        for (MimeMessage mmNotify : notifyMsgs) {
+            // Send Forward notification as Admin
+            sendFwdNotifyMsg(octxt, mbox, mmNotify);
         }
 
         Element response = getResponseElement(zsc);
@@ -170,12 +185,16 @@ public class ForwardCalendarItem extends CalendarRequest {
     }
 
     protected static ItemId sendFwdMsg(OperationContext octxt, Mailbox mbox, MimeMessage mmFwd)
-    throws ServiceException {
-        return CalendarMailSender.sendPartial(octxt, mbox, mmFwd, null, null,
-                null, null, null, false, true);
+            throws ServiceException {
+        return CalendarMailSender.sendPartial(octxt, mbox, mmFwd, null, null, null, null, false);
+    }
+    
+    protected static ItemId sendFwdNotifyMsg(OperationContext octxt, Mailbox mbox, MimeMessage mmFwd)
+            throws ServiceException {
+        return CalendarMailSender.sendPartial(octxt, mbox, mmFwd, null, null, null, null, false, true);
     }
 
-    private static MimeMessage[] getSeriesFwdMsgs(
+    private static Pair<List<MimeMessage>, List<MimeMessage>> getSeriesFwdMsgs(
             OperationContext octxt, Account senderAcct, CalendarItem calItem, MimeMessage mmFwdWrapper)
     throws ServiceException {
         // Get plain and html texts entered by the forwarder.
@@ -191,6 +210,7 @@ public class ForwardCalendarItem extends CalendarRequest {
 
         try {
             List<MimeMessage> msgs = new ArrayList<MimeMessage>();
+            List<MimeMessage> notifyMsgs = new ArrayList<MimeMessage>();
             long now = octxt != null ? octxt.getTimestamp() : System.currentTimeMillis();
             Invite[] invites = calItem.getInvites();
             // Get canceled instances in the future.  These will be included in the series part.
@@ -227,11 +247,18 @@ public class ForwardCalendarItem extends CalendarRequest {
                 }
 
                 MimeMessage mmInv = calItem.getSubpartMessage(inv.getMailItemId());
-                MimeMessage mmFwd = makeFwdMsg(senderAcct, inv, mmInv, cal, mmFwdWrapper, plainDescPart, htmlDescPart, firstInv);
-                msgs.add(mmFwd);
+                Pair<MimeMessage, MimeMessage> fwdMsgPair = makeFwdMsg(senderAcct, inv, mmInv, cal, mmFwdWrapper, 
+                        plainDescPart, htmlDescPart, firstInv);
+                
+                if (fwdMsgPair.getFirst() != null) {
+                    msgs.add(fwdMsgPair.getFirst());
+                }
+                if (fwdMsgPair.getSecond() != null) {
+                    notifyMsgs.add(fwdMsgPair.getSecond());
+                }
                 firstInv = false;
             }
-            return msgs.toArray(new MimeMessage[0]);
+            return new Pair<List<MimeMessage>, List<MimeMessage>>(msgs, notifyMsgs);
         } catch (IOException e) {
             throw ServiceException.FAILURE("error creating forward message", e);
         } catch (MessagingException e) {
@@ -322,7 +349,7 @@ public class ForwardCalendarItem extends CalendarRequest {
         }
     }
 
-    protected static MimeMessage getInstanceFwdMsg(
+    protected static Pair<MimeMessage, MimeMessage> getInstanceFwdMsg(
             Account senderAcct, Invite inv, ZVCalendar cal, MimeMessage mmInv, MimeMessage mmFwdWrapper)
     throws ServiceException {
         // Get plain and html texts entered by the forwarder.
@@ -345,7 +372,7 @@ public class ForwardCalendarItem extends CalendarRequest {
         }
     }
 
-    private static MimeMessage makeFwdMsg(
+    private static Pair<MimeMessage, MimeMessage> makeFwdMsg(
             Account senderAcct, Invite inv, MimeMessage mmInv, ZVCalendar cal,
             MimeMessage mmFwdWrapper, MimeBodyPart plainDesc, MimeBodyPart htmlDesc,
             boolean useFwdText)
@@ -390,7 +417,18 @@ public class ForwardCalendarItem extends CalendarRequest {
         }
         mm.setSubject(mmFwdWrapper.getSubject());
         mm.saveChanges();
-        return mm;
+        
+        // Create a Forward Notification message if the invitation is originally from ZCS user.
+        MimeMessage notifyMimeMsg = null;
+        if (org != null) {
+            String orgAddress = org.getAddress();
+            Account orgAccount = Provisioning.getInstance().getAccountByName(orgAddress);
+            if (orgAccount != null && !orgAccount.getId().equals(senderAcct.getId())) {
+                notifyMimeMsg = CalendarMailSender.createForwardNotifyMessage(senderAcct, 
+                        orgAccount, orgAddress, mmFwdWrapper.getAllRecipients(), inv);
+            }
+        }
+        return new Pair<MimeMessage, MimeMessage>(mm, notifyMimeMsg);
     }
 
     // Take mmInv and mutate it.  text/calendar part is replaced by cal and plain and html parts
@@ -405,6 +443,7 @@ public class ForwardCalendarItem extends CalendarRequest {
             if (mmInv != null) {
                 MimeMessage mm = new ZMimeMessage(mmInv);  // Get a copy so we can modify it.
                 // Discard all old headers except Subject and Content-*.
+                @SuppressWarnings("rawtypes")
                 Enumeration eh = mmInv.getAllHeaders();
                 while (eh.hasMoreElements()) {
                     Header hdr = (Header) eh.nextElement();

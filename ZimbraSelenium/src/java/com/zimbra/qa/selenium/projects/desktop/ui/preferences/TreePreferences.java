@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -159,11 +143,11 @@ public class TreePreferences extends AbsTree {
       Map<TreeItem, String> map = new HashMap<TreeItem, String>();
       
       map.put(TreeItem.General, "id=" + Locators.zGeneralTextID_Desktop);
-      map.put(TreeItem.Mail, "css=td[id$='main_Options__PREF_PAGE_COMPOSING_textCell']");
+      map.put(TreeItem.Mail, null);
       map.put(TreeItem.MailComposing, null);
       map.put(TreeItem.MailSignatures, "id=" + Locators.zSignatureTextID_Desktop);
       map.put(TreeItem.MailAccounts, null);
-      map.put(TreeItem.MailFilters, "css=td[id$='main_Options__PREF_PAGE_FILTERS_textCell']");
+      map.put(TreeItem.MailFilters, null);
       map.put(TreeItem.MailTrustedAddresses, null);
       map.put(TreeItem.AddressBook, null);
       map.put(TreeItem.Calendar, null);

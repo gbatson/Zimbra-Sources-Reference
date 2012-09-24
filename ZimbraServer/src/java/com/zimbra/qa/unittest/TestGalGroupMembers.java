@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.unittest;
 
 import java.util.HashMap;
@@ -33,13 +17,12 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ZAttrProvisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.ZAttrProvisioning.GalMode;
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ZAttrProvisioning.GalMode;
 import com.zimbra.cs.gal.GalGroupMembers;
+import com.zimbra.cs.ldap.LdapUtil;
+import com.zimbra.qa.unittest.prov.soap.GalTestUtil;
 
 /*
  * To run this test:
@@ -47,8 +30,6 @@ import com.zimbra.cs.gal.GalGroupMembers;
  *
  */
 
-// do not extend TestCase once ZimbraSuite supports JUnit 4 annotations.
-// we ahve to now because this test ahs to run in the sever.
 public class TestGalGroupMembers extends TestCase {
     
     private static final String ZIMBRA_DOMAIN = "zimbra.galgrouptest";
@@ -160,7 +141,7 @@ public class TestGalGroupMembers extends TestCase {
         Provisioning prov = Provisioning.getInstance();
         
         // create the zimbra domain
-        if (prov.get(DomainBy.name, ZIMBRA_DOMAIN) == null) {
+        if (prov.get(Key.DomainBy.name, ZIMBRA_DOMAIN) == null) {
             ZimbraLog.test.info("Creating domain " + ZIMBRA_DOMAIN);
             Domain domain = prov.createDomain(ZIMBRA_DOMAIN, new HashMap<String, Object>());
             
@@ -195,7 +176,7 @@ public class TestGalGroupMembers extends TestCase {
         
         // create zimbra group and add members
         String groupAddr = TestUtil.getAddress(ZIMBRA_GROUP, ZIMBRA_DOMAIN);
-        DistributionList group = prov.get(DistributionListBy.name, groupAddr);
+        DistributionList group = prov.get(Key.DistributionListBy.name, groupAddr);
         if (group == null) {
             group = prov.createDistributionList(groupAddr, new HashMap<String, Object>());
             prov.addMembers(group, ZimbraGroupMembers.getAllMembersAsArray());
@@ -206,7 +187,7 @@ public class TestGalGroupMembers extends TestCase {
     private static void cleanupZimbraDomain() throws Exception {
         Provisioning prov = Provisioning.getInstance();
         
-        TestSearchGal.disableGalSyncAccount(ZIMBRA_DOMAIN);
+        GalTestUtil.disableGalSyncAccount(prov, ZIMBRA_DOMAIN);
         
         // delete the test user
         String userAddr = TestUtil.getAddress(USER, ZIMBRA_DOMAIN);
@@ -226,12 +207,12 @@ public class TestGalGroupMembers extends TestCase {
         }
         
         String groupAddr = TestUtil.getAddress(ZIMBRA_GROUP, ZIMBRA_DOMAIN);
-        DistributionList group = prov.get(DistributionListBy.name, groupAddr);
+        DistributionList group = prov.get(Key.DistributionListBy.name, groupAddr);
         if (group != null) {
             prov.deleteDistributionList(group.getId());
         }
         
-        Domain domain = prov.get(DomainBy.name, ZIMBRA_DOMAIN);
+        Domain domain = prov.get(Key.DomainBy.name, ZIMBRA_DOMAIN);
         if (domain != null) {
             ZimbraLog.test.info("Deleting domain " + ZIMBRA_DOMAIN);
             prov.deleteDomain(domain.getId());
@@ -243,14 +224,14 @@ public class TestGalGroupMembers extends TestCase {
         Provisioning prov = Provisioning.getInstance();
         
         // create a domain to simulate entries in external GAL
-        if (prov.get(DomainBy.name, EXTERNAL_DOMAIN) == null) {
+        if (prov.get(Key.DomainBy.name, EXTERNAL_DOMAIN) == null) {
             ZimbraLog.test.info("Creating domain " + EXTERNAL_DOMAIN);
             prov.createDomain(EXTERNAL_DOMAIN, new HashMap<String, Object>());
         }
         
         // create groups in the external domain
         String groupAddr = TestUtil.getAddress(EXTERNAL_GROUP, EXTERNAL_DOMAIN);
-        DistributionList group = prov.get(DistributionListBy.name, groupAddr);
+        DistributionList group = prov.get(Key.DistributionListBy.name, groupAddr);
         if (group == null) {
             group = prov.createDistributionList(groupAddr, new HashMap<String, Object>());
             prov.addMembers(group, ExternalGroupMembers.getAllMembersAsArray());
@@ -261,12 +242,12 @@ public class TestGalGroupMembers extends TestCase {
         Provisioning prov = Provisioning.getInstance();
         
         String groupAddr = TestUtil.getAddress(EXTERNAL_GROUP, EXTERNAL_DOMAIN);
-        DistributionList group = prov.get(DistributionListBy.name, groupAddr);
+        DistributionList group = prov.get(Key.DistributionListBy.name, groupAddr);
         if (group != null) {
             prov.deleteDistributionList(group.getId());
         }
         
-        Domain domain = prov.get(DomainBy.name, EXTERNAL_DOMAIN);
+        Domain domain = prov.get(Key.DomainBy.name, EXTERNAL_DOMAIN);
         if (domain != null) {
             ZimbraLog.test.info("Deleting domain " + EXTERNAL_DOMAIN);
             prov.deleteDomain(domain.getId());
@@ -301,13 +282,13 @@ public class TestGalGroupMembers extends TestCase {
     
     @Test
     public void testLdapSearch() throws Exception {
-        TestSearchGal.disableGalSyncAccount(ZIMBRA_DOMAIN);
+        GalTestUtil.disableGalSyncAccount(Provisioning.getInstance(), ZIMBRA_DOMAIN);
         doTest();
     }
     
     @Test
     public void testGSASearch() throws Exception {
-        TestSearchGal.enableGalSyncAccount(ZIMBRA_DOMAIN, TestSearchGal.GSAType.both);
+        GalTestUtil.enableGalSyncAccount(Provisioning.getInstance(), ZIMBRA_DOMAIN, GalTestUtil.GSAType.both);
         doTest();
     }
     

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,15 +17,13 @@ package com.zimbra.cs.service.formatter;
 
 import com.google.common.base.Objects;
 import com.google.common.base.Strings;
+import com.zimbra.common.calendar.ICalTimeZone;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.MailItem;
-import com.zimbra.cs.mailbox.Tag;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 
 import java.io.BufferedReader;
 import java.io.FileInputStream;
@@ -53,6 +51,9 @@ public final class ContactCSV {
 
     private static Log LOG = ZimbraLog.misc;
     private static final char DEFAULT_FIELD_SEPARATOR = ',';
+    // Bug 32273 - Outlook prefers DOS line endings between records - although it doesn't mind either type of
+    // ending for lines contained within a field.
+    private static final String NEW_LINE = "\r\n";
     // CSV files intended for use in locales where ',' as the decimal separator
     // sometimes use ';' as a field separator instead of ','.
     private static final char[] SUPPORTED_SEPARATORS = { DEFAULT_FIELD_SEPARATOR, ';' };
@@ -1022,7 +1023,7 @@ public final class ContactCSV {
             addFieldValue(contact, f, f, sb);
             first = false;
         }
-        sb.append("\n");
+        sb.append(NEW_LINE);
     }
 
     private void toCSVContact(CsvFormat fmt, Contact c, StringBuilder sb) {
@@ -1032,25 +1033,22 @@ public final class ContactCSV {
                 sb.append(fieldSeparator);
             }
             if (col.colType == ColType.TAG) {
-                try {
-                    boolean firstTag = true;
-                    sb.append('"');
-                    for (Tag t : c.getTagList()) {
-                        if (!firstTag) {
-                            sb.append(fieldSeparator);
-                        }
-                        sb.append(t.getName());
-                        firstTag = false;
+                boolean firstTag = true;
+                sb.append('"');
+                for (String tname : c.getTags()) {
+                    if (!firstTag) {
+                        sb.append(fieldSeparator);
                     }
-                    sb.append('"');
-                } catch (ServiceException se) {
+                    sb.append(tname.replace("\\", "\\\\").replace("\"", "\\\""));
+                    firstTag = false;
                 }
+                sb.append('"');
             } else {
                 addFieldValue(c.getFields(), col.name, col.field, sb);
             }
             first = false;
         }
-        sb.append("\n");
+        sb.append(NEW_LINE);
     }
 
     private void addFieldDef(List<String> fields, StringBuilder sb) {
@@ -1062,7 +1060,7 @@ public final class ContactCSV {
             sb.append('"').append(f).append('"');
             first = false;
         }
-        sb.append("\n");
+        sb.append(NEW_LINE);
     }
 
     private void addFieldDef(CsvFormat fmt, StringBuilder sb) {
@@ -1074,7 +1072,7 @@ public final class ContactCSV {
             sb.append('"').append(col.name).append('"');
             first = false;
         }
-        sb.append("\n");
+        sb.append(NEW_LINE);
     }
 
     private static void writeLine(OutputStream out, String line) throws IOException {

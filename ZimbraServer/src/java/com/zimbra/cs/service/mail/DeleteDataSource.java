@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,13 +16,15 @@ package com.zimbra.cs.service.mail;
 
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DataSourceBy;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.db.DbDataSource;
 import com.zimbra.cs.db.DbImapFolder;
@@ -51,9 +53,9 @@ public class DeleteDataSource extends MailDocumentHandler {
             String name, id = eDsrc.getAttribute(MailConstants.A_ID, null);
             
             if (id != null)
-                dsrc = prov.get(account, DataSourceBy.id, id);
+                dsrc = prov.get(account, Key.DataSourceBy.id, id);
             else if ((name = eDsrc.getAttribute(MailConstants.A_NAME, null)) != null)
-                dsrc = prov.get(account, DataSourceBy.name, name);
+                dsrc = prov.get(account, Key.DataSourceBy.name, name);
             else
                 throw ServiceException.INVALID_REQUEST("must specify either 'id' or 'name'", null);
 
@@ -61,12 +63,12 @@ public class DeleteDataSource extends MailDocumentHandler {
             if (dsrc == null)
                 continue;
             String dataSourceId = dsrc.getId();
-            DataSource.Type dstype = dsrc.getType();
+            DataSourceType dstype = dsrc.getType();
 
             prov.deleteDataSource(account, dataSourceId);
-            if (dstype == DataSource.Type.pop3)
+            if (dstype == DataSourceType.pop3)
                 DbPop3Message.deleteUids(mbox, dataSourceId);
-            else if (dstype == DataSource.Type.imap)
+            else if (dstype == DataSourceType.imap)
                 DbImapFolder.deleteImapData(mbox, dataSourceId);
             DbDataSource.deleteAllMappings(dsrc);
             DataSourceManager.cancelSchedule(account, dataSourceId);

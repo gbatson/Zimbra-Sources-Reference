@@ -1,23 +1,8 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contactgroups;
 
 
 import java.awt.event.KeyEvent;
+import java.util.HashMap;
 import java.util.List;
 
 import org.testng.annotations.Test;
@@ -30,6 +15,7 @@ import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 
 
 
+
 public class DeleteContactGroup extends AjaxCommonTest  {
 	public DeleteContactGroup() {
 		logger.info("New "+ DeleteContactGroup.class.getCanonicalName());
@@ -37,7 +23,11 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		// All tests start at the Address page
 		super.startingPage = app.zPageAddressbook;
 
-		super.startingAccountPreferences = null;		
+		// Enable user preference checkboxes
+		super.startingAccountPreferences = new HashMap<String , String>() {
+		   {
+		    	put("zimbraPrefShowSelectionCheckbox", "TRUE");		         
+		   }};				
 		
 	}
 	
@@ -84,7 +74,7 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		
 	@Test(	description = "Delete a contact group by click Delete button on toolbar",
 			groups = { "smoke" })
-	public void DeleteContactGroupByClickDeleteOnToolbar() throws HarnessException {
+	public void ClickDeleteOnToolbar() throws HarnessException {
 
 		// Create a contact group via Soap then select
 		ContactGroupItem group = app.zPageAddressbook.createUsingSOAPSelectContactGroup(app,Action.A_LEFTCLICK);
@@ -100,7 +90,7 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 
 	@Test(	description = "Delete a contact group by click Delete on Context Menu",
 			groups = { "functional" })
-	public void DeleteContactGroupByClickDeleteOnContextMenu() throws HarnessException {
+	public void ClickDeleteOnContextMenu() throws HarnessException {
 
 		// Create a contact group via Soap then select
 		ContactGroupItem group = app.zPageAddressbook.createUsingSOAPSelectContactGroup(app,Action.A_LEFTCLICK);
@@ -132,7 +122,7 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 
 	@Test(	description = "Delete a contact group use shortcut Del",
 			groups = { "functional" })
-	public void DeleteContactGroupUseShortcutDel() throws HarnessException {
+	public void UseShortcutDel() throws HarnessException {
 
 		// Create a contact group via Soap then select
 		ContactGroupItem group = app.zPageAddressbook.createUsingSOAPSelectContactGroup(app,Action.A_LEFTCLICK);
@@ -146,7 +136,7 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 	
 	@Test(	description = "Delete a contact group use shortcut backspace",
 			groups = { "functional" })
-	public void DeleteContactGroupUseShortcutBackspace() throws HarnessException {
+	public void  UseShortcutBackspace() throws HarnessException {
 
 		// Create a contact group via Soap then select
 		ContactGroupItem group = app.zPageAddressbook.createUsingSOAPSelectContactGroup(app,Action.A_LEFTCLICK);
@@ -161,34 +151,17 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 	@Test(	description = "Delete multiple contact groups at once",
 			groups = { "functional" })
 	public void DeleteMultipleContactGroups() throws HarnessException {
-
 		
 		 // Create a contact group via Soap
 		  ContactGroupItem group1 = ContactGroupItem.createUsingSOAP(app);
-			             
-		  group1.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-		  String[] dlist = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
-		  for (int i=0; i<dlist.length; i++) {
-			  group1.addDListMember(dlist[i]);
-		  }
+			             		  
 		  
 		// Create a contact group via Soap
 		  ContactGroupItem group2 = ContactGroupItem.createUsingSOAP(app);
-			             
-		  group2.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-		  String[] dlist2 = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
-		  for (int i=0; i<dlist2.length; i++) {
-			  group2.addDListMember(dlist2[i]);
-		  }
 		  
 		// Create a contact group via Soap
 		  ContactGroupItem group3 = ContactGroupItem.createUsingSOAP(app);
 			             
-		  group3.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-		  String[] dlist3 = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
-		  for (int i=0; i<dlist3.length; i++) {
-			  group3.addDListMember(dlist[i]);
-		  }
 		  
 	      // Refresh the view, to pick up the new contact groups
 	      FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");	      
@@ -231,17 +204,10 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 		
 		 // Create a contact group via Soap
 		  ContactGroupItem group = ContactGroupItem.createUsingSOAP(app);
-			             
-		  group.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-		  String[] dlist = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
-		  for (int i=0; i<dlist.length; i++) {
-			  group.addDListMember(dlist[i]);
-		  }
-		  
+			             		  		  
 		  // Create a contact via Soap
 		  ContactItem contactItem = ContactItem.createUsingSOAP(app);			             
-		  contactItem.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-			
+		  
 		  
 	      // Refresh the view, to pick up the newly created ones
 	      FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");	      
@@ -276,5 +242,45 @@ public class DeleteContactGroup extends AjaxCommonTest  {
 
 		  
 	}
+	
+	@Test(	description = "Move a contact group to folder Trash by expand Move dropdown then select Trash",
+			groups = { "functional" })
+	public void MoveToTrashFromMoveDropdownOnToolbar() throws HarnessException {
+		        
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
+ 		
+	    // Create a contact group via Soap then select
+		ContactGroupItem group = app.zPageAddressbook.createUsingSOAPSelectContactGroup(app, Action.A_LEFTCLICK);
+	
+        	
+        //click Move dropdown on toolbar then select Trash
+        app.zPageAddressbook.zToolbarPressPulldown(Button.B_MOVE,folder);
+  
+       
+        //verify contact group deleted
+        VerifyContactGroupDeleted(group);   
+ 
+   	}
+	
+	@Test(	description = "Move a contact group to trash folder by drag and drop",
+			groups = { "functional" })
+	public void DnDToTrash() throws HarnessException {
+		
+		   // Create a contact group via Soap then select
+		ContactGroupItem group = app.zPageAddressbook.createUsingSOAPSelectContactGroup(app, Action.A_LEFTCLICK);
+
+	
+		FolderItem folder = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Trash);
+		
+	    
+		app.zPageAddressbook.zDragAndDrop(
+				"css=td#zlif__CNS-main__" + group.getId() + "__fileas:contains("+ group.fileAs + ")",
+				"css=td#zti__main_Contacts__" + folder.getId() + "_textCell:contains("+ folder.getName() + ")");
+			
+		 //verify contact group deleted
+        VerifyContactGroupDeleted(group);   
+ 
+         
+   	}
 
 }

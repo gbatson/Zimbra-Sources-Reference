@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,19 +21,31 @@ package com.zimbra.cs.service.admin;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.client.ZMailbox;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
+import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.cs.account.soap.SoapProvisioning;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.account.Server;
+import com.zimbra.cs.service.AuthProvider;
+import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.common.soap.Element;
+import com.zimbra.soap.JaxbUtil;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.admin.message.PurgeMessagesRequest;
+import com.zimbra.soap.admin.message.PurgeMessagesResponse;
+import com.zimbra.soap.admin.type.MailboxWithMailboxId;
 
 /**
  * @author dkarp
@@ -64,31 +76,32 @@ public class PurgeMessages extends AdminDocumentHandler {
             accounts = MailboxManager.getInstance().getAccountIds();
         }
         
-        Element response = zsc.createElement(AdminConstants.PURGE_MESSAGES_RESPONSE);
+        PurgeMessagesResponse purgeResponse = new PurgeMessagesResponse();
         for (int i = 0; i < accounts.length; i++) {
-            Mailbox mbox = null;
-            try {
-                mbox = MailboxManager.getInstance().getMailboxByAccountId(accounts[i]);
-                mbox.purgeMessages(null);
-            } catch (ServiceException e) {
-                // ignore NO_SUCH_ACCOUNT and WRONG_HOST errors
-                if (e.getCode() == ServiceException.WRONG_HOST) {
-                    ZimbraLog.mailbox.warn("ignoring mailbox found on wrong host (not cleaned up after migrate?): " + accounts[i], e);
-                    // fall through to the "continue" statement
-                } else if (e.getCode() != AccountServiceException.NO_SUCH_ACCOUNT) {
-                    throw e;
-                }
-            }
-            if (mbox == null)
+            Account account = Provisioning.getInstance().getAccountById(accounts[i]);
+            if (account == null)
                 continue;
-
-            Element mresp = response.addElement(AdminConstants.E_MAILBOX);
-            mresp.addAttribute(AdminConstants.A_MAILBOXID, mbox.getId());
-            mresp.addAttribute(AdminConstants.A_SIZE, mbox.getSize());
+            MailboxWithMailboxId mboxResp;
+            if (Provisioning.onLocalServer(account)) { // local
+                Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(account, false);
+                if (mbox == null)
+                    continue;
+                mbox.purgeMessages(null);
+                mboxResp = new MailboxWithMailboxId(mbox.getId(), account.getId(), Long.valueOf(mbox.getSize()));                
+            } else { // remote
+                Server server = account.getServer();
+                if (server == null)
+                    continue;
+                SoapProvisioning soapProvisioning = SoapProvisioning.getAdminInstance();
+                mboxResp = soapProvisioning.purgeMessages(account);
+                if (mboxResp == null)
+                    continue;
+                mboxResp.setAccountId(account.getId());
+            }
+            purgeResponse.addMailbox(mboxResp);
         }
-        return response;
+        return JaxbUtil.jaxbToElement(purgeResponse);
 	}
-	
     
     @Override
     public void docRights(List<AdminRight> relatedRights, List<String> notes) {

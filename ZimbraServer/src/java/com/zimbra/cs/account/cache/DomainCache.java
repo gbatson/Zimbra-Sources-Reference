@@ -25,10 +25,10 @@ import java.util.Map;
 
 import com.zimbra.common.util.MapUtil;
 
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.stats.Counter;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 
 /**
  * @author schemers

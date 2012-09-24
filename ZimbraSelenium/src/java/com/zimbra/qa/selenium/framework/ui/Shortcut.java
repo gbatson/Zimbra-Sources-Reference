@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 
@@ -55,22 +39,30 @@ public class Shortcut {
 	public static final Shortcut S_NEWMESSAGE = new Shortcut("S_NEWMESSAGE",		"nm");
 	public static final Shortcut S_NEWMESSAGE2 = new Shortcut("S_NEWMESSAGE2",		"c");
 	public static final Shortcut S_COMPOSENEWWINDOW = new Shortcut("S_COMPOSENEWWINDOW",	"C");
+	public static final Shortcut S_NEWITEM_IN_NEW_WINDOW = new Shortcut("S_NEWITEM_IN_NEW_WINDOW",			"n");	// Same shortcut as S_NEWITEM, but harness returns a separate window
+	public static final Shortcut S_NEWMESSAGE_IN_NEW_WINDOW = new Shortcut("S_NEWMESSAGE_IN_NEW_WINDOW",	"nm");	// Same shortcut as S_NEWMESSAGE, but harness returns a separate window
+	public static final Shortcut S_NEWMESSAGE2_IN_NEW_WINDOW = new Shortcut("S_NEWMESSAGE2_IN_NEW_WINDOW",	"c");	// Same shortcut as S_NEWMESSAGE2, but harness returns a separate window
 	public static final Shortcut S_NEWCONTACT = new Shortcut("S_NEWCONTACT",		"nc");
 	public static final Shortcut S_MOVE = new Shortcut("S_MOVE",					"m");
 	public static final Shortcut S_MAIL_TAG = new Shortcut("S_MAIL_TAG",			"t");
 	public static final Shortcut S_MAIL_REMOVETAG = new Shortcut("S_MAIL_REMOVETAG",		"u");
+	public static final Shortcut S_ESCAPE = new Shortcut("S_ESCAPE",		"Esc");
 
-	
+	// Open the assistnat
+	public static final Shortcut S_ASSISTANT = new Shortcut("S_ASSISTANT", "`");
+
 	// Mail shortcuts
 	public static final Shortcut S_MAIL_GETMAIL = new Shortcut("S_MAIL_GETMAIL",	"=");
 	public static final Shortcut S_MAIL_INBOX = new Shortcut("S_MAIL_INBOX",		"i");
 	public static final Shortcut S_MAIL_INBOX2 = new Shortcut("S_MAIL_INBOX2",		"vi");
 	public static final Shortcut S_MAIL_DRAFTS = new Shortcut("S_MAIL_DRAFTS",		"vd");
 	public static final Shortcut S_MAIL_MOVETOTRASH = new Shortcut("S_MAIL_MOVETOTRASH",	".t");
+	public static final Shortcut S_MAIL_HARDELETE = new Shortcut("S_MAIL_MOVETOTRASH",	"<SHIFT><DEL>");
 	public static final Shortcut S_MAIL_MOVETOINBOX = new Shortcut("S_MAIL_MOVETOINBOX",	".i");
 	public static final Shortcut S_MAIL_MARKFLAG = new Shortcut("S_MAIL_MARKFLAG", 	"mf");
 	public static final Shortcut S_MAIL_MARKREAD = new Shortcut("S_MAIL_MARKFLAG", 	"mr");
 	public static final Shortcut S_MAIL_MARKUNREAD = new Shortcut("S_MAIL_MARKFLAG",		"mu");
+	public static final Shortcut S_MAIL_MARKSPAM = new Shortcut("S_MAIL_MARKSPAM",		"ms");
 
 	// Folders shortcuts
 	public static final Shortcut S_NEWFOLDER = new Shortcut("S_NEWFOLDER", "nf");
@@ -78,10 +70,18 @@ public class Shortcut {
 	// Tag shortcuts
 	public static final Shortcut S_NEWTAG = new Shortcut("S_NEWTAG", "nt");
 	
+	// Calendar shortcuts
+	public static final Shortcut S_NEWCALENDAR = new Shortcut("S_NEWCALENDAR", "nl");
+
 	// Briefcase shortcuts
 	public static final Shortcut S_NEWDOCUMENT = new Shortcut("S_NEWDOCUMENT", "nd");
 	public static final Shortcut S_DELETE = new Shortcut("S_DELETE", "<Delete>");
 	public static final Shortcut S_BACKSPACE = new Shortcut("S_BACKSPACE", "<Backspace>");
+
+	//Task shortcut
+	public static final Shortcut S_NEWTASK = new Shortcut("S_NEWTASK", "nk");
+	public static final Shortcut S_TASK_HARDELETE = new Shortcut("S_MAIL_MOVETOTRASH",	"<SHIFT><DEL>");
+	public static final Shortcut S_PRINTTASK = new Shortcut("S_PRINTTASK", "p");
 
 	// Shortcut properties
 	private final String ID;

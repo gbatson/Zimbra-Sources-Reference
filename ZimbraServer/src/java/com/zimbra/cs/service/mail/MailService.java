@@ -1,23 +1,18 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on May 26, 2004
- */
 package com.zimbra.cs.service.mail;
-
 
 import com.zimbra.soap.DocumentDispatcher;
 import com.zimbra.soap.DocumentService;
@@ -25,14 +20,14 @@ import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.soap.MailConstants;
 
 /**
- * 
- * @zm-service-description		The Mail Service includes commands for managing
- * mail and calendar information.
- * 
+ * @zm-service-description The Mail Service includes commands for managing mail and calendar information.
+ *
+ * @since May 26, 2004
  * @author schemers
  */
-public class MailService implements DocumentService {
+public final class MailService implements DocumentService {
 
+    @Override
     public void registerHandlers(DocumentDispatcher dispatcher) {
 
         // noop
@@ -69,6 +64,7 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.SEND_MSG_REQUEST, new SendMsg());
         dispatcher.registerHandler(MailConstants.SEND_REPORT_REQUEST, new SendDeliveryReport());
         dispatcher.registerHandler(MailConstants.SEND_SHARE_NOTIFICATION_REQUEST, new SendShareNotification());
+        dispatcher.registerHandler(MailConstants.BOUNCE_MSG_REQUEST, new BounceMsg());
         dispatcher.registerHandler(MailConstants.ADD_MSG_REQUEST, new AddMsg());
         dispatcher.registerHandler(MailConstants.SAVE_DRAFT_REQUEST, new SaveDraft());
         dispatcher.registerHandler(MailConstants.REMOVE_ATTACHMENTS_REQUEST, new RemoveAttachments());
@@ -88,8 +84,9 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.CREATE_SEARCH_FOLDER_REQUEST, new CreateSearchFolder());
         dispatcher.registerHandler(MailConstants.MODIFY_SEARCH_FOLDER_REQUEST, new ModifySearchFolder());
 
-        // saved searches
+        // mountpoints
         dispatcher.registerHandler(MailConstants.CREATE_MOUNTPOINT_REQUEST, new CreateMountpoint());
+        dispatcher.registerHandler(MailConstants.ENABLE_SHARED_REMINDER_REQUEST, new EnableSharedReminder());
 
         // contacts
         dispatcher.registerHandler(MailConstants.GET_CONTACTS_REQUEST, new GetContacts());
@@ -109,11 +106,7 @@ public class MailService implements DocumentService {
         // sync
         dispatcher.registerHandler(MailConstants.SYNC_REQUEST, new Sync());
 
-        // Filter rules - old format
-        dispatcher.registerHandler(MailConstants.GET_RULES_REQUEST, new GetRules());
-        dispatcher.registerHandler(MailConstants.SAVE_RULES_REQUEST, new SaveRules());
-
-        // Filter rules - new format
+        // Filter rules
         dispatcher.registerHandler(MailConstants.GET_FILTER_RULES_REQUEST, new GetFilterRules());
         dispatcher.registerHandler(MailConstants.MODIFY_FILTER_RULES_REQUEST, new ModifyFilterRules());
         dispatcher.registerHandler(MailConstants.APPLY_FILTER_RULES_REQUEST, new ApplyFilterRules());
@@ -162,6 +155,7 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.GET_ICAL_REQUEST, new GetICal());
         dispatcher.registerHandler(MailConstants.ANNOUNCE_ORGANIZER_CHANGE_REQUEST, new AnnounceOrganizerChange());
         dispatcher.registerHandler(MailConstants.DISMISS_CALITEM_ALARM_REQUEST, new DismissCalendarItemAlarm());
+        dispatcher.registerHandler(MailConstants.SNOOZE_CALITEM_ALARM_REQUEST, new SnoozeCalendarItemAlarm());
         dispatcher.registerHandler(MailConstants.GET_MINI_CAL_REQUEST, new GetMiniCal());
         dispatcher.registerHandler(MailConstants.GET_RECUR_REQUEST, new GetRecur());
         dispatcher.registerHandler(MailConstants.EXPAND_RECUR_REQUEST, new ExpandRecur());
@@ -175,14 +169,10 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.CHECK_SPELLING_REQUEST, new CheckSpelling());
         dispatcher.registerHandler(MailConstants.GET_SPELL_DICTIONARIES_REQUEST, new GetSpellDictionaries());
 
-        // TODO: move to a different service.
-        // wiki
-        dispatcher.registerHandler(MailConstants.SAVE_DOCUMENT_REQUEST, new com.zimbra.cs.service.wiki.SaveDocument());
-        dispatcher.registerHandler(MailConstants.SAVE_WIKI_REQUEST, new com.zimbra.cs.service.wiki.SaveWiki());
-        dispatcher.registerHandler(MailConstants.GET_WIKI_REQUEST, new com.zimbra.cs.service.wiki.GetWiki());
-        dispatcher.registerHandler(MailConstants.WIKI_ACTION_REQUEST, new com.zimbra.cs.service.wiki.WikiAction());
-        dispatcher.registerHandler(MailConstants.DIFF_DOCUMENT_REQUEST, new com.zimbra.cs.service.wiki.DiffDocument());
-        dispatcher.registerHandler(MailConstants.LIST_DOCUMENT_REVISIONS_REQUEST, new com.zimbra.cs.service.wiki.ListDocumentRevisions());
+        // Documents
+        dispatcher.registerHandler(MailConstants.SAVE_DOCUMENT_REQUEST, new com.zimbra.cs.service.doc.SaveDocument());
+        dispatcher.registerHandler(MailConstants.DIFF_DOCUMENT_REQUEST, new com.zimbra.cs.service.doc.DiffDocument());
+        dispatcher.registerHandler(MailConstants.LIST_DOCUMENT_REVISIONS_REQUEST, new com.zimbra.cs.service.doc.ListDocumentRevisions());
         dispatcher.registerHandler(MailConstants.PURGE_REVISION_REQUEST, new com.zimbra.cs.service.mail.PurgeRevision());
 
         // data source
@@ -193,26 +183,35 @@ public class MailService implements DocumentService {
         dispatcher.registerHandler(MailConstants.DELETE_DATA_SOURCE_REQUEST, new DeleteDataSource());
         dispatcher.registerHandler(MailConstants.IMPORT_DATA_REQUEST, new ImportData());
         dispatcher.registerHandler(MailConstants.GET_IMPORT_STATUS_REQUEST, new GetImportStatus());
-        
+
         // waitset
         dispatcher.registerHandler(MailConstants.CREATE_WAIT_SET_REQUEST, new CreateWaitSet());
         dispatcher.registerHandler(MailConstants.WAIT_SET_REQUEST, new WaitSetRequest());
         dispatcher.registerHandler(MailConstants.DESTROY_WAIT_SET_REQUEST, new DestroyWaitSet());
-        
+
         // Account ACL
         dispatcher.registerHandler(MailConstants.GET_PERMISSION_REQUEST, new GetPermission());
         dispatcher.registerHandler(MailConstants.CHECK_PERMISSION_REQUEST, new CheckPermission());
         dispatcher.registerHandler(MailConstants.GRANT_PERMISSION_REQUEST, new GrantPermission());
         dispatcher.registerHandler(MailConstants.REVOKE_PERMISSION_REQUEST, new RevokePermission());
-        
+
         // folder ACl
         dispatcher.registerHandler(MailConstants.GET_EFFECTIVE_FOLDER_PERMS_REQUEST, new GetEffectiveFolderPerms());
-        
+
         // yahoo auth
         dispatcher.registerHandler(MailConstants.GET_YAHOO_COOKIE_REQUEST, new GetYahooCookie());
         dispatcher.registerHandler(MailConstants.GET_YAHOO_AUTH_TOKEN_REQUEST, new GetYahooAuthToken());
-        
+
         dispatcher.registerHandler(MailConstants.AUTO_COMPLETE_REQUEST, new AutoComplete());
         dispatcher.registerHandler(MailConstants.RANKING_ACTION_REQUEST, new RankingAction());
+
+        // comments
+        dispatcher.registerHandler(MailConstants.ADD_COMMENT_REQUEST, new AddComment());
+        dispatcher.registerHandler(MailConstants.GET_COMMENTS_REQUEST, new GetComments());
+
+        // share
+        dispatcher.registerHandler(MailConstants.GET_SHARE_NOTIFICATIONS_REQUEST, new GetShareNotifications());
+
+        dispatcher.registerHandler(MailConstants.GET_SYSTEM_RETENTION_POLICY_REQUEST, new GetSystemRetentionPolicy());
     }
 }

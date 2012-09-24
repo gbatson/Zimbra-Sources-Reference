@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -26,17 +27,16 @@ public class FixCalendarItemTimeZone extends RedoableOp {
     private long mAfter;
     private String mCountry;  // ISO-3166 two-letter country code, or null for world
 
-    public FixCalendarItemTimeZone() {}
+    public FixCalendarItemTimeZone() {
+        super(MailboxOperation.FixCalendarItemTimeZone);
+    }
 
     public FixCalendarItemTimeZone(int mailboxId, int itemId, long after, String country) {
+        this();
         setMailboxId(mailboxId);
         mId = itemId;
         mAfter = after;
         mCountry = country;
-    }
-
-    @Override public int getOpCode() {
-        return OP_FIX_CALENDAR_ITEM_TIME_ZONE;
     }
 
     @Override protected String getPrintableData() {

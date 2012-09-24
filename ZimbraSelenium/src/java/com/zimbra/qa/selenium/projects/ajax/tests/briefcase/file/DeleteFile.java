@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
 
 import org.testng.annotations.Test;
@@ -29,17 +13,22 @@ import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DialogConfirm;
 
-public class DeleteFile extends AjaxCommonTest {
+public class DeleteFile extends FeatureBriefcaseTest {
 
-	public DeleteFile() {
+	public DeleteFile() throws HarnessException {
 		logger.info("New " + DeleteFile.class.getCanonicalName());
 
 		super.startingPage = app.zPageBriefcase;
-
-	}
+		
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
+		    super.startingAccountPreferences.put("zimbraPrefShowSelectionCheckbox","TRUE");
+		}
+			    
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");	
+	}		
 
 	@Test(description = "Upload file through RestUtil - delete & verify through GUI", groups = { "smoke" })
 	public void DeleteFile_01() throws HarnessException {
@@ -78,7 +67,13 @@ public class DeleteFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 		
 		// Click on created document
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		 if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+	    			"FOSS")){
+		     app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		 }else{
+		     app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		 }
 
 		// Click on Delete document icon in toolbar
 		DialogConfirm deleteConfirm = (DialogConfirm) app.zPageBriefcase
@@ -140,8 +135,13 @@ public class DeleteFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 		
 		// Click on created document
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
+
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
 
 		// Click the Delete keyboard shortcut
 		DialogConfirm deleteConfirm = (DialogConfirm) app.zPageBriefcase
@@ -212,9 +212,14 @@ public class DeleteFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 		
 		// Click on created document
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Click the Backspace keyboard shortcut
 		DialogConfirm deleteConfirm = (DialogConfirm) app.zPageBriefcase
 				.zKeyboardShortcut(shortcut);
@@ -278,9 +283,14 @@ public class DeleteFile extends AjaxCommonTest {
 		SleepUtil.sleepVerySmall();
 		
 		// Click on created file
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Delete File using Right Click Context Menu
 		DialogConfirm deleteConfirm = (DialogConfirm) app.zPageBriefcase
 				.zListItem(Action.A_RIGHTCLICK, Button.O_DELETE, fileItem);

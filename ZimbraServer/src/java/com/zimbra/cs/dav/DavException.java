@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -76,6 +76,9 @@ public class DavException extends Exception {
 		protected void setError(QName error) {
 			mErrMsg.getRootElement().addElement(error);
 		}
+		protected void setError(Element error) {
+		    mErrMsg.getRootElement().add(error);
+		}
 	}
 	public static class CannotModifyProtectedProperty extends DavExceptionWithErrorMessage {
 		public CannotModifyProtectedProperty(QName prop) {
@@ -89,4 +92,20 @@ public class DavException extends Exception {
 	        setError(DavElements.E_PROPFIND_FINITE_DEPTH);
 	    }
 	}
+	
+    public static class UnsupportedReport extends DavExceptionWithErrorMessage {
+        public UnsupportedReport(QName report) {
+            super(report + " not implemented in REPORT", HttpServletResponse.SC_FORBIDDEN);
+            Element e = org.dom4j.DocumentHelper.createElement(DavElements.E_SUPPORTED_REPORT);
+            e.addElement(DavElements.E_REPORT).addElement(report);
+            setError(e);
+        }
+    }
+    
+    public static class InvalidData extends DavExceptionWithErrorMessage {
+        public InvalidData(QName prop, String msg) {
+            super(msg, HttpServletResponse.SC_FORBIDDEN);
+            setError(prop);
+        }
+    }
 }

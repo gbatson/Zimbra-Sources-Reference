@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,15 +18,16 @@ import java.util.List;
 
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZParameter;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
-import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.service.mail.ToXML;
+import com.zimbra.common.calendar.CalendarUtil;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZParameter;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.soap.mail.type.CalendarAttendee;
 
 public class ZAttendee extends CalendarUser {
 
@@ -253,6 +254,49 @@ public class ZAttendee extends CalendarUser {
         return getAddress().equalsIgnoreCase(addr);
     }
 
+    public CalendarAttendee toJaxb() {
+        CalendarAttendee attendee = new CalendarAttendee();
+        // address
+        attendee.setAddress(IDNUtil.toUnicode(getAddress()));
+        attendee.setUrl(getAddress());  // for backward compatibility
+        // CN
+        if (hasCn())
+            attendee.setDisplayName(getCn());
+        // SENT-BY
+        if (hasSentBy())
+            attendee.setSentBy(getSentBy());
+        // DIR
+        if (hasDir())
+            attendee.setDir(getDir());
+        // LANGUAGE
+        if (hasLanguage())
+            attendee.setLanguage(getLanguage());
+        // CUTYPE
+        if (hasCUType())
+            attendee.setCuType(getCUType());
+        // ROLE
+        if (hasRole())
+            attendee.setRole(getRole());
+        // PARTSTAT
+        if (hasPartStat())
+            attendee.setPartStat(getPartStat());
+        // RSVP
+        if (hasRsvp())
+            attendee.setRsvp(getRsvp());
+        // MEMBER
+        if (hasMember())
+            attendee.setMember(getMember());
+        // DELEGATED-TO
+        if (hasDelegatedTo())
+            attendee.setDelegatedTo(getDelegatedTo());
+        // DELEGATED-FROM
+        if (hasDelegatedFrom())
+            attendee.setDelegatedFrom(getDelegatedFrom());
+
+        attendee.setXParams(ToXML.jaxbXParams(xparamsIterator()));
+        return attendee;
+    }
+
     public Element toXml(Element parent) {
         Element atElt = parent.addElement(MailConstants.E_CAL_ATTENDEE);
         // address
@@ -292,7 +336,7 @@ public class ZAttendee extends CalendarUser {
         if (hasDelegatedFrom())
             atElt.addAttribute(MailConstants.A_CAL_DELEGATED_FROM, getDelegatedFrom());
 
-        ToXML.encodeXParams(atElt, xparamsIterator());
+        CalendarUtil.encodeXParams(atElt, xparamsIterator());
 
         return atElt;
     }
@@ -331,7 +375,7 @@ public class ZAttendee extends CalendarUser {
 //        if (partStat.equals(IcalXmlStrMap.PARTSTAT_NEEDS_ACTION))
 //            rsvp = true;
 
-        List<ZParameter> xparams = CalendarUtils.parseXParams(element);
+        List<ZParameter> xparams = CalendarUtil.parseXParams(element);
 
         ZAttendee at =
             new ZAttendee(address, cn, sentBy, dir, lang,

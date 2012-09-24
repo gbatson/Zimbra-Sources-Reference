@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -24,6 +24,10 @@ import javax.mail.Address;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeBodyPart;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -37,52 +41,49 @@ import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.RecurId;
-import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.soap.ZimbraSoapContext;
 
 public class CancelCalendarItem extends CalendarRequest {
 
     private static final String[] TARGET_ITEM_PATH = new String[] { MailConstants.A_ID };
-    protected String[] getProxiedIdPath(Element request)     { return TARGET_ITEM_PATH; }
-    protected boolean checkMountpointProxy(Element request)  { return false; }
 
+    @Override
+    protected String[] getProxiedIdPath(Element request) {
+        return TARGET_ITEM_PATH;
+    }
+
+    @Override
+    protected boolean checkMountpointProxy(Element request) {
+        return false;
+    }
+
+    @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Account acct = getRequestedAccount(zsc);
         Mailbox mbox = getRequestedMailbox(zsc);
         OperationContext octxt = getOperationContext(zsc, context);
-        
+
         ItemId iid = new ItemId(request.getAttribute(MailConstants.A_ID), zsc);
         if (!iid.hasSubpart())
             throw ServiceException.INVALID_REQUEST("missing invId subpart: id should be specified as \"item-inv\"", null);
         int compNum = (int) request.getAttributeLong(MailConstants.E_INVITE_COMPONENT);
 
-        //synchronized (mbox) {
-            CalendarItem calItem = mbox.getCalendarItemById(octxt, iid.getId()); 
-            if (calItem == null)
-                throw MailServiceException.NO_SUCH_CALITEM(iid.getId(), " for CancelCalendarItemRequest(" + iid + "," + compNum + ")");
-            if (calItem.inTrash())
-                throw ServiceException.INVALID_REQUEST("cannot cancel a calendar item under trash", null);
+        CalendarItem calItem = mbox.getCalendarItemById(octxt, iid.getId());
+        if (calItem == null)
+            throw MailServiceException.NO_SUCH_CALITEM(iid.getId(), " for CancelCalendarItemRequest(" + iid + "," + compNum + ")");
+        if (calItem.inTrash())
+            throw ServiceException.INVALID_REQUEST("cannot cancel a calendar item under trash", null);
 
-            if (false) {  // We probably don't want to bother with conflict check for a cancel request...
-                // Conflict detection.  Do it only if requested by client.  (for backward compat)
-                int modSeq = (int) request.getAttributeLong(MailConstants.A_MODIFIED_SEQUENCE, 0);
-                int revision = (int) request.getAttributeLong(MailConstants.A_REVISION, 0);
-                if (modSeq != 0 && revision != 0 &&
-                    (modSeq < calItem.getModifiedSequence() || revision < calItem.getSavedSequence()))
-                    throw MailServiceException.INVITE_OUT_OF_DATE(iid.toString());
-            }
+        // We probably don't want to bother with conflict check for a cancel request...
 
-            Invite inv = calItem.getInvite(iid.getSubpartId(), compNum);
-            if (inv == null)
-                throw MailServiceException.INVITE_OUT_OF_DATE(iid.toString());
+        Invite inv = calItem.getInvite(iid.getSubpartId(), compNum);
+        if (inv == null)
+            throw MailServiceException.INVITE_OUT_OF_DATE(iid.toString());
 
         MailSendQueue sendQueue = new MailSendQueue();
         try {
@@ -140,7 +141,7 @@ public class CancelCalendarItem extends CalendarRequest {
                                 }
                             }
                         }
-    
+
                         // Finally, cancel the series.
                         Element msgElem = request.getOptionalElement(MailConstants.E_MSG);
                         cancelInvite(zsc, octxt, msgElem, acct, mbox, calItem, seriesInv, sendQueue);
@@ -183,19 +184,19 @@ public class CancelCalendarItem extends CalendarRequest {
             mbps[0] = CalendarMailSender.makeICalIntoMimePart(iCal);
 
             // the <inv> element is *NOT* allowed -- we always build it manually
-            // based on the params to the <CancelCalendarItem> and stick it in the 
+            // based on the params to the <CancelCalendarItem> and stick it in the
             // mbps (additionalParts) parameter...
-            dat.mMm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, mbox, msgElem, 
+            dat.mMm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, mbox, msgElem,
                     mbps, ParseMimeMessage.NO_INV_ALLOWED_PARSER, dat);
-            
+
         } else {
             List<Address> rcpts = CalendarMailSender.toListFromAttendees(toNotify);
             dat.mMm = CalendarMailSender.createCancelMessage(
                     acct, authAcct, zsc.isUsingAdminPrivileges(), onBehalfOf, rcpts,
                     calItem, cancelInvite, text, iCal);
         }
-        
-		doRecipientsCheck(dat, inv.isOrganizer(), mbox);
+
+        doRecipientsCheck(dat, inv.isOrganizer(), mbox);
         sendCalendarCancelMessage(zsc, octxt, calItem.getFolderId(), acct, mbox, dat, true, sendQueue);
     }
 
@@ -211,10 +212,10 @@ public class CancelCalendarItem extends CalendarRequest {
         csd.mOrigId = new ItemId(mbox, inv.getMailItemId());
         csd.mReplyType = MailSender.MSGTYPE_REPLY;
         csd.mInvite = CalendarUtils.buildCancelInviteCalendar(acct, authAcct, zsc.isUsingAdminPrivileges(), onBehalfOf, calItem, inv, text);
-        
+
         ZVCalendar iCal = csd.mInvite.newToICalendar(true);
 
-        // did they specify a custom <m> message?  If so, then we don't have to build one...        
+        // did they specify a custom <m> message?  If so, then we don't have to build one...
         if (msgElem != null) {
             String desc = ParseMimeMessage.getTextPlainContent(msgElem);
             String html = ParseMimeMessage.getTextHtmlContent(msgElem);
@@ -222,12 +223,12 @@ public class CancelCalendarItem extends CalendarRequest {
 
             MimeBodyPart[] mbps = new MimeBodyPart[1];
             mbps[0] = CalendarMailSender.makeICalIntoMimePart(iCal);
-            
+
             // the <inv> element is *NOT* allowed -- we always build it manually
-            // based on the params to the <CancelCalendarItem> and stick it in the 
+            // based on the params to the <CancelCalendarItem> and stick it in the
             // mbps (additionalParts) parameter...
             csd.mMm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, mbox, msgElem, mbps, ParseMimeMessage.NO_INV_ALLOWED_PARSER, csd);
-            
+
         } else {
             List<Address> rcpts;
             if (inv.isOrganizer())
@@ -238,7 +239,7 @@ public class CancelCalendarItem extends CalendarRequest {
                     acct, authAcct, zsc.isUsingAdminPrivileges(), onBehalfOf, rcpts,
                     calItem, inv, text, iCal);
         }
-        
+
         doRecipientsCheck(csd, inv.isOrganizer(), mbox);
         sendCalendarCancelMessage(zsc, octxt, calItem.getFolderId(), acct, mbox, csd, true, sendQueue);
     }

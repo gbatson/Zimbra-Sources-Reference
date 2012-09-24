@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@ import java.util.Arrays;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -29,15 +30,13 @@ public class DeleteItemFromDumpster extends RedoableOp {
     private int[] mIds;
 
     public DeleteItemFromDumpster() {
+        super(MailboxOperation.DeleteItemFromDumpster);
     }
 
     public DeleteItemFromDumpster(int mailboxId, int[] ids) {
+        this();
         setMailboxId(mailboxId);
         mIds = ids;
-    }
-
-    @Override public int getOpCode() {
-        return OP_DELETE_ITEM_FROM_DUMPSTER;
     }
 
     @Override protected String getPrintableData() {

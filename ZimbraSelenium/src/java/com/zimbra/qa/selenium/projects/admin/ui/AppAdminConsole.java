@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.admin.ui;
 
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
@@ -60,6 +44,7 @@ public class AppAdminConsole extends AbsApplication {
 	public PageManageGlobalSettings		zPageManageGlobalSettings = null;
 	public PageManageRights				zPageManageRights = null;
 	public PageManageGlobalACL			zPageManageACL = null;
+	public PageManageVoiceChatService	zPageManageVoiceChatService = null;
 	
 	// Monitoring
 	public PageManageServerStatus		zPageManageServerStatus = null;
@@ -70,6 +55,7 @@ public class AppAdminConsole extends AbsApplication {
 	public PageEditMailQueue			zPageEditMailQueue = null;
 	public PageManageAccountMigration	zPageManageAccountMigration = null;
 	public PageManageCertificates		zPageManageCertificates = null;
+	public PageManageClientUpload		zPageManageClientUpload = null;
 	public PageEditCertificate			zPageEditCertificate = null;
 	public PageManageSoftwareUpdates	zPageManageSoftwareUpdates = null;
 	public PageManageSearchMail			zPageManageSearchMail = null;
@@ -172,6 +158,9 @@ public class AppAdminConsole extends AbsApplication {
 		zPageManageACL = new PageManageGlobalACL(this);
 		pages.put(zPageManageACL.myPageName(), zPageManageACL);
 		
+		zPageManageVoiceChatService = new PageManageVoiceChatService(this);
+		pages.put(zPageManageVoiceChatService.myPageName(), zPageManageVoiceChatService);
+
 		
 		// Monitoring
 
@@ -198,6 +187,9 @@ public class AppAdminConsole extends AbsApplication {
 
 		zPageManageCertificates = new PageManageCertificates(this);
 		pages.put(zPageManageCertificates.myPageName(), zPageManageCertificates);
+		
+		zPageManageClientUpload = new PageManageClientUpload(this);
+		pages.put(zPageManageClientUpload.myPageName(), zPageManageClientUpload);
 
 		zPageEditCertificate = new PageEditCertificate(this);
 		pages.put(zPageEditCertificate.myPageName(), zPageEditCertificate);

@@ -1,6 +1,6 @@
 /* ***** BEGIN LICENSE BLOCK *****
 /* Zimbra Collaboration Suite Server
-/* Copyright (C) 2009, 2010, 2011 VMware, Inc.
+/* Copyright (C) 2009, 2010 Zimbra, Inc.
 /* 
 /* The contents of this file are subject to the Zimbra Public License
 /* Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,7 @@ import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.zimbra.common.calendar.TimeZoneMap;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
@@ -31,9 +32,8 @@ import com.zimbra.cs.fb.FreeBusyQuery;
 import com.zimbra.cs.fb.FreeBusy.Interval;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.CalendarItem.Instance;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
-import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
+import com.zimbra.cs.mailbox.calendar.Util;
 import com.zimbra.soap.SoapServlet;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -55,7 +55,7 @@ public class CheckRecurConflicts extends ExpandRecur {
         String exApptUid = request.getAttribute(MailConstants.A_APPT_FREEBUSY_EXCLUDE_UID, null);
 
         // Parse and expand the recurrence.
-        TimeZoneMap tzmap = new TimeZoneMap(ICalTimeZone.getAccountTimeZone(authAcct));
+        TimeZoneMap tzmap = new TimeZoneMap(Util.getAccountTimeZone(authAcct));
         ParsedRecurrence parsed = parseRecur(request, tzmap);
         List<Instance> instances = getInstances(parsed, rangeStart, rangeEnd);
         if (instances == null || instances.isEmpty())

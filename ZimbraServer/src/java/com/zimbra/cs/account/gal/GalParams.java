@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,15 +16,15 @@ package com.zimbra.cs.account.gal;
 
 import java.util.Map;
 
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ldap.LdapDomain;
 import com.zimbra.cs.account.ldap.LdapGalCredential;
-import com.zimbra.cs.account.ldap.LdapUtil;
-import com.zimbra.cs.account.ldap.ZimbraLdapContext;
 import com.zimbra.cs.gal.GalSearchConfig;
+import com.zimbra.cs.gal.ZimbraGalSearchBase;
+import com.zimbra.cs.ldap.LdapConnType;
 
 public abstract class GalParams {
     
@@ -93,7 +93,7 @@ public abstract class GalParams {
         
         public ZimbraGalParams(Domain domain, GalOp galOp) throws ServiceException {
             super(domain, galOp); 
-            mSearchBase = LdapUtil.getZimbraSearchBase(domain, galOp);
+            mSearchBase = ZimbraGalSearchBase.getSearchBase(domain, galOp);
         }
         
         public String searchBase() { return mSearchBase; }
@@ -166,8 +166,8 @@ public abstract class GalParams {
                 krb5Keytab = ldapEntry.getAttr(Provisioning.A_zimbraGalLdapKerberos5Keytab);
             }
             
-            boolean startTLS = startTlsEnabled == null ? false : Provisioning.TRUE.equals(startTlsEnabled);
-            mRequireStartTLS = ZimbraLdapContext.requireStartTLS(mUrl,  startTLS);
+            boolean startTLS = startTlsEnabled == null ? false : ProvisioningConstants.TRUE.equals(startTlsEnabled);
+            mRequireStartTLS = LdapConnType.requireStartTLS(mUrl,  startTLS);
             mCredential = new LdapGalCredential(authMech, bindDn, bindPassword, krb5Principal, krb5Keytab);
         }
         
@@ -237,8 +237,8 @@ public abstract class GalParams {
                 krb5Keytab = (String)attrs.get(Provisioning.A_zimbraGalLdapKerberos5Keytab);
             }
                 
-            boolean startTLS = startTlsEnabled == null ? false : Provisioning.TRUE.equals(startTlsEnabled);
-            mRequireStartTLS = ZimbraLdapContext.requireStartTLS(mUrl,  startTLS);
+            boolean startTLS = startTlsEnabled == null ? false : ProvisioningConstants.TRUE.equals(startTlsEnabled);
+            mRequireStartTLS = LdapConnType.requireStartTLS(mUrl,  startTLS);
             mCredential = new LdapGalCredential(authMech, bindDn, bindPassword, krb5Principal, krb5Keytab);
         }
         

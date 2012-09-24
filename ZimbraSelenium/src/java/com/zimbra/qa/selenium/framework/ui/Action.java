@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 
@@ -54,7 +38,8 @@ public class Action {
 	public static final Action A_CTRLSELECT = new Action("A_CTRLSELECT");
 	public static final Action A_RIGHTCLICK = new Action("A_RIGHTCLICK");
 	public static final Action A_DOUBLECLICK = new Action("A_DOUBLECLICK");
-	public static final Action A_CHECKBOX = new Action("A_CHECK");
+	public static final Action A_CHECKBOX = new Action("A_CHECKBOX");
+	public static final Action A_UNCHECKBOX = new Action("A_UNCHECKBOX");
 
 	// Mail page actions
 	public static final Action A_MAIL_CHECKBOX = new Action("A_MAIL_CHECKBOX");
@@ -62,11 +47,13 @@ public class Action {
 	public static final Action A_MAIL_FLAG = new Action("A_MAIL_FLAG");
 	public static final Action A_MAIL_UNFLAG = new Action("A_MAIL_UNFLAG");
 	public static final Action A_MAIL_EXPANDCONVERSATION = new Action("A_MAIL_EXPANDCONVERSATION");
+	public static final Action A_MAIL_COLLAPSECONVERSATION = new Action("A_MAIL_COLLAPSECONVERSATION");
 	
 	// Tree actions
 	public static final Action A_TREE_EXPAND = new Action("A_TREE_EXPAND");
 	public static final Action A_TREE_COLLAPSE = new Action("A_TREE_COLLAPSE");
-	
+	public static final Action A_TREE_CHECKBOX = new Action("A_TREE_CHECKBOX");
+
 	// Briefcase page actions
 	public static final Action A_BRIEFCASE_CHECKBOX = new Action("A_BRIEFCASE_CHECKBOX");
 	public static final Action A_BRIEFCASE_HEADER_CHECKBOX = new Action("A_BRIEFCASE_HEADER_CHECKBOX");

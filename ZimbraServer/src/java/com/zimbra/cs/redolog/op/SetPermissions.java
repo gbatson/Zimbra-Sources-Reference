@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,10 +16,7 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
-import com.zimbra.cs.mailbox.ACL;
-import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.MetadataList;
+import com.zimbra.cs.mailbox.*;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -29,18 +26,16 @@ public class SetPermissions extends RedoableOp {
     private String mACL;
 
     public SetPermissions() {
+        super(MailboxOperation.SetPermissions);
         mFolderId = UNKNOWN_ID;
         mACL = "";
     }
 
     public SetPermissions(int mailboxId, int folderId, ACL acl) {
+        this();
         setMailboxId(mailboxId);
         mFolderId = folderId;
         mACL = acl == null ? "" : acl.toString();
-    }
-
-    @Override public int getOpCode() {
-        return OP_SET_PERMISSIONS;
     }
 
     @Override protected String getPrintableData() {
@@ -62,7 +57,14 @@ public class SetPermissions extends RedoableOp {
     
     @Override public void redo() throws Exception {
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
-        ACL acl = (mACL.equals("") ? null : new ACL(new MetadataList(mACL)));
+        ACL acl;
+        if (mACL.equals("")) {
+            acl = null;
+        } else if (getVersion().atLeast(1, 36)) {
+            acl = new ACL(new Metadata(mACL));
+        } else {
+            acl = new ACL(new MetadataList(mACL));
+        }
         mbox.setPermissions(getOperationContext(), mFolderId, acl);
     }
 }

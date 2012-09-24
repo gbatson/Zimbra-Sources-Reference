@@ -1,299 +1,368 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.filter;
 
-import java.util.Date;
-import java.util.List;
+import com.google.common.base.Joiner;
+import com.google.common.base.Strings;
+import com.google.common.collect.Lists;
+import com.zimbra.common.filter.Sieve;
+import com.zimbra.soap.mail.type.FilterAction;
+import com.zimbra.soap.mail.type.FilterRule;
+import com.zimbra.soap.mail.type.FilterTest;
+import com.zimbra.soap.mail.type.FilterTests;
 
-import com.zimbra.common.util.StringUtil;
 import org.apache.jsieve.parser.generated.Node;
 
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.soap.Element;
-import com.zimbra.common.soap.MailConstants;
-import com.zimbra.common.soap.Element.ElementFactory;
-import com.zimbra.cs.filter.FilterUtil.DateComparison;
-import com.zimbra.cs.filter.FilterUtil.Flag;
-import com.zimbra.cs.filter.FilterUtil.NumberComparison;
-import com.zimbra.cs.filter.FilterUtil.StringComparison;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Converts a Sieve node tree to the SOAP representation of
  * filter rules.
  */
-public class SieveToSoap extends SieveVisitor {
+public final class SieveToSoap extends SieveVisitor {
 
-    private Element mRoot;
-    private List<String> mRuleNames;
-    private Element mCurrentRule;
-    private int mCurrentRuleIndex = 0;
-    
-    public SieveToSoap(ElementFactory factory, List<String> ruleNames) {
-        mRoot = factory.createElement(MailConstants.E_FILTER_RULES);
-        mRuleNames = ruleNames;
+    private final List<FilterRule> rules = Lists.newArrayList();
+    private final List<String> ruleNames;
+    private FilterRule currentRule;
+    private int currentRuleIndex = 0;
+
+    public SieveToSoap(List<String> ruleNames) {
+        this.ruleNames = ruleNames;
     }
-    
-    public Element getRootElement() {
-        return mRoot;
+
+    public List<FilterRule> toFilterRules() {
+        return rules;
     }
-    
+
+    private String getCurrentRuleName() {
+        if (ruleNames == null || currentRuleIndex >= ruleNames.size()) {
+            return null;
+        }
+        return ruleNames.get(currentRuleIndex);
+    }
+
     @Override
     protected void visitRule(Node ruleNode, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.end) {
             return;
         }
-        
-        // rule element
-        mCurrentRule = mRoot.addElement(MailConstants.E_FILTER_RULE);
-        String name = getCurrentRuleName();
-        if (name != null) {
-            mCurrentRule.addAttribute(MailConstants.A_NAME, name);
-        }
-        mCurrentRule.addAttribute(MailConstants.A_ACTIVE, props.isEnabled);
-
-        // filterTests element
-        Element filterTests = mCurrentRule.addElement(MailConstants.E_FILTER_TESTS);
-        filterTests.addAttribute(MailConstants.A_CONDITION, props.condition.toString());
-        
-        // filterActions element
-        mCurrentRule.addElement(MailConstants.E_FILTER_ACTIONS);
-
-        mCurrentRuleIndex++;
+        currentRule = new FilterRule(getCurrentRuleName(), props.isEnabled);
+        currentRule.setFilterTests(new FilterTests(props.condition.toString()));
+        rules.add(currentRule);
+        currentRuleIndex++;
     }
-    
-    private Element addTest(String elementName, RuleProperties props)
-    throws ServiceException {
-        Element tests = mCurrentRule.getElement(MailConstants.E_FILTER_TESTS);
-        int index = tests.listElements().size();
-        Element test = tests.addElement(elementName);
+
+    private <T extends FilterTest> T addTest(T test, RuleProperties props) {
+        FilterTests tests = currentRule.getFilterTests();
+        test.setIndex(tests.size());
+        tests.addTest(test);
         if (props.isNegativeTest) {
-            test.addAttribute(MailConstants.A_NEGATIVE, "1");
+            test.setNegative(true);
         }
-        test.addAttribute(MailConstants.A_INDEX, index);
         return test;
     }
-    
-    private Element addAction(String elementName)
-    throws ServiceException {
-        Element actions = mCurrentRule.getElement(MailConstants.E_FILTER_ACTIONS);
-        int index = actions.listElements().size();
-        Element action = actions.addElement(elementName);
-        action.addAttribute(MailConstants.A_INDEX, Integer.toString(index));
+
+    private <T extends FilterAction> T addAction(T action) {
+        action.setIndex(currentRule.getActionCount());
+        currentRule.addFilterAction(action);
         return action;
     }
-    
+
     @Override
-    protected void visitAttachmentTest(Node node, VisitPhase phase, RuleProperties props)
-    throws ServiceException {
+    protected void visitAttachmentTest(Node node, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.begin) {
-            addTest(MailConstants.E_ATTACHMENT_TEST, props);
+            addTest(new FilterTest.AttachmentTest(), props);
         }
     }
 
     @Override
-    protected void visitBodyTest(Node node, VisitPhase phase, RuleProperties props, boolean caseSensitive, String value)
-    throws ServiceException {
+    protected void visitBodyTest(Node node, VisitPhase phase, RuleProperties props,
+            boolean caseSensitive, String value) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_BODY_TEST, props);
-            if (caseSensitive)
-                test.addAttribute(MailConstants.A_CASE_SENSITIVE, caseSensitive);
-            test.addAttribute(MailConstants.A_VALUE, value);
+            FilterTest.BodyTest test = addTest(new FilterTest.BodyTest(), props);
+            if (caseSensitive) {
+                test.setCaseSensitive(true);
+            }
+            test.setValue(value);
         }
     }
 
     @Override
     protected void visitDateTest(Node node, VisitPhase phase, RuleProperties props,
-                                 DateComparison comparison, Date date)
-    throws ServiceException {
+            Sieve.DateComparison comparison, Date date) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_DATE_TEST, props);
-            test.addAttribute(MailConstants.A_DATE_COMPARISON, comparison.toString());
-            test.addAttribute(MailConstants.A_DATE, date.getTime() / 1000);
+            FilterTest.DateTest test = addTest(new FilterTest.DateTest(), props);
+            test.setDateComparison(comparison.toString());
+            test.setDate(date.getTime() / 1000L);
         }
     }
 
     @Override
     protected void visitCurrentTimeTest(Node node, VisitPhase phase, RuleProperties props,
-                                        DateComparison comparison, String timeStr)
-    throws ServiceException {
+            Sieve.DateComparison comparison, String time) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_CURRENT_TIME_TEST, props);
-            test.addAttribute(MailConstants.A_DATE_COMPARISON, comparison.toString());
-            test.addAttribute(MailConstants.A_TIME, timeStr);
+            FilterTest.CurrentTimeTest test = addTest(new FilterTest.CurrentTimeTest(), props);
+            test.setDateComparison(comparison.toString());
+            test.setTime(time);
         }
     }
 
     @Override
-    protected void visitCurrentDayOfWeekTest(Node node, VisitPhase phase, RuleProperties props, List<String> days)
-    throws ServiceException {
+    protected void visitCurrentDayOfWeekTest(Node node, VisitPhase phase, RuleProperties props, List<String> days) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_CURRENT_DAY_OF_WEEK_TEST, props);
-            test.addAttribute(MailConstants.A_VALUE, StringUtil.join(",", days));
+            FilterTest.CurrentDayOfWeekTest test = addTest(new FilterTest.CurrentDayOfWeekTest(), props);
+            test.setValues(Joiner.on(',').join(days));
         }
     }
 
     @Override
-    protected void visitTrueTest(Node node, VisitPhase phase, RuleProperties props)
-    throws ServiceException {
+    protected void visitTrueTest(Node node, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.begin) {
-            addTest(MailConstants.E_TRUE_TEST, props);
+            addTest(new FilterTest.TrueTest(), props);
         }
     }
 
     @Override
-    protected void visitHeaderExistsTest(Node node, VisitPhase phase, RuleProperties props,
-                                         String header)
-    throws ServiceException {
+    protected void visitHeaderExistsTest(Node node, VisitPhase phase, RuleProperties props, String header) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_HEADER_EXISTS_TEST, props);
-            test.addAttribute(MailConstants.A_HEADER, header);
+            addTest(new FilterTest.HeaderExistsTest(header), props);
         }
     }
 
     @Override
-    protected void visitHeaderTest(String testEltName, Node node, VisitPhase phase, RuleProperties props,
-                                   List<String> headers, StringComparison comparison, boolean caseSensitive, String value)
-    throws ServiceException {
+    protected void visitHeaderTest(Node node, VisitPhase phase, RuleProperties props,
+            List<String> headers, Sieve.StringComparison comparison, boolean caseSensitive, String value) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(testEltName, props);
-            test.addAttribute(MailConstants.A_HEADER, StringUtil.join(",", headers));
-            test.addAttribute(MailConstants.A_STRING_COMPARISON, comparison.toString());
-            if (caseSensitive)
-                test.addAttribute(MailConstants.A_CASE_SENSITIVE, caseSensitive);
-            test.addAttribute(MailConstants.A_VALUE, value);
+            FilterTest.HeaderTest test = addTest(new FilterTest.HeaderTest(), props);
+            test.setHeaders(Joiner.on(',').join(headers));
+            test.setStringComparison(comparison.toString());
+            if (caseSensitive) {
+                test.setCaseSensitive(true);
+            }
+            test.setValue(value);
+        }
+    }
+
+    @Override
+    protected void visitMimeHeaderTest(Node node, VisitPhase phase, RuleProperties props,
+            List<String> headers, Sieve.StringComparison comparison, boolean caseSensitive, String value) {
+        if (phase == VisitPhase.begin) {
+            FilterTest.MimeHeaderTest test = addTest(new FilterTest.MimeHeaderTest(), props);
+            test.setHeaders(Joiner.on(',').join(headers));
+            test.setStringComparison(comparison.toString());
+            if (caseSensitive) {
+                test.setCaseSensitive(true);
+            }
+            test.setValue(value);
+        }
+    }
+
+    @Override
+    protected void visitAddressTest(Node node, VisitPhase phase, RuleProperties props, List<String> headers,
+            Sieve.AddressPart part, Sieve.StringComparison comparison, boolean caseSensitive, String value) {
+        if (phase == VisitPhase.begin) {
+            FilterTest.AddressTest test = addTest(new FilterTest.AddressTest(), props);
+            test.setHeader(Joiner.on(',').join(headers));
+            test.setPart(part.toString());
+            test.setStringComparison(comparison.toString());
+            if (caseSensitive) {
+                test.setCaseSensitive(true);
+            }
+            test.setValue(value);
         }
     }
 
     @Override
     protected void visitSizeTest(Node node, VisitPhase phase, RuleProperties props,
-                                 NumberComparison comparison, int size, String sizeString)
-    throws ServiceException {
+            Sieve.NumberComparison comparison, int size, String sizeString) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_SIZE_TEST, props);
-            test.addAttribute(MailConstants.A_NUMBER_COMPARISON, comparison.toString());
-            test.addAttribute(MailConstants.A_SIZE, sizeString);
+            FilterTest.SizeTest test = addTest(new FilterTest.SizeTest(), props);
+            test.setNumberComparison(comparison.toString());
+            test.setSize(sizeString);
         }
     }
 
     @Override
-    protected void visitAddressBookTest(Node node, VisitPhase phase, RuleProperties props,
-                                        String header, String folderPath) throws ServiceException {
+    protected void visitAddressBookTest(Node node, VisitPhase phase, RuleProperties props, String header) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_ADDRESS_BOOK_TEST, props);
-            test.addAttribute(MailConstants.A_HEADER, header);
-            test.addAttribute(MailConstants.A_FOLDER_PATH, folderPath);
+            addTest(new FilterTest.AddressBookTest(header), props);
         }
     }
 
     @Override
-    protected void visitInviteTest(Node node, VisitPhase phase, RuleProperties props, List<String> methods)
-    throws ServiceException {
+    protected void visitContactRankingTest(Node node, VisitPhase phase, RuleProperties props, String header) {
         if (phase == VisitPhase.begin) {
-            Element test = addTest(MailConstants.E_INVITE_TEST, props);
-            for (String method : methods) {
-                test.addElement(MailConstants.E_METHOD).setText(method);
-            }
-        }
-    }
-
-    private String getCurrentRuleName() {
-        if (mRuleNames == null || mCurrentRuleIndex >= mRuleNames.size()) {
-            return null;
-        }
-        return mRuleNames.get(mCurrentRuleIndex);
-    }
-
-    @Override
-    protected void visitDiscardAction(Node node, VisitPhase phase, RuleProperties props)
-    throws ServiceException {
-        if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_DISCARD);
+            addTest(new FilterTest.ContactRankingTest(header), props);
         }
     }
 
     @Override
-    protected void visitFileIntoAction(Node node, VisitPhase phase, RuleProperties props,
-                                       String folderPath) throws ServiceException {
+    protected void visitMeTest(Node node, VisitPhase phase, RuleProperties props, String header) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_FILE_INTO).addAttribute(MailConstants.A_FOLDER_PATH, folderPath);
+            addTest(new FilterTest.MeTest(header), props);
         }
     }
 
     @Override
-    protected void visitFlagAction(Node node, VisitPhase phase, RuleProperties props, Flag flag)
-    throws ServiceException {
+    protected void visitInviteTest(Node node, VisitPhase phase, RuleProperties props, List<String> methods) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_FLAG).addAttribute(MailConstants.A_FLAG_NAME, flag.toString());
+            FilterTest.InviteTest test = addTest(new FilterTest.InviteTest(), props);
+            test.addMethod(methods);
         }
     }
 
     @Override
-    protected void visitKeepAction(Node node, VisitPhase phase, RuleProperties props)
-    throws ServiceException {
+    protected void visitConversationTest(Node node, VisitPhase phase, RuleProperties props, String where) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_KEEP);
+            FilterTest.ConversationTest test = addTest(new FilterTest.ConversationTest(), props);
+            test.setWhere(where);
         }
     }
 
     @Override
-    protected void visitRedirectAction(Node node, VisitPhase phase, RuleProperties props,
-                                       String address) throws ServiceException {
+    protected void visitFacebookTest(Node node, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_REDIRECT).addAttribute(MailConstants.A_ADDRESS, address);
+            addTest(new FilterTest.FacebookTest(), props);
         }
     }
 
     @Override
-    protected void visitReplyAction(Node node, VisitPhase phase, RuleProperties props, String bodyTemplate)
-            throws ServiceException {
+    protected void visitLinkedInTest(Node node, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_REPLY).addElement(MailConstants.E_CONTENT).addText(bodyTemplate);
+            addTest(new FilterTest.LinkedInTest(), props);
+        }
+    }
+
+    @Override
+    protected void visitSocialcastTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.SocialcastTest(), props);
+        }
+    }
+
+    @Override
+    protected void visitTwitterTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.TwitterTest(), props);
+        }
+    }
+
+    @Override
+    protected void visitListTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.ListTest(), props);
+        }
+    }
+
+    @Override
+    protected void visitBulkTest(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.BulkTest(), props);
+        }
+    }
+
+    @Override
+    protected void visitImportanceTest(Node node, VisitPhase phase, RuleProperties props,
+            FilterTest.Importance importance) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.ImportanceTest(importance), props);
+        }
+    }
+
+    @Override
+    protected void visitFlaggedTest(Node node, VisitPhase phase, RuleProperties props, Sieve.Flag flag) {
+        if (phase == VisitPhase.begin) {
+            addTest(new FilterTest.FlaggedTest(flag.toString()), props);
+        }
+    }
+
+    @Override
+    protected void visitDiscardAction(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addAction(new FilterAction.DiscardAction());
+        }
+    }
+
+    @Override
+    protected void visitFileIntoAction(Node node, VisitPhase phase, RuleProperties props, String folderPath) {
+        if (phase == VisitPhase.begin) {
+            addAction(new FilterAction.FileIntoAction(folderPath));
+        }
+    }
+
+    @Override
+    protected void visitFlagAction(Node node, VisitPhase phase, RuleProperties props, Sieve.Flag flag) {
+        if (phase == VisitPhase.begin) {
+            addAction(new FilterAction.FlagAction(flag.toString()));
+        }
+    }
+
+    @Override
+    protected void visitKeepAction(Node node, VisitPhase phase, RuleProperties props) {
+        if (phase == VisitPhase.begin) {
+            addAction(new FilterAction.KeepAction());
+        }
+    }
+
+    @Override
+    protected void visitRedirectAction(Node node, VisitPhase phase, RuleProperties props, String address) {
+        if (phase == VisitPhase.begin) {
+            addAction(new FilterAction.RedirectAction(address));
+        }
+    }
+
+    @Override
+    protected void visitReplyAction(Node node, VisitPhase phase, RuleProperties props, String bodyTemplate) {
+        if (phase == VisitPhase.begin) {
+            addAction(new FilterAction.ReplyAction(bodyTemplate));
         }
     }
 
     @Override
     protected void visitNotifyAction(Node node, VisitPhase phase, RuleProperties props,
-            String emailAddr, String subjectTemplate, String bodyTemplate, int maxBodyBytes, List<String> origHeaders)
-            throws ServiceException {
+            String emailAddr, String subjectTemplate, String bodyTemplate, int maxBodyBytes, List<String> origHeaders) {
         if (phase == VisitPhase.begin) {
-            Element action = addAction(MailConstants.E_ACTION_NOTIFY);
-            action.addAttribute(MailConstants.A_ADDRESS, emailAddr);
-            if (!StringUtil.isNullOrEmpty(subjectTemplate))
-                action.addAttribute(MailConstants.A_SUBJECT, subjectTemplate);
-            if (!StringUtil.isNullOrEmpty(bodyTemplate))
-                action.addElement(MailConstants.E_CONTENT).addText(bodyTemplate);
-            if (maxBodyBytes != -1)
-                action.addAttribute(MailConstants.A_MAX_BODY_SIZE, maxBodyBytes);
-            if (origHeaders != null && !origHeaders.isEmpty())
-                action.addAttribute(MailConstants.A_ORIG_HEADERS, StringUtil.join(",", origHeaders));
+            FilterAction.NotifyAction action = addAction(new FilterAction.NotifyAction());
+            action.setAddress(emailAddr);
+            if (!Strings.isNullOrEmpty(subjectTemplate)) {
+                action.setSubject(subjectTemplate);
+            }
+            if (!Strings.isNullOrEmpty(bodyTemplate)) {
+                action.setContent(bodyTemplate);
+            }
+            if (maxBodyBytes != -1) {
+                action.setMaxBodySize(maxBodyBytes);
+            }
+            if (origHeaders != null && !origHeaders.isEmpty()) {
+                action.setOrigHeaders(Joiner.on(',').join(origHeaders));
+            }
         }
     }
 
      @Override
-    protected void visitStopAction(Node node, VisitPhase phase, RuleProperties props)
-    throws ServiceException {
+    protected void visitStopAction(Node node, VisitPhase phase, RuleProperties props) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_STOP);
+            addAction(new FilterAction.StopAction());
         }
     }
 
     @Override
-    protected void visitTagAction(Node node, VisitPhase phase, RuleProperties props, String tagName)
-    throws ServiceException {
+    protected void visitTagAction(Node node, VisitPhase phase, RuleProperties props, String tag) {
         if (phase == VisitPhase.begin) {
-            addAction(MailConstants.E_ACTION_TAG).addAttribute(MailConstants.A_TAG_NAME, tagName);
+            addAction(new FilterAction.TagAction(tag));
         }
     }
 }

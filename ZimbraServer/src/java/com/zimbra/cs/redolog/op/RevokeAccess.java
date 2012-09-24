@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,47 +22,69 @@ import java.io.IOException;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
 public class RevokeAccess extends RedoableOp {
 
-    private int mFolderId;
-    private String mGrantee;
+    private int folderId;
+    private String grantee;
+    boolean dueToExpiry = false;
 
     public RevokeAccess() {
-        mFolderId = UNKNOWN_ID;
-        mGrantee = "";
+        super(MailboxOperation.RevokeAccess);
+        folderId = UNKNOWN_ID;
+        grantee = "";
     }
 
     public RevokeAccess(int mailboxId, int folderId, String grantee) {
-        setMailboxId(mailboxId);
-        mFolderId = folderId;
-        mGrantee = grantee == null ? "" : grantee;
+        this(false, mailboxId, folderId, grantee);
     }
 
-    @Override public int getOpCode() {
-        return OP_REVOKE_ACCESS;
+    public RevokeAccess(boolean dueToExpiry, int mailboxId, int folderId, String grantee) {
+        this();
+        if (dueToExpiry) {
+            this.dueToExpiry = dueToExpiry;
+            mOperation = MailboxOperation.ExpireAccess;
+        }
+        setMailboxId(mailboxId);
+        this.folderId = folderId;
+        this.grantee = grantee == null ? "" : grantee;
     }
 
     @Override protected String getPrintableData() {
-        StringBuffer sb = new StringBuffer("id=").append(mFolderId);
-        sb.append(", grantee=").append(mGrantee);
+        StringBuffer sb = new StringBuffer("id=").append(folderId);
+        sb.append(", grantee=").append(grantee);
+        if (dueToExpiry) {
+            sb.append(", dueToExpiry=").append(dueToExpiry);
+        }
         return sb.toString();
     }
 
     @Override protected void serializeData(RedoLogOutput out) throws IOException {
-        out.writeInt(mFolderId);
-        out.writeUTF(mGrantee);
+        out.writeInt(folderId);
+        out.writeUTF(grantee);
+        out.writeBoolean(dueToExpiry);
     }
 
     @Override protected void deserializeData(RedoLogInput in) throws IOException {
-        mFolderId = in.readInt();
-        mGrantee = in.readUTF();
+        folderId = in.readInt();
+        grantee = in.readUTF();
+        if (getVersion().atLeast(1, 39)) {
+            dueToExpiry = in.readBoolean();
+            if (dueToExpiry) {
+                mOperation = MailboxOperation.ExpireAccess;
+            }
+        }
     }
 
     @Override public void redo() throws ServiceException {
+        if (dueToExpiry) {
+            // no need of redoing the op since expire access op is invoked by a system scheduled task
+            return;
+        }
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
-        mbox.revokeAccess(getOperationContext(), mFolderId, mGrantee);
+        mbox.revokeAccess(getOperationContext(), dueToExpiry, folderId, grantee);
     }
 }

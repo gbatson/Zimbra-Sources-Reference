@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.versioncheck;
 
 import java.io.IOException;
@@ -25,19 +9,20 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.ServerBy;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.util.CliUtil;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.ServerBy;
 import com.zimbra.cs.client.LmcSession;
 import com.zimbra.cs.client.soap.LmcSoapClientException;
 import com.zimbra.cs.client.soap.LmcVersionCheckRequest;
 import com.zimbra.cs.client.soap.LmcVersionCheckResponse;
-import com.zimbra.cs.service.versioncheck.VersionCheckService;
 import com.zimbra.cs.util.BuildInfo;
 import com.zimbra.cs.util.SoapCLI;
 import com.zimbra.common.util.DateUtil;
@@ -87,7 +72,7 @@ public class VersionCheckUtil extends SoapCLI {
             	String updaterServerId = config.getAttr(Provisioning.A_zimbraVersionCheckServer);
             	
                 if (updaterServerId != null) {
-                    Server server = prov.get(ServerBy.id, updaterServerId);
+                    Server server = prov.get(Key.ServerBy.id, updaterServerId);
                     if (server != null) {
                     	Server localServer = prov.getLocalServer();
                     	if (localServer!=null) { 
@@ -138,7 +123,7 @@ public class VersionCheckUtil extends SoapCLI {
     private void doVersionCheck() throws SoapFaultException, IOException, ServiceException, LmcSoapClientException {
         LmcSession session = auth();
         LmcVersionCheckRequest req = new LmcVersionCheckRequest();
-        req.setAction(VersionCheckService.VERSION_CHECK_CHECK);
+        req.setAction(AdminConstants.VERSION_CHECK_CHECK);
         req.setSession(session);
         req.invoke(getServerUrl());
     }
@@ -147,7 +132,7 @@ public class VersionCheckUtil extends SoapCLI {
     	try {
 	    	LmcSession session = auth();
 	        LmcVersionCheckRequest req = new LmcVersionCheckRequest();
-	        req.setAction(VersionCheckService.VERSION_CHECK_STATUS);
+	        req.setAction(AdminConstants.VERSION_CHECK_STATUS);
 	        req.setSession(session);
 	        LmcVersionCheckResponse res = (LmcVersionCheckResponse) req.invoke(getServerUrl());
 	    	List <VersionUpdate> updates = res.getUpdates();

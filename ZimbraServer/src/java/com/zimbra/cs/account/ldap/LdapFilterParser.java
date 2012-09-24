@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,7 +15,6 @@
 package com.zimbra.cs.account.ldap;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.account.EntrySearchFilter;
 import com.zimbra.cs.account.EntrySearchFilter.AndOr;
 import com.zimbra.cs.account.EntrySearchFilter.Multi;
 import com.zimbra.cs.account.EntrySearchFilter.Operator;
@@ -191,28 +190,6 @@ public class LdapFilterParser {
         
         return new Single(false, attrName, op, attrValue);
       
-    }
-    
-    public static String test(String inFilterStr) {
-        String outFilterStr = LdapEntrySearchFilter.toLdapIDNFilter(inFilterStr);
-               
-        System.out.println("In: " + inFilterStr);
-        System.out.println("Out: " + outFilterStr);
-        System.out.println();
-        return outFilterStr;
-    }
-    
-    public static void main(String[] args) {
-        
-        test("!(zimbraDomainName=*\u4e2d\u6587*)");
-
-        test("!(objectClass=*)");
-        test("!(objectClass=**)");
-        test("!(objectClass=*abc)");
-        test("!(objectClass=abc*)");
-        test("!(objectClass=*abc*)");
-        
-        test("(|(zimbraMailDeliveryAddress=*@test.\u4e2d\u6587.com)(zimbraMailAlias=*@test.\u4e2d\u6587.com))");
     }
 
 }

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -132,8 +116,8 @@ public class SavedSearchFolderItem extends AItem implements IItem {
 	public String prettyPrint() {
 		StringBuilder sb = new StringBuilder();
 		sb.append(SavedSearchFolderItem.class.getSimpleName()).append('\n');
-		sb.append("ID: ").append(super.getId()).append('\n');
-		sb.append("Name: ").append(super.getName()).append('\n');
+		sb.append("ID: ").append(getId()).append('\n');
+		sb.append("Name: ").append(getName()).append('\n');
 		sb.append("Query: ").append(getQuery()).append('\n');
 		sb.append("Types: ").append(getTypes()).append('\n');
 		sb.append("Parent ID: ").append(getParentId()).append('\n');

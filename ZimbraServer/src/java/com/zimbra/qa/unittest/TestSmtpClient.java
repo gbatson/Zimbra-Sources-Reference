@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,15 +21,15 @@ import javax.mail.internet.MimeMessage;
 
 import junit.framework.TestCase;
 
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMessage;
+import com.zimbra.client.ZMessage.ZMimePart;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.zmime.ZMimeMessage;
-import com.zimbra.cs.account.ZAttrProvisioning;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailclient.smtp.SmtpConfig;
 import com.zimbra.cs.mailclient.smtp.SmtpConnection;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZMessage.ZMimePart;
 
 public class TestSmtpClient extends TestCase {
 
@@ -41,8 +41,8 @@ public class TestSmtpClient extends TestCase {
     private final int mPort;
 
     public TestSmtpClient() throws Exception {
-        mHost = TestUtil.getServerAttr(ZAttrProvisioning.A_zimbraSmtpHostname);
-        mPort = Integer.parseInt(TestUtil.getServerAttr(ZAttrProvisioning.A_zimbraSmtpPort));
+        mHost = TestUtil.getServerAttr(Provisioning.A_zimbraSmtpHostname);
+        mPort = Integer.parseInt(TestUtil.getServerAttr(Provisioning.A_zimbraSmtpPort));
     }
 
     @Override

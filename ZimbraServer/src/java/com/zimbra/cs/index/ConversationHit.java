@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,33 +20,30 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.google.common.base.Objects;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Conversation;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailItem;
 
 /**
- * Indirect {@link Conversation} result. Efficient Read-access to a
- * {@link Conversation} object returned from a query.
+ * Indirect {@link Conversation} result. Efficient Read-access to a {@link Conversation} object returned from a query.
  * <p>
- * This class may have a real {@link Conversation} under it, or it might just
- * have a Lucene Document, or something else -- the accessor APIs in this class
- * will do the most efficient possible lookup and caching for read access to
- * the data.
+ * This class may have a real {@link Conversation} under it, or it might just have a Lucene Document, or something else
+ * -- the accessor APIs in this class will do the most efficient possible lookup and caching for read access to the data.
  *
  * @since Oct 15, 2004
  * @author tim
  */
 public final class ConversationHit extends ZimbraHit {
 
-    private Conversation mConversation = null;
-    private Map<Long, MessageHit> mMessageHits = new LinkedHashMap<Long, MessageHit>();
-    private MessageHit mLastMessageHitAdded = null;
-    private int mConversationId = 0;
+    private final int conversationId;
+    private Conversation conversation;
+    private Map<Long, MessageHit> messageHits = new LinkedHashMap<Long, MessageHit>();
 
-    protected ConversationHit(ZimbraQueryResultsImpl results, Mailbox mbx, int conversationId) {
-        super(results, mbx);
-        mConversationId = conversationId;
+    ConversationHit(ZimbraQueryResultsImpl results, Mailbox mbx, int convId, Object sortKey) {
+        super(results, mbx, sortKey);
+        conversationId = convId;
     }
 
     @Override
@@ -54,13 +51,12 @@ public final class ConversationHit extends ZimbraHit {
         return getId();
     }
 
-    public void addMessageHit(MessageHit mh) {
-        mLastMessageHitAdded = mh;
-        mMessageHits.put(new Long(mh.getItemId()), mh);
+    public void addMessageHit(MessageHit hit) {
+        messageHits.put(Long.valueOf(hit.getItemId()), hit);
     }
 
     public Collection<MessageHit> getMessageHits() {
-        return mMessageHits.values();
+        return messageHits.values();
     }
 
     public int getNumMessageHits() {
@@ -72,7 +68,7 @@ public final class ConversationHit extends ZimbraHit {
     }
 
     public MessageHit getMessageHit(Long mailboxBlobId) {
-        return mMessageHits.get(mailboxBlobId);
+        return messageHits.get(mailboxBlobId);
     }
 
     public MessageHit getFirstMessageHit() {
@@ -82,80 +78,35 @@ public final class ConversationHit extends ZimbraHit {
 
     @Override
     public int getItemId() {
-        return mConversationId;
-    }
-
-    public byte getItemType() {
-        return MailItem.TYPE_CONVERSATION;
+        return conversationId;
     }
 
     @Override
     void setItem(MailItem item) {
-        mConversation = (Conversation) item;
+        conversation = (Conversation) item;
     }
 
     @Override
     boolean itemIsLoaded() {
-        return mConversation != null;
+        return conversation != null;
     }
 
     public int getId() {
-        return mConversationId;
+        return conversationId;
     }
 
     @Override
     public String toString() {
-        return super.toString() + " C" + Integer.toString(getId());
-    }
-
-    @Override
-    public String getSubject() throws ServiceException {
-        if (mCachedSubj == null) {
-            // the subject returned here must be the SORTING subject, which is the subject
-            // of the most recent hit we found. (as we iterate through results in order, the most
-            // recently added message is the order we want to track for sorting purposes)
-            mCachedSubj = mLastMessageHitAdded.getSubject();
-        }
-        return mCachedSubj;
+        return Objects.toStringHelper(this).add("item", getId()).addValue(super.toString()).toString();
     }
 
     @Override
     public String getName() throws ServiceException {
-        /*
-        // FIXME: not sure what to return here -- maybe Name from first message hit?
-        return "CONV_HAS_NO_NAME";
-        */
-
-        if (mCachedName == null) {
+        if (cachedName == null) {
             MessageHit mh = getFirstMessageHit();
-            mCachedName = mh == null ? "" : mh.getName();
+            cachedName = mh == null ? "" : mh.getName();
         }
-        return mCachedName;
-    }
-
-    public long getHitDate() throws ServiceException {
-        MessageHit mh = getFirstMessageHit();
-        return mh == null ? 0 : mh.getDate();
-    }
-
-    @Override
-    public long getSize() throws ServiceException {
-        return getConversation().getSize();
-    }
-
-    @Override
-    public long getDate() throws ServiceException {
-        if (mCachedDate == -1) {
-            // always use the hit date when sorting, otherwise confusion happens (since we are
-            // building the conv hit by aggregating MessageHits....suddenly switching to a
-            // very different sort-field can cause sort order to be unstable.
-            //
-            mCachedDate = getHitDate();
-            if (mCachedDate == 0) {
-                mCachedDate = getConversation().getDate();
-            }
-        }
-        return mCachedDate;
+        return cachedName;
     }
 
     @Override
@@ -164,19 +115,16 @@ public final class ConversationHit extends ZimbraHit {
     }
 
     /**
-     * Returns the real com.zimbra.cs.mailbox.Conversation object. Only use this if you
-     * need write access to the Conversation.
+     * Returns the real {@link Conversation} object. Only use this if you need write access to the Conversation.
      *
-     * Depending on the type of query that was executed, this may or may not
-     * result in a DB access
+     * Depending on the type of query that was executed, this may or may not result in a DB access
      *
      * @return real Conversation object
-     * @throws ServiceException
      */
     public Conversation getConversation() throws ServiceException {
-        if (mConversation == null) {
-            mConversation = getMailbox().getConversationById(null, mConversationId);
+        if (conversation == null) {
+            conversation = getMailbox().getConversationById(null, conversationId);
         }
-        return mConversation;
+        return conversation;
     }
 }

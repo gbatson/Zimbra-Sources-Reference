@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -58,7 +58,7 @@ public class ToXML {
         if (needsExternalIndicator) {
             try {
                 boolean isExternal = account.isAccountExternal();
-                acctElem.addAttribute(AccountConstants.A_isExternal, isExternal);
+                acctElem.addAttribute(AccountConstants.A_IS_EXTERNAL, isExternal);
             } catch (ServiceException e) {
                 ZimbraLog.account.warn("unable to determine if account is external", e);
             }
@@ -133,7 +133,8 @@ public class ToXML {
             }
 
             // Never return password.
-            if (name.equalsIgnoreCase(Provisioning.A_userPassword)) {
+            if (name.equalsIgnoreCase(Provisioning.A_userPassword) || 
+                name.equalsIgnoreCase(Provisioning.A_zimbraUCPassword)) {
                 value = "VALUE-BLOCKED";
             }
             

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.zimlets.date;
 
 import java.io.File;
@@ -89,8 +73,8 @@ public class GetMessage extends AjaxCommonTest {
 		//  </span>
 		// </span>
 		//
-		HtmlElement.evaluate(bodyElement, "//span//span", "id", Pattern.compile(".*_com_zimbra_date"), 1);
-		HtmlElement.evaluate(bodyElement, "//span//span", null, date, 1);
+		HtmlElement.evaluate(bodyElement, "//span//span//span", "id", Pattern.compile(".*_com_zimbra_date"), 1);
+		HtmlElement.evaluate(bodyElement, "//span//span//span", null, date, 1);
 
 	}
 
@@ -130,8 +114,8 @@ public class GetMessage extends AjaxCommonTest {
 		HtmlElement bodyElement = display.zGetMailPropertyAsHtml(Field.Body);
 		
 		// Verify that the date zimlet has been applied
-		HtmlElement.evaluate(bodyElement, "//span//span", null, date1, 1);
-		HtmlElement.evaluate(bodyElement, "//span//span", null, date2, 1);
+		HtmlElement.evaluate(bodyElement, "//span//span//span", null, date1, 1);
+		HtmlElement.evaluate(bodyElement, "//span//span//span", null, date2, 1);
 
 	}
 
@@ -168,7 +152,7 @@ public class GetMessage extends AjaxCommonTest {
 
 		for (String date : dates) {
 			// Verify that the phone zimlet has been applied
-			HtmlElement.evaluate(bodyElement, "//span//span", null, date, 1);
+			HtmlElement.evaluate(bodyElement, "//span//span//span", null, date, 1);
 		}
 
 

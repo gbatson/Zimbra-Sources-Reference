@@ -18,6 +18,8 @@ import java.io.File;
 
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.memcached.MemcachedConnector;
 
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.config.CacheConfiguration;
@@ -46,7 +48,11 @@ public final class EhcacheManager {
         disk.setPath(LC.zimbra_home.value() + File.separator + "data" + File.separator + "mailboxd");
         conf.addDiskStore(disk);
         conf.addCache(createImapActiveSessionCache());
-        conf.addCache(createImapInactiveSessionCache());
+        if (MemcachedConnector.isConnected()) {
+            ZimbraLog.imap.info("Using Memcached for inactive session cache");
+        } else {
+            conf.addCache(createImapInactiveSessionCache());
+        }
         conf.setUpdateCheck(false);
         CacheManager.create(conf);
     }

@@ -1,34 +1,19 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.items;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+
 
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import com.zimbra.common.soap.Element;
-import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
+import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount.SOAP_DESTINATION_HOST_TYPE;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 
 /**
  * The <code>ContactGroupItem</code> defines a Zimbra Contact Group
@@ -41,56 +26,55 @@ public class ContactGroupItem extends ContactItem implements IItem {
 	 * The name of the contact group
 	 */
 	public String groupName = null;
-	
+
 	/**
 	 * The list of contacts within this group
 	 */
-	public ArrayList<String> dlist = null;
-	
+	public ArrayList<ContactItem> dlist = null;
+
 	/**
-	 * Create a new contact group item+ 
+	 * Create a new contact group item+
 	 */
 	public ContactGroupItem(String groupName) {
 		this.groupName=groupName;
 		fileAs = groupName;
 		type = "group";
-		dlist = new ArrayList<String>();
+		dlist = new ArrayList<ContactItem>();
 	}
-	
+
 	public static ContactGroupItem generateContactItem(GenerateItemType type) throws HarnessException {
-	
+
 		ContactGroupItem group =  null;
 		if ( type.equals(GenerateItemType.Default) || type.equals(GenerateItemType.Basic) ) {
 
-			String domain = "@zimbra.com";
 			String groupName =  "group_" + ZimbraSeleniumProperties.getUniqueString();
-	        String emailAddress1 = "email_" + ZimbraSeleniumProperties.getUniqueString() + domain;
-	        String emailAddress2 = "email_" +  ZimbraSeleniumProperties.getUniqueString() + domain;
-	        String emailAddress3 = "email_" +  ZimbraSeleniumProperties.getUniqueString() + domain;
-	        
-	        // Create a contact group 
+			//group name with length > 20 is automatically shorten
+			groupName = groupName.substring(0,20);
+
+	        // Create a contact group
 			group = new ContactGroupItem(groupName);
-		    
-			group.addDListMember(emailAddress1);
-			group.addDListMember(emailAddress2);
-			group.addDListMember(emailAddress3);
-		
+
+			group.addDListMember(ContactItem.generateContactItem(GenerateItemType.Basic));
+			group.addDListMember(ContactItem.generateContactItem(GenerateItemType.Basic));
+			group.addDListMember(ContactItem.generateContactItem(GenerateItemType.Basic));
+
 		}
-		
+
 		if ( type.equals(GenerateItemType.AllAttributes) ) {
 			throw new HarnessException("Implement me!");
 		}
-		
+
 		return group;
 	}
 
 	/**
-	 * Get the dlist attribute as a comma separated String
+	 * Get the dlist member emails as a comma separated String
 	 * @return
 	 */
 	public String getDList() {
 		StringBuilder sb = null;
-		for (String s : dlist) {
+		for (ContactItem contactItem : dlist) {
+			String s = contactItem.email;
 			if ( sb==null ) {
 				sb = new StringBuilder(s);
 			} else {
@@ -99,54 +83,65 @@ public class ContactGroupItem extends ContactItem implements IItem {
 		}
 		return (sb.toString());
 	}
-	
+
 	/**
-	 * Add an email address to the dlist
-	 * @param emailaddress
+	 * Add a contact item to the dlist
+	 * @param ContactItem
 	 * @return the current dlist members
 	 */
-	public ArrayList<String> addDListMember(String emailaddress) {
-		if ( dlist.contains(emailaddress) ) {
+	public ArrayList<ContactItem> addDListMember(ContactItem contactItem) {
+		if ( dlist.contains(contactItem) ) {
 			// Nothing to add
 			return (dlist);
 		}
-		
-		dlist.add(emailaddress);
-		
+
+		dlist.add(contactItem);
+
 		return (dlist);
 	}
-	
+
+
+	// no longer used
+	@Deprecated()
+	public ArrayList<ContactItem> addDListMember(String contactStr) {
+		 return null;
+	}
+
 	/**
 	 * Remove all instances of an emailaddress from the dlist
 	 * @param emailaddress
 	 * @return the current dlist members
 	 */
-	public ArrayList<String> removeDListMember(String emailaddress) {
-		while (dlist.contains(emailaddress)) {
-			dlist.remove(emailaddress);
-		}
+	public ArrayList<ContactItem> removeDListMember(String emailaddress) {
+	    for (ContactItem contactItem : dlist) {
+		    if (contactItem.email.contains(emailaddress)) {
+			    dlist.remove(contactItem);
+		  }
+	    }
 		return (dlist);
 	}
-	
-	
 
+
+    // key=dlist; value="email1, email2,..."
 	public String setAttribute(String key, String value) {
-		
-		// Process any special attributes here
-		if ( key.equals("dlist") )
-			dlist = new ArrayList<String>(Arrays.asList(value.split(",")));
 
-		super.setAttribute(key, value);
-		
+		// Process any special attributes here
+		// FIXME:
+		//if ( key.equals("dlist") ) {
+		//	dlist = new ArrayList<String>(Arrays.asList(value.split(",")));
+		//}
+		if (!key.equals("dlist")) {
+			super.setAttribute(key, value);
+		}
 		return (ContactAttributes.get(key));
 	}
-	
-	
-	
+
+
+
 	public static ContactGroupItem importFromSOAP(Element GetContactsResponse) throws HarnessException {
 		if ( GetContactsResponse == null )
 			throw new HarnessException("GetContactsResponse cannot be null");
-		
+
 		throw new HarnessException("implement me!");
 	}
 
@@ -164,18 +159,30 @@ public class ContactGroupItem extends ContactItem implements IItem {
 	      tagParam = " t='" + tagIdArray[0] + "'";
 	   }
 
-	   // Create a contact group 
-	   ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
+       // Create a contact group
+ 	   ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
+
+       StringBuilder sb= new StringBuilder("");
+       for (ContactItem contactItem: group.dlist) {
+          String e= contactItem.email;
+          sb.append("<m type='I' value='" + e + "' />");
+       }
 
 	   app.zGetActiveAccount().soapSend(
 	         "<CreateContactRequest xmlns='urn:zimbraMail'>" +
 	         "<cn " + tagParam + " >" +
 	         "<a n='type'>group</a>" +
 	         "<a n='nickname'>" + group.groupName +"</a>" +
-	         "<a n='dlist'>" + group.getDList() + "</a>" +
 	         "<a n='fileAs'>8:" +  group.fileAs +"</a>" +
+             sb.toString() +
+             //"<a n='dlist'>" + group.getDList() + "</a>" +
 	         "</cn>" +
 	   "</CreateContactRequest>");
+
+	   group.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
+
+	   // Refresh addressbook
+       ((AppAjaxClient)app).zPageMain.zToolbarPressButton(Button.B_REFRESH);
 
 	   return group;
 	}
@@ -195,7 +202,7 @@ public class ContactGroupItem extends ContactItem implements IItem {
          tagParam = " t='" + tagIdArray[0] + "'";
       }
 
-      // Create a contact group 
+      // Create a contact group
       ContactGroupItem group = ContactGroupItem.generateContactItem(GenerateItemType.Basic);
 
       app.zGetActiveAccount().soapSend(
@@ -217,6 +224,16 @@ public class ContactGroupItem extends ContactItem implements IItem {
 		throw new HarnessException("implement me!");
 	}
 
+
+	public static String getId(ZimbraAccount account) {
+		return account.soapSelectValue("//mail:CreateContactResponse/mail:cn", "id");
+	}
+
+	public static String[] getDList(ZimbraAccount account) {
+		String[] dlist = null; //account.so .soapSelectNodes("//mail:CreateContactResponse/mail:cn/mail:m");
+		return dlist;
+	}
+
 	@Override
 	public String prettyPrint() {
 		StringBuilder sb = new StringBuilder();
@@ -228,7 +245,7 @@ public class ContactGroupItem extends ContactItem implements IItem {
 			sb.append(String.format("Attribute: key(%s) value(%s)", key, ContactAttributes.get(key))).append('\n');
 		return (sb.toString());
 	}
-	
+
 
 }
 

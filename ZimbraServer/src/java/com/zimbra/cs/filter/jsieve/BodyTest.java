@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,13 +19,14 @@
  */
 package com.zimbra.cs.filter.jsieve;
 
+import com.zimbra.common.filter.Sieve;
+import com.zimbra.common.filter.Sieve.Comparator;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.HtmlTextExtractor;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.filter.FilterUtil.Comparator;
 import com.zimbra.cs.filter.ZimbraMailAdapter;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
@@ -94,7 +95,7 @@ public class BodyTest extends AbstractTest {
                         if (argument instanceof StringListArgument) {
                             StringListArgument strList = (StringListArgument) argument;
                             try {
-                                caseSensitive = Comparator.ioctet == Comparator.fromString(strList.getList().get(0));
+                                caseSensitive = Sieve.Comparator.ioctet == Sieve.Comparator.fromString(strList.getList().get(0));
                             } catch (ServiceException e) {
                                 throw new SyntaxException(e.getMessage());
                             }

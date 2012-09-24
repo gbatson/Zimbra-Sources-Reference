@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.util;
 
 import java.text.*;
@@ -26,16 +10,9 @@ import com.zimbra.common.soap.Element;
 public class ZDate {
 	Logger logger = LogManager.getLogger(ZDate.class);
 
-	public static final TimeZone TimeZoneUTC = TimeZone.getTimeZone("UTC");
-	public static final TimeZone TimeZoneHST = TimeZone.getTimeZone("Pacific/Honolulu");
-	public static final TimeZone TimeZoneAKST = TimeZone.getTimeZone("America/Juneau");
-	public static final TimeZone TimeZonePST = TimeZone.getTimeZone("America/Los_Angeles");
-	public static final TimeZone TimeZoneMST = TimeZone.getTimeZone("America/Denver");
-	public static final TimeZone TimeZoneCST = TimeZone.getTimeZone("America/Chicago");
-	public static final TimeZone TimeZoneEST = TimeZone.getTimeZone("America/New_York");
-	
+
 	protected Calendar calendar = null;
-	
+
 	/**
 	 * Create a ZDate object in UTC timezone
 	 * @param year, i.e. 2011
@@ -46,7 +23,7 @@ public class ZDate {
 	 * @param seconds, i.e. 0 through 59
 	 */
 	public ZDate(int year, int month, int monthday, int hour, int minutes, int seconds) {
-		this(year, month, monthday, hour, minutes, seconds, ZDate.TimeZoneUTC);
+		this(year, month, monthday, hour, minutes, seconds, ZTimeZone.TimeZoneUTC);
 	}
 
 	/**
@@ -69,9 +46,9 @@ public class ZDate {
 	 * @throws HarnessException if the timezone cannot be found
 	 */
 	public ZDate(int year, int month, int monthday, int hour, int minutes, int seconds, String timezone) throws HarnessException {
-		this(year, month, monthday, hour, minutes, seconds, ZDate.getTimeZone(timezone));
+		this(year, month, monthday, hour, minutes, seconds, ZTimeZone.getTimeZone(timezone));
 	}
-	
+
 	/**
 	 * Create a ZDate object in the specified TimeZone
 	 * @param year, i.e. 2011
@@ -83,9 +60,9 @@ public class ZDate {
 	 * @param timezone
 	 */
 	public ZDate(int year, int month, int monthday, int hour, int minutes, int seconds, TimeZone timezone) {
-		
+
 		// TODO: Handle errors (such as month = 0)
-		
+
 		calendar = Calendar.getInstance();
 
 		calendar.setTimeZone(timezone);
@@ -104,7 +81,7 @@ public class ZDate {
 
 		logger.info("New "+ ZDate.class.getName());
 	}
-	
+
 	/**
 	 * Create a ZDate object by parsing a Zimbra SOAP element, such as <s d="20140101T070000" u="1388577600000" tz="America/New_York"/>
 	 * @param e
@@ -126,19 +103,22 @@ public class ZDate {
 			return;
 
 		}
-		
+
 		if ( d != null ) {
-			
-			SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
+
+			SimpleDateFormat formatter;
+            Date tempDate = null;
+			Calendar tempCalendar = null;
+			formatter = new SimpleDateFormat("yyyyMMdd'T'HHmmss");
 			try {
-			   Date tempDate = formatter.parse(d);
-			   Calendar tempCalendar = Calendar.getInstance();
+			   tempDate = formatter.parse(d);
+			   tempCalendar = Calendar.getInstance();
 			   tempCalendar.setTime(tempDate);
 
 			   if (tz == null || tz.trim().length() == 0) {
-			      calendar.setTimeZone(ZDate.TimeZoneUTC);
+			      calendar.setTimeZone(ZTimeZone.TimeZoneUTC);
 			   } else {
-			      calendar.setTimeZone(TimeZone.getTimeZone(tz));   
+			      calendar.setTimeZone(TimeZone.getTimeZone(tz));
 			   }
 
 			   calendar.set(Calendar.YEAR, tempCalendar.get(Calendar.YEAR));
@@ -149,17 +129,40 @@ public class ZDate {
 			   calendar.set(Calendar.MINUTE, tempCalendar.get(Calendar.MINUTE));
 			   calendar.set(Calendar.SECOND, tempCalendar.get(Calendar.SECOND));
 
+               return;
+
+            } catch (ParseException ex) {
+                  logger.warn("No match for yyyyMMdd'T'HHmmss");
+            }
+
+			formatter = new SimpleDateFormat("yyyyMMdd");
+			try {
+                tempDate = formatter.parse(d);
+			    tempCalendar = Calendar.getInstance();
+			    tempCalendar.setTime(tempDate);
+
+                if (tz == null || tz.trim().length() == 0) {
+			       calendar.setTimeZone(ZTimeZone.TimeZoneUTC);
+			    } else {
+			       calendar.setTimeZone(TimeZone.getTimeZone(tz));
+			    }
+
+                calendar.set(Calendar.YEAR, tempCalendar.get(Calendar.YEAR));
+			    calendar.set(Calendar.MONTH, tempCalendar.get(Calendar.MONTH));
+			    calendar.set(Calendar.DAY_OF_MONTH, tempCalendar.get(Calendar.DAY_OF_MONTH));
+
+				return;
 			} catch (ParseException ex) {
-				throw new HarnessException("Unable to parse date element "+ e.prettyPrint(), ex);
+				logger.warn("yyyyMMdd");
 			}
-			return;
-			
+
+
 		}
-		
+
 		throw new HarnessException("Unable to parse time element "+ e.prettyPrint());
 	}
-	
-	
+
+
 	/**
 	 * Convert the current time + timezone to the specified timezone
 	 * @param timezone
@@ -169,8 +172,8 @@ public class ZDate {
 	public ZDate toTimeZone(String timezone) throws HarnessException {
 		if ( timezone == null )
 			throw new HarnessException("TimeZone cannot be null");
-		
-		return (toTimeZone(ZDate.getTimeZone(timezone)));
+
+		return (toTimeZone(ZTimeZone.getTimeZone(timezone)));
 	}
 
 	/**
@@ -197,7 +200,7 @@ public class ZDate {
 		// return it
 		return (returnDate);
 	}
-	
+
 	/**
 	 * Return the ZDate as milliseconds since epoch
 	 * @return
@@ -212,19 +215,23 @@ public class ZDate {
 		long t = calendar.getTimeInMillis();
 		return ( (t / 1000) * 1000); // strip any millisecond blah
 	}
-	
+
+	public TimeZone getTimeZone() {
+		return (calendar.getTimeZone());
+	}
+
 	public String toYYYYMMDDTHHMMSSZ() throws HarnessException {
 		return (format("yyyyMMdd'T'HHmmss'Z'"));
 	}
-	
+
 	public String toYYYYMMDDTHHMMSS() throws HarnessException {
 		return (format("yyyyMMdd'T'HHmmss"));
 	}
-
+	
 	/**
 	 * MM/DD/YYYY (i.e. 12/25/2011)
 	 * @return
-	 * @throws HarnessException 
+	 * @throws HarnessException
 	 */
 	public String toMM_DD_YYYY() throws HarnessException {
 		return (format("MM/dd/yyyy"));
@@ -233,7 +240,7 @@ public class ZDate {
 	/**
 	 * hh:mm aa (i.e. 04:30 PM)
 	 * @return
-	 * @throws HarnessException 
+	 * @throws HarnessException
 	 */
 	public String tohh_mm_aa() throws HarnessException {
 		return (format("hh:mm aa"));
@@ -245,7 +252,7 @@ public class ZDate {
 	}
 
 	public String toYYYYMMDDHHMMSSZ() throws HarnessException {
-		return (format("yyyyMMddHHmmss"));
+		return (format("yyyyMMddHHmmss'Z'"));
 	}
 
 	public String toMMM_dC_yyyy() throws HarnessException {
@@ -300,7 +307,7 @@ public class ZDate {
 	 * @return
 	 */
 	public ZDate addSeconds(int amount) {
-		
+
 		// Create the new object to return
 		ZDate other = new ZDate(
 				this.calendar.get(Calendar.YEAR),
@@ -311,35 +318,14 @@ public class ZDate {
 				this.calendar.get(Calendar.SECOND),
 				this.calendar.getTimeZone()
 			);
-		
+
 		// Adjust it
 		other.calendar.add(Calendar.SECOND, amount);
-		
+
 		// return it
 		return (other);
 	}
 
-	/**
-	 * Convert a timezone string identifier to a TimeZone object
-	 * <p>
-	 * @param timezone
-	 * @return the TimeZone object
-	 * @throws HarnessException, if the timezone cannot be found
-	 */
-	public static TimeZone getTimeZone(String timezone) throws HarnessException {
-		if ( timezone == null )
-			throw new HarnessException("TimeZone string cannot be null");
-
-		for ( String t : TimeZone.getAvailableIDs() ) {
-			if ( t.equals(timezone) ) {
-				// Found it
-				return (TimeZone.getTimeZone(timezone));
-			}
-		}
-		
-		throw new HarnessException("Unable to determine the TimeZone from the string: "+ timezone);
-	}
-	
 
 	@Override
 	public String toString() {
@@ -350,7 +336,7 @@ public class ZDate {
 			return (calendar.toString());
 		}
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

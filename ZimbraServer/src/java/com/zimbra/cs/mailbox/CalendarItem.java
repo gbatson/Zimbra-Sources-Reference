@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,12 +34,26 @@ import java.util.Set;
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.mail.MessagingException;
+import javax.mail.internet.AddressException;
 import javax.mail.internet.ContentType;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.util.SharedByteArrayInputStream;
 
+import com.google.common.base.Strings;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.ParsedDuration;
+import com.zimbra.common.calendar.TimeZoneMap;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
+import com.zimbra.common.localconfig.DebugConfig;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Log;
@@ -51,48 +66,40 @@ import com.zimbra.common.zmime.ZMimeMultipart;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.index.IndexDocument;
 import com.zimbra.cs.index.LuceneFields;
 import com.zimbra.cs.index.analysis.FieldTokenStream;
 import com.zimbra.cs.index.analysis.RFC822AddressTokenStream;
-import com.zimbra.cs.localconfig.DebugConfig;
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
 import com.zimbra.cs.mailbox.calendar.Alarm;
-import com.zimbra.cs.mailbox.calendar.Alarm.Action;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
 import com.zimbra.cs.mailbox.calendar.InviteChanges;
 import com.zimbra.cs.mailbox.calendar.InviteInfo;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
-import com.zimbra.cs.mailbox.calendar.ParsedDuration;
 import com.zimbra.cs.mailbox.calendar.RecurId;
 import com.zimbra.cs.mailbox.calendar.Recurrence;
+import com.zimbra.cs.mailbox.calendar.Util;
+import com.zimbra.cs.mailbox.calendar.ZAttendee;
+import com.zimbra.cs.mailbox.calendar.ZOrganizer;
+import com.zimbra.cs.mailbox.calendar.ZRecur;
+import com.zimbra.cs.mailbox.calendar.Alarm.Action;
 import com.zimbra.cs.mailbox.calendar.Recurrence.IRecurrence;
 import com.zimbra.cs.mailbox.calendar.Recurrence.RecurrenceRule;
 import com.zimbra.cs.mailbox.calendar.Recurrence.SimpleRepeatingRule;
-import com.zimbra.cs.mailbox.calendar.TimeZoneMap;
-import com.zimbra.cs.mailbox.calendar.ZAttendee;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
-import com.zimbra.cs.mailbox.calendar.ZOrganizer;
-import com.zimbra.cs.mailbox.calendar.ZRecur;
 import com.zimbra.cs.mailbox.calendar.ZRecur.Frequency;
 import com.zimbra.cs.mime.Mime;
-import com.zimbra.cs.mime.Mime.FixedMimeMessage;
 import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.mime.ParsedMessage;
+import com.zimbra.cs.mime.Mime.FixedMimeMessage;
 import com.zimbra.cs.mime.ParsedMessage.CalendarPartInfo;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StagedBlob;
 import com.zimbra.cs.store.StoreManager;
-import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 import com.zimbra.cs.util.JMSession;
+import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 
 /**
  * An APPOINTMENT consists of one or more INVITES in the same series -- ie that
@@ -103,7 +110,7 @@ import com.zimbra.cs.util.JMSession;
  * every monday with name "Gorilla Discussion" EXCEPT for the 21st, where we
  * talk about lefties instead. CANCELED for the 28th
  */
-public abstract class CalendarItem extends MailItem implements ScheduledTaskResult {
+public abstract class CalendarItem extends MailItem {
 
     // these are special values indexed in the L_FIELD structured index field, they allow us to
     // restrict lucene searches keyed off of public/private settings
@@ -160,8 +167,9 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
 
     protected CalendarItem(Mailbox mbox, UnderlyingData data) throws ServiceException {
         super(mbox, data);
-        if (mData.type != TYPE_APPOINTMENT && mData.type != TYPE_TASK)
+        if (mData.type != Type.APPOINTMENT.toByte() && mData.type != Type.TASK.toByte()) {
             throw new IllegalArgumentException();
+        }
     }
 
     public Recurrence.IRecurrence getRecurrence() {
@@ -192,9 +200,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             if (org != null)
                 sender = org.getIndexString();
         }
-        if (sender == null)
-            sender = "";
-        return sender;
+        return Strings.nullToEmpty(sender);
     }
 
     public long getStartTime() {
@@ -213,11 +219,6 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     public void saveMetadata() throws ServiceException {
 //        super.saveMetadata();
         reanalyze(null, getSize());
-    }
-
-    @Override
-    public void markItemModified(int reason) {
-        mMailbox.markItemModified(this, reason);
     }
 
 
@@ -242,21 +243,20 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     }
 
     @Override
-    boolean isIndexed() {
-        return true;
-    }
-
-    @Override
     boolean canHaveChildren() {
         return false;
     }
 
     @Override
-    public List<IndexDocument> generateIndexData(boolean doConsistencyCheck) throws MailItem.TemporaryIndexingException {
+    public List<IndexDocument> generateIndexData() throws TemporaryIndexingException {
         List<IndexDocument> docs = null;
-        synchronized(getMailbox()) {
+        mMailbox.lock.lock();
+        try {
             docs = getIndexDocuments();
+        } finally {
+            mMailbox.lock.release();
         }
+
         return docs;
     }
 
@@ -416,16 +416,16 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         return toRet;
     }
 
-    static CalendarItem create(int id, Folder folder, int flags, long tags, String uid,
-                               ParsedMessage pm, Invite firstInvite, long nextAlarm, CustomMetadata custom)
-    throws ServiceException {
+    static CalendarItem create(int id, Folder folder, int flags, Tag.NormalizedTags ntags, String uid,
+            ParsedMessage pm, Invite firstInvite, long nextAlarm, CustomMetadata custom) throws ServiceException {
         firstInvite.sanitize(false);
 
-        if (!folder.canAccess(ACL.RIGHT_INSERT))
+        if (!folder.canAccess(ACL.RIGHT_INSERT)) {
             throw ServiceException.PERM_DENIED("you do not have the required rights on the folder");
-        if (!firstInvite.isPublic() && !folder.canAccess(ACL.RIGHT_PRIVATE))
+        }
+        if (!firstInvite.isPublic() && !folder.canAccess(ACL.RIGHT_PRIVATE)) {
             throw ServiceException.PERM_DENIED("you do not have permission to create private calendar item in this folder");
-
+        }
         Mailbox mbox = folder.getMailbox();
 
         if (pm != null && pm.hasAttachments()) {
@@ -435,31 +435,30 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             firstInvite.setHasAttachment(false);
             flags &= ~Flag.BITMASK_ATTACHED;
         }
-        if (firstInvite.isDraft())
+        if (firstInvite.isDraft()) {
             flags |= Flag.BITMASK_DRAFT;
-        else
+        } else {
             flags &= ~Flag.BITMASK_DRAFT;
-        if (firstInvite.isHighPriority())
+        }
+        if (firstInvite.isHighPriority()) {
             flags |= Flag.BITMASK_HIGH_PRIORITY;
-        else
+        } else {
             flags &= ~Flag.BITMASK_HIGH_PRIORITY;
-        if (firstInvite.isLowPriority())
+        }
+        if (firstInvite.isLowPriority()) {
             flags |= Flag.BITMASK_LOW_PRIORITY;
-        else
+        } else {
             flags &= ~Flag.BITMASK_LOW_PRIORITY;
-
-        byte type = firstInvite.isEvent() ? TYPE_APPOINTMENT : TYPE_TASK;
+        }
+        MailItem.Type type = firstInvite.isEvent() ? Type.APPOINTMENT : Type.TASK;
 
         String sender = null;
         ZOrganizer org = firstInvite.getOrganizer();
-        if (org != null)
+        if (org != null) {
             sender = org.getIndexString();
-        if (sender == null)
-            sender = "";
-
-        String subject = firstInvite.getName();
-        if (subject == null)
-            subject= "";
+        }
+        sender = Strings.nullToEmpty(sender);
+        String subject = Strings.nullToEmpty(firstInvite.getName());
 
         List<Invite> invites = new ArrayList<Invite>();
         invites.add(firstInvite);
@@ -482,34 +481,48 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         firstInvite.updateMyPartStat(account, firstInvite.getPartStat());
 
         UnderlyingData data = new UnderlyingData();
-        data.id       = id;
-        data.type     = type;
+        data.id = id;
+        data.type = type.toByte();
         data.folderId = folder.getId();
-        if (!folder.inSpam() || mbox.getAccount().getBooleanAttr(Provisioning.A_zimbraJunkMessagesIndexingEnabled, false))
-            data.indexId  = id;
-        data.imapId   = id;
-        data.date     = mbox.getOperationTimestamp();
-        data.flags    = flags & (Flag.FLAGS_CALITEM | Flag.FLAGS_GENERIC);
-        data.tags     = tags;
-        data.subject  = DbMailItem.truncateSubjectToMaxAllowedLength(subject);
-        data.metadata = encodeMetadata(DEFAULT_COLOR_RGB, 1, custom, uid, startTime, endTime, recur,
+        if (!folder.inSpam() || mbox.getAccount().getBooleanAttr(Provisioning.A_zimbraJunkMessagesIndexingEnabled, false)) {
+            data.indexId = IndexStatus.DEFERRED.id();
+        }
+        data.imapId = id;
+        data.date = mbox.getOperationTimestamp();
+        data.setFlags(flags & (Flag.FLAGS_CALITEM | Flag.FLAGS_GENERIC));
+        data.setTags(ntags);
+        data.setSubject(subject);
+        data.metadata = encodeMetadata(DEFAULT_COLOR_RGB, 1, 1, custom, uid, startTime, endTime, recur,
                                        invites, firstInvite.getTimeZoneMap(), new ReplyList(), null);
         data.contentChanged(mbox);
-        if (!firstInvite.hasRecurId())
+
+        if (!firstInvite.hasRecurId()) {
             ZimbraLog.calendar.info(
                     "Adding CalendarItem: id=%d, Message-ID=\"%s\", folderId=%d, subject=\"%s\", UID=%s",
                     data.id, pm != null ? pm.getMessageID() : "(none)", folder.getId(),
                     firstInvite.isPublic() ? firstInvite.getName() : "(private)",
                     firstInvite.getUid());
-        else
+        } else {
             ZimbraLog.calendar.info(
                     "Adding CalendarItem: id=%d, Message-ID=\"%s\", folderId=%d, subject=\"%s\", UID=%s, recurId=%s",
                     data.id, pm != null ? pm.getMessageID() : "(none)", folder.getId(),
                     firstInvite.isPublic() ? firstInvite.getName() : "(private)",
                     firstInvite.getUid(), firstInvite.getRecurId().getDtZ());
-        DbMailItem.create(mbox, data, sender);
+        }
 
-        CalendarItem item = type == TYPE_APPOINTMENT ? new Appointment(mbox, data) : new Task(mbox, data);
+        new DbMailItem(mbox).setSender(sender).create(data);
+
+        CalendarItem item = type == Type.APPOINTMENT ? new Appointment(mbox, data) : new Task(mbox, data);
+        Invite defInvite = item.getDefaultInviteOrNull();
+        if (defInvite != null) {
+            Collection<Instance> instances = item.expandInstances(0, Long.MAX_VALUE, false);
+            if (instances.isEmpty()) {
+                ZimbraLog.calendar.info("CalendarItem has effectively zero instances: id=%d, folderId=%d, subject=\"%s\", UID=%s ",
+                        data.id, folder.getId(), firstInvite.isPublic() ? firstInvite.getName() : "(private)", firstInvite.getUid());
+                item.delete();
+                throw ServiceException.FORBIDDEN("Recurring series has effectively zero instances");
+            }
+        }
 
         // If we're creating an invite during email delivery, always default to NEEDS_ACTION state.
         // If not email delivery, we assume the requesting client knows what it's doing and has set the
@@ -524,28 +537,29 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         item.processPartStat(firstInvite, pm != null ? pm.getMimeMessage() : null, true, defaultPartStat);
         item.finishCreation(null);
 
-        if (pm != null)
+        if (pm != null) {
             item.createBlob(pm, firstInvite);
-
+        }
         item.mEndTime = item.recomputeRecurrenceEndTime(item.mEndTime);
 
         if (firstInvite.hasAlarm()) {
-            item.recomputeNextAlarm(nextAlarm, false);
+            item.recomputeNextAlarm(nextAlarm, false, false);
             item.saveMetadata();
             AlarmData alarmData = item.getAlarmData();
             if (alarmData != null) {
-                long newNextAlarm = alarmData.getNextAt();
-                if (newNextAlarm > 0 && newNextAlarm < item.mStartTime)
+                long newNextAlarm = alarmData.getNextAtBase();
+                if (newNextAlarm > 0 && newNextAlarm < item.mStartTime) {
                     item.mStartTime = newNextAlarm;
+                }
             }
         }
 
         DbMailItem.addToCalendarItemTable(item);
 
         Callback cb = getCallback();
-        if (cb != null)
+        if (cb != null) {
             cb.created(item);
-
+        }
         return item;
     }
 
@@ -564,6 +578,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     public int fixRecurrenceEndTime() throws ServiceException {
         long endTime = recomputeRecurrenceEndTime(mEndTime);
         if (endTime != mEndTime) {
+            markItemModified(Change.CONTENT | Change.INVITE);
             mEndTime = endTime;
             DbMailItem.updateInCalendarItemTable(this);
             return 1;
@@ -675,9 +690,9 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         }
         // Recompute next alarm.  Bring appointment start time forward to the alarm time,
         // if the next alarm is before the first instance.
-        recomputeNextAlarm(nextAlarm, false);
+        recomputeNextAlarm(nextAlarm, false, false);
         if (mAlarmData != null) {
-            long newNextAlarm = mAlarmData.getNextAt();
+            long newNextAlarm = mAlarmData.getNextAtBase();
             if (newNextAlarm > 0 && newNextAlarm < startTime && mStartTime != startTime) {
                 timesChanged = true;
                 mStartTime = newNextAlarm;
@@ -700,90 +715,105 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     void decodeMetadata(Metadata meta) throws ServiceException {
         super.decodeMetadata(meta);
 
-        int mdVersion = meta.getVersion();
-
         mUid = Invite.fixupIfOutlookUid(meta.get(Metadata.FN_UID, null));
         mInvites = new ArrayList<Invite>();
 
-        ICalTimeZone accountTZ = ICalTimeZone.getAccountTimeZone(getMailbox().getAccount());
-        if (mdVersion < 6) {
-            mStartTime = 0;
-            mEndTime = 0;
-        } else {
-            Set<String> tzids = new HashSet<String>();
-            mTzMap = TimeZoneMap.decodeFromMetadata(meta.getMap(Metadata.FN_TZMAP), accountTZ);
+        ICalTimeZone accountTZ = Util.getAccountTimeZone(getMailbox().getAccount());
+        if (meta.containsKey(Metadata.FN_TZMAP)) {
+            try {
+                Set<String> tzids = new HashSet<String>();
+                mTzMap = Util.decodeFromMetadata(meta.getMap(Metadata.FN_TZMAP), accountTZ);
 
-            // appointment/task start and end
-            mStartTime = meta.getLong(Metadata.FN_CALITEM_START, 0);
-            mEndTime = meta.getLong(Metadata.FN_CALITEM_END, 0);
+                // appointment/task start and end
+                mStartTime = meta.getLong(Metadata.FN_CALITEM_START, 0);
+                mEndTime = meta.getLong(Metadata.FN_CALITEM_END, 0);
 
-            // invite ID's
-            long numComp = meta.getLong(Metadata.FN_NUM_COMPONENTS);
-            for (int i = 0; i < numComp; i++) {
-                Metadata md = meta.getMap(Metadata.FN_INV + i);
-                Invite inv = Invite.decodeMetadata(getMailboxId(), md, this, accountTZ);
-                mInvites.add(inv);
-                tzids.addAll(inv.getReferencedTZIDs());
-                mTzMap.add(inv.getTimeZoneMap());
-            }
-
-            Metadata metaRecur = meta.getMap(FN_CALITEM_RECURRENCE, true);
-            if (metaRecur != null) {
-                mRecurrence = Recurrence.decodeMetadata(metaRecur, mTzMap);
-                if (mRecurrence != null) {
-                    tzids.addAll(Recurrence.getReferencedTZIDs(mRecurrence));
+                // invite ID's
+                long numComp = meta.getLong(Metadata.FN_NUM_COMPONENTS);
+                for (int i = 0; i < numComp; i++) {
+                    Metadata md = meta.getMap(Metadata.FN_INV + i);
+                    Invite inv = Invite.decodeMetadata(getMailboxId(), md, this, accountTZ);
+                    mInvites.add(inv);
+                    tzids.addAll(inv.getReferencedTZIDs());
+                    mTzMap.add(inv.getTimeZoneMap());
                 }
-            }
 
-            if (meta.containsKey(Metadata.FN_REPLY_LIST)) {
-                mReplyList = ReplyList.decodeFromMetadata(meta.getMap(Metadata.FN_REPLY_LIST), mTzMap);
-                // Get all TZIDs referenced by replies.
-                for (ReplyInfo ri : mReplyList.mReplies) {
-                    if (ri.mRecurId != null) {
-                        ParsedDateTime dt = ri.mRecurId.getDt();
-                        if (dt != null && dt.hasTime()) {
-                            ICalTimeZone tz = dt.getTimeZone();
-                            if (tz != null)
-                                tzids.add(tz.getID());
-                        }
+                Metadata metaRecur = meta.getMap(FN_CALITEM_RECURRENCE, true);
+                if (metaRecur != null) {
+                    mRecurrence = Recurrence.decodeMetadata(metaRecur, mTzMap);
+                    if (mRecurrence != null) {
+                        tzids.addAll(Recurrence.getReferencedTZIDs(mRecurrence));
                     }
                 }
-            } else {
-                mReplyList = new ReplyList();
+
+                if (meta.containsKey(Metadata.FN_REPLY_LIST)) {
+                    mReplyList = ReplyList.decodeFromMetadata(meta.getMap(Metadata.FN_REPLY_LIST), mTzMap);
+                    // Get all TZIDs referenced by replies.
+                    for (ReplyInfo ri : mReplyList.mReplies) {
+                        if (ri.mRecurId != null) {
+                            ParsedDateTime dt = ri.mRecurId.getDt();
+                            if (dt != null && dt.hasTime()) {
+                                ICalTimeZone tz = dt.getTimeZone();
+                                if (tz != null)
+                                    tzids.add(tz.getID());
+                            }
+                        }
+                    }
+                } else {
+                    mReplyList = new ReplyList();
+                }
+
+                Metadata metaAlarmData = meta.getMap(Metadata.FN_ALARM_DATA, true);
+                if (metaAlarmData != null)
+                    mAlarmData = AlarmData.decodeMetadata(metaAlarmData);
+
+                // Reduce tzmap to minimal set of TZIDs referenced by invites, recurrence, and replies.
+                mTzMap.reduceTo(tzids);
+            } catch (ServiceException se) {
+                if (ServiceException.INVALID_REQUEST.equals(se.getCode()) &&
+                        this.getChangeDate() < new GregorianCalendar(2006, 0, 1).getTimeInMillis()) {
+                    //could have been metadata version 3, 4 or 5.
+                    //All of those versions have FN_TZMAP, but different format for other fields
+                    //these are edge cases that should only appear in dev/df/cf
+                    mStartTime = 0;
+                    mEndTime = 0;
+                } else {
+                    throw se;
+                }
             }
-
-            Metadata metaAlarmData = meta.getMap(Metadata.FN_ALARM_DATA, true);
-            if (metaAlarmData != null)
-                mAlarmData = AlarmData.decodeMetadata(metaAlarmData);
-
-            // Reduce tzmap to minimal set of TZIDs referenced by invites, recurrence, and replies.
-            mTzMap.reduceTo(tzids);
+        } else {
+            //version 2 or earlier
+            mStartTime = 0;
+            mEndTime = 0;
         }
     }
 
     @Override Metadata encodeMetadata(Metadata meta) {
-        return encodeMetadata(meta, mRGBColor, mVersion, mExtendedData, mUid, mStartTime, mEndTime,
+        return encodeMetadata(meta, mRGBColor, mMetaVersion, mVersion, mExtendedData, mUid, mStartTime, mEndTime,
                               mRecurrence, mInvites, mTzMap, mReplyList, mAlarmData);
     }
 
-    private static String encodeMetadata(Color color, int version, CustomMetadata custom, String uid, long startTime, long endTime,
+    private static String encodeMetadata(Color color, int metaVersion, int version, CustomMetadata custom, String uid, long startTime, long endTime,
                                          Recurrence.IRecurrence recur, List<Invite> invs, TimeZoneMap tzmap,
                                          ReplyList replyList, AlarmData alarmData) {
         CustomMetadataList extended = (custom == null ? null : custom.asList());
-        return encodeMetadata(new Metadata(), color, version, extended, uid, startTime, endTime, recur,
+        return encodeMetadata(new Metadata(), color, metaVersion, version, extended, uid, startTime, endTime, recur,
                               invs, tzmap, replyList, alarmData).toString();
     }
 
-    static Metadata encodeMetadata(Metadata meta, Color color, int version, CustomMetadataList extended,
+    static Metadata encodeMetadata(Metadata meta, Color color, int metaVersion, int version, CustomMetadataList extended,
                                    String uid, long startTime, long endTime, Recurrence.IRecurrence recur,
                                    List<Invite> invs, TimeZoneMap tzmap, ReplyList replyList, AlarmData alarmData) {
-        meta.put(Metadata.FN_TZMAP, tzmap.encodeAsMetadata());
+        if (tzmap != null)
+            meta.put(Metadata.FN_TZMAP, Util.encodeAsMetadata(tzmap));
+
         meta.put(Metadata.FN_UID, uid);
         meta.put(Metadata.FN_CALITEM_START, startTime);
         meta.put(Metadata.FN_CALITEM_END, endTime);
         meta.put(Metadata.FN_NUM_COMPONENTS, invs.size());
 
-        meta.put(Metadata.FN_REPLY_LIST, replyList.encodeAsMetadata());
+        if (replyList != null)
+            meta.put(Metadata.FN_REPLY_LIST, replyList.encodeAsMetadata());
 
         int num = 0;
         for (Invite comp : invs)
@@ -795,7 +825,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         if (alarmData != null)
             meta.put(Metadata.FN_ALARM_DATA, alarmData.encodeMetadata());
 
-        return MailItem.encodeMetadata(meta, color, version, extended);
+        return MailItem.encodeMetadata(meta, color, null, metaVersion, version, extended);
     }
 
     /**
@@ -818,7 +848,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             // range.
             if (mAlarmData != null) {
                 alarmInstStart = mAlarmData.getNextInstanceStart();
-                long nextAlarm = mAlarmData.getNextAt();
+                long nextAlarm = mAlarmData.getNextAtBase();
                 if (nextAlarm >= start && nextAlarm < end) {
                     if (alarmInstStart >= end)
                         endAdjusted = alarmInstStart + 1;
@@ -1362,10 +1392,12 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             return processNewInviteRequestOrCancel(pm, invite, folderId, nextAlarm,
                                                    preserveAlarms, replaceExistingInvites);
         } else if (method.equals(ICalTok.REPLY.toString())) {
-            return processNewInviteReply(invite);
+            return processNewInviteReply(invite, null);
+        } else if (method.equals(ICalTok.COUNTER.toString())) {
+            return processNewInviteReply(invite, pm.getSender());
         }
 
-        if (!method.equals(ICalTok.COUNTER.toString()) && !method.equals(ICalTok.DECLINECOUNTER.toString()))
+        if (!method.equals(ICalTok.DECLINECOUNTER.toString()))
             ZimbraLog.calendar.warn("Unsupported METHOD " + method);
         return false;
     }
@@ -1753,7 +1785,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                     toRemove.add(cur);
                     // add to FRONT of list, so when we iterate for the removals we go from HIGHER TO LOWER
                     // that way the numbers all match up as the list contracts!
-                    idxsToRemove.add(0, new Integer(i));
+                    idxsToRemove.add(0, Integer.valueOf(i));
 
                     boolean invalidateReplies = false;
                     if (!discardExistingInvites) {
@@ -1826,7 +1858,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                         toRemove.add(cur);
                         // add to FRONT of list, so when we iterate for the removals we go from HIGHER TO LOWER
                         // that way the numbers all match up as the list contracts!
-                        idxsToRemove.add(0, new Integer(i));
+                        idxsToRemove.add(0, Integer.valueOf(i));
 
                         // clean up any old REPLYs that have been made obsolete by this new invite
                         mReplyList.removeObsoleteEntries(newInvite.getRecurId(), newInvite.getSeqNo(),
@@ -1948,8 +1980,8 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
 
         // Check if there are any surviving non-cancel invites after applying the update.
         // Also check for changes in flags.
-        int oldFlags = mData.flags;
-        int newFlags = mData.flags & ~(Flag.BITMASK_ATTACHED | Flag.BITMASK_DRAFT | Flag.BITMASK_HIGH_PRIORITY | Flag.BITMASK_LOW_PRIORITY);
+        int oldFlags = mData.getFlags();
+        int newFlags = mData.getFlags() & ~(Flag.BITMASK_ATTACHED | Flag.BITMASK_DRAFT | Flag.BITMASK_HIGH_PRIORITY | Flag.BITMASK_LOW_PRIORITY);
         boolean hasSurvivingRequests = false;
         for (Invite cur : mInvites) {
             String method = cur.getMethod();
@@ -1967,7 +1999,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             }
         }
         if (newFlags != oldFlags) {
-            mData.flags = newFlags;
+            mData.setFlags(newFlags);
             modifiedCalItem = true;
         }
 
@@ -1984,7 +2016,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                        // it doesn't have anymore REQUESTs!
             return false;
         } else {
-            if (nextAlarm > 0 && mAlarmData != null && mAlarmData.getNextAt() != nextAlarm)
+            if (nextAlarm > 0 && mAlarmData != null && mAlarmData.getNextAtBase() != nextAlarm)
                 modifiedCalItem = true;
 
             if (modifiedCalItem) {
@@ -2032,13 +2064,24 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                         // TIM: modifyBlob will save the metadata for us as a side-effect
 //                      saveMetadata();
                     } else {
-                        markItemModified(Change.MODIFIED_INVITE);
+                        markItemModified(Change.INVITE);
                         try {
                             // call setContent here so that MOD_CONTENT is updated...this is required
                             // for the index entry to be correctly updated (bug 39463)
                             setContent(null, null);
                         } catch (IOException e) {
                             throw ServiceException.FAILURE("IOException", e);
+                        }
+                    }
+                    // remove the item if all the instances are canceled.
+                    Invite defInvite = getDefaultInviteOrNull();
+                    if (defInvite != null) {
+                        Collection<Instance> instances = expandInstances(0, Long.MAX_VALUE, false);
+                        if (instances.isEmpty())  {
+                            ZimbraLog.calendar.warn("Deleting calendar item " + getId() +
+                                    " in mailbox " + getMailboxId() + " because it has no invite after applying request/cancel invite");
+                            delete();
+                            return true;
                         }
                     }
 
@@ -2239,7 +2282,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         try {
             is = pm.getRawInputStream();
             if (is != null) {
-                StagedBlob sblob = sm.stage(is, null, mMailbox);
+                StagedBlob sblob = sm.stage(is, mMailbox);
                 return setContent(sblob, pm);
             } else {
                 ZimbraLog.calendar.warn(
@@ -2256,13 +2299,11 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     void reanalyze(Object data, long newSize) throws ServiceException {
         String subject = null;
         Invite firstInvite = getDefaultInviteOrNull();
-        if (firstInvite != null)
+        if (firstInvite != null) {
             subject = firstInvite.getName();
-        if (subject == null)
-            subject= "";
-
-        mData.subject = DbMailItem.truncateSubjectToMaxAllowedLength(subject);
-        saveData(getSender());
+        }
+        mData.setSubject(Strings.nullToEmpty(subject));
+        saveData(new DbMailItem(mMailbox));
     }
 
     /**
@@ -2662,7 +2703,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
          * <code>mReplies</code> and discard any outdated response found.
          * @return true if decide to store <code>inv</code>
          */
-        boolean maybeStoreNewReply(Invite inv, ZAttendee at) throws ServiceException {
+        boolean maybeStoreNewReply(Invite inv, ZAttendee at, CalendarItem calendarItem) throws ServiceException {
             // Look up internal account for the attendee.  For internal users we want to match
             // on all email addresses of the account.
             AccountAddressMatcher acctMatcher = null;
@@ -2686,6 +2727,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                         // Good.  This new reply is more up to date than the previous one
                         iter.remove();
                         ReplyInfo toAdd = new ReplyInfo(at, inv.getSeqNo(), inv.getDTStamp(), inv.getRecurId());
+                        calendarItem.markItemModified(Change.INVITE);
                         mReplies.add(toAdd);
                         return true;
                     }
@@ -2694,6 +2736,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
 
             // if we get here, we didn't find one at all.  add a new one...
             ReplyInfo toAdd = new ReplyInfo(at, inv.getSeqNo(), inv.getDTStamp(), inv.getRecurId());
+            calendarItem.markItemModified(Change.INVITE);
             mReplies.add(toAdd);
             return true;
         }
@@ -3011,10 +3054,36 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         saveMetadata();
     }
 
-    public boolean processNewInviteReply(Invite reply)
+    boolean processNewInviteReply(Invite reply, String sender)
     throws ServiceException {
         List<ZAttendee> attendees = reply.getAttendees();
-
+        
+        String senderAddress = null;
+        if (sender != null && !sender.isEmpty()) {
+            try {
+                JavaMailInternetAddress address = new JavaMailInternetAddress(sender);
+                senderAddress = address.getAddress();
+            } catch (AddressException e) {
+                // ignore invalid sender address.
+            }
+        }
+        
+        if (senderAddress != null && !attendees.isEmpty()) { 
+            AccountAddressMatcher acctMatcher = null;
+            Account acct = Provisioning.getInstance().get(AccountBy.name, senderAddress);
+            if (acct != null) {
+                acctMatcher = new AccountAddressMatcher(acct);
+            }
+            Iterator<ZAttendee> iter = attendees.iterator();
+            while (iter.hasNext()) {
+                ZAttendee att = iter.next();
+                // Remove the attendee if not same as the sender.
+                if (!(att.addressMatches(senderAddress) || (acctMatcher != null && acctMatcher.matches(att.getAddress())))) {
+                    iter.remove();
+                }
+            }
+        }
+        
         // trace logging
         ZAttendee att1 = !attendees.isEmpty() ? attendees.get(0) : null;
         if (att1 != null) {
@@ -3090,7 +3159,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         // OR alternatively we looked and couldn't find one with a matching RecurID (therefore
         // they must be replying to a arbitrary instance)
         for (ZAttendee at : attendees) {
-            if (mReplyList.maybeStoreNewReply(reply, at))
+            if (mReplyList.maybeStoreNewReply(reply, at, this))
                 dirty = true;
         }
 
@@ -3098,10 +3167,10 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             sLog.info("Invite-Reply "+reply.toString()+" is outdated ignoring!");
             return false;
         }
-        if (invMatchingRecurId != null)
+        if (invMatchingRecurId != null) {
             invMatchingRecurId.updateMatchingAttendeesFromReply(reply);
+        }
         saveMetadata();
-        getMailbox().markItemModified(this, Change.MODIFIED_INVITE);
         return true;
     }
 
@@ -3215,7 +3284,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                     // If the conversion bombs for any reason, revert to the original
                     ZimbraLog.mailbox.warn("MIME converter failed for message " + getId(), e);
                     is = getRawMessage();
-                    mm = new MimeMessage(JMSession.getSession(), is);
+                    mm = new ZMimeMessage(JMSession.getSession(), is);
                     ByteUtil.closeStream(is);
                 }
             }
@@ -3259,27 +3328,49 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
 
 
     public static class AlarmData {
-        private long mNextAt = Long.MAX_VALUE;
+        private static final long NO_SNOOZE = Long.MAX_VALUE;
+
+        private long mNextAt = Long.MAX_VALUE;  // time when the alarm goes off, unless snoozed
+        private long mSnoozeUntil = NO_SNOOZE;  // time when the snoozed alarm goes off
+                                                // When an alarm is snoozed, mNextAt remains the same and
+                                                // mSnoozeUntil is set to the new time.
         private final long mNextInstStart;  // start time of the instance that mNextAt alarm is for
         private final int mInvId;
         private final int mCompNum;
         private final Alarm mAlarm;
 
-        public AlarmData(long next, long nextInstStart, int invId, int compNum, Alarm alarm) {
+        public AlarmData(long next, long snoozeUntil, long nextInstStart, int invId, int compNum, Alarm alarm) {
             mNextAt = next;
+            mSnoozeUntil = snoozeUntil;
             mNextInstStart = nextInstStart;
             mInvId = invId;
             mCompNum = compNum;
             mAlarm = alarm;
         }
 
-        public long getNextAt() { return mNextAt; }
+        @Override
+        public Object clone() {
+            return new AlarmData(mNextAt, mSnoozeUntil, mNextInstStart, mInvId, mCompNum, mAlarm.newCopy());
+        }
+
+        /**
+         * Returns the next alarm trigger time.  It is either the snoozed re-trigger time or the base trigger time.
+         * @return
+         */
+        public long getNextAt() {
+            return mSnoozeUntil != NO_SNOOZE ? mSnoozeUntil : mNextAt;
+        }
+
+        private long getNextAtBase() { return mNextAt; }
+        public long getSnoozeUntil() { return mSnoozeUntil; }
+        private void setSnoozeUntil(long s) { mSnoozeUntil = s; }
         public long getNextInstanceStart() { return mNextInstStart; }
         public int getInvId() { return mInvId; }
         public int getCompNum() { return mCompNum; }
         public Alarm getAlarm() { return mAlarm; }
 
         private static final String FNAME_NEXT_AT = "na";
+        private static final String FNAME_SNOOZE = "snuz";
         private static final String FNAME_NEXT_INSTANCE_START = "nis";
         private static final String FNAME_INV_ID = "invId";
         private static final String FNAME_COMP_NUM = "compNum";
@@ -3287,6 +3378,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
 
         static AlarmData decodeMetadata(Metadata meta) throws ServiceException {
             long nextAt = meta.getLong(FNAME_NEXT_AT);
+            long snoozeUntil = meta.getLong(FNAME_SNOOZE, NO_SNOOZE);
             long nextInstStart = meta.getLong(FNAME_NEXT_INSTANCE_START);
             int invId = (int) meta.getLong(FNAME_INV_ID);
             int compNum = (int) meta.getLong(FNAME_COMP_NUM);
@@ -3294,12 +3386,14 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
             Metadata metaAlarm = meta.getMap(FNAME_ALARM, true);
             if (metaAlarm != null)
                 alarm = Alarm.decodeMetadata(metaAlarm);
-            return new AlarmData(nextAt, nextInstStart, invId, compNum, alarm);
+            return new AlarmData(nextAt, snoozeUntil, nextInstStart, invId, compNum, alarm);
         }
 
         Metadata encodeMetadata() {
             Metadata meta = new Metadata();
             meta.put(FNAME_NEXT_AT, mNextAt);
+            if (mSnoozeUntil != NO_SNOOZE)
+                meta.put(FNAME_NEXT_AT, mSnoozeUntil);
             meta.put(FNAME_NEXT_INSTANCE_START, mNextInstStart);
             meta.put(FNAME_INV_ID, mInvId);
             meta.put(FNAME_COMP_NUM, mCompNum);
@@ -3319,11 +3413,16 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         return false;
     }
 
-    public void updateNextAlarm(long nextAlarm) throws ServiceException {
+    void updateNextAlarm(long nextAlarm, boolean dismissed) throws ServiceException {
+        updateNextAlarm(nextAlarm, mAlarmData, dismissed);
+    }
+
+    void updateNextAlarm(long nextAlarm, AlarmData savedAlarmData, boolean dismissed) throws ServiceException {
         boolean hadAlarm = mAlarmData != null;
-        recomputeNextAlarm(nextAlarm, true);
+        mAlarmData = savedAlarmData;  // Restore old alarm data before recomputing.
+        recomputeNextAlarm(nextAlarm, true, dismissed);
         if (mAlarmData != null) {
-            long newNextAlarm = mAlarmData.getNextAt();
+            long newNextAlarm = mAlarmData.getNextAtBase();
             if (newNextAlarm > 0 && newNextAlarm < mStartTime)
                 mStartTime = newNextAlarm;
             if (ZimbraLog.calendar.isDebugEnabled()) {
@@ -3347,18 +3446,9 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         return endTime;
     }
 
-    /**
-     * Recompute the next non-EMAIL alarm trigger time that is at or later than "nextAlarm".
-     * @param nextAlarm next alarm should go off at or after this time
-     *                  special values:
-     *                  CalendarItem.NEXT_ALARM_KEEP_CURRENT - keep current value
-     *                  CalendarItem.NEXT_ALARM_ALL_DISMISSED - all alarms have been shown and dismissed
-     *                  CalendarItem.NEXT_ALARM_FROM_NOW - compute next trigger time from current time
-     * @param skipAlarmDefChangeCheck
-     */
-    private void recomputeNextAlarm(long nextAlarm, boolean skipAlarmDefChangeCheck)
+    private void recomputeNextAlarm(long nextAlarm, boolean skipAlarmDefChangeCheck, boolean dismissed)
     throws ServiceException {
-        mAlarmData = getNextAlarm(nextAlarm, skipAlarmDefChangeCheck, mAlarmData, false);
+        mAlarmData = getNextAlarm(nextAlarm, skipAlarmDefChangeCheck, mAlarmData, dismissed, false);
     }
 
     /**
@@ -3368,10 +3458,11 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
      * @throws ServiceException
      */
     public AlarmData getNextEmailAlarm() throws ServiceException {
-        return getNextAlarm(System.currentTimeMillis(), true, null, true);
+        return getNextAlarm(System.currentTimeMillis(), true, null, false, true);
     }
 
-    private AlarmData getNextAlarm(long nextAlarm, boolean skipAlarmDefChangeCheck, AlarmData currentNextAlarmData, boolean forEmailAction)
+    private AlarmData getNextAlarm(long nextAlarm, boolean skipAlarmDefChangeCheck,
+            AlarmData currentNextAlarmData, boolean dismissed, boolean forEmailAction)
     throws ServiceException {
         if (nextAlarm == NEXT_ALARM_ALL_DISMISSED || !hasAlarm()) {
             return null;
@@ -3379,22 +3470,32 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
 
         long now = getMailbox().getOperationTimestampMillis();
         long atOrAfter;  // Chosen alarm must be at or after this time.
+        long snoozeUntil;
         if (nextAlarm == NEXT_ALARM_KEEP_CURRENT) {
             // special case to preserve current next alarm trigger time
             if (currentNextAlarmData != null) {
-                atOrAfter = currentNextAlarmData.getNextAt();
+                atOrAfter = currentNextAlarmData.getNextAtBase();
+                snoozeUntil = currentNextAlarmData.getSnoozeUntil();
             } else {
-                atOrAfter = now;  // no existing alarm; pick the first alarm in the future
+                atOrAfter = snoozeUntil = now;  // no existing alarm; pick the first alarm in the future
             }
         } else if (nextAlarm == NEXT_ALARM_FROM_NOW) {
             // another special case to mean starting from "now"; pick the first alarm in the future
-            atOrAfter = now;
+            atOrAfter = snoozeUntil = now;
+        } else if (!dismissed && currentNextAlarmData != null) {
+            // if not dismissing previous alarm, keep it as the base trigger time.  nextAlarm has snoozed re-trigger time
+            atOrAfter = currentNextAlarmData.getNextAtBase();
+            snoozeUntil = nextAlarm;
         } else {
             // else we just use the nextAlarm value that was passed in
-            atOrAfter = nextAlarm;
+            atOrAfter = snoozeUntil = nextAlarm;
         }
-        if (atOrAfter <= 0)  // sanity check
-            atOrAfter = now;
+        if (atOrAfter <= 0) {  // sanity check
+            atOrAfter = snoozeUntil = now;
+        }
+        if (snoozeUntil != AlarmData.NO_SNOOZE && snoozeUntil < atOrAfter) {
+            snoozeUntil = atOrAfter;
+        }
 
         // startTime and endTime limit the time range for meeting instances to be examined.
         // All instances that ended before startTime are ignored, and by extension the alarms for them.
@@ -3449,110 +3550,207 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                 // If alarm definition changed, just pick the earliest alarm from now.  Without this,
                 // we can't change alarm definition to an earlier trigger time, e.g. from 5 minutes before
                 // to 10 minutes before. (bug 28630)
-                atOrAfter = now;
+                atOrAfter = snoozeUntil = now;
             }
         }
 
-        long triggerAt = Long.MAX_VALUE;
-        Instance alarmInstance = null;
-        Alarm theAlarm = null;
+        AlarmData alarmData = getNextAlarmHelper(atOrAfter, snoozeUntil, instances, startTime, forEmailAction);
+        if (alarmData == null && this instanceof Task) {
+            // special handling for Tasks
+            return getNextAlarmHelperForTasks(atOrAfter, snoozeUntil, forEmailAction);
+        } else {
+            return alarmData;
+        }
+    }
 
+    private AlarmData getNextAlarmHelper(
+            long atOrAfter, long snoozeUntil, Collection<Instance> instances, long rangeStart, boolean forEmailAction) {
+        // Find the two nearest alarms that surround atOrAfter such that t(alarm1) <= atOrAfter < t(alarm2).
+        Alarm alarm1 = null, alarm2 = null;
+        long trigger1 = Long.MIN_VALUE, trigger2 = Long.MAX_VALUE;  // trigger times for alarm1 and alarm2
+        long instStart1 = 0, instStart2 = 0;  // instance start time for alarm1 and alarm2
+        int invId1 = 0, compNum1 = 0, invId2 = 0, compNum2 = 0;  // invId and compNum for inst1 and inst2
         for (Instance inst : instances) {
             long instStart = inst.getStart();
             long instEnd = inst.getEnd();
             if (inst.hasStart() && inst.hasEnd()) {
                 // Ignore instances that ended already.
-                if (instEnd <= startTime)
+                if (instEnd <= rangeStart)
                     continue;
                 // For appointments (but not tasks), ignore instances whose start time has come and gone.
-                if (instStart < startTime && (this instanceof Appointment))
+                if (instStart < rangeStart && (this instanceof Appointment))
                     continue;
             }
             InviteInfo invId = inst.getInviteInfo();
             Invite inv = getInvite(invId.getMsgId(), invId.getComponentId());
-            Pair<Long, Alarm> curr =
-                getAlarmTriggerTime(atOrAfter, inv.alarmsIterator(), instStart, instEnd, forEmailAction);
-            if (curr != null) {
-                long currAt = curr.getFirst();
-                if (atOrAfter <= currAt && currAt < triggerAt) {
-                    triggerAt = currAt;
-                    theAlarm = curr.getSecond();
-                    alarmInstance = inst;
+            assert(inv != null);
+            // The instance can have multiple alarms.
+            for (Iterator<Alarm> alarms = inv.alarmsIterator(); alarms.hasNext(); ) {
+                Alarm alarm = alarms.next();
+                if (Action.EMAIL.equals(alarm.getAction()) == forEmailAction) {
+                    long trg = alarm.getTriggerTime(instStart, instEnd);
+                    if (trg <= atOrAfter) {
+                        if (trg > trigger1) {
+                            trigger1 = trg; alarm1 = alarm; instStart1 = instStart;
+                            invId1 = invId.getMsgId(); compNum1 = invId.getComponentId();
+                        }
+                    } else {  // trg > atOrAfter
+                        if (trg < trigger2) {
+                            trigger2 = trg; alarm2 = alarm; instStart2 = instStart;
+                            invId2 = invId.getMsgId(); compNum2 = invId.getComponentId();
+                        }
+                    }
                 }
             }
+            if (alarm1 != null && alarm2 != null) {
+                break;
+            }
         }
-        if (alarmInstance != null) {
-            InviteInfo invInfo = alarmInstance.getInviteInfo();
-            if (invInfo != null)
-                return new AlarmData(triggerAt, alarmInstance.getStart(),
-                                     invInfo.getMsgId(), invInfo.getComponentId(), theAlarm);
-        }
-        if (this instanceof Task) {
-            // Unlike appointments, tasks may have alarms that go off after instance start time and even after
-            // instance end time (as defined by DUE property), and these alarms must be computed differently.
-            return getNextAbsoluteTriggerAlarm(atOrAfter, forEmailAction);
-        } else {
-            return null;
-        }
+
+        AlarmData ad1 = alarm1 != null ? new AlarmData(trigger1, snoozeUntil, instStart1, invId1, compNum1, alarm1) : null;
+        AlarmData ad2 = alarm2 != null ? new AlarmData(trigger2, AlarmData.NO_SNOOZE, instStart2, invId2, compNum2, alarm2) : null;
+        return chooseNextAlarm(atOrAfter, snoozeUntil, ad1, ad2);
     }
 
     /**
-     * Finds the next absolute-trigger alarm that is at or later than "atOrAfter".
-     * @param nextAlarm next alarm should go off at or after this time
-     *                  special values:
-     *                  CalendarItem.NEXT_ALARM_KEEP_CURRENT - keep current value
-     *                  CalendarItem.NEXT_ALARM_ALL_DISMISSED - all alarms have been shown and dismissed
-     *                  CalendarItem.NEXT_ALARM_FROM_NOW - compute next trigger time from current time
-     * @param skipAlarmDefChangeCheck
+     * Find the next absolute trigger alarm.  This is primarily for tasks.  Tasks have a slightly different constraint
+     * on alarms than appointments do.  In particular, the absolute trigger time of tasks need not be before DTSTART
+     * or DUE, whereas alarms for appointments are meaningful only if it triggers before DTSTART.  A reminder for a
+     * meeting that has already started is useless, but a reminder for an over-due task can be quite useful.
+     *
+     * @param atOrAfter
+     * @param snoozeUntil
+     * @param forEmailAction
+     * @return
      */
-    private AlarmData getNextAbsoluteTriggerAlarm(long atOrAfter, boolean forEmailAction)
-    throws ServiceException {
-        long triggerAt = Long.MAX_VALUE;
-        Alarm theAlarm = null;
-        Invite theInvite = null;
+    private AlarmData getNextAlarmHelperForTasks(long atOrAfter, long snoozeUntil, boolean forEmailAction) {
+        // Find the two nearest alarms that surround atOrAfter such that t(alarm1) <= atOrAfter < t(alarm2).
+        Alarm alarm1 = null, alarm2 = null;
+        long trigger1 = Long.MIN_VALUE, trigger2 = Long.MAX_VALUE;  // trigger times for alarm1 and alarm2
+        long instStart1 = 0, instStart2 = 0;  // instance start time for alarm1 and alarm2
+        int invId1 = 0, compNum1 = 0, invId2 = 0, compNum2 = 0;  // invId and compNum for inst1 and inst2
         for (Invite inv : mInvites) {
             if (inv.isCancel())
                 continue;
+            // The invite can have multiple alarms.
             for (Iterator<Alarm> alarms = inv.alarmsIterator(); alarms.hasNext(); ) {
                 Alarm alarm = alarms.next();
                 if (Action.EMAIL.equals(alarm.getAction()) == forEmailAction && alarm.getTriggerAbsolute() != null) {
-                    long absTrig = alarm.getTriggerAbsolute().getUtcTime();
-                    if (atOrAfter <= absTrig && absTrig < triggerAt) {
-                        triggerAt = absTrig;
-                        theAlarm = alarm;
-                        theInvite = inv;
+                    long trg = alarm.getTriggerAbsolute().getUtcTime();
+                    if (trg <= atOrAfter) {
+                        if (trg > trigger1) {
+                            trigger1 = trg; alarm1 = alarm;
+                            instStart1 = inv.getStartTime() != null ? inv.getStartTime().getUtcTime() : 0;
+                            invId1 = inv.getMailItemId(); compNum1 = inv.getComponentNum();
+                        }
+                    } else {  // trg > atOrAfter
+                        if (trg < trigger2) {
+                            trigger2 = trg; alarm2 = alarm;
+                            instStart2 = inv.getStartTime() != null ? inv.getStartTime().getUtcTime() : 0;
+                            invId2 = inv.getMailItemId(); compNum2 = inv.getComponentNum();
+                        }
                     }
                 }
             }
         }
-        if (theAlarm != null) {
-            long instStart = theInvite.getStartTime() != null ? theInvite.getStartTime().getUtcTime() : 0;
-            return new AlarmData(triggerAt, instStart, theInvite.getMailItemId(), theInvite.getComponentNum(), theAlarm);
-        } else {
-            return null;
-        }
+
+        AlarmData ad1 = alarm1 != null ? new AlarmData(trigger1, snoozeUntil, instStart1, invId1, compNum1, alarm1) : null;
+        AlarmData ad2 = alarm2 != null ? new AlarmData(trigger2, AlarmData.NO_SNOOZE, instStart2, invId2, compNum2, alarm2) : null;
+        return chooseNextAlarm(atOrAfter, snoozeUntil, ad1, ad2);
     }
 
-    // Find the earliest alarm whose trigger time is at or after nextAlarm.
-    // Only alarms with email action are examined if forEmailAction==true.  If false, all other alarms are examined.
-    private static Pair<Long, Alarm> getAlarmTriggerTime(
-            long nextAlarm, Iterator<Alarm> alarms, long instStart, long instEnd, boolean forEmailAction) {
-        long triggerAt = Long.MAX_VALUE;
-        Alarm theAlarm = null;
-        for (; alarms.hasNext(); ) {
-            Alarm alarm = alarms.next();
-            if (Action.EMAIL.equals(alarm.getAction()) == forEmailAction) {
-                long currTrigger = alarm.getTriggerTime(instStart, instEnd);
-                if (nextAlarm <= currTrigger && currTrigger < triggerAt) {
-                    triggerAt = currTrigger;
-                    theAlarm = alarm;
+    /**
+     * Choose the next alarm, based on atOrAfter and snoozeUntil, from the two nearest alarms that surround atOrAfter.
+     * Client/caller supplies atOrAfter to indicate the next alarm to trigger should go off no sooner that this time.
+     * The actual trigger time can be deferred with snoozeUntil.  If snoozeUntil is specified, atOrAfter is the time
+     * based on the alarm definition, and snoozeUntil is the re-trigger time.
+     *
+     * The two surrounding alarms passed in must satisfy the following condition:
+     *
+     *     t(alarm 1) <= atOrAfter < t(alarm 2)
+     *
+     * atOrAfter and snoozeUntil are related thusly, if snoozeUntil != AlarmData.NO_SNOOZE.
+     *
+     *     atOrAfter < snoozeUntil
+     *
+     * From these, there are several cases possible.
+     *
+     * 1. There is no snoozed alarm if snoozeUntil == atOrAfter or snoozeUntil == AlarmData.NO_SNOOZE.
+     * case 1.1: t(alarm 1) == atOrAfter
+     * --> Choose alarm 1.
+     * case 1.2: t(alarm 1) < atOrAfter < t(alarm 2)
+     * --> Choose alarm 2.
+     *
+     * 2. atOrAfter < snoozeUntil
+     * case 2.1: t(alarm 1) == atOrAfter < snoozeUntil < t(alarm 2)
+     * --> Choose alarm 1 and retain snooze.
+     * case 2.2: t(alarm 1) == atOrAfter < t(alarm 2) <= snoozeUntil
+     * --> Choose alarm 2 and discard snooze.  Old alarm was snoozed past the next alarm.  It is effectively a dismissal.
+     * case 2.3: t(alarm 1) < atOrAfter < snoozeUntil < t(alarm 2)
+     * --> Choose alarm 2.  Discard snooze.
+     * case 2.4: t(alarm 1) < atOrAfter < t(alarm 2) <= snoozeUntil
+     * --> Choose alarm 2.  Discard snooze.
+     *
+     * Cases 2.3 and 2.4 are equivalent to case 1.2.  When atOrAfter doesn't coincide with any alarm, the earliest
+     * next alarm is chosen.  The old alarm at atOrAfter is essentially being dismissed, and snooze is discarded.
+     *
+     * Cases 2.2, 2.3, and 2.4 have the same outcome, so case 2 only have two real subcases: Choose alarm1 and retain
+     * snooze, or choose alarm2 and discard snooze.
+     *
+     * Special handling for alarms with same trigger time: If multiple alarms have the same trigger time,
+     * the first alarm in the list is chosen.  All alarms with the same trigger time are skipped when atOrAfter
+     * is later.
+     *
+     * @param atOrAfter
+     * @param snoozeUntil
+     * @param alarmData1 nearest alarm at or before atOrAfter; has snooze info set if available; can be null
+     * @param alarmData2 nearest alarm after atOrAfter; does not have snooze info; can be null
+     * @return alarmData1 or alarmData2; The returned object's snooze field is modified in this method.
+     */
+    private AlarmData chooseNextAlarm(long atOrAfter, long snoozeUntil, AlarmData alarmData1, AlarmData alarmData2) {
+        if (snoozeUntil <= atOrAfter) {
+            snoozeUntil = AlarmData.NO_SNOOZE;
+        }
+        if (alarmData1 != null) {
+            if (alarmData2 != null) {
+                if (snoozeUntil == AlarmData.NO_SNOOZE) {
+                    if (alarmData1.getNextAtBase() == atOrAfter) {
+                        // case 1.1: Choose alarm 1.
+                        alarmData1.setSnoozeUntil(AlarmData.NO_SNOOZE);
+                        return alarmData1;
+                    } else {  // trigger1 < atOrAfter
+                        // case 1.2: Choose alarm 2.
+                        alarmData2.setSnoozeUntil(AlarmData.NO_SNOOZE);
+                        return alarmData2;
+                    }
+                } else {  // has snooze
+                    if (alarmData1.getNextAtBase() == atOrAfter && snoozeUntil < alarmData2.getNextAtBase()) {
+                        // case 2.1: Choose alarm 1.  Snooze is retained.
+                        alarmData1.setSnoozeUntil(snoozeUntil);
+                        return alarmData1;
+                    } else {
+                        // cases 2.2, 2.3, and 2.4: Choose alarm 2.  Snooze is discarded.
+                        alarmData2.setSnoozeUntil(AlarmData.NO_SNOOZE);
+                        return alarmData2;
+                    }
+                }
+            } else {
+                // alarmData2 is null.  Use alarmData1 if its trigger time coincides with atOrAfter.  Otherwise we have no alarm.
+                if (alarmData1.getNextAtBase() == atOrAfter) {
+                    alarmData1.setSnoozeUntil(snoozeUntil);
+                    return alarmData1;
+                } else {
+                    return null;
                 }
             }
+        } else {
+            if (alarmData2 != null) {
+                alarmData2.setSnoozeUntil(AlarmData.NO_SNOOZE);
+                return alarmData2;
+            } else {
+                return null;
+            }
         }
-        if (theAlarm != null)
-            return new Pair<Long, Alarm>(triggerAt, theAlarm);
-        else
-            return null;
     }
 
     public static class NextAlarms {
@@ -3697,7 +3895,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     }
 
     @Override
-    void delete(DeleteScope scope, boolean writeTombstones) throws ServiceException {
+    void delete(boolean writeTombstones) throws ServiceException {
         Invite defInv = getDefaultInviteOrNull();
         String sbj;
         if (defInv != null)
@@ -3710,11 +3908,11 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
         if (!isPublic() && !canAccess(ACL.RIGHT_PRIVATE))
             throw ServiceException.PERM_DENIED(
                     "you do not have permission to delete private calendar item from the current folder");
-        super.delete(scope, writeTombstones);
+        super.delete(writeTombstones);
     }
 
     @Override
-    MailItem copy(Folder folder, int id, int parentId) throws IOException, ServiceException {
+    MailItem copy(Folder folder, int id, String uuid, MailItem parent) throws IOException, ServiceException {
         if (!isPublic()) {
             boolean privateAccessSrc = canAccess(ACL.RIGHT_PRIVATE);
             boolean privateAccessDest = folder.canAccess(ACL.RIGHT_PRIVATE);
@@ -3725,7 +3923,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
                 throw ServiceException.PERM_DENIED(
                         "you do not have permission to copy private calendar item to the target folder");
         }
-        return super.copy(folder, id, parentId);
+        return super.copy(folder, id, uuid, parent);
     }
 
     @Override
@@ -3802,7 +4000,7 @@ public abstract class CalendarItem extends MailItem implements ScheduledTaskResu
     throws ServiceException {
         Map<Integer, MimeMessage> map = new HashMap<Integer, MimeMessage>();
         try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(digestBlob);
+            InputStream bais = new SharedByteArrayInputStream(digestBlob);
             FixedMimeMessage digestMm = new FixedMimeMessage(JMSession.getSession(), bais);
 
             // It should be multipart/digest.

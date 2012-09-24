@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -23,7 +23,6 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AttributeCallback;
 import com.zimbra.cs.account.Entry;
-import com.zimbra.cs.account.Provisioning;
 
 /**
  * {@link AttributeCallback} for {@code zimbraPrefMailTrustedSenderList}.
@@ -53,18 +52,21 @@ import com.zimbra.cs.account.Provisioning;
  */
 public final class TrustedSenderList extends AttributeCallback {
 
-    @Override
     @SuppressWarnings("unchecked")
-    public void preModify(@SuppressWarnings("rawtypes") Map ctx, String name,
-            Object value, @SuppressWarnings("rawtypes") Map mod, Entry entry,
-            boolean isCreate) throws ServiceException {
+    @Override
+    public void preModify(CallbackContext context, String name,
+            Object value, @SuppressWarnings("rawtypes") Map mod, Entry entry) 
+    throws ServiceException {
 
-        // This is called for each of name, +name and -name.
-        // Skip if already processed.
-        if (isCreate || !(entry instanceof Account) || ctx.containsKey(name)) {
+        if (context.isCreate() || !(entry instanceof Account)) {
             return;
         }
-        ctx.put(name, null);
+        
+        // This is called for each of name, +name and -name.
+        // Skip if already processed.
+        if (context.isDoneAndSetIfNot(TrustedSenderList.class)) {
+            return;
+        }
 
         Account account = (Account) entry;
 
@@ -118,12 +120,8 @@ public final class TrustedSenderList extends AttributeCallback {
         }
     }
 
-    /**
-     * This implementation does nothing.
-     */
     @Override
-    public void postModify(@SuppressWarnings("rawtypes") Map context,
-            String attrName, Entry entry, boolean isCreate) {
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 
 }

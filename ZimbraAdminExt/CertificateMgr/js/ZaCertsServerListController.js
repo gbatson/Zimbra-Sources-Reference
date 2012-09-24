@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,17 +21,13 @@
 **/
 ZaCertsServerListController = function(appCtxt, container) {
 	ZaListViewController.call(this, appCtxt, container, "ZaCertsServerListController");
-   	this._toolbarOperations = new Array();
    	this._popupOperations = new Array();			
-	
-	//TODO helpURL needs to be changed
 	this._helpURL = location.pathname + "help/admin/html/tools/creating_certificates.htm?locid=" + AjxEnv.DEFAULT_LOCALE;	
 }
 
 ZaCertsServerListController.prototype = new ZaListViewController();
 ZaCertsServerListController.prototype.constructor = ZaCertsServerListController;
-
-ZaController.initToolbarMethods["ZaCertsServerListController"] = new Array();
+ZaController.changeActionsStateMethods["ZaCertsServerListController"] = new Array();
 ZaController.initPopupMenuMethods["ZaCertsServerListController"] = new Array();
 
 /**
@@ -52,20 +48,10 @@ function(list, openInNewTab) {
 	this.changeActionsState();	
 }
 
-ZaCertsServerListController.initToolbarMethod =
-function () {
-    this._toolbarOperations.push(new ZaOperation(ZaOperation.VIEW, com_zimbra_cert_manager.TBB_view_cert, com_zimbra_cert_manager.TBB_view_cert_tt, "ViewCertificate", "ViewCertificate", new AjxListener(this, ZaCertsServerListController.prototype.viewCertListener)));	
-   	this._toolbarOperations.push(new ZaOperation(ZaOperation.NEW, com_zimbra_cert_manager.TBB_launch_cert_wizard, com_zimbra_cert_manager.TBB_launch_cert_wizard_tt, "InstallCertificate", "InstallCertificate", 
-   			new AjxListener(this, ZaCertsServerListController.prototype._newCertListener)));				
-	this._toolbarOperations.push(new ZaOperation(ZaOperation.NONE));
-	this._toolbarOperations.push(new ZaOperation(ZaOperation.HELP, com_zimbra_cert_manager.TBB_Help, com_zimbra_cert_manager.TBB_Help_tt, "Help", "Help", new AjxListener(this, this._helpButtonListener)));				
-}
-ZaController.initToolbarMethods["ZaCertsServerListController"].push(ZaCertsServerListController.initToolbarMethod);
-
 ZaCertsServerListController.initPopupMenuMethod =
 function () {
-   	this._popupOperations.push(new ZaOperation(ZaOperation.VIEW, com_zimbra_cert_manager.TBB_view_cert, com_zimbra_cert_manager.TBB_view_cert_tt, "ViewCertificate", "ViewCertificate", new AjxListener(this, ZaCertsServerListController.prototype.viewCertListener)));	
-   	this._popupOperations.push(new ZaOperation(ZaOperation.NEW, com_zimbra_cert_manager.TBB_launch_cert_wizard, com_zimbra_cert_manager.TBB_launch_cert_wizard_tt, "InstallCertificate", "InstallCertificate", new AjxListener(this, ZaCertsServerListController.prototype._newCertListener)));				
+   	this._popupOperations[ZaOperation.VIEW] = new ZaOperation(ZaOperation.VIEW, com_zimbra_cert_manager.TBB_view_cert, com_zimbra_cert_manager.TBB_view_cert_tt, "ViewCertificate", "ViewCertificate", new AjxListener(this, ZaCertsServerListController.prototype.viewCertListener));	
+   	this._popupOperations[ZaOperation.NEW] = new ZaOperation(ZaOperation.NEW, com_zimbra_cert_manager.TBB_launch_cert_wizard, com_zimbra_cert_manager.TBB_launch_cert_wizard_tt, "InstallCertificate", "InstallCertificate", new AjxListener(this, ZaCertsServerListController.prototype._newCertListener));				
 }
 ZaController.initPopupMenuMethods["ZaCertsServerListController"].push(ZaCertsServerListController.initPopupMenuMethod);
 
@@ -73,24 +59,12 @@ ZaCertsServerListController.prototype._createUI = function () {
 	try {
 		var elements = new Object();
 		this._contentView = new ZaCertsServerListView(this._container);
-		this._initToolbar();
-		if(this._toolbarOperations && this._toolbarOperations.length) {
-			this._toolbar = new ZaToolBar(this._container, this._toolbarOperations); 
-			elements[ZaAppViewMgr.C_TOOLBAR_TOP] = this._toolbar;
-		}
 		this._initPopupMenu();
 		if(this._popupOperations && this._popupOperations.length) {
 			this._actionMenu =  new ZaPopupMenu(this._contentView, "ActionMenu", null, this._popupOperations);
 		}
 		elements[ZaAppViewMgr.C_APP_CONTENT] = this._contentView;
-		//ZaApp.getInstance().createView(ZaZimbraAdmin._SERVERS_LIST_VIEW, elements);
-		var tabParams = {
-			openInNewTab: false,
-			tabId: this.getContentViewId(),
-			tab: this.getMainTab() 
-		}
-		ZaApp.getInstance().createView(this.getContentViewId(), elements, tabParams) ;
-
+        ZaApp.getInstance().getAppViewMgr().createView(this.getContentViewId(), elements);
 		this._contentView.addSelectionListener(new AjxListener(this, this._listSelectionListener));
 		this._contentView.addActionListener(new AjxListener(this, this._listActionListener));			
 		this._removeConfirmMessageDialog = new ZaMsgDialog(ZaApp.getInstance().getAppCtxt().getShell(), null, [DwtDialog.YES_BUTTON, DwtDialog.NO_BUTTON], ZaApp.getInstance());					
@@ -111,20 +85,24 @@ function(serverList) {
 // new button was pressed
 ZaCertsServerListController.prototype._newCertListener =
 function(ev) {
-	if(window.console && window.console.log) console.log("ZaCertsServerListController.prototype._newCertListener: Launch the new certificates wizard ... ") ;
+//	if(window.console && window.console.log) console.log("ZaCertsServerListController.prototype._newCertListener: Launch the new certificates wizard ... ") ;
 	var serverId = null;
-	//TODO: the selectedItem might be from the previous selection
-	if (this._selectedItem && this._selectedItem.id) {
-		serverId = this._selectedItem.id ;
+	
+	if(this._contentView && this._contentView.getSelectionCount()==1 && this._contentView.getSelection()[0]) {
+		serverId = this._contentView.getSelection()[0].id ;
 	}
 	ZaCert.launchNewCertWizard.call (this, serverId) ;
 }
                                     
 ZaCertsServerListController.prototype.viewCertListener = function (ev) {
-	if(window.console && window.console.log) console.log("View the certificates ... ") ;
-	ZaApp.getInstance().getCertViewController().show(
-		ZaCert.getCerts(ZaApp.getInstance(), this._selectedItem.id),
-		this._selectedItem.id) ;
+	//if(window.console && window.console.log) console.log("View the certificates ... ") ;
+	if(this._contentView && this._contentView.getSelectionCount()==1) {
+		var item = this._contentView.getSelection()[0];
+		ZaApp.getInstance().getCertViewController().show(ZaCert.getCerts(ZaApp.getInstance(), item.id),item.id);
+	    var parentPath = ZaTree.getPathByArray([ZaMsg.OVP_home, ZaMsg.OVP_configure, com_zimbra_cert_manager.OVP_certs]);
+	    ZaZimbraAdmin.getInstance().getOverviewPanelController().addObjectItem(parentPath, item.name, null, false, false, item);	
+	}
+	
 }
 
 /**
@@ -134,35 +112,42 @@ ZaCertsServerListController.prototype.viewCertListener = function (ev) {
 ZaCertsServerListController.prototype._listSelectionListener =
 function(ev) {
 	if(ev.item) {
-			this._selectedItem = ev.item;
+		this._selectedItem = ev.item;
 	}
-	if (ev.detail == DwtListView.ITEM_DBL_CLICKED) {
+	if (ev.detail == DwtListView.ITEM_DBL_CLICKED && ev.item) {
 			ZaApp.getInstance().getCertViewController().show(
-				ZaCert.getCerts(ZaApp.getInstance(), this._selectedItem.id),
-				this._selectedItem.id);
+				ZaCert.getCerts(ZaApp.getInstance(), ev.item.id),
+				ev.item.id);
+            var parentPath = ZaTree.getPathByArray([ZaMsg.OVP_home, ZaMsg.OVP_configure, com_zimbra_cert_manager.OVP_certs]);
+            ZaZimbraAdmin.getInstance().getOverviewPanelController().addObjectItem(parentPath, ev.item.name, null, false, false, ev.item);
 	} else {
 		this.changeActionsState();	
 	}
+
 }
 
 ZaCertsServerListController.prototype._listActionListener =
 function (ev) {
+	if(ev.item) {
+		this._selectedItem = ev.item;
+	}
 	this.changeActionsState();
 	this._actionMenu.popup(0, ev.docX, ev.docY);
 }
 
-ZaCertsServerListController.prototype.changeActionsState = 
+ZaCertsServerListController.changeActionsStateMethod = 
 function () {
 	if(this._contentView) {
+		if(this._popupOperations[ZaOperation.NEW]) {
+			this._popupOperations[ZaOperation.NEW].enabled = true;		
+		}
 		var cnt = this._contentView.getSelectionCount();
-		if(cnt == 1) {
-			var opsArray = [ZaOperation.VIEW, ZaOperation.NEW];
-			this._toolbar.enable(opsArray, true);
-			this._actionMenu.enable(opsArray, true);
-		} else {
-			var opsArray = [ZaOperation.VIEW];
-			this._toolbar.enable(opsArray, false);
-			this._actionMenu.enable(opsArray, false);
+		if(this._popupOperations[ZaOperation.VIEW]) {
+			this._popupOperations[ZaOperation.VIEW].enabled = (cnt == 1);		
 		}
 	}
+}
+
+if(ZaController.changeActionsStateMethods["ZaCertsServerListController"]) {
+    ZaController.changeActionsStateMethods["ZaCertsServerListController"].push(ZaCertsServerListController.changeActionsStateMethod);
 }

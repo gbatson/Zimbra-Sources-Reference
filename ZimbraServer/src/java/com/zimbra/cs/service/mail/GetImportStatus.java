@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.service.mail;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.cs.account.Account;
@@ -43,7 +44,7 @@ public class GetImportStatus extends MailDocumentHandler {
 
         for (ImportStatus status : statusList) {
             DataSource ds = prov.get(
-                account, Provisioning.DataSourceBy.id, status.getDataSourceId());
+                account, Key.DataSourceBy.id, status.getDataSourceId());
             Element eDataSource = response.addElement(ds.getType().name());
             eDataSource.addAttribute(MailConstants.A_ID, status.getDataSourceId());
             eDataSource.addAttribute(MailConstants.A_DS_IS_RUNNING, status.isRunning());

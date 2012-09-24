@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.bp;
 
 import java.util.HashMap;
@@ -22,6 +8,7 @@ import java.util.Queue;
 import com.zimbra.bp.BulkIMAPImportTaskManager.taskKeys;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
+import com.zimbra.common.soap.AdminExtConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
@@ -38,7 +25,7 @@ public class GetBulkIMAPImportTaskList extends AdminDocumentHandler  {
             throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Account authedAcct = DocumentHandler.getAuthenticatedAccount(zsc);
-        Element response = zsc.createElement(ZimbraBulkProvisionService.GET_BULK_IMAP_IMPORT_TASKLIST_RESPONSE);
+        Element response = zsc.createElement(AdminExtConstants.GET_BULK_IMAP_IMPORT_TASKLIST_RESPONSE);
         HashMap<String, Queue<HashMap<taskKeys, String>>> importQueues = BulkIMAPImportTaskManager.getImportQueues();
         if(AccessControlUtil.isGlobalAdmin(authedAcct, true)) {
             synchronized(importQueues) {
@@ -79,10 +66,10 @@ public class GetBulkIMAPImportTaskList extends AdminDocumentHandler  {
                 numTotal = rq.size();
             }
         } 
-        Element elTask = response.addElement(ZimbraBulkProvisionExt.E_Task);
-        ToXML.encodeAttr(elTask,ZimbraBulkProvisionExt.A_owner,acct.getName(),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
-        ToXML.encodeAttr(elTask,ZimbraBulkProvisionExt.A_totalTasks,Integer.toString(numTotal),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
-        ToXML.encodeAttr(elTask,ZimbraBulkProvisionExt.A_finishedTasks,Integer.toString(numFinished),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
-        ToXML.encodeAttr(elTask,ZimbraBulkProvisionExt.A_failedTasks,Integer.toString(numFailed),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
+        Element elTask = response.addElement(AdminExtConstants.E_Task);
+        ToXML.encodeAttr(elTask,AdminExtConstants.A_owner,acct.getName(),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
+        ToXML.encodeAttr(elTask,AdminExtConstants.A_totalTasks,Integer.toString(numTotal),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
+        ToXML.encodeAttr(elTask,AdminExtConstants.A_finishedTasks,Integer.toString(numFinished),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
+        ToXML.encodeAttr(elTask,AdminExtConstants.A_failedTasks,Integer.toString(numFailed),AdminConstants.E_A,AdminConstants.A_N,IDNType.none, true);
     }
 }

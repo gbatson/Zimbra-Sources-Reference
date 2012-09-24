@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.QName;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Pair;
@@ -40,9 +41,11 @@ import com.zimbra.cs.dav.resource.DavResource;
 import com.zimbra.cs.dav.resource.MailItemResource;
 import com.zimbra.cs.dav.resource.UrlNamespace;
 import com.zimbra.cs.dav.service.DavResponse;
+import com.zimbra.soap.type.GalSearchType;
 
 public class AclReports extends Report {
-	public void handle(DavContext ctxt) throws DavException, ServiceException {
+	@Override
+    public void handle(DavContext ctxt) throws DavException, ServiceException {
 		ctxt.setStatus(DavProtocol.STATUS_MULTI_STATUS);
 		Element query = ctxt.getRequestMessage().getRootElement();
 		if (query.getQName().equals(DavElements.E_PRINCIPAL_PROPERTY_SEARCH))
@@ -73,13 +76,13 @@ public class AclReports extends Report {
 			return ret;
 		
 		// apple hack to do user / resource search
-		Provisioning.GalSearchType type = Provisioning.GalSearchType.all;
+		GalSearchType type = GalSearchType.all;
 		String queryType = query.attributeValue("type");
 		if (queryType != null) {
 			if (queryType.compareToIgnoreCase("INDIVIDUAL") == 0)
-				type = Provisioning.GalSearchType.account;
+				type = GalSearchType.account;
 			else if (queryType.compareToIgnoreCase("RESOURCE") == 0)
-				type = Provisioning.GalSearchType.resource;
+				type = GalSearchType.resource;
 		}
 		@SuppressWarnings("unchecked")
 		List propSearch = query.elements(DavElements.E_PROPERTY_SEARCH);
@@ -98,7 +101,7 @@ public class AclReports extends Report {
 		return ret;
 	}
 	
-	private ArrayList<DavResource> getMatchingPrincipals(DavContext ctxt, QName prop, String match, Provisioning.GalSearchType type) throws DavException, ServiceException {
+	private ArrayList<DavResource> getMatchingPrincipals(DavContext ctxt, QName prop, String match, GalSearchType type) throws DavException, ServiceException {
 		Provisioning prov = Provisioning.getInstance();
 		ArrayList<DavResource> ret = new ArrayList<DavResource>();
 		Account authAccount = ctxt.getAuthAccount();
@@ -109,7 +112,7 @@ public class AclReports extends Report {
 	        for (GalContact ct : result.getMatches()) {
 	            String email = (String)ct.getAttrs().get(ContactConstants.A_email);
 	            if (email != null) {
-	            	Account acct = prov.get(Provisioning.AccountBy.name, email);
+	            	Account acct = prov.get(Key.AccountBy.name, email);
 	            	if (acct != null)
 	            		ret.add(UrlNamespace.getPrincipal(ctxt, acct));
 	            }
@@ -118,7 +121,7 @@ public class AclReports extends Report {
 			int index = match.lastIndexOf('/');
 			if (index > 0)
 				match = match.substring(index+1);
-			Account acct = prov.get(Provisioning.AccountBy.name, match);
+			Account acct = prov.get(Key.AccountBy.name, match);
 			if (acct != null)
         		ret.add(UrlNamespace.getPrincipal(ctxt, acct));
 		}
@@ -141,7 +144,7 @@ public class AclReports extends Report {
 		Provisioning prov = Provisioning.getInstance();
 		for (Ace ace : aces) {
 			if (ace.hasHref()) {
-				Account acct = prov.get(Provisioning.AccountBy.id, ace.getZimbraId());
+				Account acct = prov.get(Key.AccountBy.id, ace.getZimbraId());
 				if (acct != null)
 					ret.add(UrlNamespace.getPrincipal(ctxt, acct));
 			}

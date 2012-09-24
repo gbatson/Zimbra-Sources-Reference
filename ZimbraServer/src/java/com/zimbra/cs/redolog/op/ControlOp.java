@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 import com.zimbra.cs.redolog.TransactionId;
@@ -35,10 +36,12 @@ import com.zimbra.cs.redolog.TransactionId;
  */
 public abstract class ControlOp extends RedoableOp {
 
-	public ControlOp() {
+	public ControlOp(MailboxOperation op) {
+	    super(op);
 	}
 
-	public ControlOp(TransactionId txnId) {
+	public ControlOp(MailboxOperation op, TransactionId txnId) {
+	    this(op);
 		setTransactionId(txnId);
         setTimestamp(System.currentTimeMillis());
 	}

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
 import com.zimbra.qa.selenium.framework.ui.*;
@@ -91,7 +75,7 @@ public class DisplayContactGroup extends AbsDisplay {
 			  locatorArray.add("css=table[class*='contactHeaderTable'] div[class*='companyName']");
 			}		
 		else if ( field == Field.Email ) {					   			
-			getAllLocators(locatorArray,"email");
+			getAllLocators(locatorArray,Field.Email);
 		} 
 		else {			
 		  throw new HarnessException("no logic defined for field "+ field);			
@@ -107,11 +91,11 @@ public class DisplayContactGroup extends AbsDisplay {
 			  throw new HarnessException("locator was null for field = "+ field);
 		
 		   // Make sure the element is present
-		   if ( !this.sIsElementPresent(locator) )
+		   if ( !sIsElementPresent(locator) )
 			 throw new HarnessException("Unable to find the field = "+ field +" using locator = "+ locator);
 		
 		   // Get the element value
-		    value += " " + this.sGetText(locator).trim();		
+		    value += sGetText(locator).trim();		
 		}
 		
 		logger.info("DisplayContactGroup.zGetContactProperty(" + field + ") = " + value);
@@ -122,18 +106,25 @@ public class DisplayContactGroup extends AbsDisplay {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		throw new HarnessException("implement me!");
+		return sIsElementPresent("css=div#zv__CNS-main");
 	}
 	
 
-    private void getAllLocators(ArrayList<String> array, String postfix) {
-       String css= "css=div[id$='_content'][class='ZmContactInfoView'] table:nth-child(2) tbody tr";          
-       int count= this.sGetCssCount(css);
+    private void getAllLocators(ArrayList<String> array, Field field) throws HarnessException {
+  	   //String css= "css=div[id$='_content'][class='ZmContactInfoView'] table:nth-of-type(2) tbody tr";
+  	   String css= "css=div[id$='_content'][class='ZmContactInfoView']>div.DwtComposite>table";
+ 
+  	   int count= this.sGetCssCount(css);
 
-       for (int i=1; i<=count; i++) {
-    	  array.add( css + ":nth-child(" + i + ")" + " td[id$='_" + postfix + "']");
-       	
-    	    
+       if (field == Field.Email) {
+    	   for (int i=2; i<=count; i++) {
+    		   //String tdLocator=  css + ":nth-of-type(" + i + ")" + " td[id$='_" + postfix + "']";  
+    		   String tdLocator=  css + ":nth-of-type(" + i + ")" + " div[style='float: left; padding-right: 5px;']";
+    		   if (sIsElementPresent(tdLocator)) {
+    			   logger.info(tdLocator + " has text " + sGetText(tdLocator).trim());
+    			   array.add(tdLocator);	    	 
+    		   }
+    	   }
        }
     }
 

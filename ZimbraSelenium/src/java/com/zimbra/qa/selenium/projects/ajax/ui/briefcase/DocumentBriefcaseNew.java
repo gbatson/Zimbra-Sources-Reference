@@ -1,20 +1,6 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.briefcase;
+
+import org.openqa.selenium.WebElement;
 
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
 import com.zimbra.qa.selenium.framework.items.IItem;
@@ -23,14 +9,13 @@ import com.zimbra.qa.selenium.framework.ui.AbsForm;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 
 public class DocumentBriefcaseNew extends AbsForm {
 
 	public static class Locators {
 		public static final String zFrame = "css=iframe[class=ZDEditor]";
-		public static final String zSaveAndCloseIconBtn = "//*[@id='DWT9_left_icon']";
+		public static final String zSaveAndCloseIconBtn = "css=[id='DWT9_left_icon']";
 		public static final String zBodyField = "css=body";
 		public static final String zNameField = "css=[id^=DWT4]>input";
 		public static final String zEditNameField = "css=[class=DwtInputField] [input$=]";
@@ -111,22 +96,62 @@ public class DocumentBriefcaseNew extends AbsForm {
 			if (!this.sIsElementPresent(iframeLocator))
 				throw new HarnessException("Locator is not present: "
 						+ iframeLocator);
+			
+			if (ZimbraSeleniumProperties.isWebDriver()) {				
+				//String locator = Locators.zBodyField;
+				//sSelectFrame(Locators.zFrame);
+				//this.sType(locator, value);
+				
+				WebElement we = getElement(iframeLocator);
+				this.sMouseOver(iframeLocator);
+				this.sFocus(iframeLocator);
+				this.zClickAt(iframeLocator,"0,0");
 
-			this.sMouseOver(iframeLocator);
-			this.sFocus(iframeLocator);
-			this.zClickAt(iframeLocator,"0,0");
+				this
+					.executeScript("var bodytext=\""
+							+ value
+							+ "\";"
+							+ "var iframe_locator=\""
+							+ iframeLocator
+							+ "\";"
+							+ "var iframe_body=arguments[0].contentWindow.document.body;"
+							+ "if (navigator.userAgent.indexOf('Firefox')!=-1 || navigator.userAgent.indexOf('Chrome')!=-1){iframe_body.innerHTML=bodytext;}"
+							+ "else if(navigator.userAgent.indexOf('MSIE')!=-1){iframe_body.innerHTML=bodytext;}"
+							+ "else {iframe_body.innerHTML=bodytext;}", we);
+				
+			} else if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()){
+				this.sMouseOver(iframeLocator);
+				this.sFocus(iframeLocator);
+				this.zClickAt(iframeLocator,"0,0");
 
-			this
+				this
 					.sGetEval("var bodytext=\""
 							+ value
 							+ "\";"
 							+ "var iframe_locator=\""
 							+ iframeLocator
 							+ "\";"
-							+ "var iframe_body=selenium.browserbot.findElement(iframe_locator).contentWindow.document.body;"
-							+ "if (browserVersion.isFirefox || browserVersion.isChrome){iframe_body.textContent=bodytext;}"
-							+ "else if(browserVersion.isIE){iframe_body.innerText=bodytext;}"
-							+ "else {iframe_body.innerText=bodytext;}");
+							+ "var iframe_body=document.getElementById('DWT11').contentWindow.document.body;"
+							+ "if (navigator.userAgent.indexOf('Firefox')!=-1 || navigator.userAgent.indexOf('Chrome')!=-1){iframe_body.innerHTML=bodytext;}"
+							+ "else if(navigator.userAgent.indexOf('MSIE')!=-1){iframe_body.innerHTML=bodytext;}"
+							+ "else {iframe_body.innerHTML=bodytext;}");
+			} else {
+				this.sMouseOver(iframeLocator);
+				this.sFocus(iframeLocator);
+				this.zClickAt(iframeLocator,"0,0");
+				
+				this
+					.sGetEval("var bodytext=\""
+						+ value
+						+ "\";"
+						+ "var iframe_locator=\""
+						+ iframeLocator
+						+ "\";"
+						+ "var iframe_body=selenium.browserbot.findElement(iframe_locator).contentWindow.document.body;"
+						+ "if (browserVersion.isFirefox || browserVersion.isChrome){iframe_body.textContent=bodytext;}"
+						+ "else if(browserVersion.isIE){iframe_body.innerText=bodytext;}"
+						+ "else {iframe_body.innerText=bodytext;}");
+			}
 		} else {
 			throw new HarnessException("Not implemented field: " + field);
 		}
@@ -161,14 +186,14 @@ public class DocumentBriefcaseNew extends AbsForm {
 			// TODO: Add Version Notes dialog hasn't existed in ZD 7.0.1, thus
 			// ignoring below the Add Version Notes dialog for Desktop.
 			// Please remove this if condition block once it is available in ZD.
-			if (ZimbraSeleniumProperties.getAppType() != AppType.DESKTOP) {
+			
 				// add version notes
 				DialogAddVersionNotes dlgAddNotes = new DialogAddVersionNotes(
 						MyApplication,
 						((AppAjaxClient) MyApplication).zPageBriefcase);
 
 				dlgAddNotes.zDismissAddVersionNotesDlg(pageTitle);
-			}
+			
 		}
 	}
 

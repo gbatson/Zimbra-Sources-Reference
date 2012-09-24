@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,8 +22,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavException;
 import com.zimbra.cs.dav.resource.Collection;
-import com.zimbra.cs.dav.resource.DavResource;
-import com.zimbra.cs.dav.resource.MailItemResource;
+import com.zimbra.cs.dav.resource.Notebook;
 
 public class Copy extends Move {
     public static final String COPY  = "COPY";
@@ -32,19 +31,14 @@ public class Copy extends Move {
     }
 
     public void handle(DavContext ctxt) throws DavException, IOException, ServiceException {
-        DavResource rs = ctxt.getRequestedResource();
-        if (!(rs instanceof MailItemResource))
-            throw new DavException("cannot copy", HttpServletResponse.SC_BAD_REQUEST, null);
-        Collection col = getDestinationCollection(ctxt);
-        MailItemResource mir = (MailItemResource) rs;
-        DavResource copy;
+        String newName = null;        
+        if (mir instanceof Collection || mir instanceof Notebook)
+            newName = ctxt.getNewName();  
         if (ctxt.isOverwriteSet()) {
-            copy = mir.copyWithOverwrite(ctxt, col);
+            mir.moveORcopyWithOverwrite(ctxt, col, newName, false);
         } else {
-            copy = mir.copy(ctxt, col);
+            mir.copy(ctxt, col, newName);
         }
-
-        renameIfNecessary(ctxt, copy, col);
         ctxt.setStatus(HttpServletResponse.SC_NO_CONTENT);
     }
 }

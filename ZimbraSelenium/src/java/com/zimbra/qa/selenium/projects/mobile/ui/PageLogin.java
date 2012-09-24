@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.mobile.ui;
 
 import com.zimbra.qa.selenium.framework.ui.AbsApplication;
@@ -32,12 +16,12 @@ public class PageLogin extends AbsTab {
 		// TODO: Should this just extend a single class for all (Ajax, HTML, Mobile) login pages?
 		
 		// Buttons
-		public static final String zBtnLogin = "xpath=//input[@class='zLoginButton']";
+		public static final String zBtnLogin = "css=input.zLoginButton";
 		
 		// Text Input
-		public static final String zInputUsername = "xpath=//*[@id='username']";
-		public static final String zInputPassword = "xpath=//*[@id='password']";
-		public static final String zInputRemember = "xpath=//*[@id='remember']";
+		public static final String zInputUsername = "css=input#username";
+		public static final String zInputPassword = "css=input#password";
+		public static final String zInputRemember = "css=input#remember";
 		
 		// Displayed text
 		public static final String zDisplayedZLoginAppName = "xpath=//*[@id='ZLoginAppName']";

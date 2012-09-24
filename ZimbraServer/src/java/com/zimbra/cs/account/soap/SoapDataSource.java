@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.account.soap;
 
 import java.util.Map;
 
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.cs.account.Account;
@@ -26,13 +27,13 @@ import com.zimbra.common.soap.Element;
 
 class SoapDataSource extends DataSource implements SoapEntry {
         
-    SoapDataSource(Account acct, DataSource.Type type, String name, String id, Map<String, Object> attrs, Provisioning prov) {
+    SoapDataSource(Account acct, DataSourceType type, String name, String id, Map<String, Object> attrs, Provisioning prov) {
         super(acct, type, name, id, attrs, prov);
     }
 
     SoapDataSource(Account acct, Element e, Provisioning prov) throws ServiceException {
         super(acct,
-              DataSource.Type.fromString(e.getAttribute(AccountConstants.A_TYPE)),
+              DataSourceType.fromString(e.getAttribute(AccountConstants.A_TYPE)),
               e.getAttribute(AccountConstants.A_NAME), e.getAttribute(AccountConstants.A_ID), SoapProvisioning.getAttrs(e), prov);
     }
 

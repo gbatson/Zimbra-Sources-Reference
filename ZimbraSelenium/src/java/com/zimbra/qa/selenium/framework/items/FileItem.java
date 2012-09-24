@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -29,16 +13,27 @@ import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
  * 
  * 
  */
-public class FileItem implements IItem {
+public class FileItem implements IItem, IOctListViewItem {
 	protected static Logger logger = LogManager.getLogger(IItem.class);
+	
+	/**
+	 * Create a file item
+	 */
+	public FileItem() {	
+	}
 	
 	/**
 	 * Create a file item
 	 */
 	public FileItem(String path) {		
 		filePath = path;
-		String[] arr = filePath.split("/");
-		fileName = arr[arr.length - 1].trim();
+		if(filePath.contains("/")){
+		    fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+		}else if(filePath.contains("\\")){
+		    fileName = filePath.substring(filePath.lastIndexOf("\\") + 1);
+		}else{
+		    fileName = filePath;
+		}	
 	}
 	
 	/**
@@ -96,5 +91,39 @@ public class FileItem implements IItem {
 	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
 		// TODO Auto-generated method stub
 		
-	}	
+	}
+
+	/////////
+	// IListViewItem: Start
+	/////////
+	
+	private String ListViewIcon = null;
+	private String ListViewName = null;
+
+	@Override
+	public String getListViewIcon() throws HarnessException {
+		return (ListViewIcon);
+	}
+
+	@Override
+	public String getListViewName() throws HarnessException {
+		return (ListViewName);
+	}
+
+	
+	@Override
+	public void setListViewIcon(String icon) throws HarnessException {
+		ListViewIcon = icon;
+	}
+
+	@Override
+	public void setListViewName(String name) throws HarnessException {
+		ListViewName = name;
+	}
+	
+	/////////
+	// IListViewItem: End
+	/////////
+	
+
 }

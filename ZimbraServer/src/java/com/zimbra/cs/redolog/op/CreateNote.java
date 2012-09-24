@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,10 +20,11 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
-import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mailbox.Note;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
@@ -37,12 +38,14 @@ public class CreateNote extends RedoableOp {
     private Note.Rectangle mBounds;
 
     public CreateNote() {
+        super(MailboxOperation.CreateNote);
         mId = UNKNOWN_ID;
         mFolderId = UNKNOWN_ID;
     }
 
     public CreateNote(int mailboxId, int folderId,
-                      String content, MailItem.Color color, Note.Rectangle bounds) {
+                      String content, Color color, Note.Rectangle bounds) {
+        this();
         setMailboxId(mailboxId);
         mId = UNKNOWN_ID;
         mFolderId = folderId;
@@ -57,10 +60,6 @@ public class CreateNote extends RedoableOp {
 
     public void setNoteId(int id) {
         mId = id;
-    }
-
-    @Override public int getOpCode() {
-        return OP_CREATE_NOTE;
     }
 
     @Override protected String getPrintableData() {
@@ -107,7 +106,7 @@ public class CreateNote extends RedoableOp {
         Mailbox mailbox = MailboxManager.getInstance().getMailboxById(mboxId);
 
         try {
-            mailbox.createNote(getOperationContext(), mContent, mBounds, MailItem.Color.fromMetadata(mColor), mFolderId);
+            mailbox.createNote(getOperationContext(), mContent, mBounds, Color.fromMetadata(mColor), mFolderId);
         } catch (MailServiceException e) {
             String code = e.getCode();
             if (code.equals(MailServiceException.ALREADY_EXISTS)) {

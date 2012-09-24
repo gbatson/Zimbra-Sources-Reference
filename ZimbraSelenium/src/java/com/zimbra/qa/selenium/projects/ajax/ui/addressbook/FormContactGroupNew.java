@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
 import java.awt.event.KeyEvent;
@@ -22,6 +6,7 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
+
 import java.util.*;
 
 
@@ -33,19 +18,20 @@ public class FormContactGroupNew extends AbsForm {
 	public static class Locators {
 		
 		public static final String zNewContactGroupMenuIconBtn = "css=id=^_left_icon div[class=ImgNewGroup]";
-		
-		public static final String zGroupnameField               = "css=input[id$='_groupName']";		
-	    public static final String zGroupAddNewTextArea          = "css=textarea[id$='_addNewField']";
-	    public static final String zAddNewButton                 = "css=td[id$='_addNewButton'] td[id$='_title']";        
-	    public static final String zAddButton                    = "css=td[id$='_addButton'] td[id$='_title']";        
-	    public static final String zAddAllButton                 = "css=td[id$='_addAllButton'] td[id$='_title']";
-	    public static final String zPrevButton                   = "css=td[id$='_prevButton'] td[id$='_title']";
-	    public static final String zNextButton                   = "css=td[id$='_nextButton'] td[id$='_title']";
+		public static String       zActiveEditForm = "";
+			
+		public static String zGroupnameField               = " div.companyName input[id$='_groupName']";		
+	    public static String zGroupAddNewTextArea          = " textarea[id$='_addNewField']";
+	    public static String zAddNewButton                 = " td[id$='_addNewButton'] td[id$='_title']";        
+	    public static String zAddButton                    = " td[id$='_addButton'] td[id$='_title']";        
+	    public static String zAddAllButton                 = " td[id$='_addAllButton'] td[id$='_title']";
+	    public static String zPrevButton                   = " td[id$='_prevButton'] td[id$='_title']";
+	    public static String zNextButton                   = " td[id$='_nextButton'] td[id$='_title']";
 	    
-	    public static final String zFindField                    = "css=input[id$='_searchField']";
-        public static final String zSearchButton                 = "css=td[id$='_searchButton'][id^='DWT'] td[id$='_title']";
-        public static final String zSearchDropdown               = "css=td[id$='_listSelect'] td[id$='_select_container'] ";
-        public static final String zFolderDropdown               = "css=td[id$='_folderSelect'] td[id$='_select_container'] td[id$='_dropdown'] div[class='ImgSelectPullDownArrow']";
+	    public static String zFindField                    = " input[id$='_searchField']";
+        public static String zSearchButton                 = " td[id$='_searchButton'][id^='DWT'] td[id$='_title']";
+        public static String zSearchDropdown               = " td[id$='_listSelect'] td[id$='_select_container'] ";
+        public static String zFolderDropdown               = ">table.contactHeaderTable td[id$='_title']";
         
         
         //TODO
@@ -53,19 +39,19 @@ public class FormContactGroupNew extends AbsForm {
 	    public static final String zDropdownSelectSharedContacts = "css=DYNAMIC_ID";
 	    public static final String zDropdownSelectGAL            = "css=DYNAMIC_ID";
 	    
-	    public static final String zListView                     = "css=div[id$='_listView'] div#z1__GRP__rows";
-	    public static final String zEmailView                    = "css=div[id$='_groupMembers'] div#z1__GRP__rows";
+	    public static String zListView                     = " div[id$='_listView'] div#z1__GRP__rows";
+	    public static String zEmailView                    = " div[id$='_groupMembers'] div#z1__GRP__rows";
 	
-	    public static final String zDeleteAllButton              = "css=td[id$='_delAllButton'] td[id$='_title']";
-	    public static final String zDeleteButton                 = "css=td[id$='_delButton'] td[id$='_title']";
+	    public static String zDeleteAllButton              = " td[id$='_delAllButton'] td[id$='_title']";
+	    public static String zDeleteButton                 = " td[id$='_delButton'] td[id$='_title']";
         
 	    
 	} 
 
 	public static class Toolbar extends  AbsSeleniumObject{
 		
-		public static final String CANCEL="id=zb__GRP__CANCEL";
-		public static final String SAVE="id=zb__GRP__SAVE_left_icon";
+		public static String CANCEL="css=[id^=zb__CN][id$=__CANCEL]";
+		public static String SAVE="css=[id^=zb__CN][id$=__SAVE_left_icon]";
 
 	}
 		
@@ -92,31 +78,58 @@ public class FormContactGroupNew extends AbsForm {
 	public void save() throws HarnessException {
 		logger.info("FormContactNew.save()");
 		
-		// Look for "Save"
-		boolean visible = this.sIsElementPresent(Toolbar.SAVE);
-		if ( !visible )
-			throw new HarnessException("Save button is not visible "+ Toolbar.SAVE);
-		
+		try {				    
+		    for (int i=0; ; i++) {
+		    	String id = sGetEval("window.document.getElementsByClassName('ZToolbarTable')[" + i + "].offsetParent.id" );
+		    	if (id.startsWith("ztb") && zIsVisiblePerPosition(id, 0, 0)) {
+		    		Toolbar.SAVE = id.replaceFirst("ztb","zb") + "__SAVE";		    		
+		    		logger.info("active toolbar save = " + Toolbar.SAVE);
+		    		break;
+		    	}		    					    	
+	        }	
+		}
+		catch (Exception e) {
+			logger.info(e.getMessage());
+		}
+
+		// Look for "Save"		
+		// Check if the item is enabled
+		if (zIsElementDisabled(Toolbar.SAVE )) {
+			throw new HarnessException("Tried clicking on "+ Toolbar.SAVE +" but it was disabled ");
+		}
+
 		// Click on it
 		zClick(Toolbar.SAVE);
 		
-		zWaitForBusyOverlay();
+		// Need to wait for the contact save
+		zWaitForBusyOverlay();		
 		
 	}
 
 	// reset the form
 	public void zReset() throws HarnessException {
 		logger.info("FormMailGroupNew.zReset()");
-		String[] fieldList = {Locators.zGroupAddNewTextArea, 
-				              Locators.zGroupnameField };
+//		String[] fieldList = {getLocator(Locators.zGroupAddNewTextArea), 
+//				              getLocator(Locators.zGroupnameField) };
 		                  
+		String[] fieldList = {getLocator(Locators.zGroupAddNewTextArea.replaceFirst("=_","=" +Locators.zActiveEditForm + "_")), 
+	              getLocator(Locators.zGroupnameField.replaceFirst("=_","=" +Locators.zActiveEditForm + "_")) };
 		
 		for (int i=0; i < fieldList.length; i++) {
 		  sType(fieldList[i], "");
 		  
 		}
+		//TODO: remove existing contacts members
+		//zl__GRP__rows
 		
-		zClick(Locators.zDeleteAllButton);
+	}
+	
+	public static String getLocator(String locator) {   
+		if (locator.startsWith("css=")) {
+		    locator=locator.substring(locator.indexOf(" "));
+		}
+		
+		return "css=div#" + Locators.zActiveEditForm + locator;
 	}
 	
 	@Override
@@ -134,7 +147,7 @@ public class FormContactGroupNew extends AbsForm {
 		
 		// Fill out the form		
 		if (( group.groupName != null )  && (group.groupName.trim().length() >0)){
-			sType(Locators.zGroupnameField,group.groupName);
+			sType(getLocator(Locators.zGroupnameField),group.groupName);
 			
 		}
 		else {
@@ -143,10 +156,10 @@ public class FormContactGroupNew extends AbsForm {
 		
 		if ( group.getDList().length() > 0 ) {
 							
-			sType(Locators.zGroupAddNewTextArea,group.getDList());
+			sType(getLocator(Locators.zGroupAddNewTextArea),group.getDList());
 	
 			//click Add button
-		    zClick(Locators.zAddNewButton);
+		    zClick(getLocator(Locators.zAddNewButton));
 		    zWaitForBusyOverlay();
 				
 			}
@@ -160,8 +173,8 @@ public class FormContactGroupNew extends AbsForm {
 	/*
 	 * check if the list group is empty
 	 */
-	public boolean zIsListGroupEmpty() {
-		return sIsElementPresent("css=div#[id$=_listView].groupMembers div#zl__GRP__rows>div>table>tbody>tr>td.NoResults");			
+	public boolean zIsListGroupEmpty() throws HarnessException {
+		return sIsElementPresent(getLocator(" div#[id$=_listView].groupMembers div[id^=zl__DWT][id$=__rows] td.NoResults"));			
 	}
 
 	/* return an array list of contact items displayed in the group list view
@@ -175,7 +188,7 @@ public class FormContactGroupNew extends AbsForm {
 	      int count=1;
 	      
 	      while (true) {
-	    	  String cssCommon="css=div[id^=zl__][id$=__rows]>div:nth-child(" + count + ")>table>tbody>tr>";
+	    	  String cssCommon= getLocator(" div[id^=zl__DWT][id$=__rows]>div:nth-child(" + count + ") ");
 		      String cssName = cssCommon + "td:nth-child(2)"; 	
 		      String cssEmail= cssCommon + "td:nth-child(3)";
 		      
@@ -199,24 +212,75 @@ public class FormContactGroupNew extends AbsForm {
 	public boolean zIsContainedInEmailView(String list) throws HarnessException {		
 		throw new HarnessException("IMplement me");		
 	}
+	private void replaceLocators() {
+		Locators.zGroupnameField               = getLocator(Locators.zGroupnameField);
+		Locators.zGroupAddNewTextArea          = getLocator(Locators.zGroupAddNewTextArea);
+		Locators.zAddNewButton                 = getLocator(Locators.zAddNewButton);        
+		Locators.zAddButton                    = getLocator(Locators.zAddButton);        
+		Locators.zAddAllButton                 = getLocator(Locators.zAddAllButton);
+		Locators.zPrevButton                   = getLocator(Locators.zPrevButton);
+		Locators.zNextButton                   = getLocator(Locators.zNextButton);
+	    
+		Locators.zFindField                    = getLocator(Locators.zFindField);
+		Locators.zSearchButton                 = getLocator(Locators.zSearchButton);
+		Locators.zSearchDropdown               = getLocator(Locators.zSearchDropdown);
+		Locators.zFolderDropdown               = getLocator(Locators.zFolderDropdown);
+        	   
+		Locators.zListView                     = getLocator(Locators.zListView);
+		Locators.zEmailView                    = getLocator(Locators.zEmailView);
+	
+		Locators.zDeleteAllButton              = getLocator(Locators.zDeleteAllButton);
+		Locators.zDeleteButton                 = getLocator(Locators.zDeleteButton);
+        
+	}
 	
 	@Override
 	public boolean zIsActive() throws HarnessException {
 		logger.info(myPageName() + " zIsActive()");
-
-		String locator = Locators.zGroupnameField;
+			
+	  	if ((zIsVisiblePerPosition(Locators.zActiveEditForm, 0, 0)) && 
+	  	    (sGetEval("window.document.getElementById('" + Locators.zActiveEditForm + "').getAttribute('class')")).equals("ZmContactView"))
+	  	{
+    		logger.info("id = " + Locators.zActiveEditForm + " already active");
+    		return true;
+    	}	
+	  	
+		//set parameter zActiveEditForm		
 		
-		if ( !this.sIsElementPresent(locator) ) {
-			return (false); // Not even present
+		try {		
+		    int length = Integer.parseInt(sGetEval("window.document.getElementById('z_shell').children.length"))-1;
+			for (int i=length;i>=0; i--) {
+		    	String className=sGetEval("window.document.getElementById('z_shell').children[" + i + "].getAttribute('class')" );		    	
+		    	
+		    	if (className.equals("ZmContactView")) {
+		    		String id = sGetEval("window.document.getElementById('z_shell').children[" + i + "].id" );			    	
+		    		if (zIsVisiblePerPosition(id, 0, 0)) {		    	
+		    			Locators.zActiveEditForm = id;
+		    			logger.info("found active id = " + id);
+		    			replaceLocators();
+		    			return true;
+		    		}
+		    	}		    					    	
+	        }	
+		}
+		catch (Exception e) {
+			logger.info(e.getMessage());
 		}
 		
-		if ( !this.zIsVisiblePerPosition(locator, 0, 0) ) {
-			return (false);	// Not visible per position
-		}
+		return false;					
+	}
 	
-		// Yes, visible
-		logger.info(myPageName() + " zIsActive() = true");
-		return (true);
+	public DialogMove clickFolder() throws HarnessException {
+		//click the location
+		zClick(Locators.zFolderDropdown);
+		zWaitForBusyOverlay();
+		
+		DialogMove dialog = new DialogMove(MyApplication, ((AppAjaxClient) MyApplication).zPageAddressbook);				
+		
+		if ( dialog != null ) {
+			dialog.zWaitForActive();
+		}
+		return (dialog);
 	}
 
 	public void select(AppAjaxClient app, String dropdown, String option) throws HarnessException {

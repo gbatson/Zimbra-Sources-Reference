@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.tags;
 
 import org.testng.annotations.Test;
@@ -22,18 +6,16 @@ import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
 
-public class CreateTag extends AjaxCommonTest {
+public class CreateTag extends FeatureBriefcaseTest {
 
 	public CreateTag() {
 		logger.info("New " + CreateTag.class.getCanonicalName());
 
 		// All tests start at the Briefcase page
 		super.startingPage = app.zPageBriefcase;
-		super.startingAccountPreferences = null;
-
 	}
 
 	@Test(description = "Create a new tag by clicking 'new tag' on folder tree", groups = { "functional" })
@@ -44,7 +26,7 @@ public class CreateTag extends AjaxCommonTest {
 		String name = "tag" + ZimbraSeleniumProperties.getUniqueString();
 
 		DialogTag dialog = (DialogTag) app.zTreeBriefcase
-				.zPressButton(Button.B_TREE_NEWTAG);
+				.zPressPulldown(Button.B_TREE_TAGS_OPTIONS, Button.B_TREE_NEWTAG);
 		ZAssert.assertNotNull(dialog, "Verify the new dialog opened");
 
 		// Fill out the input field

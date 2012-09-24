@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.desktop.tests.addressbook.contacts;
 
 
@@ -446,7 +430,7 @@ public class ContactContextMenu extends AjaxCommonTest  {
 					"</SendMsgRequest>");
 		MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
 
-		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().DisplayName, lastName, app.zGetActiveAccount().EmailAddress);
+		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().getPref("displayName"), lastName, app.zGetActiveAccount().EmailAddress);
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());		
 		app.zPageAddressbook.zWaitForDesktopLoadingSpinner(5000);
 
@@ -484,7 +468,7 @@ public class ContactContextMenu extends AjaxCommonTest  {
 
 		MailItem.importFromSOAP(ZimbraAccount.AccountB(), "subject:("+ subject +")");
 
-		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().DisplayName,lastName, ZimbraAccount.AccountB().EmailAddress);
+		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().getPref("displayName"),lastName, ZimbraAccount.AccountB().EmailAddress);
 		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageAddressbook.zWaitForDesktopLoadingSpinner(5000);
 

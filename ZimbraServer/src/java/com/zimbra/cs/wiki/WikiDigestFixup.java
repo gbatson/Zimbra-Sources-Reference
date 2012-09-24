@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -25,7 +25,7 @@ import java.util.List;
 
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.db.DbPool;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
@@ -55,7 +55,7 @@ public class WikiDigestFixup {
         public String getEmail() { return mEmail; }
     }
 
-    private static List<Mbox> getMboxList(Connection conn) throws SQLException {
+    private static List<Mbox> getMboxList(DbConnection conn) throws SQLException {
         List<Mbox> list = new ArrayList<Mbox>(1000);
         String sql = "SELECT id, comment FROM mailbox ORDER BY id";
         PreparedStatement stmt = null;
@@ -105,10 +105,10 @@ public class WikiDigestFixup {
         }
         OperationContext octxt = new OperationContext(mbox);
         List<MailItem> items = new ArrayList<MailItem>();
-        List<MailItem> wikis = mbox.getItemList(octxt, MailItem.TYPE_WIKI);
+        List<MailItem> wikis = mbox.getItemList(octxt, MailItem.Type.WIKI);
         if (wikis != null && wikis.size() > 0)
             items.addAll(wikis);
-        List<MailItem> documents = mbox.getItemList(octxt, MailItem.TYPE_DOCUMENT);
+        List<MailItem> documents = mbox.getItemList(octxt, MailItem.Type.DOCUMENT);
         if (documents != null && documents.size() > 0)
             items.addAll(documents);
         int len = items.size();
@@ -124,7 +124,7 @@ public class WikiDigestFixup {
                 try {
                     is = sStore.getContent(blob);
                     byte[] data = ByteUtil.getContent(is, (int) item.getSize());
-                    String digest = ByteUtil.getDigest(data);
+                    String digest = ByteUtil.getSHA1Digest(data, true);
                     String currentDigest = item.getDigest();
                     if (!digest.equals(currentDigest)) {
                         System.out.println("Found id " + id + ", current digest = \"" + currentDigest + "\"");
@@ -141,14 +141,14 @@ public class WikiDigestFixup {
         return list;
     }
 
-    private static void fixupItems(Connection conn, int mboxId, List<WikiDigest> digests)
+    private static void fixupItems(DbConnection conn, int mboxId, List<WikiDigest> digests)
     throws SQLException, ServiceException {
         StringBuilder sql = new StringBuilder("UPDATE ");
         sql.append("mailbox" + mboxId + ".mail_item");
         sql.append(" SET blob_digest = ? WHERE id = ? AND type in (");
-        sql.append(MailItem.TYPE_WIKI);
+        sql.append(MailItem.Type.WIKI.toByte());
         sql.append(", ");
-        sql.append(MailItem.TYPE_DOCUMENT);
+        sql.append(MailItem.Type.DOCUMENT.toByte());
         sql.append(")");
         String sqlStr = sql.toString();
 
@@ -183,7 +183,7 @@ public class WikiDigestFixup {
         CliUtil.toolSetup("WARN");
         sStore = StoreManager.getInstance();
         DbPool.startup();
-        Connection conn = null;
+        DbConnection conn = null;
         try {
             int numFixed = 0;
             conn = DbPool.getConnection();

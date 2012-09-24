@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -92,8 +92,8 @@ public final class RFC822AddressTokenStreamTest {
 
     @Test
     public void limit() throws Exception {
-        TokenStream stream = new RFC822AddressTokenStream("<" + Strings.repeat("x.", 200) + "x@zimbra.com>");
-        Assert.assertEquals(100, ZimbraAnalyzerTest.toTokens(stream).size());
+        TokenStream stream = new RFC822AddressTokenStream("<" + Strings.repeat("x.", 600) + "x@zimbra.com>");
+        Assert.assertEquals(512, ZimbraAnalyzerTest.toTokens(stream).size());
     }
 
     @Test

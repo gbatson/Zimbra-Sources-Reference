@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,91 +16,144 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
+import com.google.common.base.Strings;
+import com.zimbra.common.mailbox.Color;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailItem.CustomMetadata;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
 public class CreateFolder extends RedoableOp {
 
-    private String mName;
-    private int mParentId;
-    private byte mAttrs;
-    private byte mDefaultView;
-    private int mFlags;
-    private long mColor;
-    private String mUrl;
-    private int mFolderId;
+    private String name;
+    private int parentId;
+    private byte attrs;
+    private MailItem.Type defaultView;
+    private int flags;
+    private long color;
+    private String url;
+    private Long date;
+    private CustomMetadata custom;
+    private int folderId;
+    private String folderUuid;
 
-    public CreateFolder()  { }
-
-    public CreateFolder(int mailboxId, String name, int parentId, byte view, int flags, MailItem.Color color, String url) {
-        this(mailboxId, name, parentId, (byte)0, view, flags, color, url);
+    public CreateFolder() {
+        super(MailboxOperation.CreateFolder);
     }
 
-    public CreateFolder(int mailboxId, String name, int parentId, byte attrs, byte view, int flags, MailItem.Color color, String url) {
+    public CreateFolder(int mailboxId, String name, int parentId, Folder.FolderOptions fopt) {
+        this();
         setMailboxId(mailboxId);
-        mName = name == null ? "" : name;
-        mParentId = parentId;
-        mAttrs = attrs;
-        mDefaultView = view;
-        mFlags = flags;
-        mColor = color.getValue();
-        mUrl = url == null ? "" : url;
+        this.name = name == null ? "" : name;
+        this.parentId = parentId;
+        this.attrs = fopt.getAttributes();
+        this.defaultView = fopt.getDefaultView();
+        this.flags = fopt.getFlags();
+        this.color = fopt.getColor().getValue();
+        this.url = Strings.nullToEmpty(fopt.getUrl());
+        this.date = fopt.getDate();
+        this.custom = fopt.getCustomMetadata();
     }
 
     public int getFolderId() {
-        return mFolderId;
+        return folderId;
     }
 
-    public void setFolderId(int folderId) {
-        mFolderId = folderId;
+    public String getFolderUuid() {
+        return folderUuid;
     }
 
-    @Override
-    public int getOpCode() {
-        return OP_CREATE_FOLDER;
+    public void setFolderIdAndUuid(int folderId, String uuid) {
+        this.folderId = folderId;
+        this.folderUuid = uuid;
     }
 
     @Override
     protected String getPrintableData() {
-        StringBuilder sb = new StringBuilder("name=").append(mName);
-        sb.append(", parent=").append(mParentId);
-        sb.append(", attrs=").append(mAttrs);
-        sb.append(", view=").append(mDefaultView);
-        sb.append(", flags=").append(mFlags).append(", color=").append(mColor);
-        sb.append(", url=").append(mUrl).append(", id=").append(mFolderId);
+        StringBuilder sb = new StringBuilder("name=").append(name);
+        sb.append(", parent=").append(parentId);
+        sb.append(", attrs=").append(attrs);
+        sb.append(", view=").append(defaultView);
+        sb.append(", flags=").append(flags).append(", color=").append(color);
+        sb.append(", url=").append(url).append(", id=").append(folderId);
+        sb.append(", uuid=").append(folderUuid);
+        sb.append(", date=").append(date);
+        sb.append(", custom=").append(custom);
         return sb.toString();
     }
 
     @Override
     protected void serializeData(RedoLogOutput out) throws IOException {
-        out.writeUTF(mName);
-        out.writeInt(mParentId);
-        if (getVersion().atLeast(1, 19)) out.writeByte(mAttrs);
-        out.writeByte(mDefaultView);
-        out.writeInt(mFlags);
-        // mColor from byte to long in Version 1.27
-        out.writeLong(mColor);
-        out.writeUTF(mUrl);
-        out.writeInt(mFolderId);
+        out.writeUTF(name);
+        out.writeInt(parentId);
+        // attrs as of version 1.19
+        out.writeByte(attrs);
+        out.writeByte(defaultView.toByte());
+        out.writeInt(flags);
+        // color from byte to long in Version 1.27
+        out.writeLong(color);
+        out.writeUTF(url);
+        out.writeInt(folderId);
+        // folder UUID as of version 1.37
+        out.writeUTF(folderUuid);
+        // date as long in version 1.40
+        out.writeBoolean(date != null);
+        if (date != null) {
+            out.writeLong(date);
+        }
+        // custom metadata as of version 1.41
+        if (custom == null) {
+            out.writeUTF(null);
+        } else {
+            out.writeUTF(custom.getSectionKey());
+            out.writeUTF(custom.getSerializedValue());
+        }
     }
 
     @Override
     protected void deserializeData(RedoLogInput in) throws IOException {
-        mName = in.readUTF();
-        mParentId = in.readInt();
-        if (getVersion().atLeast(1, 19)) mAttrs = in.readByte();
-        mDefaultView = in.readByte();
-        mFlags = in.readInt();
-        if (getVersion().atLeast(1, 27))
-            mColor = in.readLong();
-        else
-            mColor = in.readByte();
-        mUrl = in.readUTF();
-        mFolderId = in.readInt();
+        this.name = in.readUTF();
+        this.parentId = in.readInt();
+        if (getVersion().atLeast(1, 19)) {
+            this.attrs = in.readByte();
+        }
+        this.defaultView = MailItem.Type.of(in.readByte());
+        this.flags = in.readInt();
+        if (getVersion().atLeast(1, 27)) {
+            this.color = in.readLong();
+        } else {
+            this.color = in.readByte();
+        }
+        this.url = in.readUTF();
+        this.folderId = in.readInt();
+        if (getVersion().atLeast(1, 37)) {
+            this.folderUuid = in.readUTF();
+        }
+        if (getVersion().atLeast(1, 39)) {
+            if (in.readBoolean()) {
+                if (getVersion().atLeast(1, 40)) {
+                    this.date = in.readLong();
+                } else {
+                    this.date = ((long) in.readInt()) * 1000;
+                }
+            }
+        }
+        if (getVersion().atLeast(1, 41)) {
+            String section = in.readUTF();
+            if (section != null) {
+                try {
+                    this.custom = new CustomMetadata(section, in.readUTF());
+                } catch (ServiceException e) {
+                    mLog.warn("could not deserialize custom metadata for folder", e);
+                }
+            }
+        }
     }
 
     @Override
@@ -108,13 +161,16 @@ public class CreateFolder extends RedoableOp {
         int mboxId = getMailboxId();
         Mailbox mailbox = MailboxManager.getInstance().getMailboxById(mboxId);
 
+        Folder.FolderOptions fopt = new Folder.FolderOptions();
+        fopt.setAttributes(attrs).setColor(Color.fromMetadata(color)).setDate(date).setFlags(flags);
+        fopt.setUrl(url).setDefaultView(defaultView).setUuid(folderUuid).setCustomMetadata(custom);
+
         try {
-            mailbox.createFolder(getOperationContext(), mName, mParentId, mAttrs, mDefaultView, mFlags, MailItem.Color.fromMetadata(mColor), mUrl);
+            mailbox.createFolder(getOperationContext(), name, parentId, fopt);
         } catch (MailServiceException e) {
             String code = e.getCode();
             if (code.equals(MailServiceException.ALREADY_EXISTS)) {
-                if (mLog.isInfoEnabled())
-                    mLog.info("Folder " + mName + " already exists in mailbox " + mboxId);
+                mLog.info("Folder %s already exists in mailbox %d", name, mboxId);
             } else {
                 throw e;
             }

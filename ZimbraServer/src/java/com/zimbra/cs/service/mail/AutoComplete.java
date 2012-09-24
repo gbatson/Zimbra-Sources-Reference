@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -28,6 +28,7 @@ import com.zimbra.cs.mailbox.ContactAutoComplete.AutoCompleteResult;
 import com.zimbra.cs.mailbox.ContactAutoComplete.ContactEntry;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.GalSearchType;
 
 public class AutoComplete extends MailDocumentHandler {
 
@@ -42,7 +43,7 @@ public class AutoComplete extends MailDocumentHandler {
         // remove commas (bug 46540)
         name = name.replace(",", " ").trim();
 
-        Provisioning.GalSearchType type = Provisioning.GalSearchType.fromString(request.getAttribute(MailConstants.A_TYPE, "account"));
+        GalSearchType type = GalSearchType.fromString(request.getAttribute(MailConstants.A_TYPE, "account"));
         int limit = account.getContactAutoCompleteMaxResults();
         boolean needCanExpand = request.getAttributeBool(MailConstants.A_NEED_EXP, false);
 
@@ -69,12 +70,12 @@ public class AutoComplete extends MailDocumentHandler {
     }
 
     protected AutoCompleteResult query(Element request, ZimbraSoapContext zsc, Account account,
-            boolean excludeGal, String name, int limit, Provisioning.GalSearchType type, OperationContext octxt) throws ServiceException {
+            boolean excludeGal, String name, int limit, GalSearchType type, OperationContext octxt) throws ServiceException {
         return query(request, zsc, account, excludeGal, name, limit, type, false, octxt);
     }
 
     protected AutoCompleteResult query(Element request, ZimbraSoapContext zsc, Account account,
-            boolean excludeGal, String name, int limit, Provisioning.GalSearchType type, boolean needCanExpand, OperationContext octxt) throws ServiceException {
+            boolean excludeGal, String name, int limit, GalSearchType type, boolean needCanExpand, OperationContext octxt) throws ServiceException {
        if (!canAccessAccount(zsc, account))
             throw ServiceException.PERM_DENIED("can not access account");
 
@@ -91,21 +92,31 @@ public class AutoComplete extends MailDocumentHandler {
         response.addAttribute(MailConstants.A_CANBECACHED, result.canBeCached);
         for (ContactEntry entry : result.entries) {
             Element cn = response.addElement(MailConstants.E_MATCH);
-            cn.addAttribute(MailConstants.A_EMAIL, entry.getEmail());
+            
+            // for contact group, emails of members will be expanded 
+            // separately on user request
+            if (!entry.isContactGroup()) {
+                cn.addAttribute(MailConstants.A_EMAIL, entry.getEmail());
+            }
             cn.addAttribute(MailConstants.A_MATCH_TYPE, getType(entry));
             cn.addAttribute(MailConstants.A_RANKING, Integer.toString(entry.getRanking()));
             cn.addAttribute(MailConstants.A_IS_GROUP, entry.isGroup());
-            if (entry.isGroup() && entry.canExpandGroupMembers())
+            if (entry.isGroup() && entry.canExpandGroupMembers()) {
                 cn.addAttribute(MailConstants.A_EXP, true);
-
+            }
+            
             ItemId id = entry.getId();
-            if (id != null)
+            if (id != null) {
                 cn.addAttribute(MailConstants.A_ID, id.toString(authAccountId));
+            }
+            
             int folderId = entry.getFolderId();
-            if (folderId > 0)
+            if (folderId > 0) {
                 cn.addAttribute(MailConstants.A_FOLDER, Integer.toString(folderId));
-            if (entry.isDlist())
+            }
+            if (entry.isContactGroup()) {
                 cn.addAttribute(MailConstants.A_DISPLAYNAME, entry.getDisplayName());
+            }
         }
     }
 

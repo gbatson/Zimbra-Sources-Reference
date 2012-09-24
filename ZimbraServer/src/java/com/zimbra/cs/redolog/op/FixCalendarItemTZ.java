@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,11 +20,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.zimbra.common.calendar.ICalTimeZone;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
+import com.zimbra.cs.mailbox.calendar.Util;
 import com.zimbra.cs.mailbox.calendar.tzfixup.TimeZoneFixupRules;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
@@ -34,20 +36,18 @@ public class FixCalendarItemTZ extends RedoableOp {
     private int mId;
     private Map<String, ICalTimeZone> mReplacementMap;
 
-    public FixCalendarItemTZ() {}
+    public FixCalendarItemTZ() {
+        super(MailboxOperation.FixCalendarItemTZ);
+    }
 
     public FixCalendarItemTZ(int mailboxId, int itemId) {
+        this();
         setMailboxId(mailboxId);
         mId = itemId;
     }
 
     public void setReplacementMap(Map<String, ICalTimeZone> replacementMap) {
         mReplacementMap = replacementMap;
-    }
-
-    @Override
-    public int getOpCode() {
-        return OP_FIX_CALENDAR_ITEM_TZ;
     }
 
     @Override
@@ -60,7 +60,7 @@ public class FixCalendarItemTZ extends RedoableOp {
                 ICalTimeZone newTZ = entry.getValue();
                 String newTZMeta = null;
                 if (newTZ != null)
-                    newTZMeta = newTZ.encodeAsMetadata().toString();
+                    newTZMeta = Util.encodeAsMetadata(newTZ).toString();
                 out.writeUTF(tzid);
                 out.writeUTF(newTZMeta);
             }
@@ -81,7 +81,7 @@ public class FixCalendarItemTZ extends RedoableOp {
                 try {
                     ICalTimeZone newTZ = null;
                     if (newTZMeta != null)
-                        newTZ = ICalTimeZone.decodeFromMetadata(new Metadata(newTZMeta));
+                        newTZ = Util.decodeTimeZoneFromMetadata(new Metadata(newTZMeta));
                     mReplacementMap.put(tzid, newTZ);
                 } catch (ServiceException e) {
                     IOException ioe = new IOException("Error deserializing timezone");

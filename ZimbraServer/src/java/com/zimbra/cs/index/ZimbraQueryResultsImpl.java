@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,11 +17,12 @@ package com.zimbra.cs.index;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.lucene.document.Document;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.db.DbSearch.SearchResult;
+import com.zimbra.cs.db.DbSearch;
 import com.zimbra.cs.imap.ImapMessage;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Contact;
@@ -39,53 +40,50 @@ abstract class ZimbraQueryResultsImpl implements ZimbraQueryResults {
     static final class LRUHashMap<T, U> extends LinkedHashMap<T, U> {
         private static final long serialVersionUID = -6181398012977532525L;
 
-        private final int mMaxSize;
+        private final int max;
 
-        LRUHashMap(int maxSize) {
-            super(maxSize, 0.75f, true);
-            mMaxSize = maxSize;
+        LRUHashMap(int max) {
+            super(max, 0.75f, true);
+            this.max = max;
         }
 
-        LRUHashMap(int maxSize, int tableSize) {
-            super(tableSize, 0.75f, true);
-            mMaxSize = maxSize;
+        LRUHashMap(int max, int size) {
+            super(size, 0.75f, true);
+            this.max = max;
         }
 
         @Override
         protected boolean removeEldestEntry(Map.Entry<T, U> eldest) {
-            return size() > mMaxSize;
+            return size() > max;
         }
     }
 
     private static final int MAX_LRU_ENTRIES = 2048;
     private static final int INITIAL_TABLE_SIZE = 100;
 
-    private Map<Integer, ConversationHit> mConversationHits;
-    private Map<Integer, MessageHit> mMessageHits;
-    private Map<String, MessagePartHit> mPartHits;
-    private Map<Integer, ContactHit> mContactHits;
-    private Map<Integer, NoteHit>  mNoteHits;
-    private Map<Integer, CalendarItemHit> mCalItemHits;
+    private Map<Integer, ConversationHit> conversationHits;
+    private Map<Integer, MessageHit> messageHits;
+    private Map<String, MessagePartHit> partHits;
+    private Map<Integer, ContactHit> contactHits;
+    private Map<Integer, NoteHit>  noteHits;
+    private Map<Integer, CalendarItemHit> calItemHits;
 
-    private byte[] mTypes;
-    private SortBy mSearchOrder;
-    private Mailbox.SearchResultMode mMode;
+    private final Set<MailItem.Type> types;
+    private final SortBy sortBy;
+    private final SearchParams.Fetch fetch;
 
-    ZimbraQueryResultsImpl(byte[] types, SortBy searchOrder, Mailbox.SearchResultMode mode) {
-        mTypes = types;
-        mMode = mode;
-        mSearchOrder = searchOrder;
+    ZimbraQueryResultsImpl(Set<MailItem.Type> types, SortBy sort, SearchParams.Fetch fetch) {
+        this.types = types;
+        this.fetch = fetch;
+        this.sortBy = sort;
 
-        mConversationHits = new LRUHashMap<Integer, ConversationHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
-        mMessageHits = new LRUHashMap<Integer, MessageHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
-        mPartHits = new LRUHashMap<String, MessagePartHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
-        mContactHits = new LRUHashMap<Integer, ContactHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
-        mNoteHits = new LRUHashMap<Integer, NoteHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
-        mCalItemHits = new LRUHashMap<Integer, CalendarItemHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
+        conversationHits = new LRUHashMap<Integer, ConversationHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
+        messageHits = new LRUHashMap<Integer, MessageHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
+        partHits = new LRUHashMap<String, MessagePartHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
+        contactHits = new LRUHashMap<Integer, ContactHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
+        noteHits = new LRUHashMap<Integer, NoteHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
+        calItemHits = new LRUHashMap<Integer, CalendarItemHit>(MAX_LRU_ENTRIES, INITIAL_TABLE_SIZE);
     };
-
-    @Override
-    public abstract void doneWithSearchResults() throws ServiceException;
 
     @Override
     public abstract ZimbraHit skipToHit(int hitNo) throws ServiceException;
@@ -96,86 +94,85 @@ abstract class ZimbraQueryResultsImpl implements ZimbraQueryResults {
     }
 
     @Override
-    public ZimbraHit getFirstHit() throws ServiceException {
-        resetIterator();
-        return getNext();
-    }
-
-    @Override
     public SortBy getSortBy() {
-        return mSearchOrder;
+        return sortBy;
     }
 
-    byte[] getTypes() {
-        return mTypes;
+    Set<MailItem.Type> getTypes() {
+        return types;
     }
 
-    public Mailbox.SearchResultMode getSearchMode() {
-        return mMode;
+    public SearchParams.Fetch getFetchMode() {
+        return fetch;
     }
 
-    protected ConversationHit getConversationHit(Mailbox mbx, int convId) {
-        ConversationHit ch = mConversationHits.get(convId);
-        if (ch == null) {
-            ch = new ConversationHit(this, mbx, convId);
-            mConversationHits.put(convId, ch);
-        }
-        return ch;
-    }
-
-    protected ContactHit getContactHit(Mailbox mbx, int mailItemId, Contact contact) {
-        ContactHit hit = mContactHits.get(mailItemId);
+    protected ConversationHit getConversationHit(Mailbox mbx, int id, Object sortValue) {
+        ConversationHit hit = conversationHits.get(id);
         if (hit == null) {
-            hit = new ContactHit(this, mbx, mailItemId, contact);
-            mContactHits.put(mailItemId, hit);
+            hit = new ConversationHit(this, mbx, id, sortValue);
+            conversationHits.put(id, hit);
         }
         return hit;
     }
 
-    protected NoteHit getNoteHit(Mailbox mbx, int mailItemId, Note note) {
-        NoteHit hit = mNoteHits.get(mailItemId);
+    protected ContactHit getContactHit(Mailbox mbx, int id, Contact contact, Object sortValue) {
+        ContactHit hit = contactHits.get(id);
         if (hit == null) {
-            hit = new NoteHit(this, mbx, mailItemId, note);
-            mNoteHits.put(mailItemId, hit);
+            hit = new ContactHit(this, mbx, id, contact, sortValue);
+            contactHits.put(id, hit);
         }
         return hit;
     }
 
-    protected CalendarItemHit getAppointmentHit(Mailbox mbx, int mailItemId, CalendarItem cal) {
-        CalendarItemHit hit = mCalItemHits.get(mailItemId);
+    protected NoteHit getNoteHit(Mailbox mbx, int id, Note note, Object sortValue) {
+        NoteHit hit = noteHits.get(id);
         if (hit == null) {
-            hit = new CalendarItemHit(this, mbx, mailItemId, cal);
-            mCalItemHits.put(mailItemId, hit);
+            hit = new NoteHit(this, mbx, id, note, sortValue);
+            noteHits.put(id, hit);
         }
         return hit;
     }
 
-    protected CalendarItemHit getTaskHit(Mailbox mbx, int mailItemId, Task task) {
-        CalendarItemHit hit = mCalItemHits.get(mailItemId);
+    protected CalendarItemHit getAppointmentHit(Mailbox mbx, int id, CalendarItem cal, Object sortValue) {
+        CalendarItemHit hit = calItemHits.get(id);
         if (hit == null) {
-            hit = new TaskHit(this, mbx, mailItemId, task);
-            mCalItemHits.put(mailItemId, hit);
+            hit = new CalendarItemHit(this, mbx, id, cal, sortValue);
+            calItemHits.put(id, hit);
         }
         return hit;
     }
 
-    protected MessageHit getMessageHit(Mailbox mbx, int mailItemId, Document doc, Message message) {
-        MessageHit hit = mMessageHits.get(mailItemId);
+    protected CalendarItemHit getTaskHit(Mailbox mbx, int id, Task task, Object sortValue) {
+        CalendarItemHit hit = calItemHits.get(id);
         if (hit == null) {
-            hit = new MessageHit(this, mbx, mailItemId, doc, message);
-            mMessageHits.put(mailItemId, hit);
+            hit = new TaskHit(this, mbx, id, task, sortValue);
+            calItemHits.put(id, hit);
         }
         return hit;
     }
 
-    protected MessagePartHit getMessagePartHit(Mailbox mbx, int mailItemId, Document doc, Message message) {
-        String partKey = Integer.toString(mailItemId) + "-" + doc.get(LuceneFields.L_PARTNAME);
-        MessagePartHit hit = mPartHits.get(partKey);
+    protected MessageHit getMessageHit(Mailbox mbx, int id, Message msg, Document doc, Object sortValue) {
+        MessageHit hit = messageHits.get(id);
         if (hit == null) {
-            hit = new MessagePartHit(this, mbx, mailItemId, doc, message);
-            mPartHits.put(partKey, hit);
+            hit = new MessageHit(this, mbx, id, msg, doc, sortValue);
+            messageHits.put(id, hit);
         }
         return hit;
+    }
+
+    protected MessagePartHit getMessagePartHit(Mailbox mbx, int id, Message msg, Document doc, Object sortValue) {
+        String key = Integer.toString(id) + "-" + doc.get(LuceneFields.L_PARTNAME);
+        MessagePartHit hit = partHits.get(key);
+        if (hit == null) {
+            hit = new MessagePartHit(this, mbx, id, msg, doc, sortValue);
+            partHits.put(key, hit);
+        }
+        return hit;
+    }
+
+    protected DocumentHit getDocumentHit(Mailbox mbx, int id, com.zimbra.cs.mailbox.Document item,
+            Document doc, Object sortValue) {
+        return new DocumentHit(this, mbx, id, item, doc, sortValue);
     }
 
     /**
@@ -185,81 +182,75 @@ abstract class ZimbraQueryResultsImpl implements ZimbraQueryResults {
      *          hits (e.g. if multiple document parts match) -- currently only true for MessageParts,
      *          false for all other kinds of result
      */
-    static final boolean shouldAddDuplicateHits(byte type) {
-        return (type == MailItem.TYPE_CHAT || type == MailItem.TYPE_MESSAGE);
+    static final boolean shouldAddDuplicateHits(MailItem.Type type) {
+        return (type == MailItem.Type.CHAT || type == MailItem.Type.MESSAGE);
     }
 
     /**
-     * We've got a mailbox, a DBMailItem.SearchResult and (optionally) a Lucene Doc...
+     * We've got a {@link Mailbox}, a {@link DbSearch.Result} and (optionally) a Lucene Doc...
      * that's everything we need to build a real ZimbraHit.
      *
      * @param doc - Optional, only set if this search had a Lucene part
      */
-    ZimbraHit getZimbraHit(Mailbox mbox, SearchResult sr, Document doc, SearchResult.ExtraData extra) {
+    ZimbraHit getZimbraHit(Mailbox mbox, DbSearch.Result sr, Document doc, DbSearch.FetchMode fetch) {
         MailItem item = null;
         ImapMessage i4msg = null;
         int modseq = -1, parentId = 0;
-        switch (extra) {
+        switch (fetch) {
             case MAIL_ITEM:
-                item = (MailItem) sr.extraData;
+                item = sr.getItem();
                 break;
             case IMAP_MSG:
-                i4msg = (ImapMessage) sr.extraData;
+                i4msg = sr.getImapMessage();
                 break;
             case MODSEQ:
-                modseq = sr.extraData != null ? (Integer) sr.extraData : -1;
+                modseq = sr.getModSeq();
                 break;
             case PARENT:
-                parentId = sr.extraData != null ? (Integer) sr.extraData : 0;
+                parentId = sr.getParentId();
                 break;
         }
 
-        ZimbraHit toRet = null;
-        switch (sr.type) {
-            case MailItem.TYPE_CHAT:
-            case MailItem.TYPE_MESSAGE:
+        ZimbraHit result = null;
+        switch (sr.getType()) {
+            case CHAT:
+            case MESSAGE:
                 if (doc != null) {
-                    toRet = getMessagePartHit(mbox, sr.id, doc, (Message) item);
+                    result = getMessagePartHit(mbox, sr.getId(), (Message) item, doc, sr.getSortValue());
                 } else {
-                    toRet = getMessageHit(mbox, sr.id, null, (Message) item);
+                    result = getMessageHit(mbox, sr.getId(), (Message) item, null, sr.getSortValue());
                 }
-                toRet.cacheSortField(getSortBy(), sr.sortkey);
                 break;
-            case MailItem.TYPE_CONTACT:
-                toRet = getContactHit(mbox, sr.id, (Contact) item);
+            case CONTACT:
+                result = getContactHit(mbox, sr.getId(), (Contact) item, sr.getSortValue());
                 break;
-            case MailItem.TYPE_NOTE:
-                toRet = getNoteHit(mbox, sr.id, (Note) item);
+            case NOTE:
+                result = getNoteHit(mbox, sr.getId(), (Note) item, sr.getSortValue());
                 break;
-            case MailItem.TYPE_APPOINTMENT:
-                toRet = getAppointmentHit(mbox, sr.id, (CalendarItem) item);
+            case APPOINTMENT:
+                result = getAppointmentHit(mbox, sr.getId(), (CalendarItem) item, sr.getSortValue());
                 break;
-            case MailItem.TYPE_TASK:
-                toRet = getTaskHit(mbox, sr.id, (Task) item);
+            case TASK:
+                result = getTaskHit(mbox, sr.getId(), (Task) item, sr.getSortValue());
                 break;
-            case MailItem.TYPE_DOCUMENT:
-            case MailItem.TYPE_WIKI:
-                toRet = getDocumentHit(mbox, sr.id, doc, (com.zimbra.cs.mailbox.Document) item);
+            case DOCUMENT:
+            case WIKI:
+                result = getDocumentHit(mbox, sr.getId(), (com.zimbra.cs.mailbox.Document) item, doc, sr.getSortValue());
                 break;
             default:
                 assert(false);
         }
 
         if (i4msg != null) {
-            toRet.cacheImapMessage(i4msg);
+            result.cacheImapMessage(i4msg);
         }
         if (modseq > 0) {
-            toRet.cacheModifiedSequence(modseq);
+            result.cacheModifiedSequence(modseq);
         }
         if (parentId != 0) {
-            toRet.cacheParentId(parentId);
-
+            result.cacheParentId(parentId);
         }
-        return toRet;
+        return result;
     }
 
-    protected DocumentHit getDocumentHit(Mailbox mbx, int mailItemId, Document luceneDoc,
-            com.zimbra.cs.mailbox.Document docItem) {
-        return new DocumentHit(this, mbx, mailItemId, luceneDoc, docItem);
-    }
 }

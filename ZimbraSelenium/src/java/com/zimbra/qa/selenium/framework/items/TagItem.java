@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -22,7 +6,11 @@ package com.zimbra.qa.selenium.framework.items;
 import org.apache.log4j.*;
 
 import com.zimbra.common.soap.Element;
+import com.zimbra.qa.selenium.framework.ui.AbsApplication;
+import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+
 
 
 /**
@@ -32,7 +20,10 @@ import com.zimbra.qa.selenium.framework.util.*;
  *
  */
 public class TagItem implements IItem {
-	protected static Logger logger = LogManager.getLogger(IItem.class);
+	private static final Logger logger = LogManager.getLogger(TagItem.class);
+	
+	//just a pseudo object for the option Remove Tag-> All Tags with multi-tagged items 
+	public static final TagItem Remove_All_Tags = new TagItem();
 
 	
 	////
@@ -75,7 +66,7 @@ public class TagItem implements IItem {
 	
 	
 	/**
-	 * Create a mail item
+	 * Create a tag item
 	 */
 	public TagItem() {
 	}
@@ -97,11 +88,49 @@ public class TagItem implements IItem {
 		return (dName);
 	}
 
+	//Create a new tag via soap
+	//return TagItem object
+	public static TagItem CreateUsingSoap(AbsApplication app) throws HarnessException{
+		String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();	
+		// Create the object
+		TagItem tagItem = new TagItem();
 
+	
+		//TODO color attribute 
+	   // Create a tag via soap
+		app.zGetActiveAccount().soapSend(
+				"<CreateTagRequest xmlns='urn:zimbraMail'>" +
+               	"<tag name='"+ tagName +"' color='1' />" +
+               "</CreateTagRequest>");
+		String tagId = app.zGetActiveAccount().soapSelectValue("//mail:CreateTagResponse/mail:tag", "id");
+
+		// Set the ID
+		tagItem.setId(tagId);
+		//Set tag name
+		tagItem.setName(tagName);			
+
+		// Refresh addressbook
+		if ( !(app instanceof AppAjaxClient) ) {
+			throw new HarnessException("Unknown app type: "+ app.getClass().getCanonicalName());
+		}
+		
+		((AppAjaxClient)app).zPageMain.zToolbarPressButton(Button.B_REFRESH);
+
+		return tagItem;
+	}
+
+	
+	//Create a new tag via soap
+	//return TagItem object
+	@Deprecated()
+	public static TagItem CreateTagViaSoap(ZimbraAccount account) throws HarnessException{
+		throw new HarnessException("deprecated - using CreateUsingSoap instead");		  
+	}
 	
 	/* (non-Javadoc)
 	 * @see framework.items.IItem#CreateSOAP(framework.util.ZimbraAccount)
 	 */
+	//TODO: ~ CreateViaSoap?
 	@Override
 	public void createUsingSOAP(ZimbraAccount account) throws HarnessException {
 		throw new HarnessException("implement me");

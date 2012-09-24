@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 import java.awt.*;
@@ -40,7 +24,7 @@ import com.zimbra.qa.selenium.framework.util.*;
 public abstract class AbsPage extends AbsSeleniumObject {
 	protected static Logger logger = LogManager.getLogger(AbsPage.class);
 
-	protected static final int PageLoadDelay = 30000; // wait 30 seconds for pages to load
+	protected static final int PageLoadDelay = 60000; // wait 60 seconds for pages to load
 
 	
 	@Deprecated
@@ -124,25 +108,15 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		throw new HarnessException("Page never became active");
 	}
 	
-
-	private static class Coordinate {
-		final int X;
-		final int Y;
-		
-		public Coordinate(int x, int y) {
-			this.X = x;
-			this.Y = y;
-		}
-		
-		/** 
-		 * Print this coordinate in "x,y" format
-		 */
-		public String toString() {
-			return (this.X + "," + this.Y);
-		}
-		
-	}
-	
+	/**
+	 * Hover over a specified button
+	 * @param button
+	 * @return
+	 * @throws HarnessException
+	 */
+	public AbsTooltip zHoverOver(Button button) throws HarnessException {
+		throw new HarnessException("implement me");
+	}		
 	
 	/**
 	 * Drag and Drop a locator onto another locator
@@ -333,15 +307,33 @@ public abstract class AbsPage extends AbsSeleniumObject {
 //				this.robot = robot;
 //		    }
 
+		    // Used to make sure num lock is not pressed
+		    private static boolean numLockHasBeenProcessed = false;
+
 		    public void type(String characters) {
 		    	logger.info("type("+ characters +")");
 		    	if (characters.equals("<Delete>")) {
 		    	   doType(KeyEvent.VK_DELETE);
 		    	} else if (characters.equals("<ESC>")) {
 		    	   doType(KeyEvent.VK_ESCAPE);
+		    	} else if (characters.equals("<SHIFT><DEL>")) {
+		    		
+		    		// http://forums.oracle.com/forums/thread.sjpa?threadID=2230592&tstart=0
+		    		if ( (!numLockHasBeenProcessed) && (Toolkit.getDefaultToolkit().getLockingKeyState(KeyEvent.VK_NUM_LOCK)) ) {
+		    			logger.info("Setting KeyEvent.VK_NUM_LOCK=false");
+		    			Toolkit.getDefaultToolkit().setLockingKeyState(KeyEvent.VK_NUM_LOCK, false);
+		    			numLockHasBeenProcessed = true;
+		    		}
+
+		    		doType(KeyEvent.VK_SHIFT, KeyEvent.VK_DELETE);
+
 		    	} else {
 		    	   for (char c : characters.toCharArray()) {
-		    	      type(c);
+		    	      try {
+		    		   type(c);
+		    	      }catch (Exception e) {
+		    	    	  logger.warn(e);
+					}
 		    	   }
 		    	}
 		    	
@@ -425,8 +417,10 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		        case '^': doType(KeyEvent.VK_CIRCUMFLEX); break;
 		        case '&': doType(KeyEvent.VK_AMPERSAND); break;
 		        case '*': doType(KeyEvent.VK_ASTERISK); break;
-		        case '(': doType(KeyEvent.VK_LEFT_PARENTHESIS); break;
-		        case ')': doType(KeyEvent.VK_RIGHT_PARENTHESIS); break;
+		        //case '(': doType(KeyEvent.VK_LEFT_PARENTHESIS); break;
+		        // case ')': doType(KeyEvent.VK_RIGHT_PARENTHESIS); break;
+		        case '(': doType(KeyEvent.VK_SHIFT,KeyEvent.VK_9); break;
+		        case ')': doType(KeyEvent.VK_SHIFT,KeyEvent.VK_0); break;		      
 		       // case '_': doType(KeyEvent.VK_UNDERSCORE); break;
 		        case '_': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_MINUS); break;
 		        
@@ -442,7 +436,7 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		        case ';': doType(KeyEvent.VK_SEMICOLON); break;
 		        case ':': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_SEMICOLON); break;
 		        case '\'': doType(KeyEvent.VK_QUOTE); break;
-		        case '"': doType(KeyEvent.VK_QUOTEDBL); break;
+		        case '"': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_QUOTE); break;
 		        case ',': doType(KeyEvent.VK_COMMA); break;
 		        case '<': doType(KeyEvent.VK_LESS); break;
 		        case '.': doType(KeyEvent.VK_PERIOD); break;
@@ -450,6 +444,19 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		        case '/': doType(KeyEvent.VK_SLASH); break;
 		        case '?': doType(KeyEvent.VK_SHIFT, KeyEvent.VK_SLASH); break;
 		        case ' ': doType(KeyEvent.VK_SPACE); break;
+
+		        // Swedish
+		        case '\u00c5': doTypeAltCode("143"); break;	// Å
+		        
+		        // Spanish ... http://www.asciitable.com/
+		        case '\u00e1': doTypeAltCode("160"); break;	// á
+		        case '\u00e9': doTypeAltCode("130"); break;	// é
+		        case '\u00ed': doTypeAltCode("161"); break;	// í
+		        case '\u00f3': doTypeAltCode("162"); break;	// ó
+		        case '\u00fa': doTypeAltCode("163"); break;	// ú
+		        case '\u00d1': doTypeAltCode("165"); break;	// Ñ
+		        case '\u00f1': doTypeAltCode("164"); break;	// ñ
+		        
 		        default:
 		                throw new IllegalArgumentException("Cannot type character " + character);
 		        }
@@ -469,6 +476,31 @@ public abstract class AbsPage extends AbsSeleniumObject {
 		        robot.keyRelease(keyCodes[offset]);
 		    }
 
+		    /**
+		     * Type Alt+code, e.g. á = ALT+160
+		     * @param code
+		     */
+		    private void doTypeAltCode(String code) {
+		    	
+		    	robot.keyPress(KeyEvent.VK_ALT);
+		    	
+		    	for (int i = 0; i < code.length(); i ++) {
+			        switch (code.charAt(i)) {
+			        case '1': doType(KeyEvent.VK_NUMPAD1); break;
+			        case '2': doType(KeyEvent.VK_NUMPAD2); break;
+			        case '3': doType(KeyEvent.VK_NUMPAD3); break;
+			        case '4': doType(KeyEvent.VK_NUMPAD4); break;
+			        case '5': doType(KeyEvent.VK_NUMPAD5); break;
+			        case '6': doType(KeyEvent.VK_NUMPAD6); break;
+			        case '7': doType(KeyEvent.VK_NUMPAD7); break;
+			        case '8': doType(KeyEvent.VK_NUMPAD8); break;
+			        case '9': doType(KeyEvent.VK_NUMPAD9); break;
+			        case '0': doType(KeyEvent.VK_NUMPAD0); break;
+			        }
+		    	}
+		    	
+		    	robot.keyRelease(KeyEvent.VK_ALT);
+		    }
 		}
 
 

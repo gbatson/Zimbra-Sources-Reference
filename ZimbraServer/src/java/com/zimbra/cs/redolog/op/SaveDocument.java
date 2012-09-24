@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,31 +17,40 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
+import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mime.ParsedDocument;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
 public class SaveDocument extends CreateMessage {
 
+    private String mUuid;
     private String mFilename;
     private String mMimeType;
     private String mAuthor;
-    private byte mItemType;
+    private MailItem.Type type;
     private String mDescription;
     private boolean mDescEnabled;
 
     public SaveDocument() {
+        mOperation = MailboxOperation.SaveDocument;
     }
 
-    public SaveDocument(int mailboxId, String digest, int msgSize, int folderId) {
-        super(mailboxId, ":API:", false, digest, msgSize, folderId, true, 0, null);
+    public SaveDocument(int mailboxId, String digest, long msgSize, int folderId, int flags) {
+        super(mailboxId, ":API:", false, digest, msgSize, folderId, true, flags, null);
+        mOperation = MailboxOperation.SaveDocument;
     }
 
-    @Override public int getOpCode() {
-        return OP_SAVE_DOCUMENT;
+    public String getUuid() {
+        return mUuid;
+    }
+
+    public void setUuid(String uuid) {
+        mUuid = uuid;
     }
 
     public String getFilename() {
@@ -68,26 +77,26 @@ public class SaveDocument extends CreateMessage {
         mAuthor = a;
     }
 
-    public byte getItemType() {
-        return mItemType;
+    public MailItem.Type getItemType() {
+        return type;
     }
 
-    public void setItemType(byte type) {
-        mItemType = type;
+    public void setItemType(MailItem.Type type) {
+        this.type = type;
     }
-    
+
     public String getDescription() {
         return mDescription;
     }
-    
+
     public void setDescription(String d) {
         mDescription = d;
     }
-    
+
     public boolean isDescriptionEnabled() {
         return mDescEnabled;
     }
-    
+
     public void setDescriptionEnabled(boolean descEnabled) {
         mDescEnabled = descEnabled;
     }
@@ -100,36 +109,55 @@ public class SaveDocument extends CreateMessage {
         setDescriptionEnabled(doc.isDescriptionEnabled());
     }
 
-    @Override protected void serializeData(RedoLogOutput out) throws IOException {
+    @Override protected String getPrintableData() {
+        return "uuid=" + mUuid + ", " + super.getPrintableData();
+    }
+
+    @Override
+    protected void serializeData(RedoLogOutput out) throws IOException {
         out.writeUTF(mFilename);
         out.writeUTF(mMimeType);
         out.writeUTF(mAuthor);
-        out.writeByte(mItemType);
-        if (getVersion().atLeast(1, 29))
+        out.writeByte(type.toByte());
+        if (getVersion().atLeast(1, 29)) {
             out.writeUTF(mDescription);
-        if (getVersion().atLeast(1, 31))
+        }
+        if (getVersion().atLeast(1, 31)) {
             out.writeBoolean(mDescEnabled);
+        }
+        if (getVersion().atLeast(1, 37)) {
+            out.writeUTF(mUuid);
+        }
         super.serializeData(out);
     }
 
-    @Override protected void deserializeData(RedoLogInput in) throws IOException {
+    @Override
+    protected void deserializeData(RedoLogInput in) throws IOException {
         mFilename = in.readUTF();
         mMimeType = in.readUTF();
         mAuthor = in.readUTF();
-        mItemType = in.readByte();
-        if (getVersion().atLeast(1, 29))
+        type = MailItem.Type.of(in.readByte());
+        if (getVersion().atLeast(1, 29)) {
             mDescription = in.readUTF();
-        if (getVersion().atLeast(1, 31))
+        }
+        if (getVersion().atLeast(1, 31)) {
             mDescEnabled = in.readBoolean();
-        else
+        } else {
             mDescEnabled = true;
+        }
+        if (getVersion().atLeast(1, 37)) {
+            mUuid = in.readUTF();
+        }
         super.deserializeData(in);
     }
 
-    @Override public void redo() throws Exception {
+    @Override
+    public void redo() throws Exception {
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
         try {
-            mbox.createDocument(getOperationContext(), getFolderId(), mFilename, mMimeType, mAuthor, mDescription, mDescEnabled, getAdditionalDataStream(), mItemType);
+            ParsedDocument pd = new ParsedDocument(getAdditionalDataStream(), mFilename, mMimeType,
+                System.currentTimeMillis(), mAuthor, mDescription, mDescEnabled);
+            mbox.createDocument(getOperationContext(), getFolderId(), pd, type, getFlags());
         } catch (MailServiceException e) {
             if (e.getCode() == MailServiceException.ALREADY_EXISTS) {
                 mLog.info("Document " + getMessageId() + " is already in mailbox " + mbox.getId());

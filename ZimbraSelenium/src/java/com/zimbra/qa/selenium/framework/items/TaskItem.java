@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -55,6 +39,7 @@ public class TaskItem implements IItem {
 	public String gDueDate;
 
 	public String gtaskBody;
+	public String gtaskHtmlBody;
 
 	// //
 	// FINISH: GUI Data
@@ -83,10 +68,25 @@ public class TaskItem implements IItem {
 	public void settaskBody(String taskBody) {
 		gtaskBody = taskBody;
 	}
+	public String getHtmlTaskBody() {
+
+		return gtaskHtmlBody;
+	}
+
+	public void setHtmlTaskBody(String taskHtmlBody) {
+		gtaskHtmlBody = taskHtmlBody;
+	}
 	public void populateTaskData() {
 		// TODO Auto-generated method stub
 		//taskSubject = "subject" + ZimbraSeleniumProperties.getUniqueString();
 		//taskBody = "Body" + ZimbraSeleniumProperties.getUniqueString();
+	}
+	public String myId;
+	public String getId() {
+		return (myId);
+	}
+	public void setId(String id) {
+		myId=id;
 	}
 
 	public static TaskItem importFromSOAP(Element GetMsgResponse) throws HarnessException {
@@ -101,12 +101,11 @@ public class TaskItem implements IItem {
 			// Make sure we only have the GetMsgResponse part
 			Element getMsgResponse = ZimbraAccount.SoapClient.selectNode(
 					GetMsgResponse, "//mail:GetMsgResponse");
+			
 			if (getMsgResponse == null)
 				throw new HarnessException(
 						"Element does not contain GetMsgResponse");
-
-			Element m = ZimbraAccount.SoapClient.selectNode(getMsgResponse,
-					"//mail:comp");
+			Element m = ZimbraAccount.SoapClient.selectNode(getMsgResponse,"//mail:comp");
 			if (m == null)
 				throw new HarnessException(
 						"Element does not contain an m element");
@@ -117,8 +116,9 @@ public class TaskItem implements IItem {
 			task.settaskBody(m.getAttribute("desc", null));
 			//Set task name
 			task.setName(m.getAttribute("name",null));
-
-
+			//Set task id
+			task.setId(m.getAttribute("calItemId", null));
+			task.setHtmlTaskBody(m.getAttribute("descHtml", null));
 			// TODO: parse the <m/> element
 
 			return (task);

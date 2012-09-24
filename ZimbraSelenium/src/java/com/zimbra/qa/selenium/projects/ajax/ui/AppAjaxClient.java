@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -28,12 +12,14 @@ import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.TreeContacts;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.TreeBriefcase;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.PageCalendar;
+import com.zimbra.qa.selenium.projects.ajax.ui.calendar.TreeCalendar;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.PagePreferences;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.TreePreferences;
 import com.zimbra.qa.selenium.projects.ajax.ui.preferences.signature.PageSignature;
 import com.zimbra.qa.selenium.projects.ajax.ui.search.PageAdvancedSearch;
 import com.zimbra.qa.selenium.projects.ajax.ui.search.PageSearch;
+import com.zimbra.qa.selenium.projects.ajax.ui.social.PageSocial;
 import com.zimbra.qa.selenium.projects.ajax.ui.tasks.*;
 
 
@@ -67,8 +53,11 @@ import com.zimbra.qa.selenium.projects.ajax.ui.tasks.*;
  */
 public class AppAjaxClient extends AbsApplication {
 	
+	// Pages
 	public PageLogin					zPageLogin = null;
+	public PageExternalRegistration		zPageExternalRegistration = null;
 	public PageMain						zPageMain = null;
+	public PageExternalMain				zPageExternalMain = null;
 	public PageSearch					zPageSearch = null;
 	public PageAdvancedSearch			zPageAdvancedSearch = null;
 	public PageMail						zPageMail = null;
@@ -79,11 +68,17 @@ public class AppAjaxClient extends AbsApplication {
 	public PagePreferences				zPagePreferences = null;
 	public PageSignature				zPageSignature = null;
 	
+	// Trees
 	public TreeMail						zTreeMail = null;
 	public TreeContacts					zTreeContacts = null;
+	public TreeCalendar					zTreeCalendar = null;
 	public TreeTasks					zTreeTasks = null;
 	public TreeBriefcase		        zTreeBriefcase = null;
 	public TreePreferences				zTreePreferences = null;
+	
+	// Zimlets
+	public PageSocial					zPageSocial = null;
+
 	
 	public AppAjaxClient() {
 		super();
@@ -92,13 +87,18 @@ public class AppAjaxClient extends AbsApplication {
 		
 		
 		// Login page
-		
 		zPageLogin = new PageLogin(this);
 		pages.put(zPageLogin.myPageName(), zPageLogin);
+		
+		zPageExternalRegistration = new PageExternalRegistration(this);
+		pages.put(zPageExternalRegistration.myPageName(), zPageExternalRegistration);
 		
 		// Main page
 		zPageMain = new PageMain(this);
 		pages.put(zPageMain.myPageName(), zPageMain);
+		
+		zPageExternalMain = new PageExternalMain(this);
+		pages.put(zPageExternalMain.myPageName(), zPageExternalMain);
 		
 		zPageSearch = new PageSearch(this);
 		pages.put(zPageSearch.myPageName(), zPageSearch);
@@ -124,6 +124,9 @@ public class AppAjaxClient extends AbsApplication {
 		zPageCalendar = new PageCalendar(this);
 		pages.put(zPageCalendar.myPageName(), zPageCalendar);
 		
+		zTreeCalendar = new TreeCalendar(this);
+		trees.put(zTreeCalendar.myPageName(), zTreeCalendar);
+		
 		// PageBriefcase page
 		zPageBriefcase = new PageBriefcase(this);
 		pages.put(zPageBriefcase.myPageName(), zPageBriefcase);
@@ -147,6 +150,11 @@ public class AppAjaxClient extends AbsApplication {
 		// signature Preferences page
 		zPageSignature = new PageSignature(this);
 		pages.put(zPageSignature.myPageName(),zPageSignature);
+		
+
+		// Zimlets
+		zPageSocial = new PageSocial(this);
+		pages.put(zPageSocial.myPageName(), zPageSocial);
 		
 
 		// Configure the localization strings

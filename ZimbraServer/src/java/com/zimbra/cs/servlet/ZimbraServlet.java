@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -60,8 +60,9 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.httpclient.URLUtil;
 import com.zimbra.cs.service.AuthProvider;
@@ -79,7 +80,8 @@ public class ZimbraServlet extends HttpServlet {
     private static final String PARAM_ALLOWED_PORTS  = "allowed.ports";
 
     protected static final String WWW_AUTHENTICATE_HEADER = "WWW-Authenticate";
-    
+    public static final String QP_ZAUTHTOKEN = "zauthtoken";
+
     protected String getRealmHeader(String realm)  { 
         if (realm == null)
             realm = "Zimbra";
@@ -95,7 +97,7 @@ public class ZimbraServlet extends HttpServlet {
             if (host != null) {
                 // to defend against DOS attack, use the negative domain cache
                 try {
-                    domain = Provisioning.getInstance().getDomain(DomainBy.virtualHostname, host.toLowerCase(), true);
+                    domain = Provisioning.getInstance().getDomain(Key.DomainBy.virtualHostname, host.toLowerCase(), true);
                 } catch (ServiceException e) {
                     mLog.warn("caught exception while getting domain by virtual host: " + host, e);
                 }
@@ -380,7 +382,7 @@ public class ZimbraServlet extends HttpServlet {
         Header[] headers = method.getResponseHeaders();
         for (int i = 0; i < headers.length; i++) {
             String hname = headers[i].getName(), hlc = hname.toLowerCase();
-            if (hlc.startsWith("x-") || (hlc.startsWith("content-") && !hlc.equals("content-length"))  || hlc.startsWith("www-"))    
+            if (hlc.startsWith("x-") || hlc.startsWith("content-") || hlc.startsWith("www-"))    
                 resp.addHeader(hname, headers[i].getValue());
         }
         InputStream responseStream = method.getResponseBodyAsStream();
@@ -443,7 +445,7 @@ public class ZimbraServlet extends HttpServlet {
         if (user.indexOf('@') == -1) {
             String host = HttpUtil.getVirtualHost(req);
             if (host != null) {
-                Domain d = prov.get(DomainBy.virtualHostname, host.toLowerCase());
+                Domain d = prov.get(Key.DomainBy.virtualHostname, host.toLowerCase());
                 if (d != null) user += "@" + d.getName();
             }
         }

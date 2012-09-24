@@ -18,18 +18,18 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.UUID;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.zimbra.cs.account.MockProvisioning;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.store.MailboxBlob.MailboxBlobInfo;
 
 public class MailboxBlobTest {
     @Test
     public void serialization() throws Exception {
-        MailboxBlobInfo mbinfo = new MailboxBlobInfo(UUID.randomUUID().toString(), Mailbox.FIRST_USER_ID, 1, "locator");
+        MailboxBlobInfo mbinfo = new MailboxBlobInfo(MockProvisioning.DEFAULT_ACCOUNT_ID, Mailbox.FIRST_USER_ID, 1, "locator");
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(baos);

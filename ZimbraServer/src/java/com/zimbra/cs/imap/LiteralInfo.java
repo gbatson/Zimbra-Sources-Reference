@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,11 +14,13 @@
  */
 package com.zimbra.cs.imap;
 
+import org.apache.mina.filter.codec.ProtocolDecoderException;
+
 public class LiteralInfo {
     int count;
     boolean blocking;
 
-    public static LiteralInfo parse(String line) {
+    public static LiteralInfo parse(String line) throws ProtocolDecoderException {
         if (line.endsWith("}")) {
             int i = line.lastIndexOf('{');
             if (i >= 0) {
@@ -31,7 +33,7 @@ public class LiteralInfo {
                 }
                 li.count = parseCount(s);
                 if (li.count < 0) {
-                    throw new IllegalArgumentException("bad literal format");
+                    throw new NioImapDecoder.TooBigLiteralException(line);
                 }
                 return li;
             }

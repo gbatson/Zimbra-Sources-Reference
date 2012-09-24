@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -25,7 +25,7 @@ import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.DavException;
-import com.zimbra.cs.dav.caldav.TimeRange;
+import com.zimbra.cs.dav.caldav.Range.TimeRange;
 import com.zimbra.cs.dav.resource.CalendarCollection;
 import com.zimbra.cs.dav.resource.DavResource;
 

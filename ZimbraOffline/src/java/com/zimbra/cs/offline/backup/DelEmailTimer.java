@@ -27,6 +27,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.mailbox.Folder;
+import com.zimbra.cs.mailbox.InitialSync;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.OperationContext;

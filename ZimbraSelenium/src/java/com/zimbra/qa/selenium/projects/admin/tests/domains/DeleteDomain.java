@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.admin.tests.domains;
 
 import org.testng.annotations.Test;
@@ -37,15 +21,16 @@ public class DeleteDomain extends AdminCommonTest {
 	}
 
 	/**
-	 * Testcase : Verify delete domain operation.
+	 * Testcase : Verify delete domain operation --  Search List View
 	 * Steps :
 	 * 1. Create a domain using SOAP.
-	 * 2. Remove galsync account created for domain using soap.
-	 * 3. Select the domain to delete.
-	 * 4. Verify domain is deleted using soap.
+	 * 2. Search domain.
+	 * 3. Select a domain.
+	 * 4. Delete a domain using delete button in Gear box menu.
+	 * 5. Verify domain is deleted using SOAP.
 	 * @throws HarnessException
 	 */
-	@Test(	description = "Verify delete domain operation",
+	@Test(	description = "Verify delete domain operation --  Search List View",
 			groups = { "smoke" })
 			public void DeleteDomain_01() throws HarnessException {
 
@@ -68,7 +53,7 @@ public class DeleteDomain extends AdminCommonTest {
 		app.zPageSearchResults.zListItem(Action.A_LEFTCLICK, domain.getName());
 
 		// Click on Delete button
-		DialogForDeleteOperation dialog = (DialogForDeleteOperation) app.zPageSearchResults.zToolbarPressButton(Button.B_DELETE);
+		DialogForDeleteOperation dialog = (DialogForDeleteOperation) app.zPageSearchResults.zToolbarPressPulldown(Button.B_GEAR_BOX, Button.O_DELETE);
 
 		// Click Yes in Confirmation dialog.
 		dialog.zClickButton(Button.B_YES);
@@ -87,6 +72,60 @@ public class DeleteDomain extends AdminCommonTest {
 		ZAssert.assertNull(response, "Verify the domain is deleted successfully");
 
 	}
+	
+	/**
+	 * Testcase : Verify delete domain operation  -- Search List View/Right Click Menu
+	 * Steps :
+	 * 1. Create a domain using SOAP.
+	 * 2. Search domain.
+	 * 3. Right click on domain.
+	 * 4. Delete a domain using delete button in right click menu.
+	 * 5. Verify domain is deleted using SOAP..
+	 * @throws HarnessException
+	 */
+	@Test(	description = "Verify delete domain operation",
+			groups = { "functional" })
+			public void DeleteDomain_02() throws HarnessException {
+
+		// Create a new domain in the Admin Console using SOAP
+		DomainItem domain = new DomainItem();
+
+		ZimbraAdminAccount.AdminConsoleAdmin().soapSend(
+				"<CreateDomainRequest xmlns='urn:zimbraAdmin'>"
+				+			"<name>" + domain.getName() + "</name>"
+				+		"</CreateDomainRequest>");
+
+
+		// Enter the search string to find the domain
+		app.zPageSearchResults.zAddSearchQuery(domain.getName());
+
+		// Click search
+		app.zPageSearchResults.zToolbarPressButton(Button.B_SEARCH);
+
+		// Right Click on domain to be deleted.
+		app.zPageSearchResults.zListItem(Action.A_RIGHTCLICK, domain.getName());
+
+		// Click on Delete button
+		DialogForDeleteOperation dialog = (DialogForDeleteOperation) app.zPageSearchResults.zToolbarPressButton(Button.B_TREE_DELETE);
+
+		// Click Yes in Confirmation dialog.
+		dialog.zClickButton(Button.B_YES);
+
+		// Click Ok on "Delete Items" dialog
+		dialog.zClickButton(Button.B_OK);
+
+		// Verify the domain do not exists in the ZCS
+		ZimbraAdminAccount.AdminConsoleAdmin().soapSend(
+				"<GetDomainRequest xmlns='urn:zimbraAdmin'>"
+				+	"<domain by='name'>" + domain.getName() + "</domain>"
+				+	"</GetDomainRequest>");
+
+
+		Element response = ZimbraAdminAccount.AdminConsoleAdmin().soapSelectNode("//admin:GetDomainResponse/admin:domain", 1);
+		ZAssert.assertNull(response, "Verify the domain is deleted successfully");
+
+	}
+
 
 
 }

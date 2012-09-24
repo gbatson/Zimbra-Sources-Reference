@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,18 +14,19 @@
  */
 package com.zimbra.cs.gal;
 
+import com.zimbra.common.account.ZAttrProvisioning.GalMode;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.GalSearchType;
-import com.zimbra.cs.account.ZAttrProvisioning.GalMode;
 import com.zimbra.cs.account.gal.GalOp;
 import com.zimbra.cs.account.gal.GalUtil;
 import com.zimbra.cs.account.ldap.LdapGalMapRules;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.account.ldap.entry.LdapDomain;
+import com.zimbra.cs.gal.GalFilter.NamedFilter;
+import com.zimbra.soap.type.GalSearchType;
 
 public class GalSearchConfig {
     
@@ -42,7 +43,8 @@ public class GalSearchConfig {
 	    }
 	}
     
-	public static GalSearchConfig create(Domain domain, GalOp op, GalType type, GalSearchType stype) throws ServiceException {
+	public static GalSearchConfig create(Domain domain, GalOp op, GalType type, GalSearchType stype) 
+	throws ServiceException {
 		switch (type) {
 		case zimbra:
 			return new ZimbraConfig(domain, op, stype);
@@ -80,10 +82,7 @@ public class GalSearchConfig {
 			mGalType = GalType.fromString(ds.getAttr(Provisioning.A_zimbraGalType));
 			Domain domain = Provisioning.getInstance().getDomain(ds.getAccount());
 			if (mGalType == GalType.zimbra) {
-				loadZimbraConfig(domain, GalOp.sync, null);
-				mFilter = LdapProvisioning.getFilterDef("zimbraSync");
-				if (mFilter == null)
-				    mFilter = DEFAULT_FILTER;
+				loadZimbraConfig(domain, GalOp.sync, GalSearchType.all);
 			} else {
 				loadConfig(domain, GalOp.sync);
 				if (mUrl.length == 0 || mFilter == null)
@@ -120,42 +119,69 @@ public class GalSearchConfig {
 			
 			mFilter = GalUtil.expandFilter(null, mFilter, "", null);
 		}
-		private static final String DEFAULT_FILTER = "(&(|(displayName=*)(cn=*)(sn=*)(gn=*)(mail=*)(zimbraMailDeliveryAddress=*)(zimbraMailAlias=*))(|(objectclass=zimbraAccount)(objectclass=zimbraDistributionList))(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE)))";
 	}
 	
 	protected void loadZimbraConfig(Domain domain, GalOp op, GalSearchType stype) throws ServiceException {
 		
         mRules = new LdapGalMapRules(domain, true);
         mOp = op;
-        String filterName = null;
+        NamedFilter filterName = null;
         
 		switch (op) {
 		case sync:
 			filterName = 
-                (stype == GalSearchType.all) ? "zimbraSync" :
-			    (stype == GalSearchType.resource) ? "zimbraResourceSync" : 
-			    (stype == GalSearchType.group) ? "zimbraGroupSync" : "zimbraAccountSync";
+                (stype == GalSearchType.all) ? NamedFilter.zimbraSync :
+			    (stype == GalSearchType.resource) ? NamedFilter.zimbraResourceSync : 
+			    (stype == GalSearchType.group) ? NamedFilter.zimbraGroupSync : 
+			        NamedFilter.zimbraAccountSync;
 			break;
 		case search:
 			filterName = 
-                (stype == GalSearchType.all) ? "zimbraSearch" :
-			    (stype == GalSearchType.resource) ? "zimbraResources" : 
-			    (stype == GalSearchType.group) ? "zimbraGroups" : "zimbraAccounts";
+                (stype == GalSearchType.all) ? NamedFilter.zimbraSearch :
+			    (stype == GalSearchType.resource) ? NamedFilter.zimbraResources : 
+			    (stype == GalSearchType.group) ? NamedFilter.zimbraGroups : 
+			        NamedFilter.zimbraAccounts;
 			mTokenizeKey = domain.getAttr(Provisioning.A_zimbraGalTokenizeSearchKey, null);
 			break;
 		case autocomplete:
 			filterName = 
-                (stype == GalSearchType.all) ? "zimbraAutoComplete" :
-			    (stype == GalSearchType.resource) ? "zimbraResourceAutoComplete" : 
-			    (stype == GalSearchType.group) ? "zimbraGroupAutoComplete" : "zimbraAccountAutoComplete";
+                (stype == GalSearchType.all) ? NamedFilter.zimbraAutoComplete :
+			    (stype == GalSearchType.resource) ? NamedFilter.zimbraResourceAutoComplete : 
+			    (stype == GalSearchType.group) ? NamedFilter.zimbraGroupAutoComplete : 
+			        NamedFilter.zimbraAccountAutoComplete;
 			mTokenizeKey = domain.getAttr(Provisioning.A_zimbraGalTokenizeAutoCompleteKey, null);
 			break;
 		}
-		if (filterName != null)
-			mFilter = LdapProvisioning.getFilterDef(filterName);
+		
+		String filter = null;
+		if (filterName != null) {
+		    filter = GalSearchConfig.getFilterDef(filterName);
+		}
+		
+		if (filter == null && op == GalOp.sync) {
+		    filter = GalFilter.DEFAULT_SYNC_FILTER;
+		}
+		
 		mAuthMech = Provisioning.LDAP_AM_SIMPLE;
-		mFilter = "(&("+mFilter+")(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE)))";
-		mSearchBase = LdapUtil.getZimbraSearchBase(domain, op);
+		
+		if (filter == null) {
+		    filter = "";
+		} else if (!filter.startsWith("(")) {
+		    filter = "(" + filter + ")";
+		}
+		
+		String dnSubtreeMatchFilter = null;
+		String searchBaseRaw = ZimbraGalSearchBase.getSearchBaseRaw(domain, op);
+		if (ZimbraGalSearchBase.PredefinedSearchBase.DOMAIN.name().equals(searchBaseRaw)) {
+		    dnSubtreeMatchFilter = ((LdapDomain) domain).getDnSubtreeMatchFilter().toFilterString();
+		}
+		    
+		if (dnSubtreeMatchFilter == null) {
+		    dnSubtreeMatchFilter = "";
+		}
+		mFilter = "(&" + filter + "(!(zimbraHideInGal=TRUE))(!(zimbraIsSystemResource=TRUE))" + dnSubtreeMatchFilter + ")";
+
+		mSearchBase = ZimbraGalSearchBase.getSearchBase(domain, op);
 		mGalType = GalType.zimbra;
 		mTimestampFormat = GalSyncToken.LDAP_GENERALIZED_TIME_FORMAT;
 		mPageSize = 1000;
@@ -219,7 +245,7 @@ public class GalSearchConfig {
         	break;
         }
         if (mFilter != null && mFilter.indexOf("(") == -1)
-        	mFilter = LdapProvisioning.getFilterDef(mFilter);
+        	mFilter = GalSearchConfig.getFilterDef(mFilter);
 		mGalType = GalType.ldap;
 	}
 	
@@ -317,4 +343,25 @@ public class GalSearchConfig {
 	public void setTokenizeKey(String tokenizeKey) {
 		mTokenizeKey = tokenizeKey;
 	}
+
+	public static String getFilterDef(NamedFilter filter) throws ServiceException {
+	    return getFilterDef(filter.name());
+	}
+	
+    public static String getFilterDef(String name) throws ServiceException {
+        String queryExprs[] = Provisioning.getInstance().getConfig().getMultiAttr(Provisioning.A_zimbraGalLdapFilterDef);
+        String fname = name+":";
+        String queryExpr = null;
+        for (int i=0; i < queryExprs.length; i++) {
+            if (queryExprs[i].startsWith(fname)) {
+                queryExpr = queryExprs[i].substring(fname.length());
+            }
+        }
+    
+        if (queryExpr == null) {
+            ZimbraLog.gal.warn("missing filter def " + name + " in " + Provisioning.A_zimbraGalLdapFilterDef);
+        }
+        return queryExpr;
+    }
+
 }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,12 +18,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.SignatureBy;
+import com.zimbra.common.account.SignatureUtil;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.SignatureBy;
 import com.zimbra.cs.account.Signature;
 import com.zimbra.soap.DocumentHandler;
 import com.zimbra.common.soap.Element;
@@ -44,7 +46,7 @@ public class ModifySignature extends DocumentHandler {
         
         Signature signature = null;
         String id = eSignature.getAttribute(AccountConstants.A_ID);
-        signature = prov.get(account, SignatureBy.id, id);
+        signature = prov.get(account, Key.SignatureBy.id, id);
         if (signature == null)
             throw AccountServiceException.NO_SUCH_SIGNATURE(id);
 
@@ -52,7 +54,7 @@ public class ModifySignature extends DocumentHandler {
         Map<String,Object> attrs = new HashMap<String, Object>();
         for (Element eContent : contents) {
             String type = eContent.getAttribute(AccountConstants.A_TYPE);
-            String attr = Signature.mimeTypeToAttrName(type);
+            String attr = SignatureUtil.mimeTypeToAttrName(type);
             if (attr == null)
                 throw ServiceException.INVALID_REQUEST("invalid type "+type, null);
             if (attrs.get(attr) != null)

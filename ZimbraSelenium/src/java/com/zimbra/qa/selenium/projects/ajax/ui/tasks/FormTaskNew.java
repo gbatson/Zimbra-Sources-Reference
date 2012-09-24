@@ -1,21 +1,6 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.tasks;
 
+import com.zimbra.qa.selenium.framework.core.SeleniumService;
 import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
@@ -60,16 +45,20 @@ public class FormTaskNew extends AbsForm {
 		public static final String zPriorityOptionLow	= "css=[id^=zv__COMPOSE][id$=___priority_dropdown]";
 		
 		//added by Girish
-		public static final String zFrame = "css=iframe[id*='DWT']";
+		public static final String zFrame = "css=iframe[id^='iframe_DWT']";
 		public static final String zSaveAndCloseIconBtn = "//*[@id='DWT9_left_icon']";
 		public static final String zBodyField = "css=body";
 		public static final String zNameField = "css=[id^=DWT4] [input$=]";
 		public static final String zEditNameField = "css=[class=DwtInputField] [input$=]";
-		public static final String zSaveTask = "zb__TKE1__SAVE_left_icon";
-		public static final String zTasksubjField = "//td[contains(@id,'zv__TKE1_subject')]/div/input";
+		public static final String zSaveTask = "css=div[id^='ztb__TKE']  tr[id^='ztb__TKE'] td[id$='__SAVE_title']";
+		//public static final String zTasksubjField = "//td[contains(@id,'zv__TKE1_subject')]/div/input";
+		public static final String zTasksubjField = "css=td[id$='_subject'] div input";
 		public static final String zTasksubjFieldDesktop = "//td[contains(@id,'_subject')]/div/input";
-		public static final String zCancelTask = "zb__TKE1__CANCEL_left_icon";
-
+		public static final String zCancelTask = "zb__TKE-1__CANCEL_left_icon";
+		public static final String zTaskOptionDropDown = "css=div[id^='ztb__TKE'] div[id$='__COMPOSE_OPTIONS'] td[id$='__COMPOSE_OPTIONS_dropdown']>div";
+		public static final String zTaskFormatAsHtml="css=div[id$='_FORMAT_HTML']";
+		public static final String zTaskFormatAsText="css=div[id$='_FORMAT_TEXT']";
+	
 		
 	}
 
@@ -78,7 +67,8 @@ public class FormTaskNew extends AbsForm {
 		public static final Field Subject = new Field("Subject");
 		public static final Field Location = new Field("Location");
 		public static final Field Body = new Field("Body");
-		
+		public static final Field HtmlBody = new Field("HtmlBody");
+		public static final Field DueDate = new Field("DueDate");
 		
 		private String field;
 		private Field(String name) {
@@ -99,7 +89,7 @@ public class FormTaskNew extends AbsForm {
 	 * 
 	 * @param application
 	 */
-	protected FormTaskNew(AbsApplication application) {
+	public FormTaskNew(AbsApplication application) {
 		super(application);
 		
 		logger.info("new " + FormTaskNew.class.getCanonicalName());
@@ -234,7 +224,26 @@ public class FormTaskNew extends AbsForm {
 				throw new HarnessException("unsupported priority option "+ option);
 			}
 				
-		} else {
+		}else if(pulldown==Button.B_OPTIONS){ 
+			if(option==Button.O_OPTION_FORMAT_AS_HTML){
+				
+				pulldownLocator=Locators.zTaskOptionDropDown;
+				optionLocator=Locators.zTaskFormatAsHtml;
+				page=this;
+				
+			}else if(option==Button.O_OPTION_FORMAT_AS_TEXT){
+				pulldownLocator=Locators.zTaskOptionDropDown;
+				optionLocator=Locators.zTaskFormatAsText;
+				page = new DialogWarning(
+						DialogWarning.DialogWarningID.SwitchingToTextWillDiscardHtmlFormatting,
+						this.MyApplication,
+						((AppAjaxClient)this.MyApplication).zPageTasks);
+
+			}
+			
+			
+		}else {
+		
 			throw new HarnessException("no logic defined for pulldown "+ pulldown);
 		}
 
@@ -296,23 +305,67 @@ public class FormTaskNew extends AbsForm {
 		   }
 
 		} else if (field == Field.Body) {
-			locator = Locators.zBodyField;
-			try {
-			   sSelectFrame(Locators.zFrame);
-			   this.sFocus(locator);
-			   this.zClick(locator);
-			   zKeyboard.zTypeCharacters(value);
-			  /* if (!(sGetValue(locator).equalsIgnoreCase(value))) {
-					this.sFocus(locator);
-					this.zClick(locator);
-					sType(locator, value);
-				}*/
-			} finally {
-			   sSelectWindow("Zimbra: Tasks");
+			
+			locator = "css=div[id^='zv__TKE-'] textarea[id$='_content']";
+			this.sFocus(locator);
+			this.zClick(locator);
+			zKeyboard.zTypeCharacters(value);
+
+			if (!(sGetValue(locator).equalsIgnoreCase(value))) {
+				this.sFocus(locator);
+				this.zClick(locator);
+				sType(locator, value);
 			}
 			return;
 
-		} else {
+		}else if (field == Field.HtmlBody) {
+			String browser = SeleniumService.getInstance().getSeleniumBrowser();			
+			try {
+
+				if (browser.equalsIgnoreCase("iexplore")) {
+					
+					locator = Locators.zFrame;
+
+					this.sFocus(locator);
+					this.zClickAt(locator, "");
+					zTypeFormattedText(locator, value);
+					this.zWaitForBusyOverlay();
+
+					return;
+					
+				} else {
+					
+					
+					sSelectFrame("css=div[id^='zv__TKE-'] iframe[id$='_content_ifr']");
+
+					locator = "css=body[id='tinymce']";
+					this.sFocus(locator);
+					this.zClickAt(locator, "");
+					
+					/*
+					 * Oct 25, 2011: The new TinyMCE editor broke sType().  Use zKeyboard instead,
+					 * however, it is preferred to use sType() if possible, but I can't find a
+					 * solution right now. 
+					 */
+					// this.sType(locator, value);
+					this.zKeyboard.zTypeCharacters(value);
+					
+					return;
+				}
+			} finally {
+				//sSelectWindow("Zimbra: Tasks");
+				// sSelectWindow(null);
+				this.sSelectFrame("relative=top");
+			}
+
+		}else if (field == Field.DueDate) {
+			locator = "css=input[id$='_endDateField']";
+			this.sFocus(locator);
+			this.zClick(locator);
+			sType(locator, value);
+
+			return;
+		}else {
 
 			throw new HarnessException("not implemented for field " + field);
 		}
@@ -367,8 +420,8 @@ public class FormTaskNew extends AbsForm {
 		logger.info(myPageName() + " zIsActive()");
 		
 		// Look for the div
-		String locator = "css=td[id='zv__TKE1_subject']";
-		
+		//String locator = "css=td[id='zv__TKE1_subject']";css=td[id$='_subject']
+		String locator = "css=td[id$='_subject']";
 		if ( !this.sIsElementPresent(locator) ) {
 			return (false);	
 		}

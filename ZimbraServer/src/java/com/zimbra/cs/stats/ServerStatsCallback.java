@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,7 +21,7 @@ import java.util.Map;
 import com.zimbra.common.stats.RealtimeStatsCallback;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.accesscontrol.PermissionCache;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
+import com.zimbra.cs.account.ldap.LdapProv;
 import com.zimbra.cs.mailbox.MessageCache;
 import com.zimbra.cs.store.BlobInputStream;
 import com.zimbra.cs.store.FileDescriptorCache;
@@ -41,8 +41,8 @@ public class ServerStatsCallback implements RealtimeStatsCallback {
         data.put(ZimbraPerf.RTS_ACL_CACHE_HIT_RATE, PermissionCache.getHitRate());
         
         Provisioning prov = Provisioning.getInstance();
-        if (prov instanceof LdapProvisioning) {
-            LdapProvisioning ldap = (LdapProvisioning) prov;
+        if (prov instanceof LdapProv) {
+            LdapProv ldap = (LdapProv) prov;
             data.put(ZimbraPerf.RTS_ACCOUNT_CACHE_SIZE, ldap.getAccountCacheSize());
             data.put(ZimbraPerf.RTS_ACCOUNT_CACHE_HIT_RATE, ldap.getAccountCacheHitRate());
             data.put(ZimbraPerf.RTS_COS_CACHE_SIZE, ldap.getCosCacheSize());
@@ -51,6 +51,8 @@ public class ServerStatsCallback implements RealtimeStatsCallback {
             data.put(ZimbraPerf.RTS_DOMAIN_CACHE_HIT_RATE, ldap.getDomainCacheHitRate());
             data.put(ZimbraPerf.RTS_SERVER_CACHE_SIZE, ldap.getServerCacheSize());
             data.put(ZimbraPerf.RTS_SERVER_CACHE_HIT_RATE, ldap.getServerCacheHitRate());
+            data.put(ZimbraPerf.RTS_UCSERVICE_CACHE_SIZE, ldap.getUCServiceCacheSize());
+            data.put(ZimbraPerf.RTS_UCSERVICE_CACHE_HIT_RATE, ldap.getUCServiceCacheHitRate());
             data.put(ZimbraPerf.RTS_ZIMLET_CACHE_SIZE, ldap.getZimletCacheSize());
             data.put(ZimbraPerf.RTS_ZIMLET_CACHE_HIT_RATE, ldap.getZimletCacheHitRate());
             data.put(ZimbraPerf.RTS_GROUP_CACHE_SIZE, ldap.getGroupCacheSize());

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,10 +20,13 @@ package com.zimbra.cs.account;
 
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.cs.account.auth.AuthMechanism.AuthMech;
+
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.HttpState;
@@ -46,7 +49,7 @@ public abstract class AuthToken {
         buf.append(":");
         if (b != null)
             buf.append(b);
-        return ByteUtil.getDigest(buf.toString().getBytes());
+        return ByteUtil.getSHA1Digest(buf.toString().getBytes(), true);
     }
     
     public static boolean isAnyAdmin(AuthToken authToken) {
@@ -88,6 +91,10 @@ public abstract class AuthToken {
     public String getAccessKey() {
         return null;
     }
+    
+    public AuthMech getAuthMech() {
+        return null;
+    }
 
     public void setProxyAuthToken(String encoded) {}
     
@@ -97,7 +104,7 @@ public abstract class AuthToken {
     
     public Account getAccount() throws ServiceException {
         String acctId = getAccountId();
-        Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.id, acctId);
+        Account acct = Provisioning.getInstance().get(Key.AccountBy.id, acctId);
         if (acct == null)
             throw AccountServiceException.NO_SUCH_ACCOUNT(acctId);
         
@@ -137,7 +144,14 @@ public abstract class AuthToken {
      * @param resp
      * @param isAdminReq
      */
-    public abstract void encode(HttpServletResponse resp, boolean isAdminReq, boolean secureCookie) throws ServiceException;
+    public void encode(HttpServletResponse resp, boolean isAdminReq, boolean secureCookie) 
+    throws ServiceException {
+        encode(resp, isAdminReq, secureCookie, false);
+    }
+    
+    public abstract void encode(HttpServletResponse resp, boolean isAdminReq, 
+            boolean secureCookie, boolean rememberMe) 
+    throws ServiceException;
 
     public abstract void encodeAuthResp(Element parent, boolean isAdmin) throws ServiceException;
     

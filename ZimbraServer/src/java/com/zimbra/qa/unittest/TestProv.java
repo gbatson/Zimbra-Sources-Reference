@@ -1,25 +1,9 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.unittest;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import junit.framework.TestCase;
 
 import com.zimbra.common.net.SocketFactories;
 import com.zimbra.common.service.ServiceException;
@@ -29,20 +13,24 @@ import com.zimbra.cs.account.CalendarResource;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.cs.account.Provisioning.CacheEntry;
-import com.zimbra.cs.account.Provisioning.CacheEntryBy;
-import com.zimbra.cs.account.Provisioning.CacheEntryType;
 import com.zimbra.cs.account.Server;
 import com.zimbra.cs.account.Zimlet;
+import com.zimbra.qa.unittest.prov.ldap.ACLTestUtil;
+import com.zimbra.soap.admin.type.CacheEntryType;
 
-public abstract class TestProv extends TestCase {
+public abstract class TestProv extends TestLdap {
 
     protected static final String TEST_ID = TestProvisioningUtil.genTestId();
-    protected static final String BASE_DOMAIN_NAME = TestProvisioningUtil.baseDomainName("test-prov", TEST_ID);
+    protected static final String BASE_DOMAIN_NAME = TestLdap.baseDomainName(TestProv.class); // TestProvisioningUtil.baseDomainName("test-prov", TEST_ID);
     protected static final String PASSWORD = "test123";
     
     protected static Provisioning sSoapProv;
@@ -53,7 +41,7 @@ public abstract class TestProv extends TestCase {
     
     List<NamedEntry> mCreatedEntries = new ArrayList<NamedEntry>();
     
-    // add domains in a seperate list, so they are deleted, after all domained 
+    // add domains in a separate list, so they are deleted, after all domain-ed 
     // entries are deleted, or else will get domain not empty exception
     // TODO: need to handle subdomains - those needed to be deleted before parent domains or
     //       else won't get deleted.  For now just go in LDAP and delete the test root directly.
@@ -88,6 +76,22 @@ public abstract class TestProv extends TestCase {
     
     private String genDomainName() {
         return nextSeq() + "." + BASE_DOMAIN_NAME;
+    }
+    
+    private String genAccountName() {
+        return "acct-" + nextSeq() + "." + BASE_DOMAIN_NAME;
+    }
+    
+    private String genCalendarResourceName() {
+        return "cr-" + nextSeq() + "." + BASE_DOMAIN_NAME;
+    }
+    
+    private String genDistributionListName() {
+        return "dl-" + nextSeq() + "." + BASE_DOMAIN_NAME;
+    }
+    
+    private String genDynamicGroupName() {
+        return "group-" + nextSeq() + "." + BASE_DOMAIN_NAME;
     }
     
     private String genCosName() {
@@ -143,10 +147,20 @@ public abstract class TestProv extends TestCase {
         return createAccount(localpart, domain, null);
     }
     
+    protected Account createUserAccount(Domain domain) throws Exception {
+        String localpart = genAccountName();
+        return createAccount(localpart, domain, null);
+    }
+    
     protected Account createDelegatedAdminAccount(String localpart, Domain domain) throws Exception {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsDelegatedAdminAccount, Provisioning.TRUE);
+        attrs.put(Provisioning.A_zimbraIsDelegatedAdminAccount, ProvisioningConstants.TRUE);
         return createAccount(localpart, domain, attrs);
+    }
+    
+    protected Account createDelegatedAdminAccount(Domain domain) throws Exception {
+        String localpart = genAccountName();
+        return createDelegatedAdminAccount(localpart, domain);
     }
     
     protected Account createGuestAccount(String email, String password) {
@@ -154,7 +168,7 @@ public abstract class TestProv extends TestCase {
     }
     
     protected Account createKeyAccount(String name, String accesKey) {
-        AuthToken authToken = new TestACAccessKey.KeyAuthToken(name, accesKey);
+        AuthToken authToken = new ACLTestUtil.KeyAuthToken(name, accesKey);
         return new GuestAccount(authToken);
     }
     
@@ -173,13 +187,18 @@ public abstract class TestProv extends TestCase {
         return cr;
     }
     
+    protected CalendarResource createCalendarResource(Domain domain) throws Exception {
+        String localpart = genCalendarResourceName();
+        return createCalendarResource(localpart, domain);
+    }
+    
     protected Cos createCos() throws Exception {
         Cos cos = mProv.createCos(genCosName(), null);
         mCreatedEntries.add(cos);
         return cos;
     }
     
-    private DistributionList createGroup(String localpart, Domain domain, Map<String, Object> attrs) throws Exception {
+    private DistributionList createDistributionList(String localpart, Domain domain, Map<String, Object> attrs) throws Exception {
         if (domain == null)
             domain = createDomain();
          
@@ -189,16 +208,58 @@ public abstract class TestProv extends TestCase {
         return dl;
     }
     
-    protected DistributionList createUserGroup(String localpart, Domain domain) throws Exception {
-        return createGroup(localpart, domain, new HashMap<String, Object>());
+    protected DistributionList createUserDistributionList(String localpart, Domain domain) throws Exception {
+        return createDistributionList(localpart, domain, new HashMap<String, Object>());
     }
     
-    protected DistributionList createAdminGroup(String localpart, Domain domain) throws Exception {
+    protected DistributionList createUserDistributionList(Domain domain) throws Exception {
+        String localpart = genDistributionListName();
+        return createUserDistributionList(localpart, domain);
+    }
+    
+    protected DistributionList createAdminDistributionList(String localpart, Domain domain) 
+    throws Exception {
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraIsAdminGroup, Provisioning.TRUE);
-        return createGroup(localpart, domain, attrs);
+        attrs.put(Provisioning.A_zimbraIsAdminGroup, ProvisioningConstants.TRUE);
+        return createDistributionList(localpart, domain, attrs);
     }
     
+    protected DistributionList createAdminDistributionList(Domain domain) throws Exception {
+        String localpart = genDistributionListName();
+        return createAdminDistributionList(localpart, domain);
+    }
+    
+    private DynamicGroup createDynamicGroup(String localpart, Domain domain, Map<String, Object> attrs) 
+    throws Exception {
+        if (domain == null) {
+            domain = createDomain();
+        }
+        
+        String email = localpart + "@" + domain.getName();
+        DynamicGroup dynGroup = mProv.createDynamicGroup(email, attrs);
+        mCreatedEntries.add(dynGroup);
+        return dynGroup;
+    }
+    
+    protected DynamicGroup createUserDynamicGroup(String localpart, Domain domain) throws Exception {
+        return createDynamicGroup(localpart, domain, new HashMap<String, Object>());
+    }
+    
+    protected DynamicGroup createUserDynamicGroup(Domain domain) throws Exception {
+        String localpart = genDynamicGroupName();
+        return createUserDynamicGroup(localpart, domain);
+    }
+    
+    protected DynamicGroup createAdminDynamicGroup(String localpart, Domain domain) throws Exception {
+        Map<String, Object> attrs = new HashMap<String, Object>();
+        attrs.put(Provisioning.A_zimbraIsAdminGroup, ProvisioningConstants.TRUE);
+        return createDynamicGroup(localpart, domain, attrs);
+    }
+    
+    protected DynamicGroup createAdminDynamicGroup(Domain domain) throws Exception {
+        String localpart = genDynamicGroupName();
+        return createAdminDynamicGroup(localpart, domain);
+    }
     
     protected Server createServer() throws Exception {
         Server server = mProv.createServer(genServerName(), new HashMap<String, Object>());
@@ -222,7 +283,7 @@ public abstract class TestProv extends TestCase {
     
     protected void flushCache(Account acct) throws Exception {
         CacheEntry[] entries = new CacheEntry[1];
-        entries[0] = new CacheEntry(CacheEntryBy.name, acct.getName());
+        entries[0] = new CacheEntry(Key.CacheEntryBy.name, acct.getName());
         mProv.flushCache(CacheEntryType.account, entries);
     }
     
@@ -233,8 +294,8 @@ public abstract class TestProv extends TestCase {
             mProv.deleteCalendarResource(entry.getId());
         else if (entry instanceof Cos)
             mProv.deleteCos(entry.getId());
-        else if (entry instanceof DistributionList)
-            mProv.deleteDistributionList(entry.getId());
+        else if (entry instanceof Group)
+            mProv.deleteGroup(entry.getId());
         else if (entry instanceof Domain)
             mProv.deleteDomain(entry.getId());
         else if (entry instanceof Server)

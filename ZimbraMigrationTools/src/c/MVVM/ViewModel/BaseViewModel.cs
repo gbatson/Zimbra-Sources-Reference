@@ -3,6 +3,8 @@ using Misc;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Globalization;
+using System.Threading;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows;
@@ -32,11 +34,16 @@ public class BaseViewModel: INotifyPropertyChanged
     public ListBox lb { get; set; }
     public static bool isServer { get; set; }
     public bool isBrowser { get; set; }
+    public string savedDomain { get; set; }
     public static Object[] ViewModelPtrs = new Object[(int)ViewType.MAX];
+    public string shortDatePattern;
 
     public BaseViewModel()
     {
         this.ProcessHelpCommand = new ActionCommand(this.ProcessHelp, () => true);
+        CultureInfo currentCulture = Thread.CurrentThread.CurrentCulture;
+        shortDatePattern = currentCulture.DateTimeFormat.ShortDatePattern;
+
     }
     public ICommand ProcessHelpCommand {
         get;
@@ -60,7 +67,8 @@ public class BaseViewModel: INotifyPropertyChanged
             DoHelp(helpFile);
             break;
         case 3:
-            DoHelp("options.html");
+            helpFile = isServer ? "options_server.html" : "options_user.html";
+            DoHelp(helpFile);
             break;
         case 4:
             helpFile = isServer ? "users.html" : "results.html";
@@ -147,7 +155,29 @@ public class BaseViewModel: INotifyPropertyChanged
 	    m_config.ZimbraServer.Port           = serverDestModel.ZimbraPort;
 	    m_config.ZimbraServer.AdminID  = serverDestModel.ZimbraAdmin;
 	    m_config.ZimbraServer.AdminPwd = serverDestModel.ZimbraAdminPasswd;
-            m_config.UserProvision.DestinationDomain        = usersModel.ZimbraDomain;
+            m_config.ZimbraServer.UseSSL = serverDestModel.ZimbraSSL;
+
+            // FBS bug 73500 -- 5/18/12
+            if (usersModel.ZimbraDomain.Length == 0)
+            {
+                if (usersModel.DomainsFilledIn)
+                {
+                    m_config.UserProvision.DestinationDomain = usersModel.DomainList[usersModel.CurrentDomainSelection];
+                }
+                else
+                if (savedDomain != null)
+                {
+                    if (savedDomain.Length > 0)
+                    {
+                        m_config.UserProvision.DestinationDomain = savedDomain;
+                    }
+                }
+            }
+            else
+            {
+                m_config.UserProvision.DestinationDomain = usersModel.ZimbraDomain;
+            }
+            //
 	}
 	else
 	{
@@ -169,6 +199,7 @@ public class BaseViewModel: INotifyPropertyChanged
         m_config.GeneralOptions.LogLevel = optionsModel.LogLevel;
         m_config.GeneralOptions.Verbose     = optionsModel.LoggingVerbose;
         m_config.GeneralOptions.MaxThreadCount = optionsModel.MaxThreadCount;
+        m_config.GeneralOptions.MaxErrorCount = optionsModel.MaxErrorCount;
         m_config.ImportOptions.Mail         = optionsModel.ImportMailOptions;
         m_config.ImportOptions.Calendar     = optionsModel.ImportCalendarOptions;
         m_config.ImportOptions.Contacts     = optionsModel.ImportContactOptions;
@@ -235,6 +266,17 @@ public class BaseViewModel: INotifyPropertyChanged
             fileName += htmlFile;
             urlString = "file:///" + fileName;
             bDoProcess = File.Exists(fileName);
+            
+            // FBS bug 76005 -- 7/13/12 -- build system does not use the extra level for help files
+            if (!bDoProcess)
+            {
+                fileName = ((IntroViewModel)ViewModelPtrs[(int)ViewType.INTRO]).InstallDir;
+                fileName += "/";
+                fileName += htmlFile;
+                urlString = "file:///" + fileName;
+                bDoProcess = File.Exists(fileName);
+            }
+            ///
         }
         if (bDoProcess)
             Process.Start(new ProcessStartInfo(urlString));

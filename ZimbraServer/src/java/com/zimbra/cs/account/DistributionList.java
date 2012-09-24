@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,21 +20,27 @@ import com.zimbra.common.service.ServiceException;
 import java.util.Map;
 import java.util.Set;
 
-public class DistributionList extends ZAttrDistributionList implements GroupedEntry {
-    
-    /*
-     * This is for sanity checking purpose.
-     * 
-     * Certain calls on DistributionList should only be made if the DistributionList
-     * object was obtained from prov.getAclGroup, *not* prov.get(DistributionListBy), 
-     * *not* prov.searchObjects.   Some calls are vice versa.
-     * 
-     * mIsAclGroup is true if this object was loaded by prov.getAclGroup.
-     */
-    boolean mIsAclGroup;
-    
+public abstract class DistributionList extends ZAttrDistributionList implements GroupedEntry {
+
+    protected static final String MEMBER_ATTR = Provisioning.A_zimbraMailForwardingAddress;
+
     public DistributionList(String name, String id, Map<String, Object> attrs, Provisioning prov) {
         super(name, id, attrs, prov);
+    }
+
+    @Override
+    public EntryType getEntryType() {
+        return EntryType.DISTRIBUTIONLIST;
+    }
+
+    @Override
+    public boolean isDynamic() {
+        return false;
+    }
+
+    @Override
+    public Domain getDomain() throws ServiceException {
+        return getProvisioning().getDomain(this);
     }
 
     public void modify(Map<String, Object> attrs) throws ServiceException {
@@ -65,63 +71,34 @@ public class DistributionList extends ZAttrDistributionList implements GroupedEn
         getProvisioning().removeMembers(this, member);
     }
 
+    @Override  // overriden in LdapDistributionList
     public String[] getAllMembers() throws ServiceException {
-        if (mIsAclGroup)
-            throw ServiceException.FAILURE("internal error", null);
-        
-        return getMultiAttr(Provisioning.A_zimbraMailForwardingAddress);
+        return getMultiAttr(MEMBER_ATTR);
     }
-    
+
+    @Override  // overriden in LdapDistributionList
     public Set<String> getAllMembersSet() throws ServiceException {
-        if (mIsAclGroup)
-            throw ServiceException.FAILURE("internal error", null);
-        
-        return getMultiAttrSet(Provisioning.A_zimbraMailForwardingAddress);
+        return getMultiAttrSet(MEMBER_ATTR);
     }
-    
+
+    @Override
     public String[] getAliases() throws ServiceException {
-        if (mIsAclGroup)
-            throw ServiceException.FAILURE("internal error", null);
-        
         return getMultiAttr(Provisioning.A_zimbraMailAlias);
     }
-    
+
     @Override
     protected void resetData() {
         super.resetData();
-        if (mIsAclGroup)
-            trimForAclGroup();
     }
 
-    private void trimForAclGroup() {
-        /*
-         * Hack.
-         * 
-         * We do not want to cache zimbraMailAlias/zimbraMailForwardingAddress.
-         * zimbraMailForwardingAddress can be big.
-         * zimbraMailAlias was loaded for computing the upward membership and is now no longer 
-         * needed.  Remove it before caching.
-         */ 
-        Map<String, Object> attrs = getAttrs(false);
-        attrs.remove(Provisioning.A_zimbraMailAlias);
-        attrs.remove(Provisioning.A_zimbraMailForwardingAddress);
-    }
-    
-    public boolean isAclGroup() {
-        return mIsAclGroup;
-    }
-    
-    public void turnToAclGroup() {
-        mIsAclGroup = true;
-        trimForAclGroup();
-    }
-    
+    @Override
     public String[] getAllAddrsAsGroupMember() throws ServiceException {
         String aliases[] = getAliases();
         String addrs[] = new String[aliases.length+1];
         addrs[0] = getName();
-        for (int i=0; i < aliases.length; i++)
+        for (int i=0; i < aliases.length; i++) {
             addrs[i+1] = aliases[i];
+        }
         return addrs;
     }
 

@@ -1,18 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.datasource.imap;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
@@ -25,9 +28,6 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailclient.imap.Flags;
 import com.zimbra.cs.mailclient.imap.ListData;
-
-import java.util.HashSet;
-import java.util.Set;
 
 final class LocalFolder {
     private final Mailbox mbox;
@@ -51,12 +51,12 @@ final class LocalFolder {
         }
     }
 
-    LocalFolder(Mailbox mbox, String path) throws ServiceException {
+    LocalFolder(Mailbox mbox, String path) {
         this.mbox = mbox;
         this.path = path;
     }
 
-    LocalFolder(Mailbox mbox, Folder folder) throws ServiceException {
+    LocalFolder(Mailbox mbox, Folder folder) {
         this.mbox = mbox;
         this.path = folder.getPath();
         this.folder = folder;
@@ -74,7 +74,7 @@ final class LocalFolder {
 
     public void create() throws ServiceException {
         debug("creating folder");
-        folder = mbox.createFolder(null, path, (byte) 0, MailItem.TYPE_MESSAGE);
+        folder = mbox.createFolder(null, path, new Folder.FolderOptions().setDefaultView(MailItem.Type.MESSAGE));
     }
 
     public void updateFlags(ListData ld) throws ServiceException {
@@ -86,26 +86,26 @@ final class LocalFolder {
         int bits = folder.getFlagBitmask();
         if (((bits & Flag.BITMASK_NO_INFERIORS) != 0) != noinferiors) {
             debug("Setting NO_INFERIORS flag to " + noinferiors);
-            alterTag(Flag.ID_FLAG_NO_INFERIORS, noinferiors);
+            alterTag(Flag.FlagInfo.NO_INFERIORS, noinferiors);
         }
         boolean sync = !flags.isNoselect();
         if (((bits & Flag.BITMASK_SYNCFOLDER) != 0) != sync) {
             debug("Setting sync flag to " + sync);
-            alterTag(Flag.ID_FLAG_SYNCFOLDER, sync);
-            alterTag(Flag.ID_FLAG_SYNC, sync);
+            alterTag(Flag.FlagInfo.SYNCFOLDER, sync);
+            alterTag(Flag.FlagInfo.SYNC, sync);
         }
-        if (folder.getDefaultView() != MailItem.TYPE_MESSAGE) {
+        if (folder.getDefaultView() != MailItem.Type.MESSAGE) {
             debug("Setting default view to TYPE_MESSAGE");
-            mbox.setFolderDefaultView(null, folder.getId(), MailItem.TYPE_MESSAGE);
+            mbox.setFolderDefaultView(null, folder.getId(), MailItem.Type.MESSAGE);
         }
     }
 
-    public void alterTag(int flagId, boolean value) throws ServiceException {
-        mbox.alterTag(null, getFolder().getId(), MailItem.TYPE_FOLDER, flagId, value);
+    public void alterTag(Flag.FlagInfo finfo, boolean value) throws ServiceException {
+        mbox.alterTag(null, getFolder().getId(), MailItem.Type.FOLDER, finfo, value, null);
     }
 
     public void setMessageFlags(int id, int flagMask) throws ServiceException {
-        mbox.setTags(null, id, MailItem.TYPE_MESSAGE, flagMask, MailItem.TAG_UNCHANGED);
+        mbox.setTags(null, id, MailItem.Type.MESSAGE, flagMask, MailItem.TAG_UNCHANGED);
     }
 
     public boolean exists() throws ServiceException {
@@ -131,7 +131,7 @@ final class LocalFolder {
     public void deleteMessage(int id) throws ServiceException {
         debug("deleting message with id %d", id);
         try {
-            mbox.delete(null, id, MailItem.TYPE_UNKNOWN);
+            mbox.delete(null, id, MailItem.Type.UNKNOWN);
         } catch (MailServiceException.NoSuchItemException e) {
             debug("message with id %d not found", id);
         }
@@ -142,8 +142,7 @@ final class LocalFolder {
     }
 
     public Set<Integer> getMessageIds() throws ServiceException {
-        return new HashSet<Integer>(
-            mbox.listItemIds(null, MailItem.TYPE_MESSAGE, folder.getId()));
+        return new HashSet<Integer>(mbox.listItemIds(null, MailItem.Type.MESSAGE, folder.getId()));
     }
 
     public Folder getFolder() throws ServiceException {

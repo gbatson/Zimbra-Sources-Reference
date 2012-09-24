@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,6 +29,15 @@ import junit.framework.TestCase;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
+import com.zimbra.client.ZFilterAction;
+import com.zimbra.client.ZFilterAction.ZFileIntoAction;
+import com.zimbra.client.ZFilterCondition;
+import com.zimbra.client.ZFilterCondition.ZHeaderCondition;
+import com.zimbra.client.ZFilterRule;
+import com.zimbra.client.ZFilterRules;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMessage;
 import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Config;
@@ -37,15 +46,6 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.service.util.SpamHandler;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZFilterAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZFileIntoAction;
-import com.zimbra.cs.zclient.ZFilterCondition;
-import com.zimbra.cs.zclient.ZFilterCondition.ZHeaderCondition;
-import com.zimbra.cs.zclient.ZFilterRule;
-import com.zimbra.cs.zclient.ZFilterRules;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMessage;
 
 public class TestSpam extends TestCase {
 
@@ -152,6 +152,16 @@ public class TestSpam extends TestCase {
 
     static Pattern PAT_REPORT_LINE = Pattern.compile("(.+): (.+)");
 
+    private void spamReportEntryCheck(Map<String, String> report,
+            String rprtKey, boolean lcase, String expected) {
+        String actual = Strings.nullToEmpty(report.get(rprtKey));
+        expected = Strings.nullToEmpty(expected);
+        if (lcase)
+            expected = expected.toLowerCase();
+        assertEquals("Value for " + rprtKey,
+                expected, Strings.nullToEmpty(actual));
+    }
+
     private void validateSpamReport(String content, String classifiedBy, String classifiedAs, String action,
                                     String sourceFolder, String destFolder, String destMailbox)
     throws IOException {
@@ -168,12 +178,13 @@ public class TestSpam extends TestCase {
         }
         reader.close();
 
-        assertEquals(Strings.nullToEmpty(classifiedBy), Strings.nullToEmpty(report.get("Classified-By")));
-        assertEquals(Strings.nullToEmpty(classifiedAs), Strings.nullToEmpty(report.get("Classified-As")));
-        assertEquals(Strings.nullToEmpty(action), Strings.nullToEmpty(report.get("Action")));
-        assertEquals(Strings.nullToEmpty(sourceFolder), Strings.nullToEmpty(report.get("Source-Folder")));
-        assertEquals(Strings.nullToEmpty(destFolder), Strings.nullToEmpty(report.get("Destination-Folder")));
-        assertEquals(Strings.nullToEmpty(destMailbox), Strings.nullToEmpty(report.get("Destination-Mailbox")));
+        spamReportEntryCheck(report, "Classified-By", true, classifiedBy);
+        spamReportEntryCheck(report, "Classified-As", false, classifiedAs);
+        spamReportEntryCheck(report, "Action", false, action);
+        spamReportEntryCheck(report, "Source-Folder", false, sourceFolder);
+        spamReportEntryCheck(report, "Source-Folder", false, sourceFolder);
+        spamReportEntryCheck(report, "Destination-Folder", false, destFolder);
+        spamReportEntryCheck(report, "Destination-Mailbox", true, destMailbox);
     }
 
     @Override

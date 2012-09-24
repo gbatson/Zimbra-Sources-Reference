@@ -1,44 +1,56 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.mail;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Random;
 
+import javax.mail.MessagingException;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.internet.MimePart;
 
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.ContentType;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.soap.SoapProtocol;
+import com.zimbra.common.zmime.ZMimeUtility;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.MockProvisioning;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.mailbox.Document;
+import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.MockMailbox;
+import com.zimbra.cs.mailbox.MailboxTestUtil;
+import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.service.mail.ParseMimeMessage;
+import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.service.mail.ToXML.EmailType;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -47,20 +59,23 @@ import com.zimbra.soap.ZimbraSoapContext;
  *
  * @author ysasaki
  */
-public class ParseMimeMessageTest {
-
-    private static final String ACCOUNT_ID = "11122233-1111-1111-1111-111222333444";
+public final class ParseMimeMessageTest {
 
     @BeforeClass
     public static void init() throws Exception {
-        MockProvisioning prov = new MockProvisioning();
-        HashMap<String,Object> attrs = new HashMap<String,Object>();
-        attrs.put(Provisioning.A_zimbraId, ACCOUNT_ID);
-        attrs.put(Provisioning.A_zimbraMailHost, "localhost");
-        prov.createAccount("test@zimbra.com", "secret", attrs);
-        Provisioning.setInstance(prov);
-        LC.zimbra_class_mboxmanager.setDefault("com.zimbra.cs.mailbox.MockMailboxManager");
-        LC.zimbra_class_store.setDefault("com.zimbra.cs.store.MockStoreManager");
+        MailboxTestUtil.initServer();
+        Provisioning prov = Provisioning.getInstance();
+        prov.createAccount("test@zimbra.com", "secret", new HashMap<String, Object>());
+    }
+
+    @Before
+    public void setUp() throws Exception {
+        MailboxTestUtil.clearData();
+    }
+
+    static ZimbraSoapContext getMockSoapContext() throws ServiceException {
+        ZimbraSoapContext parent = new ZimbraSoapContext(null, Collections.<String, Object>emptyMap(), SoapProtocol.SoapJS);
+        return new ZimbraSoapContext(parent, MockProvisioning.DEFAULT_ACCOUNT_ID, null);
     }
 
     @Test
@@ -74,10 +89,9 @@ public class ParseMimeMessageTest {
             .addAttribute(MailConstants.A_ADDRESS_TYPE, EmailType.TO.toString())
             .addAttribute(MailConstants.A_ADDRESS, "rcpt@zimbra.com");
 
-        Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.name, "test@zimbra.com");
-        ZimbraSoapContext zsc = new ZimbraSoapContext(new ZimbraSoapContext(null,
-                Collections.<String, Object>emptyMap(), SoapProtocol.SoapJS), ACCOUNT_ID, null);
+        Account acct = Provisioning.getInstance().getAccount(MockProvisioning.DEFAULT_ACCOUNT_ID);
         OperationContext octxt = new OperationContext(acct);
+        ZimbraSoapContext zsc = getMockSoapContext();
 
         MimeMessage mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null,
                 new ParseMimeMessage.MimeMessageData());
@@ -105,10 +119,10 @@ public class ParseMimeMessageTest {
             .addAttribute(MailConstants.A_NAME, "X-Zimbra-Test")
             .setText("\u30ab\u30b9\u30bf\u30e0");
 
-        Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.name, "test@zimbra.com");
-        ZimbraSoapContext zsc = new ZimbraSoapContext(new ZimbraSoapContext(null,
-                Collections.<String, Object>emptyMap(), SoapProtocol.SoapJS), ACCOUNT_ID, null);
+        Account acct = Provisioning.getInstance().getAccount(MockProvisioning.DEFAULT_ACCOUNT_ID);
         OperationContext octxt = new OperationContext(acct);
+        ZimbraSoapContext zsc = getMockSoapContext();
+
         MimeMessage mm;
         try {
             mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null, new ParseMimeMessage.MimeMessageData());
@@ -145,10 +159,9 @@ public class ParseMimeMessageTest {
                     "MIME-Version: 1.0\r\n\r\n" +
                     "This is the inner message.");
 
-        Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.name, "test@zimbra.com");
-        ZimbraSoapContext zsc = new ZimbraSoapContext(new ZimbraSoapContext(null,
-                Collections.<String, Object>emptyMap(), SoapProtocol.SoapJS), ACCOUNT_ID, null);
+        Account acct = Provisioning.getInstance().getAccount(MockProvisioning.DEFAULT_ACCOUNT_ID);
         OperationContext octxt = new OperationContext(acct);
+        ZimbraSoapContext zsc = getMockSoapContext();
 
         MimeMessage mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null,
                 new ParseMimeMessage.MimeMessageData());
@@ -173,7 +186,15 @@ public class ParseMimeMessageTest {
     }
 
     @Test
-    public void attachDocument1() throws Exception {
+    public void attachPdfDocument() throws Exception {
+        Account acct = Provisioning.getInstance().getAccount(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(acct);
+
+        OperationContext octxt = new OperationContext(acct);
+        Document doc = mbox.createDocument(octxt, Mailbox.ID_FOLDER_BRIEFCASE, "testdoc",
+                MimeConstants.CT_APPLICATION_PDF, "author", "description",
+                new ByteArrayInputStream("test123".getBytes()));
+
         Element el = new Element.JSONElement(MailConstants.E_MSG);
         el.addAttribute(MailConstants.E_SUBJECT, "attach message");
         el.addElement(MailConstants.E_EMAIL)
@@ -184,15 +205,9 @@ public class ParseMimeMessageTest {
             .addAttribute(MailConstants.E_CONTENT, "This is the content.");
         el.addElement(MailConstants.E_ATTACH)
             .addElement(MailConstants.E_DOC)
-            .addAttribute(MailConstants.A_ID, "100");
+            .addAttribute(MailConstants.A_ID, doc.getId());
 
-        Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.name, "test@zimbra.com");
-        MockMailbox mbox = (MockMailbox)MailboxManager.getInstance().getMailboxByAccountId(ACCOUNT_ID);
-        mbox.addDocument(100, "testdoc", MimeConstants.CT_APPLICATION_PDF, "test123");
-        ZimbraSoapContext zsc = new ZimbraSoapContext(new ZimbraSoapContext(null,
-                Collections.<String, Object>emptyMap(), SoapProtocol.SoapJS), ACCOUNT_ID, null);
-        OperationContext octxt = new OperationContext(acct);
-
+        ZimbraSoapContext zsc = getMockSoapContext();
         MimeMessage mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null,
                 new ParseMimeMessage.MimeMessageData());
         MimeMultipart mmp = (MimeMultipart) mm.getContent();
@@ -201,7 +216,15 @@ public class ParseMimeMessageTest {
     }
 
     @Test
-    public void attachDocument2() throws Exception {
+    public void attachZimbraDocument() throws Exception {
+        Account acct = Provisioning.getInstance().getAccount(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(acct);
+
+        OperationContext octxt = new OperationContext(acct);
+        Document doc = mbox.createDocument(octxt, Mailbox.ID_FOLDER_BRIEFCASE, "testdoc",
+                MimeConstants.CT_APPLICATION_ZIMBRA_DOC, "author", "description",
+                new ByteArrayInputStream("test123".getBytes()));
+
         Element el = new Element.JSONElement(MailConstants.E_MSG);
         el.addAttribute(MailConstants.E_SUBJECT, "attach message");
         el.addElement(MailConstants.E_EMAIL)
@@ -212,19 +235,83 @@ public class ParseMimeMessageTest {
             .addAttribute(MailConstants.E_CONTENT, "This is the content.");
         el.addElement(MailConstants.E_ATTACH)
             .addElement(MailConstants.E_DOC)
-            .addAttribute(MailConstants.A_ID, "101");
+            .addAttribute(MailConstants.A_ID, doc.getId());
 
-        Account acct = Provisioning.getInstance().get(Provisioning.AccountBy.name, "test@zimbra.com");
-        MockMailbox mbox = (MockMailbox)MailboxManager.getInstance().getMailboxByAccountId(ACCOUNT_ID);
-        mbox.addDocument(101, "testdoc", MimeConstants.CT_APPLICATION_ZIMBRA_DOC, "test123");
-        ZimbraSoapContext zsc = new ZimbraSoapContext(new ZimbraSoapContext(null,
-                Collections.<String, Object>emptyMap(), SoapProtocol.SoapJS), ACCOUNT_ID, null);
-        OperationContext octxt = new OperationContext(acct);
-
+        ZimbraSoapContext zsc = getMockSoapContext();
         MimeMessage mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null,
                 new ParseMimeMessage.MimeMessageData());
         MimeMultipart mmp = (MimeMultipart) mm.getContent();
         MimeBodyPart part = (MimeBodyPart) mmp.getBodyPart(1);
         Assert.assertEquals(MimeConstants.CT_TEXT_HTML, new ContentType(part.getContentType()).getContentType());
+    }
+
+    private ByteArrayInputStream randomContent(String prefix, int length) {
+        ZMimeUtility.ByteBuilder bb = new ZMimeUtility.ByteBuilder();
+        Random rnd = new Random();
+        bb.append(prefix).append("\n");
+        for (int i = prefix.length() + 2; i < length; i++) {
+            int r = rnd.nextInt(55);
+            if (r < 26) {
+                bb.append((char) ('A' + r));
+            } else if (r < 52) {
+                bb.append((char) ('a' + r));
+            } else {
+                bb.append(' ');
+            }
+        }
+        return new ByteArrayInputStream(bb.toByteArray());
+    }
+
+    private String firstLine(MimePart part) throws IOException, MessagingException {
+        return new BufferedReader(new InputStreamReader(part.getInputStream())).readLine();
+    }
+
+    @Test
+    public void staleReference() throws Exception {
+        Account acct = Provisioning.getInstance().getAccount(MockProvisioning.DEFAULT_ACCOUNT_ID);
+        Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(acct);
+
+        // first, create the original draft
+        OperationContext octxt = new OperationContext(acct);
+        Document doc = mbox.createDocument(octxt, Mailbox.ID_FOLDER_BRIEFCASE, "testdoc",
+                MimeConstants.CT_TEXT_PLAIN, null, null, randomContent("test1", 8192));
+        Document doc2 = mbox.createDocument(octxt, Mailbox.ID_FOLDER_BRIEFCASE, "testdoc2",
+                MimeConstants.CT_TEXT_PLAIN, null, null, randomContent("test2", 8192));
+
+        Element el = new Element.JSONElement(MailConstants.E_MSG), attach;
+        el.addAttribute(MailConstants.E_SUBJECT, "has attachment");
+        el.addElement(MailConstants.E_EMAIL)
+            .addAttribute(MailConstants.A_ADDRESS_TYPE, EmailType.TO.toString())
+            .addAttribute(MailConstants.A_ADDRESS, "rcpt@zimbra.com");
+        el.addElement(MailConstants.E_MIMEPART)
+            .addAttribute(MailConstants.A_CONTENT_TYPE, "text/plain")
+            .addAttribute(MailConstants.E_CONTENT, "This is the content.");
+        attach = el.addElement(MailConstants.E_ATTACH);
+        attach.addElement(MailConstants.E_DOC)
+            .addAttribute(MailConstants.A_ID, doc.getId());
+        attach.addElement(MailConstants.E_DOC)
+            .addAttribute(MailConstants.A_ID, doc2.getId());
+
+        ZimbraSoapContext zsc = getMockSoapContext();
+        MimeMessage mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null, new ParseMimeMessage.MimeMessageData());
+        Message draft = mbox.saveDraft(octxt, new ParsedMessage(mm, false), -1);
+
+
+        // then, create a new draft that references one of the original draft's attachments
+        attach.detach();
+        (attach = el.addElement(MailConstants.E_ATTACH))
+            .addElement(MailConstants.E_MIMEPART)
+            .addAttribute(MailConstants.A_MESSAGE_ID, draft.getId())
+            .addAttribute(MailConstants.A_PART, "3");
+        mm = ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, null, el, null, new ParseMimeMessage.MimeMessageData());
+
+        // delete the draft itself and then try to save the new draft
+        mbox.delete(octxt, draft.getId(), MailItem.Type.MESSAGE);
+        Message draft2 = mbox.saveDraft(octxt, new ParsedMessage(mm, false), -1);
+
+        // check that the attachment's content is present and correct
+        MimeMultipart multi = (MimeMultipart) (draft2.getMimeMessage().getContent());
+        Assert.assertEquals("2 parts in draft", 2, multi.getCount());
+        Assert.assertEquals("attached part content", "test2", firstLine((MimeBodyPart) multi.getBodyPart(1)));
     }
 }

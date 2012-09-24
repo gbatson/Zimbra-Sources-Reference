@@ -30,7 +30,7 @@
 		    <c:choose>
 	        	<c:when test="${!empty cookie.ZM_TEST}">
 		            <zm:login username="${param.username}" password="${param.password}" varRedirectUrl="postLoginUrl" varAuthResult="authResult"
-		                      varNeedRefer="needRefer" newpassword="${param.loginNewPassword}" rememberme="false"
+		                      newpassword="${param.loginNewPassword}" rememberme="false"
 		                      prefs="${prefsToFetch}" attrs="${attrsToFetch}"
 							  requestedSkin="${param.skin}"/>
 		            <%-- continue on at not empty authResult test --%>
@@ -45,7 +45,7 @@
 
 <c:if test="${not empty authResult}">
 	  <%
-	  com.zimbra.cs.zclient.ZAuthResult zar = (com.zimbra.cs.zclient.ZAuthResult) pageContext.findAttribute("authResult");
+	  com.zimbra.client.ZAuthResult zar = (com.zimbra.client.ZAuthResult) pageContext.findAttribute("authResult");
 	  com.zimbra.common.auth.ZAuthToken zat = (com.zimbra.common.auth.ZAuthToken) zar.getAuthToken();
 
 	  request.setAttribute("ZM_AUTH_TOKEN",zat.getValue());
@@ -83,11 +83,11 @@
 <!--
  login.jsp
  * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Zimbra Collaboration Suite Web Client
+ * Copyright (C) 2007 Zimbra, Inc.
  * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
+ * The contents of this file are subject to the Yahoo! Public License
+ * Version 1.0 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
  * 

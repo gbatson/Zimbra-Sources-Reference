@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,12 +15,13 @@
 
 package com.zimbra.cs.index;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.MailItem;
 
 /**
  * A set of {@link UngroupedQueryResults} which groups by Message.
@@ -28,9 +29,9 @@ import com.zimbra.cs.mailbox.Mailbox;
  * @author tim
  * @author ysasaki
  */
-class MsgQueryResults extends ZimbraQueryResultsImpl {
-    private ZimbraQueryResults mResults;
-    private ZimbraHit mNextHit = null;
+final class MsgQueryResults extends ZimbraQueryResultsImpl {
+    private final ZimbraQueryResults results;
+    private ZimbraHit nextHit = null;
 
     /**
      * Cache of local Message IDs we've seen this iteration -- used so
@@ -39,10 +40,15 @@ class MsgQueryResults extends ZimbraQueryResultsImpl {
      */
     private final Set<Integer> mSeenMsgs = new HashSet<Integer>();
 
-    MsgQueryResults(ZimbraQueryResults topLevelQueryOperation, byte[] types,
-            SortBy searchOrder, Mailbox.SearchResultMode mode) {
-        super(types, searchOrder, mode);
-        mResults = topLevelQueryOperation;
+    MsgQueryResults(ZimbraQueryResults topLevelQueryOperation, Set<MailItem.Type> types,
+            SortBy sort, SearchParams.Fetch fetch) {
+        super(types, sort, fetch);
+        results = topLevelQueryOperation;
+    }
+
+    @Override
+    public long getCursorOffset() {
+        return results.getCursorOffset();
     }
 
     /**
@@ -51,11 +57,10 @@ class MsgQueryResults extends ZimbraQueryResultsImpl {
      * Side effect: will Op's iterator one or more entries forward
      *
      * @return next hit
-     * @throws ServiceException
      */
     private ZimbraHit internalGetNextHit() throws ServiceException {
-        while (mResults.hasNext()) {
-            ZimbraHit hit = mResults.getNext();
+        while (results.hasNext()) {
+            ZimbraHit hit = results.getNext();
 
             MessageHit msgHit;
             if (hit instanceof MessageHit) {
@@ -73,10 +78,10 @@ class MsgQueryResults extends ZimbraQueryResultsImpl {
             int iid = msgHit.getItemId();
             if (mSeenMsgs.add(iid)) { // skip if we've seen this Message before
                 // Iterate fwd a bit to see if we can pick up more message parts
-                while (mResults.hasNext()) {
-                    ZimbraHit next = mResults.peekNext();
+                while (results.hasNext()) {
+                    ZimbraHit next = results.peekNext();
                     if (next.isLocal() && iid == next.getItemId()) {
-                        mResults.getNext(); // move iterator fwd
+                        results.getNext(); // move iterator fwd
                         if (next instanceof MessagePartHit) {
                             msgHit.addPart((MessagePartHit) next);
                         }
@@ -91,45 +96,43 @@ class MsgQueryResults extends ZimbraQueryResultsImpl {
     }
 
     private boolean bufferNextHit() throws ServiceException {
-        if (mNextHit == null) {
-            mNextHit = internalGetNextHit();
+        if (nextHit == null) {
+            nextHit = internalGetNextHit();
         }
-        return (mNextHit != null);
+        return (nextHit != null);
     }
 
     @Override
     public void resetIterator() throws ServiceException {
         mSeenMsgs.clear();
-        mResults.resetIterator();
+        results.resetIterator();
     }
 
     @Override
     public ZimbraHit getNext() throws ServiceException {
         bufferNextHit();
-        ZimbraHit toRet = mNextHit;
-        assert(mNextHit == null || (!(mNextHit instanceof MessagePartHit) &&
-                !(mNextHit instanceof ConversationHit)));
-        mNextHit = null;
+        ZimbraHit toRet = nextHit;
+        assert(nextHit == null || (!(nextHit instanceof MessagePartHit) && !(nextHit instanceof ConversationHit)));
+        nextHit = null;
         return toRet;
     }
 
     @Override
     public ZimbraHit peekNext() throws ServiceException {
         bufferNextHit();
-        assert(mNextHit == null || (!(mNextHit instanceof MessagePartHit) &&
-                !(mNextHit instanceof ConversationHit)));
-        return mNextHit;
+        assert(nextHit == null || (!(nextHit instanceof MessagePartHit) && !(nextHit instanceof ConversationHit)));
+        return nextHit;
     }
 
     @Override
-    public void doneWithSearchResults() throws ServiceException {
-        mResults.doneWithSearchResults();
+    public void close() throws IOException {
+        results.close();
     }
 
     @Override
     public ZimbraHit skipToHit(int hitNo) throws ServiceException {
         if (hitNo > 0) {
-            mResults.skipToHit(hitNo-1);
+            results.skipToHit(hitNo-1);
         } else {
             resetIterator();
         }
@@ -138,12 +141,7 @@ class MsgQueryResults extends ZimbraQueryResultsImpl {
 
     @Override
     public List<QueryInfo> getResultInfo() {
-        return mResults.getResultInfo();
-    }
-
-    @Override
-    public int estimateResultSize() throws ServiceException {
-        return mResults.estimateResultSize();
+        return results.getResultInfo();
     }
 
 }

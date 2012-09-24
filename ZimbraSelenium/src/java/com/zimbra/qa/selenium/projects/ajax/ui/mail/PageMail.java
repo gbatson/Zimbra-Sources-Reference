@@ -1,38 +1,16 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
- * 
+ *
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
 import java.util.*;
 
 import com.zimbra.qa.selenium.framework.items.*;
-import com.zimbra.qa.selenium.framework.items.ContextMenuItem.CONTEXT_MENU_ITEM_NAME;
 import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
-
+//import com.zimbra.qa.selenium.projects.ajax.ui.preferences.trustedaddresses.DisplayTrustedAddress.Locators;
 
 
 
@@ -45,140 +23,45 @@ public class PageMail extends AbsTab {
 
 	public static class Locators {
 
-		public static final String zNewFolderOverviewPaneIcon = "id=ztih__main_Mail__FOLDER_textCell";
+		public static final String IsConViewActiveCSS 			= "css=div[id='zv__CLV-main']";
+		public static final String IsMsgViewActiveCSS 			= "css=div[id='zv__TV-main']";
 
-		// folders
-		public static final String zInboxFldr		= "id=zti__main_Mail__2_textCell";
-		public static final String zSentFldr		= "id=zti__main_Mail__5_textCell";
-		public static final String zDraftsFldr 		= "id=zti__main_Mail__6_textCell";
-		public static final String zJunkFldr 		= "id=zti__main_Mail__4_textCell";
-		public static final String zTrashFldr 		= "id=zti__main_Mail__3_textCell";
-
-		public static final String zInboxFldrMoveDlg 	= "id=zti__ZmChooseFolderDialog_Mail__2_textCell";
-		public static final String zSentFldrMoveDlg 	= "id=zti__ZmChooseFolderDialog_Mail__5_textCell";
-		public static final String zJunkFldrMoveDlg 	= "id=zti__ZmChooseFolderDialog_Mail__4_textCell";
-		public static final String zTrashFldrMoveDlg 	= "id=zti__ZmChooseFolderDialog_Mail__3_textCell";
-
-		public static final String zFoldersNewFolderDlg = "id=ztih__ZmNewFolderDialog__FOLDER_textCell";
-
-		public static final String zNewIconBtn 			= "id=zb__TV__NEW_MENU_left_icon";
-		public static final String zNewMenuIconBtn 		= "id=zb__CLV__NEW_MENU_left_icon";
-		public static final String zNewMenuBtn 			= "id=zb__CLV__NEW_MENU";
-		public static final String zNewMenuDropDown 	= "id=zb__CLV__NEW_MENU_dropdown";
-		public static final String zGetMailIconBtnCLVID 	= "zb__CLV__CHECK_MAIL_left_icon";
-		public static final String zGetMailIconBtnTVID 		= "zb__TV__CHECK_MAIL_left_icon";
-		public static final String zGetMailIconBtn 		= "id=zb__CLV__CHECK_MAIL_left_icon";
-		public static final String zGetMailBtn 			= "id=zb__CLV__CHECK_MAIL";
-		public static final String zDeleteIconBtnID 	= "zb__CLV__DELETE_left_icon";
-		public static final String zDeleteBtn 			= "id=zb__CLV__DELETE";
-		public static final String zMoveIconBtnID 		= "zb__CLV__MOVE_left_icon";
-		public static final String zMoveBtn 			= "id=zb__CLV__MOVE";
-		public static final String zPrintIconBtnID 		= "zb__CLV__PRINT_left_icon";
-		public static final String zPrintBtn 			= "id=zb__CLV__PRINT";
-		public static final String zReplyIconBtnID 		= "zb__CLV__REPLY_left_icon";
-		public static final String zReplyBtn 			= "id=zb__CLV__REPLY";
-		public static final String zReplyAllIconBtnID 	= "zb__CLV__REPLY_ALL_left_icon";
-		public static final String zReplyAllBtn 		= "id=zb__CLV__REPLY_ALL";
-		public static final String zForwardIconBtnID 	= "zb__CLV__FORWARD_left_icon";
-		public static final String zForwardBtn 			= "id=zb__CLV__FORWARD";
-		public static final String zJunkIconBtnID 		= "zb__CLV__SPAM_left_icon";
-		public static final String zJunkBtn 			= "id=zb__CLV__SPAM";
-		public static final String zTagIconBtn 			= "id=zb__CLV__TAG_MENU_left_icon";
-		public static final String zTagBtn 				= "id=zb__CLV__TAG_MENU";
-		public static final String zTagMenuDropdownBtnID	= "zb__CLV__TAG_MENU_dropdown";
-		public static final String zDetachIconBtnID		= "zb__TV__DETACH_left_icon";
-		public static final String zDetachBtn 			= "id=zb__TV__DETACH";
-		public static final String zDetachIconBtn2 		= "id=zb__CLV__DETACH_left_icon";
-		public static final String zDetachBtn2 			= "id=zb__CLV__DETACH";
-		public static final String zDetachBtn_ComposedMessage = "id=zb__COMPOSE1__DETACH_COMPOSE";
-		public static final String zViewIconBtnID 		= "zb__CLV__VIEW_MENU_left_icon";
-		public static final String zViewBtn 			= "id=zb__CLV__VIEW_MENU";
-		public static final String zViewMenuDropdownBtnID	= "zb__CLV__VIEW_MENU_dropdown";
-
-		public static final String zViewMenuCLVBtnID	= zViewIconBtnID;
-		public static final String zViewMenuTVBtnID		= "zb__TV__VIEW_MENU_left_icon";
+		public static final String zPrintIconBtnID 		= "zb__CLV-main__PRINT_left_icon";
+		public static final String zTagMenuDropdownBtnID	= "zb__CLV-main__TAG_MENU_dropdown";
+		public static final String zDetachIconBtnID		= "zb__TV-main__DETACH_left_icon";
+		public static final String zViewMenuDropdownBtnID	= "zb__CLV-main__VIEW_MENU_dropdown";
 
 		public static final String zCloseIconBtn_messageWindow 	= "css=td[id=zb__MSG__CLOSE_left_icon]";
-		public static final String zCloseIconBtn_newWindow 		= "id=zb__MSG1__CLOSE_left_icon";
-		public static final String zDeleteIconBtn_newWindow 	= "id=zb__MSG1__DELETE_title";
-		public static final String zReplyIconBtn_newWindow 		= "id=zb__MSG1__REPLY_left_icon";
-		public static final String zReplyAllIconBtn_newWindow 	= "id=zb__MSG1__REPLY_ALL_left_icon";
-		public static final String zForwardIconBtn_newWindow 	= "id=zb__MSG1__FORWARD_left_icon";
-		public static final String zJunkIconBtn_newWindow 		= "id=zb__MSG1__SPAM_left_icon";
-		public static final String zTagIconBtn_newWindow 		= "id=zb__MSG1__TAG_MENU_left_icon";
+		public static final String cssTVRowsLocator	= "css=div#zl__TV-main__rows";
+		
+		// Accept, Decline & Tentative button, menus and dropdown locators
+		public static final String AcceptDropdown = "css=td[id$='__Inv__REPLY_ACCEPT_dropdown']";
+		public static final String AcceptNotifyOrganizerMenu = "id=REPLY_ACCEPT_NOTIFY_title";
+		public static final String AcceptEditReplyMenu = "id=INVITE_REPLY_ACCEPT_title";
+		public static final String AcceptDontNotifyOrganizerMenu = "id=REPLY_ACCEPT_IGNORE_title";
 
-		public static final String zSendBtn_newWindow 			= "id=zb__COMPOSE1__SEND";
-		public static final String zCancelBtn_newWindow 		= "id=zb__COMPOSE1__CANCEL";
-		public static final String zSaveDraftsBtn_newWindow 	= "id=zb__COMPOSE1__SAVE_DRAFT";
-		public static final String zAddAttachmentBtn_newWindow 	= "id=zb__COMPOSE1__ATTACHMENT";
-		public static final String zSpellCheckBtn_newWindow 	= "id=zb__COMPOSE1__SPELL_CHECK";
-		public static final String zSignatureBtn_newWindow 		= "id=zb__COMPOSE1__ADD_SIGNATURE";
-		public static final String zOptionsBtn_newWindow 		= "id=zb__COMPOSE1__COMPOSE_OPTIONS";
+		public static final String TentativeDropdown = "css=td[id$='__Inv__REPLY_TENTATIVE_dropdown']";
+		public static final String TentativeNotifyOrganizerMenu = "id=REPLY_TENTATIVE_NOTIFY_title";
+		public static final String TentativeEditReplyMenu = "id=INVITE_REPLY_TENTATIVE_title";
+		public static final String TentativeDontNotifyOrganizerMenu = "id=REPLY_TENTATIVE_IGNORE_title";
+		
+		public static final String DeclineDropdown = "css=td[id$='__Inv__REPLY_DECLINE_dropdown']";
+		public static final String DeclineNotifyOrganizerMenu = "id=REPLY_DECLINE_NOTIFY_title";
+		public static final String DeclineEditReplyMenu = "id=INVITE_REPLY_DECLINE_title";
+		public static final String DeclineDontNotifyOrganizerMenu = "id=REPLY_DECLINE_IGNORE_title";
+		
+		public static final String ProposeNewTimeButtonMsgView = "id=zb__TV-main__Inv__PROPOSE_NEW_TIME_title";
 
-		public static final String zEditDraftIconBtn 	= "id=zb__CLV__EDIT_left_icon";
-		public static final String zEditDraftBtn 		= "id=zb__CLV__EDIT";
-		public static final String zMailTabIconBtn 		= "id=zb__App__Mail_left_icon";
-		public static final String zMailViewIconBtn 	= "id=zb__CLV__VIEW_MENU_left_icon";
-		public static final String zCancelIconBtn 		= "id=zb__COMPOSE1__CANCEL_left_icon";
-		public static final String zTagOverViewHeader 	= "id=ztih__main_Mail__TAG_div";
-		public static final String zSearchIconBtn 		= "id=zb__Search__SEARCH_left_icon";
+		///////
+		public static final String zMsgViewDisplayImgLink = "css=a#zv__TV__TV-main_MSG_displayImages_dispImgs";
+		public static final String zMsgViewDomainLink = "css=a#zv__TV__TV-main_MSG_displayImages_domain";
+		public static final String zMsgViewWarningIcon = "css=div#zv__TV__TV-main_MSG_displayImages.DisplayImages div div.ImgWarning";
+		public static final String zConViewDisplayImgLink = "css=a[id$='_displayImages_dispImgs']";
+		public static final String zConViewDomainLink = "css=a[id$='_displayImages_domain']";
+		public static final String zConViewWarningIcon = "css=div[id$='_displayImages'] div div[class='ImgWarning']";
 
-		public static final String zSearchMenuIconBtn 			= "id=zmi__CLV__Par__SEARCH_left_icon";
-		public static final String zAdvancedSearchMenuIconBtn 	= "id=zmi__CLV__Par__BROWSE_left_icon";
-		public static final String zNewEmailMenuIconBtn 		= "id=zmi__CLV__Par__NEW_MESSAGE_left_icon";
-		public static final String zAddToContactsMenuIconBtn 	= "id=zmi__CLV__Par__CONTACT_left_icon";
-		public static final String zMarkReadMenuIconBtn 		= "id=zmi__CLV__MARK_READ_left_icon";
-		public static final String zMarkReadMenuEnaDisaBtn 		= "id=zmi__CLV__MARK_READ";
-		public static final String zMarkUnReadMenuIconBtn 		= "id=zmi__CLV__MARK_UNREAD_left_icon";
-		public static final String zMarkUnReadMenuEnaDisaBtn 	= "id=zmi__CLV__MARK_UNREAD";
-		public static final String zReplyMenuIconBtn 			= "id=zmi__CLV__REPLY_left_icon";
-		public static final String zReplyMenuEnaDisaBtn 		= "id=zmi__CLV__REPLY";
-		public static final String zReplyAllMenuIconBtn 		= "id=zmi__CLV__REPLY_ALL_left_icon";
-		public static final String zReplyAllMenuEnaDisaBtn 		= "id=zmi__CLV__REPLY_ALL";
-		public static final String zForwardMenuIconBtn 			= "id=zmi__CLV__FORWARD_left_icon";
-		public static final String zForwardMenuEnaDisaBtn 		= "id=zmi__CLV__FORWARD";
-		public static final String zEditAsNewMenuIconBtn 		= "id=zmi__CLV__EDIT_left_icon";
-		public static final String zEditAsNewMenuEnaDisaBtn 	= "id=zmi__CLV__EDIT";
-		public static final String zTagMenuIconBtn 				= "id=zmi__CLV__TAG_MENU_left_icon";
-		public static final String zNewTagMenuIconBtn 			= "id=zmi__CLV__TAG_MENU|MENU|NEWTAG_title";
-		public static final String zRemoveTagMenuIconBtn 		= "id=zmi__CLV__TAG_MENU|MENU|REMOVETAG_title";
-		public static final String zDeleteMenuIconBtn 			= "id=zmi__CLV__DELETE_left_icon";
-		public static final String zMoveMenuIconBtn 			= "id=zmi__CLV__MOVE_left_icon";
-		public static final String zPrintMenuIconBtn 			= "id=zmi__CLV__PRINT_left_icon";
-		public static final String zPrintMenuEnaDisaBtn 		= "id=zmi__CLV__PRINT";
-		public static final String zJunkMenuIconBtn 			= "id=zmi__CLV__SPAM_left_icon";
-		public static final String zShowOriginalMenuIconBtn 	= "id=zmi__CLV__SHOW_ORIG_left_icon";
-		public static final String zShowOriginalMenuEnaDisaBtn 	= "id=zmi__CLV__SHOW_ORIG";
-		public static final String zNewFilterMenuIconBtn 		= "id=zmi__CLV__ADD_FILTER_RULE_left_icon";
-		public static final String zNewFilterMenuEnaDisaBtn 	= "id=zmi__CLV__ADD_FILTER_RULE";
-		public static final String zCreateApptMenuIconBtn 		= "id=zmi__CLV__CREATE_APPT_left_icon";
-		public static final String zCreateApptEnaDisaBtn 		= "id=zmi__CLV__CREATE_APPT";
-		public static final String zCreateTaskMenuEnaDisaBtn 	= "id=zmi__CLV__CREATE_TASK_left_icon";
-		public static final String zCreateTaskEnaDisaBtn 		= "id=zmi__CLV__CREATE_TASK";
-
-		public static final String zGeneralPrefFolder 		= "id=zti__main_Options__PREF_PAGE_GENERAL_textCell";
-		public static final String zMailPrefFolder 			= "id=zti__main_Options__PREF_PAGE_MAIL_textCell";
-		public static final String zComposingPrefFolder 	= "id=zti__main_Options__PREF_PAGE_COMPOSING_textCell";
-		public static final String zSignaturesPrefFolder 	= "id=zti__main_Options__PREF_PAGE_SIGNATURES_textCell";
-		public static final String zAccountsPrefFolder 		= "id=zti__main_Options__PREF_PAGE_ACCOUNTS_textCell";
-		public static final String zFiltersPrefFolder 		= "id=zti__main_Options__PREF_PAGE_FILTERS_textCell";
-
-		public static final String zAddressBookPrefFolder 	= "id=zti__main_Options__PREF_PAGE_CONTACTS_textCell";
-		public static final String zCalendarPrefFolder 		= "id=zti__main_Options__PREF_PAGE_CALENDAR_textCell";
-		public static final String zSharingPrefFolder 		= "id=zti__main_Options__PREF_PAGE_SHARING_textCell";
-		public static final String zImportExportPrefFolder 	= "id=zti__main_Options__PREF_PAGE_IMPORT_EXPORT_textCell";
-		public static final String zShortcutsPrefFolder 	= "id=zti__main_Options__PREF_PAGE_SHORTCUTS_textCell";
-		public static final String zZimletsPrefFolder 		= "id=zti__main_Options__PREF_PAGE_PREF_ZIMLETS_textCell";
-		public static final String zShowOriginalDraftMenuIconBtn = "id=zmi__CLV__Dra__SHOW_ORIG_left_icon";
-
-		public static final String zPreferencesTabIconBtn = "id=zb__App__Options_left_icon";
-		//	public static final String zPreferencesMailIconBtn = "id=ztab__PREF__"
-		//			+ localize(locator.mail) + "_title";
-
-
-		public static final String zCLVRows			= "zl__CLV__rows";
-		public static final String zTVRows			= "zl__TV__rows";
-
+		
+		
 		public static class CONTEXT_MENU {
 			// TODO: Until https://bugzilla.zimbra.com/show_bug.cgi?id=56273 is fixed, ContextMenuItem will be defined using the text content
 			public static String stringToReplace = "<ITEM_NAME>";
@@ -190,7 +73,7 @@ public class PageMail extends AbsTab {
 					zDesktopContextMenuItems.replace(stringToReplace, I18N.CONTEXT_MENU_ITEM_NEW_FOLDER),
 					I18N.CONTEXT_MENU_ITEM_NEW_FOLDER,
 					"div[class='ImgNewFolder']",
-			":contains('nf')"); 
+			":contains('nf')");
 
 		}
 	}
@@ -217,16 +100,45 @@ public class PageMail extends AbsTab {
 			((AppAjaxClient)MyApplication).zPageMain.zNavigateTo();
 		}
 
-		// If the "folders" tree is visible, then mail is active
-		String locator = "css=div[id$='__CHECK_MAIL']";
+		String locator;
+		boolean loaded, visible;
 
-		boolean loaded = this.sIsElementPresent(locator);
-		if ( !loaded )
-			return (false);
 
-		boolean active = this.zIsVisiblePerPosition(locator, 4, 74);
-		return (active);
+		/**
+		 * http://bugzilla.zimbra.com/show_bug.cgi?id=70068 ... new menu is same for all apps
+		 * Instead of the new menu, key off the conv/msg view pulldown
+		 * <div id="zb__CLV-main__VIEW_MENU" .../>
+		 * <div id="zb__TV-main__VIEW_MENU" .../>
+		 * 
+		 * Pre-Feb 2012 ...
+		 * 8.0
+		 * MLV:
+		 * <div id="zb__TV-main__NEW_MENU" style="position: absolute; overflow: visible; z-index: 300; left: 5px; top: 78px; width: 159px; height: 24px;" class="ZToolbarButton ZWidget   ZHasDropDown       ZHasLeftIcon ZHasText" parentid="z_shell">
+		 * CLV:
+		 * <div id="zb__CLV-main__NEW_MENU" style="position: absolute; overflow: visible; z-index: 300; left: 5px; top: 78px; width: 159px; height: 24px;" class="ZToolbarButton ZWidget   ZHasDropDown       ZHasLeftIcon ZHasText" parentid="z_shell">
+		 * 
+		 */
 
+		// If the "NEW" button is visible, then the app is visible
+
+		// Check MLV first
+		locator = "css=div#zb__TV-main__VIEW_MENU";
+
+		loaded = this.sIsElementPresent(locator);
+		visible = this.zIsVisiblePerPosition(locator, 4, 74);
+		if ( loaded && visible )
+			return (true);
+
+		// Check CLV next
+		locator = "css=div#zb__CLV-main__VIEW_MENU";
+		loaded = this.sIsElementPresent(locator);
+		visible = this.zIsVisiblePerPosition(locator, 4, 74);
+		if ( loaded && visible )
+			return (true);
+
+
+		// We made it here, neither were active
+		return (false);
 	}
 
 	/* (non-Javadoc)
@@ -284,28 +196,39 @@ public class PageMail extends AbsTab {
 		if ( button == Button.B_NEW ) {
 
 			// New button
-			locator = "css=div[id^='ztb__'] td[id$='__NEW_MENU_title']";
+			locator = "css=div[id$='__NEW_MENU'] td[id$='__NEW_MENU_title']";
 
 			// Create the page
 			page = new FormMailNew(this.MyApplication);
 
 			// FALL THROUGH
 
-		} else if ( button == Button.B_GETMAIL || button == Button.B_LOADFEED ) {
+		} else if ( button == Button.B_NEW_IN_NEW_WINDOW ) {
 
-			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
-				locator = "id="+ Locators.zGetMailIconBtnTVID;
-			} else {
-				locator = "id="+ Locators.zGetMailIconBtnCLVID;
-			}
+			// New button
+			locator = "css=div[id$='__NEW_MENU'] td[id$='__NEW_MENU_title']";
+
+			// Create the page
+			page = new SeparateWindowFormMailNew(this.MyApplication);
+
+			// Don't fall through - the new window may need additional information from the test case
+			// such as "Zimbra: Compose" or "Zimbra: Reply" to determine if the window is open
+			
+			this.zClickAt(locator,"0,0");
+			
+			return (page);
+
+		} else if ( button == Button.B_GETMAIL || button == Button.B_LOADFEED || button == Button.B_REFRESH ) {
+
+			return (((AppAjaxClient)this.MyApplication).zPageMain.zToolbarPressButton(Button.B_REFRESH));
 
 		} else if ( button == Button.B_DELETE ) {
 
 			String id;
 			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
-				id = "zb__TV__DELETE_left_icon";
+				id = "zb__TV-main__DELETE_left_icon";
 			} else {
-				id = "zb__CLV__DELETE_left_icon";
+				id = "zb__CLV-main__DELETE_left_icon";
 			}
 
 			// Check if the button is enabled
@@ -375,7 +298,7 @@ public class PageMail extends AbsTab {
 
 		} else if ( button == Button.B_FORWARD ) {
 
-			page = new FormMailNew(this.MyApplication);;
+			page = new FormMailNew(this.MyApplication);
 			locator = "css=div[id$='__FORWARD']";
 
 			if ( !this.sIsElementPresent(locator) ) {
@@ -388,19 +311,22 @@ public class PageMail extends AbsTab {
 				throw new HarnessException("Tried clicking on "+ button +" but it was disabled "+ attrs);
 			}
 
+			// FALL THROUGH
+
 		} else if ( (button == Button.B_RESPORTSPAM) || (button == Button.B_RESPORTNOTSPAM) ) {
 
 			page = null;
-			locator = "css=div[id$='__SPAM']";
+			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
+				locator = "css=div[id='zb__TV-main__SPAM'] td[id$='_title']";
+			} else {
+				locator = "css=div[id='zb__CLV-main__SPAM'] td[id$='_title']";
+			}
+
 			if ( !this.sIsElementPresent(locator) ) {
 				throw new HarnessException("Spam icon not present "+ button);
 			}
-
-			// Check if the button is enabled
-			String attrs = sGetAttribute("xpath=(//div[contains(@id,'__SPAM')])@class");
-			if ( attrs.contains("ZDisabled") ) {
-				throw new HarnessException("Tried clicking on "+ button +" but it was disabled "+ attrs);
-			}
+			
+			// FALL THROUGH
 
 		} else if ( button == Button.B_TAG ) {
 
@@ -418,17 +344,29 @@ public class PageMail extends AbsTab {
 
 		} else if ( button == Button.B_NEWWINDOW ) {
 
-			// Check if the button is enabled
-			String attrs = sGetAttribute("xpath=(//td[@id='"+ Locators.zDetachIconBtnID +"']/div)@class");
-			if ( attrs.contains("ZDisabledImage") ) {
-				throw new HarnessException("Tried clicking on "+ button +" but it was disabled "+ attrs);
-			}
-
-			locator = "id='"+ Locators.zDetachIconBtnID;
-			page = null;	// TODO
-			throw new HarnessException("implement new window page ... probably just DisplayMail object?");
-
-
+			// 8.0: http://bugzilla.zimbra.com/show_bug.cgi?id=73721
+			//
+//			page = null;
+//			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
+//				locator = "css=div#ztb__TV-main div[id$='__DETACH'] div.ImgOpenInNewWindow";
+//			} else {
+//				locator = "css=div#ztb__CLV-main div[id$='__DETACH'] div.ImgOpenInNewWindow";
+//			}
+//
+//			if ( !this.sIsElementPresent(locator) ) {
+//				throw new HarnessException("Detach icon not present "+ button);
+//			}
+//			
+//			this.zClickAt(locator, "");
+//			page = new SeparateWindowDisplayMail(this.MyApplication);
+//			
+//			// We don't know the window title at this point (However, the test case should.)
+//			// Don't check that the page is active, let the test case do that.
+//
+//			return (page);
+			
+			return (this.zToolbarPressPulldown(Button.B_ACTIONS, Button.B_LAUNCH_IN_SEPARATE_WINDOW));
+			
 		} else if ( button == Button.B_LISTVIEW ) {
 
 			// For "TAG" without a specified pulldown option, just click on the pulldown
@@ -443,6 +381,48 @@ public class PageMail extends AbsTab {
 
 			locator = "id='"+ Locators.zViewMenuDropdownBtnID +"'";
 
+		} else if ( button == Button.B_MAIL_LIST_SORTBY_FLAGGED ) {
+
+			locator = "css=td[id='zlh__TV-main__fg'] div[class='ImgFlagRed']";
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+			return (null);
+
+		} else if ( button == Button.B_MAIL_LIST_SORTBY_FROM ) {
+
+			locator = "css=td[id='zlh__TV-main__fr'] td[id='zlhl__TV-main__fr']";
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+			return (null);
+
+		} else if ( button == Button.B_MAIL_LIST_SORTBY_ATTACHMENT ) {
+
+			locator = "css=td[id='zlh__TV-main__at'] div[class='ImgAttachment']";
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+			return (null);
+
+		} else if ( button == Button.B_MAIL_LIST_SORTBY_SUBJECT ) {
+
+			locator = "css=td[id='zlh__TV-main__su'] td[id='zlhl__TV-main__su']";
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+			return (null);
+
+		} else if ( button == Button.B_MAIL_LIST_SORTBY_SIZE ) {
+
+			locator = "css=td[id='zlh__TV-main__sz'] td[id='zlhl__TV-main__sz']";
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+			return (null);
+
+		} else if ( button == Button.B_MAIL_LIST_SORTBY_RECEIVED ) {
+
+			locator = "css=td[id='zlh__TV-main__dt'] td[id='zlhl__TV-main__dt']";
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+			return (null);
+			
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);
 		}
@@ -453,18 +433,13 @@ public class PageMail extends AbsTab {
 
 		// Default behavior, process the locator by clicking on it
 		//
-		this.zClick(locator);
+		this.zClickAt(locator,"0,0");
 
+		//need small wait so that next element gets appeared/visible  after click
+		SleepUtil.sleepMedium();
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
 
-		if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP &&
-				button == Button.B_GETMAIL) {
-
-
-			// Wait for the spinner image
-			zWaitForDesktopLoadingSpinner(5000);
-		}
 
 		// If page was specified, make sure it is active
 		if ( page != null ) {
@@ -487,18 +462,22 @@ public class PageMail extends AbsTab {
 
 		if (option == null)
 			throw new HarnessException("Option cannot be null!");
-		// Default behavior variables
 
+		
+		// Default behavior variables
 		String pulldownLocator = null; // If set, this will be expanded
 		String optionLocator = null; // If set, this will be clicked
 		AbsPage page = null; // If set, this page will be returned
+		
+		// CLV vs. MLV
+		boolean isCLV = this.zIsVisiblePerPosition("css=div#ztb__CLV-main", 0, 0);
 
 		if (pulldown == Button.B_TAG) {
 			if (option == Button.O_TAG_NEWTAG) {
 
 				pulldownLocator = "css=td[id$='__TAG_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
 
-				optionLocator = "css=td[id$='__TAG_MENU|MENU|NEWTAG_title']";
+				optionLocator = "css=div[id$='__TAG_MENU|MENU'] td[id='mail_newtag_title']";
 
 				page = new DialogTag(this.MyApplication, this);
 
@@ -507,7 +486,7 @@ public class PageMail extends AbsTab {
 
 				pulldownLocator = "css=td[id$='__TAG_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
 
-				optionLocator = "css=td[id$='__TAG_MENU|MENU|REMOVETAG_title']";
+				optionLocator = "css=div[id$='__TAG_MENU|MENU'] td[id='mail_removetag_title']";
 
 				page = null;
 
@@ -515,36 +494,206 @@ public class PageMail extends AbsTab {
 			} else {
 				throw new HarnessException(
 						"no logic defined for pulldown/option " + pulldown
-								+ "/" + option);
+						+ "/" + option);
 			}
 		} else if (pulldown == Button.B_NEW) {
-			
+
 			pulldownLocator = "css=td[id$='__NEW_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
-			
+
 			if (option == Button.O_NEW_TAG) {
-				
-				optionLocator = "css=tr[id='POPUP_NEW_TAG'] div[class='ImgNewTag']";
+
+				optionLocator = "css=td[id$='__NEW_MENU_NEW_TAG_left_icon']>div[class='ImgNewTag']";
 				page = new DialogTag(this.MyApplication, this);
-				
+
 			} else if (option == Button.O_NEW_FOLDER) {
-				
-				optionLocator = "css=tr[id='POPUP_NEW_FOLDER'] div[class='ImgNewFolder']";
+
+				optionLocator = "css=td[id$='__NEW_MENU_NEW_FOLDER_left_icon']>div[class='ImgNewFolder']";
 				page = new DialogCreateFolder(this.MyApplication, this);
 
 			}
+
+		} else if ( pulldown == Button.B_ACTIONS ) {
 			
-		} else if ((pulldown == Button.B_SIGNATURE)&& (option == Button.O_ADD_SIGNATURE)) {
+			if (isCLV) {
+				pulldownLocator = "css=td[id='zb__CLV-main__ACTIONS_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
+				optionLocator = "css=div[id='zm__CLV-main']";
+			} else {
+				pulldownLocator = "css=td[id='zb__TV-main__ACTIONS_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
+				optionLocator = "css=div[id='zm__TV-main']";
+			}
+
+			if ( option == Button.B_PRINT ) {
+				
+				optionLocator += " div[id^='PRINT'] td[id$='_title']";
+				page = new DialogRedirect(this.MyApplication, this);
+				
+				// FALL THROUGH
+
+				
+			} else if ((option == Button.B_RESPORTSPAM) || (option == Button.B_RESPORTNOTSPAM)) {
+				
+				optionLocator += " div[id^='SPAM'] td[id$='_title']";
+				page = null;
+
+				// FALL THROUGH
+
+			} else if ( option == Button.B_LAUNCH_IN_SEPARATE_WINDOW ) {
+				
+				// 8.0, 4/25/2012: separate window moved from Actions menu to Toolbar
+				//
+				
+				// 8.0: http://bugzilla.zimbra.com/show_bug.cgi?id=73721
+				// 				return (this.zToolbarPressButton(Button.B_NEWWINDOW));
+				
+				optionLocator += " div[id^='DETACH'] td[id$='_title']";
+				page = new SeparateWindowDisplayMail(this.MyApplication);
+
+				// We don't know the window title at this point (However, the test case should.)
+				// Don't check that the page is active, let the test case do that.
+
+				this.zClickAt(pulldownLocator, "0,0");
+				zWaitForBusyOverlay();
+
+				this.zClickAt(optionLocator, "0,0");
+				zWaitForBusyOverlay();
+
+				return (page);
+
+			} else if ( option == Button.O_MARK_AS_READ ) {
+				
+				optionLocator += " div[id^='MARK_READ'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_MARK_AS_UNREAD ) {
+				
+				optionLocator += " div[id^='MARK_UNREAD'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_SHOW_ORIGINAL ) {
+				
+				optionLocator += " div[id^='SHOW_ORIG'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.B_REDIRECT ) {
+				
+				optionLocator += " div[id^='REDIRECT'] td[id$='_title']";
+				page = new DialogRedirect(this.MyApplication, this);
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.B_MUTE ) {
+				
+				optionLocator += " div[id^='MUTE_CONV'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_EDIT_AS_NEW ) {
+				
+				optionLocator += " div[id^='EDIT_AS_NEW'] td[id$='_title']";
+				page = new FormMailNew(this.MyApplication);
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_NEW_FILTER ) {
+				
+				optionLocator += " div[id^='ADD_FILTER_RULE'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_NEW_APPOINTMENT ) {
+				
+				optionLocator += " div[id^='CREATE_APPT'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_NEW_TASK ) {
+				
+				optionLocator += " div[id^='CREATE_TASK'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else if ( option == Button.O_QUICK_COMMANDS_MENU ) {
+				
+				optionLocator += " div[id^='QUICK_COMMANDS'] td[id$='_title']";
+				page = null;
+				
+				// FALL THROUGH
+
+			} else {
+				
+				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
+
+			}
+			
+		} else if ((pulldown == Button.B_OPTIONS)&& (option == Button.O_ADD_SIGNATURE)) {
 
 			pulldownLocator = "css=td[id$='_ADD_SIGNATURE_dropdown']>div[class='ImgSelectPullDownArrow']";
 			//optionLocator = "//td[contains(@id,'_title') and contains (text(),'sigName')]";
-			//app.zPageMail.zClick("css=td[id*='_title']td:contains('"+ this.sigName + "')");
+
 			page = null;
+
+		} else if ( pulldown == Button.B_MOVE ) {
+
+			if ( option == Button.O_NEW_FOLDER ) {
+
+				// Check if we are CLV or MV
+				if ( this.zIsVisiblePerPosition("css=div#ztb__CLV-main", 0, 0) ) {
+					pulldownLocator = "css=div[id='ztb__CLV-main'] div[id$='__MOVE_MENU'] td[id$='_dropdown']";
+					optionLocator = "css=div[id='ZmMoveButton_CLV-main'] div[id$='NEWFOLDER'] td[id$='_title']";
+				} else {
+					pulldownLocator = "css=div[id='ztb__TV-main'] div[id$='__MOVE_MENU'] td[id$='_dropdown']";
+					optionLocator = "css=div[id='ZmMoveButton_TV-main'] div[id$='NEWFOLDER'] td[id$='_title']";
+				}
+				page = new DialogCreateFolder(this.MyApplication, this);
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(pulldownLocator)) {
+					throw new HarnessException(pulldownLocator + " not present!");
+				}
+
+				// 8.0 change ... need zClickAt()
+				// this.zClick(pulldownLocator);
+				this.zClickAt(pulldownLocator, "0,0");
+
+				// Need to wait for the menu to be drawn
+				SleepUtil.sleepMedium();
+				
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException(optionLocator + " not present!");
+				}
+
+				this.zClick(optionLocator);
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+
+				page.zWaitForActive();
+
+				return (page);
+
+			} else {
+				throw new HarnessException("no logic defined for B_MOVE and " + option);
+			}
+
 
 		} else {
 			throw new HarnessException("no logic defined for pulldown/option "
 					+ pulldown + "/" + option);
 		}
-		
+
 		// Default behavior
 		if (pulldownLocator != null) {
 
@@ -603,37 +752,167 @@ public class PageMail extends AbsTab {
 	 * @throws HarnessException
 	 */
 	public PageMailView zGetPropMailView() throws HarnessException {
-		if ( sIsElementPresent( "id="+ Locators.zViewMenuTVBtnID ) &&
-		      zIsVisiblePerPosition("id="+ Locators.zViewMenuTVBtnID, 0, 0)) {
-			return (PageMailView.BY_MESSAGE);
-		} else if ( sIsElementPresent( "id="+ Locators.zViewMenuCLVBtnID ) &&
-		      zIsVisiblePerPosition("id="+ Locators.zViewMenuCLVBtnID, 0, 0)) {
+		if ( this.zIsVisiblePerPosition(Locators.IsConViewActiveCSS, 0, 0) ) {
 			return (PageMailView.BY_CONVERSATION);
+		} else if ( this.zIsVisiblePerPosition(Locators.IsMsgViewActiveCSS, 0, 0) ) {
+			return (PageMailView.BY_MESSAGE);
 		}
 
 		throw new HarnessException("Unable to determine the Page Mail View");
 	}
 
+	public MailItem parseMessageRow(String top) throws HarnessException {
+		MailItem item = null;
+
+		if ( top.contains("CLV") ) {
+			item = new ConversationItem();
+
+			if ( this.sIsElementPresent(top.trim() + "[class*='ZmConvExpanded']"))
+				((ConversationItem)item).gIsConvExpanded = true;
+
+		} else if ( top.contains("TV") )  {
+			item = new MailItem();
+		} else {
+			throw new HarnessException("Unknown message row type "+ top);
+		}
+
+		String msglocator = top;
+		String locator;
+
+		// Is it checked?
+		locator = msglocator + " div[class*='ImgCheckboxChecked']";
+		item.gIsSelected = this.sIsElementPresent(locator);
+
+		// Is it flagged
+		// TODO: probably can't have boolean, need 'blank', 'disabled', 'red', and other states
+		locator = msglocator + " div[class*='ImgFlagRed']";
+		item.gIsFlagged = this.sIsElementPresent(locator);
+
+		// Is it high priority?
+		item.gPriority = MailItem.Priority.Normal;
+		if ( this.sIsElementPresent(msglocator + " div[id$='__pr'][class*=ImgPriorityHigh_list]") )
+			item.gPriority = MailItem.Priority.High;
+		if ( this.sIsElementPresent(msglocator + " div[id$='__pr'][class*=ImgPriorityLow_list]") )
+			item.gPriority = MailItem.Priority.Low;
+
+
+		locator = msglocator + " div[id$='__tg']";
+		// TODO: handle tags
+
+		// Get the From
+		locator = msglocator + " [id$='__fr']";
+		item.gFrom = this.sGetText(locator).trim();
+
+		// Get the attachment
+		locator = msglocator + " div[id$='__at'][class*=ImgBlank_16]";
+		if ( this.sIsElementPresent(locator) ) {
+			item.gHasAttachments = false;
+		} else {
+			// TODO - handle other attachment types
+		}
+
+		// Get the fragment and the subject
+		locator = msglocator + " span[id$='__fm']";
+		if ( this.sIsElementPresent(locator) ) {
+
+			item.gFragment = this.sGetText(locator).trim();
+
+			// Get the subject
+			locator = msglocator + " td[id$='__su']";
+			if ( this.sIsElementPresent(msglocator + " td[id$='__su']") ) {
+				
+				String subject = this.sGetText(msglocator + " td[id$='__su']").trim();
+
+				// The subject contains the fragment, e.g. "subject - fragment", so
+				// strip it off
+				item.gSubject = subject.replace(item.gFragment, "").trim();
+
+			} else if ( this.sIsElementPresent(msglocator + " span[id$='__su']") ) {
+				
+				String subject = this.sGetText(msglocator + " span[id$='__su']").trim();
+
+				// The subject contains the fragment, e.g. "subject - fragment", so
+				// strip it off
+				item.gSubject = subject.replace(item.gFragment, "").trim();
+
+			} else {
+				
+				// No subject (i.e. expanded conversation message)
+				item.gSubject = "";
+				
+			}
+
+		} else {
+
+			// Conversation items's fragment is in the subject field
+			locator = msglocator + " span[id$='__su']";
+			if ( this.sIsElementPresent(locator) ) {
+				
+				item.gFragment = this.sGetText(locator).trim();
+
+				// TODO: should the subject be parsed from the conversation container?
+				// For now, just set it to blank
+				item.gSubject = "";
+
+			} else {
+
+				item.gFragment = "";
+				item.gSubject = "";
+				
+			}
+
+		}
+
+
+		// Get the folder
+		locator = msglocator + " nobr[id$='__fo']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.gFolder = this.sGetText(locator).trim();
+		} else {
+			item.gFolder = "";
+		}
+
+		// Get the size
+		locator = msglocator + " nobr[id$='__sz']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.gSize = this.sGetText(locator).trim();
+		} else {
+			item.gSize = "";
+		}
+
+		// Get the received date
+		locator = msglocator + " span[id$='__dt']";
+		item.gReceived = this.sGetText(locator).trim();
+
+
+		return (item);
+	}
+
 	/**
-	 * Return a list of all messages in the current view
+	 * Return a list of all messages in the current view.<p>
+	 * <p>
+	 * For conversations, a ConversationItem (extends MailItem) is returned for the containing row.  If the
+	 * conversation is expanded, then the expanded messages are also returned in the list.<p>
+	 * <p>
+	 * 
 	 * @return
-	 * @throws HarnessException 
+	 * @throws HarnessException
 	 */
 	public List<MailItem> zListGetMessages() throws HarnessException {
 
-	   List<MailItem> items = new ArrayList<MailItem>();
+		List<MailItem> items = new ArrayList<MailItem>();
 
-      String listLocator = null;
-      String rowLocator = null;
-      if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-         listLocator = "css=div[id='zl__TV__rows']";
-         rowLocator = "div[id^='zli__TV__']";
-      } else {
-         listLocator = "css=div[id='zl__CLV__rows']";
-         rowLocator = "div[id^='zli__CLV__']";
-      }
+		String listLocator = null;
+		String rowLocator = null;
+		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
+			listLocator = "css=div[id='zl__TV-main__rows']";
+			rowLocator = "div[id^='zli__TV-main__']";
+		} else {
+			listLocator = "css=div[id='zl__CLV-main__rows']";
+			rowLocator = "div[id^='zli__CLV-main__']";
+		}
 
-      // Make sure the button exists
+		// Make sure the button exists
 		if ( !this.sIsElementPresent(listLocator) )
 			throw new HarnessException("Message List View Rows is not present: " + listLocator);
 
@@ -644,75 +923,9 @@ public class PageMail extends AbsTab {
 
 		// Get each conversation's data from the table list
 		for (int i = 1; i <= count; i++) {
-			final String msglocator = listLocator + " div:nth-of-type("+ i +") ";
-			String locator;
-
-			MailItem item = new MailItem();
-
-			// Is it checked?
-			locator = msglocator + " div[class*='ImgCheckboxChecked']";
-			item.gIsSelected = this.sIsElementPresent(locator);
-
-			// Is it flagged
-			// TODO: probably can't have boolean, need 'blank', 'disabled', 'red', and other states
-			locator = msglocator + " div[class*='ImgFlagRed']";
-			item.gIsFlagged = this.sIsElementPresent(locator);
-
-			// Is it high priority?
-			locator = msglocator + " div[id$='__pr'][class*=ImgPriorityHigh_list]";
-			if ( this.sIsElementPresent(locator) )
-				item.gPriority = "high";
-			// TODO - handle other priorities
-
-
-			locator = msglocator + " div[id$='__tg']";
-			// TODO: handle tags
-
-			// Get the From
-			locator = msglocator + " [id$='__fr']";
-			item.gFrom = this.sGetText(locator).trim();
-
-			// Get the attachment
-			locator = msglocator + " div[id$='__at'][class*=ImgBlank_16]";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gHasAttachments = false;
-			} else {
-				// TODO - handle other attachment types
-			}
-
-			// Get the fragment
-			locator = msglocator + " span[id$='__fm']";
-			item.gFragment = this.sGetText(locator).trim();
-
-			// Get the subject
-			locator = msglocator + " td[id$='__su']";
-			String subject = this.sGetText(locator).trim();
-
-			// The subject contains the fragment, e.g. "subject - fragment", so
-			// strip it off
-			item.gSubject = subject.replace(item.gFragment, "").trim();
-
-			// Get the folder
-			locator = msglocator + " nobr[id$='__fo']";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gFolder = this.sGetText(locator).trim();
-			} else {
-				item.gFolder = "";
-			}
-
-			// Get the size
-			locator = msglocator + " nobr[id$='__sz']";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gSize = this.sGetText(locator).trim();
-			} else {
-				item.gSize = "";
-			}
-
-			// Get the received date
-			locator = msglocator + " td[id$='__dt']";
-			item.gReceived = this.sGetText(locator).trim();
 
 			// Add the new item to the list
+			MailItem item = parseMessageRow(listLocator + " div:nth-of-type("+ i +") ");
 			items.add(item);
 			logger.info(item.prettyPrint());
 		}
@@ -720,116 +933,20 @@ public class PageMail extends AbsTab {
 		// Return the list of items
 		return (items);
 	}
-
-	/**
-	 * Return a list of all conversations in the current view
-	 * @return
-	 * @throws HarnessException 
-	 */
-	public List<ConversationItem> zListGetConversations() throws HarnessException {
-		logger.info(myPageName() + " getConversationList");
-
-		List<ConversationItem> items = new ArrayList<ConversationItem>();
-
-		// Make sure the button exists
-		if ( !this.sIsElementPresent(Locators.zCLVRows) )
-			throw new HarnessException("Conversation List View Rows is not present "+ Locators.zCLVRows);
-
-		// How many items are in the table?
-		int count = this.sGetCssCount("css=div[id='zl__CLV__rows'] div[id^='zli__CLV__']");
-		logger.debug(myPageName() + " zListGetConversations: number of conversations: "+ count);
-
-		// Get each conversation's data from the table list
-		for (int i = 1; i <= count; i++) {
-			final String convlocator = "css=div[id='zl__CLV__rows']>div:nth-of-type("+ i +")";
-			String locator;
-
-			ConversationItem item = new ConversationItem();
-
-			// Is it checked?
-			locator = convlocator + " div[class='ImgCheckboxChecked']";
-			item.gIsSelected = this.sIsElementPresent(locator);
-
-			// Is it expanded?
-			locator = convlocator + " div[class='ImgNodeExpanded']";
-			item.gIsExpanded = this.sIsElementPresent(locator);
-
-			// Is it flagged
-			// TODO: probably can't have boolean, need 'blank', 'disabled', 'red', and other states
-			locator = convlocator + " div[class='ImgFlagRed']";
-			item.gIsFlagged = this.sIsElementPresent(locator);
-
-			// What's the priority?
-			locator = convlocator +" div[id$='__pr'][class*='ImgPriorityHigh_list']";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gPriority = "high";
-			}
-			// TODO - handle other priorities
-
-
-			locator = convlocator + " div[id$='__tg']";
-			// TODO: handle tags
-
-			// Get the From
-			locator = convlocator + " td[id$='__fr']";
-			item.gFrom = this.sGetText(locator).trim();
-
-			// Get the attachment
-			locator = convlocator +" div[id$='__at'][class*='ImgBlank_16']";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gHasAttachments = false;
-			}
-			// TODO - handle other attachment types
-
-			// Get the fragment
-			locator = convlocator + " span[id$='__fm']";
-			item.gFragment = this.sGetText(locator).trim();
-
-			// Get the subject
-			locator = convlocator + " td[id$='__su']";
-			String s = this.sGetText(locator).trim();
-
-			// The subject contains the fragment, e.g. "subject - fragment", so
-			// strip it off
-			item.gSubject = s.replace(item.gFragment, "").trim();
-
-			// Get the folder
-			locator = convlocator + " nobr[id$='__fo']";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gFolder = this.sGetText(locator).trim();
-			} else {
-				item.gFolder = "";
-			}
-
-			// Get the size
-			locator = convlocator + " nobr[id$='__sz']";
-			if ( this.sIsElementPresent(locator) ) {
-				item.gSize = this.sGetText(locator).trim();
-			} else {
-				item.gSize = "";
-			}
-
-			// Get the received date
-			locator = convlocator + " td[id$='__dt']";
-			item.gReceived = this.sGetText(locator).trim();
-
-			// Add the new item to the list
-			items.add(item);
-			logger.info(item.prettyPrint());
-		}
-
-		// Return the list of items
-		return (items);
-	}
-
-
-
+	
+	
 
 	@Override
 	public AbsPage zListItem(Action action, String subject) throws HarnessException {
 		logger.info(myPageName() + " zListItem("+ action +", "+ subject +")");
 
 		tracer.trace(action +" on subject = "+ subject);
+
+		if ( action == null )
+			throw new HarnessException("action cannot be null");
+
+		if ( subject == null )
+			throw new HarnessException("subject cannot be null");
 
 		AbsPage page = null;
 		String listLocator;
@@ -841,11 +958,11 @@ public class PageMail extends AbsTab {
 		//
 
 		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-			listLocator = "//div[@id='zl__TV__rows']";
-			rowLocator = "//div[contains(@id, 'zli__TV__')]";
+			listLocator = "css=div[id='zl__TV-main__rows']";
+			rowLocator = "div[id^='zli__TV-main__']";
 		} else {
-			listLocator = "//div[@id='zl__CLV__rows']";
-			rowLocator = "//div[contains(@id, 'zli__CLV__')]";
+			listLocator = "css=div[id='zl__CLV-main__rows']";
+			rowLocator = "div[id^='zli__CLV-main__']";
 		}
 
 		// TODO: how to handle both messages and conversations, maybe check the view first?
@@ -853,20 +970,15 @@ public class PageMail extends AbsTab {
 			throw new HarnessException("List View Rows is not present "+ listLocator);
 
 		// How many items are in the table?
-		int count = this.sGetXpathCount(listLocator + rowLocator);
+		int count = this.sGetCssCount(listLocator + " " + rowLocator);
 		logger.debug(myPageName() + " zListSelectItem: number of list items: "+ count);
+
 
 		// Get each conversation's data from the table list
 		for (int i = 1; i <= count; i++) {
 
-			itemlocator = listLocator + "/div["+ i +"]";
-			String subjectlocator;
-
-			// Look for the subject
-
-			// Subject - Fragment
-			subjectlocator = itemlocator + "//td[contains(@id, '__su')]";
-			String s = this.sGetText(subjectlocator).trim();
+			itemlocator = listLocator + " div:nth-of-type("+ i +") ";
+			String s = this.sGetText(itemlocator + " [id$='__su']").trim();
 
 			if ( s.contains(subject) ) {
 				break; // found it
@@ -882,15 +994,29 @@ public class PageMail extends AbsTab {
 		if ( action == Action.A_LEFTCLICK ) {
 
 			// Left-Click on the item
-			this.zClick(itemlocator);
+			this.zClickAt(itemlocator,"");
 
 			this.zWaitForBusyOverlay();
 
 			// Return the displayed mail page object
-			page = new DisplayMail(MyApplication);
+			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
+				page = new DisplayMail(MyApplication);
+			} else {
+				page = new DisplayConversation(MyApplication);
+			}
 
 			// FALL THROUGH
 
+		} else if ( action == Action.A_DOUBLECLICK ) {
+
+			// Double-Click on the item
+			this.sDoubleClick(itemlocator);
+
+			this.zWaitForBusyOverlay();
+
+			page = new DisplayMail(MyApplication);
+
+			// FALL THROUGH
 		} else if ( action == Action.A_CTRLSELECT ) {
 
 			throw new HarnessException("implement me!  action = "+ action);
@@ -911,11 +1037,11 @@ public class PageMail extends AbsTab {
 
 		} else if ( action == Action.A_MAIL_CHECKBOX ) {
 
-			String selectlocator = itemlocator + "//div[contains(@id, '__se')]";
+			String selectlocator = itemlocator + " div[id$='__se']";
 			if ( !this.sIsElementPresent(selectlocator) )
 				throw new HarnessException("Checkbox locator is not present "+ selectlocator);
 
-			String image = this.sGetAttribute("xpath="+ selectlocator +"@class");
+			String image = this.sGetAttribute(selectlocator +"@class");
 			if ( image.equals("ImgCheckboxChecked") )
 				throw new HarnessException("Trying to check box, but it was already enabled");
 
@@ -931,11 +1057,11 @@ public class PageMail extends AbsTab {
 
 		} else if ( action == Action.A_MAIL_UNCHECKBOX ) {
 
-			String selectlocator = itemlocator + "//div[contains(@id, '__se')]";
+			String selectlocator = itemlocator + " div[id$='__se']";
 			if ( !this.sIsElementPresent(selectlocator) )
 				throw new HarnessException("Checkbox locator is not present "+ selectlocator);
 
-			String image = this.sGetAttribute("xpath="+ selectlocator +"@class");
+			String image = this.sGetAttribute(selectlocator +"@class");
 			if ( image.equals("ImgCheckboxUnchecked") )
 				throw new HarnessException("Trying to uncheck box, but it was already disabled");
 
@@ -951,12 +1077,44 @@ public class PageMail extends AbsTab {
 
 		} else if ( action == Action.A_MAIL_EXPANDCONVERSATION ) {
 
-			throw new HarnessException("implement me!  action = "+ action);
+			String selectlocator = itemlocator + " div[id$='__ex']";
+			if ( !this.sIsElementPresent(selectlocator) )
+				throw new HarnessException("Checkbox locator is not present "+ selectlocator);
+
+			String image = this.sGetAttribute(selectlocator +"@class");
+			if ( image.equals("ImgNodeExpanded") )
+				throw new HarnessException("Trying to expand, but conversation was alread expanded");
+
+			// Left-Click on the flag field
+			this.zClick(selectlocator);
+
+			this.zWaitForBusyOverlay();
+
+			// No page to return
+			page = null;
+
+		} else if ( action == Action.A_MAIL_COLLAPSECONVERSATION ) {
+
+			String selectlocator = itemlocator + " div[$id$='__ex']";
+			if ( !this.sIsElementPresent(selectlocator) )
+				throw new HarnessException("Checkbox locator is not present "+ selectlocator);
+
+			String image = this.sGetAttribute(selectlocator +"@class");
+			if ( image.equals("ImgNodeCollapsed") )
+				throw new HarnessException("Trying to collapse, but conversation was alread collapsed");
+
+			// Left-Click on the flag field
+			this.zClick(selectlocator);
+
+			this.zWaitForBusyOverlay();
+
+			// No page to return
+			page = null;
 
 		} else if ( (action == Action.A_MAIL_FLAG) || (action == Action.A_MAIL_UNFLAG) ) {
 			// Both FLAG and UNFLAG have the same action and result
 
-			String flaglocator = itemlocator + "//div[contains(@id, '__fg')]";
+			String flaglocator = itemlocator + " div[id$='__fg']";
 
 			// Left-Click on the flag field
 			this.zClick(flaglocator);
@@ -982,97 +1140,6 @@ public class PageMail extends AbsTab {
 
 	}
 
-	public AbsPage zListItem(Action action, Button option, FolderItem folderItem)
-	throws HarnessException {
-		logger.info(myPageName() + " zListItem("+ action +", "+ option +")");
-		tracer.trace(action +" then "+ option +" on Folder Item = "+ folderItem);
-
-		if ( action == null )
-			throw new HarnessException("action cannot be null");
-		if ( option == null )
-			throw new HarnessException("button cannot be null");
-		if ( folderItem == null )
-			throw new HarnessException("folderItem cannot be null");
-
-		String treeItemLocator = null;
-		boolean onRootFolder = false;
-
-		if (folderItem.getName().equals("USER_ROOT")) {
-			onRootFolder = true;
-			switch (ZimbraSeleniumProperties.getAppType()) {
-			case AJAX:
-				treeItemLocator = TreeMail.Locators.ztih_main_Mail__FOLDER_ITEM_ID.replace(
-						TreeMail.stringToReplace, "FOLDER");
-				break;
-
-			case DESKTOP:
-				treeItemLocator = TreeMail.Locators.zTreeItems.replace(TreeMail.stringToReplace,
-						AjaxCommonTest.defaultAccountName);
-				break;
-			default:
-				throw new HarnessException("Implement me!");
-			}
-		} else {
-			throw new HarnessException("Implement me!");
-		}
-
-		AbsPage page = null;
-		if (treeItemLocator == null) throw new HarnessException("treeItemLocator is null, please check!");
-
-		GeneralUtility.waitForElementPresent(this, treeItemLocator);
-
-		if ( action == Action.A_RIGHTCLICK ) {
-
-			if (option == Button.B_TREE_NEWFOLDER) {
-				ContextMenu contextMenu = (ContextMenu)((AppAjaxClient)MyApplication).zTreeMail.zTreeItem(
-						action, treeItemLocator);
-				page = contextMenu.zSelect(CONTEXT_MENU_ITEM_NAME.NEW_FOLDER);
-			}
-			else {
-				throw new HarnessException("implement action:"+ action +" option:"+ option);
-			}
-		} else if (action == Action.A_LEFTCLICK) {
-			if (option == Button.B_TREE_NEWFOLDER) {
-				if (ZimbraSeleniumProperties.getAppType() == AppType.AJAX) {
-					if (((AppAjaxClient)MyApplication).zTreeMail.isCollapsed()) {
-						// Expand it
-						((AppAjaxClient)MyApplication).zTreeMail.zClick(
-								TreeMail.Locators.treeExpandCollapseButton);
-						GeneralUtility.waitFor(null, ((AppAjaxClient)MyApplication).zTreeMail, false,
-								"isCollapsed", null, WAIT_FOR_OPERAND.EQ, false, 30000, 1000);
-					} else {
-						if (onRootFolder) {
-							// TODO: Bug 57414
-							// Collapse the tree and expand it again to select the root folder
-							((AppAjaxClient)MyApplication).zTreeMail.zClick(
-									TreeMail.Locators.treeExpandCollapseButton);
-
-							GeneralUtility.waitFor(null, ((AppAjaxClient)MyApplication).zTreeMail, false,
-									"isCollapsed", null, WAIT_FOR_OPERAND.EQ, true, 30000, 1000);
-
-							((AppAjaxClient)MyApplication).zTreeMail.zClick(
-									TreeMail.Locators.treeExpandCollapseButton);
-
-							page = ((AppAjaxClient)MyApplication).zTreeMail.zPressButton(option);
-						}  else {
-							// Fall Through
-						}
-					}
-
-				} else {
-					// Not available for Desktop
-					throw new HarnessException("Not Supported! Action:" + action + " Option:" + option);
-				}
-
-			} else {
-				throw new HarnessException("implement action:"+ action +" option:"+ option);
-			}
-		} else {
-			throw new HarnessException("implement action:"+ action +" option:"+ option);
-		}
-
-		return page;
-	}
 
 	@Override
 	public AbsPage zListItem(Action action, Button option, Button subOption ,String item)
@@ -1106,11 +1173,11 @@ public class PageMail extends AbsTab {
 		//
 
 		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-			listLocator = "//div[@id='zl__TV__rows']";
-			rowLocator = "//div[contains(@id, 'zli__TV__')]";
+			listLocator = "css=div[id='zl__TV-main__rows']";
+			rowLocator = "div[id^='zli__TV-main__']";
 		} else {
-			listLocator = "//div[@id='zl__CLV__rows']";
-			rowLocator = "//div[contains(@id, 'zli__CLV__')]";
+			listLocator = "css=div[id='zl__CLV-main__rows']";
+			rowLocator = "div[id^='zli__CLV-main__']";
 		}
 
 		// TODO: how to handle both messages and conversations, maybe check the view first?
@@ -1118,25 +1185,21 @@ public class PageMail extends AbsTab {
 			throw new HarnessException("List View Rows is not present "+ listLocator);
 
 		// How many items are in the table?
-		int count = this.sGetXpathCount(listLocator + rowLocator);
+		int count = this.sGetCssCount(listLocator + " " + rowLocator);
 		logger.debug(myPageName() + " zListSelectItem: number of list items: "+ count);
+
 
 		// Get each conversation's data from the table list
 		for (int i = 1; i <= count; i++) {
 
-			itemlocator = listLocator + "/div["+ i +"]";
-			String subjectlocator;
 
-			// Look for the subject
-
-			// Subject - Fragment
-			subjectlocator = itemlocator + "//td[contains(@id, '__su')]";
-			String s = this.sGetText(subjectlocator).trim();
+			itemlocator = listLocator + " div:nth-of-type("+ i +") ";
+			String s = this.sGetText(itemlocator + " span[id$='__su']").trim();
 
 			if ( s.contains(subject) ) {
 				break; // found it
 			}
-
+			
 			itemlocator = null;
 		}
 
@@ -1144,75 +1207,102 @@ public class PageMail extends AbsTab {
 			throw new HarnessException("Unable to locate item with subject("+ subject +")");
 		}
 
+
 		if ( action == Action.A_RIGHTCLICK ) {
 
 			// Right-Click on the item
-			this.zRightClick(itemlocator);
+			this.zRightClickAt(itemlocator,"");
 
 			// Now the ContextMenu is opened
 			// Click on the specified option
 
-			String optionLocator = null;
+			String optionLocator = "css=div[id^='zm__CLV-main__']";
+			if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
+				optionLocator = "div[id^='zm__TV-main__']";
+			}
 
-			if (option == Button.B_DELETE) {
+			if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
+				optionLocator = "css=div[id^='zm__TV-main__']";
+			}
 
-				// <div id="zmi__TV_DELETE" ... By Message
-				// <div id="zmi__CLV__Par__DELETE" ... By Conversation
 
-				if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-					optionLocator = "zmi__TV__DELETE";
-				} else {
-					optionLocator = "zmi__CLV__Par__DELETE";
-				}
+			if ( option == Button.O_MARK_AS_READ ) {
 
-				page = null;
-
-			} else if (option == Button.B_TREE_NEWFOLDER) {
-
-				String treeItemLocator = null;
-				if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-					treeItemLocator = TreeMail.Locators.zTreeItems.replace(TreeMail.stringToReplace,
-							AjaxCommonTest.defaultAccountName);
-				} else {
-					treeItemLocator = TreeMail.Locators.ztih_main_Mail__FOLDER_ITEM_ID.replace(TreeMail.stringToReplace, "FOLDER");
-				}
-
-				GeneralUtility.waitForElementPresent(this, treeItemLocator);
-				ContextMenu contextMenu = (ContextMenu)((AppAjaxClient)MyApplication).zTreeMail.zTreeItem(Action.A_RIGHTCLICK, treeItemLocator);
-				page = contextMenu.zSelect(CONTEXT_MENU_ITEM_NAME.NEW_FOLDER);
-
-			} else if ( option == Button.O_MARK_AS_READ ) {
-
-				if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-					optionLocator = "zmi__TV__MARK_READ_title";
-				} else {
-					optionLocator = "zmi__CLV__MARK_READ_title";
-				}
-
+				optionLocator += " div[id^='MARK_READ'] td[id$='_title']";
 				page = null;
 
 				// FALLTHROUGH
 
 			} else if ( option == Button.O_MARK_AS_UNREAD ) {
 
-				if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
-					optionLocator = "zmi__TV__MARK_UNREAD_title";
-				} else {
-					optionLocator = "zmi__CLV__MARK_UNREAD_title";
-				}
-
+				optionLocator += " div[id^='MARK_UNREAD'] td[id$='_title']";
 				page = null;
-
 
 				// FALLTHROUGH
 
-			}
-			else {
+			} else if (option == Button.B_DELETE) {
+
+				optionLocator += " div[id^='DELETE'] td[id$='_title']";
+				page = null;
+
+				// FALLTHROUGH
+
+			} else if (option == Button.B_REPLY) {
+
+				optionLocator += " div[id^='REPLY'] td[id$='_title']";
+				page = null;
+
+				// FALLTHROUGH
+
+			} else if (option == Button.B_REPLYALL) {
+
+				optionLocator += " div[id^='REPLY'] td[id$='_title']";
+				page = null;
+
+				// FALLTHROUGH
+
+			} else if (option == Button.B_FORWARD) {
+
+				optionLocator += " div[id^='REPLY'] td[id$='_title']";
+				page = null;
+
+				// FALLTHROUGH
+
+			} else if ( option == Button.B_REDIRECT ) {
+
+				optionLocator += " div[id^='REDIRECT'] td[id$='_title']";
+
+				page = new DialogRedirect(this.MyApplication, this);
+
+				// FALLTHROUGH
+
+			} else if ( option == Button.B_MUTE ) {
+
+				optionLocator += " div[id^='MUTE_CONV'] td[id$='_title']";
+				page = null;
+
+				// FALLTHROUGH
+
+			} else if ( option == Button.O_EDIT_AS_NEW ) {
+
+				optionLocator += " div[id^='EDIT_AS_NEW'] td[id$='_title']";
+				page = new FormMailNew(this.MyApplication);
+
+				// FALLTHROUGH
+
+			} else if ( option == Button.O_CREATE_TASK ) {
+
+				optionLocator += " div[id^='CREATE_TASK'] td[id$='_title']";
+				page = null;
+
+				// FALLTHROUGH
+
+			} else {
 				throw new HarnessException("implement action:"+ action +" option:"+ option);
 			}
 
 			// click on the option
-			this.zClick(optionLocator);
+			this.zClickAt(optionLocator,"");
 
 			this.zWaitForBusyOverlay();
 
@@ -1236,7 +1326,7 @@ public class PageMail extends AbsTab {
 
 	@Override
 	public AbsPage zKeyboardShortcut(Shortcut shortcut) throws HarnessException {
-
+		String	keyCode;
 		if (shortcut == null)
 			throw new HarnessException("Shortcut cannot be null");
 
@@ -1248,18 +1338,60 @@ public class PageMail extends AbsTab {
 				(shortcut == Shortcut.S_NEWMESSAGE) ||
 				(shortcut == Shortcut.S_NEWMESSAGE2) )
 		{
+
 			// "New Message" shortcuts result in a compose form opening
 			page = new FormMailNew(this.MyApplication);
+
+		} else if ( (shortcut == Shortcut.S_NEWITEM_IN_NEW_WINDOW) ||
+					(shortcut == Shortcut.S_NEWMESSAGE_IN_NEW_WINDOW) ||
+					(shortcut == Shortcut.S_NEWMESSAGE2_IN_NEW_WINDOW) )
+			{
+
+				// These shortcuts result in a separate window opening
+				page = new SeparateWindowFormMailNew(this.MyApplication);
+				
+				// Don't fall through.  The test case needs to make sure the separate window opens
+				zKeyboard.zTypeCharacters(shortcut.getKeys());
+				return (page);
+
 		}else if ( (shortcut == Shortcut.S_NEWTAG) ){
 
 			// "New Message" shortcuts result in a compose form opening
 			//page = new FormMailNew(this.MyApplication);
 			page = new DialogTag(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+
 		}else if ( (shortcut == Shortcut.S_NEWFOLDER) ){
 
 			// "New Message" shortcuts result in a compose form opening
 			//page = new FormMailNew(this.MyApplication);
 			page = new DialogCreateFolder(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+
+		} else if ( (shortcut == Shortcut.S_MAIL_HARDELETE) ) {
+
+			// Hard Delete shows the Warning Dialog : Are you sure you want to permanently delete it?
+			page = new DialogWarning(DialogWarning.DialogWarningID.PermanentlyDeleteTheItem,
+					MyApplication, ((AppAjaxClient) MyApplication).zPageMail);
+
+		} else if ( shortcut == Shortcut.S_ASSISTANT ) {
+
+			page = new DialogAssistant(MyApplication, ((AppAjaxClient) MyApplication).zPageMail);
+
+		} else if(shortcut== Shortcut.S_ESCAPE) {
+
+			page = new DialogWarning(
+					DialogWarning.DialogWarningID.SaveCurrentMessageAsDraft,
+					this.MyApplication,
+					((AppAjaxClient)this.MyApplication).zPageMail);	
+
+			keyCode = "27";
+			zKeyDown(keyCode);
+			return page;
+
+			// By default, just type the shortcut and return null page
+			//		} else {
+			//			
+			//			throw new HarnessException("No logic for shortcut : "+ shortcut);
+			//			
 		}
 
 
@@ -1275,28 +1407,90 @@ public class PageMail extends AbsTab {
 		return (page);
 	}
 
-	public AbsPage zToolbarPressPulldown(Button pulldown, Button option,String dynamic) throws HarnessException {
-		//logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +")");
-		tracer.trace("Click pulldown "+ pulldown +" then "+ option);
+	public AbsPage zToolbarPressPulldown(Button pulldown, Button option, Object dynamic) throws HarnessException {
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ option +", "+ dynamic +")");
+		tracer.trace("Click pulldown "+ pulldown +" then "+ option +" then "+ dynamic);
+
+
 		if (pulldown == null)
 			throw new HarnessException("Pulldown cannot be null!");
-
 		if (option == null)
 			throw new HarnessException("Option cannot be null!");
 		if (dynamic == null)
-			throw new HarnessException("dynamic string cannot be null!");
-		// Default behavior variables
+			throw new HarnessException("dynamic object cannot be null!");
 
+
+		// Default behavior variables
 		String pulldownLocator = null; // If set, this will be expanded
 		String optionLocator = null; // If set, this will be clicked
+		String dynamicLocator = null; // If set, this will be clicked
 		AbsPage page = null; // If set, this page will be returned
 
-		if ((pulldown == Button.B_SIGNATURE)&& (option == Button.O_ADD_SIGNATURE)) {
+		if ((pulldown == Button.B_OPTIONS)&& (option == Button.O_ADD_SIGNATURE)) {
+
+			if ( !(dynamic instanceof String) ) 
+				throw new HarnessException("dynamic must be a string!  "+ dynamic.getClass().getCanonicalName());
+
 			String name = (String)dynamic;
-			logger.info(name);
-			pulldownLocator = "css=td[id$='_ADD_SIGNATURE_dropdown']>div[class='ImgSelectPullDownArrow']";
-			dynamic ="css=td[id*='_title']td:contains('"+ name + "')";
+			logger.info("Click on Signature: "+ name);
+			
+			//pulldownLocator = "css=td[id$='_ADD_SIGNATURE_dropdown']>div[class='ImgSelectPullDownArrow']";
+			pulldownLocator="css=[id^=zb__COMPOSE][id$=__COMPOSE_OPTIONS_dropdown]";
+			optionLocator="css=div[id='ADD_SIGNATURE'] tr[id='POPUP_ADD_SIGNATURE']> td[id='ADD_SIGNATURE_dropdown']>div[class='ImgCascade']";
+			dynamicLocator ="css=td[id*='_title']td:contains('"+ name + "')";
 			page = null;
+
+		} else if ( pulldown == Button.B_ACTIONS ) {
+			
+			boolean isCLV = this.zIsVisiblePerPosition("css=div#ztb__CLV-main", 0, 0);
+
+			if (isCLV) {
+				pulldownLocator = "css=td[id='zb__CLV-main__ACTIONS_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
+				optionLocator = "css=div[id='zm__CLV-main']";
+			} else {
+				pulldownLocator = "css=td[id='zb__TV-main__ACTIONS_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
+				optionLocator = "css=div[id='zm__TV-main']";
+			}
+			
+			if ( option == Button.O_QUICK_COMMANDS_MENU ) {
+				
+				if ( !(dynamic instanceof String) ) 
+					throw new HarnessException("dynamic must be a string!  "+ dynamic.getClass().getCanonicalName());
+
+				String quickcommand = (String)dynamic;
+				logger.info("Click on Quick Command: "+ quickcommand);
+
+				optionLocator += " div[id^='QUICK_COMMANDS'] td[id$='_title']";
+				dynamicLocator	= "css=div[id^='quickCommandSubMenu_'] td[id$='_title']:contains('"+ quickcommand + "')";
+				page = null;
+				
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(pulldownLocator)) {
+					throw new HarnessException(pulldownLocator + " not present!");
+				}
+
+				this.zClickAt(pulldownLocator,"");
+				zWaitForBusyOverlay();
+
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException(optionLocator + " not present!");
+				}
+
+				this.sMouseOver(optionLocator);
+				zWaitForBusyOverlay();
+
+				// Make sure the locator exists
+				// Sometimes the menu isn't drawn right away.  Wait for it.
+				GeneralUtility.waitForElementPresent(this, dynamicLocator);
+
+				this.zClickAt(dynamicLocator,"");
+				zWaitForBusyOverlay();
+				
+				return (page);
+				
+			} else {
+				throw new HarnessException("no logic defined for pulldown/option " + pulldown + "/" + option);
+			}
 
 		} else {
 			throw new HarnessException("no logic defined for pulldown/option "
@@ -1313,7 +1507,7 @@ public class PageMail extends AbsTab {
 						+ " not present!");
 			}
 
-			this.zClick(pulldownLocator);
+			this.zClickAt(pulldownLocator,"");
 
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
@@ -1322,26 +1516,25 @@ public class PageMail extends AbsTab {
 
 				// Make sure the locator exists
 				if (!this.sIsElementPresent(optionLocator)) {
-					throw new HarnessException("Button " + pulldown
-							+ " option " + option + " optionLocator "
-							+ optionLocator + " not present!");
+					throw new HarnessException(" option " + option
+							+ " optionLocator " + optionLocator
+							+ " not present!");
 				}
 
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator,"");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
+
 			}
-			if (dynamic != null) {
+			if (dynamicLocator != null) {
 
 				// Make sure the locator exists
-				if (!this.sIsElementPresent(dynamic)) {
-					throw new HarnessException("Button " + pulldown
-							+ " option " + option + " optionLocator "
-							+ dynamic + " not present!");
+				if (!this.sIsElementPresent(dynamicLocator)) {
+					throw new HarnessException(dynamicLocator+ " not present!");
 				}
 
-				this.zClick(dynamic);
+				this.zClickAt(dynamicLocator,"");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
@@ -1352,14 +1545,236 @@ public class PageMail extends AbsTab {
 			if (page != null) {
 				page.zWaitForActive();
 			}
+
 		}
+
 		// Return the specified page, or null if not set
 		return (page);
 
 
 	}
 
+	/**
+	 * Activate a pulldown with dynamic values, such as "Move to folder" and "Add a tag".
+	 * 
+	 * @param pulldown the toolbar button to press
+	 * @param dynamic the toolbar item to click such as FolderItem or TagItem
+	 * @throws HarnessException 
+	 */
+	public AbsPage zToolbarPressPulldown(Button pulldown, Object dynamic) throws HarnessException {
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("+ pulldown +", "+ dynamic +")");
+
+		tracer.trace("Click pulldown "+ pulldown +" then "+ dynamic);
+
+
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (dynamic == null)
+			throw new HarnessException("Option cannot be null!");
+
+
+		// Default behavior variables
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+
+
+		if ( pulldown == Button.B_MOVE ) {
+
+			if ( !(dynamic instanceof FolderItem) ) 
+				throw new HarnessException("if pulldown = " + Button.B_MOVE +", then dynamic must be FolderItem");
+
+			FolderItem folder = (FolderItem)dynamic;
+
+			// Check if we are CLV or MV
+			if ( this.zIsVisiblePerPosition("css=div#ztb__CLV-main", 0, 0) ) {
+				pulldownLocator = "css=td#zb__CLV-main__MOVE_MENU_dropdown>div";
+				optionLocator = "css=td#zti__ZmFolderChooser_MailCLV-main__"+ folder.getId() + "_textCell";
+			} else {
+				pulldownLocator = "css=td#zb__TV-main__MOVE_MENU_dropdown>div";
+				optionLocator = "css=td#zti__ZmFolderChooser_MailTV-main__"+ folder.getId() + "_textCell";
+			}
+
+
+			page = null;
+
+
+		} else if ( pulldown == Button.B_TAG ) {
+			
+			if ( !(dynamic instanceof TagItem) ) 
+				throw new HarnessException("if pulldown = " + Button.B_TAG +", then dynamic must be TagItem");
+
+			TagItem tag = (TagItem)dynamic;
+
+			pulldownLocator = "css=td[id$='__TAG_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
+			optionLocator = "css=div[id='zb__TV-main__TAG_MENU|MENU'] td[id$='_title']:contains("+ tag.getName() +")";
+			page = null;
+
+		} else {
+
+			throw new HarnessException("no logic defined for pulldown/dynamic " + pulldown + "/" + dynamic);
+
+		}
+
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown + " pulldownLocator " + pulldownLocator + " not present!");
+			}
+
+			this.zClickAt(pulldownLocator,"");
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			SleepUtil.sleepSmall();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException(" dynamic " + dynamic + " optionLocator " + optionLocator + " not present!");
+				}
+
+				this.zClickAt(optionLocator,"");
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+			}
+
+			// If we click on pulldown/option and the page is specified, then
+			// wait for the page to go active
+			if (page != null) {
+				page.zWaitForActive();
+			}
+
+		}
 
 
 
+		// Return the specified page, or null if not set
+		return (page);
+
+
+
+	}
+
+	/* (non-Javadoc)
+	 * @see com.zimbra.qa.selenium.framework.ui.AbsPage#zHoverOver(com.zimbra.qa.selenium.framework.ui.Button)
+	 */
+	public AbsTooltip zHoverOver(Button button) throws HarnessException {
+		logger.info(myPageName() + " zHoverOverButton("+ button +")");
+
+		tracer.trace("Hover over "+ button);
+		
+		if ( button == null )
+			throw new HarnessException("Button cannot be null");
+		
+		String locator = null;
+
+		if ( button == Button.B_DELETE ) {
+			
+			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
+				locator = "css=td[id='zb__TV-main__DELETE_title']";
+			} else {
+				locator = "css=td[id='zb__CLV-main__DELETE_title']";
+			}
+			
+		} else if ( button == Button.B_REPLY ) {
+				
+			if ( zGetPropMailView() == PageMailView.BY_MESSAGE ) {
+				locator = "css=td[id='zb__TV-main__REPLY_title']";
+			} else {
+				locator = "css=td[id='zb__CLV-main__REPLY_title']";
+			}
+
+		} else {
+			throw new HarnessException("no logic defined for button: "+ button);
+		}
+		
+		// If another tooltip is active, sometimes it takes a few seconds for the new text to show
+		// So, wait if the tooltip is already active
+		// Don't wait if the tooltip is not active
+		//
+		
+		Tooltip tooltip = new Tooltip(this);
+		if (tooltip.zIsActive()) {
+			
+			// Mouse over
+			this.sMouseOver(locator);
+			this.zWaitForActive();
+			
+			// Wait for the new text
+			SleepUtil.sleep(5000);
+			
+			// Make sure the tooltip is active
+			tooltip.zWaitForActive();
+
+		} else {
+			
+			// Mouse over
+			this.sMouseOver(locator);
+			this.zWaitForActive();
+
+			// Make sure the tooltip is active
+			tooltip.zWaitForActive();
+
+		}
+		
+		return (tooltip);
+	}
+	
+
+
+	/**
+	 * Check warning icon,Display Image link,Domain link
+	 * 
+	 * @return
+	 * @throws HarnessException
+	 */
+	public boolean zHasWDDLinks()throws HarnessException {
+
+		if (zGetPropMailView() == PageMailView.BY_MESSAGE){
+			List<String> locators = Arrays.asList(
+					Locators.zMsgViewDisplayImgLink,
+					Locators.zMsgViewDomainLink, Locators.zMsgViewWarningIcon);
+			for (String locator : locators) {
+				if (!this.sIsElementPresent(locator))
+					return (false);
+			}
+
+			return (true);
+		} else if (zGetPropMailView() == PageMailView.BY_CONVERSATION) {
+			List<String> locators = Arrays.asList(
+					Locators.zConViewDisplayImgLink,
+					Locators.zConViewDomainLink, Locators.zConViewWarningIcon);
+
+			for (String locator : locators) {
+				if (!this.sIsElementPresent(locator))
+					return (false);
+			}
+
+			return (true);
+		} else {
+			throw new HarnessException("no logic defined  ");
+		}
+	}
+
+
+	/*public String zDisplayImageLink()throws HarnessException {
+
+		String DisplayImgLink = null;
+		if (zGetPropMailView() == PageMailView.BY_MESSAGE) {
+			DisplayImgLink = sGetEval("selenium.browserbot.getCurrentWindow().document.getElementById('zv__TV-main__MSG_displayImages').style.display");
+			return DisplayImgLink;
+		} else if (zGetPropMailView() == PageMailView.BY_CONVERSATION) {
+			DisplayImgLink = sGetEval("selenium.browserbot.getCurrentWindow().document.getElementById('zv__CLV-main__MSG_displayImages').style.display");
+			return DisplayImgLink;
+		} else {
+			throw new HarnessException("no logic defined  ");
+		}
+	}*/
 }

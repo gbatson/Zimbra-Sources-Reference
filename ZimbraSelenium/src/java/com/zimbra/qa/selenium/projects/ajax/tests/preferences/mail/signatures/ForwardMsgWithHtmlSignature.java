@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.preferences.mail.signatures;
 
 import java.util.HashMap;
@@ -22,8 +6,10 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import com.zimbra.common.soap.Element;
+import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.items.SignatureItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
@@ -40,7 +26,7 @@ import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew.Field;
 
 public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 	String sigName = "signame" + ZimbraSeleniumProperties.getUniqueString();
-	String sigBody = "Signature<strong>bold"+ ZimbraSeleniumProperties.getUniqueString() + "</strong>Signature";
+	String sigBody = "signature<b>bold"+ ZimbraSeleniumProperties.getUniqueString() + "</b>signature";
 	String contentHTMLSig = XmlStringUtil.escapeXml("<html>" + "<head></head>"
 			+ "<body>" + sigBody + "</body>" + "</html>");
 
@@ -50,6 +36,7 @@ public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 		super.startingAccountPreferences = new HashMap<String, String>() {
 			{
 				put("zimbraPrefComposeFormat", "html");
+				put("zimbraPrefGroupMailBy", "message");
 			}
 		};
 	}
@@ -82,11 +69,12 @@ public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 
 		SignatureItem signature = SignatureItem.importFromSOAP(app.zGetActiveAccount(), this.sigName);
 		logger.info(signature.dBodyHtmlText);
+		FolderItem inboxFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(),SystemFolder.Inbox);
 		ZAssert.assertEquals(signature.getName(), this.sigName,"verified Text Signature is created");
 
 		String subject = "subject"+ ZimbraSeleniumProperties.getUniqueString();
 		String bodyText = "text" + ZimbraSeleniumProperties.getUniqueString();
-		String bodyHTML = "text <strong>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</strong> text";
+		String bodyHTML = "text <b>bold"+ ZimbraSeleniumProperties.getUniqueString() +"</b> text";
 		String contentHTML = XmlStringUtil.escapeXml("<html>" + "<head></head>"
 				+ "<body>" + bodyHTML + "<br></br>" + "</body>" + "</html>");
 		String signatureContent = XmlStringUtil.escapeXml("<html>"
@@ -118,6 +106,7 @@ public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
+		app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, inboxFolder);
 
 		// Select the item
 		app.zPageMail.zListItem(Action.A_LEFTCLICK, mail.dSubject);
@@ -152,8 +141,8 @@ public class ForwardMsgWithHtmlSignature extends AjaxCommonTest {
 		ZAssert.assertStringContains(received.dSubject, "Fwd", "Verify the subject field contains the 'Fwd' prefix");
 		ZAssert.assertEquals(received.dFromRecipient.dEmailAddress, app.zGetActiveAccount().EmailAddress,"Verify the from field is correct");
 		ZAssert.assertEquals(received.dToRecipients.get(0).dEmailAddress,ZimbraAccount.AccountB().EmailAddress,"Verify the to field is correct");
-		ZAssert.assertStringContains(received.dBodyHtml, bodyHTML,"Verify html body content is correct");
-		ZAssert.assertStringContains(received.dBodyHtml, this.sigBody,"Verify html signature is correct");
+		ZAssert.assertStringContains(received.dBodyHtml.toLowerCase(), bodyHTML,"Verify html body content is correct");
+		ZAssert.assertStringContains(received.dBodyHtml.toLowerCase(), this.sigBody,"Verify html signature is correct");
 
 	}
 }

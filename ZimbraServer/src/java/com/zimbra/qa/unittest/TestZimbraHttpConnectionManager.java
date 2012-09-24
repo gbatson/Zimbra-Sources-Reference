@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -33,6 +33,8 @@ import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.InputStreamRequestEntity;
 import org.apache.commons.httpclient.methods.PostMethod;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
@@ -42,7 +44,6 @@ import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.CliUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ZimbraHttpConnectionManager;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.soap.SoapProvisioning;
 
 public class TestZimbraHttpConnectionManager {
@@ -142,10 +143,14 @@ public class TestZimbraHttpConnectionManager {
         
         // create an array of URIs to perform GETs on
         String[] urisToGet = {
+            "http://localhost:7070/zimbra/public/empty.html",
+            "http://localhost:7071/service/admin/soap",
+            /*
             "http://hc.apache.org:80/",
             "http://hc.apache.org:80/httpclient-3.x/status.html",
             "http://hc.apache.org:80/httpclient-3.x/methods/",
             "http://svn.apache.org/viewvc/httpcomponents/oac.hc3x/"
+            */
         };
         
         ZimbraHttpConnectionManager connMgr = ZimbraHttpConnectionManager.getExternalHttpConnMgr();
@@ -574,7 +579,7 @@ public class TestZimbraHttpConnectionManager {
      * 
      * zmlocalconfig -e httpclient_connmgr_so_timeout_external=3000  (3 seconds)
      */
-    @Test
+    // @Test
     public void testSoTimeoutViaConnMgrParam() throws Exception {
         
         int serverPort = 7778;
@@ -714,7 +719,7 @@ public class TestZimbraHttpConnectionManager {
                      AdminConstants.ADMIN_SERVICE_URI;
         sp.soapSetURI(uri);
         try {
-            sp.getDomainInfo(DomainBy.name, "phoebe.mac");
+            sp.getDomainInfo(Key.DomainBy.name, "phoebe.mac");
         } catch (ServiceException e) {
             e.printStackTrace();
         }
@@ -808,6 +813,30 @@ public class TestZimbraHttpConnectionManager {
             runTest(ZimbraHttpConnectionManager.getExternalHttpConnMgr().newHttpClient(), "EXT"+i, false);
             runTest(ZimbraHttpConnectionManager.getInternalHttpConnMgr().getDefaultHttpClient(), "INT"+i, false);
         }
+    }
+
+    @Test
+    public void junk() throws Exception {
+        
+        String uri = "http://phoebe.mbp:7070/service/soap/AuthRequest";
+        
+        HttpClient httpClient = ZimbraHttpConnectionManager.getInternalHttpConnMgr().newHttpClient();
+        
+        GetMethod method = new GetMethod(uri);
+        
+        try {
+            // int respCode = HttpClientUtil.executeMethod(httpClient, method);
+            int respCode = httpClient.executeMethod(method);
+            
+            dumpResponse(respCode, method, "");
+            Assert.fail(); // nope, it should have timed out
+        } catch (Exception e) {
+            e.printStackTrace();
+            Assert.fail();
+        } finally {
+            method.releaseConnection();
+        }
+
     }
 
 }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,24 +29,25 @@ import javax.mail.util.SharedByteArrayInputStream;
 
 import junit.framework.TestCase;
 
+import com.zimbra.client.ZEmailAddress;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage.MessagePart;
+import com.zimbra.client.ZMessage;
+import com.zimbra.client.ZMessage.ZMimePart;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ldap.LdapUtil;
 import com.zimbra.cs.db.DbOutOfOffice;
 import com.zimbra.cs.db.DbPool;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
+import com.zimbra.cs.ldap.LdapConstants;
+import com.zimbra.cs.ldap.LdapUtil;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZEmailAddress;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.MessagePart;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZMessage.ZMimePart;
 
 
 public class TestNotification
@@ -73,7 +74,8 @@ extends TestCase {
     private final boolean mIsServerTest = false;
 
     @Override
-    protected void setUp() throws Exception {
+    protected void setUp() throws Exception
+    {
         super.setUp();
         cleanUp();
 
@@ -94,7 +96,7 @@ extends TestCase {
         // Turn on legal intercept for recipient account
         String interceptorAddress = TestUtil.getAddress(INTERCEPTOR_NAME);
         TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptAddress, interceptorAddress);
-        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptSendHeadersOnly, LdapUtil.LDAP_FALSE);
+        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptSendHeadersOnly, LdapConstants.LDAP_FALSE);
 
         // Send message to recipient account and make sure it's intercepted
         ZMailbox interceptorMbox = TestUtil.getZMailbox(INTERCEPTOR_NAME);
@@ -134,7 +136,7 @@ extends TestCase {
         compareContent(tappedMbox, tappedMsg, interceptorMbox, interceptMsg);
 
         // Send message with save-to-sent turned on.
-        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraPrefSaveToSent, LdapUtil.LDAP_TRUE);
+        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraPrefSaveToSent, LdapConstants.LDAP_TRUE);
         subject = NAME_PREFIX + " testIntercept-send-1";
         TestUtil.sendMessage(tappedMbox, INTERCEPTOR_NAME, subject);
         tappedMsg = TestUtil.waitForMessage(tappedMbox, "in:sent subject:\"" + subject + "\"");
@@ -143,14 +145,14 @@ extends TestCase {
         compareContent(tappedMbox, tappedMsg, interceptorMbox, interceptMsg);
 
         // Send message with save-to-sent turned off.
-        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraPrefSaveToSent, LdapUtil.LDAP_FALSE);
+        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraPrefSaveToSent, LdapConstants.LDAP_FALSE);
         subject = NAME_PREFIX + " testIntercept-send-2";
         TestUtil.sendMessage(tappedMbox, INTERCEPTOR_NAME, subject);
         interceptMsg = TestUtil.waitForMessage(interceptorMbox, "subject:intercepted subject:\"" + subject + "\"");
         verifyInterceptMessage(interceptMsg, "send message", "none", "none");
 
         // Check intercepting headers only.
-        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptSendHeadersOnly, LdapUtil.LDAP_TRUE);
+        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptSendHeadersOnly, LdapConstants.LDAP_TRUE);
         subject = NAME_PREFIX + " testIntercept-headers-only";
         TestUtil.sendMessage(interceptorMbox, TAPPED_NAME, subject);
         tappedMsg = TestUtil.waitForMessage(tappedMbox, "in:inbox subject:\"" + subject + "\"");
@@ -170,7 +172,7 @@ extends TestCase {
         String[] interceptorAddresses = new String[] { interceptor1Address, interceptor2Address };
 
         TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptAddress, interceptorAddresses);
-        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptSendHeadersOnly, LdapUtil.LDAP_FALSE);
+        TestUtil.setAccountAttr(TAPPED_NAME, Provisioning.A_zimbraInterceptSendHeadersOnly, LdapConstants.LDAP_FALSE);
 
         // Send message to recipient account.
         ZMailbox tappedMbox = TestUtil.getZMailbox(TAPPED_NAME);
@@ -274,10 +276,10 @@ extends TestCase {
 
         Map<String, Object> attrs = new HashMap<String, Object>();
         attrs.put(Provisioning.A_zimbraPrefOutOfOfficeReplyEnabled,
-            LdapUtil.getBooleanString(mOriginalReplyEnabled));
+            LdapUtil.getLdapBooleanString(mOriginalReplyEnabled));
         attrs.put(Provisioning.A_zimbraPrefOutOfOfficeReply, mOriginalReply);
         attrs.put(Provisioning.A_zimbraPrefNewMailNotificationEnabled,
-            LdapUtil.getBooleanString(mOriginalNotificationEnabled));
+            LdapUtil.getLdapBooleanString(mOriginalNotificationEnabled));
         attrs.put(Provisioning.A_zimbraPrefNewMailNotificationAddress, mOriginalNotificationAddress);
         attrs.put(Provisioning.A_zimbraNewMailNotificationSubject, mOriginalNotificationSubject);
         attrs.put(Provisioning.A_zimbraNewMailNotificationBody, mOriginalNotificationBody);
@@ -300,7 +302,7 @@ extends TestCase {
     private void cleanUp()
     throws Exception {
         if (mIsServerTest) {
-            Connection conn = DbPool.getConnection();
+            DbConnection conn = DbPool.getConnection();
             Mailbox mbox = TestUtil.getMailbox(RECIPIENT_NAME);
             DbOutOfOffice.clear(conn, mbox);
             conn.commit();

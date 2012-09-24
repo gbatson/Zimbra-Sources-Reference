@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,12 +26,12 @@ import junit.framework.TestCase;
 
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.zmime.ZMimeMessage;
+import com.zimbra.cs.mailbox.DeliveryOptions;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.util.JMSession;
-
 
 public class TestParsedMessage
 extends TestCase {
@@ -258,7 +258,8 @@ extends TestCase {
     /**
      * Tests adding a <tt>ParsedMessage</tt> to a mailbox.
      */
-    public void testAddMessage() throws Exception {
+    public void testAddMessage()
+    throws Exception {
         String msg = TestUtil.getTestMessage(NAME_PREFIX + " testAddMessage", SENDER_NAME, SENDER_NAME, null);
 
         // Test ParsedMessage from byte[]
@@ -278,20 +279,24 @@ extends TestCase {
         runAddMessageTest(msg, pm);
     }
 
-    private void runAddMessageTest(String originalMsg, ParsedMessage pm) throws Exception {
+    private void runAddMessageTest(String originalMsg, ParsedMessage pm)
+    throws Exception {
         Mailbox mbox = TestUtil.getMailbox(SENDER_NAME);
-        Message msg = mbox.addMessage(null, pm, Mailbox.ID_FOLDER_INBOX, false, 0, null);
+        DeliveryOptions dopt = new DeliveryOptions().setFolderId(Mailbox.ID_FOLDER_INBOX);
+        Message msg = mbox.addMessage(null, pm, dopt, null);
         assertEquals(originalMsg, new String(ByteUtil.getContent(msg.getContentStream(), 0)));
     }
 
-    private String getContent(MimeMessage msg) throws Exception {
+    private String getContent(MimeMessage msg)
+    throws Exception {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         msg.writeTo(buf);
         return new String(buf.toByteArray());
     }
 
     @Override
-    public void tearDown() throws Exception {
+    public void tearDown()
+    throws Exception {
         if (mFile != null) {
             mFile.delete();
         }
@@ -300,7 +305,8 @@ extends TestCase {
         cleanUp();
     }
 
-    private void cleanUp() throws Exception {
+    private void cleanUp()
+    throws Exception {
         TestUtil.deleteTestData(SENDER_NAME, NAME_PREFIX);
     }
 }

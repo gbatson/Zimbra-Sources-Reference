@@ -1,25 +1,11 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
 package com.zimbra.qa.selenium.framework.items;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.log4j.LogManager;
@@ -87,6 +73,7 @@ public class MailItem implements IItem {
 	public RecipientItem dFromRecipient;
 	public RecipientItem dSenderRecipient;
 	public RecipientItem dReplyToRecipient;
+	public RecipientItem dRedirectedFromRecipient;
 	
 	
 	/**
@@ -104,6 +91,11 @@ public class MailItem implements IItem {
 	 */
 	public String dFlags;
 	
+	/**
+	 * The autoSaveTime associated with this draft) (see soap.txt for details)
+	 */
+	public String dAutoSendTime = null;
+
 	////
 	// FINISH: SOAP Data
 	////
@@ -117,7 +109,12 @@ public class MailItem implements IItem {
 	
 	public boolean gIsFlagged;
 
-	public String gPriority; // TODO: how to represent the icon?
+	public enum Priority {
+		High,
+		Normal,
+		Low
+	}
+	public Priority gPriority; // TODO: how to represent the icon?
 	
 	public String gTags; // TODO: how to represent the icon?
 
@@ -218,6 +215,16 @@ public class MailItem implements IItem {
 		return (dFlags);
 	}
 	
+	public String getAutoSendTime() {
+		return (dAutoSendTime);
+	}
+
+	private String setAutoSendTime(String autoSaveTime) {
+		dAutoSendTime = autoSaveTime;
+		return (dAutoSendTime);
+	}
+
+
 	/* (non-Javadoc)
 	 * @see framework.items.IItem#CreateSOAP(framework.util.ZimbraAccount)
 	 */
@@ -249,6 +256,8 @@ public class MailItem implements IItem {
 			// Set the ID
 			mail.setId(m.getAttribute("id", null));
 			mail.setFlags(m.getAttribute("f", ""));
+			mail.setAutoSendTime(m.getAttribute("autoSendTime", null));
+
 			mail.dFolderId = m.getAttribute("l", null);
 			
 			// If there is a subject, save it
@@ -257,7 +266,7 @@ public class MailItem implements IItem {
 				mail.dSubject = sElement.getText().trim();
 			
 			// Parse the recipients
-			Element[] eElements = ZimbraAccount.SoapClient.selectNodes(m, "//mail:e");
+			Element[] eElements = ZimbraAccount.SoapClient.selectNodes(m, "mail:e");
 			for (Element eElement : eElements) {
 				
 				RecipientItem r = new RecipientItem();
@@ -275,6 +284,10 @@ public class MailItem implements IItem {
 					mail.dSenderRecipient = r;
 				} else if ( r.dType == RecipientItem.RecipientType.ReplyTo ) {
 					mail.dReplyToRecipient = r;
+				} else if ( r.dType == RecipientItem.RecipientType.ReadReceipt ) {
+					// Nothing to do for this case
+				} else if ( r.dType == RecipientItem.RecipientType.RedirectedFrom ) {
+					mail.dRedirectedFromRecipient = r;
 				} else {
 					throw new HarnessException("Unable to parse recipient element "+ eElement.prettyPrint());
 				}
@@ -300,6 +313,7 @@ public class MailItem implements IItem {
 		
 	}
 
+
 	public static MailItem importFromSOAP(ZimbraAccount account, String query) throws HarnessException {
 		
 		return importFromSOAP(account, query, SOAP_DESTINATION_HOST_TYPE.SERVER, null);
@@ -320,7 +334,8 @@ public class MailItem implements IItem {
          
          Element[] results = account.soapSelectNodes("//mail:SearchResponse/mail:m");
          if (results.length != 1)
-            throw new HarnessException("Query should return 1 result, not "+ results.length);
+            //throw new HarnessException("Query should return 1 result, not "+ results.length);
+        	return null;
    
          String id = account.soapSelectValue("//mail:SearchResponse/mail:m", "id");
          
@@ -364,6 +379,18 @@ public class MailItem implements IItem {
 		}
 		if ( dFromRecipient != null ) {
 			sb.append(dFromRecipient.prettyPrint());
+		}
+		if ( (dAutoSendTime != null) && (dAutoSendTime.trim().length() != 0) ) {
+			sb.append("autoSaveTime: ");
+			sb.append(dAutoSendTime);
+			try {
+				// Print a 'friendly' version of the time, too
+				SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+				sb.append( '(').append(formatter.format(new Date(Long.parseLong(dAutoSendTime)))).append(')');
+			} catch (NumberFormatException e) {
+				logger.warn("Unable to parse autoSaveTime attribute.  Skip logging the value.", e);
+			}
+			sb.append('\n');
 		}
 		sb.append("Content(text):").append('\n').append(dBodyText).append('\n');
 		sb.append("Content(html):").append('\n').append(dBodyHtml).append('\n');
@@ -446,5 +473,6 @@ public class MailItem implements IItem {
 
 		return (sb.toString());
 	}
+
 
 }

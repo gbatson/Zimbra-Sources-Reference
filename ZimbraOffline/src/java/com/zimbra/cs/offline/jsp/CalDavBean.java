@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,11 +23,13 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.DataSource.ConnectionType;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.cs.offline.common.OfflineConstants;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZFolder;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 
 public class CalDavBean extends FormBean {
@@ -56,7 +58,7 @@ public class CalDavBean extends FormBean {
 	
 	protected boolean isDebugTraceEnabled;
 	protected boolean isLoaded;
-	protected DataSource.Type type;
+	protected DataSourceType type;
 	
 	public String getAccountId() {
 		return accountId;
@@ -234,7 +236,7 @@ public class CalDavBean extends FormBean {
 			return;
 		}
 		
-    	type = DataSource.Type.caldav;
+    	type = DataSourceType.caldav;
 		if (ds == null)
 			return;
 		name = ds.getName();
@@ -243,7 +245,7 @@ public class CalDavBean extends FormBean {
 		displayName = ds.getFromDisplay();
 		host = ds.getHost();
 		port = ds.getPort().toString();
-		isSsl = ds.getConnectionType() == DataSource.ConnectionType.ssl;
+		isSsl = ds.getConnectionType() == ConnectionType.ssl;
     	String attrs[] = ds.getMultiAttr(Provisioning.A_zimbraDataSourceAttribute);
     	for (String a : attrs) {
     		if (a.startsWith("p:")) {
@@ -318,7 +320,7 @@ public class CalDavBean extends FormBean {
 			addInvalid("url");
 		
 	    if (isAllOK()) {
-	        dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled, Provisioning.TRUE);
+	        dsAttrs.put(Provisioning.A_zimbraDataSourceEnabled, ProvisioningConstants.TRUE);
 	        dsAttrs.put(Provisioning.A_zimbraDataSourceName, name);
 	        dsAttrs.put(Provisioning.A_zimbraDataSourceUsername, email);
 	        dsAttrs.put(Provisioning.A_zimbraPrefFromDisplay, displayName);
@@ -330,7 +332,7 @@ public class CalDavBean extends FormBean {
 	        dsAttrs.put(Provisioning.A_zimbraDataSourcePort, port);
 	        dsAttrs.put(Provisioning.A_zimbraDataSourceAttribute, "p:"+principalPath);
 	        dsAttrs.put(Provisioning.A_zimbraDataSourceConnectionType, (isSsl ? ConnectionType.ssl : ConnectionType.cleartext).toString());
-	        dsAttrs.put(Provisioning.A_zimbraDataSourceEnableTrace, isDebugTraceEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+	        dsAttrs.put(Provisioning.A_zimbraDataSourceEnableTrace, isDebugTraceEnabled ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
 	        
 	        dsAttrs.put(OfflineConstants.A_zimbraDataSourceSyncFreq, Long.toString(syncFreqSecs));
             dsAttrs.put(Provisioning.A_zimbraDataSourceFolderId, ZFolder.ID_USER_ROOT);

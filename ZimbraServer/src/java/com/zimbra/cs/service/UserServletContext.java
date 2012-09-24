@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -33,6 +33,7 @@ import org.apache.commons.fileupload.servlet.ServletFileUpload;
 
 import com.google.common.base.Charsets;
 import com.google.common.base.Objects;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.ContentDisposition;
 import com.zimbra.common.mime.ContentType;
@@ -42,13 +43,13 @@ import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.L10nUtil;
-import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.util.L10nUtil.MsgKey;
+import com.zimbra.common.util.StringUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.fb.FreeBusyQuery;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
@@ -58,7 +59,7 @@ import com.zimbra.cs.service.formatter.Formatter;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.service.util.ItemId;
 
-public final class UserServletContext {
+public class UserServletContext {
     public final HttpServletRequest req;
     public final HttpServletResponse resp;
     public final UserServlet servlet;
@@ -76,6 +77,8 @@ public final class UserServletContext {
     public MailItem target;
     public int[] reqListIds;
     public ArrayList<Item> requestedItems;
+    public boolean fromDumpster;
+    public boolean wantCustomHeaders = true;
     public int imapId = -1;
     public boolean sync;
     private Account authAccount;
@@ -85,6 +88,7 @@ public final class UserServletContext {
     private Locale locale;
     private long mStartTime = -2;
     private long mEndTime = -2;
+    private Throwable error;
     private FileUploadServlet.Upload upload;
 
     public static class Item {
@@ -132,8 +136,6 @@ public final class UserServletContext {
 
     public UserServletContext(HttpServletRequest request, HttpServletResponse response, UserServlet srvlt)
     throws UserServletException, ServiceException {
-        Provisioning prov = Provisioning.getInstance();
-
         this.req = request;
         this.resp = response;
         this.servlet = srvlt;
@@ -154,6 +156,13 @@ public final class UserServletContext {
                 this.locale = new Locale(language);
             }
         }
+
+        parseParams(request, authToken);
+    }
+
+    protected void parseParams(HttpServletRequest request, AuthToken authToken)
+            throws UserServletException, ServiceException {
+        Provisioning prov = Provisioning.getInstance();
 
         String pathInfo = request.getPathInfo();
         if (pathInfo == null || pathInfo.equals("/") || pathInfo.equals("") || !pathInfo.startsWith("/"))
@@ -206,7 +215,7 @@ public final class UserServletContext {
             }
             targetAccount = prov.get(AccountBy.name, accountPath, authToken);
         }
-        
+
         String listParam = this.params.get(UserServlet.QP_LIST);
         if (listParam != null && listParam.length() > 0) {
             String[] ids = listParam.split(",");
@@ -230,6 +239,8 @@ public final class UserServletContext {
             }
         }
 
+        String dumpsterParam = params.get(UserServlet.QP_DUMPSTER);
+        fromDumpster = (dumpsterParam != null && !dumpsterParam.equals("0") && !dumpsterParam.equalsIgnoreCase("false"));
     }
 
     public Locale getLocale() {
@@ -320,7 +331,7 @@ public final class UserServletContext {
         }
         return false;
     }
-    
+
     public String getQueryString() {
         return params.get(UserServlet.QP_QUERY);
     }
@@ -443,6 +454,27 @@ public final class UserServletContext {
         return authAccount.equals(GuestAccount.ANONYMOUS_ACCT);
     }
 
+    public boolean hasMaxWidth() {
+        return getMaxWidth() != null;
+    }
+
+    /**
+     * Returns the maximum width of the image returned by this request, or
+     * {@code null} if the max with is not specified or invalid.
+     */
+    public Integer getMaxWidth() {
+        String s = params.get(UserServlet.QP_MAX_WIDTH);
+        if (StringUtil.isNullOrEmpty(s)) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            UserServlet.log.warn("Ignoring invalid maxWidth value: " + s);
+            return null;
+        }
+    }
+
     /** Default maximum upload size for PUT/POST write ops: 10MB. */
     private static final long DEFAULT_MAX_POST_SIZE = 10 * 1024 * 1024;
 
@@ -493,7 +525,13 @@ public final class UserServletContext {
 
         @Override public boolean markSupported() { return is.markSupported(); }
 
-        @Override public int read() throws IOException { return (int)check(is.read()); }
+        @Override public int read() throws IOException
+        {
+            int value = is.read();
+            if (value != -1)
+                check(1);
+            return value;
+        }
 
         @Override public int read(byte b[]) throws IOException { return (int)check(is.read(b)); }
 
@@ -606,6 +644,14 @@ public final class UserServletContext {
         if (upload != null)
             FileUploadServlet.deleteUpload(upload);
         upload = null;
+    }
+
+    public void logError(Throwable e) {
+        error = e;
+    }
+
+    public Throwable getLoggedError() {
+        return error;
     }
 
     @Override

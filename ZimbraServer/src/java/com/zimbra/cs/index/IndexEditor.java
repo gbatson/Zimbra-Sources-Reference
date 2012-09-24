@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -27,7 +27,9 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.log4j.Layout;
 import org.apache.log4j.Level;
@@ -38,16 +40,17 @@ import org.apache.lucene.document.DateTools;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 
+import com.google.common.io.Closeables;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
+import com.zimbra.cs.mailbox.MailboxIndex;
 import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.Mailbox.SearchResultMode;
-import com.zimbra.cs.tcpserver.ProtocolHandler;
-import com.zimbra.cs.tcpserver.TcpServer;
+import com.zimbra.cs.server.ProtocolHandler;
+import com.zimbra.cs.server.TcpServer;
 import com.zimbra.common.io.TcpServerInputStream;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.SoapProtocol;
@@ -56,13 +59,13 @@ import com.zimbra.common.util.*;
 /**
  * @since Jul 20, 2004
  */
-public class IndexEditor {
+public final class IndexEditor {
 
     static final int SEARCH_RETURN_CONVERSATIONS = 1;
     static final int SEARCH_RETURN_MESSAGES = 2;
     static final int SEARCH_RETURN_DOCUMENTS = 3;
 
-    private static SortBy sortOrder = SortBy.DATE_DESCENDING;
+    private static SortBy sortOrder = SortBy.DATE_DESC;
     private BufferedReader inputReader = null;
     private PrintStream outputStream = null;
 
@@ -70,13 +73,10 @@ public class IndexEditor {
 
     public void deleteIndex(int mailboxId) throws ServiceException {
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(mailboxId);
-        MailboxIndex mi = mbox.getMailboxIndex();
-        if (mi != null) {
-            try {
-                mi.deleteIndex();
-            } catch (IOException e) {
-                throw ServiceException.FAILURE("Caught IOException", e);
-            }
+        try {
+            mbox.index.deleteIndex();
+        } catch (IOException e) {
+            throw ServiceException.FAILURE("Caught IOException", e);
         }
     }
 
@@ -93,7 +93,7 @@ public class IndexEditor {
             mLog.info("Mailbox "+ids[i]+"\n");
             try {
                 Mailbox mbx = mmgr.getMailboxById(ids[i]);
-                mbx.reIndex(null, null, null, false);
+                mbx.index.startReIndex();
             } catch (ServiceException e) {
                 mLog.info("Exception ReIndexing " + ids[i], e);
             }
@@ -103,17 +103,14 @@ public class IndexEditor {
     public void reIndex(int mailboxId) {
         try {
             Mailbox mbx = MailboxManager.getInstance().getMailboxById(mailboxId);
-            mbx.reIndex(null, null, null, false);
+            mbx.index.startReIndex();
         } catch(Exception e) {
             outputStream.println("Re-index FAILED with " + ExceptionToString.ToString(e));
         }
     }
 
-    public void checkIndex(int mailboxId, boolean repair) {
-    }
-
     public interface QueryRunner {
-        ZimbraQueryResults runQuery(String qstr, byte[] types, SortBy sortBy)
+        ZimbraQueryResults runQuery(String qstr, Set<MailItem.Type> types, SortBy sortBy)
             throws IOException, MailServiceException, ServiceException;
     }
 
@@ -124,66 +121,22 @@ public class IndexEditor {
             mMailboxId = mailboxId;
         }
 
-        @Override public ZimbraQueryResults runQuery(String qstr, byte[] types, SortBy sortBy)
-        throws IOException, MailServiceException, ServiceException {
+        @Override
+        public ZimbraQueryResults runQuery(String qstr, Set<MailItem.Type> types, SortBy sortBy)
+                throws IOException, MailServiceException, ServiceException {
             Mailbox mbox = MailboxManager.getInstance().getMailboxById(mMailboxId);
             SearchParams params = new SearchParams();
-            params.setQueryStr(qstr);
+            params.setQueryString(qstr);
             params.setTypes(types);
             params.setSortBy(sortBy);
             params.setOffset(0);
             params.setLimit(100);
             params.setPrefetch(true);
-            params.setMode(SearchResultMode.NORMAL);
+            params.setFetchMode(SearchParams.Fetch.NORMAL);
             ZimbraQuery zq = new ZimbraQuery(null, SoapProtocol.Soap12, mbox, params);
-            return zq.execute(/*null, SoapProtocol.Soap12*/);
+            return zq.execute();
         }
     }
-
-    public class MultiQueryRunner implements QueryRunner {
-        int[] mMailboxId;
-
-        MultiQueryRunner(int[] mailboxId) {
-            mMailboxId = new int[mailboxId.length];
-            for (int i = 0; i < mailboxId.length; i++) {
-                mMailboxId[i] = mailboxId[i];
-            }
-        }
-
-        MultiQueryRunner(List<Integer> mailboxId) {
-            mMailboxId = new int[mailboxId.size()];
-            for (int i = 0; i < mailboxId.size(); i++) {
-                mMailboxId[i] = mailboxId.get(i).intValue();
-            }
-        }
-
-        @Override
-        public ZimbraQueryResults runQuery(String qstr, byte[] types, SortBy sortBy)
-            throws IOException, MailServiceException, ServiceException {
-
-            MultiQueryResults all = new MultiQueryResults(100, sortBy);
-            for (int i = 0; i < mMailboxId.length; i++) {
-                Mailbox mbox = MailboxManager.getInstance().getMailboxById(mMailboxId[i]);
-                SearchParams params = new SearchParams();
-                params.setQueryStr(qstr);
-                params.setTypes(types);
-                params.setSortBy(sortBy);
-                params.setOffset(0);
-                params.setLimit(100);
-                params.setPrefetch(true);
-                params.setMode(SearchResultMode.NORMAL);
-                ZimbraQuery zq = new ZimbraQuery(null, SoapProtocol.Soap12, mbox, params);
-                ZimbraQueryResults result = zq.execute(/*null, SoapProtocol.Soap12*/);
-                try {
-                    all.add(result);
-                } finally {
-                    result.doneWithSearchResults();
-                }
-            }
-            return HitIdGrouper.Create(all, sortBy);
-        }
-    }
-
 
     public void doQuery(QueryRunner runner, boolean dump, int groupBy)
         throws MailServiceException, IOException, ServiceException {
@@ -197,16 +150,16 @@ public class IndexEditor {
             outputStream.println("\n\nTest 1: "+qstr);
             long startTime = System.currentTimeMillis();
 
-            byte[] types = new byte[1];
-            switch(groupBy) {
-                case SEARCH_RETURN_CONVERSATIONS:
-                    types[0]=MailItem.TYPE_CONVERSATION;
-                    break;
-                case SEARCH_RETURN_MESSAGES:
-                    types[0]=MailItem.TYPE_MESSAGE;
-                    break;
-                default:
-                    types[0]=0;
+            Set<MailItem.Type> types;
+            switch (groupBy) {
+            case SEARCH_RETURN_CONVERSATIONS:
+                types = EnumSet.of(MailItem.Type.CONVERSATION);
+                break;
+            case SEARCH_RETURN_MESSAGES:
+                types = EnumSet.of(MailItem.Type.MESSAGE);
+                break;
+            default:
+                types = EnumSet.noneOf(MailItem.Type.class);
                 break;
             }
             ZimbraQueryResults res = runner.runQuery(qstr, types, sortOrder);
@@ -233,7 +186,7 @@ public class IndexEditor {
                 outputStream.println("Query ran in " + (endTime-startTime) + " ms");
                 outputStream.println("Displayed a total of " + totalShown + " Hits");
             } finally {
-                res.doneWithSearchResults();
+                Closeables.closeQuietly(res);
             }
         }
     }
@@ -381,7 +334,7 @@ public class IndexEditor {
 
     public static void StartTcpEditor() throws ServiceException {
         ServerSocket serverSocket = NetUtil.getTcpServerSocket(null, sPortNo);
-        sTcpServer = new IndexEditorTcpServer("IndexEditorTcpServer", 3, Thread.NORM_PRIORITY, serverSocket);
+        sTcpServer = new IndexEditorTcpServer(3, serverSocket);
         sIndexEditorProtocolHandler = new IndexEditorProtocolhandler(sTcpServer);
         sTcpServer.addActiveHandler(sIndexEditorProtocolHandler);
         sThread = new Thread(new IndexEditorTcpThread(), "IndexEditor-TcpServer");
@@ -421,9 +374,13 @@ public class IndexEditor {
     }
 
     private static class IndexEditorTcpServer extends TcpServer {
-        IndexEditorTcpServer(String name, int numThreads, int threadPriority,
-                ServerSocket serverSocket) {
-            super(name, numThreads, threadPriority, serverSocket);
+        IndexEditorTcpServer(int numThreads, ServerSocket serverSocket) {
+            super(numThreads, serverSocket);
+        }
+
+        @Override
+        public String getName() {
+            return "IndexEditorTcpServer";
         }
 
         @Override
@@ -602,28 +559,28 @@ public class IndexEditor {
 //                    int msgId = Integer.parseInt(msg);
 //                    reIndexMsg(mailboxId, msgId);
                 } else if (command.equals("sort da")) {
-                    sortOrder = SortBy.DATE_ASCENDING;
+                    sortOrder = SortBy.DATE_ASC;
                     outputStream.println("---->Search order = DATE_ASCENDING");
                 } else if (command.equals("sort dd")) {
-                    sortOrder = SortBy.DATE_DESCENDING;
+                    sortOrder = SortBy.DATE_DESC;
                     outputStream.println("---->Search order = DATE_DESCENDING");
                 } else if (command.equals("sort sa")) {
-                    sortOrder = SortBy.SUBJ_ASCENDING;
+                    sortOrder = SortBy.SUBJ_ASC;
                     outputStream.println("---->Search order = SUBJ_ASCENDING");
                 } else if (command.equals("sort sd")) {
-                    sortOrder = SortBy.SUBJ_DESCENDING;
+                    sortOrder = SortBy.SUBJ_DESC;
                     outputStream.println("---->Search order = SUBJ_DESCENDING");
                 } else if (command.equals("sort na")) {
-                    sortOrder = SortBy.NAME_ASCENDING;
+                    sortOrder = SortBy.NAME_ASC;
                     outputStream.println("---->Search order = NAME_ASCENDING");
                 } else if (command.equals("sort nd")) {
-                    sortOrder = SortBy.NAME_DESCENDING;
+                    sortOrder = SortBy.NAME_DESC;
                     outputStream.println("---->Search order = NAME_DESCENDING");
                 } else if (command.equals("sort za")) {
-                    sortOrder = SortBy.SIZE_ASCENDING;
+                    sortOrder = SortBy.SIZE_ASC;
                     outputStream.println("---->Search order = SIZE_ASCENDING");
                 } else if (command.equals("sort zd")) {
-                    sortOrder = SortBy.SIZE_DESCENDING;
+                    sortOrder = SortBy.SIZE_DESC;
                     outputStream.println("---->Search order = SIZE_DESCENDING");
                 } else if (command.equals("q") || command.equals("query")) {
                     QueryRunner runner = new SingleQueryRunner(mailboxId);
@@ -639,20 +596,6 @@ public class IndexEditor {
                 } else if (command.equals("qp") || command.equals("queryconv")) {
                     QueryRunner runner = new SingleQueryRunner(mailboxId);
                     doQuery(runner,true, SEARCH_RETURN_DOCUMENTS);
-                } else if (command.equals("mq")) {
-                    ArrayList<Integer> ids = new ArrayList<Integer>();
-                    do {
-                        outputStream.print("Enter Mailbox ID (blank when done): ");
-                        mailboxIdStr = inputReader.readLine();
-
-                        if (!mailboxIdStr.equals("")) {
-                            int id = getMailboxIdFromString(mailboxIdStr);
-                            outputStream.println("\tAdded mailbox ID "+id);
-                            ids.add(new Integer(id));
-                        }
-                    } while (!mailboxIdStr.equals(""));
-                    QueryRunner runner = new MultiQueryRunner(ids);
-                    doQuery(runner, false, SEARCH_RETURN_CONVERSATIONS);
                 } else if (command.equals("mbox")) {
                     outputStream.print("Enter New Mailbox ID: ");
                     mailboxIdStr = inputReader.readLine();
@@ -679,10 +622,6 @@ public class IndexEditor {
                     }
                 } else if (command.equals("dumpall")) {
                     dumpAll(mailboxId);
-                } else if (command.equals("verify")) {
-                    checkIndex(mailboxId, false);
-                } else if (command.equals("repair")) {
-                    checkIndex(mailboxId, true);
                 } else if (command.equals("size")) {
                     getSize(mailboxId);
                 } else if (command.equals("loglevel")) {
@@ -782,8 +721,7 @@ public class IndexEditor {
         mHandler = null;
     }
 
-    public static void main(String[] args)
-    {
+    public static void main(String[] args) {
         CliUtil.toolSetup("DEBUG");
 
         MailboxIndex.startup();

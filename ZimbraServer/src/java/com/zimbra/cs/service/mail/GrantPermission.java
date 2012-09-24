@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -28,9 +28,8 @@ import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.GuestAccount;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.Right;
 import com.zimbra.cs.account.accesscontrol.ACLUtil;
@@ -38,6 +37,10 @@ import com.zimbra.cs.account.accesscontrol.RightManager;
 import com.zimbra.cs.account.accesscontrol.RightModifier;
 import com.zimbra.cs.account.accesscontrol.ZimbraACE;
 import com.zimbra.soap.ZimbraSoapContext;
+
+/*
+ * Delete this class in bug 66989
+ */
 
 public class GrantPermission extends MailDocumentHandler {
     
@@ -61,17 +64,7 @@ public class GrantPermission extends MailDocumentHandler {
             for (ZimbraACE ace : granted)
                 ToXML.encodeACE(response, ace);
         }
-        /*
-         * This is done in FolderAction.OP_GRANT, should we do the same?
-         * 
-        // kinda hacky -- return the zimbra id and name of the grantee in the response
-        result.addAttribute(MailConstants.A_ZIMBRA_ID, zid);
-        if (nentry != null)
-            result.addAttribute(MailConstants.A_DISPLAY, nentry.getName());
-        else if (gtype == ACL.GRANTEE_GUEST)
-            result.addAttribute(MailConstants.A_DISPLAY, zid);
-     
-        */ 
+
         return response;
     }
     
@@ -155,7 +148,7 @@ public class GrantPermission extends MailDocumentHandler {
         Provisioning prov = Provisioning.getInstance();
         nentry = prov.get(AccountBy.name, name);
         if (nentry == null)
-            nentry = prov.get(DistributionListBy.name, name);
+            nentry = prov.get(Key.DistributionListBy.name, name);
         return nentry;
     }
     
@@ -177,8 +170,8 @@ public class GrantPermission extends MailDocumentHandler {
         if (name != null)
             switch (type) {
                 case GT_USER:    nentry = lookupEmailAddress(name);                 break;
-                case GT_GROUP:   nentry = prov.get(DistributionListBy.name, name);  break;
-                case GT_DOMAIN:  nentry = prov.get(DomainBy.name, name);            break;
+                case GT_GROUP:   nentry = prov.get(Key.DistributionListBy.name, name);  break;
+                case GT_DOMAIN:  nentry = prov.get(Key.DomainBy.name, name);            break;
             }
 
         if (nentry != null)
@@ -204,13 +197,13 @@ public class GrantPermission extends MailDocumentHandler {
                     else
                         return nentry;
                 case GT_GROUP:   
-                    nentry = prov.get(DistributionListBy.id, zid);
+                    nentry = prov.get(Key.DistributionListBy.id, zid);
                     if (nentry == null && granting)
                         throw AccountServiceException.NO_SUCH_DISTRIBUTION_LIST(zid);
                     else
                         return nentry;
                 case GT_DOMAIN:   
-                    nentry = prov.get(DomainBy.id, zid);
+                    nentry = prov.get(Key.DomainBy.id, zid);
                     if (nentry == null && granting)
                         throw AccountServiceException.NO_SUCH_DOMAIN(zid);
                     else

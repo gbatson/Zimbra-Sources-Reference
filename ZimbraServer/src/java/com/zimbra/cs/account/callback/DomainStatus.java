@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,8 +24,10 @@ import com.zimbra.cs.account.Provisioning;
 
 public class DomainStatus extends AttributeCallback {
 
-    public void preModify(Map context, String attrName, Object value,
-            Map attrsToModify, Entry entry, boolean isCreate) throws ServiceException {
+    @Override
+    public void preModify(CallbackContext context, String attrName, Object value,
+            Map attrsToModify, Entry entry) 
+    throws ServiceException {
         
         if (!(value instanceof String))
             throw ServiceException.INVALID_REQUEST(Provisioning.A_zimbraDomainStatus+" is a single-valued attribute", null);
@@ -61,7 +63,8 @@ public class DomainStatus extends AttributeCallback {
 
     }
     
-    public void postModify(Map context, String attrName, Entry entry, boolean isCreate) {
+    @Override
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
     
 }

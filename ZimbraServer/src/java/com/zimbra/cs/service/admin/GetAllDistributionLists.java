@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,14 +19,16 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -58,9 +60,9 @@ public class GetAllDistributionLists extends AdminDocumentHandler {
             String value = d.getText();
         
             if (key.equals(BY_NAME)) {
-                domain = prov.get(DomainBy.name, value);
+                domain = prov.get(Key.DomainBy.name, value);
             } else if (key.equals(BY_ID)) {
-                domain = prov.get(DomainBy.id, value);
+                domain = prov.get(Key.DomainBy.id, value);
             } else {
                 throw ServiceException.INVALID_REQUEST("unknown value for by: "+key, null);
             }
@@ -92,11 +94,20 @@ public class GetAllDistributionLists extends AdminDocumentHandler {
     }
     
     private void doDomain(ZimbraSoapContext zsc, Element e, Domain d, AdminAccessControl aac) throws ServiceException {
-        List dls = Provisioning.getInstance().getAllDistributionLists(d);
+        List dls = Provisioning.getInstance().getAllGroups(d);
         for (Iterator it = dls.iterator(); it.hasNext(); ) {
-            DistributionList dl = (DistributionList) it.next();
-            if (aac.hasRightsToList(dl, Admin.R_listDistributionList, null))
-                GetDistributionList.encodeDistributionList(e, dl, true, null, aac.getAttrRightChecker(dl));
+            Group dl = (Group) it.next();
+            boolean hasRightToList = true;
+            if (dl.isDynamic()) {
+                // TODO: fix me
+                hasRightToList = true;
+            } else {
+                hasRightToList = aac.hasRightsToList(dl, Admin.R_listDistributionList, null);
+            }
+            
+            if (hasRightToList) {
+                GetDistributionList.encodeDistributionList(e, dl, true, false, null, aac.getAttrRightChecker(dl));
+            }
         }        
     }
     

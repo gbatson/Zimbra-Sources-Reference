@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,7 +24,7 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.mailbox.MessageCache;
 import com.zimbra.cs.store.BlobInputStream;
-import com.zimbra.cs.store.StorageCallback;
+import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.JMSession;
 import com.zimbra.cs.util.Zimbra;
 
@@ -34,8 +34,7 @@ import com.zimbra.cs.util.Zimbra;
 public class ServerConfig extends AttributeCallback {
 
     @Override
-    public void postModify(Map context, String attrName, Entry entry,
-                           boolean isCreate) {
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
         
         // do not run this callback unless inside the server
         if (!Zimbra.started())
@@ -47,7 +46,7 @@ public class ServerConfig extends AttributeCallback {
                 attrName.equals(Provisioning.A_zimbraMailFileDescriptorCacheSize)) {
                 BlobInputStream.getFileDescriptorCache().loadSettings();
             } else if (attrName.equals(Provisioning.A_zimbraMailDiskStreamingThreshold)) {
-                StorageCallback.loadSettings();
+                StoreManager.loadSettings();
             } else if (attrName.equals(Provisioning.A_zimbraMessageCacheSize)) {
                 MessageCache.loadSettings();
             } else if (attrName.equals(Provisioning.A_zimbraSmtpHostname)) {
@@ -61,8 +60,8 @@ public class ServerConfig extends AttributeCallback {
     }
 
     @Override
-    public void preModify(Map context, String attrName, Object attrValue,
-                          Map attrsToModify, Entry entry, boolean isCreate)
+    public void preModify(CallbackContext context, String attrName, Object attrValue,
+            Map attrsToModify, Entry entry)
     throws ServiceException {
     }
 

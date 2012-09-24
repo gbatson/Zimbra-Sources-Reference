@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,12 +20,14 @@ import com.zimbra.common.util.EmailUtil;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DomainBy;
 
 public class Krb5Principal {
     
-     public static Account getAccountFromKrb5Principal(String principal, boolean loadFromMaster) throws ServiceException {
+     public static Account getAccountFromKrb5Principal(String principal, boolean loadFromMaster) 
+     throws ServiceException {
          Provisioning prov = Provisioning.getInstance();
          Account acct = null;
          
@@ -50,7 +52,7 @@ public class Krb5Principal {
              if (idx != -1) {
                  String realm = principal.substring(idx+1);
                  
-                 Domain domain = prov.get(DomainBy.krb5Realm, realm);
+                 Domain domain = prov.get(Key.DomainBy.krb5Realm, realm);
                  if (domain != null) {
                      String localPart = principal.substring(0, idx);
                      String acctName = localPart +  "@" + domain.getName();
@@ -61,6 +63,17 @@ public class Krb5Principal {
          }
          
          return acct;
+     }
+     
+     public static Domain getDomainByKrb5Principal(String principal) throws ServiceException {
+         Provisioning prov = Provisioning.getInstance();
+         int idx = principal.indexOf('@');
+         if (idx != -1) {
+             String realm = principal.substring(idx+1);
+             return prov.get(Key.DomainBy.krb5Realm, realm);
+ 
+         }
+         return null;
      }
      
      public static String getKrb5Principal(Account acct) throws ServiceException {

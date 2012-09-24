@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,27 +15,28 @@
 
 package com.zimbra.cs.account;
 
-import com.zimbra.common.util.ByteUtil;
-import com.zimbra.common.util.DateUtil;
-import com.zimbra.common.util.StringUtil;
-
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.zimbra.common.account.ZAttr;
+import com.zimbra.common.account.ZAttrProvisioning;
+import com.zimbra.common.util.DateUtil;
+import com.zimbra.common.util.StringUtil;
 
 /**
  * AUTO-GENERATED. DO NOT EDIT.
  *
  */
-public class ZAttrDistributionList extends MailTarget {
+public abstract class ZAttrDistributionList extends Group {
 
     protected ZAttrDistributionList(String name, String id, Map<String, Object> attrs, Provisioning prov) {
-        super(name, id, attrs, null, prov);
+        super(name, id, attrs, prov);
     }
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 rgadipuuri 20120726-0313 */
+    /* build: 8.0.0_BETA1_1111 rgadipuuri 20120724-1526 */
 
     /**
      * RFC2256: common name(s) for which the entity is known by
@@ -948,8 +949,285 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * Deprecated since: 3.2.0. greatly simplify dl/group model. Orig desc:
-     * Zimbra Systems Unique Group ID
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @return zimbraDistributionListSubscriptionPolicy, or null if unset and/or has invalid value
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public ZAttrProvisioning.DistributionListSubscriptionPolicy getDistributionListSubscriptionPolicy() {
+        try { String v = getAttr(Provisioning.A_zimbraDistributionListSubscriptionPolicy); return v == null ? null : ZAttrProvisioning.DistributionListSubscriptionPolicy.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return null; }
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @return zimbraDistributionListSubscriptionPolicy, or null if unset
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public String getDistributionListSubscriptionPolicyAsString() {
+        return getAttr(Provisioning.A_zimbraDistributionListSubscriptionPolicy, null);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListSubscriptionPolicy new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public void setDistributionListSubscriptionPolicy(ZAttrProvisioning.DistributionListSubscriptionPolicy zimbraDistributionListSubscriptionPolicy) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListSubscriptionPolicy, zimbraDistributionListSubscriptionPolicy.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListSubscriptionPolicy new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public Map<String,Object> setDistributionListSubscriptionPolicy(ZAttrProvisioning.DistributionListSubscriptionPolicy zimbraDistributionListSubscriptionPolicy, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListSubscriptionPolicy, zimbraDistributionListSubscriptionPolicy.toString());
+        return attrs;
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListSubscriptionPolicy new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public void setDistributionListSubscriptionPolicyAsString(String zimbraDistributionListSubscriptionPolicy) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListSubscriptionPolicy, zimbraDistributionListSubscriptionPolicy);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListSubscriptionPolicy new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public Map<String,Object> setDistributionListSubscriptionPolicyAsString(String zimbraDistributionListSubscriptionPolicy, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListSubscriptionPolicy, zimbraDistributionListSubscriptionPolicy);
+        return attrs;
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public void unsetDistributionListSubscriptionPolicy() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListSubscriptionPolicy, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1275)
+    public Map<String,Object> unsetDistributionListSubscriptionPolicy(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListSubscriptionPolicy, "");
+        return attrs;
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @return zimbraDistributionListUnsubscriptionPolicy, or null if unset and/or has invalid value
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public ZAttrProvisioning.DistributionListUnsubscriptionPolicy getDistributionListUnsubscriptionPolicy() {
+        try { String v = getAttr(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy); return v == null ? null : ZAttrProvisioning.DistributionListUnsubscriptionPolicy.fromString(v); } catch(com.zimbra.common.service.ServiceException e) { return null; }
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @return zimbraDistributionListUnsubscriptionPolicy, or null if unset
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public String getDistributionListUnsubscriptionPolicyAsString() {
+        return getAttr(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, null);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListUnsubscriptionPolicy new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public void setDistributionListUnsubscriptionPolicy(ZAttrProvisioning.DistributionListUnsubscriptionPolicy zimbraDistributionListUnsubscriptionPolicy) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, zimbraDistributionListUnsubscriptionPolicy.toString());
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListUnsubscriptionPolicy new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public Map<String,Object> setDistributionListUnsubscriptionPolicy(ZAttrProvisioning.DistributionListUnsubscriptionPolicy zimbraDistributionListUnsubscriptionPolicy, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, zimbraDistributionListUnsubscriptionPolicy.toString());
+        return attrs;
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListUnsubscriptionPolicy new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public void setDistributionListUnsubscriptionPolicyAsString(String zimbraDistributionListUnsubscriptionPolicy) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, zimbraDistributionListUnsubscriptionPolicy);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param zimbraDistributionListUnsubscriptionPolicy new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public Map<String,Object> setDistributionListUnsubscriptionPolicyAsString(String zimbraDistributionListUnsubscriptionPolicy, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, zimbraDistributionListUnsubscriptionPolicy);
+        return attrs;
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public void unsetDistributionListUnsubscriptionPolicy() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * distribution subscription policy. ACCEPT: always accept, REJECT:
+     * always reject, APPROVAL: require owners approval.
+     *
+     * <p>Valid values: [ACCEPT, APPROVAL, REJECT]
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1276)
+    public Map<String,Object> unsetDistributionListUnsubscriptionPolicy(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraDistributionListUnsubscriptionPolicy, "");
+        return attrs;
+    }
+
+    /**
+     * zimbraId of the main dynamic group for the dynamic group unit
      *
      * @return zimbraGroupId, or null if unset
      */
@@ -959,8 +1237,7 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * Deprecated since: 3.2.0. greatly simplify dl/group model. Orig desc:
-     * Zimbra Systems Unique Group ID
+     * zimbraId of the main dynamic group for the dynamic group unit
      *
      * @param zimbraGroupId new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -973,8 +1250,7 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * Deprecated since: 3.2.0. greatly simplify dl/group model. Orig desc:
-     * Zimbra Systems Unique Group ID
+     * zimbraId of the main dynamic group for the dynamic group unit
      *
      * @param zimbraGroupId new value
      * @param attrs existing map to populate, or null to create a new map
@@ -988,8 +1264,7 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * Deprecated since: 3.2.0. greatly simplify dl/group model. Orig desc:
-     * Zimbra Systems Unique Group ID
+     * zimbraId of the main dynamic group for the dynamic group unit
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -1001,8 +1276,7 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * Deprecated since: 3.2.0. greatly simplify dl/group model. Orig desc:
-     * Zimbra Systems Unique Group ID
+     * zimbraId of the main dynamic group for the dynamic group unit
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs
@@ -1273,7 +1547,338 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @return zimbraPrefAllowAddressForDelegatedSender, or empty array if unset
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public String[] getPrefAllowAddressForDelegatedSender() {
+        return getMultiAttr(Provisioning.A_zimbraPrefAllowAddressForDelegatedSender);
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param zimbraPrefAllowAddressForDelegatedSender new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public void setPrefAllowAddressForDelegatedSender(String[] zimbraPrefAllowAddressForDelegatedSender) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, zimbraPrefAllowAddressForDelegatedSender);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param zimbraPrefAllowAddressForDelegatedSender new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public Map<String,Object> setPrefAllowAddressForDelegatedSender(String[] zimbraPrefAllowAddressForDelegatedSender, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, zimbraPrefAllowAddressForDelegatedSender);
+        return attrs;
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param zimbraPrefAllowAddressForDelegatedSender new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public void addPrefAllowAddressForDelegatedSender(String zimbraPrefAllowAddressForDelegatedSender) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, zimbraPrefAllowAddressForDelegatedSender);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param zimbraPrefAllowAddressForDelegatedSender new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public Map<String,Object> addPrefAllowAddressForDelegatedSender(String zimbraPrefAllowAddressForDelegatedSender, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, zimbraPrefAllowAddressForDelegatedSender);
+        return attrs;
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param zimbraPrefAllowAddressForDelegatedSender existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public void removePrefAllowAddressForDelegatedSender(String zimbraPrefAllowAddressForDelegatedSender) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, zimbraPrefAllowAddressForDelegatedSender);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param zimbraPrefAllowAddressForDelegatedSender existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public Map<String,Object> removePrefAllowAddressForDelegatedSender(String zimbraPrefAllowAddressForDelegatedSender, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, zimbraPrefAllowAddressForDelegatedSender);
+        return attrs;
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public void unsetPrefAllowAddressForDelegatedSender() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Addresses of the account that can be used by allowed delegated senders
+     * as From and Sender address.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.0
+     */
+    @ZAttr(id=1333)
+    public Map<String,Object> unsetPrefAllowAddressForDelegatedSender(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefAllowAddressForDelegatedSender, "");
+        return attrs;
+    }
+
+    /**
+     * address to put in reply-to header
+     *
+     * @return zimbraPrefReplyToAddress, or null if unset
+     */
+    @ZAttr(id=60)
+    public String getPrefReplyToAddress() {
+        return getAttr(Provisioning.A_zimbraPrefReplyToAddress, null);
+    }
+
+    /**
+     * address to put in reply-to header
+     *
+     * @param zimbraPrefReplyToAddress new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=60)
+    public void setPrefReplyToAddress(String zimbraPrefReplyToAddress) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToAddress, zimbraPrefReplyToAddress);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * address to put in reply-to header
+     *
+     * @param zimbraPrefReplyToAddress new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=60)
+    public Map<String,Object> setPrefReplyToAddress(String zimbraPrefReplyToAddress, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToAddress, zimbraPrefReplyToAddress);
+        return attrs;
+    }
+
+    /**
+     * address to put in reply-to header
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=60)
+    public void unsetPrefReplyToAddress() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToAddress, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * address to put in reply-to header
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=60)
+    public Map<String,Object> unsetPrefReplyToAddress(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToAddress, "");
+        return attrs;
+    }
+
+    /**
+     * personal part of email address put in reply-to header
+     *
+     * @return zimbraPrefReplyToDisplay, or null if unset
+     */
+    @ZAttr(id=404)
+    public String getPrefReplyToDisplay() {
+        return getAttr(Provisioning.A_zimbraPrefReplyToDisplay, null);
+    }
+
+    /**
+     * personal part of email address put in reply-to header
+     *
+     * @param zimbraPrefReplyToDisplay new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=404)
+    public void setPrefReplyToDisplay(String zimbraPrefReplyToDisplay) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToDisplay, zimbraPrefReplyToDisplay);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * personal part of email address put in reply-to header
+     *
+     * @param zimbraPrefReplyToDisplay new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=404)
+    public Map<String,Object> setPrefReplyToDisplay(String zimbraPrefReplyToDisplay, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToDisplay, zimbraPrefReplyToDisplay);
+        return attrs;
+    }
+
+    /**
+     * personal part of email address put in reply-to header
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=404)
+    public void unsetPrefReplyToDisplay() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToDisplay, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * personal part of email address put in reply-to header
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=404)
+    public Map<String,Object> unsetPrefReplyToDisplay(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToDisplay, "");
+        return attrs;
+    }
+
+    /**
+     * TRUE if we should set a reply-to header
+     *
+     * @return zimbraPrefReplyToEnabled, or false if unset
+     */
+    @ZAttr(id=405)
+    public boolean isPrefReplyToEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraPrefReplyToEnabled, false);
+    }
+
+    /**
+     * TRUE if we should set a reply-to header
+     *
+     * @param zimbraPrefReplyToEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=405)
+    public void setPrefReplyToEnabled(boolean zimbraPrefReplyToEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToEnabled, zimbraPrefReplyToEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * TRUE if we should set a reply-to header
+     *
+     * @param zimbraPrefReplyToEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=405)
+    public Map<String,Object> setPrefReplyToEnabled(boolean zimbraPrefReplyToEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToEnabled, zimbraPrefReplyToEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * TRUE if we should set a reply-to header
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     */
+    @ZAttr(id=405)
+    public void unsetPrefReplyToEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * TRUE if we should set a reply-to header
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     */
+    @ZAttr(id=405)
+    public Map<String,Object> unsetPrefReplyToEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraPrefReplyToEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @return zimbraShareInfo, or empty array if unset
      */
@@ -1283,7 +1888,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param zimbraShareInfo new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -1296,7 +1903,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param zimbraShareInfo new value
      * @param attrs existing map to populate, or null to create a new map
@@ -1310,7 +1919,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param zimbraShareInfo new to add to existing values
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -1323,7 +1934,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param zimbraShareInfo new to add to existing values
      * @param attrs existing map to populate, or null to create a new map
@@ -1337,7 +1950,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param zimbraShareInfo existing value to remove
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -1350,7 +1965,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param zimbraShareInfo existing value to remove
      * @param attrs existing map to populate, or null to create a new map
@@ -1364,7 +1981,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -1376,7 +1995,9 @@ public class ZAttrDistributionList extends MailTarget {
     }
 
     /**
-     * items an account or group has shared
+     * Deprecated since: 8.0.0. Manual publishing of shares by admin is no
+     * longer required since now automated publishing of sharing info updates
+     * to LDAP is supported. Orig desc: items an account or group has shared
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs

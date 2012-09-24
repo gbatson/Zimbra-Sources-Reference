@@ -13,7 +13,7 @@ Note that name1 appears twice.
 When updating multiple attributes, you need to specify all the old values at the same time you specify new ones.
 
 ----------------------------
- <AuthRequest xmlns="urn:zimbraAdmin">
+ <AuthRequest xmlns="urn:zimbraAdmin" [persistAuthTokenCookie="1"]>
    [<name>...</name>]
    [<account by="name|id|foreignPrincipal">...</account>]
    <password>...</password>
@@ -26,6 +26,12 @@ When updating multiple attributes, you need to specify all the old values at the
    <lifetime>...</lifetime>
  </AuthResponse>
 
+  {persistAuthTokenCookie} = controls whether the auth token cookie in the response should 
+                             be persisted when the browser exits.
+                             0: (default)
+                                the cookie will be deleted when the Web browser exits.
+                             1: The "Expires" attribute of the cookie will be set per rfc6265.
+                             
 Note: Only works with admin/domain-admin accounts
 
 Access: domain admin sufficient
@@ -99,11 +105,15 @@ Access: domain admin sufficient
   <account by="id|name">...</account>
 </GetAccountInfoRequest>
 
+  Note: For historical reasons, there are some minor differences between the Admin and Account versions of
+        GetAccountInfoResponse.
+
 <GetAccountInfoResponse>
    <name>{account-name}</name>
    <a n="{name}">{value}</a>+
-   <soapURL>{mail-url}</soapURL>+
-   <adminSoapURL>{mail-url}</adminSoapURL>
+   <soapURL>{acct-soap-url}</soapURL>+
+   <adminSoapURL>{admin-soap-url}</adminSoapURL>
+   <publicMailURL>{web-mail-url}</publicMailURL>
 </GetInfoResponse>
 
   {account-name} = email address (user@domain)
@@ -113,12 +123,17 @@ Access: domain admin sufficient
       zimbraId       - the unique UUID of the zimbra account
       zimbraMailHost - the server on which this user's mail resides
 
-  {mail-url} = URL to talk to for soap service for this account. i.e:
+  {acct-soap-url} = URL to talk to for soap service for this account. i.e:
 
        http://server:7070/service/soap/
 
        Multiple URLs can be returned if both http and https (SSL) are enabled. If only one of the two is enabled,
        the only one URL will be returned.
+
+  {admin-soap-url} = URL for the Admin SOAP service
+                     Note: Admin app only runs over SSL.
+
+  {web-mail-url} = URL for the Web Mail application
 
 Access: domain admin sufficient
 
@@ -217,7 +232,7 @@ Access: domain admin sufficient
 
 Access: domain admin sufficient
 
-<message> : If the password had violated any policy, it is returned in the 
+<message> : If the password had violated any policy, it is returned in the
             <message> element, and the password is still set successfully.
 
    note: this request is by default proxied to the account's home server
@@ -262,6 +277,14 @@ Access: domain admin sufficient
    note: this request is by default proxied to the account's home server
 
 -----------------------------
+
+<ResetAllLoggersRequest/>
+
+<ResetAllLoggersResponse/>
+
+Removes all account loggers and reloads /opt/zimbra/conf/log4j.properties.
+
+-----------------------------
 NOTE: SearchAccountsRequest is deprecated. See SearchDirectoryRequest.
 
 <SearchAccountsRequest [limit="..."] [offset="..."] [domain="{domain-name}"] [applyCos="{apply-cos}"]
@@ -297,12 +320,12 @@ SearchAccountsRequest
     more-flag = true if more accounts left to return
     search-total = total number of accounts that matched search (not affected by limit/offset)
     types = comma-separated list of types to return. legal values are:
-            accounts|distributionlists|aliases|resources|domains
+            accounts|resources
             (default is accounts)
 
 SearchAccountsResponse
   isExternal: whether the account's zimbraMailTranport points to the designated protocol(lmtp) and server(home server of the account).
-  
+
 Access: domain admin sufficient (a domain admin can't specify "domains" as a type)
 
 -----------------------------
@@ -365,11 +388,11 @@ Notes: admin verison of mail equiv. Used for testing via zmprov.
 -----------------------------
 
 <SearchDirectoryRequest [limit="..."] [offset="..."] [domain="{domain-name}"] [applyCos="{apply-cos}"] [maxResults="..."]
-         [attrs="a1,a2,a3"] [sortBy="{sort-by}"] [sortAscending="{sort-ascending}"] [types="{type}"]>
+         [attrs="a1,a2,a3"] [sortBy="{sort-by}"] [sortAscending="{sort-ascending}"] [types="{type}"] [countOnly="{if-count-only}"]>
   <query>...</query>
 </SearchDirectoryRequest>
 
-<SearchDirectoryResponse more="{more-flag}" [searchTotal="{search-total}"]>
+<SearchDirectoryResponse [num={number-count}] [more="{more-flag}"] [searchTotal="{search-total}"]>
   <account name="{name}" id="{id}" isExternal="1|0">
     <a n="...">...</a>+
   </account>*
@@ -409,12 +432,12 @@ SearchDirectoryRequest
 
 SearchDirectoryResponse
   isExternal: whether the account's zimbraMailTranport points to the designated protocol(lmtp) and server(home server of the account).
-  
+
 Access: domain admin sufficient (though a domain admin can't specify "domains" as a type)
 
 -----------------------------
 
-<GetQuotaUsageRequest [limit="..."] [offset="..."] [domain="{limit-to-domain}"]
+<GetQuotaUsageRequest [limit="..."] [offset="..."] [domain="{limit-to-domain}"] [allServers="1"]
          [sortBy="{sort-by}"] [sortAscending="{sort-ascending}"] [refresh="1"]>
 </GetQuotaUsageRequest>
 
@@ -427,6 +450,8 @@ GetQuotaUsageRequest
   limit - the number of accounts to return (0 is default and means all)
   offset - the starting offset (0, 25, etc)
   domain - the domain name to limit the search to
+  allServers - whether to fetch quota usage for all domain accounts from across all mailbox servers (0/1), 0 is default,
+               applicable when domain attribute is specified
   sortBy - valid values: "percentUsed", "totalUsed", "quotaLimit"
   sortAscending - whether to sort in ascending order (0/1), 0 is default, so highest quotas are returned first
   refresh - whether to always recalculate the data even when cached values are available.  0 is default.
@@ -438,6 +463,30 @@ GetQuotaUsageRequest
 The target server should be specified in the soap header (see soap.txt, <targetServer>).
 
 When sorting by "quotaLimit", 0 is treated as the highest value possible.
+
+-----------------------------
+
+Computes the aggregate quota usage for all domains in the system.
+The request handler issues GetAggregateQuotaUsageOnServerRequest to all mailbox servers and computes the aggregate
+quota used by each domain.
+The request handler updates the zimbraAggregateQuotaLastUsage domain attribute and sends out warning messages for each
+domain having quota usage greater than a defined percentage threshold.
+
+<ComputeAggregateQuotaUsageRequest/>
+
+<ComputeAggregateQuotaUsageResponse>
+  <domain name="{name}" id="{id}" used="{quota-used-in-the-system}"/>*
+</ComputeAggregateQuotaUsageResponse>
+
+-----------------------------
+
+Gets the aggregate quota usage for all domains on the server.
+
+<GetAggregateQuotaUsageOnServerRequest/>
+
+<GetAggregateQuotaUsageOnServerResponse>
+  <domain name="{name}" id="{id}" used="{quota-used-on-the-server}"/>*
+</GetAggregateQuotaUsageOnServerResponse>
 
 -----------------------------
 
@@ -880,6 +929,10 @@ Use cases:
 
 purges aged messages out of trash, spam, and entire mailbox
   (if <mbox> element is omitted, purges all mailboxes on server)
+  
+<PurgeMessagesResponse>
+    <mbox id="{account-id}" mbxid="{mailbox-id}" s="{size}"/>
+</PurgeMessagesResponse>  
 
 -----------------------------
 
@@ -927,6 +980,40 @@ Access: domain admin sufficient
    note: this request is by default proxied to the account's home server
 
 ---------------------------
+
+<CompactIndexRequest action="start|status">
+  <mbox id="{account-id}"/>
+</CompactIndexRequest>
+
+<CompactIndexResponse status="started|running|idle">
+</CompactIndexResponse>
+
+  action start - start index compaction
+    status started - success
+    status running - index compaction is already running
+  action status - show index compaction progress
+    status running - index compaction is running
+    status idle - index compaction is not running
+
+Access: domain admin sufficient
+
+   note: this request is by default proxied to the account's home server
+
+---------------------------
+
+<GetIndexStatsRequest>
+  <mbox id="{account-id}"/>
+</GetIndexStatsRequest>
+
+<GetIndexStatsResponse>
+  <stats maxDocs="..." deletedDocs="..."/>
+</GetIndexStatsResponse>
+
+Notes:
+  maxDocs: Returns total number of docs in this index, including docs not yet flushed (still in the RAM buffer), not counting deletions.
+  deletedDocs: number of deleted docs for the index
+
+-----------------------------
 
 <DeleteMailboxRequest>
   <mbox id="{account-id}"/>
@@ -1227,7 +1314,7 @@ only supported for MySQL.
 
 -----------------------------
 
-<CreateDistributionListRequest>
+<CreateDistributionListRequest [dynamic="1"]>
   <name>...</name>
   <a n="...">...</a>+
 </CreateDistributionListRequest>
@@ -1239,11 +1326,11 @@ only supported for MySQL.
 </CreateDistributionListResponse>
 
 Notes:
+  dynamic: create a dynamic distribution list
 
   extra attrs:
-
-  description
-  zimbraNotes
+      description
+      zimbraNotes
 
 Access: domain admin sufficient
 
@@ -1255,7 +1342,10 @@ Access: domain admin sufficient
 </GetDistributionListRequest>
 
 <GetDistributionListResponse more="{more-flag}" [total="{total}"]>
-  <dl name="{name}" id="{id}">
+  <dl name="{name}" id="{id}" dynamic="1|0">
+    [<owners>
+      <owner id="..." name="..." type="..."/>+
+    </owners>]
     <dlm>{member}</dlm>+
     <a n="...">...</a>+
   </dl>
@@ -1273,6 +1363,8 @@ Notes:
     total = total number of distribution lists (not affected by limit/offset)
 
     req-attrs = comma-seperated list of attrs to return
+    
+    dynamic = whether this is a dynamic distribution list
 
 Access: domain admin sufficient
 
@@ -1295,7 +1387,7 @@ Access: domain admin sufficient
 <AddDistributionListMemberRequest>
   <id>{value-of-zimbraId}</id>
   <dlm>{member}</dlm>+
-</AddDistributionListMemeberRequest>
+</AddDistributionListMemberRequest>
 
 <AddDistributionListMemberResponse>
 </AddDistributionListMemeberResponse>
@@ -1376,7 +1468,7 @@ Access: domain admin sufficient
 
 <RenameDistributionListRequest>
   <id>{value-of-zimbraId}</id>
-  <newName>{new-account-name}</newName>
+  <newName>{new-DL-name}</newName>
 </RenameDistributionListRequest>
 
 <RenameDistributionListResponse>
@@ -2081,7 +2173,7 @@ in soap-waitset.txt
   stays in effect only during the lifetime of the current server instance.
   If the request is sent to a server other than the one that the account
   resides on, it is proxied to the correct server.
-  
+
   If the category is "all", adds a custom logger for every category
   for the given user.
 
@@ -2199,18 +2291,49 @@ e.g.
 </CountAccountResponse>
 
 
+-----------------------------
+
+# count number of objects.  
+# Returns number of objects of requested type.
+
+<CountObjectsRequest type="{count-objects-type}">
+    [<domain by="{domain-by}">...</domain>]
+    [<ucservice by="{ucservice-by}">...</ucservice>]
+</CountObjectsRequest>
+
+{count-objects-type} = userAccount | 
+                       account | 
+                       alias | 
+                       dl |
+                       calresource |
+                       domain |
+                       cos | 
+                       server |
+                       accountOnUCService |
+                       cosOnUCService |
+                       domainOnUCService
+
+<CountObjectsResponse num="{result}">
+</CountObjectsResponse>
+
+Note: For account/alias/dl, if a <domain> is specified, only entries on the 
+      specified domain are counted.  If no domain is specified, entries on 
+      all domains are counted.
+      
+      For accountOnUCService/cosOnUCService/domainOnUCService, <ucservice> is required, 
+      and <domain> cannot be specified.
 
 ---------------------------------------------------------------------------
 # Get server's network interfaces. Returns IP  addresses and net masks
 # This call will use zmrcd to call /opt/zimbra/libexec/zmserverips
 
-<GetServerNIfsRequest>
+<GetServerNIfsRequest [type="{ipv4|ipv6|both}"]>
  <server by="id|name|serviceHostname">...</server>
 </GetServerNIfsRequest>
 
 <GetServerNIfsResponse>
   <ni>
-  <a n="addr">ip address</a>
+  <a n="addr" [type="{ipv4|ipv6}"]>ip address</a>
   <a n="mask">network mask</a>
   </ni>*
 </GetServerNIfsResponse>
@@ -2272,7 +2395,7 @@ e.g.
 ----------------------------------------
 
 <CheckExchangeAuthRequest>
-  <auth url="{url-to-exchange-server}" user="{exchange-user-name}" pass="{exchange-password}" scheme="basic|form" />
+  <auth url="{url-to-exchange-server}" user="{exchange-user-name}" pass="{exchange-password}" scheme="basic|form" [type="webdav|ews"]/>
 </CheckExchangeAuthRequest>
 
 <CheckExchangeAuthResponse>
@@ -2305,55 +2428,6 @@ Access: domain admin sufficient
 
 ----------------------------------------
 
-<PublishShareInfoRequest>
-  <dl by="id|name">...</dl>
-  <share action="{add|remove}">
-      <owner by="id|name|foreignPrincipal">...</owner>
-      [<folder [l="{base-folder-id}"] [path="{fully-qualified-path}"] [pathOrId="{folder-path-or-id}"]/>]
-  </share>
-</PublishShareInfoRequest>
-
-Publish share info on the specified DL shared by an owner.
-Folders shared by the <owner> with the DL or any of the DL's parent group can be published.
-
-e.g. if owner O shares /Inbox with DL-A, and DL-B is a member of DL-A,
-     the share can be published on DL-A and/or DL-B.
-
-Notes:
-    - in <folder>, only one of l, path, or pathOrId can be specified.
-      If pathOrId is specified, server will first treat {folder-path-or-id} as a path and try to
-      find the folder by path; if there is no such folder, server will then treat {folder-path-or-id}
-      as a folder id and try to find the folder by id.  If <folder> is omitted, server will
-      iterate through all folders of the owner and publish any shares granted to the DL or any of the
-      DL's parent DL.
-
-<PublishShareInfoResponse/>
-
-Notes:
-
-Access: domain admin sufficient.
-note: this request is by default proxied to the owner's home server
-
-----------------------------------------
-
-<GetPublishedShareInfoRequest>
-    <dl by="id|name">...</dl>
-    [<owner by="{owner-by}">...</owner>]
-</GetPublishedShareInfoRequest>
-
-Get share info published on the <dl>.
-If <owner> is specified, returns only shares owned by the owner.  Otherwise returns all
-shares published on the <dl>.
-
-<GetPublishedShareInfoResponse>
-    [<share ownerId="{owner-id}" ownerEmail={owner-email} [ownerName="{owner-display-name}"]
-            folderId="{folder-id}" folderPath="{fully-qualified-path}"
-            view="{default-type}" rights="{rights}"
-            granteeType="{grantee-type}" granteeId="{grantee-id}" granteeName="{grantee-name}" [granteeDisplayName="{grantee-display-name}">]]+
-</GetPublishedShareInfoResponse>
-
-----------------------------------------
-
 <GetShareInfoRequest>
     [<grantee type="{grantee_type}" [id="{grantee-id}"] [name="{grantee-name}"]/>]
     <owner by="{owner-by}">...</owner>
@@ -2381,7 +2455,7 @@ returns all shares owned by user1@test.com that are shared with dl@test.com.
 
 ----------------------------
 
-<CreateGalSyncAccountRequest name="{identifier}" domain="{domain-name}" type="zimbra|ldap" [folder="{contact-folder-name}"] >
+<CreateGalSyncAccountRequest name="{identifier}" domain="{domain-name}" type="zimbra|ldap" server="{server}" [folder="{contact-folder-name}"] >
   <account by="id|name">...</account>
   <a n="attr-name">...</a>+
 </CreateGalSyncAccountRequest>
@@ -2398,17 +2472,18 @@ Notes:
     - name attribute is for the name of the data source.
     - if folder attr is not present it'll default to Contacts folder.
     - passed in attrs in <a/> are used to initialize the gal data source.
+  - server is a required parameter and specifies the mailhost on which this account resides.  
 
 
 example for creating gal sync account for Zimbra LDAP server.
 
-    <CreateGalSyncAccountRequest name="zimbra" domain="mydomain.com" type="zimbra">
+    <CreateGalSyncAccountRequest name="zimbra" domain="mydomain.com" type="zimbra" server="mailhost.mydomain.com">
       <account by="name">gal@mydomain.com</account>
     </CreateGalSyncAccountRequest>
 
 example for creating domain gal sync account.
 
-    <CreateGalSyncAccountRequest name="mydomain" domain="mydomain.com" type="ldap">
+    <CreateGalSyncAccountRequest name="mydomain" domain="mydomain.com" type="ldap" server="mailhost.mydomain.com">
       <account by="name">gal@mydomain.com</account>
       <a n="zimbraGalSyncLdapURL">ldap://ldap.mydomain.com</a>
       <a n="zimbraGalSyncLdapStartTlsEnabled">TRUE</a>
@@ -2422,6 +2497,24 @@ example for creating domain gal sync account.
       <a n="zimbraGalLdapAttrMap">zimbraMailDeliveryAddress,zimbraMailAlias,mail=email,email2,email3,email4,email5,email6,email7,email8,email9,email10,email11,email12,email13,email14,email15,email16</a>
     </CreateGalSyncAccountRequest>
 
+Access: domain admin sufficient
+
+----------------------------
+
+<AddGalSyncDataSourceRequest name="{identifier}" domain="{domain-name}" type="zimbra|ldap" [folder="{contact-folder-name}"] >
+  <account by="id|name">...</account>
+  <a n="attr-name">...</a>+
+</AddGalSyncDataSourceRequest>
+
+<AddGalSyncDataSourceResponse>
+  <account name="{name}" id="{id}"/>
+</AddGalSyncDataSourceResponse>
+
+Notes: 
+  - Add additional data sources to the existing galsync account.
+  - non-existing account causes an exception.
+  - name attribute is for the name of the data source.
+  
 Access: domain admin sufficient
 
 ----------------------------
@@ -2485,7 +2578,7 @@ Returns the memcached client configuration on a mailbox server.
 ----------------------------
 
 <MigrateAccountRequest>
-  <migrate action="wiki|..."/ id="{zimbraId-of-account}">
+  <migrate action="bug72174|wiki|contactGroup" id="{zimbraId-of-account}"/>
 </MigrateAccountRequest>
 
 <MigrateAccountResponse/>
@@ -2500,8 +2593,264 @@ A request that does nothing and always returns nothing. Used to keep an admin se
 
 ----------------------------
 
+<GetAttributeInfoRequest [attrs="{attrs-to-return}"] [entryTypes="{entry-types}"]/>
+
+{attrs-to-return} = comma-seperated list of attrs to return
+
+{entry-type} = comma-seperated list of entry types.  Attributes on the specified entry types will be returned.
+               valid entry types:
+                   account,alias,distributionList,cos,globalConfig,domain,server,mimeEntry,zimletEntry,
+                   calendarResource,identity,dataSource,pop3DataSource,imapDataSource,rssDataSource,
+                   liveDataSource,galDataSource,signature,xmppComponent,aclTarget
+
+Only one of attrs or entryTypes can be specified.  
+If both are specified, INVALID_REQUEST will be thrown.
+If neither is specified, all attributes will be returned.
+
+
+<GetAttributeInfoResponse>
+    <a n="..." desc="..."/>+
+</GetAttributeInfoResponse>
+
+----------------------------
+<AutoProvAccountRequest>
+    <domain by="name|id">...</domain>  
+    <principal by="dn|name">...</principal>
+    [<password>...</password>]
+</AutoProvAccountRequest>
+
+
+<AutoProvAccountResponse>
+  <account name="{name}" id="{id}">
+    <a n="...">...</a>+
+  </account>
+</AutoProvAccountResponse>
+
+----------------------------
+
+<SearchAutoProvDirectoryRequest [limit="..."] [offset="..."] [maxResults="..."] 
+    [attrs="a1,a2,a3"] [refresh="1"] keyAttr="{key-attr}">
+  <domain by="name|id">...</domain>  
+  [<name>...</name>]  
+  [<query>...</query>]
+</SearchDirectoryRequest>
+
+<SearchAutoProvDirectoryResponse more="{more-flag}" [searchTotal="{search-total}"]>
+  <entry dn="...">
+    <key>...</key>+
+    <a n="...">...</a>+
+  </entry>*
+</SearchAutoProvDirectoryResponse>
+
+Notes:
+  <name>  - name to fill the auto provisioning search template configured on the domain 
+  <query> - query string should be an LDAP-style filter string (RFC 2254)
+  only one of <name> or <query> can be provided.  If neither is provided, the configured 
+  search filter for auto provision will be used.
+    
+  maxResults = maximum results that the backend will attempt to fetch from the directory before
+  returning a account.TOO_MANY_SEARCH_RESULTS error.
+
+  limit    - the number of accounts to return per page (0 is default and means all)
+  offset   - the starting offset (0, 25, etc)
+  domain   - the Zimbra domain name
+  keyAttr  - name of attribute for the key.  Value of the key attribute will appear in the 
+             <key> element in the response.  It is recommended to pick a key attribute that 
+             is single-valued and can unique identify an entry in the external auto provision 
+             directory.  If the key attribute contains multiple values then multiple <key> 
+             elements will appear in the response. 
+             Entries are returned in ascending key order.
+  attrs    - comma-seperated list of attrs to return
+  refresh  - whether to always re-search in LDAP even when cached entries are available.  0 is default.
+  
+  more-flag = true if more entries left to return
+  search-total = total number of accounts that matched search (not affected by limit/offset)
+
+-----------------------------
+<AutoProvTaskControlRequest action="start|status|stop">
+</AutoProvTaskControlRequest>
+
+<AutoProvTaskControlResponse status="started|running|idle|stopped">
+</AutoProvTaskControlResponse>
+
+Under normal situations, the EAGER auto provisioning task(thread) should be started/stopped 
+automatically by the server when appropriate.  The task should be running when 
+zimbraAutoProvPollingInterval is not 0 and zimbraAutoProvScheduledDomains is not empty.  
+The task should be stopped otherwise.
+ 
+This API is to manually force start/stop or query status of the EAGER auto provisioning task. 
+It is only for diagnosis purpose and should not be used under normal situations.
+
+  action start - start EAGER auto provisioning task
+    status started - success
+    status running - EAGER auto provisioning task is already running
+  action status - show EAGER auto provisioning task status
+    status running - EAGER auto provisioning task is running
+    status idle - EAGER auto provisioning task is not running
+  action stop - stop EAGER auto provisioning task
+    status stopped - success
+    status idle - EAGER auto provisioning task is not running
+
+   
+-----------------------------
+
+The system retention policy SOAP APIs allow the administrator to edit
+named system retention policies that users can apply to folders and tags.
+See soap.txt for more details about the <retentionPolicy> element structure.
+
+<GetSystemRetentionPolicyRequest>
+  [<cos by="id|name">...</cos>]
+</GetSystemRetentionPolicyRequest>
+
+<GetSystemRetentionPolicyResponse>
+  <retentionPolicy xmlns="urn:zimbraMail">
+    <keep>
+      <policy id="{id}" name="{name}" type="system" lifetime="{duration}"/>*
+    </keep>
+    <purge>
+      <policy id="{id}" name="{name}" type="system" lifetime="{duration}"/>*
+    </purge>
+  </retentionPolicy>
+</GetSystemRetentionPolicyResponse>
+
+
+<CreateSystemRetentionPolicyRequest>
+  [<cos by="id|name">...</cos>]
+  <keep>
+    <policy name="{name}" lifetime="{duration}" xmlns="urn:zimbraMail"/>
+  </keep> |
+  <purge>
+    <policy name="{name}" lifetime="{duration}" xmlns="urn:zimbraMail"/>
+  </purge>
+</CreateSystemRetentionPolicyRequest>
+
+<CreateSystemRetentionPolicyResponse>
+  <policy id="{id}" name="{name}" type="system" lifetime="{duration}" xmlns="urn:zimbraMail"/>
+</CreateSystemRetentionPolicyResponse>
+
+
+<ModifySystemRetentionPolicyRequest>
+  [<cos by="id|name">...</cos>]
+  <policy id="{id}" [name="{name}"] [lifetime="{duration}"] xmlns="urn:zimbraMail"/>
+</ModifySystemRetentionPolicyRequest>
+
+<ModifySystemRetentionPolicyResponse>
+  <policy id="{id}" type="system" name="{name}" lifetime="{interval"} xmlns="urn:zimbraMail"/>
+</ModifySystemRetentionPolicyResponse>
+
+
+<DeleteSystemRetentionPolicyRequest>
+  [<cos by="id|name">...</cos>]
+  <policy id="{id}" xmlns="urn:zimbraMail"/>
+</DeleteSystemRetentionPolicyRequest>
+
+<DeleteSystemRetentionPolicyResponse/>
+
+If "cos" element is specified the opeartion create/modify/get/delete gets applied on Cos otherwise globalConfig.
+
+-----------------------------
 <ClearCookieRequest>
     <cookie name="{cookie-name}"/>+
 </ClearCookieRequest>
 
 <ClearCookieResponse/>
+
+-----------------------------
+
+<CreateUCServiceRequest>
+  <name>...</name>
+  <a n="...">...</a>+
+</CreateUCServiceRequest>
+
+<CreateUCServiceResponse>
+  <ucservice name="{name}" id="{id}">
+    <a n="...">...</a>+
+  </ucservice>
+</CreateUCServiceResponse>
+
+-----------------------------
+
+<GetUCServiceRequest [attrs="{req-attrs}"]>
+  <ucservice by="id|name">...</ucservice>
+</GetUCServiceRequest>
+
+<GetUCServiceResponse>
+  <ucservice name="{name}" id="{id}">
+    <a n="...">...</a>+
+  </ucservice>
+</GetUCServiceResponse>
+
+{req-attrs} = comma-seperated list of attrs to return
+
+-----------------------------
+
+<GetAllUCServicesRequest/>
+
+<GetAllUCServicesResponse>
+  <ucservice name="{name}" id="{id}">
+    <a n="...">...</a>+
+  </ucservice>+
+</GetAllUCServicesResponse>
+
+-----------------------------
+
+<ModifyUCServiceRequest>
+  <id>{value-of-zimbraId}</id>
+  <a n="...">...</a>+
+</ModifyUCServiceRequest>
+
+<ModifyUCServiceResponse>
+  <ucservice name="{name}" id="{id}">
+    <a n="...">...</a>+
+  </ucservice>
+</ModifyUCServiceResponse>]
+
+-----------------------------
+
+<DeleteUCServiceRequest>
+  <id>{value-of-zimbraId}</id>
+</DeleteUCServiceRequest>
+
+<DeleteUCServiceResponse/>
+
+----------------------------
+
+<RenameUCServiceRequest>
+  <id>{value-of-zimbraId}</id>
+  <newName>{new-name}</newName>
+</RenameUCServiceRequest>
+
+<RenameUCServiceResponse>
+  <ucservice name="{name}" id="{id}">
+    <a n="...">...</a>+
+  </ucservice>
+<RenameUCServiceResponse />
+
+-----------------------------
+
+<VerifyStoreManagerRequest [num="{numberOfBlobs}"] [fileSize="{fileSize}"]/>
+
+<VerifyStoreManagerResponse linkTime="{linkTime}" incomingTime="{incomingTime}" fetchTime="{fetchTime}"
+   stageTime="{stageTime}" deleteTime="{deleteTime}" storeManagerClass="{storeManagerClass}"/>
+
+Verify basic StoreManager functionality and performance. To be used by integrators during StoreManager development.
+
+numberOfBlobs - number of blobs to create. Defaults to 1000 if not specified.
+fileSize - size of each blob file in bytes. Defaults to 1024 if not specified. 
+
+All times reported in response are the total elapsed time for all blobs. 
+
+storeManagerClass - Java class name for the currently deployed StoreManager implementation
+incomingTime - time (ms) for the store incoming operation
+stageTime - time (ms) for the stage operation
+linkTime - time (ms) for the link operation
+fetchTime - time (ms) for the fetch operation
+deleteTime - time (ms) for the delete operation
+
+-----------------------------
+
+<GetAllSkinsRequest/>
+
+<GetAllSkinsResponse>
+  <skin name="{skin-name}"/>+
+</GetAllSkinsResponse>

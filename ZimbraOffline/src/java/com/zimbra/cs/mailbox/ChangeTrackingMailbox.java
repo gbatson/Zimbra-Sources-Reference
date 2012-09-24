@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -28,15 +28,24 @@ import com.zimbra.cs.session.PendingModifications.Change;
 public abstract class ChangeTrackingMailbox extends SyncMailbox {
 
     public static class TracelessContext extends OperationContext {
-        public TracelessContext()                 { super((RedoableOp) null); }
-        public TracelessContext(RedoableOp redo)  { super(redo); }
-        public boolean isRedo()                   { return false; }
+        public TracelessContext() {
+            super((RedoableOp) null);
+        }
+
+        public TracelessContext(RedoableOp redo) {
+            super(redo);
+        }
+
+        @Override
+        public boolean isRedo() {
+            return false;
+        }
     }
 
     public ChangeTrackingMailbox(MailboxData data) throws ServiceException {
         super(data);
-    }	
-	
+    }
+
     @Override boolean isTrackingSync() {
         return !(getOperationContext() instanceof TracelessContext);
     }
@@ -48,9 +57,9 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
     @Override public boolean checkItemChangeID(int modMetadata, int modContent) {
         return true;
     }
-    
-    private long lastChangeTime = -1; 
-    
+
+    private long lastChangeTime = -1;
+
     public boolean anyChangesSince(long since) {
         if (lastChangeTime == -1) {
             //even if no changes since startup there might be some in db
@@ -58,17 +67,18 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             lastChangeTime = 0;
             return true;
         }
-        return (lastChangeTime >= since);  
+        return (lastChangeTime >= since);
     }
-    
+
     @Override
     void trackChangeNew(MailItem item) throws ServiceException {
-        if (!isTrackingSync() || !isPushType(item.getType()))
+        if (!isTrackingSync() || !isPushType(item.getType())) {
             return;
+        }
         lastChangeTime = System.currentTimeMillis();
-        DbOfflineMailbox.updateChangeRecord(item, Change.MODIFIED_CONFLICT);
+        DbOfflineMailbox.updateChangeRecord(item, Change.CONFLICT);
     }
-    
+
     @Override
     void trackChangeModified(MailItem item, int changeMask) throws ServiceException {
         if (!isTrackingSync() || !isPushType(item.getType()))
@@ -78,7 +88,7 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         if ((changeMask & filter) != 0)
             DbOfflineMailbox.updateChangeRecord(item, changeMask & filter);
     }
-    
+
     @Override
     void trackChangeDeleted() throws ServiceException {
         if (!isTrackingSync()) {
@@ -86,12 +96,12 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         }
         lastChangeTime = System.currentTimeMillis();
     }
-    
-    abstract boolean isPushType(byte type);
-    
-    abstract int getChangeMaskFilter(byte type);
-    
-    synchronized boolean isPendingDelete(OperationContext octxt, int itemId, byte type) throws ServiceException {
+
+    abstract boolean isPushType(MailItem.Type type);
+
+    abstract int getChangeMaskFilter(MailItem.Type type);
+
+    boolean isPendingDelete(OperationContext octxt, int itemId, MailItem.Type type) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("isPendingDelete", octxt);
@@ -104,7 +114,7 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         }
     }
 
-    synchronized void removePendingDelete(OperationContext octxt, int itemId, byte type) throws ServiceException {
+    void removePendingDelete(OperationContext octxt, int itemId, MailItem.Type type) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("removePendingDelete", octxt);
@@ -116,7 +126,7 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         }
     }
 
-    synchronized TypedIdList getLocalChanges(OperationContext octxt) throws ServiceException {
+    TypedIdList getLocalChanges(OperationContext octxt) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getLocalChanges", octxt);
@@ -128,8 +138,8 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             endTransaction(success);
         }
     }
-    
-    public synchronized Map<Integer, Pair<Integer, Integer>> getChangeMasksAndFolders(OperationContext octxt) throws ServiceException {
+
+    public Map<Integer, Pair<Integer, Integer>> getChangeMasksAndFolders(OperationContext octxt) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getChangeMasksAndFolders", octxt);
@@ -141,8 +151,8 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             endTransaction(success);
         }
     }
-    
-    synchronized Map<Integer, Pair<Integer, Integer>> getChangeMasksAndFlags(OperationContext octxt) throws ServiceException {
+
+    Map<Integer, Pair<Integer, Integer>> getChangeMasksAndFlags(OperationContext octxt) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getChangeMasksAndFlags", octxt);
@@ -154,8 +164,8 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             endTransaction(success);
         }
     }
-    
-    synchronized List<Pair<Integer, Integer>> getSimpleUnreadChanges(OperationContext octxt, boolean isUnread) throws ServiceException {
+
+    List<Pair<Integer, Integer>> getSimpleUnreadChanges(OperationContext octxt, boolean isUnread) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getSimpleUnreadChanges", octxt);
@@ -167,8 +177,8 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             endTransaction(success);
         }
     }
-    
-    synchronized Map<Integer, List<Pair<Integer, Integer>>> getFolderMoveChanges(OperationContext octxt) throws ServiceException {
+
+    Map<Integer, List<Pair<Integer, Integer>>> getFolderMoveChanges(OperationContext octxt) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getFolderMoveChanges", octxt);
@@ -180,8 +190,8 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             endTransaction(success);
         }
     }
-    
-    synchronized Map<Integer, Integer> getItemModSequences(OperationContext octxt, int[] ids) throws ServiceException {
+
+    Map<Integer, Integer> getItemModSequences(OperationContext octxt, int[] ids) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getItemModSequences", octxt);
@@ -193,8 +203,8 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
             endTransaction(success);
         }
     }
-    
-    synchronized Map<Integer, Integer> getItemFolderIds(OperationContext octxt, int[] ids) throws ServiceException {
+
+    Map<Integer, Integer> getItemFolderIds(OperationContext octxt, int[] ids) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getItemFolderIds", octxt);
@@ -207,7 +217,7 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         }
     }
 
-    public synchronized int getChangeMask(OperationContext octxt, int id, byte type) throws ServiceException {
+    public int getChangeMask(OperationContext octxt, int id, MailItem.Type type) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getChangeMask", octxt);
@@ -223,7 +233,7 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         }
     }
 
-    public synchronized void setChangeMask(OperationContext octxt, int id, byte type, int mask) throws ServiceException {
+    public void setChangeMask(OperationContext octxt, int id, MailItem.Type type, int mask) throws ServiceException {
         //TODO: make this call always non-tracking
         boolean success = false;
         try {
@@ -237,7 +247,7 @@ public abstract class ChangeTrackingMailbox extends SyncMailbox {
         }
     }
 
-    public synchronized void clearTombstones(OperationContext octxt, int token) throws ServiceException {
+    public void clearTombstones(OperationContext octxt, int token) throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("clearTombstones", octxt);

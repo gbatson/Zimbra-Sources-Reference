@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
@@ -94,7 +95,7 @@ public abstract class ChangePasswordListener {
     /*
      * class to stage context for each listener
      */
-    static class ChangePasswordListenerContext {
+    public static class ChangePasswordListenerContext {
         Map<InternalChangePasswordListenerId, Map<String, Object>> mInternalCtxts = 
             new EnumMap<InternalChangePasswordListenerId, Map<String, Object>>(InternalChangePasswordListenerId.class);
         
@@ -184,7 +185,7 @@ public abstract class ChangePasswordListener {
         ChangePasswordListener.register("dummy", new DummyChangePasswordListener());
         
         Provisioning prov = Provisioning.getInstance();
-        Account acct = prov.get(Provisioning.AccountBy.name, "user1");
+        Account acct = prov.get(Key.AccountBy.name, "user1");
         
         // setup domain for testing
         Domain domain = prov.getDomain(acct);

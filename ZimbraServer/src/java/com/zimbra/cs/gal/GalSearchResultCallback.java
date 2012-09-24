@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,8 +19,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
+import com.google.common.collect.Sets;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
@@ -29,12 +31,15 @@ import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.GalContact;
+import com.zimbra.cs.account.Group;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.SearchGalResult;
 import com.zimbra.cs.account.gal.GalOp;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.service.mail.ToXML;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
+import com.zimbra.soap.account.type.MemberOfSelector;
 
 public class GalSearchResultCallback implements GalContact.Visitor {
     private Element mResponse;
@@ -42,8 +47,13 @@ public class GalSearchResultCallback implements GalContact.Visitor {
 	private boolean mIdOnly;
 	private GalOp mOp;
 	private Account mAuthAcct;
-	private boolean mNeedsCanExpandInfo;
-	private boolean mNeedsSMIMECerts;
+	private boolean mNeedCanExpand;
+	private boolean mNeedIsOwner;
+    private MemberOfSelector mNeedIsMember;
+	private boolean mNeedSMIMECerts;
+	
+	private Set<String> mOwnerOfGroupsIds = null;
+	private Set<String> mMemberOfGroupsIds = null;
     
     public GalSearchResultCallback(GalSearchParams params) {
     	reset(params);
@@ -66,8 +76,10 @@ public class GalSearchResultCallback implements GalContact.Visitor {
         } catch (ServiceException e) {
             ZimbraLog.gal.warn("unable to get authed account", e);
         }
-        mNeedsCanExpandInfo = params.getNeedCanExpand();
-        mNeedsSMIMECerts = params.getNeedSMIMECerts();
+        mNeedCanExpand = params.getNeedCanExpand();
+        mNeedIsOwner = params.getNeedIsOwner();
+        mNeedIsMember = params.getNeedIsMember();
+        mNeedSMIMECerts = params.getNeedSMIMECerts();
     }
     
     public void visit(GalContact c) throws ServiceException {
@@ -91,33 +103,66 @@ public class GalSearchResultCallback implements GalContact.Visitor {
     	if (mIdOnly) {
     	    eContact = mResponse.addElement(MailConstants.E_CONTACT).addAttribute(MailConstants.A_ID, mFormatter.formatItemId(c));
     	} else if (mOp == GalOp.sync) {
-    	    eContact = ToXML.encodeContact(mResponse, mFormatter, c, true, c.getAllFields().keySet());
-    	} else if (mNeedsSMIMECerts) {
+    	    eContact = ToXML.encodeContact(mResponse, mFormatter, null, c, true, c.getAllFields().keySet());
+    	} else if (mNeedSMIMECerts) {
     		// this is the case only when proxying SearcgGalRequest for the call from 
     	    // GetSMIMEPublicCerts (in ZimbraNetwork)
     	    Set<String> fieldSet = new HashSet<String>(c.getFields().keySet());
     		fieldSet.addAll(Contact.getSMIMECertFields());
-    	    eContact = ToXML.encodeContact(mResponse, mFormatter, c, true, fieldSet);
+    	    eContact = ToXML.encodeContact(mResponse, mFormatter, null, c, true, fieldSet);
     	} else {
     	    Set<String> fieldSet = new HashSet<String>(c.getFields().keySet());
             fieldSet.removeAll(Contact.getSMIMECertFields());
-    	    eContact = ToXML.encodeContact(mResponse, mFormatter, c, true, fieldSet);
+    	    eContact = ToXML.encodeContact(mResponse, mFormatter, null, c, true, fieldSet);
     	}
     	
-    	if (mNeedsCanExpandInfo && c.isGroup()) {
-    	    boolean canExpand = GalSearchControl.canExpandGalGroup(c.get(ContactConstants.A_email), 
-                    c.get(ContactConstants.A_zimbraId), mAuthAcct);
-            eContact.addAttribute(AccountConstants.A_EXP, canExpand);
+    	eContact.addAttribute(AccountConstants.A_REF, c.get(ContactConstants.A_dn));
+    	
+    	if (c.isGroup()) {
+    	    String zimbraId = c.get(ContactConstants.A_zimbraId);
+    	        
+        	if (mNeedCanExpand) {
+        	    boolean canExpand = GalSearchControl.canExpandGalGroup(
+        	            c.get(ContactConstants.A_email), zimbraId, mAuthAcct);
+                eContact.addAttribute(AccountConstants.A_EXP, canExpand);
+        	}
+        	
+        	if (mNeedIsOwner) {
+        	    boolean isOwner = isOwner(zimbraId);
+        	    eContact.addAttribute(AccountConstants.A_IS_OWNER, isOwner);
+        	}
+        	
+        	if (MemberOfSelector.none != mNeedIsMember) {
+        	    boolean isMember = isMember(zimbraId);
+                eContact.addAttribute(AccountConstants.A_IS_MEMBER, isMember);
+        	}
     	}
+    	
     	return eContact;
     }
     
     public void handleContact(GalContact c) throws ServiceException {
 		Element eGalContact = ToXML.encodeGalContact(mResponse, c);
-		if (mNeedsCanExpandInfo && c.isGroup()) {
-		    boolean canExpand = GalSearchControl.canExpandGalGroup(c.getSingleAttr(ContactConstants.A_email), 
-		            c.getSingleAttr(ContactConstants.A_zimbraId), mAuthAcct);
-		    eGalContact.addAttribute(AccountConstants.A_EXP, canExpand);
+		eGalContact.addAttribute(AccountConstants.A_REF, c.getId());
+		
+		if (c.isGroup()) {
+		    String zimbraId = c.getSingleAttr(ContactConstants.A_zimbraId);
+		        
+    		if (mNeedCanExpand) {
+    		    boolean canExpand = GalSearchControl.canExpandGalGroup(
+    		            c.getSingleAttr(ContactConstants.A_email), zimbraId, mAuthAcct);
+    		    eGalContact.addAttribute(AccountConstants.A_EXP, canExpand);
+    		}
+    		
+            if (mNeedIsOwner) {
+                boolean isOwner = isOwner(zimbraId);
+                eGalContact.addAttribute(AccountConstants.A_IS_OWNER, isOwner);
+            }
+            
+            if (MemberOfSelector.none != mNeedIsMember) {
+                boolean isMember = isMember(zimbraId);
+                eGalContact.addAttribute(AccountConstants.A_IS_MEMBER, isMember);
+            }
 		}
     }
     
@@ -174,6 +219,38 @@ public class GalSearchResultCallback implements GalContact.Visitor {
     }
     public void setHasMoreResult(boolean more) {
         mResponse.addAttribute(MailConstants.A_QUERY_MORE, more);
+    }
+    
+    public void setThrottled(boolean throttled) {
+        mResponse.addAttribute(MailConstants.A_GALSYNC_THROTTLED, throttled);
+    }
+    
+    public void setGalDefinitionLastModified(String timestamp) {
+        mResponse.addAttribute(MailConstants.A_GAL_DEFINITION_LAST_MODIFIED, timestamp);
+    }
+    
+    private boolean isOwner(String groupZimbraId) throws ServiceException {
+        if (mAuthAcct == null || groupZimbraId == null) {
+            return false;
+        }
+        
+        if (mOwnerOfGroupsIds == null) {
+            mOwnerOfGroupsIds = Group.GroupOwner.getOwnedGroupsIds(mAuthAcct);
+        }
+        
+        return mOwnerOfGroupsIds.contains(groupZimbraId);
+    }
+    
+    private boolean isMember(String groupZimbraId) throws ServiceException {
+        if (mAuthAcct == null || groupZimbraId == null) {
+            return false;
+        }
+        
+        if (mMemberOfGroupsIds == null) {
+            mMemberOfGroupsIds = Provisioning.getInstance().getGroups(mAuthAcct);
+        }
+        
+        return mMemberOfGroupsIds.contains(groupZimbraId);
     }
     
     public static abstract class PassThruGalSearchResultCallback extends GalSearchResultCallback {

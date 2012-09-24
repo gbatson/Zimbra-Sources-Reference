@@ -1,20 +1,19 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.offline;
 
-import java.io.File;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -40,6 +39,14 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.sun.mail.smtp.SMTPTransport;
+import com.zimbra.client.ZGetInfoResult;
+import com.zimbra.client.ZIdentity;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.ShareLocatorBy;
+import com.zimbra.common.account.Key.UCServiceBy;
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.net.TrustManagers;
@@ -62,19 +69,21 @@ import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
-import com.zimbra.cs.account.EntrySearchFilter;
 import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.NamedEntry;
+import com.zimbra.cs.account.UCService;
 import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
+import com.zimbra.cs.account.ShareLocator;
 import com.zimbra.cs.account.Signature;
 import com.zimbra.cs.account.XMPPComponent;
 import com.zimbra.cs.account.Zimlet;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.account.cache.NamedEntryCache;
+import com.zimbra.cs.account.callback.CallbackContext;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.datasource.SyncErrorManager;
 import com.zimbra.cs.datasource.imap.ImapSync;
@@ -90,7 +99,6 @@ import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.mailbox.OfflineMailboxManager;
 import com.zimbra.cs.mailbox.OfflineServiceException;
-import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.YContactSync;
 import com.zimbra.cs.mailbox.ZcsMailbox;
 import com.zimbra.cs.mailclient.smtp.SmtpTransport;
@@ -105,12 +113,10 @@ import com.zimbra.cs.offline.util.OfflineYAuth;
 import com.zimbra.cs.offline.util.yc.oauth.OAuthManager;
 import com.zimbra.cs.util.yauth.AuthenticationException;
 import com.zimbra.cs.util.yauth.MetadataTokenStore;
-import com.zimbra.cs.wiki.WikiUtil;
-import com.zimbra.cs.zclient.ZGetInfoResult;
-import com.zimbra.cs.zclient.ZIdentity;
-import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.soap.SoapEngine;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.admin.type.CacheEntryType;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 public class OfflineProvisioning extends Provisioning implements OfflineConstants {
 
@@ -167,6 +173,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         private EntryType(String abbr, boolean leaf)  { mAbbr = abbr;  mLeafEntry = leaf; }
 
         public boolean isLeafEntry()  { return mLeafEntry; }
+
+        @Override
         public String toString()      { return mAbbr; }
 
         public static EntryType typeForEntry(Entry e) {
@@ -340,19 +348,16 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             }
         }
 
-        Map<String, Object> context = null;
+        CallbackContext callbackContext = null;
         if (!skipAttrMgr) {
-            context = new HashMap<String, Object>();
-            AttributeManager.getInstance().preModify(attrs, e, context, false, checkImmutable, allowCallback);
+            callbackContext = new CallbackContext(CallbackContext.Op.MODIFY);
+            AttributeManager.getInstance().preModify(attrs, e, callbackContext, checkImmutable, allowCallback);
         }
 
         boolean isAccountSetup = attrs.remove(A_offlineAccountSetup) != null;
 
         if (isAccountSetup && etype == EntryType.ACCOUNT)
             revalidateRemoteLogin((OfflineAccount)e, attrs);
-
-        if (e instanceof Account)
-            enableWiki((Account)e, attrs);
 
         if (etype == EntryType.CONFIG) {
             DbOfflineDirectory.modifyDirectoryEntry(etype, A_offlineDn, "config", attrs, false);
@@ -362,7 +367,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         }
         reload(e);
         if (!skipAttrMgr)
-            AttributeManager.getInstance().postModify(attrs, e, context, false, allowCallback);
+            AttributeManager.getInstance().postModify(attrs, e, callbackContext, allowCallback);
 
         long newTime = 0;
         long oldTime = 0;
@@ -583,11 +588,6 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return mMimeTypes;
     }
 
-    @Override
-    public List<Zimlet> getObjectTypes() {
-        return listAllZimlets();
-    }
-
     static final Set<String> sOfflineAttributes = new HashSet<String>(Arrays.asList(
             A_zimbraId,
             A_mail,
@@ -693,7 +693,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (!(attrs.get(A_zimbraAccountStatus) instanceof String))
             attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
 
-        attrs.put(A_offlineFeatureSmtpEnabled, TRUE);
+        attrs.put(A_offlineFeatureSmtpEnabled, ProvisioningConstants.TRUE);
         attrs.remove(A_zimbraIsAdminAccount);
         attrs.remove(A_zimbraIsDomainAdminAccount);
 
@@ -703,13 +703,13 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_zimbraPrefMailPollingInterval, OfflineLC.zdesktop_client_poll_interval.value());
 
         attrs.put(A_zimbraPrefClientType, "advanced");
-        attrs.put(A_zimbraPrefAccountTreeOpen , getAllAccounts().size() == 0 ? TRUE : FALSE);
-        attrs.put(A_zimbraFeatureSharingEnabled, TRUE);
+        attrs.put(A_zimbraPrefAccountTreeOpen , getAllAccounts().size() == 0 ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraFeatureSharingEnabled, ProvisioningConstants.TRUE);
 
         attrs.remove(A_zimbraChildAccount);
         attrs.remove(A_zimbraPrefChildVisibleAccount);
 
-        attrs.put(A_zimbraJunkMessagesIndexingEnabled, TRUE);
+        attrs.put(A_zimbraJunkMessagesIndexingEnabled, ProvisioningConstants.TRUE);
         attrs.put(A_zimbraMailQuota, "0");
 
         Account account = createAccountInternal(emailAddress, zgi.getId(), attrs, true, false);
@@ -822,7 +822,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         String accountLabel = (String)dsAttrs.remove(A_zimbraPrefLabel);
         dsAttrs.remove(A_offlineDataSourceName);
         String dsType = (String)dsAttrs.remove(A_offlineDataSourceType);
-        DataSource.Type type = DataSource.Type.valueOf(dsType);
+        DataSourceType type = DataSourceType.valueOf(dsType);
         String dsid = UUID.randomUUID().toString();
         dsAttrs.put(A_zimbraDataSourceId, dsid);
         String sslCertAlias = (String)dsAttrs.remove(OfflineConstants.A_zimbraDataSourceSslCertAlias);
@@ -860,19 +860,19 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         setDefaultAccountAttributes(attrs);
 
         Object syncEnabled = dsAttrs.get(A_zimbraDataSourceContactSyncEnabled);
-        attrs.put(A_zimbraFeatureContactsEnabled, syncEnabled == null ? FALSE : syncEnabled);
+        attrs.put(A_zimbraFeatureContactsEnabled, syncEnabled == null ? ProvisioningConstants.FALSE : syncEnabled);
         syncEnabled = dsAttrs.get(A_zimbraDataSourceCalendarSyncEnabled);
-        attrs.put(A_zimbraFeatureCalendarEnabled, syncEnabled == null ? FALSE : syncEnabled);
+        attrs.put(A_zimbraFeatureCalendarEnabled, syncEnabled == null ? ProvisioningConstants.FALSE : syncEnabled);
         syncEnabled = dsAttrs.get(A_zimbraDataSourceTaskSyncEnabled);
-        attrs.put(A_zimbraFeatureTasksEnabled, syncEnabled == null ? FALSE : syncEnabled);
+        attrs.put(A_zimbraFeatureTasksEnabled, syncEnabled == null ? ProvisioningConstants.FALSE : syncEnabled);
         syncEnabled = dsAttrs.get(A_zimbraDataSourceSmtpEnabled);
-        attrs.put(A_offlineFeatureSmtpEnabled, syncEnabled == null ? TRUE : syncEnabled);
+        attrs.put(A_offlineFeatureSmtpEnabled, syncEnabled == null ? ProvisioningConstants.TRUE : syncEnabled);
 
-        attrs.put(A_zimbraFeatureBriefcasesEnabled, FALSE);
-        attrs.put(A_zimbraFeatureGalEnabled, FALSE);
-        attrs.put(A_zimbraFeatureIMEnabled, FALSE);
-        attrs.put(A_zimbraFeatureNotebookEnabled, FALSE);
-        attrs.put(A_zimbraPrefAccountTreeOpen , getAllAccounts().size() == 0 ? TRUE : FALSE);
+        attrs.put(A_zimbraFeatureBriefcasesEnabled, ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraFeatureGalEnabled, ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraFeatureIMEnabled, ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraFeatureNotebookEnabled, ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraPrefAccountTreeOpen , getAllAccounts().size() == 0 ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
 
         Account account = createAccountInternal(emailAddress, accountId, attrs, false, false);
         OfflineDataSource ds = null;
@@ -906,7 +906,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                         (String) dsAttrs.get(A_offlineYContactVerifier));
                 //create mailbox from scratch, don't need migration
                 if (OAuthManager.hasOAuthToken(account.getId())) {
-                    setDataSourceAttribute(ds, OfflineConstants.A_offlineYContactTokenReady, TRUE);
+                    setDataSourceAttribute(ds, OfflineConstants.A_offlineYContactTokenReady, ProvisioningConstants.TRUE);
                     YContactSync.skipMigration(mbox);
                 }
             }
@@ -944,7 +944,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized DataSource getDataSource(Account account) throws ServiceException {
         if (!isDataSourceAccount(account))
             return null;
-        return get(account, DataSourceBy.name, getDataSourceName(account));
+        return get(account, Key.DataSourceBy.name, getDataSourceName(account));
     }
 
     public synchronized List<DataSource> getAllDataSources() throws ServiceException {
@@ -981,10 +981,10 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         setDefaultAccountAttributes(attrs);
 
         OfflineAccount galAcct = (OfflineAccount)createAccountInternal(name, id, attrs, true, false);
-        setAccountAttribute(galAcct, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.FALSE);
+        setAccountAttribute(galAcct, OfflineConstants.A_offlineGalGroupMembersPopulated, ProvisioningConstants.FALSE);
         setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountSyncToken, "");
         setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountId, galAcct.getId());
-        
+
         return galAcct;
     }
 
@@ -1024,7 +1024,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
     private OfflineAccount makeGranter(GranterEntry granter) throws ServiceException {
         String granteeId = granter.granteeId;
-        OfflineAccount grantee = (OfflineAccount)get(Provisioning.AccountBy.id, granteeId);
+        OfflineAccount grantee = (OfflineAccount)get(Key.AccountBy.id, granteeId);
         if (grantee == null)
             throw OfflineServiceException.MOUNT_INVALID_GRANTEE();
         return makeGranter(granter.name, granter.id, grantee, granter.isAmbiguousGranter());
@@ -1042,7 +1042,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
         attrs.put(A_offlineMountpointProxyAccountId, grantee.getId());
         attrs.put(A_offlineAccountFlavor, "Granter");
-        attrs.put(A_offlineAmbiguousGranter, ambiguous ? Provisioning.TRUE : Provisioning.FALSE);
+        attrs.put(A_offlineAmbiguousGranter, ambiguous ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
         setDefaultAccountAttributes(attrs);
 
         OfflineAccount acct = new OfflineAccount(name, id, attrs, mDefaultCos.getAccountDefaults(), getLocalAccount(), this);
@@ -1069,9 +1069,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         attrs.put(A_offlineClientId, clientId);
         attrs.put(A_offlineAccountFlavor, LOCAL_ACCOUNT_FLAVOR);
         attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
-        attrs.put(A_zimbraPrefAccountTreeOpen , TRUE);
-        attrs.put(A_zimbraPrefCalendarAlwaysShowMiniCal , TRUE);
-        attrs.put(A_zimbraPrefShareContactsInAutoComplete, TRUE);
+        attrs.put(A_zimbraPrefAccountTreeOpen , ProvisioningConstants.TRUE);
+        attrs.put(A_zimbraPrefCalendarAlwaysShowMiniCal , ProvisioningConstants.TRUE);
+        attrs.put(A_zimbraPrefShareContactsInAutoComplete, ProvisioningConstants.TRUE);
         attrs.put(A_zimbraPrefGetMailAction, "update");
         attrs.put(A_zimbraPrefOfflineBackupKeep, "2");
         attrs.put(A_zimbraPrefOfflineBackupAccountId, new String[] {LOCAL_ACCOUNT_ID});
@@ -1080,38 +1080,6 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
         Account account = createAccountInternal(LOCAL_ACCOUNT_NAME, LOCAL_ACCOUNT_ID, attrs, true, false);
         return account;
-    }
-
-    @SuppressWarnings("unchecked")
-    private synchronized void enableWiki(Account account, Map<String, ? extends
-        Object> attrs) throws ServiceException {
-        boolean b;
-        String enabled = (String)attrs.get(A_zimbraPrefNotebookSyncEnabled);
-
-        if (!isLocalAccount(account) || enabled == null)
-            return;
-        b = enabled.equals(TRUE);
-        if (account.isFeatureNotebookEnabled() != b)
-            ((Map<String, Object>)attrs).put(Provisioning.A_zimbraFeatureNotebookEnabled, b ? Provisioning.TRUE : Provisioning.FALSE);
-        if (b) {
-            try {
-                Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(account);
-
-                mbox.getFolderByPath(new OperationContext(account), "Template");
-                return;
-            } catch (ServiceException e) {
-            }
-            try {
-                WikiUtil wu = WikiUtil.getInstance();
-                String templatePath = LC.zimbra_home.value() + File.separator +
-                    "wiki" + File.separator + "Templates";
-
-                wu.initDefaultWiki(LOCAL_ACCOUNT_NAME);
-                wu.startImport(LOCAL_ACCOUNT_NAME, "Template", new File(templatePath));
-            } catch (Exception e) {
-                OfflineLog.offline.warn("cannot import local wiki templates");
-            }
-        }
     }
 
     private Account localAccount = null;
@@ -1171,7 +1139,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public boolean isGalAccount(Account account) {
         return "Gal".equals(account.getAttr(A_offlineAccountFlavor, null));
     }
-    
+
     public boolean isMountpointAccount(String accountId) throws ServiceException {
         Account acct = getAccountById(accountId);
         return (acct != null && isMountpointAccount(acct));
@@ -1186,7 +1154,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     private synchronized Account createAccountInternal(String emailAddress, String accountId, Map<String, Object> attrs, boolean initMailbox, boolean skipAttrMgr) throws ServiceException {
-        Map<String, Object> context = null;
+        CallbackContext callbackContext = null;
         String flavor = (String)attrs.get(A_offlineAccountFlavor);
         Map<String,Object> immutable = new HashMap<String, Object>();
 
@@ -1196,29 +1164,30 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         }
 
         if (!skipAttrMgr) {
-            context = new HashMap<String, Object>();
+            callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
             Map<String, Object> validAttrs = new HashMap<String, Object>(attrs);
             //premodify modifies attrs; need a tmp copy in case we need to drop some attrs and try again
             try {
-                AttributeManager.getInstance().preModify(validAttrs, null, context, true, true);
+                AttributeManager.getInstance().preModify(validAttrs, null, callbackContext, true);
                 attrs = validAttrs;
             } catch (ServiceException e) {
                 if (e.getMessage().contains(A_zimbraPrefMailSignature)) {
                     OfflineLog.offline.warn("invalid signature exists in ZCS account. Perhaps server decreased limit after signature was created?");
                     attrs.remove(A_zimbraPrefMailSignature);
-                    AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+                    AttributeManager.getInstance().preModify(attrs, null, callbackContext, true);
                     OfflineLog.offline.debug("attrs otherwise valid; just ignoring signatures for now");
                 } else {
                     throw e;
                 }
             }
+
         }
 
         attrs.putAll(immutable);
         attrs.put(A_offlineAccountFlavor, flavor);
-        attrs.put(A_zimbraPrefSearchTreeOpen, FALSE);
-        attrs.put(A_zimbraPrefTagTreeOpen , FALSE);
-        attrs.put(A_zimbraDumpsterEnabled, FALSE);
+        attrs.put(A_zimbraPrefSearchTreeOpen, ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraPrefTagTreeOpen , ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraDumpsterEnabled, ProvisioningConstants.FALSE);
 
         // create account entry in database
         DbOfflineDirectory.createDirectoryEntry(EntryType.ACCOUNT, emailAddress, attrs, false);
@@ -1227,7 +1196,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         mAccountCache.put(acct);
 
         if (!skipAttrMgr)
-            AttributeManager.getInstance().postModify(attrs, acct, context, true);
+            AttributeManager.getInstance().postModify(attrs, acct, callbackContext);
 
         if (initMailbox) {
             try {
@@ -1254,50 +1223,50 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
             mbox.createMountpoint(null,
                 DesktopMailbox.ID_FOLDER_NOTIFICATIONS, accountId,
-                accountId, Mailbox.ID_FOLDER_USER_ROOT,
-                MailItem.TYPE_UNKNOWN, 0, MailItem.DEFAULT_COLOR_RGB);
+                accountId, Mailbox.ID_FOLDER_USER_ROOT, null,
+                MailItem.Type.UNKNOWN, 0, MailItem.DEFAULT_COLOR_RGB, false);
         }
     }
 
     private void setDefaultAccountAttributes(Map<String, Object> attrs) {
-        addToMap(attrs, A_zimbraAllowAnyFromAddress, TRUE);
-        addToMap(attrs, A_zimbraAttachmentsBlocked, FALSE);
+        addToMap(attrs, A_zimbraAllowAnyFromAddress, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraAttachmentsBlocked, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraContactMaxNumEntries, "0");
 
-        addToMap(attrs, A_zimbraFeatureAdvancedSearchEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureBriefcasesEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureCalendarEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureChangePasswordEnabled, FALSE);
-        addToMap(attrs, A_zimbraFeatureContactsEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureConversationsEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureFiltersEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureFlaggingEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureGalAutoCompleteEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureGalSyncEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureGalEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureGroupCalendarEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureHtmlComposeEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureIMEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureIdentitiesEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureInitialSearchPreferenceEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureInstantNotify, TRUE);
-        addToMap(attrs, A_zimbraFeatureMailEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureMailForwardingEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureMailPriorityEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureNewMailNotificationEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureNotebookEnabled, FALSE);
-        addToMap(attrs, A_zimbraFeatureOutOfOfficeReplyEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeaturePop3DataSourceEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeaturePortalEnabled, FALSE);
-        addToMap(attrs, A_zimbraFeatureSavedSearchesEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureSharingEnabled, FALSE);
-        addToMap(attrs, A_zimbraFeatureSkinChangeEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureTaggingEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureTasksEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureViewInHtmlEnabled, TRUE);
-        addToMap(attrs, A_zimbraFeatureVoiceEnabled, FALSE);
+        addToMap(attrs, A_zimbraFeatureAdvancedSearchEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureBriefcasesEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureCalendarEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureChangePasswordEnabled, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraFeatureContactsEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureConversationsEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureFiltersEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureFlaggingEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureGalAutoCompleteEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureGalSyncEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureGalEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureGroupCalendarEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureHtmlComposeEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureIMEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureIdentitiesEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureInitialSearchPreferenceEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureInstantNotify, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureMailEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureMailForwardingEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureMailPriorityEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureNewMailNotificationEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureNotebookEnabled, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraFeatureOutOfOfficeReplyEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeaturePop3DataSourceEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeaturePortalEnabled, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraFeatureSavedSearchesEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureSharingEnabled, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraFeatureSkinChangeEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureTaggingEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureTasksEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureViewInHtmlEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraFeatureVoiceEnabled, ProvisioningConstants.FALSE);
 
-        addToMap(attrs, A_zimbraJunkMessagesIndexingEnabled, TRUE); //always enable junk index
+        addToMap(attrs, A_zimbraJunkMessagesIndexingEnabled, ProvisioningConstants.TRUE); //always enable junk index
 
         addToMap(attrs, A_zimbraMailIdleSessionTimeout, "0");
         addToMap(attrs, A_zimbraMailMessageLifetime, "0");
@@ -1315,57 +1284,57 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
         //addToMap(attrs, A_zimbraPortalName, "velodrome2");
 
-        addToMap(attrs, A_zimbraPrefAutoAddAddressEnabled, TRUE);
-        addToMap(attrs, A_zimbraPrefCalendarAlwaysShowMiniCal, FALSE);
+        addToMap(attrs, A_zimbraPrefAutoAddAddressEnabled, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraPrefCalendarAlwaysShowMiniCal, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraPrefCalendarApptReminderWarningTime, "5");
         addToMap(attrs, A_zimbraPrefCalendarFirstDayOfWeek, "0");
         addToMap(attrs, A_zimbraPrefCalendarInitialView, "workWeek");
-        addToMap(attrs, A_zimbraPrefCalendarNotifyDelegatedChanges, FALSE);
-        addToMap(attrs, A_zimbraPrefCalendarUseQuickAdd, TRUE);
+        addToMap(attrs, A_zimbraPrefCalendarNotifyDelegatedChanges, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraPrefCalendarUseQuickAdd, ProvisioningConstants.TRUE);
         addToMap(attrs, A_zimbraPrefComposeFormat, "text");
-        addToMap(attrs, A_zimbraPrefComposeInNewWindow, FALSE);
+        addToMap(attrs, A_zimbraPrefComposeInNewWindow, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraPrefContactsInitialView, "list");
         addToMap(attrs, A_zimbraPrefContactsPerPage, "25");
         addToMap(attrs, A_zimbraPrefDedupeMessagesSentToSelf, "dedupeNone");
         addToMap(attrs, A_zimbraPrefForwardIncludeOriginalText, "includeBody");
-        addToMap(attrs, A_zimbraPrefForwardReplyInOriginalFormat, FALSE);
+        addToMap(attrs, A_zimbraPrefForwardReplyInOriginalFormat, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraPrefForwardReplyPrefixChar, ">");
-        addToMap(attrs, A_zimbraPrefGalAutoCompleteEnabled, FALSE);
+        addToMap(attrs, A_zimbraPrefGalAutoCompleteEnabled, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraPrefGroupMailBy, "conversation");
         addToMap(attrs, A_zimbraPrefHtmlEditorDefaultFontColor, "#000000");
         addToMap(attrs, A_zimbraPrefHtmlEditorDefaultFontFamily, "Arial");
         addToMap(attrs, A_zimbraPrefHtmlEditorDefaultFontSize, "10pt");
-        addToMap(attrs, A_zimbraPrefIMAutoLogin, TRUE);
-        addToMap(attrs, A_zimbraPrefImapSearchFoldersEnabled, TRUE);
+        addToMap(attrs, A_zimbraPrefIMAutoLogin, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraPrefImapSearchFoldersEnabled, ProvisioningConstants.TRUE);
         addToMap(attrs, A_zimbraPrefInboxUnreadLifetime, "0");
-        addToMap(attrs, A_zimbraPrefIncludeSpamInSearch, FALSE);
-        addToMap(attrs, A_zimbraPrefIncludeTrashInSearch, FALSE);
+        addToMap(attrs, A_zimbraPrefIncludeSpamInSearch, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraPrefIncludeTrashInSearch, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraPrefMailInitialSearch, "in:inbox");
         addToMap(attrs, A_zimbraPrefMailItemsPerPage, "50");
         addToMap(attrs, A_zimbraPrefMailPollingInterval, OfflineLC.zdesktop_client_poll_interval.value());
-        addToMap(attrs, A_zimbraPrefMailSignatureEnabled, FALSE);
+        addToMap(attrs, A_zimbraPrefMailSignatureEnabled, ProvisioningConstants.FALSE);
         addToMap(attrs, A_zimbraPrefMailSignatureStyle, "outlook");
-        addToMap(attrs, A_zimbraPrefMessageViewHtmlPreferred, TRUE);
-        addToMap(attrs, A_zimbraPrefReadingPaneEnabled, TRUE);
+        addToMap(attrs, A_zimbraPrefMessageViewHtmlPreferred, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraPrefReadingPaneEnabled, ProvisioningConstants.TRUE);
         addToMap(attrs, A_zimbraPrefReadingPaneLocation, "right");
         addToMap(attrs, A_zimbraPrefReplyIncludeOriginalText, "includeBody");
-        addToMap(attrs, A_zimbraPrefSaveToSent, TRUE);
+        addToMap(attrs, A_zimbraPrefSaveToSent, ProvisioningConstants.TRUE);
         addToMap(attrs, A_zimbraPrefSentLifetime, "0");
         addToMap(attrs, A_zimbraPrefSentMailFolder, "sent");
-        addToMap(attrs, A_zimbraPrefShowFragments, TRUE);
-        addToMap(attrs, A_zimbraPrefShowSearchString, TRUE);
-        addToMap(attrs, A_zimbraPrefUseKeyboardShortcuts, TRUE);
-        addToMap(attrs, A_zimbraPrefUseRfc2231, FALSE);
-        addToMap(attrs, A_zimbraPrefUseTimeZoneListInCalendar, FALSE);
+        addToMap(attrs, A_zimbraPrefShowFragments, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraPrefShowSearchString, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraPrefUseKeyboardShortcuts, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraPrefUseRfc2231, ProvisioningConstants.FALSE);
+        addToMap(attrs, A_zimbraPrefUseTimeZoneListInCalendar, ProvisioningConstants.FALSE);
 
         String[] skins = mLocalConfig.getMultiAttr(Provisioning.A_zimbraInstalledSkin);
         attrs.put(A_zimbraPrefSkin, skins == null || skins.length == 0 ? "yahoo" : skins[0]);
 
         attrs.put(A_zimbraPrefClientType, "advanced");
-        attrs.put(A_zimbraFeatureSharingEnabled, FALSE);
+        attrs.put(A_zimbraFeatureSharingEnabled, ProvisioningConstants.FALSE);
 
-        addToMap(attrs, A_zimbraIsAdminAccount, TRUE);
-        addToMap(attrs, A_zimbraIsDomainAdminAccount, TRUE);
+        addToMap(attrs, A_zimbraIsAdminAccount, ProvisioningConstants.TRUE);
+        addToMap(attrs, A_zimbraIsDomainAdminAccount, ProvisioningConstants.TRUE);
     }
 
     public static String getSanitizedValue(String key, String value) throws ServiceException {
@@ -1408,7 +1377,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             Folder fldr;
             Mailbox mbox = OfflineMailboxManager.getInstance().getMailboxByAccount(localAccount);
             fldr = mbox.getFolderByName(null, DesktopMailbox.ID_FOLDER_NOTIFICATIONS, zimbraId);
-            mbox.delete(null, fldr.getId(), MailItem.TYPE_MOUNTPOINT);
+            mbox.delete(null, fldr.getId(), MailItem.Type.MOUNTPOINT);
         } catch (Exception e) {
         }
 
@@ -1474,7 +1443,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                 attrs.put(A_zimbraId, UUID.randomUUID().toString());
                 attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
                 attrs.put(A_offlineRemotePassword, LC.zimbra_ldap_password.value());
-                attrs.put(A_zimbraIsAdminAccount, TRUE);
+                attrs.put(A_zimbraIsAdminAccount, ProvisioningConstants.TRUE);
             }
         }
 
@@ -1535,16 +1504,11 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         return acct;
     }
 
-    @Override
-    public synchronized List<NamedEntry> searchAccounts(String query, String[] returnAttrs, String sortAttr, boolean sortAscending, int flags) throws ServiceException {
-        throw new UnsupportedOperationException();
-    }
-
     public List<String> getAllAccountIds() throws ServiceException {
         if (this.cachedAccountIds.isEmpty()) {
             synchronized (this) {
                 if (this.cachedAccountIds.isEmpty()) {
-                    this.loadAccountIdsInOrder();        
+                    this.loadAccountIdsInOrder();
                 }
             }
         }
@@ -1647,7 +1611,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized void preAuthAccount(Account acct, String accountName, String accountBy, long timestamp, long expires, String preAuth, Map<String, Object> authCtxt) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("preAuthAccount");
     }
-    
+
     @Override
     public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("ssoAuthAccount");
@@ -1684,7 +1648,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized Domain get(DomainBy keyType, String key) {
+    public synchronized Domain get(Key.DomainBy keyType, String key) {
         return null;
     }
 
@@ -1714,10 +1678,10 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized Cos get(CosBy keyType, String key) throws ServiceException {
-        if (keyType == CosBy.id)
+    public synchronized Cos get(Key.CosBy keyType, String key) throws ServiceException {
+        if (keyType == Key.CosBy.id)
             return mDefaultCos.getId().equalsIgnoreCase(key) ? mDefaultCos : null;
-        else if (keyType == CosBy.name)
+        else if (keyType == Key.CosBy.name)
             return mDefaultCos.getName().equalsIgnoreCase(key) ? mDefaultCos : null;
         else
             throw ServiceException.FAILURE("unsupported CosBy value: " + keyType, null);
@@ -1746,16 +1710,16 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized Server get(ServerBy keyType, String key) throws ServiceException {
+    public synchronized Server get(Key.ServerBy keyType, String key) throws ServiceException {
         if (key.toLowerCase().startsWith(OfflineConstants.SYNC_SERVER_PREFIX)) {
             synchronized(mSyncServerCache) {
                 return mSyncServerCache.get(key.toLowerCase());
             }
-        } else if (keyType == ServerBy.id)
+        } else if (keyType == Key.ServerBy.id)
             return mLocalServer.getId().equalsIgnoreCase(key) ? mLocalServer : null;
-        else if (keyType == ServerBy.name)
+        else if (keyType == Key.ServerBy.name)
             return mLocalServer.getName().equalsIgnoreCase(key) ? mLocalServer : null;
-        else if (keyType == ServerBy.serviceHostname)
+        else if (keyType == Key.ServerBy.serviceHostname)
             return mLocalServer.getAttr(A_zimbraServiceHostname, "localhost").equalsIgnoreCase(key) ? mLocalServer : null;
         else
             throw ServiceException.FAILURE("unsupported ServerBy value: " + keyType, null);
@@ -1786,7 +1750,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized DistributionList get(DistributionListBy keyType, String key) throws ServiceException {
+    public synchronized DistributionList get(Key.DistributionListBy keyType, String key) throws ServiceException {
         return null;
     }
 
@@ -1825,19 +1789,19 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized Zimlet createZimlet(String name, Map<String, Object> attrs) throws ServiceException {
         name = name.toLowerCase();
 
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
+        AttributeManager.getInstance().preModify(attrs, null, callbackContext, true);
         if (!(attrs.get(A_zimbraId) instanceof String))
             attrs.put(A_zimbraId, UUID.randomUUID().toString());
         attrs.put(A_cn, name);
         attrs.put(A_objectClass, "zimbraZimletEntry");
-        attrs.put(A_zimbraZimletEnabled, FALSE);
-        attrs.put(A_zimbraZimletIndexingEnabled, attrs.containsKey(A_zimbraZimletKeyword) ? TRUE : FALSE);
+        attrs.put(A_zimbraZimletEnabled, ProvisioningConstants.FALSE);
+        attrs.put(A_zimbraZimletIndexingEnabled, attrs.containsKey(A_zimbraZimletKeyword) ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
 
         DbOfflineDirectory.createDirectoryEntry(EntryType.ZIMLET, name, attrs, false);
         Zimlet zimlet = new OfflineZimlet(name, (String) attrs.get(A_zimbraId), attrs, this);
         mZimlets.put(name, zimlet);
-        AttributeManager.getInstance().postModify(attrs, zimlet, context, true);
+        AttributeManager.getInstance().postModify(attrs, zimlet, callbackContext);
         return zimlet;
     }
 
@@ -1868,12 +1832,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized CalendarResource get(CalendarResourceBy keyType, String key) throws ServiceException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public synchronized List<NamedEntry> searchCalendarResources(EntrySearchFilter filter, String[] returnAttrs, String sortAttr, boolean sortAscending) throws ServiceException {
+    public synchronized CalendarResource get(Key.CalendarResourceBy keyType, String key) throws ServiceException {
         throw new UnsupportedOperationException();
     }
 
@@ -1955,33 +1914,6 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized List<NamedEntry> searchAccounts(Domain d, String query, String[] returnAttrs, String sortAttr, boolean sortAscending, int flags) throws ServiceException {
-        throw new UnsupportedOperationException();
-    }
-
-    public List<NamedEntry> searchDirectory(SearchOptions options) throws ServiceException {
-        //HACK: we were throwing UnsupportedOperationException, but DeleteAccount now does a searchDirectory to prevent from deleting
-        //domain wiki accounts.  Hence the hack to always return empty.
-        return new ArrayList<NamedEntry>();
-    }
-
-    @Override
-    public synchronized SearchGalResult searchGal(Domain d, String query, GalSearchType type, String token) throws ServiceException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public synchronized SearchGalResult autoCompleteGal(Domain d, String query, GalSearchType type, int limit) throws ServiceException {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    @SuppressWarnings("unchecked")
-    public synchronized List searchCalendarResources(Domain d, EntrySearchFilter filter, String[] returnAttrs, String sortAttr, boolean sortAscending) throws ServiceException {
-        return Collections.emptyList();
-    }
-
-    @Override
     public synchronized void addMembers(DistributionList list, String[] members) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("addMembers");
     }
@@ -2002,7 +1934,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     synchronized Identity createIdentity(Account account, String name, Map<String, Object> attrs, boolean markChanged) throws ServiceException {
-        if (name.equalsIgnoreCase(DEFAULT_IDENTITY_NAME))
+        if (name.equalsIgnoreCase(ProvisioningConstants.DEFAULT_IDENTITY_NAME))
             throw AccountServiceException.IDENTITY_EXISTS(name);
 
         List<Identity> existing = getAllIdentities(account);
@@ -2024,8 +1956,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             if (attrs.containsKey(attr))
                 immutable.put(attr, attrs.remove(attr));
 
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
+        AttributeManager.getInstance().preModify(attrs, null, callbackContext, true);
 
         attrs.putAll(immutable);
 
@@ -2033,7 +1965,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         Identity identity = new OfflineIdentity(account, name, attrs, this);
         mHasDirtyAccounts |= markChanged;
 
-        AttributeManager.getInstance().postModify(attrs, identity, context, true);
+        AttributeManager.getInstance().postModify(attrs, identity, callbackContext);
         return identity;
     }
 
@@ -2043,10 +1975,10 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     synchronized void deleteIdentity(Account account, String name, boolean markChanged) throws ServiceException {
-        if (name.equalsIgnoreCase(DEFAULT_IDENTITY_NAME))
+        if (name.equalsIgnoreCase(ProvisioningConstants.DEFAULT_IDENTITY_NAME))
             throw ServiceException.INVALID_REQUEST("can't delete default identity", null);
 
-        Identity ident = get(account, IdentityBy.name, name);
+        Identity ident = get(account, Key.IdentityBy.name, name);
         if (ident == null)
             return;
 
@@ -2062,7 +1994,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         List<Identity> identities = new ArrayList<Identity>(names.size() + 1);
         identities.add(getDefaultIdentity(account));
         for (String name : names)
-            identities.add(get(account, IdentityBy.name, name));
+            identities.add(get(account, Key.IdentityBy.name, name));
         return identities;
     }
 
@@ -2072,12 +2004,12 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     synchronized void modifyIdentity(Account account, String name, Map<String, Object> attrs, boolean markChanged) throws ServiceException {
-        if (name.equalsIgnoreCase(DEFAULT_IDENTITY_NAME)) {
+        if (name.equalsIgnoreCase(ProvisioningConstants.DEFAULT_IDENTITY_NAME)) {
             modifyAttrs(account, attrs, false, true, markChanged);
             return;
         }
 
-        Identity identity = get(account, IdentityBy.name, name);
+        Identity identity = get(account, Key.IdentityBy.name, name);
         if (identity == null)
             throw AccountServiceException.NO_SUCH_IDENTITY(name);
 
@@ -2099,32 +2031,32 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (newName == null)
             newName = (String) attrs.get('+' + A_zimbraPrefIdentityName);
 
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, identity, context, false, true, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.MODIFY);
+        AttributeManager.getInstance().preModify(attrs, identity, callbackContext, true, true);
 
         DbOfflineDirectory.modifyDirectoryLeaf(EntryType.IDENTITY, account, A_offlineDn, name, attrs, markChanged, newName);
         reload(identity);
         mHasDirtyAccounts |= markChanged;
 
-        AttributeManager.getInstance().postModify(attrs, identity, context, false, true);
+        AttributeManager.getInstance().postModify(attrs, identity, callbackContext, true);
     }
 
     @Override
-    public synchronized Identity get(Account account, IdentityBy keyType, String key) throws ServiceException {
+    public synchronized Identity get(Account account, Key.IdentityBy keyType, String key) throws ServiceException {
         if (key == null) return null;
         Map<String,Object> attrs = null;
-        if (keyType == IdentityBy.name) {
-            if (key.equalsIgnoreCase(DEFAULT_IDENTITY_NAME))
+        if (keyType == Key.IdentityBy.name) {
+            if (key.equalsIgnoreCase(ProvisioningConstants.DEFAULT_IDENTITY_NAME))
                 return getDefaultIdentity(account);
             attrs = DbOfflineDirectory.readDirectoryLeaf(EntryType.IDENTITY, account, A_offlineDn, key);
-        } else if (keyType == IdentityBy.id) {
+        } else if (keyType == Key.IdentityBy.id) {
             if (key.equalsIgnoreCase(account.getId()))
                 return getDefaultIdentity(account);
             attrs = DbOfflineDirectory.readDirectoryLeaf(EntryType.IDENTITY, account, A_zimbraId, key);
         }
-        if (attrs == null && keyType == IdentityBy.id) {
+        if (attrs == null && keyType == Key.IdentityBy.id) {
             //HACK: try DataSource as well
-            DataSource ds = get(account, DataSourceBy.id, key);
+            DataSource ds = get(account, Key.DataSourceBy.id, key);
             if (ds != null) {
                 attrs = ds.getAttrs();
                 attrs.put(A_zimbraPrefIdentityId, ds.getId());
@@ -2172,16 +2104,16 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             if (attrs.containsKey(attr))
                 immutable.put(attr, attrs.remove(attr));
 
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
+        AttributeManager.getInstance().preModify(attrs, null, callbackContext, true);
 
         attrs.putAll(immutable);
 
         DbOfflineDirectory.createDirectoryLeaf(EntryType.SIGNATURE, account, signatureName, signatureId, attrs, markChanged);
-        Signature signature = get(account, SignatureBy.id, signatureId);
+        Signature signature = get(account, Key.SignatureBy.id, signatureId);
         mHasDirtyAccounts |= markChanged;
 
-        AttributeManager.getInstance().postModify(attrs, signature, context, true);
+        AttributeManager.getInstance().postModify(attrs, signature, callbackContext);
 
         if (setAsDefault && markChanged) {
             setDefaultSignature(account, signatureId);
@@ -2212,7 +2144,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     synchronized void modifySignature(Account account, String signatureId, Map<String, Object> attrs, boolean markChanged) throws ServiceException {
-        Signature signature = get(account, SignatureBy.id, signatureId);
+        Signature signature = get(account, Key.SignatureBy.id, signatureId);
         if (signature == null)
             throw AccountServiceException.NO_SUCH_SIGNATURE(signatureId);
 
@@ -2239,14 +2171,14 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             }
         }
 
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, signature, context, false, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.MODIFY);
+        AttributeManager.getInstance().preModify(attrs, signature, callbackContext, true);
 
         DbOfflineDirectory.modifyDirectoryLeaf(EntryType.SIGNATURE, account, Provisioning.A_zimbraId, signatureId, attrs, markChanged, newName);
         reload(signature);
         mHasDirtyAccounts |= markChanged;
 
-        AttributeManager.getInstance().postModify(attrs, signature, context, false, true);
+        AttributeManager.getInstance().postModify(attrs, signature, callbackContext, true);
     }
 
     @Override
@@ -2255,7 +2187,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     synchronized void deleteSignature(Account account, String signatureId, boolean markChanged) throws ServiceException {
-        Signature signature = get(account, SignatureBy.id, signatureId);
+        Signature signature = get(account, Key.SignatureBy.id, signatureId);
         if (signature == null) return;
 
         DbOfflineDirectory.deleteDirectoryLeaf(EntryType.SIGNATURE, account, signatureId, markChanged);
@@ -2279,17 +2211,17 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         List<String> names = DbOfflineDirectory.listAllDirectoryLeaves(EntryType.SIGNATURE, account);
         List<Signature> signatures = new ArrayList<Signature>(names.size());
         for (String name : names)
-            signatures.add(get(account, SignatureBy.name, name));
+            signatures.add(get(account, Key.SignatureBy.name, name));
         return signatures;
     }
 
     @Override
-    public synchronized Signature get(Account account, SignatureBy keyType, String key) throws ServiceException {
+    public synchronized Signature get(Account account, Key.SignatureBy keyType, String key) throws ServiceException {
         if (key == null) return null;
         Map<String,Object> attrs = null;
-        if (keyType == SignatureBy.name) {
+        if (keyType == Key.SignatureBy.name) {
             attrs = DbOfflineDirectory.readDirectoryLeaf(EntryType.SIGNATURE, account, A_offlineDn, key);
-        } else if (keyType == SignatureBy.id) {
+        } else if (keyType == Key.SignatureBy.id) {
             attrs = DbOfflineDirectory.readDirectoryLeaf(EntryType.SIGNATURE, account, A_zimbraId, key);
         }
         if (attrs == null)
@@ -2301,21 +2233,21 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     private Map<String, List<DataSource>> cachedDataSources = new HashMap<String, List<DataSource>>();
 
     @Override
-    public synchronized DataSource createDataSource(Account account, DataSource.Type type, String name, Map<String, Object> attrs) throws ServiceException {
+    public synchronized DataSource createDataSource(Account account, DataSourceType type, String name, Map<String, Object> attrs) throws ServiceException {
         return createDataSource(account, type, name, attrs, false, isZcsAccount(account));
     }
 
     @Override
-    public synchronized DataSource createDataSource(Account account, DataSource.Type type, String name, Map<String, Object> attrs, boolean passwdAlreadyEncrypted) throws ServiceException {
+    public synchronized DataSource createDataSource(Account account, DataSourceType type, String name, Map<String, Object> attrs, boolean passwdAlreadyEncrypted) throws ServiceException {
         return createDataSource(account, type, name, attrs, passwdAlreadyEncrypted, isZcsAccount(account));
     }
 
     @Override
-    public synchronized DataSource restoreDataSource(Account account, DataSource.Type type, String name, Map<String, Object> attrs) throws ServiceException {
+    public synchronized DataSource restoreDataSource(Account account, DataSourceType type, String name, Map<String, Object> attrs) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("restoreDataSource");
     }
 
-    synchronized DataSource createDataSource(Account account, DataSource.Type type, String name, Map<String, Object> attrs, boolean passwdAlreadyEncrypted, boolean markChanged)
+    synchronized DataSource createDataSource(Account account, DataSourceType type, String name, Map<String, Object> attrs, boolean passwdAlreadyEncrypted, boolean markChanged)
     throws ServiceException {
         List<DataSource> existing = getAllDataSources(account);
         if (existing.size() >= account.getLongAttr(A_zimbraDataSourceMaxNumEntries, 20))
@@ -2335,7 +2267,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             attrs.put(A_offlineModifiedAttrs, A_offlineDn);
 
         if (isDataSourceAccount(account))
-            attrs.put(A_zimbraDataSourceEnabled, TRUE);
+            attrs.put(A_zimbraDataSourceEnabled, ProvisioningConstants.TRUE);
 
         //testDataSource(new OfflineDataSource(account, type, name, dsid, attrs));
 
@@ -2344,8 +2276,8 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             if (attrs.containsKey(attr))
                 immutable.put(attr, attrs.remove(attr));
 
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
+        AttributeManager.getInstance().preModify(attrs, null, callbackContext, true);
 
         attrs.putAll(immutable);
 
@@ -2353,7 +2285,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         DataSource ds = new OfflineDataSource(account, type, name, dsid, attrs, this);
         mHasDirtyAccounts |= markChanged;
 
-        AttributeManager.getInstance().postModify(attrs, ds, context, true);
+        AttributeManager.getInstance().postModify(attrs, ds, callbackContext);
 
         cachedDataSources.remove(account.getId());
 
@@ -2366,7 +2298,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     synchronized void deleteDataSource(Account account, String dataSourceId, boolean markChanged) throws ServiceException {
-        DataSource dsrc = get(account, DataSourceBy.id, dataSourceId);
+        DataSource dsrc = get(account, Key.DataSourceBy.id, dataSourceId);
         if (dsrc == null)
             return;
         SyncErrorManager.clearErrors(dsrc);
@@ -2385,7 +2317,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             List<String> names = DbOfflineDirectory.listAllDirectoryLeaves(EntryType.DATASOURCE, account);
             sources = new ArrayList<DataSource>(names.size());
             for (String name : names)
-                sources.add(get(account, DataSourceBy.name, name));
+                sources.add(get(account, Key.DataSourceBy.name, name));
             sort(sources);
             cachedDataSources.put(account.getId(), sources);
         }
@@ -2400,6 +2332,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
     private static void sort(List<DataSource> sources) {
         Collections.sort(sources, new Comparator<DataSource>() {
+            @Override
             public int compare(DataSource ds1, DataSource ds2) {
                 return syncOrder(ds1) - syncOrder(ds2);
             }
@@ -2423,7 +2356,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     void modifyDataSource(Account account, String dataSourceId, Map<String, Object> attrs, boolean markChanged) throws ServiceException {
-        DataSource ds = get(account, DataSourceBy.id, dataSourceId);
+        DataSource ds = get(account, Key.DataSourceBy.id, dataSourceId);
         if (ds == null)
             throw AccountServiceException.NO_SUCH_DATA_SOURCE(dataSourceId);
 
@@ -2492,23 +2425,23 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                 adjustAccountDisplayName(account, ds, attrs);
             }
 
-            attrs.put(A_zimbraDataSourceEnabled, TRUE);
+            attrs.put(A_zimbraDataSourceEnabled, ProvisioningConstants.TRUE);
         }
 
-        Map<String, Object> context = new HashMap<String, Object>();
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.MODIFY);
 
         synchronized (this) {
-            AttributeManager.getInstance().preModify(attrs, ds, context, false, true, true);
+            AttributeManager.getInstance().preModify(attrs, ds, callbackContext, true, true);
 
             DbOfflineDirectory.modifyDirectoryLeaf(EntryType.DATASOURCE, account, A_zimbraId, dataSourceId, attrs, markChanged, newName);
             reload(ds);
             mHasDirtyAccounts |= markChanged;
 
-            AttributeManager.getInstance().postModify(attrs, ds, context, false, true);
+            AttributeManager.getInstance().postModify(attrs, ds, callbackContext, true);
         }
         if (!isLocalAccount(account) && isDataSourceAccount(account)) {
-            setAccountAttribute(account, A_zimbraFeatureCalendarEnabled, ds.getBooleanAttr(A_zimbraDataSourceCalendarSyncEnabled, false) ? TRUE : FALSE);
-            setAccountAttribute(account, A_zimbraFeatureContactsEnabled, ds.getBooleanAttr(A_zimbraDataSourceContactSyncEnabled, false) ? TRUE : FALSE);
+            setAccountAttribute(account, A_zimbraFeatureCalendarEnabled, ds.getBooleanAttr(A_zimbraDataSourceCalendarSyncEnabled, false) ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
+            setAccountAttribute(account, A_zimbraFeatureContactsEnabled, ds.getBooleanAttr(A_zimbraDataSourceContactSyncEnabled, false) ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
         }
         //for yahoo contact sync (address book)
         if (ds.getBooleanAttr(A_zimbraDataSourceContactSyncEnabled, false)) {
@@ -2524,7 +2457,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                             ds.getAttr(A_offlineYContactTokenTimestamp),
                             ds.getAttr(A_offlineYContactVerifier));
                     if (OAuthManager.hasOAuthToken(account.getId())) {
-                        setDataSourceAttribute(ds, OfflineConstants.A_offlineYContactTokenReady, TRUE);
+                        setDataSourceAttribute(ds, OfflineConstants.A_offlineYContactTokenReady, ProvisioningConstants.TRUE);
                         YContactSync.migrateExistingContacts(((OfflineDataSource)ds).getContactSyncDataSource());
                     }
                 }
@@ -2550,21 +2483,21 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public synchronized DataSource get(Account account, DataSourceBy keyType, String key) throws ServiceException {
+    public synchronized DataSource get(Account account, Key.DataSourceBy keyType, String key) throws ServiceException {
         List<DataSource> cached = cachedDataSources.get(account.getId());
         if (cached != null) {
             for (DataSource ds : cached) {
-                if (keyType == DataSourceBy.name && ds.getName().equals(key) ||
-                    keyType == DataSourceBy.id && ds.getId().equals(key))
+                if (keyType == Key.DataSourceBy.name && ds.getName().equals(key) ||
+                    keyType == Key.DataSourceBy.id && ds.getId().equals(key))
                     return ds;
             }
             return null;
         }
 
         Map<String,Object> attrs = null;
-        if (keyType == DataSourceBy.name) {
+        if (keyType == Key.DataSourceBy.name) {
             attrs = DbOfflineDirectory.readDirectoryLeaf(EntryType.DATASOURCE, account, A_offlineDn, key);
-        } else if (keyType == DataSourceBy.id) {
+        } else if (keyType == Key.DataSourceBy.id) {
             attrs = DbOfflineDirectory.readDirectoryLeaf(EntryType.DATASOURCE, account, A_zimbraId, key);
         }
         if (attrs == null)
@@ -2574,7 +2507,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (name == null)
             return null;
 
-        DataSource.Type type = DataSource.Type.fromString((String) attrs.get(A_offlineDataSourceType));
+        DataSourceType type = DataSourceType.fromString((String) attrs.get(A_offlineDataSourceType));
         return new OfflineDataSource(account, type, name, (String) attrs.get(A_zimbraDataSourceId), attrs, this);
     }
 
@@ -2589,7 +2522,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     }
 
     @Override
-    public XMPPComponent get(XMPPComponentBy keyType, String key) throws ServiceException {
+    public XMPPComponent get(Key.XMPPComponentBy keyType, String key) throws ServiceException {
         throw ServiceException.FAILURE("unsupported", null);
     }
 
@@ -2702,7 +2635,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             return null;
         }
     }
-    
+
     public String getCalendarProxyAuthToken(String requestedAccountId, Map<String, Object> context) throws ServiceException {
         Account acct = getAccountById(requestedAccountId);
         if (acct != null && isMountpointAccount(acct) && acct.getBooleanAttr(OfflineProvisioning.A_offlineAmbiguousGranter, false)) {
@@ -2717,17 +2650,17 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                     List<Account> zcsAccts = getAllZcsAccounts();
                     for (Account zcsAcct : zcsAccts) {
                         ZcsMailbox ombx = (ZcsMailbox) MailboxManager.getInstance().getMailboxByAccount(zcsAcct);
-                        List<MailItem> mounts = ombx.getItemList(null, MailItem.TYPE_MOUNTPOINT);
+                        List<MailItem> mounts = ombx.getItemList(null, MailItem.Type.MOUNTPOINT);
                         if (mounts != null) {
                             for (MailItem mount : mounts) {
-                                if (((Mountpoint) mount).getDefaultView() == MailItem.TYPE_APPOINTMENT) {
-                                    //probably this one. 
+                                if (((Mountpoint) mount).getDefaultView() == MailItem.Type.APPOINTMENT) {
+                                    //probably this one.
                                     return getProxyAuthToken(zcsAcct.getId(), null);
                                 }
                             }
                         }
                     }
-                    
+
                 }
             }
         }
@@ -2743,7 +2676,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public boolean allowsPingRemote() {
         return false; // in offline don't actively ping remote servers for pending sessions
     }
-    
+
     public boolean syncZimletProperties(String accountId) throws ServiceException {
         return accountId.equals(getZimletSyncAccountId());
     }
@@ -2763,18 +2696,18 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
     public OfflineDomainGal createDomainGal(String domain, Map<String, Object> attrs) throws ServiceException {
         domain = domain.toLowerCase();
-        Map<String, Object> context = new HashMap<String, Object>();
-        AttributeManager.getInstance().preModify(attrs, null, context, true, true);
+        CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
+        AttributeManager.getInstance().preModify(attrs, null, callbackContext, true);
         String zimbraId = UUID.randomUUID().toString();
         attrs.put(A_zimbraId, zimbraId);
         attrs.put(A_cn, domain);
         attrs.put(A_objectClass, "domainGalEntry");
-        attrs.put(A_offlineGalRetryEnabled, TRUE);
+        attrs.put(A_offlineGalRetryEnabled, ProvisioningConstants.TRUE);
 
         DbOfflineDirectory.createDirectoryEntry(EntryType.GAL, domain, attrs, false);
         OfflineDomainGal gal = new OfflineDomainGal(domain, zimbraId, attrs, this);
         domainGals.put(domain, gal);
-        AttributeManager.getInstance().postModify(attrs, gal, context, true);
+        AttributeManager.getInstance().postModify(attrs, gal, callbackContext);
         OfflineLog.offline.debug("created domain %s for offline GAL", domain);
         return gal;
     }
@@ -2831,8 +2764,47 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public Account getGalAccountByAccount(OfflineAccount account) throws ServiceException {
         OfflineDomainGal gal = this.getDomainGal(account.getDomain());
         if (gal != null) {
-            return gal.getGalAccount();    
+            return gal.getGalAccount();
         }
         return null;
+    }
+
+    @Override
+    public ShareLocator get(ShareLocatorBy keyType, String key) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ShareLocator createShareLocator(String id, Map<String, Object> attrs) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void deleteShareLocator(String id) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UCService createUCService(String name, Map<String, Object> attrs)
+            throws ServiceException {
+        throw new UnsupportedOperationException();    }
+
+    @Override
+    public void deleteUCService(String zimbraId) throws ServiceException {
+        throw new UnsupportedOperationException();    }
+
+    @Override
+    public UCService get(UCServiceBy keyName, String key) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<UCService> getAllUCServices() throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void renameUCService(String zimbraId, String newName) throws ServiceException {
+        throw new UnsupportedOperationException();
     }
 }

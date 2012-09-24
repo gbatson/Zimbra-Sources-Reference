@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -18,6 +18,9 @@ package com.zimbra.cs.index;
 /**
  * Standard Lucene fields.
  *
+ * The sort fields are used for the sorting of Lucene results. They MUST be stored with all documents, and their values
+ * MUST match the values in the corresponding MailItem row entry. They MUST be Indexed and NOT_ANALYZED.
+ *
  * @since Apr 30, 2004
  * @author schemers
  */
@@ -26,40 +29,25 @@ public final class LuceneFields {
     private LuceneFields() {
     }
 
-    // SORTING FIELDS
-    //
-    // These fields are used for the sorting of lucene results. They MUST be stored with all documents, and their values
-    // MUST match the values in the corresponding MailItem row entry. They MUST be Indexed and NOT_ANALYZED.
-
     /**
-     * Subject for sorting purposes (NOT_ANALYZED).
+     * Subject for sorting.
      */
     public static final String L_SORT_SUBJECT = "subjSort";
 
     /**
-     * name for sorting purposes
+     * Name for sorting.
      */
     public static final String L_SORT_NAME = "nameSort";
 
     /**
-     * date for sorting purposes. ALSO searchable date-  "date:"  "after:" and "before:".
+     * Date for sorting. ALSO searchable date-  "date:"  "after:" and "before:".
      */
     public static final String L_SORT_DATE = "l.date";
 
     /**
-     * size of document "size:" searches, "larger:" and "smaller:".
+     * Size of document "size:" searches, "larger:" and "smaller:" for sorting.
      */
     public static final String L_SORT_SIZE = "l.size";
-
-    /**
-     * "ALL" field, workaround for lucene's inability to do naked not queries.
-     * <p>
-     * This field will automatically be populated with one term, "all" for all documents.
-     *
-     */
-    public static final String L_ALL = "ALL";
-
-    public static final String L_ALL_VALUE = "yes";
 
     /**
      * The "index id" this document -- maps to one or more rows in the DB's mail_item table (index_id column).

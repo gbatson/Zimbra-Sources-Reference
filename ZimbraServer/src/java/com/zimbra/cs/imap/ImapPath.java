@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -24,7 +24,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
@@ -38,10 +38,10 @@ import com.zimbra.cs.mailbox.SearchFolder;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMountpoint;
-import com.zimbra.cs.zclient.ZSearchFolder;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMountpoint;
+import com.zimbra.client.ZSearchFolder;
 
 public class ImapPath implements Comparable<ImapPath> {
     enum Scope { UNPARSED, NAME, CONTENT, REFERENCE };
@@ -93,16 +93,19 @@ public class ImapPath implements Comparable<ImapPath> {
             }
         }
 
-        while (mPath.startsWith("/"))
+        while (mPath.startsWith("/")) {
             mPath = mPath.substring(1);
-        while (mPath.endsWith("/"))
+        }
+        while (mPath.endsWith("/")) {
             mPath = mPath.substring(0, mPath.length() - 1);
+        }
 
         // Windows Mobile 5 hack: server must map "Sent Items" to "Sent"
         String lcname = mPath.toLowerCase();
         if (creds != null && creds.isHackEnabled(ImapCredentials.EnabledHack.WM5)) {
-            if (lcname.startsWith("sent items") && (lcname.length() == 10 || lcname.charAt(10) == '/'))
+            if (lcname.startsWith("sent items") && (lcname.length() == 10 || lcname.charAt(10) == '/')) {
                 mPath = "Sent" + mPath.substring(10);
+            }
         }
     }
 
@@ -151,10 +154,11 @@ public class ImapPath implements Comparable<ImapPath> {
 
 
     public boolean isEquivalent(ImapPath other) {
-        if (!mPath.equalsIgnoreCase(other.mPath))
+        if (!mPath.equalsIgnoreCase(other.mPath)) {
             return false;
-        if (mOwner == other.mOwner || (mOwner != null && mOwner.equalsIgnoreCase(other.mOwner)))
+        } else if (mOwner == other.mOwner || (mOwner != null && mOwner.equalsIgnoreCase(other.mOwner))) {
             return true;
+        }
         try {
             Account acct = getOwnerAccount(), otheracct = other.getOwnerAccount();
             return (acct == null || otheracct == null ? false : acct.getId().equalsIgnoreCase(otheracct.getId()));
@@ -164,8 +168,9 @@ public class ImapPath implements Comparable<ImapPath> {
     }
 
     @Override public boolean equals(Object obj) {
-        if (!(obj instanceof ImapPath))
+        if (!(obj instanceof ImapPath)) {
             return super.equals(obj);
+        }
         return asImapPath().equalsIgnoreCase(((ImapPath) obj).asImapPath());
     }
 
@@ -181,21 +186,25 @@ public class ImapPath implements Comparable<ImapPath> {
         getFolder();
 
         String path;
-        if (mFolder instanceof Folder)
+        if (mFolder instanceof Folder) {
             path = ((Folder) mFolder).getPath();
-        else
+        } else {
             path = ((ZFolder) mFolder).getPath();
+        }
 
-        while (path.startsWith("/"))
+        while (path.startsWith("/")) {
             path = path.substring(1);
-        while (path.endsWith("/"))
+        }
+        while (path.endsWith("/")) {
             path = path.substring(0, path.length() - 1);
+        }
 
         int excess = mPath.length() - path.length();
-        if (mReferent == this || excess == 0)
+        if (mReferent == this || excess == 0) {
             mPath = path;
-        else
+        } else {
             mPath = path + "/" + mReferent.canonicalize().mPath.substring(mReferent.mPath.length() - excess + 1);
+        }
         return this;
     }
 
@@ -222,30 +231,33 @@ public class ImapPath implements Comparable<ImapPath> {
     }
 
     String getOwnerAccountId() throws ServiceException {
-        if (useReferent())
+        if (useReferent()) {
             return getReferent().getOwnerAccountId();
+        }
 
-        if (mMailbox instanceof Mailbox)
+        if (mMailbox instanceof Mailbox) {
             return ((Mailbox) mMailbox).getAccountId();
-        else if (mOwner == null && mCredentials != null)
+        } else if (mOwner == null && mCredentials != null) {
             return mCredentials.getAccountId();
-        else if (mOwner == null)
+        } else if (mOwner == null) {
             return null;
+        }
         Account acct = getOwnerAccount();
         return acct == null ? null : acct.getId();
     }
 
     Account getOwnerAccount() throws ServiceException {
-        if (useReferent())
+        if (useReferent()) {
             return getReferent().getOwnerAccount();
-        else if (mMailbox instanceof Mailbox)
+        } else if (mMailbox instanceof Mailbox) {
             return ((Mailbox) mMailbox).getAccount();
-        else if (mOwner != null)
+        } else if (mOwner != null) {
             return Provisioning.getInstance().get(AccountBy.name, mOwner);
-        else if (mCredentials != null)
+        } else if (mCredentials != null) {
             return Provisioning.getInstance().get(AccountBy.id, mCredentials.getAccountId());
-        else
+        } else {
             return null;
+        }
     }
 
     boolean onLocalServer() throws ServiceException {
@@ -254,42 +266,43 @@ public class ImapPath implements Comparable<ImapPath> {
     }
 
     Object getOwnerMailbox() throws ServiceException {
-        return getOwnerMailbox(true);
-    }
-
-    Object getOwnerMailbox(boolean traverse) throws ServiceException {
-        if (useReferent())
+        if (useReferent()) {
             return mReferent.getOwnerMailbox();
-
+        }
         if (mMailbox == null) {
             Account target = getOwnerAccount();
-            if (target == null)
+            if (target == null) {
                 mMailbox = null;
-            else if (Provisioning.onLocalServer(target))
+            } else if (Provisioning.onLocalServer(target)) {
                 mMailbox = MailboxManager.getInstance().getMailboxByAccount(target);
-            else if (mCredentials == null)
+            } else if (mCredentials == null) {
                 mMailbox = null;
-            else
+            } else {
                 mMailbox = getOwnerZMailbox();
+            }
         }
         return mMailbox;
     }
 
     ZMailbox getOwnerZMailbox() throws ServiceException {
-        if (useReferent())
+        if (useReferent()) {
             return getReferent().getOwnerZMailbox();
+        }
 
-        if (mMailbox instanceof ZMailbox)
+        if (mMailbox instanceof ZMailbox) {
             return (ZMailbox) mMailbox;
-        if (mCredentials == null)
+        } else if (mCredentials == null) {
             return null;
+        }
 
         Account target = getOwnerAccount();
-        if (target == null)
+        if (target == null) {
             throw AccountServiceException.NO_SUCH_ACCOUNT(getOwner());
+        }
         Account acct = Provisioning.getInstance().get(AccountBy.id, mCredentials.getAccountId());
-        if (acct == null)
+        if (acct == null) {
             throw AccountServiceException.NO_SUCH_ACCOUNT(mCredentials.getUsername());
+        }
 
         try {
             ZMailbox.Options options = new ZMailbox.Options(AuthProvider.getAuthToken(acct).getEncoded(), AccountUtil.getSoapUri(target));
@@ -306,8 +319,13 @@ public class ImapPath implements Comparable<ImapPath> {
     }
 
     Object getFolder() throws ServiceException {
-        if (useReferent())
+        if (useReferent()) {
             return getReferent().getFolder();
+        }
+
+        if (mCredentials != null && mCredentials.isFolderHidden(this)) {
+            throw MailServiceException.NO_SUCH_FOLDER(asImapPath());
+        }
 
         if (mFolder == null) {
             Object mboxobj = getOwnerMailbox();
@@ -318,8 +336,9 @@ public class ImapPath implements Comparable<ImapPath> {
             } else if (mboxobj instanceof ZMailbox) {
                 ZFolder zfolder = ((ZMailbox) mboxobj).getFolderByPath(asZimbraPath());
                 mFolder = zfolder;
-                if (zfolder == null)
+                if (zfolder == null) {
                     throw MailServiceException.NO_SUCH_FOLDER(asImapPath());
+                }
                 mItemId = new ItemId(zfolder.getId(), mCredentials == null ? null : mCredentials.getAccountId());
             } else {
                 throw AccountServiceException.NO_SUCH_ACCOUNT(getOwner());
@@ -329,10 +348,11 @@ public class ImapPath implements Comparable<ImapPath> {
     }
 
     boolean useReferent() throws ServiceException {
-        if (getReferent() == this)
+        if (getReferent() == this) {
             return false;
-        if (mScope == Scope.CONTENT)
+        } else if (mScope == Scope.CONTENT) {
             return true;
+        }
 
         // if we're here, we should be at NAME scope -- return whether the original path pointed at a mountpoint
         assert(mScope == Scope.NAME);
@@ -340,25 +360,28 @@ public class ImapPath implements Comparable<ImapPath> {
         assert(mReferent != null);
 
         ItemId iidBase;
-        if (mFolder instanceof Mountpoint)
+        if (mFolder instanceof Mountpoint) {
             iidBase = ((Mountpoint) mFolder).getTarget();
-        else if (mFolder instanceof ZMountpoint)
+        } else if (mFolder instanceof ZMountpoint) {
             iidBase = new ItemId(((ZMountpoint) mFolder).getCanonicalRemoteId(), (String) null);
-        else
+        } else {
             return false;
+        }
         return !iidBase.equals(mReferent.mItemId);
     }
 
     ImapPath getReferent() throws ServiceException {
-        if (mReferent != null)
+        if (mReferent != null) {
             return mReferent;
+        }
 
         // while calculating, use the base
         mReferent = this;
 
         // only follow the authenticated user's own mountpoints
-        if (mScope == Scope.REFERENCE || mScope == Scope.UNPARSED || !belongsTo(mCredentials))
+        if (mScope == Scope.REFERENCE || mScope == Scope.UNPARSED || !belongsTo(mCredentials)) {
             return mReferent;
+        }
 
         ItemId iidRemote;
         String subpathRemote = null;
@@ -375,8 +398,9 @@ public class ImapPath implements Comparable<ImapPath> {
                         mFolder = resolved.getFirst();
                         mItemId = new ItemId(resolved.getFirst());
                     }
-                    if (!isMountpoint)
+                    if (!isMountpoint) {
                         return mReferent;
+                    }
                 } else if (!(mFolder instanceof Mountpoint)) {
                     return mReferent;
                 }
@@ -407,8 +431,9 @@ public class ImapPath implements Comparable<ImapPath> {
                 } catch (ServiceException e) {}
             }
 
-            if (!(mFolder instanceof ZMountpoint))
+            if (!(mFolder instanceof ZMountpoint)) {
                 return mReferent;
+            }
 
             // somewhere along the specified path is a visible mountpoint owned by the user
             iidRemote = new ItemId(((ZMountpoint) mFolder).getCanonicalRemoteId(), accountId);
@@ -417,22 +442,25 @@ public class ImapPath implements Comparable<ImapPath> {
         }
 
         // don't allow mountpoints that point at the same mailbox (as it can cause infinite loops)
-        if (belongsTo(iidRemote.getAccountId()))
+        if (belongsTo(iidRemote.getAccountId())) {
             return mReferent;
+        }
 
         Account target = Provisioning.getInstance().get(AccountBy.id, iidRemote.getAccountId());
-        if (target == null)
+        if (target == null) {
             return mReferent;
+        }
 
         String owner = mCredentials != null && mCredentials.getAccountId().equalsIgnoreCase(target.getId()) ? null : target.getName();
         if (Provisioning.onLocalServer(target)) {
             try {
                 Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(target);
                 Folder folder = mbox.getFolderById(getContext(), iidRemote.getId());
-                if (subpathRemote == null)
+                if (subpathRemote == null) {
                     mReferent = new ImapPath(owner, folder, mCredentials);
-                else
+                } else {
                     (mReferent = new ImapPath(owner, folder.getPath() + (folder.getPath().equals("/") ? "" : "/") + subpathRemote, mCredentials)).mMailbox = mbox;
+                }
             } catch (ServiceException e) {
             }
         } else {
@@ -445,20 +473,23 @@ public class ImapPath implements Comparable<ImapPath> {
                 options.setNoSession(true);
                 ZMailbox zmbx = ZMailbox.getMailbox(options);
                 ZFolder zfolder = zmbx.getFolderById(iidRemote.toString(mCredentials.getAccountId()));
-                if (zfolder == null)
+                if (zfolder == null) {
                     return mReferent;
-                if (subpathRemote == null)
+                }
+                if (subpathRemote == null) {
                     mReferent = new ImapPath(owner, zfolder, mCredentials);
-                else
+                } else {
                     (mReferent = new ImapPath(owner, zfolder.getPath() + (zfolder.getPath().equals("/") ? "" : "/") + subpathRemote, mCredentials)).mMailbox = zmbx;
+                }
             } catch (AuthTokenException ate) {
                 throw ServiceException.FAILURE("error generating auth token", ate);
             } catch (ServiceException e) {
             }
         }
 
-        if (mReferent != this)
+        if (mReferent != this) {
             mReferent.mScope = Scope.REFERENCE;
+        }
         return mReferent;
     }
 
@@ -493,22 +524,26 @@ public class ImapPath implements Comparable<ImapPath> {
     /** Returns <tt>true</tt> if all of the specified rights have been granted
      *  on the folder referenced by this path to the authenticated user. */
     boolean isWritable(short rights) throws ServiceException {
-        if (!isSelectable())
+        if (!isSelectable()) {
             return false;
+        }
 
         if (mFolder instanceof Folder) {
             Folder folder = (Folder) mFolder;
-            if (folder instanceof SearchFolder || folder.getDefaultView() == MailItem.TYPE_CONTACT)
+            if (folder instanceof SearchFolder || folder.getDefaultView() == MailItem.Type.CONTACT) {
                 return false;
+            }
         } else {
             ZFolder zfolder = (ZFolder) mFolder;
-            if (zfolder instanceof ZSearchFolder || zfolder.getDefaultView() == ZFolder.View.contact)
+            if (zfolder instanceof ZSearchFolder || zfolder.getDefaultView() == ZFolder.View.contact) {
                 return false;
+            }
         }
 
         // note that getFolderRights() operates on the referent folder...
-        if (rights == 0)
+        if (rights == 0) {
             return true;
+        }
         return (getFolderRights() & rights) == rights;
     }
 
@@ -518,37 +553,62 @@ public class ImapPath implements Comparable<ImapPath> {
 
         if (mFolder instanceof Folder) {
             Folder folder = (Folder) mFolder;
-            if (folder.getId() == Mailbox.ID_FOLDER_USER_ROOT)
+            if (folder.getId() == Mailbox.ID_FOLDER_USER_ROOT) {
                 return false;
-            if (folder.isTagged(Flag.ID_FLAG_DELETED))
+            } else if (folder.isTagged(Flag.FlagInfo.DELETED)) {
                 return false;
+            }
         } else {
             ZFolder zfolder = (ZFolder) mFolder;
-            if (new ItemId(zfolder.getId(), (String) null).getId() == Mailbox.ID_FOLDER_USER_ROOT)
+            if (new ItemId(zfolder.getId(), (String) null).getId() == Mailbox.ID_FOLDER_USER_ROOT) {
                 return false;
-            if (zfolder.isIMAPDeleted())
+            } else if (zfolder.isIMAPDeleted()) {
                 return false;
+            }
         }
         return (mReferent == this ? true : mReferent.isSelectable());
     }
 
-    boolean isVisible() throws ServiceException {
-        if (mCredentials != null) {
-            if (mCredentials.isFolderHidden(this))
+    /**
+     * Calendars, briefcases, etc. are not surfaced in IMAP.
+     */
+    private boolean isVisible(MailItem.Type type) {
+        switch (type) {
+            case APPOINTMENT:
+            case TASK:
+            case WIKI:
+            case DOCUMENT:
                 return false;
+            default:
+                return true;
+        }
+    }
+
+    boolean isVisible() throws ServiceException {
+        // check the folder type before hitting a remote server if it's a mountpoint
+        if (mFolder instanceof Folder && !isVisible(((Folder) mFolder).getDefaultView())) {
+            return false;
+        }
+
+        if (mCredentials != null) {
+            if (mCredentials.isFolderHidden(this)) {
+                return false;
+            }
 
             if (mCredentials.isHackEnabled(ImapCredentials.EnabledHack.WM5)) {
                 String lcname = mPath.toLowerCase();
-                if (lcname.startsWith("sent items") && (lcname.length() == 10 || lcname.charAt(10) == '/'))
+                if (lcname.startsWith("sent items") && (lcname.length() == 10 || lcname.charAt(10) == '/')) {
                     return false;
+                }
             }
         }
 
         try {
             getFolder();
         } catch (ServiceException e) {
-            if (ServiceException.PERM_DENIED.equals(e.getCode()))
+            if (ServiceException.PERM_DENIED.equals(e.getCode())) {
                 return false;
+            }
             throw e;
         }
 
@@ -569,9 +629,7 @@ public class ImapPath implements Comparable<ImapPath> {
             if (folder.getId() == Mailbox.ID_FOLDER_SPAM && !getOwnerAccount().isFeatureAntispamEnabled()) {
                 return false;
             }
-            // calendars, briefcases, etc. are not surfaced in IMAP
-            byte view = folder.getDefaultView();
-            if (view == MailItem.TYPE_APPOINTMENT || view == MailItem.TYPE_TASK || view == MailItem.TYPE_WIKI || view == MailItem.TYPE_DOCUMENT) {
+            if (!isVisible(folder.getDefaultView())) {
                 return false;
             }
             // hide subfolders of trashed mountpoints
@@ -584,7 +642,7 @@ public class ImapPath implements Comparable<ImapPath> {
             }
             // search folder visibility depends on an account setting
             if (folder instanceof SearchFolder) {
-                return ((SearchFolder) folder).isImapVisible() && ImapFolder.getTypeConstraint((SearchFolder) folder).length > 0;
+                return ((SearchFolder) folder).isImapVisible() && ImapFolder.getTypeConstraint((SearchFolder) folder).size() > 0;
             }
         } else {
             ZFolder zfolder = (ZFolder) mFolder;
@@ -611,7 +669,7 @@ public class ImapPath implements Comparable<ImapPath> {
                 return false;
             }
         }
-        return mReferent == this ? true : mReferent.isVisible();
+        return (mReferent == this ? true : mReferent.isVisible());
     }
 
 
@@ -624,15 +682,18 @@ public class ImapPath implements Comparable<ImapPath> {
     }
 
     ItemId asItemId() throws ServiceException {
-        if (useReferent())
+        if (useReferent()) {
             return getReferent().mItemId;
+        }
 
-        if (mItemId == null)
+        if (mItemId == null) {
             getFolder();
+        }
         return mItemId;
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return asImapPath();
     }
 
@@ -642,12 +703,14 @@ public class ImapPath implements Comparable<ImapPath> {
         if (lcpath.startsWith("inbox") && (lcpath.length() == 5 || lcpath.charAt(5) == '/')) {
             path = "INBOX" + path.substring(5);
         } else if (mCredentials != null && mCredentials.isHackEnabled(ImapCredentials.EnabledHack.WM5)) {
-            if (lcpath.startsWith("sent") && (lcpath.length() == 4 || lcpath.charAt(4) == '/'))
+            if (lcpath.startsWith("sent") && (lcpath.length() == 4 || lcpath.charAt(4) == '/')) {
                 path = "Sent Items" + path.substring(4);
+            }
         }
 
-        if (mOwner != null && !mOwner.equals(""))
+        if (mOwner != null && !mOwner.equals("")) {
             path = NAMESPACE_PREFIX + mOwner + (path.equals("") ? "" : "/") + path;
+        }
         return path;
     }
 

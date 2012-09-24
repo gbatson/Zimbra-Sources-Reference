@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,7 @@
 
 package com.zimbra.cs.service.account;
 
+import com.google.common.base.Strings;
 import com.zimbra.common.calendar.TZIDMapper;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
@@ -33,6 +34,8 @@ import com.zimbra.cs.account.EntrySearchFilter.Multi;
 import com.zimbra.cs.account.EntrySearchFilter.Single;
 import com.zimbra.cs.account.EntrySearchFilter.Visitor;
 import com.zimbra.cs.account.Signature.SignatureContent;
+import com.zimbra.cs.account.accesscontrol.GranteeType;
+import com.zimbra.cs.account.accesscontrol.ZimbraACE;
 import com.zimbra.cs.account.Identity;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Signature;
@@ -110,8 +113,10 @@ public class ToXML {
                 continue;
 
             // Never return password.
-            if (name.equalsIgnoreCase(Provisioning.A_userPassword))
+            if (name.equalsIgnoreCase(Provisioning.A_userPassword) || 
+                name.equalsIgnoreCase(Provisioning.A_zimbraUCPassword)) {
                 value = "VALUE-BLOCKED";
+            }
             
             // only returns requested attrs
             if (reqAttrs != null && !reqAttrs.contains(name))
@@ -180,12 +185,19 @@ public class ToXML {
     public static Element encodeLocale(Element parent, Locale locale, Locale inLocale) {
         Element e = parent.addElement(AccountConstants.E_LOCALE);
 		String id = locale.toString();
+		
+		// name in the locale itself
 		String name = L10nUtil.getMessage(L10nUtil.L10N_MSG_FILE_BASENAME, id, Locale.getDefault());
-		if (name == null)
+		if (name == null) {
 		    name = locale.getDisplayName(inLocale);
+		}
+		
+		// name in the locale of choice
+		String localName = locale.getDisplayName(inLocale);
  
 		e.addAttribute(AccountConstants.A_ID, id);
 		e.addAttribute(AccountConstants.A_NAME, name != null ? name : id);
+		e.addAttribute(AccountConstants.A_LOCAL_NAME, localName != null ? localName : id);
         return e;
     }
 
@@ -235,6 +247,21 @@ public class ToXML {
         }
     }
     
+    public static void encodeAttr(Element response, String key, Object value) {
+        if (value instanceof String[]) {
+            String sa[] = (String[]) value;
+            for (int i = 0; i < sa.length; i++) {
+                if (!Strings.isNullOrEmpty(sa[i])) {
+                    response.addKeyValuePair(key, sa[i], AccountConstants.E_ATTR, AccountConstants.A_NAME);
+                }
+            }
+        } else if (value instanceof String) {
+            if (!Strings.isNullOrEmpty((String) value)) {
+                response.addKeyValuePair(key, (String) value, AccountConstants.E_ATTR, AccountConstants.A_NAME);
+            }
+        }
+    }
+    
     /**
      * Fixup for time zone id.  Always use canonical (Olson ZoneInfo) ID.
      */
@@ -243,6 +270,24 @@ public class ToXML {
             return TZIDMapper.canonicalize(attrValue);
         else
             return attrValue;
+    }
+    
+    public static Element encodeACE(Element parent, ZimbraACE ace) {
+        Element eACE = parent.addElement(AccountConstants.E_ACE)
+                .addAttribute(AccountConstants.A_ZIMBRA_ID, ace.getGrantee())
+                .addAttribute(AccountConstants.A_GRANT_TYPE, ace.getGranteeType().getCode())
+                .addAttribute(AccountConstants.A_RIGHT, ace.getRight().getName())
+                .addAttribute(AccountConstants.A_DISPLAY, ace.getGranteeDisplayName());
+
+        if (ace.getGranteeType() == GranteeType.GT_KEY) {
+            eACE.addAttribute(AccountConstants.A_ACCESSKEY, ace.getSecret());
+        } else if (ace.getGranteeType() == GranteeType.GT_GUEST) {
+            eACE.addAttribute(AccountConstants.A_PASSWORD, ace.getSecret());
+        }
+        if (ace.deny()) {
+            eACE.addAttribute(AccountConstants.A_DENY, ace.deny());
+        }
+        return eACE;
     }
     
 }

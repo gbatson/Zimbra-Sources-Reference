@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.bugs;
 
 
@@ -105,10 +89,11 @@ public class ContactGroup extends AjaxCommonTest  {
 		ZAssert.assertTrue(found, "Verify contact " + contact.fileAs + " populated");
 
 		//add all to the email list
-		formGroup.zClick(FormContactGroupNew.Locators.zAddAllButton);
+		formGroup.zClick(FormContactGroupNew.Locators.zAddButton);
+		
 		
 		//TODO: verify email add to the email area		
-	   
+	    SleepUtil.sleepLong();SleepUtil.sleepLong();SleepUtil.sleepLong();SleepUtil.sleepLong();SleepUtil.sleepLong();
 		//click Save
 		formGroup.zSubmit(); 
 		
@@ -119,7 +104,7 @@ public class ContactGroup extends AjaxCommonTest  {
 	}
 
 	@Test(	description = "Click Delete Toolbar button in Edit Contact Group form",
-			groups = { "functionaly" })
+			groups = { "functional" })
 	public void Bug62026_ClickDeleteToolbarButtonInEditContactGroupForm() throws HarnessException {
 
 		// Create a contact group via Soap then select
@@ -172,5 +157,66 @@ public class ContactGroup extends AjaxCommonTest  {
 
 
    	}
+	
+	@Test( description="create a new contact group from GAL search result",
+		   groups=("smoke"))
+	public void Bug66623_AddingAGALToAContactGroup() throws HarnessException{
+		String email=ZimbraAccount.AccountB().EmailAddress.substring(0,ZimbraAccount.AccountB().EmailAddress.indexOf('@'));
+		
+		// search for a GAL
+		app.zPageSearch.zToolbarPressPulldown(Button.B_SEARCHTYPE, Button.O_SEARCHTYPE_GAL); 		
+		app.zPageSearch.zAddSearchQuery(email);	
+		app.zPageSearch.zToolbarPressButton(Button.B_SEARCH);		
+					
+	 
+		//Right click and select New Contact Group
+	 	 SimpleFormContactGroupNew simpleFormGroup = (SimpleFormContactGroupNew) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_CONTACTGROUP, Button.O_NEW_CONTACTGROUP , email);     
+	
+	 	//Create a contact item
+	 	ContactItem contactItem = new ContactItem(email);
+	 	contactItem.email = ZimbraAccount.AccountB().EmailAddress;
+	 	
+	 	//Create contact group 
+		 ContactGroupItem newGroup = new ContactGroupItem("group_" + ZimbraSeleniumProperties.getUniqueString().substring(8));
+		 
+		 //Add the member to the group	 
+		 newGroup.addDListMember(contactItem);
+	
+		 
+	 	//fill in group name 
+		simpleFormGroup.zFill(newGroup);
+		   
+		//click Save
+		simpleFormGroup.zSubmit(); 
+		
+		//verify toasted message 'group created'  
+        String expectedMsg ="Group Created";
+        ZAssert.assertStringContains(app.zPageMain.zGetToaster().zGetToastMessage(),
+        		        expectedMsg , "Verify toast message '" + expectedMsg + "'");
+    
+	    
+        
+
+        //click "Contacts" folder
+		FolderItem folder= FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Contacts);
+	    app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, folder);
+		
+	    //verify group name is displayed		        
+			List<ContactItem> contacts = app.zPageAddressbook.zListGetContacts();
+			boolean isFileAsEqual=false;
+			for (ContactItem ci : contacts) {
+				if (ci.fileAs.equals(ci.fileAs)) {
+		            isFileAsEqual = true;	
+					break;
+				}
+			}
+		ZAssert.assertTrue(isFileAsEqual, "Verify group name (" + newGroup.fileAs + ") displayed");
+
+	    //verify the location is System folder "Contacts"
+		ZAssert.assertEquals(app.zPageAddressbook.sGetText("css=td.companyFolder"), SystemFolder.Contacts.getName(), "Verify location (folder) is " + SystemFolder.Contacts.getName());
+		
+	}
+	     
+	
 
 }

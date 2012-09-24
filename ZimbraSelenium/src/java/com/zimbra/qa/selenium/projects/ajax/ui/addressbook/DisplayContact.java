@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
 import java.util.ArrayList;
@@ -135,11 +119,11 @@ public class DisplayContact extends  AbsDisplay {
 
 	@Override
 	public boolean zIsActive() throws HarnessException {
-		throw new HarnessException("implement me!");
+		return sIsElementPresent("css=div#zv__CNS-main");
 	}
-	
 
-	private void getAllLocators(ArrayList<String> array, String postfix) {
+
+	private void getAllLocators(ArrayList<String> array, String postfix) throws HarnessException {
 	  	   String css= "css=div[id$='_content'][class='ZmContactInfoView'] table:nth-of-type(2) tbody tr";
 	       int count= this.sGetCssCount(css);
 

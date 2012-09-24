@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,8 @@
 
 package com.zimbra.cs.mailbox;
 
+import java.io.IOException;
+import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -37,6 +39,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.CharsetUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.EmailUtil;
+import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.zmime.ZMimeBodyPart;
@@ -44,12 +47,12 @@ import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.common.zmime.ZMimeMultipart;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbOutOfOffice;
 import com.zimbra.cs.db.DbPool;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.lmtpserver.LmtpCallback;
 import com.zimbra.cs.mime.Mime;
+import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.JMSession;
 
@@ -95,7 +98,7 @@ public class Notification implements LmtpCallback {
 
     @Override
     public void afterDelivery(Account account, Mailbox mbox, String envelopeSender,
-                              String recipientEmail, Message newMessage) {
+            String recipientEmail, Message newMessage) {
         // If notification fails, log a warning and continue so that message delivery
         // isn't affected
         try {
@@ -107,11 +110,20 @@ public class Notification implements LmtpCallback {
         }
 
         try {
-            outOfOfficeIfNecessary(account, mbox, newMessage,
-                recipientEmail, envelopeSender);
+            outOfOfficeIfNecessary(account, mbox, newMessage, recipientEmail, envelopeSender);
         } catch (MessagingException e) {
             ZimbraLog.mailbox.warn("Unable to send out-of-office reply", e);
         } catch (ServiceException e) {
+            ZimbraLog.mailbox.warn("Unable to send out-of-office reply", e);
+        }
+    }
+
+    @Override
+    public void forwardWithoutDelivery(Account account, Mailbox mbox, String envelopeSender,
+            String recipientEmail, ParsedMessage pm) {
+        try {
+            outOfOfficeIfNecessary(account, mbox, pm, recipientEmail, envelopeSender);
+        } catch (Exception e) {
             ZimbraLog.mailbox.warn("Unable to send out-of-office reply", e);
         }
     }
@@ -120,32 +132,42 @@ public class Notification implements LmtpCallback {
         return sInstance;
     }
 
+    private void outOfOfficeIfNecessary(Account account, Mailbox mbox, ParsedMessage pm,
+            String rcpt, String envSenderString)
+    throws ServiceException, MessagingException {
+        outOfOfficeIfNecessary(account, mbox, pm.getMimeMessage(), null, rcpt, envSenderString);
+    }
+    
+    private void outOfOfficeIfNecessary(Account account, Mailbox mbox, Message msg,
+            String rcpt, String envSenderString)
+    throws ServiceException, MessagingException {
+        // Reject if spam or trash.  If a message ends up in the trash as a result of the user's
+        // filter rules, we assume it's not interesting.
+        if (msg.inSpam()) {
+            ofailed("in spam", null, rcpt, msg.getId());
+            return;
+        }
+        if (msg.inTrash()) {
+            ofailed("in trash", null, rcpt, msg.getId());
+            return;
+        }
+        outOfOfficeIfNecessary(account, mbox, msg.getMimeMessage(), msg.getId(), rcpt, envSenderString);
+    }
+
     /**
      * If the recipient's account requires out of office notification,
      * send it out.  We send these out based on users' setting, and
      * the incoming message meeting certain criteria.
      */
-    private void outOfOfficeIfNecessary(Account account, Mailbox mbox, Message msg,
-                                        String rcpt, String envSenderString)
+    private void outOfOfficeIfNecessary(Account account, Mailbox mbox, MimeMessage mm, Integer msgId,
+            String rcpt, String envSenderString)
     throws ServiceException, MessagingException {
-        String destination = null;
 
         boolean replyEnabled = account.isPrefOutOfOfficeReplyEnabled();
         if (ZimbraLog.mailbox.isDebugEnabled()) {
-            ZimbraLog.mailbox.debug("outofoffice reply enabled=" + replyEnabled + " rcpt='" + rcpt + "' mid=" + msg.getId());
+            ZimbraLog.mailbox.debug("outofoffice reply enabled=" + replyEnabled + " rcpt='" + rcpt + "' mid=" + msgId);
         }
         if (!replyEnabled) {
-            return;
-        }
-
-        // Reject if spam or trash.  If a message ends up in the trash as a result of the user's
-        // filter rules, we assume it's not interesting.
-        if (msg.inSpam()) {
-            ofailed("in spam", destination, rcpt, msg);
-            return;
-        }
-        if (msg.inTrash()) {
-            ofailed("in trash", destination, rcpt, msg);
             return;
         }
 
@@ -153,111 +175,106 @@ public class Notification implements LmtpCallback {
         Date now = new Date();
         Date fromDate = account.getGeneralizedTimeAttr(Provisioning.A_zimbraPrefOutOfOfficeFromDate, null);
         if (fromDate != null && now.before(fromDate)) {
-            ofailed("from date not reached", destination, rcpt, msg);
+            ofailed("from date not reached", null, rcpt, msgId);
             return;
         }
         Date untilDate = account.getGeneralizedTimeAttr(Provisioning.A_zimbraPrefOutOfOfficeUntilDate, null);
         if (untilDate != null && now.after(untilDate)) {
-            ofailed("until date reached", destination, rcpt, msg);
+            ofailed("until date reached", null, rcpt, msgId);
             return;
         }
-
-        // Get the JavaMail mime message - we have to look at headers to
-        // see this message qualifies for an out of office response.
-        MimeMessage mm = msg.getMimeMessage();
 
         // If envelope sender is empty
         if (envSenderString == null) {
-            ofailed("envelope sender null", destination, rcpt, msg);
+            ofailed("envelope sender null", null, rcpt, msgId);
             return;
         }
         if (envSenderString.length() < 1) {
-            ofailed("envelope sender empty", destination, rcpt, msg); // be conservative
+            ofailed("envelope sender empty", null, rcpt, msgId); // be conservative
             return;
         }
+
         InternetAddress envSender;
         try {
             // NB: 'strict' being 'true' causes <> to except
             envSender = new JavaMailInternetAddress(envSenderString, true);
         } catch (AddressException ae) {
-            ofailed("envelope sender invalid", envSenderString, rcpt, msg, ae);
+            ofailed("envelope sender invalid", envSenderString, rcpt, msgId, ae);
             return;
         }
-        destination = envSender.getAddress();
+        String destination = envSender.getAddress();
 
         if (Mime.isAutoSubmitted(mm)) {
-            ofailed("auto-submitted not no", destination, rcpt, msg);
+            ofailed("auto-submitted not no", destination, rcpt, msgId);
             return;
         }
 
         // If precedence is bulk, junk or list
         String[] precedence = mm.getHeader("Precedence");
         if (hasPrecedence(precedence, "bulk")) {
-            ofailed("precedence bulk", destination, rcpt, msg);
+            ofailed("precedence bulk", destination, rcpt, msgId);
             return;
         } else if (hasPrecedence(precedence, "junk")) {
-            ofailed("precedence junk", destination, rcpt, msg);
+            ofailed("precedence junk", destination, rcpt, msgId);
             return;
         } else if (hasPrecedence(precedence, "list")) {
-            ofailed("precedence list", destination, rcpt, msg);
+            ofailed("precedence list", destination, rcpt, msgId);
             return;
         }
 
         // Check if the envelope sender indicates a mailing list owner and such
         String[] envSenderAddrParts = EmailUtil.getLocalPartAndDomain(destination);
         if (envSenderAddrParts == null) {
-            ofailed("envelope sender invalid", destination, rcpt, msg);
+            ofailed("envelope sender invalid", destination, rcpt, msgId);
             return;
         }
         String envSenderLocalPart = envSenderAddrParts[0];
         envSenderLocalPart = envSenderLocalPart.toLowerCase();
         if (envSenderLocalPart.startsWith("owner-") || envSenderLocalPart.endsWith("-owner")) {
-            ofailed("envelope sender has owner- or -owner", destination, rcpt, msg);
+            ofailed("envelope sender has owner- or -owner", destination, rcpt, msgId);
             return;
         }
-        if (envSenderLocalPart.indexOf("-request") != -1) {
-            ofailed("envelope sender contains -request", destination, rcpt, msg);
+        if (envSenderLocalPart.contains("-request")) {
+            ofailed("envelope sender contains -request", destination, rcpt, msgId);
             return;
         }
         if (envSenderLocalPart.equals("mailer-daemon")) {
-            ofailed("envelope sender is mailer-daemon", destination, rcpt, msg);
+            ofailed("envelope sender is mailer-daemon", destination, rcpt, msgId);
             return;
         }
         if (envSenderLocalPart.equals("majordomo")) {
-            ofailed("envelope sender is majordomo", destination, rcpt, msg);
+            ofailed("envelope sender is majordomo", destination, rcpt, msgId);
             return;
         }
         if (envSenderLocalPart.equals("listserv")) {
-            ofailed("envelope sender is listserv", destination, rcpt, msg);
+            ofailed("envelope sender is listserv", destination, rcpt, msgId);
             return;
         }
 
         // multipart/report is also machine generated
         String ct = mm.getContentType();
         if (ct != null && ct.equalsIgnoreCase("multipart/report")) {
-        	ofailed("content-type multipart/report", destination, rcpt, msg);
+            ofailed("content-type multipart/report", destination, rcpt, msgId);
             return;
         }
 
         // Check if recipient was directly mentioned in to/cc of this message
         String[] otherAccountAddrs = account.getMultiAttr(Provisioning.A_zimbraPrefOutOfOfficeDirectAddress);
         if (!AccountUtil.isDirectRecipient(account, otherAccountAddrs, mm, OUT_OF_OFFICE_DIRECT_CHECK_NUM_RECIPIENTS)) {
-            ofailed("not direct", destination, rcpt, msg);
+            ofailed("not direct", destination, rcpt, msgId);
             return;
         }
 
         // If we've already sent to this user, do not send again
-        synchronized (DbMailbox.getZimbraSynchronizer(mbox)) {
-            Connection conn = null;
-            try {
-                conn = DbPool.getConnection(mbox);
-                if (DbOutOfOffice.alreadySent(conn, mbox, destination, account.getTimeInterval(Provisioning.A_zimbraPrefOutOfOfficeCacheDuration, DEFAULT_OUT_OF_OFFICE_CACHE_DURATION_MILLIS))) {
-                    ofailed("already sent", destination, rcpt, msg);
-                    return;
-                }
-            } finally {
-                DbPool.quietClose(conn);
+        DbConnection conn = null;
+        try {
+            conn = DbPool.getConnection(mbox);
+            if (DbOutOfOffice.alreadySent(conn, mbox, destination, account.getTimeInterval(Provisioning.A_zimbraPrefOutOfOfficeCacheDuration, DEFAULT_OUT_OF_OFFICE_CACHE_DURATION_MILLIS))) {
+                ofailed("already sent", destination, rcpt, msgId);
+                return;
             }
+        } finally {
+            DbPool.quietClose(conn);
         }
 
         // Send the message
@@ -278,7 +295,11 @@ public class Notification implements LmtpCallback {
             out.setSentDate(new Date());
 
             // Subject
-            String subject = "Re: " + msg.getSubject();
+            String subject = Mime.getSubject(mm);
+            String replySubjectPrefix = L10nUtil.getMessage(L10nUtil.MsgKey.replySubjectPrefix, account.getLocale());
+            if (!subject.toLowerCase().startsWith(replySubjectPrefix.toLowerCase())) {
+                subject = replySubjectPrefix + " " + subject;
+            }
             String charset = getCharset(account, subject);
             out.setSubject(subject, charset);
 
@@ -295,7 +316,11 @@ public class Notification implements LmtpCallback {
             out.setHeader("Precedence", "bulk");
 
             // Body
-            String body = account.getAttr(Provisioning.A_zimbraPrefOutOfOfficeReply, "");
+            // check whether to send "external" OOO reply
+            boolean sendExternalReply = account.isPrefOutOfOfficeExternalReplyEnabled() &&
+                    !isInternalSender(destination, account) && isOfExternalSenderType(destination, account, mbox);
+            String body = account.getAttr(sendExternalReply ?
+                    Provisioning.A_zimbraPrefOutOfOfficeExternalReply : Provisioning.A_zimbraPrefOutOfOfficeReply, "");
             charset = getCharset(account, body);
             out.setText(body, charset);
 
@@ -307,23 +332,51 @@ public class Notification implements LmtpCallback {
 
             MailSender sender = mbox.getMailSender();
             sender.setSaveToSent(false);
+            sender.setDsnNotifyOptions(MailSender.DsnNotifyOption.NEVER);
             sender.sendMimeMessage(null, mbox, out);
-            ZimbraLog.mailbox.info("outofoffice sent dest='" + destination + "' rcpt='" + rcpt + "' mid=" + msg.getId());
+            ZimbraLog.mailbox.info("outofoffice sent dest='" + destination + "' rcpt='" + rcpt + "' mid=" + msgId);
 
             // Save so we will not send to again
-            synchronized (DbMailbox.getZimbraSynchronizer(mbox)) {
-                Connection conn = null;
-                try {
-                    conn = DbPool.getConnection(mbox);
-                    DbOutOfOffice.setSentTime(conn, mbox, destination);
-                    conn.commit();
-                } finally {
-                    DbPool.quietClose(conn);
-                }
+            try {
+                conn = DbPool.getConnection(mbox);
+                DbOutOfOffice.setSentTime(conn, mbox, destination);
+                conn.commit();
+            } finally {
+                DbPool.quietClose(conn);
             }
         } catch (MessagingException me) {
-            ofailed("send failed", destination, rcpt, msg, me);
-            return;
+            ofailed("send failed", destination, rcpt, msgId, me);
+        }
+    }
+
+    private static boolean isInternalSender(String senderAddr, Account account) {
+        String[] senderAddrParts = EmailUtil.getLocalPartAndDomain(senderAddr);
+        String senderDomain = senderAddrParts[1];
+        if (account.getDomainName().equalsIgnoreCase(senderDomain)) {
+            // same domain
+            return true;
+        }
+        for (String intDom : account.getInternalSendersDomain()) {
+            if (intDom.equalsIgnoreCase(senderDomain)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isOfExternalSenderType(String senderAddr, Account account, Mailbox mbox) {
+        switch (account.getPrefExternalSendersType()) {
+            case ALLNOTINAB:
+                try {
+                    return !mbox.index.existsInContacts(
+                            Collections.singleton(new com.zimbra.common.mime.InternetAddress(senderAddr)));
+                } catch (IOException e) {
+                    ZimbraLog.mailbox.error("Failed to lookup contacts", e);
+                    return true;
+                }
+            case ALL:
+            default:
+                return true;
         }
     }
 
@@ -568,10 +621,14 @@ public class Notification implements LmtpCallback {
     }
 
     private static void failed(String op, String why, String destAddr, String rcptAddr, Message msg, Exception e) {
+        failed(op, why, destAddr, rcptAddr, msg.getId(), e);
+    }
+    
+    private static void failed(String op, String why, String destAddr, String rcptAddr, Integer msgId, Exception e) {
         StringBuffer sb = new StringBuffer(128);
         sb.append(op).append(" not sent (");
         sb.append(why).append(")");
-        sb.append(" mid=").append(msg.getId());
+        sb.append(" mid=").append(msgId);
         sb.append(" rcpt='").append(rcptAddr).append("'");
         if (destAddr != null) {
             sb.append(" dest='").append(destAddr).append("'");
@@ -587,11 +644,11 @@ public class Notification implements LmtpCallback {
         failed("notification", why, destAddr, rcptAddr, msg, null);
     }
 
-    private static void ofailed(String why, String destAddr, String rcptAddr, Message msg, Exception e) {
-        failed("outofoffice", why, destAddr, rcptAddr, msg, e);
+    private static void ofailed(String why, String destAddr, String rcptAddr, Integer msgId, Exception e) {
+        failed("outofoffice", why, destAddr, rcptAddr, msgId, e);
     }
 
-    private static void ofailed(String why, String destAddr, String rcptAddr, Message msg) {
-        failed("outofoffice", why, destAddr, rcptAddr, msg, null);
+    private static void ofailed(String why, String destAddr, String rcptAddr, Integer msgId) {
+        failed("outofoffice", why, destAddr, rcptAddr, msgId, null);
     }
 }

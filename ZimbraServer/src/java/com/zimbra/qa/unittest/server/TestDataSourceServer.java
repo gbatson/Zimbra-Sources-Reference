@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,19 +16,19 @@ package com.zimbra.qa.unittest.server;
 
 import junit.framework.TestCase;
 
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZImapDataSource;
+import com.zimbra.client.ZMailbox;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Cos;
-import com.zimbra.cs.account.DataSource.ConnectionType;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.ldap.LdapUtil;
 import com.zimbra.cs.datasource.DataSourceManager;
+import com.zimbra.cs.ldap.LdapConstants;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.ScheduledTask;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZImapDataSource;
-import com.zimbra.cs.zclient.ZMailbox;
 import com.zimbra.qa.unittest.TestUtil;
+import com.zimbra.soap.type.DataSource.ConnectionType;
 
 public class TestDataSourceServer extends TestCase {
 
@@ -106,7 +106,7 @@ public class TestDataSourceServer extends TestCase {
         TestUtil.setDataSourceAttr(USER_NAME, zds.getName(), attrName, "");
         checkSchedule(mbox, dsId, 300000);
         
-        TestUtil.setDataSourceAttr(USER_NAME, zds.getName(), Provisioning.A_zimbraDataSourceEnabled, LdapUtil.LDAP_FALSE);
+        TestUtil.setDataSourceAttr(USER_NAME, zds.getName(), Provisioning.A_zimbraDataSourceEnabled, LdapConstants.LDAP_FALSE);
         checkSchedule(mbox, dsId, null);
     }
     

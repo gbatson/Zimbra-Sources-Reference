@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -30,10 +30,12 @@ import java.util.Properties;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 
+import com.google.common.base.Joiner;
+import com.mysql.jdbc.MysqlErrorNumbers;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.db.DbPool.Connection;
+import com.zimbra.cs.db.DbPool.DbConnection;
 
 public class MySQL extends Db {
 
@@ -41,15 +43,17 @@ public class MySQL extends Db {
 
     MySQL() {
         mErrorCodes = new HashMap<Db.Error, Integer>(6);
-        mErrorCodes.put(Db.Error.DEADLOCK_DETECTED,        1213);
-        mErrorCodes.put(Db.Error.DUPLICATE_ROW,            1062);
-        mErrorCodes.put(Db.Error.FOREIGN_KEY_NO_PARENT,    1216);
+        mErrorCodes.put(Db.Error.DEADLOCK_DETECTED,        MysqlErrorNumbers.ER_LOCK_DEADLOCK);
+        mErrorCodes.put(Db.Error.DUPLICATE_ROW,            MysqlErrorNumbers.ER_DUP_ENTRY);
+        mErrorCodes.put(Db.Error.FOREIGN_KEY_NO_PARENT,    MysqlErrorNumbers.ER_NO_REFERENCED_ROW);
         mErrorCodes.put(Db.Error.FOREIGN_KEY_CHILD_EXISTS, 1451);
-        mErrorCodes.put(Db.Error.NO_SUCH_DATABASE,         1146);
-        mErrorCodes.put(Db.Error.NO_SUCH_TABLE,            1146);
+        mErrorCodes.put(Db.Error.NO_SUCH_DATABASE,         MysqlErrorNumbers.ER_NO_SUCH_TABLE);
+        mErrorCodes.put(Db.Error.NO_SUCH_TABLE,            MysqlErrorNumbers.ER_NO_SUCH_TABLE);
+        mErrorCodes.put(Db.Error.TABLE_FULL,               MysqlErrorNumbers.ER_RECORD_FILE_FULL);
     }
 
-    @Override boolean supportsCapability(Db.Capability capability) {
+    @Override
+    boolean supportsCapability(Db.Capability capability) {
         switch (capability) {
             case AVOID_OR_IN_WHERE_CLAUSE:   return false;
             case BITWISE_OPERATIONS:         return true;
@@ -70,33 +74,43 @@ public class MySQL extends Db {
             case ROW_LEVEL_LOCKING:          return true;
             case UNIQUE_NAME_INDEX:          return true;
             case SQL_PARAM_LIMIT:            return false;
+            case DUMPSTER_TABLES:            return true;
         }
         return false;
     }
 
-    @Override boolean compareError(SQLException e, Db.Error error) {
+    @Override
+    boolean compareError(SQLException e, Db.Error error) {
         Integer code = mErrorCodes.get(error);
         return (code != null && e.getErrorCode() == code);
     }
 
-    @Override String forceIndexClause(String index) {
+    @Override
+    String forceIndexClause(String index) {
         return " FORCE INDEX (" + index + ')';
     }
 
-    @Override String getIFNULLClause(String expr1, String expr2) {
+    @Override
+    String getIFNULLClause(String expr1, String expr2) {
         return "IFNULL(" + expr1 + ", " + expr2 + ")";
     }
 
-    @Override DbPool.PoolConfig getPoolConfig() {
+    @Override
+    public String bitAND(String expr1, String expr2) {
+        return expr1 + " & " + expr2;
+    }
+
+    @Override
+    DbPool.PoolConfig getPoolConfig() {
         return new MySQLConfig();
     }
 
-    @Override public boolean databaseExists(Connection conn, String dbname)
-    throws ServiceException {
+    @Override
+    public boolean databaseExists(DbConnection conn, String dbname) throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         int numSchemas = 0;
-        
+
         try {
             stmt = conn.prepareStatement(
                 "SELECT COUNT(*) FROM INFORMATION_SCHEMA.SCHEMATA " +
@@ -114,7 +128,7 @@ public class MySQL extends Db {
 
         return (numSchemas > 0);
     }
-    
+
     @Override
     public void enableStreaming(Statement stmt)
     throws SQLException {
@@ -129,7 +143,7 @@ public class MySQL extends Db {
             mPoolSize = 100;
             mRootUrl = "jdbc:mysql://" + LC.mysql_bind_address.value() + ":" + LC.mysql_port.value() + "/";
             mConnectionUrl = mRootUrl + "zimbra";
-            mLoggerUrl = "jdbc:mysql://" + LC.logger_mysql_bind_address.value() + ":" + LC.logger_mysql_port.value() + "/";
+            mLoggerUrl = null;
             mSupportsStatsCallback = true;
             mDatabaseProperties = getMySQLProperties();
 
@@ -151,7 +165,7 @@ public class MySQL extends Db {
             props.put("cacheResultSetMetadata", "true");
             props.put("cachePrepStmts", "true");
             // props.put("cacheCallableStmts", "true");
-            props.put("prepStmtCacheSize", "25");        
+            props.put("prepStmtCacheSize", "25");
             // props.put("prepStmtCacheSqlLmiit", "256");
             props.put("autoReconnect", "true");
             props.put("useUnicode", "true");
@@ -183,7 +197,8 @@ public class MySQL extends Db {
         }
     }
 
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return "MySQL";
     }
 
@@ -192,10 +207,11 @@ public class MySQL extends Db {
         "CREATE TABLE IF NOT EXISTS " + sTableName + " (dummy_column INTEGER) ENGINE = InnoDB";
     private final String sDropTable = "DROP TABLE IF EXISTS " + sTableName;
 
-    @Override public synchronized void flushToDisk() {
+    @Override
+    public synchronized void flushToDisk() {
         // Create a table and then drop it.  We take advantage of the fact that innodb will call
         // log_buffer_flush_to_disk() during CREATE TABLE or DELETE TABLE.
-        Connection conn = null;
+        DbConnection conn = null;
         PreparedStatement createStmt = null;
         PreparedStatement dropStmt = null;
         boolean success = false;
@@ -248,7 +264,7 @@ public class MySQL extends Db {
             String outStr = "-- AUTO-GENERATED .SQL FILE - Generated by the MySQL versions tool\n" +
                     "USE zimbra;\n" +
                     "INSERT INTO zimbra.config(name, value, description) VALUES\n" +
-                    "\t('db.version', '" + Versions.DB_VERSION + "', 'db schema version'),\n" + 
+                    "\t('db.version', '" + Versions.DB_VERSION + "', 'db schema version'),\n" +
                     "\t('index.version', '" + Versions.INDEX_VERSION + "', 'index version'),\n" +
                     "\t('redolog.version', '" + redoVer + "', 'redolog version')\n" +
                     ";\nCOMMIT;\n";
@@ -262,5 +278,26 @@ public class MySQL extends Db {
             e.printStackTrace();
             System.exit(-1);
         }
+    }
+
+    @Override
+    public String concat(String... fieldsToConcat) {
+        Joiner joiner = Joiner.on(", ").skipNulls();
+        return "CONCAT(" + joiner.join(fieldsToConcat) + ")";
+    }
+
+    @Override
+    public String sign(String field) {
+        return "SIGN(" + field + ")";
+    }
+
+    @Override
+    public String lpad(String field, int padSize, String padString) {
+        return "LPAD(" + field + ", " + padSize + ", '" + padString + "')";
+    }
+
+    @Override
+    public String limit(int offset, int limit) {
+        return "LIMIT " + offset + "," + limit;
     }
 }

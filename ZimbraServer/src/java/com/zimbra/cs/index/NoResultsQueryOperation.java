@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,7 +16,9 @@
 package com.zimbra.cs.index;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import com.zimbra.cs.mailbox.Mailbox;
 
@@ -31,10 +33,14 @@ import com.zimbra.cs.mailbox.Mailbox;
 public final class NoResultsQueryOperation extends QueryOperation {
 
     @Override
+    public long getCursorOffset() {
+        return 0;
+    }
+
+    @Override
     public SortBy getSortBy() {
         return context.getParams().getSortBy();
     }
-
 
     @Override
     QueryOperation expandLocalRemotePart(Mailbox mbox) {
@@ -60,8 +66,8 @@ public final class NoResultsQueryOperation extends QueryOperation {
     }
 
     @Override
-    QueryTargetSet getQueryTargets() {
-        return new QueryTargetSet();
+    Set<QueryTarget> getQueryTargets() {
+        return Collections.emptySet();
     }
 
     @Override
@@ -106,8 +112,7 @@ public final class NoResultsQueryOperation extends QueryOperation {
     }
 
     @Override
-    public void doneWithSearchResults() {
-        //empty
+    public void close() {
     }
 
     @Override
@@ -123,11 +128,6 @@ public final class NoResultsQueryOperation extends QueryOperation {
     @Override
     public List<QueryInfo> getResultInfo() {
         return new ArrayList<QueryInfo>();
-    }
-
-    @Override
-    public int estimateResultSize() {
-        return 0;
     }
 
     @Override

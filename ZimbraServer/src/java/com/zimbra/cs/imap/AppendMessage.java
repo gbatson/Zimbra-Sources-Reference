@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,16 +22,23 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MailDateFormat;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
+import com.zimbra.common.mime.shim.JavaMailInternetHeaders;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.ZimbraLog;
+import com.zimbra.cs.mailbox.DeliveryOptions;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -43,8 +50,6 @@ import com.zimbra.cs.store.Blob;
 import com.zimbra.cs.store.BlobBuilder;
 import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
 
 /**
  * Encapsulates append message data for an APPEND request.
@@ -58,12 +63,32 @@ final class AppendMessage {
     private List<Part> parts;
     private Blob content;
     private List<String> flagNames;
+    private List<String> persistentFlagNames; //flagNames is nulled out in checkFlags; this holds the original constructed list of names
     private int flags = Flag.BITMASK_UNREAD;
-    private long tags;
+    private final Set<String> tags = Sets.newHashSetWithExpectedSize(3);
     private short sflags;
 
-    public static AppendMessage parse(ImapHandler handler, String tag, ImapRequest req)
-    throws ImapParseException, IOException {
+    Blob getContent() throws IOException, ImapException, ServiceException {
+        if (content == null) {
+            content = catenate ? doCatenate() : parts.get(0).literal.getBlob();
+        }
+        return content;
+    }
+
+    Date getDate() {
+        return date;
+    }
+
+    List<String> getPersistentFlagNames() {
+        return persistentFlagNames;
+    }
+
+    List<Part> getParts() {
+        return parts;
+    }
+
+    static AppendMessage parse(ImapHandler handler, String tag, ImapRequest req)
+            throws ImapParseException, IOException {
         AppendMessage append = new AppendMessage(handler, tag);
         append.parse(req);
         return append;
@@ -76,7 +101,7 @@ final class AppendMessage {
 
     private void parse(ImapRequest req) throws ImapParseException, IOException {
         if (req.peekChar() == '(') {
-            flagNames = req.readFlags();
+            persistentFlagNames = flagNames = req.readFlags();
             req.skipSpace();
         }
         if (req.peekChar() == '"') {
@@ -90,16 +115,18 @@ final class AppendMessage {
             catenate = true;
             parts = new ArrayList<Part>(5);
             while (req.peekChar() != ')') {
-                if (!parts.isEmpty())
+                if (!parts.isEmpty()) {
                     req.skipSpace();
+                }
                 String type = req.readATOM();
                 req.skipSpace();
-                if (type.equals("TEXT"))
+                if (type.equals("TEXT")) {
                     parts.add(new Part(req.readLiteral()));
-                else if (type.equals("URL"))
+                } else if (type.equals("URL")) {
                     parts.add(new Part(new ImapURL(tag, handler, req.readAstring())));
-                else
+                } else {
                     throw new ImapParseException(tag, "unknown CATENATE cat-part: " + type);
+                }
             }
             req.skipChar(')');
         } else {
@@ -107,32 +134,49 @@ final class AppendMessage {
         }
     }
 
-    public void checkFlags(Mailbox mbox, ImapFlagCache flagSet, ImapFlagCache tagSet, List<Tag> newTags)
-    throws ServiceException {
-        if (flagNames == null)
+    @VisibleForTesting
+    public AppendMessage(List<String> flagNames, Date date, List<Part> parts) {
+        this.flagNames = persistentFlagNames = flagNames;
+        this.date = date;
+        this.parts = parts;
+        this.tag = null;
+        this.handler = null;
+    }
+
+    void checkFlags(Mailbox mbox, ImapFlagCache flagSet, ImapFlagCache tagSet, List<Tag> newTags)
+            throws ServiceException {
+        if (flagNames == null) {
             return;
-
+        }
         for (String name : flagNames) {
-            ImapFlagCache.ImapFlag i4flag = flagSet.getByName(name);
-            if (i4flag != null && !i4flag.mListed)
+            ImapFlagCache.ImapFlag i4flag = flagSet.getByImapName(name);
+            if (i4flag != null && !i4flag.mListed) {
                 i4flag = null;
-            else if (i4flag == null && !name.startsWith("\\"))
-                i4flag = tagSet.getByName(name);
+            } else if (i4flag == null && !name.startsWith("\\")) {
+                i4flag = tagSet.getByImapName(name);
+            }
 
-            if (i4flag == null)
-                i4flag = tagSet.createTag(mbox, handler.getContext(), name, newTags);
+            if (i4flag == null) {
+                //add to tags, this is passed to DeliveryOptions later
+                tags.add(name);
+            }
 
             if (i4flag != null) {
-                if (!i4flag.mPermanent)               sflags |= i4flag.mBitmask;
-                else if (Tag.validateId(i4flag.mId))  tags |= i4flag.mBitmask;
-                else if (i4flag.mPositive)            flags |= i4flag.mBitmask;
-                else                                  flags &= ~i4flag.mBitmask;
+                if (!i4flag.mPermanent) {
+                    sflags |= i4flag.mBitmask;
+                } else if (i4flag.mId > 0) {
+                    tags.add(i4flag.mName);
+                } else if (i4flag.mPositive) {
+                    flags |= i4flag.mBitmask;
+                } else {
+                    flags &= ~i4flag.mBitmask;
+                }
             }
         }
         flagNames = null;
     }
 
-    public int storeContent(Object mboxObj, Object folderObj)
+    int storeContent(Object mboxObj, Object folderObj)
             throws ImapSessionClosedException, IOException, ServiceException {
         try {
             checkDate(content);
@@ -159,7 +203,8 @@ final class AppendMessage {
             }
         } catch (Exception e) { }
 
-        Message msg = mbox.addMessage(handler.getContext(), pm, folder.getId(), true, flags, Tag.bitmaskToTags(tags));
+        DeliveryOptions dopt = new DeliveryOptions().setFolderId(folder).setNoICal(true).setFlags(flags).setTags(tags);
+        Message msg = mbox.addMessage(handler.getContext(), pm, dopt, null);
         if (msg != null && sflags != 0 && handler.getState() == ImapHandler.State.SELECTED) {
             ImapFolder selectedFolder = handler.getSelectedFolder();
             // remember, selected folder may be on another host (i.e. mProxy != null)
@@ -176,19 +221,22 @@ final class AppendMessage {
 
     private int store(ZMailbox mbox, ZFolder folder) throws IOException, ServiceException {
         InputStream is = content.getInputStream();
-        String id = mbox.addMessage(folder.getId(), Flag.bitmaskToFlags(flags), null, date.getTime(), is, content.getRawSize(), true);
+        String id = mbox.addMessage(folder.getId(), Flag.toString(flags), null, date.getTime(), is, content.getRawSize(), true);
         return new ItemId(id, getCredentials().getAccountId()).getId();
     }
 
-    public void checkContent() throws IOException, ImapException, ServiceException {
-        content = catenate ? doCatenate() : parts.get(0).literal.getBlob();
-        if (content.getRawSize() > handler.getConfig().getMaxMessageSize()) {
+    void checkContent() throws IOException, ImapException, ServiceException {
+        getContent();
+        long size = content.getRawSize();
+        if (size > handler.getConfig().getMaxMessageSize()) {
             cleanup();
             if (catenate) {
                 throw new ImapParseException(tag, "TOOBIG", "maximum message size exceeded", false);
             } else {
                 throw new ImapParseException(tag, "maximum message size exceeded", true);
             }
+        } else if (size <= 0) {
+            throw new ImapParseException(tag, "zero-length message", false);
         }
     }
 
@@ -209,7 +257,7 @@ final class AppendMessage {
         }
     }
 
-    public void cleanup() {
+    void cleanup() {
         if (content != null) {
             StoreManager.getInstance().quietDelete(content);
             content = null;
@@ -226,8 +274,9 @@ final class AppendMessage {
 
     private void checkDate(Blob blob) throws IOException, ServiceException {
         // if we're using Thunderbird, try to set INTERNALDATE to the message's Date: header
-        if (date == null && getCredentials().isHackEnabled(ImapCredentials.EnabledHack.THUNDERBIRD))
+        if (date == null && getCredentials().isHackEnabled(ImapCredentials.EnabledHack.THUNDERBIRD)) {
             date = getSentDate(blob);
+        }
 
         // server uses UNIX time, so range-check specified date (is there a better place for this?)
         // FIXME: Why is this different from INTERNALDATE range check?
@@ -241,7 +290,7 @@ final class AppendMessage {
         InputStream is = new BufferedInputStream(content.getInputStream());
         try {
             // inefficient, but must be done before creating the ParsedMessage
-            return getSentDate(new InternetHeaders(is));
+            return getSentDate(new JavaMailInternetHeaders(is));
         } catch (MessagingException e) {
             return null;
         } finally {
@@ -249,7 +298,7 @@ final class AppendMessage {
         }
     }
 
-    public static Date getSentDate(InternetHeaders ih) {
+    static Date getSentDate(InternetHeaders ih) {
         String s = ih.getHeader("Date", null);
         if (s != null) {
             try {
@@ -266,7 +315,7 @@ final class AppendMessage {
     }
 
     /** APPEND message part, either literal data or IMAP URL. */
-    private class Part {
+    final class Part {
         Literal literal;
         ImapURL url;
 
@@ -290,6 +339,14 @@ final class AppendMessage {
             if (literal != null) {
                 literal.cleanup();
             }
+        }
+
+        Literal getLiteral() {
+            return literal;
+        }
+
+        ImapURL getUrl() {
+            return url;
         }
     }
 }

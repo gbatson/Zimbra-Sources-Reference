@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,25 +24,27 @@ import javax.mail.internet.MailDateFormat;
 
 import junit.framework.TestCase;
 
-import com.zimbra.cs.zclient.ZDataSource;
-import com.zimbra.cs.zclient.ZFilterAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZFileIntoAction;
-import com.zimbra.cs.zclient.ZFilterCondition;
-import com.zimbra.cs.zclient.ZFilterCondition.HeaderOp;
-import com.zimbra.cs.zclient.ZFilterCondition.ZHeaderCondition;
-import com.zimbra.cs.zclient.ZFilterRule;
-import com.zimbra.cs.zclient.ZFilterRules;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZPop3DataSource;
+import com.zimbra.client.ZDataSource;
+import com.zimbra.client.ZFilterAction;
+import com.zimbra.client.ZFilterAction.ZFileIntoAction;
+import com.zimbra.client.ZFilterCondition;
+import com.zimbra.client.ZFilterCondition.HeaderOp;
+import com.zimbra.client.ZFilterCondition.ZHeaderCondition;
+import com.zimbra.client.ZFilterRule;
+import com.zimbra.client.ZFilterRules;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMessage;
+import com.zimbra.client.ZPop3DataSource;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
 import com.zimbra.cs.db.DbPop3Message;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 public class TestPop3Import extends TestCase {
     private static final String USER_NAME = "user1";
@@ -172,21 +174,21 @@ public class TestPop3Import extends TestCase {
         Account account = TestUtil.getAccount(USER_NAME);
         int port = Integer.parseInt(TestUtil.getServerAttr(Provisioning.A_zimbraPop3BindPort));
         Map<String, Object> attrs = new HashMap<String, Object>();
-        attrs.put(Provisioning.A_zimbraDataSourceEnabled, Provisioning.FALSE);
+        attrs.put(Provisioning.A_zimbraDataSourceEnabled, ProvisioningConstants.FALSE);
         attrs.put(Provisioning.A_zimbraDataSourceHost, "localhost");
         attrs.put(Provisioning.A_zimbraDataSourcePort, Integer.toString(port));
         attrs.put(Provisioning.A_zimbraDataSourceUsername, "user1");
         attrs.put(Provisioning.A_zimbraDataSourcePassword, "test123");
         attrs.put(Provisioning.A_zimbraDataSourceFolderId, Integer.toString(Mailbox.ID_FOLDER_INBOX));
         attrs.put(Provisioning.A_zimbraDataSourceConnectionType, "cleartext");
-        attrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer, Provisioning.FALSE);
-        prov.createDataSource(account, DataSource.Type.pop3, DATA_SOURCE_NAME, attrs);
+        attrs.put(Provisioning.A_zimbraDataSourceLeaveOnServer, ProvisioningConstants.FALSE);
+        prov.createDataSource(account, DataSourceType.pop3, DATA_SOURCE_NAME, attrs);
     }
     
     private DataSource getDataSource() throws Exception {
         Provisioning prov = Provisioning.getInstance();
         Account account = TestUtil.getAccount(USER_NAME);
-        return prov.get(account, DataSourceBy.name, DATA_SOURCE_NAME);
+        return prov.get(account, Key.DataSourceBy.name, DATA_SOURCE_NAME);
     }
     
     private void cleanUp() throws Exception {

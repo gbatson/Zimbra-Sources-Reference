@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.core;
 
 import org.apache.log4j.LogManager;
@@ -58,13 +42,6 @@ public class ZimbraSelenium extends DefaultSelenium {
 	public boolean isElementPresent(String locator){		
 	    boolean result=super.isElementPresent(locator);
 	    logger.info("selenium.isElementPresent(" + locator + ") = " + result);	   	    
-	    return result;
-	}
-	
-	public boolean isChecked(String locator){
-	    logger.info("selenium.isChecked(" + locator + ")");	    	   	    
-		boolean result= super.isChecked(locator);
-		logger.info(result + "\n");
 	    return result;
 	}
 	

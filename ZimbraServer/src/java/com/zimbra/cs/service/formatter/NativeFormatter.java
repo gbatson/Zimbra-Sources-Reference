@@ -14,17 +14,27 @@
  */
 package com.zimbra.cs.service.formatter;
 
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PushbackInputStream;
+import java.io.UnsupportedEncodingException;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.MemoryCacheImageInputStream;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
 import javax.mail.MessagingException;
 import javax.mail.Part;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimePart;
+import javax.mail.internet.MimeUtility;
 import javax.servlet.RequestDispatcher;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -33,23 +43,30 @@ import javax.servlet.http.HttpServletResponse;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.MimeDetect;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.HttpUtil;
+import com.zimbra.common.util.ImageUtil;
+import com.zimbra.common.util.Log;
+import com.zimbra.common.util.LogFactory;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.extension.ExtensionUtil;
 import com.zimbra.cs.html.BrowserDefang;
 import com.zimbra.cs.html.DefangFactory;
-import com.zimbra.cs.index.MailboxIndex;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Contact;
+import com.zimbra.cs.mailbox.DeliveryOptions;
 import com.zimbra.cs.mailbox.Document;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.cs.mailbox.MailServiceException;
+import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
-import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedDocument;
@@ -58,7 +75,9 @@ import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
-
+import com.zimbra.cs.service.mail.UploadScanner;
+import com.zimbra.cs.store.Blob;
+import com.zimbra.cs.store.StoreManager;
 
 public final class NativeFormatter extends Formatter {
 
@@ -70,25 +89,31 @@ public final class NativeFormatter extends Formatter {
     public static final String ATTR_CONTENTTYPE = "contenttype";
     public static final String ATTR_CONTENTLENGTH = "contentlength";
 
+    private static final Log log = LogFactory.getLog(NativeFormatter.class);
+
     private static final Set<String> SCRIPTABLE_CONTENT_TYPES = ImmutableSet.of(MimeConstants.CT_TEXT_HTML,
                                                                                 MimeConstants.CT_APPLICATION_XHTML,
                                                                                 MimeConstants.CT_TEXT_XML,
+                                                                                MimeConstants.CT_APPLICATION_ZIMBRA_DOC,
+                                                                                MimeConstants.CT_APPLICATION_ZIMBRA_SLIDES,
+                                                                                MimeConstants.CT_APPLICATION_ZIMBRA_SPREADSHEET,
                                                                                 MimeConstants.CT_IMAGE_SVG);
-
 
     @Override
     public FormatType getType() {
         return FormatType.HTML_CONVERTED;
     }
 
-    public String getDefaultSearchTypes() {
+    @Override
+    public Set<MailItem.Type> getDefaultSearchTypes() {
         // TODO: all?
-        return MailboxIndex.SEARCH_FOR_MESSAGES;
+        return EnumSet.of(MailItem.Type.MESSAGE);
     }
 
+    @Override
     public void formatCallback(UserServletContext context) throws IOException, ServiceException, UserServletException, ServletException {
         try {
-            sendZimbraHeaders(context.resp, context.target);
+            sendZimbraHeaders(context, context.resp, context.target);
             HttpUtil.Browser browser = HttpUtil.guessBrowser(context.req);
             if (browser == HttpUtil.Browser.IE) {
                 context.resp.addHeader("X-Content-Type-Options", "nosniff"); // turn off content detection..
@@ -196,14 +221,98 @@ public final class NativeFormatter extends Formatter {
 
             boolean html = checkGlobalOverride(Provisioning.A_zimbraAttachmentsViewInHtmlOnly,
                     context.getAuthAccount()) || (context.hasView() && context.getView().equals(HTML_VIEW));
+            InputStream in = null;
+            try {
+                if (!html || ExtensionUtil.getExtension("convertd") == null || contentType.startsWith(MimeConstants.CT_TEXT_HTML)) {
+                    byte[] data = null;
 
-            if (!html || contentType.startsWith(MimeConstants.CT_TEXT_HTML)) {
-                String defaultCharset = context.targetAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null);
-                sendbackOriginalDoc(mp, contentType, defaultCharset, context.req, context.resp);
-            } else {
-                handleConversion(context, mp.getInputStream(), Mime.getFilename(mp), contentType, item.getDigest(), mp.getSize());
+                    // If this is an image that exceeds the max size, resize it.  Don't resize
+                    // gigantic images because ImageIO reads image content into memory.
+                    if (context.hasMaxWidth() && (Mime.getSize(mp) < LC.max_image_size_to_resize.intValue())) {
+                        try {
+                            data = getResizedImageData(mp, context.getMaxWidth());
+                        } catch (Exception e) {
+                            log.info("Unable to resize image.  Returning original content.", e);
+                        }
+                    }
+
+                    // Return the data, or resized image if available.
+                    long size;
+                    if (data != null) {
+                        in = new ByteArrayInputStream(data);
+                        size = data.length;
+                    } else {
+                        in = mp.getInputStream();
+                        String enc = mp.getEncoding();
+                        if (enc != null) {
+                            enc = enc.toLowerCase();
+                        }
+                        size = enc == null || enc.equals("7bit") || enc.equals("8bit") || enc.equals("binary") ? mp.getSize() : 0;
+                    }
+                    String defaultCharset = context.targetAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null);
+                    sendbackOriginalDoc(in, contentType, defaultCharset, Mime.getFilename(mp), mp.getDescription(), size, context.req, context.resp);
+                } else {
+                    in = mp.getInputStream();
+                    handleConversion(context, in, Mime.getFilename(mp), contentType, item.getDigest(), mp.getSize());
+                }
+            } finally {
+                ByteUtil.closeStream(in);
             }
         }
+    }
+
+    /**
+     * If the image stored in the {@code MimePart} exceeds the given width,
+     * shrinks the image and returns the shrunk data.  If the
+     * image width is smaller than {@code maxWidth} or resizing is not supported,
+     * returns {@code null}.
+     */
+    private static byte[] getResizedImageData(MimePart mp, int maxWidth)
+    throws IOException, MessagingException {
+        ImageReader reader = null;
+        ImageWriter writer = null;
+        InputStream in = null;
+
+        try {
+            // Get ImageReader for stream content.
+            reader = ImageUtil.getImageReader(Mime.getContentType(mp), mp.getFileName());
+            if (reader == null) {
+                log.debug("No ImageReader available.");
+                return null;
+            }
+
+            // Read message content.
+            in = mp.getInputStream();
+            reader.setInput(new MemoryCacheImageInputStream(in));
+            BufferedImage img = reader.read(0);
+            if (img.getWidth() <= maxWidth) {
+                log.debug("Image width %d is less than max %d.  Not resizing.", img.getWidth(), maxWidth);
+                return null;
+            }
+
+            // Resize.
+            writer = ImageIO.getImageWriter(reader);
+            if (writer == null) {
+                log.debug("No ImageWriter available.");
+                return null;
+            }
+            int height = (int) ((double) maxWidth / (double) img.getWidth() * img.getHeight());
+            BufferedImage small = ImageUtil.resize(img, maxWidth, height);
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            writer.setOutput(new MemoryCacheImageOutputStream(out));
+            writer.write(small);
+            return out.toByteArray();
+        } finally {
+            ByteUtil.closeStream(in);
+            if (reader != null) {
+                reader.dispose();
+            }
+            if (writer != null) {
+                writer.dispose();
+            }
+        }
+
+
     }
 
     private void handleDocument(UserServletContext context, Document doc) throws IOException, ServiceException, ServletException {
@@ -211,18 +320,18 @@ public final class NativeFormatter extends Formatter {
         int version = v != null ? Integer.parseInt(v) : -1;
         String contentType = doc.getContentType();
 
-        boolean neuter = doc.getAccount().getBooleanAttr(Provisioning.A_zimbraNotebookSanitizeHtml, true);
-        String defaultCharset = context.targetAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null);
-
         doc = (version > 0 ? (Document)doc.getMailbox().getItemRevision(context.opContext, doc.getId(), doc.getType(), version) : doc);
         InputStream is = doc.getContentStream();
-        if (HTML_VIEW.equals(context.getView()) && !(contentType != null && contentType.startsWith(MimeConstants.CT_TEXT_HTML))) {
+        // If the view is html and the convertd extension is deployed
+        if (HTML_VIEW.equals(context.getView()) && ExtensionUtil.getExtension("convertd") != null && !(contentType != null && contentType.startsWith(MimeConstants.CT_TEXT_HTML))) {
             handleConversion(context, is, doc.getName(), doc.getContentType(), doc.getDigest(), doc.getSize());
         } else {
+            String defaultCharset = context.targetAccount.getAttr(Provisioning.A_zimbraPrefMailDefaultCharset, null);
+            boolean neuter = doc.getAccount().getBooleanAttr(Provisioning.A_zimbraNotebookSanitizeHtml, true);
             if (neuter)
                 sendbackOriginalDoc(is, contentType, defaultCharset, doc.getName(), null, doc.getSize(), context.req, context.resp);
             else
-                sendbackBinaryData(context.req, context.resp, is, contentType, null, doc.getName(), doc.getSize());
+                sendbackBinaryData(context.req, context.resp, is, contentType, null , doc.getName(), doc.getSize());
         }
     }
 
@@ -249,15 +358,6 @@ public final class NativeFormatter extends Formatter {
         return Mime.getMimePart(msg.getMimeMessage(), part);
     }
 
-    public static void sendbackOriginalDoc(MimePart mp, String contentType, String defaultCharset, HttpServletRequest req, HttpServletResponse resp)
-    throws IOException, MessagingException {
-        String enc = mp.getEncoding();
-        if (enc != null)
-            enc = enc.toLowerCase();
-        long size = enc == null || enc.equals("7bit") || enc.equals("8bit") || enc.equals("binary") ? mp.getSize() : 0;
-        sendbackOriginalDoc(mp.getInputStream(), contentType, defaultCharset, Mime.getFilename(mp), mp.getDescription(), size, req, resp);
-    }
-
     public static void sendbackOriginalDoc(InputStream is, String contentType, String defaultCharset, String filename,
             String desc, HttpServletRequest req, HttpServletResponse resp) throws IOException {
         sendbackOriginalDoc(is, contentType, defaultCharset, filename, desc, 0, req, resp);
@@ -266,14 +366,14 @@ public final class NativeFormatter extends Formatter {
     private static void sendbackOriginalDoc(InputStream is, String contentType, String defaultCharset, String filename,
             String desc, long size, HttpServletRequest req, HttpServletResponse resp) throws IOException {
         String disp = req.getParameter(UserServlet.QP_DISP);
-        disp = (disp == null || disp.toLowerCase().startsWith("i") ) ? Part.INLINE : Part.ATTACHMENT;
-        if (desc != null) {
+        disp = (disp == null || disp.toLowerCase().startsWith("i")) ? Part.INLINE : Part.ATTACHMENT;
+        if (desc != null && desc.length() <= 2048) { // do not return ridiculously long header.
             resp.addHeader("Content-Description", desc);
         }
         // defang when the html and svg attachment was requested with disposition inline
         if (disp.equals(Part.INLINE) && isScriptableContent(contentType)) {
             BrowserDefang defanger = DefangFactory.getDefanger(contentType);
-            String content = defanger.defang(Mime.getTextReader(is, contentType, defaultCharset), false);
+            String content = defanger.defang(Mime.getTextReader(is, contentType, defaultCharset), true);
             resp.setContentType(contentType);
             String charset = Mime.getCharset(contentType);
             resp.setCharacterEncoding(Strings.isNullOrEmpty(charset) ? Charsets.UTF_8.name() : charset);
@@ -291,61 +391,116 @@ public final class NativeFormatter extends Formatter {
         }
     }
 
+
+    @Override
     public boolean supportsSave() {
         return true;
     }
 
-    public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename) throws IOException, ServiceException, UserServletException {
-        Mailbox mbox = folder.getMailbox();
-        MailItem item = null;
+    @Override
+    public void saveCallback(UserServletContext context, String contentType, Folder folder, String filename)
+            throws IOException, ServiceException, UserServletException
+    {
         if (filename == null) {
+            Mailbox mbox = folder.getMailbox();
             try {
                 ParsedMessage pm = new ParsedMessage(context.getPostBody(), mbox.attachmentsIndexingEnabled());
-                item = mbox.addMessage(context.opContext, pm, folder.getId(), true, 0, null);
+                DeliveryOptions dopt = new DeliveryOptions().setFolderId(folder).setNoICal(true);
+                mbox.addMessage(context.opContext, pm, dopt, null);
                 return;
             } catch (ServiceException e) {
                 throw new UserServletException(HttpServletResponse.SC_BAD_REQUEST, "error parsing message");
             }
         }
 
-        String creator = context.getAuthAccount() == null ? null : context.getAuthAccount().getName();
         InputStream is = context.getRequestInputStream();
+        try {
+            Blob blob = StoreManager.getInstance().storeIncoming(is);
+            saveDocument(blob, context, contentType, folder, filename, is);
+        } finally {
+            is.close();
+        }
+    }
+
+    private void saveDocument(Blob blob, UserServletContext context, String contentType, Folder folder, String filename, InputStream is)
+        throws IOException, ServiceException, UserServletException
+    {
+        Mailbox mbox = folder.getMailbox();
+        MailItem item = null;
+
+        String creator = context.getAuthAccount() == null ? null : context.getAuthAccount().getName();
         ParsedDocument pd = null;
 
         try {
-            if (contentType == null)
+            if (contentType == null) {
                 contentType = MimeDetect.getMimeDetect().detect(filename);
-            if (contentType == null)
-                contentType = MimeConstants.CT_APPLICATION_OCTET_STREAM;
-            pd = new ParsedDocument(is, filename, contentType, System.currentTimeMillis(), creator, context.req.getHeader("X-Zimbra-Description"));
+                if (contentType == null)
+                    contentType = MimeConstants.CT_APPLICATION_OCTET_STREAM;
+            }
+
+            pd = new ParsedDocument(blob, filename, contentType, System.currentTimeMillis(), creator,
+                    context.req.getHeader("X-Zimbra-Description"), true);
+
             item = mbox.getItemByPath(context.opContext, filename, folder.getId());
             // XXX: should we just overwrite here instead?
             if (!(item instanceof Document))
                 throw new UserServletException(HttpServletResponse.SC_BAD_REQUEST, "cannot overwrite existing object at that path");
 
+            // scan upload for viruses
+            StringBuffer info = new StringBuffer();
+            UploadScanner.Result result = UploadScanner.acceptStream(is, info);
+            if (result == UploadScanner.REJECT)
+                throw MailServiceException.UPLOAD_REJECTED(filename, info.toString());
+            if (result == UploadScanner.ERROR)
+                throw MailServiceException.SCAN_ERROR(filename);
+
             item = mbox.addDocumentRevision(context.opContext, item.getId(), pd);
         } catch (NoSuchItemException nsie) {
-            item = mbox.createDocument(context.opContext, folder.getId(), pd, MailItem.TYPE_DOCUMENT);
-        } finally {
-            is.close();
+            item = mbox.createDocument(context.opContext, folder.getId(), pd, MailItem.Type.DOCUMENT, 0);
         }
-        sendZimbraHeaders(context.resp, item);
+
+        sendZimbraHeaders(context, context.resp, item);
     }
 
-    private void sendZimbraHeaders(HttpServletResponse resp, MailItem item) {
+    private static long getContentLength(HttpServletRequest req)
+    {
+        // note HttpServletRequest.getContentLength() returns int, that's
+        // why we parse it ourselves
+        final String contentLengthStr = req.getHeader("Content-Length");
+        return contentLengthStr != null ? Long.parseLong(contentLengthStr) : -1;
+    }
+
+    public static void sendZimbraHeaders(UserServletContext context, HttpServletResponse resp, MailItem item) {
         if (resp == null || item == null)
             return;
-        resp.addHeader("X-Zimbra-ItemId", item.getId() + "");
-        resp.addHeader("X-Zimbra-Version", item.getVersion() + "");
-        resp.addHeader("X-Zimbra-Modified", item.getChangeDate() + "");
-        resp.addHeader("X-Zimbra-Change", item.getModifiedSequence() + "");
-        resp.addHeader("X-Zimbra-Revision", item.getSavedSequence() + "");
-        resp.addHeader("X-Zimbra-ItemType", MailItem.getNameForType(item));
-        resp.addHeader("X-Zimbra-ItemName", item.getName());
-        try {
-            resp.addHeader("X-Zimbra-ItemPath", item.getPath());
-        } catch (ServiceException e) {
+
+        if (context.wantCustomHeaders) {
+            resp.addHeader("X-Zimbra-ItemId", item.getId() + "");
+            resp.addHeader("X-Zimbra-Version", item.getVersion() + "");
+            resp.addHeader("X-Zimbra-Modified", item.getChangeDate() + "");
+            resp.addHeader("X-Zimbra-Change", item.getModifiedSequence() + "");
+            resp.addHeader("X-Zimbra-Revision", item.getSavedSequence() + "");
+            resp.addHeader("X-Zimbra-ItemType", item.getType().toString());
+            try {
+                String val = item.getName();
+                if (!StringUtil.isAsciiString(val)) {
+                    val = MimeUtility.encodeText(val, "utf-8", "B");
+                }
+                resp.addHeader("X-Zimbra-ItemName", val);
+                val = item.getPath();
+                if (!StringUtil.isAsciiString(val)) {
+                    val = MimeUtility.encodeText(val, "utf-8", "B");
+                }
+                resp.addHeader("X-Zimbra-ItemPath", val);
+            } catch (UnsupportedEncodingException e1) {
+            } catch (ServiceException e) {
+            }
         }
+
+        // set Last-Modified header to date when item's content was last modified
+        resp.addDateHeader("Last-Modified", item.getDate());
+        // set ETag header to item's mod_content value
+        resp.addHeader("ETag", String.valueOf(item.getSavedSequence()));
     }
 
     private static final int READ_AHEAD_BUFFER_SIZE = 256;
@@ -361,11 +516,11 @@ public final class NativeFormatter extends Formatter {
                                           String disposition,
                                           String filename,
                                           long size) throws IOException {
+        resp.setContentType(contentType);
         if (disposition == null) {
             String disp = req.getParameter(UserServlet.QP_DISP);
             disposition = (disp == null || disp.toLowerCase().startsWith("i") ) ? Part.INLINE : Part.ATTACHMENT;
         }
-
         PushbackInputStream pis = new PushbackInputStream(in, READ_AHEAD_BUFFER_SIZE);
         boolean isSafe = false;
         HttpUtil.Browser browser = HttpUtil.guessBrowser(req);
@@ -373,11 +528,8 @@ public final class NativeFormatter extends Formatter {
             isSafe = true;
         } else if (disposition.equals(Part.ATTACHMENT)) {
             isSafe = true;
-
-            // only set no-open for 'script type content'
             if (isScriptableContent(contentType)) {
-                // ask it to save the file
-                resp.addHeader("X-Download-Options", "noopen");
+                resp.addHeader("X-Download-Options", "noopen"); // ask it to save the file
             }
         }
 
@@ -405,13 +557,12 @@ public final class NativeFormatter extends Formatter {
             if (bytesRead > 0)
                 pis.unread(buf, 0, bytesRead);
         }
-        String cd = disposition + "; filename=" + HttpUtil.encodeFilename(req, filename == null ? "unknown" : filename);
+        String cd = HttpUtil.createContentDisposition(req, disposition, filename == null ? "unknown" : filename);
         resp.addHeader("Content-Disposition", cd);
         if (size > 0)
             resp.setContentLength((int)size);
         ByteUtil.copy(pis, true, resp.getOutputStream(), false);
     }
-
     /**
      * Determines whether or not the contentType passed might contain script or other unsavory tags.
      * @param contentType The content type to check

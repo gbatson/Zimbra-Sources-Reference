@@ -1,22 +1,10 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
-import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.ui.AbsApplication;
+import com.zimbra.qa.selenium.framework.ui.AbsDialog;
+import com.zimbra.qa.selenium.framework.ui.AbsPage;
+import com.zimbra.qa.selenium.framework.ui.AbsTab;
+import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
@@ -34,18 +22,38 @@ public class DialogWarning extends AbsDialog {
 
 	public static class DialogWarningID {
 		
-		public static DialogWarningID SaveCurrentMessageAsDraft = new DialogWarningID("YesNoCancel");
 
-		public static DialogWarningID SaveTaskChangeMessage = new DialogWarningID("YesNoCancel");
+		public static final DialogWarningID SaveCurrentMessageAsDraft = new DialogWarningID("YesNoCancel");
+
+		public static final DialogWarningID SaveTaskChangeMessage = new DialogWarningID("YesNoCancel");
 		
-		public static DialogWarningID SendLink = new DialogWarningID("css=div[class=DwtConfirmDialog]");
-		public static DialogWarningID DeleteTagWarningMessage = new DialogWarningID("YesNoCancel");
-		public static DialogWarningID EmptyFolderWarningMessage = new DialogWarningID("OkCancel");
-		public static DialogWarningID SaveSignatureChangeMessage = new DialogWarningID("YesNoCancel");
-		public static DialogWarningID CancelCreateContact = new DialogWarningID("YesNoCancel");
+		public static final DialogWarningID SendLink = new DialogWarningID("css=div[class=DwtConfirmDialog]");
+		public static final DialogWarningID DeleteTagWarningMessage = new DialogWarningID("YesNoMsgDialog");
+		public static final DialogWarningID EmptyFolderWarningMessage = new DialogWarningID("OkCancel");
+		public static final DialogWarningID SaveSignatureChangeMessage = new DialogWarningID("YesNoCancel");
+		public static final DialogWarningID CancelCreateContact = new DialogWarningID("YesNoCancel");
+		public static final DialogWarningID PermanentlyDeleteTheItem = new DialogWarningID("OkCancel");
+		public static final DialogWarningID PermanentlyRemoveTheAttachment = new DialogWarningID("YesNoMsgDialog");
+		
+		public static final DialogWarningID DeleteAppointment = new DialogWarningID("YesNo");
+
+		// See bug: http://bugzilla.zimbra.com/show_bug.cgi?id=63353
+		public static final DialogWarningID SelectedTimeIsInPast = new DialogWarningID("ShowDelayPastDialog");
+		
+		// See http://bugzilla.zimbra.com/show_bug.cgi?id=64081
+		public static final DialogWarningID SendReadReceipt = new DialogWarningID("YesNoMsgDialog");;
+
+		public static final DialogWarningID QuickCommandConfirmDelete = new DialogWarningID("ZmQuickCommandConfirmation1");
+
+		public static final DialogWarningID PreferencesSaveChanges = new DialogWarningID("YesNoCancel");
+		public static final DialogWarningID SwitchingToTextWillDiscardHtmlFormatting = new DialogWarningID("css=div[class='DwtMsgDialog']");
+
+		public static final DialogWarningID SmsVerificationCodeSent = new DialogWarningID("ZmMsgDialog");
+
+		public static final DialogWarningID ZmAcceptShare = new DialogWarningID("ZmAcceptShare");
 
 		protected String Id;
-		protected DialogWarningID(String id) {
+		public DialogWarningID(String id) {
 			Id = id;
 		}
 	}
@@ -76,8 +84,8 @@ public class DialogWarning extends AbsDialog {
 		return (zGetDisplayedText(locator));
 	}
 	
-	public String zGetWarningContent() throws HarnessException {
-		String locator = "css=div[id=YesNoCancel_content]";
+	public String zGetWarningContent() throws HarnessException {	
+		String locator = "css=div[id='YesNoCancel_content']";
 		return (zGetDisplayedText(locator));
 	}
 	
@@ -90,38 +98,34 @@ public class DialogWarning extends AbsDialog {
 	public AbsPage zClickButton(Button button) throws HarnessException {
 		if ( button == null )
 			throw new HarnessException("button cannot be null");
-		
+
 		String locator = null;
 		AbsPage page = null; 		// Does this ever result in a page being returned?
-		
 
 		// See http://bugzilla.zimbra.com/show_bug.cgi?id=54560
 		// Need unique id's for the buttons
-		String buttonsTableLocator = "//div[@id='"+ MyDivId +"']//div[contains(@id, '_buttons')]";
-		
+		String buttonsTableLocator = "css=div[id='"+ MyDivId +"'] div[id$='_buttons']";
+
 		if ( button == Button.B_YES ) {
+
+			locator = buttonsTableLocator + " td[id^='Yes_'] td[id$='_title']";
+
 			if(MyDivId.contains("css=div[class=DwtConfirmDialog]")){
-				locator = "css=td[class=ZWidgetTitle]:contains(Yes)";				
 				page = 	new FormMailNew(this.MyApplication);
-			}else{
-				locator = "css=div#YesNoCancel_button5";
-				//locator = buttonsTableLocator + "//table//table//tr/td[1]/div";
 			}
-			
+
+
 		} else if ( button == Button.B_NO ) {
-			locator = "css=div#YesNoCancel_button4";			
-			//locator = buttonsTableLocator + "//table//table//tr/td[2]/div";
+
+			locator = buttonsTableLocator + " td[id^='No_'] td[id$='_title']";
 
 		} else if ( button == Button.B_CANCEL ) {
-			locator = "css=div#YesNoCancel_button1";		
-			//locator = buttonsTableLocator + "//table//table//tr/td[3]/div";
+
+			locator = buttonsTableLocator + " td[id^='Cancel_'] td[id$='_title']";
 
 		} else if (button == Button.B_OK) {
-			if (MyDivId.contains("ErrorDialog")) {
-				locator = buttonsTableLocator + "//table//table//tr/td/div[contains(@id,'ErrorDialog_button2')]";
-			} else {
-				locator = buttonsTableLocator + "//table//table//tr/td[1]/div";
-			}
+
+			locator = buttonsTableLocator + " td[id^='OK_'] td[id$='_title']";
 
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);
@@ -130,22 +134,22 @@ public class DialogWarning extends AbsDialog {
 		if ( locator == null ) {
 			throw new HarnessException("locator was null for button "+ button);
 		}
-		
+
 		// Default behavior, process the locator by clicking on it
 		//
-				
+
 		// Click it
 		zClickAt(locator,"0,0");
-		
+
 		// If the app is busy, wait for it to become active
 		zWaitForBusyOverlay();
-		
+
 		// If page was specified, make sure it is active
 		if ( page != null ) {
-			
+
 			// This function (default) throws an exception if never active
 			page.zWaitForActive();
-			
+
 		}
 
 		return (page);

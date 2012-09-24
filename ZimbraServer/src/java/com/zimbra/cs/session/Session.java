@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -18,13 +18,11 @@ package com.zimbra.cs.session;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import com.google.common.base.Objects;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
-import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.im.IMNotification;
-import com.zimbra.cs.im.IMPersona;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 
@@ -41,12 +39,11 @@ public abstract class Session {
     protected final String mAuthenticatedAccountId;
     protected final String mTargetAccountId;
     private   final Type   mSessionType;
+    private   final long   mCreationTime;
 
     private   String    mSessionId;
-    protected volatile Mailbox mMailbox;
-    private   IMPersona mPersona;
+    protected volatile Mailbox mailbox;
     private   long      mLastAccessed;
-    private   long      mCreationTime;
     private   boolean   mCleanedUp;
     private   boolean   mIsRegistered;
     private   boolean   mAddedToCache;
@@ -82,6 +79,18 @@ public abstract class Session {
         }
     }
 
+    /**
+     * for non-Mailbox related notifications
+     *
+     */
+    public abstract static class ExternalEventNotification {
+        /** Add XML representation to the <notify/> block. */
+        public abstract void addElement(Element notify);
+        public boolean canAccess(Account account) {
+            return true;
+        }
+    }
+
     /** Creates a {@code Session} of the given <tt>Type</tt> whose target
      *  {@link Account} is the same as its authenticated <tt>Account</tt>.
      * @param accountId  The account ID of the {@code Session}'s owner
@@ -111,18 +120,6 @@ public abstract class Session {
         return mSessionType;
     }
 
-    /** Registers this session as an IM listener
-     * @throws ServiceException */
-    public synchronized void registerWithIM(IMPersona persona) throws ServiceException {
-        assert(Thread.holdsLock(persona.getLock()));
-        assert(mPersona == null || mPersona == persona);
-
-        if (mPersona == null && isIMListener() && !isDelegatedSession()) {
-            mPersona = persona;
-            mPersona.addListener(this);
-        }
-    }
-
     /** Registers the session as a listener on the target mailbox and adds
      *  it to the session cache.  When a session is added to the cache, its
      *  session ID is initialized.
@@ -135,7 +132,7 @@ public abstract class Session {
         }
 
         if (isMailboxListener()) {
-            Mailbox mbox = mMailbox = MailboxManager.getInstance().getMailboxByAccountId(mTargetAccountId);
+            Mailbox mbox = mailbox = MailboxManager.getInstance().getMailboxByAccountId(mTargetAccountId);
 
             // once addListener is called, you may NOT lock the mailbox (b/c of deadlock possibilities)
             if (mbox != null) {
@@ -161,23 +158,12 @@ public abstract class Session {
      * @see #isRegisteredInCache() */
     public Session unregister() {
         // locking order is always Mailbox then Session
-        Mailbox mbox = mMailbox;
-        assert(mbox == null || Thread.holdsLock(mbox) || !Thread.holdsLock(this));
-
-        // Must do this in two steps (first, w/ the Session lock, and then
-        // w/ the Persona lock if we have one) b/c of possible deadlock.
-        IMPersona persona = null;
-        synchronized (this) {
-            persona = mPersona;
-            mPersona = null;
-        }
-        if (persona != null) {
-            persona.removeListener(this);
-        }
+        Mailbox mbox = mailbox;
+        assert(mbox == null || mbox.lock.isLocked() || !Thread.holdsLock(this));
 
         if (mbox != null && isMailboxListener()) {
             mbox.removeListener(this);
-            mMailbox = null;
+            mailbox = null;
         }
 
         removeFromSessionCache();
@@ -189,11 +175,6 @@ public abstract class Session {
 
     protected boolean isRegistered() {
         return mIsRegistered;
-    }
-
-    /** Returns TRUE if this session wants to hear about IM events. */
-    protected boolean isIMListener() {
-        return false;
     }
 
     /** Whether the session should be attached to the target {@link Mailbox}
@@ -260,7 +241,7 @@ public abstract class Session {
 
     /** Returns the {@link Mailbox} (if any) this Session is listening on. */
     public Mailbox getMailbox() {
-        return mMailbox;
+        return mailbox;
     }
 
     /** Handles the set of changes from a single Mailbox transaction.
@@ -277,8 +258,8 @@ public abstract class Session {
      *                  <tt>null</tt> if none was specified. */
     public abstract void notifyPendingChanges(PendingModifications pns, int changeId, Session source);
 
-    /** Notify this session that an IM event has occured. */
-    public void notifyIM(IMNotification imn) {
+    /** Notify this session that an external event has occured. */
+    public void notifyExternalEvent(ExternalEventNotification extra) {
         // do nothing by default.
     }
 
@@ -295,7 +276,7 @@ public abstract class Session {
         } finally {
             mCleanedUp = true;
         }
-        mMailbox = null;
+        mailbox = null;
     }
 
     abstract protected void cleanup();
@@ -345,8 +326,12 @@ public abstract class Session {
         return !mAuthenticatedAccountId.equalsIgnoreCase(mTargetAccountId);
     }
 
-    @Override public String toString() {
-        String dateString = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date(mLastAccessed));
-        return StringUtil.getSimpleClassName(this) + ": {sessionId: " + mSessionId + ", accountId: " + mAuthenticatedAccountId + ", lastAccessed: " + dateString + "}";
+    @Override
+    public String toString() {
+        return Objects.toStringHelper(this)
+            .add("sessionId", mSessionId)
+            .add("accountId", mAuthenticatedAccountId)
+            .add("lastAccessed", new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date(mLastAccessed)))
+            .toString();
     }
 }

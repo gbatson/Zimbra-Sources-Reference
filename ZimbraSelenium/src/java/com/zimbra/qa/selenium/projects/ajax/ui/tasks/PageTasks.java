@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -21,12 +5,10 @@ package com.zimbra.qa.selenium.projects.ajax.ui.tasks;
 
 import java.util.*;
 
-import com.thoughtworks.selenium.SeleniumException;
-import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
-import com.zimbra.qa.selenium.framework.items.TaskItem;
+import com.thoughtworks.selenium.*;
+import com.zimbra.qa.selenium.framework.items.*;
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility.WAIT_FOR_OPERAND;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 
@@ -38,22 +20,37 @@ public class PageTasks extends AbsTab {
 
 	public static class Locators {
 
-		public static final String zv__TKL = "zv__TKL";
-		public static final String zl__TKL__rows = "zl__TKL__rows";
-		public static final String zl__TKL__headers = "zl__TKL__headers";
-		public static final String _newTaskBannerId = "_newTaskBannerId";
-		public static final String _upComingTaskListHdr = "_upComingTaskListHdr";
+		public static final String zl__TKL__rowsID = "zl__TKL__rows";
+		public static final String _newTaskBannerID = "_newTaskBannerId";
+		public static final String _upComingTaskListHdrID = "_upComingTaskListHdr";
 		public static final String zli__TKL__ = "zli__TKL__"; // Each task item:
 		// <div
 		// id='zli__TKL__<item
 		// id>' .../>
 		public static final String zb__TKE1__SAVE_left_icon = "zb__TKE1__SAVE_left_icon";
 		public static final String taskListView = "css=div[id='zl__TKL__rows'][class='DwtListView-Rows']";
-		//public static final String taskbodyView = "css=div[id='zl__TKL__rows'][class='DwtListView-Rows']";
 		public static final String zTasksTab = "zb__App__Tasks";
-		public static final String zNewTask = "zb__TKL__NEW_MENU_left_icon";
-		public static final String zNewTaskDropDown = "css=td[id$='__NEW_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
-		public static final String zNewTagMenuItem= "//td[contains(@id,'_left_icon')]/div[contains(@class,'ImgNewTag')]";
+		//public static final String zNewTask = "zb__TKL-main__NEW_MENU_left_icon";
+		//public static final String zNewTaskDropDown = "css=td[id='zb__TKL-main__NEW_MENU_dropdown']>div";
+		//public static final String zNewTaskMenuItem ="css=div#zb__TKL-main__NEW_MENU_NEW_TASK";
+		public static final String zNewTask = "css=div[id='zb__NEW_MENU'] td[id='zb__NEW_MENU_title']:contains('New Task')";
+		public static final String zNewTaskDropDown = "css=div[id='zb__NEW_MENU'] td[id='zb__NEW_MENU_dropdown']>div";
+		public static final String zNewTagMenuItem= "css=div[id='zb__NEW_MENU_NEW_TAG'] tr[id^='POPUP_'] td[id$='_title']";
+		public static final String zMarkAsCompleted = "css=div#zb__TKL-main__MARK_AS_COMPLETED";
+		public static final String zNewTaskMenuItem ="css=div[id='zb__NEW_MENU_NEW_TASK'] td[id$='_title']";
+		public static final String zNewTaskFolderMenuItem ="css=div[id='zb__NEW_MENU_NEW_TASK_FOLDER'] tr[id^='POPUP_'] td[id$='_title']";
+		public static final String zDeleteTaskMenuItem ="css=div[id='zm__Tasks'] tr[id='POPUP_DELETE']";
+		public static final String zMoveTaskMenuItem ="css=div[id='zm__Tasks'] tr[id='POPUP_MOVE']";
+		public static final String zNewTaskListMenuItem="css=div[id$='NEWFOLDER']";
+		public static final String zMoveTaskDropDown="css=td#zb__TKL-main__MOVE_MENU_dropdown>div";
+		public static final String zEditTaskMenuItem ="css=div[id='zm__Tasks'] tr[id='POPUP_EDIT']";
+		public static final String zFilterByTaskDropDown="css=tr[id='ztb__TKL-main_items'] div[id='zb__TKL-main__SORTBY_MENU'] td[id='zb__TKL-main__SORTBY_MENU_dropdown']>div";
+	//	public static final String zToDoListTaskMenuItem ="css=div[id^='POPUP_DWT'] div[id^='DWT'] tr[id='POPUP_TKVT']";
+		public static final String zToDoListTaskMenuItem ="css=div[id='TKVT'] tr[id='POPUP_TKVT']";
+		public static final String zShowOrigTaskMenuItem ="css=div[id='zm__Tasks'] tr[id^='POPUP_SHOW_ORIG'] td[id$='_title']";
+		public static final String zPrintTaskMenuItem ="css=div[id='zm__Tasks'] tr[id^='POPUP_PRINT_TASK'] td[id$='_title']";
+		public static final String zPrintTaskDropDown="css=td#zb__TKL-main__PRINT_dropdown>div";
+		public static final String zPrintTaskFolder ="css=tr[id='POPUP_PRINT_TASKFOLDER'] td[id$='_title']";
 	}
 
 	public PageTasks(AbsApplication application) {
@@ -76,8 +73,8 @@ public class PageTasks extends AbsTab {
 			((AppAjaxClient) MyApplication).zPageMain.zNavigateTo();
 		}
 
-		String locator = "zb__App__Tasks";
-		String rowLocator = "//div[@id='" + Locators.zl__TKL__rows + "']/div";
+		String id = "zb__App__Tasks";
+		String rowLocator = "css=div[id='" + Locators.zl__TKL__rowsID + "']>div";
 
 		boolean loaded = this.sIsElementPresent(rowLocator);
 		if (!loaded)
@@ -86,7 +83,7 @@ public class PageTasks extends AbsTab {
 		//	String selected = this.sGetAttribute("xpath=(//div[@id='" + locator + "'])@class");
 		//	return (selected.contains("ZSelected"));
 
-		return(this.sIsElementPresent("css=div[id='"+ locator +"'][class*=ZSelected]"));
+		return(this.sIsElementPresent("css=div[id='"+ id +"'][class*=ZSelected]"));
 
 	}
 
@@ -120,7 +117,7 @@ public class PageTasks extends AbsTab {
 
 		tracer.trace("Navigate to "+ this.myPageName());
 
-		this.zClick(PageMain.Locators.zAppbarTasks);
+		this.zClickAt(PageMain.Locators.zAppbarTasks, "");
 
 		this.zWaitForBusyOverlay();
 
@@ -152,51 +149,62 @@ public class PageTasks extends AbsTab {
 
 		AbsPage page = null;
 		String itemLocator = null;
-		String itemSubject = null;
 
 		// How many items are in the table?
-		findTask(subject);
-		String rowLocator = "//div[@id='" + Locators.zl__TKL__rows + "']/div";
-		int count = this.sGetXpathCount(rowLocator);
+		// findTask(subject);
+		String rowLocator = "css=div[id='" + Locators.zl__TKL__rowsID + "']>div";
+		int count = this.sGetCssCount(rowLocator);
 		logger.debug(myPageName() + " zListItem: number of rows: " + count);
 
+		if ( count < 1 ) 
+			throw new HarnessException("No tasks in the list!");
+
 		// Get each conversation's data from the table list
-		for (int i = 1; i <= count; i++) {
+		itemLocator = rowLocator + ":first-child";
+		for (int i = 1; i < count; i++) {
+			
+			itemLocator = itemLocator + " + div ";
+			if ( !this.sIsElementPresent(itemLocator) )
+				throw new HarnessException("Item Locator not present: "+ itemLocator);
 
-			itemLocator = rowLocator + "[" + i + "]";
-			String id = this.sGetAttribute("xpath=(" + itemLocator + ")@id");
-			String locator = null;
+			String id;
+			try {
+				id = this.sGetAttribute(itemLocator + "@id");
+				if ( id == null )
+					throw new HarnessException("id was null: "+ itemLocator + "@id");
+				if ( !id.startsWith(Locators.zli__TKL__) )
+					continue; // _newTaskBannerId, etc.
 
-			// Skip any invalid IDs
-			if ((id == null) || (id.trim().length() == 0))
+			} catch (SeleniumException e) {
+				logger.warn("No ID on item: "+ itemLocator);
 				continue;
-
-			// Look for zli__TKL__258
-			if (id.contains(Locators.zli__TKL__)) {
-				// Found a task
-
-				// What is the subject?
-				locator = itemLocator + "//td[5]";
-				itemSubject = this.sGetText(locator).trim();
-
-				if ((itemSubject == null) || (itemSubject.trim().length() == 0)) {
-					logger.debug("found empty task subject");
-					continue;
-				}
-
-				if (itemSubject.equals(subject)) {
-					// Found it
-					break;
-				}
-
 			}
+
+			String subjectLocator = "css=div[id='"+ id +"'] td[id$='_su']";
+			if ( !this.sIsElementPresent(subjectLocator) )
+				throw new HarnessException("Subject Locator not present: "+ subjectLocator);
+			
+			String itemSubject = this.sGetText(subjectLocator);
+			if ((itemSubject == null) || (itemSubject.trim().length() == 0)) {
+				logger.debug("found empty task subject");
+				continue;
+			}
+			if(!itemSubject.equals(subject)){
+				continue;
+			}
+			if (itemSubject.equals(subject)) {
+				// Found it
+				break;
+			}
+			
+			itemLocator = null;
 		}
 
 		if (itemLocator == null) {
-			throw new HarnessException("Unable to locate item with subject("
-					+ subject + ")");
+			throw new HarnessException("Unable to locate item with subject(" + subject + ")");
 		}
 
+		
 		if (action == Action.A_LEFTCLICK) {
 
 			// Left-Click on the item
@@ -229,20 +237,13 @@ public class PageTasks extends AbsTab {
 
 		} else if (action == Action.A_MAIL_CHECKBOX) {
 
-			String selectlocator = itemLocator + "//div[contains(@id, '__se')]";
+			String selectlocator = itemLocator + " div[id$='__se']";
 			if (!this.sIsElementPresent(selectlocator))
 				throw new HarnessException("Checkbox locator is not present "
 						+ selectlocator);
 
-			/*	String image = this.sGetAttribute("xpath=" + selectlocator
-					+ "@class");
-			if (image.equals("ImgCheckboxChecked"))
-				throw new HarnessException(
-				"Trying to check box, but it was already enabled");*/
-
-			if (this.sIsElementPresent("css=div[id='"+ selectlocator +"'][class*=ImgCheckboxChecked]"))
-				throw new HarnessException(
-				"Trying to check box, but it was already enabled");
+			if (this.sIsElementPresent(selectlocator +"[class*=ImgCheckboxChecked]"))
+				throw new HarnessException("Trying to check box, but it was already enabled");
 
 			// Left-Click on the flag field
 
@@ -256,22 +257,17 @@ public class PageTasks extends AbsTab {
 
 		} else if (action == Action.A_MAIL_UNCHECKBOX) {
 
-			String selectlocator = itemLocator + "//div[contains(@id, '__se')]";
+			String selectlocator = itemLocator + " div[id$='__se']";
 			if (!this.sIsElementPresent(selectlocator))
 				throw new HarnessException("Checkbox locator is not present "
 						+ selectlocator);
 
-			/*	String image = this.sGetAttribute("xpath=" + selectlocator
-					+ "@class");
-			if (image.equals("ImgCheckboxUnchecked"))
-				throw new HarnessException(
-				"Trying to uncheck box, but it was already disabled");*/
-			if (this.sIsElementPresent("css=div[id='"+ selectlocator +"'][class*=ImgCheckboxUnchecked]"))
-				throw new HarnessException(
-				"Trying to uncheck box, but it was already disabled");
-			// Left-Click on the flag field
-			this.zClick(selectlocator);
+			if (this.sIsElementPresent(selectlocator +"[class*=ImgCheckboxChecked]"))
+				throw new HarnessException("Trying to uncheck box, but it was already disabled");
 
+			// Left-Click on the flag field
+
+			this.zClick(selectlocator);
 			this.zWaitForBusyOverlay();
 
 			// No page to return
@@ -298,6 +294,7 @@ public class PageTasks extends AbsTab {
 
 		throw new HarnessException("implement me!");
 	}
+	
 	@Override
 	public AbsPage zListItem(Action action, Button option, String subject)
 	throws HarnessException {
@@ -313,56 +310,66 @@ public class PageTasks extends AbsTab {
 		if (subject == null || subject.trim().length() == 0)
 			throw new HarnessException("subject cannot be null or blank");
 
-		String rowLocator = null;
 		String itemLocator = null;
 		AbsPage page = null;
 
+		
 		// How many items are in the table?
-		rowLocator = "//div[@id='" + Locators.zl__TKL__rows + "']/div";
-		int count = this.sGetXpathCount(rowLocator);
+		// findTask(subject);
+		String rowLocator = "css=div[id='" + Locators.zl__TKL__rowsID + "']>div";
+		int count = this.sGetCssCount(rowLocator);
 		logger.debug(myPageName() + " zListItem: number of rows: " + count);
+
+		if ( count < 1 ) 
+			throw new HarnessException("No tasks in the list!");
 
 		// Get each conversation's data from the table list
 		for (int i = 1; i <= count; i++) {
+			
+			itemLocator = rowLocator + ":nth-of-type("+ i +")";
+			if ( !this.sIsElementPresent(itemLocator) )
+				throw new HarnessException("Item Locator not present: "+ itemLocator);
 
-			itemLocator = rowLocator + "[" + i + "]";
-			String id = this.sGetAttribute("xpath=(" + itemLocator + ")@id");
-			String locator = null;
+			String id;
+			try {
+				id = this.sGetAttribute(itemLocator + "@id");
+				if ( id == null )
+					throw new HarnessException("id was null: "+ itemLocator + "@id");
+				if ( !id.startsWith(Locators.zli__TKL__) )
+					continue; // _newTaskBannerId, etc.
 
-			// Skip any invalid IDs
-			if ((id == null) || (id.trim().length() == 0))
+			} catch (SeleniumException e) {
+				logger.warn("No ID on item: "+ itemLocator);
 				continue;
-
-			// Look for zli__TKL__258
-			if (id.contains(Locators.zli__TKL__)) {
-				// Found a task
-
-				// What is the subject?
-				locator = itemLocator + "//td[5]";
-				String itemSubject = this.sGetText(locator).trim();
-
-				if ((itemSubject == null) || (itemSubject.trim().length() == 0)) {
-					logger.debug("found empty task subject");
-					continue;
-				}
-
-				if (itemSubject.equals(subject)) {
-					// Found it
-					break;
-				}
-
 			}
+
+			String subjectLocator = "css=div[id='"+ id +"'] td[id$='_su']";
+			if ( !this.sIsElementPresent(subjectLocator) )
+				throw new HarnessException("Subject Locator not present: "+ subjectLocator);
+			
+			String itemSubject = this.sGetText(subjectLocator);
+			if ((itemSubject == null) || (itemSubject.trim().length() == 0)) {
+				logger.debug("found empty task subject");
+				continue;
+			}
+			
+			if (itemSubject.equals(subject)) {
+				// Found it
+				break;
+			}
+			
+			itemLocator = null;
 		}
 
 		if (itemLocator == null) {
-			throw new HarnessException("Unable to locate item with subject("
-					+ subject + ")");
+			throw new HarnessException("Unable to locate item with subject(" + subject + ")");
 		}
+
 
 		if (action == Action.A_RIGHTCLICK) {
 
 			// Right-Click on the item
-			this.zRightClick(itemLocator);
+			this.zRightClickAt(itemLocator,"");
 
 			// Now the ContextMenu is opened
 			// Click on the specified option
@@ -372,16 +379,45 @@ public class PageTasks extends AbsTab {
 			if (option == Button.B_DELETE) {
 
 				// <div id="zmi__Tasks__DELETE" ...
-				optionLocator = "zmi__Tasks__DELETE";
+				//optionLocator = "zmi__Tasks__DELETE";
+				optionLocator= Locators.zDeleteTaskMenuItem;
 				page = null;
 
-			} else {
+			}else if(option == Button.O_MOVE_MENU){
+				optionLocator= Locators.zMoveTaskMenuItem;
+				page = new DialogMove(MyApplication, this);
+			
+			}else if(option == Button.O_EDIT){
+				optionLocator= Locators.zEditTaskMenuItem;
+				page = new FormTaskNew(this.MyApplication);
+			
+			}else if(option == Button.O_SHOW_ORIGINAL){
+				optionLocator= Locators.zShowOrigTaskMenuItem;
+				
+				page = new SeparateWindowShowOriginal(this.MyApplication);
+				((SeparateWindowShowOriginal)page).zInitializeWindowNames();
+				this.zClickAt(optionLocator,"");
+				this.zWaitForBusyOverlay();
+				
+				return (page);
+
+			}else if(option == Button.O_PRINT_MENU){
+				optionLocator= Locators.zPrintTaskMenuItem;
+				
+				page = new SeparateWindowPrintPreview(this.MyApplication);
+				((SeparateWindowPrintPreview)page).zInitializeWindowNames();
+				this.zClickAt(optionLocator,"");
+				this.zWaitForBusyOverlay();
+				
+				return (page);
+			
+			}else {
 				throw new HarnessException("implement action:" + action
 						+ " option:" + option);
 			}
 
 			// click on the option
-			this.zClick(optionLocator);
+			this.zClickAt(optionLocator,"");
 
 			this.zWaitForBusyOverlay();
 
@@ -414,7 +450,11 @@ public class PageTasks extends AbsTab {
 
 		// Based on the button specified, take the appropriate action(s)
 		//
-		if (button == Button.B_NEW) {
+		if (button == Button.B_REFRESH) {
+
+			return (((AppAjaxClient)this.MyApplication).zPageMain.zToolbarPressButton(Button.B_REFRESH));
+
+		} else if (button == Button.B_NEW) {
 
 			// New button
 			locator = Locators.zNewTask;
@@ -424,7 +464,7 @@ public class PageTasks extends AbsTab {
 
 		} else if (button == Button.B_EDIT) {
 
-			locator = "zb__TKL__EDIT_left_icon";
+			locator = "zb__TKL-main__EDIT_left_icon";
 
 			// Check if the button is enabled
 			if (this.sIsElementPresent("css=td#" + locator + " div[class*=ZDisabledImage]")){ 
@@ -435,7 +475,7 @@ public class PageTasks extends AbsTab {
 
 		} else if (button == Button.B_DELETE) {
 
-			locator = "zb__TKL__DELETE_left_icon";
+			locator = "zb__TKL-main__DELETE_left_icon";
 
 			// Check if the button is enabled
 			if (this.sIsElementPresent("css=td#" + locator + " div[class*=ZDisabledImage]")){ 
@@ -445,7 +485,7 @@ public class PageTasks extends AbsTab {
 
 		} else if (button == Button.B_MOVE) {
 
-			locator = "zb__TKL__MOVE_left_icon";
+			locator = "zb__TKL-main__MOVE_left_icon";
 
 			// Check if the button is enabled
 			if (this.sIsElementPresent("css=td#" + locator + " div[class*=ZDisabledImage]")){ 
@@ -458,7 +498,7 @@ public class PageTasks extends AbsTab {
 
 		} else if (button == Button.B_PRINT) {
 
-			locator = "zb__TKL__PRINT_left_icon";
+			locator = "zb__TKL-main__PRINT_left_icon";
 
 			// Check if the button is enabled
 			if (this.sIsElementPresent("css=td#" + locator + " div[class*=ZDisabledImage]")){ 
@@ -470,8 +510,9 @@ public class PageTasks extends AbsTab {
 			throw new HarnessException("implement Print dialog");
 
 		} else if (button == Button.B_SAVE) {
-			locator = "zb__TKE1__SAVE_left_icon";
-			page = new FormTaskNew(this.MyApplication);
+			locator = "css=div[id^='ztb__TKE'] div[id$='__SAVE']";
+			page = null;
+			//page = new FormTaskNew(this.MyApplication);
 
 		} else if (button == Button.B_TAG) {
 
@@ -481,7 +522,7 @@ public class PageTasks extends AbsTab {
 			// zToolbarPressPulldown(Button, Button)
 			//
 
-			locator = "zb__TKL__TAG_MENU_dropdown";
+			locator = "zb__TKL-main__TAG_MENU_dropdown";
 
 			// Check if the button is enabled
 			if (this.sIsElementPresent("css=td#" + locator + " div[class*=ZDisabledImage]")){ 
@@ -492,7 +533,9 @@ public class PageTasks extends AbsTab {
 		} else if (button == Button.B_TASK_FILTERBY) {
 			throw new HarnessException("implement me");
 		} else if (button == Button.B_TASK_MARKCOMPLETED) {
-			throw new HarnessException("implement me");
+			locator= Locators.zMarkAsCompleted;		
+			page = null;
+			
 		} else {
 			throw new HarnessException("no logic defined for button " + button);
 		}
@@ -503,7 +546,7 @@ public class PageTasks extends AbsTab {
 
 		// Default behavior, process the locator by clicking on it
 		//
-		this.zClick(locator);
+		this.zClickAt(locator,"");
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
@@ -540,7 +583,8 @@ public class PageTasks extends AbsTab {
 
 				pulldownLocator = "css=td[id$='__TAG_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
 
-				optionLocator = "css=td[id$='__TAG_MENU|MENU|NEWTAG_title']";
+				//optionLocator = "css=td[id$='__TAG_MENU|MENU|NEWTAG_title']";
+				optionLocator="css=div[id='zb__TKL-main__TAG_MENU|MENU'] div[id='tasks_newtag']";
 
 				page = new DialogTag(this.MyApplication, this);
 
@@ -549,7 +593,9 @@ public class PageTasks extends AbsTab {
 
 				pulldownLocator = "css=td[id$='__TAG_MENU_dropdown']>div[class='ImgSelectPullDownArrow']";
 
-				optionLocator = "css=td[id$='__TAG_MENU|MENU|REMOVETAG_title']";
+				//optionLocator = "css=td[id$='__TAG_MENU|MENU|REMOVETAG_title']";
+				optionLocator="css=div[id='zb__TKL-main__TAG_MENU|MENU'] div[id='tasks_removetag']";
+				
 
 				page = null;
 
@@ -562,13 +608,63 @@ public class PageTasks extends AbsTab {
 			if(option == Button.O_NEW_TAG){
 
 				pulldownLocator = Locators.zNewTaskDropDown;
-
 				optionLocator= Locators.zNewTagMenuItem;
 
 				page = new DialogTag(this.MyApplication, this);
-			}else{
+			}else if(option==Button.O_NEW_TASK){
+				
+				pulldownLocator = Locators.zNewTaskDropDown;
+				optionLocator= Locators.zNewTaskMenuItem;
+				
+				page = new FormTaskNew(this.MyApplication);
+				
+			}else if(option==Button.O_NEW_TASKFOLDER){
+				
+				pulldownLocator = Locators.zNewTaskDropDown;
+				optionLocator= Locators.zNewTaskFolderMenuItem;
+				
+				page = new DialogCreateTaskFolder(this.MyApplication, this);
+				
+			}
+			else{
 				throw new HarnessException(	"no logic defined for pulldown/option " + pulldown+ "/" + option);
 			}
+
+		}else if (pulldown == Button.B_MOVE) {
+		
+			pulldownLocator = Locators.zMoveTaskDropDown;
+			optionLocator = Locators.zNewTaskListMenuItem;
+
+			page = new DialogCreateTaskFolder(this.MyApplication, this);
+
+		}else if (pulldown == Button.B_PRINT) {
+		
+			page = new SeparateWindowPrintPreview(this.MyApplication);
+			((SeparateWindowPrintPreview)page).zInitializeWindowNames();
+
+			// Click the pulldown
+			pulldownLocator = Locators.zPrintTaskDropDown;
+			this.zClickAt(pulldownLocator,"");
+			zWaitForBusyOverlay();
+
+			if(option== Button.O_PRINT_TASKFOLDER){
+				// Click the pulldown option, if specified
+				optionLocator = Locators.zPrintTaskFolder;
+				this.zClickAt(optionLocator,"");
+				zWaitForBusyOverlay();
+			}
+			
+			return (page);
+
+		}else if (pulldown == Button.B_TASK_FILTERBY) {
+			
+			if(option==Button.O_TASK_TODOLIST){
+				
+				pulldownLocator= Locators.zFilterByTaskDropDown;
+				optionLocator=Locators.zToDoListTaskMenuItem;
+				
+				page=null;
+			}			
 
 		}
 		// Default behavior
@@ -581,8 +677,8 @@ public class PageTasks extends AbsTab {
 						+ " not present!");
 			}
 
-			this.zClick(pulldownLocator);
-
+			this.zClickAt(pulldownLocator,"");
+			SleepUtil.sleepMedium();
 			// If the app is busy, wait for it to become active
 			zWaitForBusyOverlay();
 
@@ -595,7 +691,7 @@ public class PageTasks extends AbsTab {
 							+ optionLocator + " not present!");
 				}
 
-				this.zClick(optionLocator);
+				this.zClickAt(optionLocator,"");
 
 				// If the app is busy, wait for it to become active
 				zWaitForBusyOverlay();
@@ -612,106 +708,153 @@ public class PageTasks extends AbsTab {
 
 
 	}
+	/**
+	 * Activate a pulldown with dynamic values, such as "Move to folder" and "Add a tag".
+	 * 
+	 * @param pulldown the toolbar button to press
+	 * @param dynamic the toolbar item to click such as FolderItem or TagItem
+	 * @throws HarnessException 
+	 */
+	public AbsPage zToolbarPressPulldown(Button pulldown, Object dynamic)
+			throws HarnessException {
+		logger.info(myPageName() + " zToolbarPressButtonWithPulldown("
+				+ pulldown + ", " + dynamic + ")");
+
+		tracer.trace("Click pulldown " + pulldown + " then " + dynamic);
+
+		if (pulldown == null)
+			throw new HarnessException("Pulldown cannot be null!");
+
+		if (dynamic == null)
+			throw new HarnessException("Option cannot be null!");
+
+		// Default behavior variables
+		String pulldownLocator = null; // If set, this will be expanded
+		String optionLocator = null; // If set, this will be clicked
+		AbsPage page = null; // If set, this page will be returned
+
+		if (pulldown == Button.B_MOVE) {
+
+			if (!(dynamic instanceof FolderItem))
+				throw new HarnessException("if pulldown = " + Button.B_MOVE
+						+ ", then dynamic must be FolderItem");
+
+			FolderItem folder = (FolderItem) dynamic;
+			pulldownLocator = Locators.zMoveTaskDropDown;
+			optionLocator = "css=td#zti__ZmFolderChooser_TasksTKL-main__"+ folder.getId() + "_textCell";
+
+			page = null;
+
+		} else {
+
+			throw new HarnessException("no logic defined for pulldown/dynamic "
+					+ pulldown + "/" + dynamic);
+
+		}
+
+		// Default behavior
+		if (pulldownLocator != null) {
+
+			// Make sure the locator exists
+			if (!this.sIsElementPresent(pulldownLocator)) {
+				throw new HarnessException("Button " + pulldown
+						+ " pulldownLocator " + pulldownLocator
+						+ " not present!");
+			}
+
+			this.zClickAt(pulldownLocator, "");
+
+			// If the app is busy, wait for it to become active
+			zWaitForBusyOverlay();
+
+			SleepUtil.sleepSmall();
+
+			if (optionLocator != null) {
+
+				// Make sure the locator exists
+				if (!this.sIsElementPresent(optionLocator)) {
+					throw new HarnessException(" dynamic " + dynamic
+							+ " optionLocator " + optionLocator
+							+ " not present!");
+				}
+
+				this.zClickAt(optionLocator, "");
+
+				// If the app is busy, wait for it to become active
+				zWaitForBusyOverlay();
+			}
+
+			// If we click on pulldown/option and the page is specified, then
+			// wait for the page to go active
+			if (page != null) {
+				page.zWaitForActive();
+			}
+
+		}
+
+		// Return the specified page, or null if not set
+		return (page);
+
+	}
 
 	public enum TaskStatus {
 		PastDue, Upcoming, NoDueDate
 	}
 
 	/**
-	 * Get all tasks in the specified section
-	 * 
-	 * @param status
+	 * Given a task ID, look for the GUI display of the item
+	 * @param css Locator to the task row (i.e. css=div[id='zli__TKL__261'])
 	 * @return
 	 * @throws HarnessException
 	 */
-	public List<TaskItem> zGetTasks(TaskStatus status) throws HarnessException {
+	private TaskItem parseTaskRow(String css) throws HarnessException {
+		logger.info("TASK: " + css);		
+		// See http://bugzilla.zimbra.com/show_bug.cgi?id=56452
 
-		List<TaskItem> items = null;
+		if ( !this.sIsElementPresent(css) )
+			throw new HarnessException("Unable to locate task: "+ css);
+		
+		
+		TaskItem item = new TaskItem();
 
-		// The task page has the following under the zl__TKL__rows div:
-		// <div id='_newTaskBannerId' .../> -- enter a new task
-		// <div id='_upComingTaskListHdr' .../> -- Past due
-		// <div id='zli__TKL__267' .../> -- Task item
-		// <div id='zli__TKL__299' .../> -- Task item
-		// <div id='_upComingTaskListHdr' .../> -- Upcoming
-		// <div id='zli__TKL__271' .../> -- Task item
-		// <div id='zli__TKL__278' .../> -- Task item
-		// <div id='zli__TKL__275' .../> -- Task item
-		// <div id='_upComingTaskListHdr' .../> -- No due date
-		// <div id='zli__TKL__284' .../> -- Task item
-		// <div id='zli__TKL__290' .../> -- Task item
 
-		// How many items are in the table?
-		String rowLocator = "//div[@id='" + Locators.zl__TKL__rows + "']";
-		int count = this.sGetXpathCount(rowLocator);
-		logger.debug(myPageName() + " zGetTasks: number of rows: " + count);
+		// Is it checked?
+		// <div id="zlif__TKL__258__se" style="" class="ImgCheckboxUnchecked"></div>
+		item.gIsChecked = this.sIsElementPresent(css + " div[id$='__se'][class='ImgCheckboxChecked']");
 
-		// Get each conversation's data from the table list
-		for (int i = 1; i <= count; i++) {
-			String tasklocator = rowLocator + "/div[" + i + "]";
+		// TODO: handle tags
+		// Is it tagged?
+		// <div id="zlif__TKL__258__tg" style="" class="ImgBlank_16"></div>
+		this.sIsElementPresent(css + " div[id$='__tg'][class='ImgBlank_16']");
 
-			String id = this.sGetAttribute("xpath=(" + tasklocator + ")@id");
-			if (Locators._newTaskBannerId.equals(id)) {
-				// Skip the "Add New Task" row
-				continue;
-			} else if (Locators._upComingTaskListHdr.equals(id)) {
-				// Found a status separator
-
-				String text = this.sGetText(tasklocator);
-				if (("Past Due".equals(text)) && (status == TaskStatus.PastDue)) {
-
-					items = new ArrayList<TaskItem>();
-					continue;
-
-				} else if (("Upcoming".equals(text))
-						&& (status == TaskStatus.Upcoming)) {
-
-					items = new ArrayList<TaskItem>();
-					continue;
-
-				} else if (("No Due Date".equals(text))
-						&& (status == TaskStatus.NoDueDate)) {
-
-					items = new ArrayList<TaskItem>();
-					continue;
-
-				}
-
-				// If a list already exists, then we've just completed it
-				if (items != null)
-					return (items);
-
-			} else if (id.contains(Locators.zli__TKL__)) {
-				// Found a task
-
-				// If the list is initialized, then we are in the correct list
-				// section
-				if (items == null)
-					continue;
-
-				TaskItem item = new TaskItem();
-
-				// TODO: extract the info from the GUI
-
-				items.add(item);
-				logger.info(item.prettyPrint());
-
-			} else {
-				logger.warn("Unknown task row ID: " + id);
-				continue;
-			}
+		// What's the priority?
+		item.gPriority = "normal";
+		if ( this.sIsElementPresent(css + " td[id$='__pr'] div[class*='ImgPriorityHigh_list']") )  {
+			item.gPriority = "high";
+		} else if ( this.sIsElementPresent(css + "td[id$='__pr'] div[class*='ImgPriorityLow_list']") )  {
+			
+		} else {
+			item.gPriority = "normal";
 		}
 
-		// If items is still null, then we didn't find any matching tasks
-		// Just return an empty list
-		if (items == null)
-			items = new ArrayList<TaskItem>();
+		// Is there an attachment?
+		item.gHasAttachments = this.sIsElementPresent(css + " div[id$='__at'][class*='ImgAttachment']");		
+		
+		// Get the subject
+		item.gSubject = this.sGetText(css + " td[id$='__su']").trim();
 
-		// Return the list of items
-		return (items);
+		// Get the status
+		item.gStatus = this.sGetText(css + " td[id$='__st']").trim();
 
+		// Get the % complete
+		item.gPercentComplete = this.sGetText(css + " td[id$='__pc']").trim();
+
+		// Get the due date
+		item.gDueDate = this.sGetText(css + " td[id$='__dt']").trim();
+
+		return (item);
 	}
-
+	
 	/**
 	 * Get all tasks from the current view
 	 * 
@@ -736,97 +879,43 @@ public class PageTasks extends AbsTab {
 		// <div id='zli__TKL__290' .../> -- Task item
 
 		// How many items are in the table?
-		//String rowLocator= "css=div[id='"+ Locators.zl__TKL__rows +"'] div";
-		String rowLocator = "//div[@id='" + Locators.zl__TKL__rows + "']/div";
-		int count = this.sGetXpathCount(rowLocator);
+		// findTask(subject);
+		String rowLocator = "css=div[id='" + Locators.zl__TKL__rowsID + "']>div";
+		int count = this.sGetCssCount(rowLocator);
 		logger.debug(myPageName() + " zGetTasks: number of rows: " + count);
 
-		// Get each conversation's data from the table list
-		for (int i = 1; i <= count; i++) {
+		if ( count < 1 ) 
+			throw new HarnessException("No tasks in the list!");
 
-			String itemLocator = rowLocator + "[" + i + "]";
+		
+		String itemLocator = rowLocator + ":first-child";			
+			
+		// Get each conversation's data from the table list
+		for (int i = 1; i <count; i++) {
+			itemLocator = itemLocator + " + div ";
+			//String itemLocator = rowLocator + ":nth-of-type("+ i +")";
+			if ( !this.sIsElementPresent(itemLocator) )
+				throw new HarnessException("Item Locator not present: "+ itemLocator);
 
 			String id;
 			try {
-				id = this.sGetAttribute("xpath=(" + itemLocator + ")@id");
+				id = this.sGetAttribute(itemLocator + "@id");
+				if ( id == null )
+					throw new HarnessException("id was null: "+ itemLocator + "@id");
+				if ( !id.startsWith(Locators.zli__TKL__) )
+					continue; // _newTaskBannerId, etc.
+
 			} catch (SeleniumException e) {
-				// Make sure there is an ID
-				logger.warn("Task row didn't have ID.  Probably normal if message is 'Could not find element attribute' => "+ e.getMessage());
+				logger.warn("No ID on item: "+ itemLocator);
 				continue;
 			}
 
-			String locator = null;
-			//	String attr = null;
 
-			// Skip any invalid IDs
-			if ((id == null) || (id.trim().length() == 0))
-				continue;
+			// Found a task
 
-			// Look for zli__TKL__258
-			if (id.contains(Locators.zli__TKL__)) {
-				// Found a task
-
-				TaskItem item = new TaskItem();
-
-				logger.info("TASK: " + id);
-
-				// Is it checked?
-				// <div id="zlif__TKL__258__se" style=""
-				// class="ImgCheckboxUnchecked"></div>
-				locator = itemLocator
-				+ "//div[contains(@class, 'ImgCheckboxUnchecked')]";
-				item.gIsChecked = this.sIsElementPresent(locator);
-
-				// Is it tagged?
-				// <div id="zlif__TKL__258__tg" style=""
-				// class="ImgBlank_16"></div>
-				locator = itemLocator + "//div[contains(@id, '__tg')]";
-				// TODO: handle tags
-
-				// What's the priority?
-				locator = itemLocator
-				+ "//td[contains(@id, '__pr')]/center/div";
-				if (!this.sIsElementPresent(locator)) {
-					item.gPriority = "normal";
-				} else {
-					locator = "css=div#zl__TKL__rows tr[id$='__rw'] td[id$='__pr'] center div[class*='ImgPriorityHigh']";
-					logger.info(this.sIsElementPresent(locator));
-					if (this.sIsElementPresent(locator)) {
-						item.gPriority = "high";
-					} else{
-						item.gPriority = "low";
-					}
-				}
-
-				// Is there an attachment?
-				locator= "css=div#zl__TKL__rows tr[id$='__rw'] td.Attach div[id$='__at'][class*='ImgBlank']";
-				if (this.sIsElementPresent(locator)) {
-					item.gHasAttachments = false;
-				} else {
-					// TODO - handle other attachment types
-				}
-				// See http://bugzilla.zimbra.com/show_bug.cgi?id=56452
-
-				// Get the subject
-				locator = itemLocator + "//td[5]";
-				item.gSubject = this.sGetText(locator).trim();
-
-				// Get the status
-				locator = itemLocator + "//td[6]";
-				item.gStatus = this.sGetText(locator).trim();
-
-				// Get the % complete
-				locator = itemLocator + "//td[7]";
-				item.gPercentComplete = this.sGetText(locator).trim();
-
-				// Get the due date
-				locator = itemLocator + "//td[8]";
-				item.gDueDate = this.sGetText(locator).trim();
-
-				items.add(item);
-				logger.info(item.prettyPrint());
-
-			}
+			TaskItem item = parseTaskRow("css=div[id='"+ id +"']");
+			items.add(item);
+			logger.info(item.prettyPrint());
 
 		}
 
@@ -836,7 +925,7 @@ public class PageTasks extends AbsTab {
 	}
 	@Override
 	public AbsPage zKeyboardShortcut(Shortcut shortcut) throws HarnessException {
-
+		String keyCode = "";
 		if (shortcut == null)
 			throw new HarnessException("Shortcut cannot be null");
 
@@ -849,9 +938,64 @@ public class PageTasks extends AbsTab {
 			// "New Message" shortcuts result in a compose form opening
 			//page = new FormMailNew(this.MyApplication);
 			page = new DialogTag(MyApplication,((AppAjaxClient) MyApplication).zPageTasks);
-		}
+			keyCode = "78,84";
+			
+		}else if(shortcut== Shortcut.S_ESCAPE){
+			page = new DialogWarning(
+					DialogWarning.DialogWarningID.SaveTaskChangeMessage,
+					this.MyApplication,
+					((AppAjaxClient)this.MyApplication).zPageTasks);	
+			
+			keyCode = "27";
+			
+		}else if ( shortcut == Shortcut.S_ASSISTANT ) {			
+			page = new DialogAssistant(MyApplication, ((AppAjaxClient) MyApplication).zPageTasks);
+			keyCode= "192";
+			
+		}else if ( shortcut == Shortcut.S_NEWTASK ) {			
+			//page = new DialogAssistant(MyApplication, ((AppAjaxClient) MyApplication).zPageTasks);
+			page= new FormTaskNew(this.MyApplication);
+			keyCode= "78,75";
+			
+		}else if ( shortcut == Shortcut.S_TASK_HARDELETE ) {			
+			page= null;
+			keyCode= "16,46";
+			
+		}else if (shortcut == Shortcut.S_MOVE) {
 
-		zKeyboard.zTypeCharacters(shortcut.getKeys());
+			// "Move" shortcut opens "Choose Folder" dialog
+			page = new DialogMove(MyApplication, this);
+
+			keyCode = "77";
+		}else if ( shortcut == Shortcut.S_BACKSPACE ) {			
+			page= null;
+			keyCode= "8";
+			
+		}else if (shortcut== Shortcut.S_MAIL_MOVETOTRASH){
+			
+			zKeyboard.zTypeCharacters(shortcut.getKeys());
+			page= null;
+			return page;
+		}else if (shortcut== Shortcut.S_PRINTTASK){
+			
+			page = new SeparateWindowPrintPreview(this.MyApplication);
+			((SeparateWindowPrintPreview)page).zInitializeWindowNames();
+
+			keyCode= "80";
+			zKeyDown(keyCode);
+			this.zWaitForBusyOverlay();
+
+			return (page);
+
+		}
+		
+		else{
+		
+			throw new HarnessException("implement shortcut: " + shortcut);
+		}
+		
+		zKeyDown(keyCode);
+		//zKeyboard.zTypeCharacters(shortcut.getKeys());
 
 		// If the app is busy, wait for it to become active
 		this.zWaitForBusyOverlay();
@@ -886,19 +1030,19 @@ public class PageTasks extends AbsTab {
 		return found;
 	}
 
-	/**
-	 * Dynamically wait (for 30 secs) until the task with the specified subject is found
-	 * @param subject Subject of the task to be searched for
-	 * @return TaskItem with the specified subject
-	 * @throws HarnessException
-	 */
-	public TaskItem findTask(String subject) throws HarnessException {
-		Object[] params = {subject};
-		return (TaskItem)GeneralUtility.waitFor(null, this, false, "browseTask", params,
-				WAIT_FOR_OPERAND.NEQ, null, 30000, 1000);
-	}
+//	/**
+//	 * Dynamically wait (for 30 secs) until the task with the specified subject is found
+//	 * @param subject Subject of the task to be searched for
+//	 * @return TaskItem with the specified subject
+//	 * @throws HarnessException
+//	 */
+//	public TaskItem findTask(String subject) throws HarnessException {
+//		Object[] params = {subject};
+//		return (TaskItem)GeneralUtility.waitFor(null, this, false, "browseTask", params,
+//				WAIT_FOR_OPERAND.NEQ, null, 30000, 1000);
+//	}
 
-	public String  GetShowOrigBodyText(String EmailAddress, String calItemId) throws HarnessException{
+	/*public String  GetShowOrigBodyText(String EmailAddress, String calItemId) throws HarnessException{
 
 		try{
 			sOpenWindow(ZimbraSeleniumProperties.getBaseURL() + "/home/" + EmailAddress + "/Tasks/?id=" + calItemId + "&mime=text/plain&noAttach=1","ShowOrignal");
@@ -911,5 +1055,19 @@ public class PageTasks extends AbsTab {
 		}finally{
 			ClientSessionFactory.session().selenium().selectWindow("null");	
 		}
+	}*/
+	
+	public String zGetHtmlBodyText() throws HarnessException {
+		try {
+			//sSelectFrame("css=iframe[id='zv__TKL_body__iframe']");
+			sSelectFrame("css=div[id='zv__TKL-main'] iframe[id$='__body__iframe']");
+			String bodyhtml = this.sGetHtmlSource();
+			return bodyhtml;
+		} finally {
+			this.sSelectFrame("relative=top");
+		}
+
 	}
+
+
 }

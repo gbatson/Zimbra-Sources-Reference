@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.admin.core;
 
 import org.apache.log4j.LogManager;
@@ -25,8 +9,6 @@ import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.BeforeSuite;
 
-
-import com.thoughtworks.selenium.DefaultSelenium;
 import com.thoughtworks.selenium.SeleniumException;
 import com.zimbra.qa.selenium.framework.core.ClientSessionFactory;
 import com.zimbra.qa.selenium.framework.ui.AbsTab;
@@ -96,7 +78,7 @@ public class AdminCommonTest {
 			ClientSessionFactory.session().selenium().windowMaximize();
 			ClientSessionFactory.session().selenium().windowFocus();
 			ClientSessionFactory.session().selenium().allowNativeXpath("true");
-			ClientSessionFactory.session().selenium().setTimeout(timeout);
+			ClientSessionFactory.session().selenium().setTimeout("30000");
 			ClientSessionFactory.session().selenium().open(ZimbraSeleniumProperties.getBaseURL());
 			
 		} catch (SeleniumException e) {

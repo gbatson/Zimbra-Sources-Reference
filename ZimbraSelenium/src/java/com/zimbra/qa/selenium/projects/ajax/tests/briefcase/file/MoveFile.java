@@ -1,20 +1,6 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.file;
+
+import java.util.HashMap;
 
 import org.testng.annotations.Test;
 
@@ -22,29 +8,34 @@ import com.zimbra.qa.selenium.framework.items.FileItem;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.ui.Shortcut;
-import com.zimbra.qa.selenium.framework.util.GeneralUtility;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
 
 import org.testng.annotations.AfterMethod;
 import com.zimbra.qa.selenium.framework.items.FolderItem;
 import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 
-public class MoveFile extends AjaxCommonTest {
+public class MoveFile extends FeatureBriefcaseTest {
 
-	public MoveFile() {
+	public MoveFile() throws HarnessException {
 		logger.info("New " + MoveFile.class.getCanonicalName());
 
 		super.startingPage = app.zPageBriefcase;
 
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains("FOSS")){
+		    super.startingAccountPreferences.put("zimbraPrefShowSelectionCheckbox","TRUE");
+		}
+	
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");				
+			
 		// Make sure we are using an account with message view
-		// super.startingAccountPreferences = new HashMap<String, String>()
-		// {{put("zimbraPrefGroupMailBy", "message");}};
+		// super.startingAccountPreferences.put("zimbraPrefGroupMailBy", "message");
 	}
 
 	@Test(description = "Upload file through RestUtil - move & verify through GUI", groups = { "smoke" })
@@ -58,7 +49,7 @@ public class MoveFile extends AjaxCommonTest {
 
 		String name = "subFolder" + ZimbraSeleniumProperties.getUniqueString();
 
-		// Create a subfolder to move the message into i.e. Briefcase/subfolder
+		// Create a subfolder to move the file into i.e. Briefcase/subfolder
 		account.soapSend("<CreateFolderRequest xmlns='urn:zimbraMail'>"
 				+ "<folder name='" + name + "' l='" + briefcaseFolderId + "'/>"
 				+ "</CreateFolderRequest>");
@@ -100,9 +91,14 @@ public class MoveFile extends AjaxCommonTest {
 
 		SleepUtil.sleepVerySmall();
 		
-		// Click on created file
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Click on 'Move selected item' icon in toolbar
 		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains(
 		"8.0.")){
@@ -203,9 +199,14 @@ public class MoveFile extends AjaxCommonTest {
 
 		SleepUtil.sleepVerySmall();
 
-		// Click on created file in list view
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Click the Move keyboard shortcut
 		DialogMove chooseFolder = (DialogMove) app.zPageBriefcase
 				.zKeyboardShortcut(shortcut);
@@ -213,9 +214,8 @@ public class MoveFile extends AjaxCommonTest {
 		// Choose destination folder and Click OK on Confirmation dialog
 		chooseFolder.zClickTreeFolder(subFolders[1]);
 
-		chooseFolder.zClickButton(Button.B_OK);
-
-		// app.zPageBriefcase.zClickAt("css=div[id=ChooseFolderDialog_button2],"0,0");
+		//chooseFolder.zClickButton(Button.B_OK);
+		app.zPageBriefcase.zClickAt("css=div[id=ChooseFolderDialog_button2]","0,0");
 
 		// click on sub-folder1 in tree view
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, subFolders[0], false);
@@ -257,7 +257,6 @@ public class MoveFile extends AjaxCommonTest {
 		app.zTreeBriefcase.zTreeItem(Action.A_LEFTCLICK, folderItem, true);
 
 		// Click on created subfolder
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, subFolderItem);
 
 		// Create file item
@@ -289,9 +288,14 @@ public class MoveFile extends AjaxCommonTest {
 
 		SleepUtil.sleepVerySmall();
 		
-		// Click on created file
-		app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		if(ZimbraSeleniumProperties.zimbraGetVersionString().contains(
+    			"FOSS")){
+		    app.zPageBriefcase.zListItem(Action.A_BRIEFCASE_CHECKBOX, fileItem);
 
+		}else{
+		    app.zPageBriefcase.zListItem(Action.A_LEFTCLICK, fileItem);
+		}
+		
 		// Move using Right Click Context Menu 
 		DialogMove chooseFolder = (DialogMove) app.zPageBriefcase
 		.zListItem(Action.A_RIGHTCLICK, Button.O_MOVE, fileItem);

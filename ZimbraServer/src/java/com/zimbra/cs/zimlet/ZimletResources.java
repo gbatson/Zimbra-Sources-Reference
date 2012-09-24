@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -92,6 +92,8 @@ public class ZimletResources extends DiskCacheServlet {
         if (!pathInfo.startsWith(RESOURCE_PATH)) {
             // handle requests for individual files included in zimlet in case dev=1 is set.
             ServletContext targetContext = getServletConfig().getServletContext().getContext("/zimlet");
+            if (targetContext == null)
+                throw new ServletException("Could not forward the request to zimlet webapp, possible misconfiguration.");
             RequestDispatcher dispatcher = targetContext.getRequestDispatcher(pathInfo);
             dispatcher.forward(req, resp);
             return;
@@ -124,7 +126,7 @@ public class ZimletResources extends DiskCacheServlet {
 
             // zimlet messages
             if (type.equals(T_JAVASCRIPT)) {
-                String mailUrl = "/zimbra";
+                String mailUrl = "/";
                 try {
                     mailUrl = Provisioning.getInstance().getLocalServer().getMailURL();
                 } catch (Exception e) {
@@ -510,6 +512,10 @@ public class ZimletResources extends DiskCacheServlet {
 
         public void write(int i) throws IOException {
             out.write(i);
+        }
+        
+        public void write(byte[] b, int off, int len) throws IOException {
+            out.print(new String(b, off, len, "UTF-8"));
         }
 
         public void print(boolean b) throws IOException {

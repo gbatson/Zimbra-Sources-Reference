@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -333,7 +334,21 @@ public class Props2JsServlet extends HttpServlet {
                     basedir, dirname, classname);
                 
                 // load path list, but not actual properties to prevent caching
-                ResourceBundle.getBundle(basename, locale, loader);
+                ResourceBundle.getBundle(basename, locale, loader,  new ResourceBundle.Control()
+                {
+                    @Override
+                    public List<Locale> getCandidateLocales(String baseName, Locale locale)
+                    {
+                        if (baseName == null) throw new NullPointerException();
+                        if (locale.equals(new Locale("zh", "HK")) || locale.equals(new Locale("zh", "CN")))
+                        {
+                            return Arrays.asList(
+                                    locale,
+                                    Locale.ROOT);
+                        }
+                        return super.getCandidateLocales(baseName, locale);
+                    }
+                });
                 for (File file : loader.getFiles()) {
                     Props2Js.convert(out, file, classname);
                 }

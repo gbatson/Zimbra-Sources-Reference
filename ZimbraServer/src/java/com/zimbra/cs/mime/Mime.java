@@ -48,19 +48,23 @@ import javax.mail.Part;
 import javax.mail.Session;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
+import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.internet.MimePart;
 import javax.mail.internet.MimeUtility;
 import javax.mail.internet.ParseException;
+import javax.mail.util.SharedFileInputStream;
 
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.net.QCodec;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import com.ibm.icu.text.CharsetDetector;
 import com.ibm.icu.text.CharsetMatch;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.ContentDisposition;
 import com.zimbra.common.mime.ContentType;
 import com.zimbra.common.mime.MimeConstants;
@@ -72,6 +76,7 @@ import com.zimbra.common.util.LogFactory;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.zmime.ZInternetHeader;
+import com.zimbra.common.zmime.ZMimeBodyPart;
 import com.zimbra.common.zmime.ZMimeMessage;
 import com.zimbra.common.zmime.ZMimeMultipart;
 import com.zimbra.common.zmime.ZMimePart;
@@ -147,7 +152,19 @@ public class Mime {
      * @throws MessagingException
      */
     public static List<MPartInfo> getParts(MimeMessage mm) throws IOException, MessagingException {
-        List<MPartInfo> parts = listParts(mm);
+        return getParts(mm, null);
+    }
+
+    /**
+     * return complete List of MPartInfo objects.
+     * @param mm
+     * @param defaultCharset - user's default charset for cases where it is needed
+     * @return
+     * @throws IOException
+     * @throws MessagingException
+     */
+    public static List<MPartInfo> getParts(MimeMessage mm, String defaultCharset) throws IOException, MessagingException {
+        List<MPartInfo> parts = listParts(mm, defaultCharset);
         Set<MPartInfo> bodies = getBody(parts, true);
         for (MPartInfo mpi : parts) {
             mpi.mIsFilterableAttachment = isFilterableAttachment(mpi, bodies);
@@ -157,12 +174,13 @@ public class Mime {
         return parts;
     }
 
-    private static List<MPartInfo> listParts(MimePart root) throws MessagingException, IOException {
+    private static List<MPartInfo> listParts(MimePart root, String defaultCharset) throws MessagingException, IOException {
         List<MPartInfo> parts = new ArrayList<MPartInfo>();
 
         LinkedList<MPartInfo> queue = new LinkedList<MPartInfo>();
         queue.add(generateMPartInfo(root, null, "", 0));
 
+        MimeMultipart emptyMultipart = null;
         while (!queue.isEmpty()) {
             MPartInfo mpart = queue.removeFirst();
             MimePart mp = mpart.getMimePart();
@@ -180,6 +198,15 @@ public class Mime {
                 }
                 MimeMultipart multi = getMultipartContent(mp, cts);
                 if (multi != null) {
+                    if (multi.getCount() == 0 && LC.mime_promote_empty_multipart.booleanValue()) {
+                        if (emptyMultipart == null) {
+                            emptyMultipart = multi;
+                        }
+                        if (MimeConstants.CT_MULTIPART_APPLEDOUBLE.equalsIgnoreCase(getContentType(mp))) {
+                            ZimbraLog.misc.debug("appledouble with no children; assuming it is malformed and really applefile");
+                            mpart.mContentType = mpart.mContentType.replace(MimeConstants.CT_MULTIPART_APPLEDOUBLE, MimeConstants.CT_APPLEFILE);
+                        }
+                    }
                     mpart.mChildren = new ArrayList<MPartInfo>(multi.getCount());
                     for (int i = 1; i <= multi.getCount(); i++) {
                         mpart.mChildren.add(generateMPartInfo((MimePart) multi.getBodyPart(i - 1), mpart, prefix + i, i));
@@ -196,6 +223,20 @@ public class Mime {
             } else {
                 // nothing to do at this stage
             }
+        }
+
+        if (emptyMultipart != null && parts.size() == 1) {
+            ZimbraLog.misc.debug("single multipart with no children. promoting the preamble into a single text part");
+            parts.remove(0);
+            MPartInfo mpart = new MPartInfo();
+            ZMimeBodyPart mp = new  ZMimeBodyPart();
+            String text = emptyMultipart.getPreamble();
+            mp.setText(text, defaultCharset);
+            mpart.mPart = mp;
+            mpart.mContentType = mp.getContentType();
+            mpart.mDisposition = "";
+            mpart.mPartName = "1";
+            parts.add(mpart);
         }
 
         return parts;
@@ -543,10 +584,10 @@ public class Mime {
      *  Use this method instead of {@link Part#getContent()} to work around
      *  JavaMail's fascism about proper MIME format and failure to support
      *  RFC 2184.
-     *  
+     *
      *  @deprecated Use getTextReader() directly after calling repairTransferEncoding() as it's almost always
      *  necessary to drain and close the mimepart's input stream.
-     * 
+     *
      */
 
     @Deprecated
@@ -556,7 +597,7 @@ public class Mime {
     }
 
     public static void recursiveRepairTransferEncoding(MimeMessage mm) throws MessagingException, IOException {
-        for (MPartInfo mpi : listParts(mm)) {
+        for (MPartInfo mpi : listParts(mm, null)) {
             repairTransferEncoding(mpi.mPart);
         }
     }
@@ -696,8 +737,10 @@ public class Mime {
         }
 
         // Zimbra folder sharing notifications are not considered attachments.
-        if (ctype.equals(MimeConstants.CT_XML_ZIMBRA_SHARE))
+        if (ctype.equals(MimeConstants.CT_XML_ZIMBRA_SHARE) ||
+            ctype.equals(MimeConstants.CT_XML_ZIMBRA_DL_SUBSCRIPTION)) {
             return false;
+        }
 
         // computer-readable sections of multipart/reports aren't considered attachments
         if (ctype.equals("message/disposition-notification") || ctype.equals("message/delivery-status"))
@@ -1156,8 +1199,7 @@ public class Mime {
      */
     public static String getMessageID(MimeMessage mm) {
         try {
-            String msgid = mm.getMessageID();
-            return ("".equals(msgid) ? null : msgid);
+            return Strings.emptyToNull(mm.getMessageID());
         } catch (MessagingException e) {
             return null;
         }
@@ -1202,14 +1244,17 @@ public class Mime {
 
         String ctype = base.getContentType();
         List<MPartInfo> children;
-        if (ctype.equals(MimeConstants.CT_MULTIPART_ALTERNATIVE))
+        if (ctype.equals(MimeConstants.CT_MULTIPART_ALTERNATIVE)) {
             return getAlternativeBodySubpart(base.getChildren(), preferHtml);
-        else if (ctype.equals(MimeConstants.CT_MULTIPART_RELATED))
+        } else if (ctype.equals(MimeConstants.CT_MULTIPART_RELATED)) {
             return getRelatedBodySubpart(base.getChildren(), preferHtml, base.getContentTypeParameter("start"));
-        else if (ctype.equals(MimeConstants.CT_MULTIPART_MIXED) || !KNOWN_MULTIPART_TYPES.contains(ctype))
+        } else if (ctype.equals(MimeConstants.CT_MULTIPART_REPORT)) {
+            return getReportBodySubpart(base.getChildren(), preferHtml);
+        } else if (ctype.equals(MimeConstants.CT_MULTIPART_MIXED) || !KNOWN_MULTIPART_TYPES.contains(ctype)) {
             children = base.getChildren();
-        else
+        } else {
             children = Arrays.asList(base.getChildren().get(0));
+        }
 
         Set<MPartInfo> bodies = null;
         for (MPartInfo mpi : children) {
@@ -1297,12 +1342,43 @@ public class Mime {
         return setContaining(first);
     }
 
+    private static Set<MPartInfo> getReportBodySubpart(List<MPartInfo> children, boolean preferHtml) {
+        //get all text subparts which match the preferHtml argument
+        //if none match, return all alternative text subparts
+        Set<MPartInfo> subparts = new HashSet<MPartInfo>();
+        Set<MPartInfo> alternatives = new HashSet<MPartInfo>();
+        for (MPartInfo mpi : children) {
+            boolean isAttachment = mpi.getDisposition().equals(Part.ATTACHMENT);
+            // the Content-Type we want and the one we'd settle for...
+            String wantType = preferHtml ? MimeConstants.CT_TEXT_HTML : MimeConstants.CT_TEXT_PLAIN;
+            Set<String> altTypes = preferHtml ? HTML_ALTERNATES : TEXT_ALTERNATES;
+
+            String ctype = mpi.getContentType();
+            if (!isAttachment && ctype.equals(wantType)) {
+                subparts.add(mpi);
+            } else if (!isAttachment && altTypes.contains(ctype)) {
+                alternatives.add(mpi);
+            } else if (mpi.isMultipart()) {
+                Set<MPartInfo> body;
+                if ((body = getBodySubparts(mpi, preferHtml)) != null)
+                    subparts.addAll(body);
+            }
+        }
+
+        if (subparts.size() == 0) {
+            return (alternatives.size() == 0 ? null : alternatives);
+        } else {
+            return subparts;
+        }
+    }
+
+
     public static void main(String[] args) throws MessagingException, IOException {
         String s = URLDecoder.decode("Zimbra%20&#26085;&#26412;&#35486;&#21270;&#12398;&#32771;&#24942;&#28857;.txt", "utf-8");
         System.out.println(s);
         System.out.println(expandNumericCharacterReferences("Zimbra%20&#26085;&#26412;&#35486;&#21270;&#12398;&#32771;&#24942;&#28857;.txt&#x40;&;&#;&#x;&#&#3876;&#55"));
 
-        MimeMessage mm = new FixedMimeMessage(JMSession.getSession(), new com.zimbra.common.zmime.ZSharedFileInputStream("C:\\Temp\\mail\\24245"));
+        MimeMessage mm = new FixedMimeMessage(JMSession.getSession(), new SharedFileInputStream("C:\\Temp\\mail\\24245"));
         InputStream is = new RawContentMultipartDataSource(mm, new ContentType(mm.getContentType())).getInputStream();
         int num;
         byte buf[] = new byte[1024];
@@ -1363,5 +1439,68 @@ public class Mime {
             }
         }
         return false;
+    }
+
+
+    /** Returns the message-ids from the specified message header.  The
+     *  enclosing angle brackets and any embedded comments and quoted-strings
+     *  are stripped.  No duplicate elimination is performed. */
+    public static List<String> getReferences(MimeMessage mm, String header) {
+        try {
+            return getReferences(mm.getHeader(header, " "));
+        } catch (MessagingException e) {
+            return new ArrayList<String>(0);
+        }
+    }
+
+    /** Returns the message-ids from the specified message header.  The
+     *  enclosing angle brackets and any embedded comments and quoted-strings
+     *  are stripped.  No duplicate elimination is performed. */
+    public static List<String> getReferences(InternetHeaders headers, String header) {
+        return getReferences(headers.getHeader(header, " "));
+    }
+
+    private static List<String> getReferences(String hvalue) {
+        // going to need to send these back via SOAP, so best to sanitize them early
+        String value = StringUtil.stripControlCharacters(hvalue);
+
+        if (Strings.isNullOrEmpty(value)) {
+            return new ArrayList<String>(0);
+        }
+
+        List<String> refs = new ArrayList<String>();
+        boolean quoted = false, escaped = false, empty = true;
+        int pos = 0, astart = pos, end = value.length(), clevel = 0;
+
+        while (pos < end) {
+            char c = value.charAt(pos++);
+            if (c == '\r' || c == '\n') {
+                escaped = false;
+            } else if (quoted) {
+                quoted = escaped || c != '"';
+                escaped = !escaped && c == '\\';
+            } else if (c == '(' || clevel > 0) {
+                if (!escaped && (c == '(' || c == ')')) {
+                    clevel += c == '(' ? 1 : -1;
+                }
+                escaped = !escaped && c == '\\';
+            } else if (c == '"') {
+                quoted = true;
+                empty = false;
+            } else if (c == '>') {
+                if (!empty) {
+                    refs.add(new com.zimbra.common.mime.InternetAddress(value.substring(astart, pos)).getAddress());
+                }
+                empty = true;
+                astart = pos;
+            } else if (c != ' ' && c != '\t' && empty) {
+                empty = false;
+            }
+        }
+        if (!empty) {
+            refs.add(new com.zimbra.common.mime.InternetAddress(value.substring(astart, pos)).getAddress());
+        }
+
+        return refs;
     }
 }

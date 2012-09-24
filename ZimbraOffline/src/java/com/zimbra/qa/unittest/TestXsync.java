@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,33 +21,31 @@ import java.util.List;
 import java.util.Map;
 
 import com.zimbra.common.mailbox.ContactConstants;
-import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.offline.jsp.ConfigServlet;
 import com.zimbra.cs.offline.jsp.JspProvStub;
 import com.zimbra.cs.offline.jsp.ZmailBean;
-import com.zimbra.cs.zclient.ZAppointment;
-import com.zimbra.cs.zclient.ZContact;
-import com.zimbra.cs.zclient.ZDateTime;
-import com.zimbra.cs.zclient.ZEmailAddress;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZInvite;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZSearchFolder;
-import com.zimbra.cs.zclient.ZSearchParams;
-import com.zimbra.cs.zclient.ZTag;
-import com.zimbra.cs.zclient.ZMailbox.ZAppointmentResult;
-import com.zimbra.cs.zclient.ZMailbox.ZAttachmentInfo;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage;
-import com.zimbra.cs.zclient.ZMailbox.ZOutgoingMessage.MessagePart;
+import com.zimbra.client.ZAppointment;
+import com.zimbra.client.ZContact;
+import com.zimbra.client.ZEmailAddress;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMessage;
+import com.zimbra.client.ZSearchFolder;
+import com.zimbra.client.ZSearchParams;
+import com.zimbra.client.ZTag;
+import com.zimbra.client.ZMailbox.ZAppointmentResult;
+import com.zimbra.client.ZMailbox.ZAttachmentInfo;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage;
+import com.zimbra.client.ZMailbox.ZOutgoingMessage.MessagePart;
+import com.zimbra.soap.type.SearchSortBy;
 
 import junit.framework.TestCase;
 
@@ -169,7 +167,7 @@ public class TestXsync extends TestCase {
         String rawmessage = TestUtil.getTestMessage("MSGSRCH1");
         String msgId = TestUtil.addRawMessage(remoteMailbox, rawmessage);
         remoteMailbox.markMessageRead(msgId, false);
-        ZSearchFolder sf1 = remoteMailbox.createSearchFolder("" + Mailbox.ID_FOLDER_USER_ROOT, "SRCHF1", "is:unread", null, ZMailbox.SearchSortBy.dateDesc, ZFolder.Color.rgbColor.setRgbColor("#00CCCC"));
+        ZSearchFolder sf1 = remoteMailbox.createSearchFolder("" + Mailbox.ID_FOLDER_USER_ROOT, "SRCHF1", "is:unread", null, SearchSortBy.dateDesc, ZFolder.Color.rgbColor.setRgbColor("#00CCCC"));
         sync();
         ZSearchFolder cf1 = localMailbox.getSearchFolderById(sf1.getId());
         assertNotNull("local /SRCHF1", cf1);
@@ -178,21 +176,21 @@ public class TestXsync extends TestCase {
 
         //change the search query and check the searchfolder for unread message
         ZimbraLog.test.info("syncSearchFolder TEST 2");
-        localMailbox.modifySearchFolder(cf1.getId(), "is:read", null, ZMailbox.SearchSortBy.dateDesc);
+        localMailbox.modifySearchFolder(cf1.getId(), "is:read", null, SearchSortBy.dateDesc);
         remoteMailbox.markMessageRead(msgId, true);
         sync();
         assertEquals(0, TestUtil.search(cf1.getMailbox(), "is:unread").size());
 
         //conflict resolution - make changes in both local & remote accounts
         ZimbraLog.test.info("syncSearchFolder TEST 3");
-        localMailbox.modifySearchFolder(cf1.getId(), "is:unread", null, ZMailbox.SearchSortBy.dateDesc);
-        remoteMailbox.modifySearchFolder(sf1.getId(), "is:read", null, ZMailbox.SearchSortBy.dateDesc);
+        localMailbox.modifySearchFolder(cf1.getId(), "is:unread", null, SearchSortBy.dateDesc);
+        remoteMailbox.modifySearchFolder(sf1.getId(), "is:read", null, SearchSortBy.dateDesc);
         sync();
         assertEquals(0, TestUtil.search(cf1.getMailbox(), "is:unread").size());
 
         ZimbraLog.test.info("syncSearchFolder TEST 4");
         localMailbox.deleteFolder(cf1.getId());
-        remoteMailbox.modifySearchFolder(sf1.getId(), "is:read", null, ZMailbox.SearchSortBy.dateDesc);
+        remoteMailbox.modifySearchFolder(sf1.getId(), "is:read", null, SearchSortBy.dateDesc);
         sync();
         ZFolder cf5 = remoteMailbox.getFolderByPath("/SRCHF1");
         assertNull("local /F5", cf5);

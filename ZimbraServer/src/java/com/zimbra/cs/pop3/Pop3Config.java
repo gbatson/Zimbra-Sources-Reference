@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -16,6 +16,7 @@
 package com.zimbra.cs.pop3;
 
 import com.zimbra.common.localconfig.LC;
+import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.server.ServerConfig;
@@ -56,18 +57,33 @@ public class Pop3Config extends ServerConfig {
     }
 
     @Override
-    public int getShutdownGraceSeconds() {
-       return getIntAttr(A_zimbraPop3ShutdownGraceSeconds, super.getShutdownGraceSeconds());
+    public int getShutdownTimeout() {
+       return getIntAttr(A_zimbraPop3ShutdownGraceSeconds, super.getShutdownTimeout());
     }
 
     @Override
-    public int getMaxIdleSeconds() {
+    public int getMaxIdleTime() {
         return LC.pop3_max_idle_time.intValue();
     }
 
     @Override
-    public int getNumThreads() {
-        return getIntAttr(A_zimbraPop3NumThreads, super.getNumThreads());
+    public int getMaxThreads() {
+        return getIntAttr(A_zimbraPop3NumThreads, super.getMaxThreads());
+    }
+
+    @Override
+    public int getThreadKeepAliveTime() {
+        return LC.pop3_thread_keep_alive_time.intValue();
+    }
+
+    @Override
+    public int getMaxConnections() {
+        return getIntAttr(A_zimbraPop3MaxConnections, super.getMaxConnections());
+    }
+
+    @Override
+    public int getWriteTimeout() {
+        return LC.pop3_write_timeout.intValue();
     }
 
     @Override

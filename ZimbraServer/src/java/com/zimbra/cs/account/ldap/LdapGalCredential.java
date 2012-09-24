@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -56,23 +56,23 @@ public class LdapGalCredential {
         mKrb5Keytab = krb5Keytab;
     }
     
-    String getAuthMech() {
+    public String getAuthMech() {
         return mAuthMech;
     }
     
-    String getBindDn() {
+    public String getBindDn() {
         return mBindDn;
     }
     
-    String getBindPassword() {
+    public String getBindPassword() {
         return mBindPassword;
     }
     
-    String getKrb5Principal() {
+    public String getKrb5Principal() {
         return mKrb5Principal;
     }
     
-    String getKrb5Keytab() {
+    public String getKrb5Keytab() {
         return mKrb5Keytab;
     }
 }

@@ -1,3 +1,4 @@
+if(ZaSettings && ZaSettings.EnabledZimlet["com_zimbra_bulkprovision"]){
 function bulkprovision() {
 	
 }
@@ -32,18 +33,28 @@ bulkprovision.bulkprovOvTreeListener = function (ev) {
 
 bulkprovision.bulkprovOvTreeModifier = function (tree) {
 	if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.BULK_PROVISION_TASKS_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
-		if(!this._toolsTi) {
-			this._toolsTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
-			this._toolsTi.enableSelection(false);	
-			this._toolsTi.setText(ZaMsg.OVP_tools);
-			this._toolsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._TOOLS);
-		}
-	
-		this._bulkprovTi = new DwtTreeItem({parent:this._toolsTi,className:"AdminTreeItem"});
-		this._bulkprovTi.setText(com_zimbra_bulkprovision.OVP_bulkProvisioning);
-		this._bulkprovTi.setImage("BulkProvision");
-		this._bulkprovTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._BULK_PROVISION_TASKS_LIST);	
-		
+        if (!appNewUI) {
+            if(!this._toolsTi) {
+                this._toolsTi = new DwtTreeItem(tree, null, null, null, null, "overviewHeader");
+                this._toolsTi.enableSelection(false);
+                this._toolsTi.setText(ZaMsg.OVP_tools);
+                this._toolsTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._TOOLS);
+            }
+
+            this._bulkprovTi = new DwtTreeItem({parent:this._toolsTi,className:"AdminTreeItem"});
+            this._bulkprovTi.setText(com_zimbra_bulkprovision.OVP_bulkProvisioning);
+            this._bulkprovTi.setImage("BulkProvision");
+            this._bulkprovTi.setData(ZaOverviewPanelController._TID, ZaZimbraAdmin._BULK_PROVISION_TASKS_LIST);
+        } else {
+            var parentPath = ZaTree.getPathByArray([ZaMsg.OVP_home, ZaMsg.OVP_toolMig]);
+
+            var ti = new ZaTreeItemData({
+                                    parent:parentPath,
+                                    id:ZaId.getTreeItemId(ZaId.PANEL_APP,"magHV",null, "bpHV"),
+                                    text: com_zimbra_bulkprovision.OVP_bulkProvisioning,
+                                    mappingId: ZaZimbraAdmin._BULK_PROVISION_TASKS_LIST});
+            tree.addTreeItemData(ti);
+        }
 		if(ZaOverviewPanelController.overviewTreeListeners) {
 			ZaOverviewPanelController.overviewTreeListeners[ZaZimbraAdmin._BULK_PROVISION_TASKS_LIST] = bulkprovision.bulkprovOvTreeListener;
 		}
@@ -85,6 +96,32 @@ if(ZaOverviewPanelController.treeModifiers)
 	}
     ZaController.initToolbarMethods["ZaAccountListController"].push(ZaAccountListController.initExtraToolbarMethod);
 }*/
+ if(ZaTabView.XFormModifiers["ZaHomeXFormView"]) {
+
+    ZaHomeXFormView.onDoMigration = function (ev) {
+        ZaBulkProvisionTasksController.prototype.bulkDataImportListener.call(ZaApp.getInstance().getCurrentController(), ev);
+    }
+
+    bulkprovision.HomeXFormModifier = function(xFormObject) {
+        if(ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.BULK_PROVISION_TASKS_VIEW] || ZaSettings.ENABLED_UI_COMPONENTS[ZaSettings.CARTE_BLANCHE_UI]) {
+            var setupItem = ZaHomeXFormView.getHomeSetupItem(xFormObject);
+            var labelItem = setupItem.headerLabels;
+            var contentItem = setupItem.contentItems;
+            var index;
+            for (var index = 0; index < labelItem.length; index ++ ) {
+                if (labelItem[index] == ZaMsg.LBL_HomeAddAccounts) {
+                    break;
+                }
+            }
+            if (index != labelItem.length) {
+                var content = contentItem[index];
+                content.push({value:ZaMsg.LBL_HomeMigration, onClick: ZaHomeXFormView.onDoMigration});
+            }
+        }
+    }
+
+    ZaTabView.XFormModifiers["ZaHomeXFormView"].push(bulkprovision.HomeXFormModifier);
+}
 
  ZaAccountListController.prototype._bulkProvisionListener =
  function (ev) {
@@ -102,7 +139,10 @@ if(ZaOverviewPanelController.treeModifiers)
 
  //add download the accounts to searchListView
  if (ZaController.initToolbarMethods["ZaSearchListController"]) {
-    ZaOperation.DOWNLOAD_ACCOUNTS = ++ ZA_OP_INDEX ;
+    if (AjxUtil.isEmpty(ZaOperation.DOWNLOAD_ACCOUNTS)) {
+        ZaOperation.DOWNLOAD_ACCOUNTS = ++ ZA_OP_INDEX ;
+    }
+
     ZaSearchListController.initExtraToolbarMethod = function () {
         this._toolbarOperations [ZaOperation.DOWNLOAD_ACCOUNTS] =
                 new ZaOperation(ZaOperation.DOWNLOAD_ACCOUNTS, com_zimbra_bulkprovision.ACTBB_DownloadAccounts,
@@ -120,6 +160,26 @@ if(ZaOverviewPanelController.treeModifiers)
 
     ZaController.initToolbarMethods["ZaSearchListController"].push(ZaSearchListController.initExtraToolbarMethod);
 }
+
+ //add download the accounts to searchListView's appBar (at the PopUpmenu under the gear button on the top-right corner)
+ if (appNewUI && ZaController.initPopupMenuMethods["ZaSearchListController"]) {
+    if (AjxUtil.isEmpty(ZaOperation.DOWNLOAD_ACCOUNTS)) {
+        ZaOperation.DOWNLOAD_ACCOUNTS = ++ ZA_OP_INDEX ;
+    }
+
+    ZaSearchListController.initExtraAppBarMenuMethod = function () {
+
+        this._popupOperationsOnAppBar [ZaOperation.DOWNLOAD_ACCOUNTS] =
+                new ZaOperation(ZaOperation.DOWNLOAD_ACCOUNTS, com_zimbra_bulkprovision.ACTBB_DownloadAccounts,
+                        com_zimbra_bulkprovision.ACTBB_DownloadAccounts_tt, "DownloadGlobalConfig", "DownloadGlobalConfigDis",
+                        new AjxListener(this, ZaSearchListController.prototype._downloadAccountsListener)
+                        );
+
+    }
+
+    ZaController.initPopupMenuMethods["ZaSearchListController"].push(ZaSearchListController.initExtraAppBarMenuMethod);
+}
+
 
 ZaSearchListController.prototype._downloadAccountsListener =
  function (ev) {
@@ -140,3 +200,4 @@ ZaSearchListController.prototype._downloadAccountsListener =
 
      window.open("/service/afd/" + queryString);
  }
+}

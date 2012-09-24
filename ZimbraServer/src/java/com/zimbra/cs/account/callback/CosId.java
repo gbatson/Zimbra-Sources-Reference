@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,21 +16,19 @@ package com.zimbra.cs.account.callback;
 
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AttributeCallback;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
 
 public class CosId extends AttributeCallback {
 
     @Override
-    public void preModify(Map context, String attrName, Object attrValue,
-            Map attrsToModify, Entry entry, boolean isCreate)
-            throws ServiceException {
+    public void preModify(CallbackContext context, String attrName, Object attrValue,
+            Map attrsToModify, Entry entry)
+    throws ServiceException {
         
         validateCosId(attrsToModify, attrName);
     }
@@ -49,7 +47,7 @@ public class CosId extends AttributeCallback {
              * skip for now.  Hack to use idIsUUID() for the check.
              */
             if (prov.idIsUUID()) {
-                Cos cos = prov.get(CosBy.id, cosId);
+                Cos cos = prov.get(Key.CosBy.id, cosId);
                 if (cos == null)
                     throw ServiceException.INVALID_REQUEST("cos id " + cosId + 
                             " does not point to a valid cos", null);
@@ -58,9 +56,6 @@ public class CosId extends AttributeCallback {
     }
 
     @Override
-    public void postModify(Map context, String attrName, Entry entry,
-            boolean isCreate) {
-        // TODO Auto-generated method stub
-
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 }

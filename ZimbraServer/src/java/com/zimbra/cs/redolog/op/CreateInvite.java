@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,13 +17,15 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
+import com.zimbra.common.calendar.ICalTimeZone;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mailbox.Metadata;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
+import com.zimbra.cs.mailbox.calendar.Util;
 import com.zimbra.cs.mime.ParsedMessage;
 
 import com.zimbra.cs.redolog.RedoLogInput;
@@ -40,10 +42,13 @@ public class CreateInvite extends RedoableOp implements CreateCalendarItemRecord
     private boolean mDiscardExistingInvites;
     private boolean mAddRevision;
     
-    public CreateInvite() { }
+    public CreateInvite() {
+        super(MailboxOperation.CreateInvite);
+    }
 
     public CreateInvite(int mailboxId, Invite inv, int folderId, byte[] data,
                         boolean preserveExistingAlarms, boolean discardExistingInvites, boolean addRevision) {
+        this();
         setMailboxId(mailboxId);
         mInvite = inv;
         mFolderId = folderId;
@@ -53,17 +58,13 @@ public class CreateInvite extends RedoableOp implements CreateCalendarItemRecord
         mAddRevision = addRevision;
     }
 
-    @Override public int getOpCode() {
-        return OP_CREATE_INVITE;
-    }
-
     @Override protected String getPrintableData() {
         StringBuilder sb = new StringBuilder("calItemId=").append(mCalendarItemId);
         sb.append(", calItemPartStat=").append(mCalendarItemPartStat);
         sb.append(", folder=").append(mFolderId);
         sb.append(", dataLen=").append(mData != null ? mData.length : 0);
         ICalTimeZone localTz = mInvite.getTimeZoneMap().getLocalTimeZone();
-        sb.append(", localTZ=").append(localTz.encodeAsMetadata().toString());
+        sb.append(", localTZ=").append(Util.encodeAsMetadata(localTz).toString());
         sb.append(", inv=").append(Invite.encodeMetadata(mInvite).toString());
         sb.append(", preserveExistingAlarms=").append(mPreserveExistingAlarms);
         sb.append(", discardExistingInvites=").append(mDiscardExistingInvites);
@@ -88,7 +89,7 @@ public class CreateInvite extends RedoableOp implements CreateCalendarItemRecord
         }
         
         ICalTimeZone localTz = mInvite.getTimeZoneMap().getLocalTimeZone();
-        out.writeUTF(localTz.encodeAsMetadata().toString());
+        out.writeUTF(Util.encodeAsMetadata(localTz).toString());
         out.writeUTF(Invite.encodeMetadata(mInvite).toString());
 
         if (getVersion().atLeast(1, 22)) {
@@ -116,7 +117,7 @@ public class CreateInvite extends RedoableOp implements CreateCalendarItemRecord
         }
         
         try {
-            ICalTimeZone localTz = ICalTimeZone.decodeFromMetadata(new Metadata(in.readUTF()));
+            ICalTimeZone localTz = Util.decodeTimeZoneFromMetadata(new Metadata(in.readUTF()));
             
             mInvite = Invite.decodeMetadata(getMailboxId(), new Metadata(in.readUTF()), null, localTz); 
         

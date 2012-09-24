@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,6 +14,7 @@
  */
 package com.zimbra.cs.mailbox;
 
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.MapUtil;
 import com.zimbra.cs.account.Account;
@@ -52,7 +54,7 @@ public class OfflineMailboxManager extends MailboxManager {
     public void notifyAllMailboxes() throws ServiceException {
         for (String acctId : getAccountIds()) {
             OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
-            Account acct = prov.get(Provisioning.AccountBy.id, acctId);
+            Account acct = prov.get(Key.AccountBy.id, acctId);
             if (acct == null || prov.isGalAccount(acct) || prov.isMountpointAccount(acct))
                 continue;
 

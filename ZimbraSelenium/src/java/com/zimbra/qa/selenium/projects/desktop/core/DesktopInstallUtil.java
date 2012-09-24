@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.desktop.core;
 
 import java.io.File;
@@ -86,7 +70,7 @@ public class DesktopInstallUtil {
                   lines[i] = lines[i].replaceAll("\"", "");
                }
                if (lines[i].trim().equals("")) {
-                  // Skip it
+                  logger.debug("//Skip it");
                } else {
                   String displayName = CommandLine.cmdExecWithOutput("reg query " +
                          lines[i] + " /v DisplayName");
@@ -302,11 +286,9 @@ public class DesktopInstallUtil {
          }
          
       } catch (IOException ioe) {
-         ioe.printStackTrace();
-         throw new HarnessException("Getting IO Exception");
+         throw new HarnessException("Getting IO Exception", ioe);
       } catch (InterruptedException ie) {
-         ie.printStackTrace();
-         throw new HarnessException("Getting Interrupted Exception");
+         throw new HarnessException("Getting Interrupted Exception", ie);
       } finally {
          ZimbraAccount.AccountZDC().resetClientAuthentication();
       }
@@ -349,7 +331,7 @@ public class DesktopInstallUtil {
             //TODO: Do for Linux and Mac, right now it's only for Windows
             logger.info("uninstallCommand is: " + uninstallCommand);
       
-            if (uninstallCommand.trim().equals("")) {
+            if ( (uninstallCommand == null) || (uninstallCommand.trim().equals(""))) {
                logger.info("Zimbra Desktop App doesn't exist, thus exiting the method");
                return;
             } else {
@@ -576,7 +558,7 @@ public class DesktopInstallUtil {
          logger.info("Uninstalling the app");
          uninstallDesktopApp();
       } else {
-         // Nothing to do here
+    	  logger.info("nothing to do here");
       }
 
       logger.info("Downloading the build");

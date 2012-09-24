@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,7 +20,7 @@ import com.zimbra.common.util.ZimbraLog;
 
 import java.io.IOException;
 
-public class TcpImapRequest extends ImapRequest {
+final class TcpImapRequest extends ImapRequest {
     final class ImapTerminatedException extends ImapParseException {
         private static final long serialVersionUID = 6105950126307803418L;
     }
@@ -31,13 +31,15 @@ public class TcpImapRequest extends ImapRequest {
         ImapContinuationException(boolean send)  { super(); sendContinuation = send; }
     }
 
-    private TcpServerInputStream mStream;
-    private long mLiteral = -1;
-    private boolean mUnlogged;
+    private TcpServerInputStream input;
+    private long literalCounter = -1;
+    private boolean unlogged;
+    private long requestSize = 0;
+    private boolean maxRequestSizeExceeded = false;
 
-    TcpImapRequest(TcpServerInputStream tsis, ImapHandler handler) {
+    TcpImapRequest(TcpServerInputStream input, ImapHandler handler) {
         super(handler);
-        mStream = tsis;
+        this.input = input;
     }
 
     private void checkSize(long size) throws ImapParseException {
@@ -60,33 +62,34 @@ public class TcpImapRequest extends ImapRequest {
     }
 
     private void throwSizeExceeded(String exceededType) throws ImapParseException {
-        if (mTag == null && mIndex == 0 && mOffset == 0) {
-            mTag = readTag(); rewind();
+        if (tag == null && index == 0 && offset == 0) {
+            tag = readTag(); rewind();
         }
-        throw new ImapParseException(mTag, "maximum " + exceededType + " size exceeded", true);
+        throw new ImapParseException(tag, "maximum " + exceededType + " size exceeded", true);
     }
 
     void continuation() throws IOException, ImapParseException {
-        if (mLiteral >= 0) continueLiteral();
+        if (literalCounter >= 0) {
+            continueLiteral();
+        }
 
-        String line = mStream.readLine(), logline = line;
+        String line = input.readLine();
+        String logline = line;
         // TcpServerInputStream.readLine() returns null on end of stream!
         if (line == null)
             throw new ImapTerminatedException();
         incrementSize(line.length());
         addPart(line);
 
-        if (mParts.size() == 1 && !isMaxRequestSizeExceeded()) {
+        if (parts.size() == 1 && !maxRequestSizeExceeded) {
             // check for "LOGIN" command and elide if necessary
-            mUnlogged = isLogin();
-            if (mUnlogged) {
+            unlogged = isLogin();
+            if (unlogged) {
                 logline = line.substring(0, line.indexOf(' ') + 7) + "...";
             }
         }
 
-        if (ZimbraLog.imap.isTraceEnabled()) {
-            ZimbraLog.imap.trace("C: %s", logline);
-        }
+        ZimbraLog.imap.trace("C: %s", logline);
 
         // if the line ends in a LITERAL+ non-blocking literal, keep reading
         if (line.endsWith("+}") && extensionEnabled("LITERAL+")) {
@@ -103,52 +106,56 @@ public class TcpImapRequest extends ImapRequest {
                         incrementSize(size);
                     }
                     checkSize(size);
-                    mLiteral = size;
+                    literalCounter = size;
                     continuation();
                 } else {
-                    if (mTag == null && mIndex == 0 && mOffset == 0) {
-                        mTag = readTag(); rewind();
+                    if (tag == null && index == 0 && offset == 0) {
+                        tag = readTag();
+                        rewind();
                     }
-                    throw new ImapParseException(mTag, "malformed nonblocking literal");
+                    throw new ImapParseException(tag, "malformed nonblocking literal");
                 }
             }
         }
     }
 
     private void continueLiteral() throws IOException, ImapParseException {
-        if (isMaxRequestSizeExceeded()) {
-            long skipped = mStream.skip(mLiteral);
-            if (mLiteral > 0 && skipped == 0)
+        if (maxRequestSizeExceeded) {
+            long skipped = input.skip(literalCounter);
+            if (literalCounter > 0 && skipped == 0) {
                 throw new ImapTerminatedException();
-            mLiteral -= skipped;
+            }
+            literalCounter -= skipped;
         } else {
-            Part part = mParts.get(mParts.size() - 1);
+            Part part = parts.get(parts.size() - 1);
             Literal literal;
             if (part.isLiteral()) {
                 literal = part.getLiteral();
             } else {
-                literal = Literal.newInstance((int) mLiteral, isAppend());
+                literal = Literal.newInstance((int) literalCounter, isAppend());
                 addPart(literal);
             }
-            int read = literal.copy(mStream);
+            int read = literal.copy(input);
             if (read == -1)
                 throw new ImapTerminatedException();
             // TODO How to log literal data now...
-            if (!mUnlogged && ZimbraLog.imap.isTraceEnabled()) {
+            if (!unlogged && ZimbraLog.imap.isTraceEnabled()) {
                 ZimbraLog.imap.trace("C: {%s}", read);
             }
-            mLiteral -= read;
+            literalCounter -= read;
         }
-        if (mLiteral > 0)
+        if (literalCounter > 0) {
             throw new ImapContinuationException(false);
-        mLiteral = -1;
+        }
+        literalCounter = -1;
     }
 
     private Literal getCurrentBuffer() throws ImapParseException {
-        return mParts.get(mIndex).getLiteral();
+        return parts.get(index).getLiteral();
     }
 
-    @Override protected Literal readLiteral() throws IOException, ImapParseException {
+    @Override
+    protected Literal readLiteral() throws IOException, ImapParseException {
         boolean blocking = true;
         skipChar('{');
         long length = Long.parseLong(readNumber());
@@ -158,27 +165,51 @@ public class TcpImapRequest extends ImapRequest {
         skipChar('}');
 
         // make sure that the literal came at the very end of a line
-        if (getCurrentLine().length() != mOffset)
-            throw new ImapParseException(mTag, "extra characters after literal declaration");
-
-        boolean lastPart = (mIndex == mParts.size() - 1);
-        if (lastPart || (mIndex == mParts.size() - 2 && mLiteral != -1)) {
-            if (mLiteral == -1) {
+        if (getCurrentLine().length() != offset) {
+            throw new ImapParseException(tag, "extra characters after literal declaration");
+        }
+        boolean lastPart = (index == parts.size() - 1);
+        if (lastPart || (index == parts.size() - 2 && literalCounter != -1)) {
+            if (literalCounter == -1) {
                 if (!isAppend()) {
                     incrementSize(length);
                 }
                 checkSize(length);
-                mLiteral = length;
+               	literalCounter = length;
             }
-            if (!blocking && mStream.available() >= mLiteral)
+            if (!blocking && input.available() >= literalCounter) {
                 continuation();
-            else
+            } else {
                 throw new ImapContinuationException(blocking && lastPart);
+            }
         }
-        mIndex++;
+        index++;
         Literal result = getCurrentBuffer();
-        mIndex++;
-        mOffset = 0;
+        index++;
+        offset = 0;
         return result;
     }
+
+    void incrementSize(long increment) {
+        requestSize += increment;
+        if (requestSize > mHandler.config.getMaxRequestSize()) {
+            maxRequestSizeExceeded = true;
+        }
+    }
+
+    boolean isMaxRequestSizeExceeded() {
+        return maxRequestSizeExceeded;
+    }
+
+    /**
+     * This implementation doesn't add any more parts if we have exceeded the maximum request size. The exception is if
+     * this is the first part (request line) so we can recover the tag when sending an error response.
+     */
+    @Override
+    void addPart(Part part) {
+        if (!maxRequestSizeExceeded || parts.isEmpty()) {
+            super.addPart(part);
+        }
+    }
+
 }

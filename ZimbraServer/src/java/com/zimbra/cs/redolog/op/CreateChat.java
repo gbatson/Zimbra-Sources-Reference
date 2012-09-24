@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,7 @@ import java.io.IOException;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
@@ -26,25 +27,26 @@ import com.zimbra.cs.redolog.RedoLogOutput;
 public class CreateChat extends CreateMessage {
     
     public CreateChat() {
+        mOperation = MailboxOperation.CreateChat;
     }
 
-    public CreateChat(int mailboxId, String digest, int msgSize, int folderId, int flags, String tags) {
+    public CreateChat(int mailboxId, String digest, int msgSize, int folderId, int flags, String[] tags) {
         super(mailboxId, ":API:", false, digest, msgSize, folderId, true, flags, tags);
+        mOperation = MailboxOperation.CreateChat;
     }
     
-    @Override public int getOpCode() {
-        return OP_CREATE_CHAT;
-    }
-    
-    @Override protected void serializeData(RedoLogOutput out) throws IOException {
+    @Override
+    protected void serializeData(RedoLogOutput out) throws IOException {
         super.serializeData(out);
     }
 
-    @Override protected void deserializeData(RedoLogInput in) throws IOException {
+    @Override
+    protected void deserializeData(RedoLogInput in) throws IOException {
         super.deserializeData(in);
     }
     
-    @Override public void redo() throws Exception {
+    @Override
+    public void redo() throws Exception {
         int mboxId = getMailboxId();
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(mboxId);
 

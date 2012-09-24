@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,6 +17,7 @@ package com.zimbra.cs.security.sasl;
 
 import javax.security.sasl.SaslServer;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
@@ -82,7 +83,7 @@ public class PlainAuthenticator extends Authenticator {
                                           AuthContext.Protocol protocol, String origRemoteIp, String remoteIp, String userAgent)
     throws ServiceException {
         Provisioning prov = Provisioning.getInstance();
-        Account authAccount = prov.get(Provisioning.AccountBy.name, authenticateId);
+        Account authAccount = prov.get(Key.AccountBy.name, authenticateId);
         if (authAccount == null) {
             ZimbraLog.account.info("authentication failed for " + authenticateId + " (no such account)");
             return null;

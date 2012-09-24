@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,8 +22,10 @@ import com.zimbra.common.util.Constants;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.EntrySearchFilter;
 import com.zimbra.cs.account.NamedEntry;
-import com.zimbra.cs.account.Provisioning;
+import com.zimbra.cs.account.SearchDirectoryOptions;
+import com.zimbra.cs.account.SearchDirectoryOptions.SortOpt;
 import com.zimbra.cs.account.ldap.LdapEntrySearchFilter;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +35,7 @@ public class AdminSession extends Session {
 
     private static final long ADMIN_SESSION_TIMEOUT_MSEC = 10 * Constants.MILLIS_PER_MINUTE;
   
-    private AccountSearchParams mSearchParams;
+    private DirectorySearchParams mSearchParams;
     private HashMap<String,Object> mData = new HashMap<String,Object>();
 
     public AdminSession(String accountId) {
@@ -63,10 +65,12 @@ public class AdminSession extends Session {
 
     @Override protected void cleanup() { }
 
-    public List searchAccounts(Domain d, String query, String[] attrs, String sortBy,
-            boolean sortAscending, int flags, int offset, int maxResults,
-            NamedEntry.CheckRight rightChecker) throws ServiceException {
-        AccountSearchParams params = new AccountSearchParams(d, query, attrs, sortBy, sortAscending, flags, maxResults, rightChecker);
+    public List<NamedEntry> searchDirectory(SearchDirectoryOptions searchOpts,
+            int offset, NamedEntry.CheckRight rightChecker) 
+    throws ServiceException {
+        
+        DirectorySearchParams params = new DirectorySearchParams(searchOpts, rightChecker);
+        
         boolean needToSearch =  (offset == 0) || (mSearchParams == null) || !mSearchParams.equals(params);
         //ZimbraLog.account.info("this="+this+" mSearchParams="+mSearchParams+" equal="+!params.equals(mSearchParams));
         if (needToSearch) {
@@ -76,17 +80,7 @@ public class AdminSession extends Session {
         } else {
             //ZimbraLog.account.info("cached search: "+query+ " offset="+offset);
         }
-        return mSearchParams.mResult;
+        return mSearchParams.getResult();
     }
 
-    public List searchCalendarResources(
-            Domain d, EntrySearchFilter filter, String[] attrs, String sortBy,
-            boolean sortAscending, int offset, NamedEntry.CheckRight rightChecker)
-    throws ServiceException {
-        String query = LdapEntrySearchFilter.toLdapCalendarResourcesFilter(filter);
-        return searchAccounts(
-                d, query, attrs, sortBy, sortAscending,
-                Provisioning.SA_CALENDAR_RESOURCE_FLAG,
-                offset, 0, rightChecker);
-    }
 }

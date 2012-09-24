@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,16 +20,18 @@ package com.zimbra.cs.redolog.op;
 
 import java.io.IOException;
 
-import com.zimbra.cs.mailbox.MailItem;
+import com.zimbra.common.mailbox.Color;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
 public class CreateSavedSearch extends RedoableOp {
 
     private int mSearchId;
+    private String mUuid;
     private String mName;
     private String mQuery;
     private String mTypes;
@@ -39,10 +41,12 @@ public class CreateSavedSearch extends RedoableOp {
     private long mColor;
 
     public CreateSavedSearch() {
+        super(MailboxOperation.CreateSavedSearch);
         mSearchId = UNKNOWN_ID;
     }
 
-    public CreateSavedSearch(int mailboxId, int folderId, String name, String query, String types, String sort, int flags, MailItem.Color color) {
+    public CreateSavedSearch(int mailboxId, int folderId, String name, String query, String types, String sort, int flags, Color color) {
+        this();
         setMailboxId(mailboxId);
         mSearchId = UNKNOWN_ID;
         mName = name != null ? name : "";
@@ -58,16 +62,18 @@ public class CreateSavedSearch extends RedoableOp {
         return mSearchId;
     }
 
-    public void setSearchId(int searchId) {
-        mSearchId = searchId;
+    public String getUuid() {
+        return mUuid;
     }
 
-    @Override public int getOpCode() {
-        return OP_CREATE_SAVED_SEARCH;
+    public void setSearchIdAndUuid(int searchId, String uuid) {
+        mSearchId = searchId;
+        mUuid = uuid;
     }
 
     @Override protected String getPrintableData() {
         StringBuilder sb = new StringBuilder("id=").append(mSearchId);
+        sb.append(", uuid=").append(mUuid);
         sb.append(", name=").append(mName).append(", query=").append(mQuery);
         sb.append(", types=").append(mTypes).append(", sort=").append(mSort);
         sb.append(", flags=").append(mFlags);
@@ -77,6 +83,9 @@ public class CreateSavedSearch extends RedoableOp {
 
     @Override protected void serializeData(RedoLogOutput out) throws IOException {
         out.writeInt(mSearchId);
+        if (getVersion().atLeast(1, 37)) {
+            out.writeUTF(mUuid);
+        }
         out.writeUTF(mName);
         out.writeUTF(mQuery);
         out.writeUTF(mTypes);
@@ -89,6 +98,9 @@ public class CreateSavedSearch extends RedoableOp {
 
     @Override protected void deserializeData(RedoLogInput in) throws IOException {
         mSearchId = in.readInt();
+        if (getVersion().atLeast(1, 37)) {
+            mUuid = in.readUTF();
+        }
         mName = in.readUTF();
         mQuery = in.readUTF();
         mTypes = in.readUTF();
@@ -107,7 +119,7 @@ public class CreateSavedSearch extends RedoableOp {
 
         try {
             mailbox.createSearchFolder(getOperationContext(), mFolderId, mName,
-                mQuery, mTypes, mSort, mFlags, MailItem.Color.fromMetadata(mColor));
+                mQuery, mTypes, mSort, mFlags, Color.fromMetadata(mColor));
         } catch (MailServiceException e) {
             String code = e.getCode();
             if (code.equals(MailServiceException.ALREADY_EXISTS)) {

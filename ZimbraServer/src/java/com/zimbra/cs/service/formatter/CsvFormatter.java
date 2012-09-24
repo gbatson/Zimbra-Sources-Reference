@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -17,14 +17,19 @@ package com.zimbra.cs.service.formatter;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.mail.Part;
 import javax.servlet.http.HttpServletResponse;
 
-import com.zimbra.cs.index.MailboxIndex;
+import com.zimbra.common.mime.MimeConstants;
+import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.HttpUtil;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
@@ -34,10 +39,6 @@ import com.zimbra.cs.service.UserServletException;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
 import com.zimbra.cs.service.mail.ImportContacts;
 import com.zimbra.cs.service.util.ItemId;
-import com.zimbra.common.service.ServiceException;
-import com.zimbra.common.util.HttpUtil;
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.mime.MimeConstants;
 
 public class CsvFormatter extends Formatter {
 
@@ -52,8 +53,8 @@ public class CsvFormatter extends Formatter {
     }
 
     @Override
-    public String getDefaultSearchTypes() {
-        return MailboxIndex.SEARCH_FOR_CONTACTS;
+    public Set<MailItem.Type> getDefaultSearchTypes() {
+        return EnumSet.of(MailItem.Type.CONTACT);
     }
 
     @Override
@@ -84,7 +85,10 @@ public class CsvFormatter extends Formatter {
         String filename = context.itemPath;
         if (filename == null || filename.length() == 0)
             filename = "contacts";
-        String cd = Part.ATTACHMENT + "; filename=" + HttpUtil.encodeFilename(context.req, filename + ".csv");
+        if (filename.toLowerCase().endsWith(".csv") == false) {
+            filename = filename + ".csv";
+        }
+        String cd = HttpUtil.createContentDisposition(context.req, Part.ATTACHMENT, filename);
         context.resp.addHeader("Content-Disposition", cd);
         context.resp.setCharacterEncoding(context.getCharset().name());
         context.resp.setContentType("text/csv");

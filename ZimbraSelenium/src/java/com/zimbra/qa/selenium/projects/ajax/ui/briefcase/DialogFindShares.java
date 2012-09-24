@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -75,7 +59,7 @@ public class DialogFindShares extends AbsDialog {
 		
 		if ( button == Button.B_CANCEL ) {
 
-         locator = "css=td[class=ZWidgetTitle]:contains(Cancel)";
+         locator = "css=div[id=ZmShareSearchDialog_buttons] td[class=ZWidgetTitle]:contains(Cancel)";
 
       } else {
          throw new HarnessException("Button "+ button +" not implemented");
@@ -85,9 +69,6 @@ public class DialogFindShares extends AbsDialog {
 		//
 		
 		// Make sure the locator was set
-		if ( locator == null ) {
-			throw new HarnessException("Button "+ button +" not implemented");
-		}
 		
 		// Make sure the locator exists
 		if ( !this.sIsElementPresent(locator) ) {
@@ -120,13 +101,14 @@ public class DialogFindShares extends AbsDialog {
 	 * @throws HarnessException
 	 */
 	public void zClickTreeFolder(FolderItem folder) throws HarnessException {
+		if ( folder == null ){ 
+			throw new HarnessException("zClickTreeFolder(FolderItem): folder must not be null");
+		}
+		
 		logger.info(myPageName() + " zClickTreeFolder("+ folder +")");
 		
 		tracer.trace("Click on tree folder with name "+ folder.getName());
 
-		if ( folder == null ) 
-			throw new HarnessException("folder must not be null");
-		
 		String locator = Locators.zDialogLocator + " td[id$=" + folder.getId() + "_textCell']";
 		
 		if ( !this.sIsElementPresent(locator) )

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,11 +29,15 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 
+import com.zimbra.common.calendar.ZCalendar.ZCalendarBuilder;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ByteUtil;
+import com.zimbra.common.util.Pair;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
@@ -41,9 +45,6 @@ import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.Message.CalendarItemInfo;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZCalendarBuilder;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZVCalendar;
 import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -68,22 +69,24 @@ public class ForwardAppointmentInvite extends ForwardAppointment {
         Element msgElem = request.getElement(MailConstants.E_MSG);
         ParseMimeMessage.MimeMessageData parsedMessageData = new ParseMimeMessage.MimeMessageData();
         MimeMessage mmFwdWrapper =
-            ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, mbox, msgElem, 
+            ParseMimeMessage.parseMimeMsgSoap(zsc, octxt, mbox, msgElem,
                 null, ParseMimeMessage.NO_INV_ALLOWED_PARSER, parsedMessageData);
 
-        MimeMessage mmFwd;
-        synchronized(mbox) {
+        Pair<MimeMessage, MimeMessage> msgPair;
+        mbox.lock.lock();
+        try {
             Message msg = mbox.getMessageById(octxt, iid.getId());
-            if (msg == null)
+            if (msg == null) {
                 throw MailServiceException.NO_SUCH_MSG(iid.getId());
-
+            }
             MimeMessage mmInv = msg.getMimeMessage();
             List<Invite> invs = new ArrayList<Invite>();
             for (Iterator<CalendarItemInfo> iter = msg.getCalendarItemInfoIterator(); iter.hasNext(); ) {
                 CalendarItemInfo cii = iter.next();
                 Invite inv = cii.getInvite();
-                if (inv != null)
+                if (inv != null) {
                     invs.add(inv);
+                }
             }
             ZVCalendar cal = null;
             Invite firstInv = null;
@@ -131,10 +134,18 @@ public class ForwardAppointmentInvite extends ForwardAppointment {
                 }
             }
 
-            mmFwd = getInstanceFwdMsg(senderAcct, firstInv, cal, mmInv, mmFwdWrapper);
+            msgPair = getInstanceFwdMsg(senderAcct, firstInv, cal, mmInv, mmFwdWrapper);
+            
+        } finally {
+            mbox.lock.release();
         }
-        sendFwdMsg(octxt, mbox, mmFwd);
-
+        
+        if (msgPair.getFirst() != null) {
+            sendFwdMsg(octxt, mbox, msgPair.getFirst());
+        }
+        if (msgPair.getSecond() != null) {
+            sendFwdNotifyMsg(octxt, mbox, msgPair.getSecond());
+        }
         Element response = getResponseElement(zsc);
         return response;
     }

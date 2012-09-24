@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,15 +17,16 @@ package com.zimbra.cs.service.admin;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.CosBy;
+import com.zimbra.common.account.Key.DomainBy;
+import com.zimbra.common.account.Key.GranteeBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.CosBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.GranteeBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.RightCommand;
@@ -40,27 +41,28 @@ public class GetCreateObjectAttrs extends RightDocumentHandler {
         Element eTarget = request.getElement(AdminConstants.E_TARGET);
         String targetType = eTarget.getAttribute(AdminConstants.A_TYPE);
         
-        DomainBy domainBy = null;
+        Key.DomainBy domainBy = null;
         String domain = null;
         Element eDomain = request.getOptionalElement(AdminConstants.E_DOMAIN);
         if (eDomain != null) {
-            domainBy = DomainBy.fromString(eDomain.getAttribute(AdminConstants.A_BY));
+            domainBy = Key.DomainBy.fromString(eDomain.getAttribute(AdminConstants.A_BY));
             domain = eDomain.getText();
         }
         
-        CosBy cosBy = null;
+        Key.CosBy cosBy = null;
         String cos = null;
         Element eCos = request.getOptionalElement(AdminConstants.E_COS);
         if (eCos != null) {
-            cosBy = CosBy.fromString(eCos.getAttribute(AdminConstants.A_BY));
+            cosBy = Key.CosBy.fromString(eCos.getAttribute(AdminConstants.A_BY));
             cos = eCos.getText();
         }
         
-        GranteeBy granteeBy = GranteeBy.id;
+        Key.GranteeBy granteeBy = Key.GranteeBy.id;
         String grantee = zsc.getRequestedAccountId();
         
-        if (!grantee.equals(zsc.getAuthtokenAccountId()))
+        if (!grantee.equals(zsc.getAuthtokenAccountId())) {
             checkCheckRightRight(zsc, GranteeType.GT_USER, granteeBy, grantee);
+        }
         
         RightCommand.EffectiveRights er = RightCommand.getCreateObjectAttrs(Provisioning.getInstance(),
                                                                             targetType,

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,6 +29,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.lmtpserver.LmtpCallback;
 import com.zimbra.cs.mime.ParsedMessage;
+import com.zimbra.cs.util.AccountUtil;
 
 /**
  * LMTP callback that sends the user a warning if he is getting
@@ -47,11 +48,12 @@ public class QuotaWarning implements LmtpCallback {
         return sInstance;
     }
     
+    @Override
     public void afterDelivery(Account account, Mailbox mbox, String envelopeSender,
                               String recipientEmail, Message newMessage){
         try {
             int warnPercent = account.getIntAttr(Provisioning.A_zimbraQuotaWarnPercent, 90);
-            long quota = account.getLongAttr(Provisioning.A_zimbraMailQuota, 0);
+            long quota = AccountUtil.getEffectiveQuota(account);
             long warnInterval = account.getTimeInterval(Provisioning.A_zimbraQuotaWarnInterval, Constants.MILLIS_PER_DAY);
             String template = account.getAttr(Provisioning.A_zimbraQuotaWarnMessage, null);
             
@@ -95,8 +97,8 @@ public class QuotaWarning implements LmtpCallback {
 
             String msgBody = StringUtil.fillTemplate(template, vars);
             ParsedMessage pm = new ParsedMessage(msgBody.getBytes(), now.getTime(), false);
-            mbox.addMessage(null, pm, Mailbox.ID_FOLDER_INBOX, false,
-                Flag.BITMASK_UNREAD | Flag.BITMASK_HIGH_PRIORITY, null);
+            DeliveryOptions dopt = new DeliveryOptions().setFolderId(Mailbox.ID_FOLDER_INBOX).setFlags(Flag.BITMASK_UNREAD | Flag.BITMASK_HIGH_PRIORITY);
+            mbox.addMessage(null, pm, dopt, null);
             
             // Update last sent date
             Map<String, String> attrs = new HashMap<String, String>();
@@ -105,5 +107,10 @@ public class QuotaWarning implements LmtpCallback {
         } catch (Exception e) {
             ZimbraLog.lmtp.warn("Unable to send quota warning message", e);
         }
+    }
+
+    @Override
+    public void forwardWithoutDelivery(Account account, Mailbox mbox, String envelopeSender, String recipientEmail, ParsedMessage pm) {
+        // no delivery, so no need to check anything
     }
 }

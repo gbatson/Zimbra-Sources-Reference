@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.gal;
 
 import java.util.HashMap;
@@ -33,20 +19,19 @@ import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthToken;
-import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.EntryCacheDataKey;
 import com.zimbra.cs.account.GalContact;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.account.Provisioning.CacheEntry;
-import com.zimbra.cs.account.Provisioning.CacheEntryBy;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.accesscontrol.Rights.User;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.GalSearchType;
 
 
 public abstract class GalGroup {
@@ -71,8 +56,8 @@ public abstract class GalGroup {
     public static void flushCache(CacheEntry[] domains) throws ServiceException {
         if (domains != null) {
             for (CacheEntry entry : domains) {
-                DomainBy domainBy = (entry.mEntryBy==CacheEntryBy.id)? DomainBy.id : DomainBy.name;
-                Domain domain = prov.get(Provisioning.DomainBy.name, entry.mEntryIdentity);
+                Key.DomainBy domainBy = (entry.mEntryBy==Key.CacheEntryBy.id)? Key.DomainBy.id : Key.DomainBy.name;
+                Domain domain = prov.get(Key.DomainBy.name, entry.mEntryIdentity);
                 if (domain == null)
                     throw AccountServiceException.NO_SUCH_DOMAIN(entry.mEntryIdentity);
                 GalGroup.flushCache(domain);
@@ -141,8 +126,8 @@ public abstract class GalGroup {
             
         return null;
     }
-    
-    private static synchronized void flushCache(Domain domain) {
+
+    public static synchronized void flushCache(Domain domain) {
         if (domain == null) {
             for (Map.Entry<String, DomainGalGroupCache> entry : groups.entrySet())
                 GalGroup.flushCache(entry.getKey(), entry.getValue());
@@ -152,7 +137,7 @@ public abstract class GalGroup {
             GalGroup.flushCache(domain.getName(), galGroup);
         }
     }
-    
+
     private static void flushCache(String domainName, DomainGalGroupCache galGroup) {
         
         if (galGroup == null) {
@@ -238,16 +223,16 @@ public abstract class GalGroup {
     private static boolean canExpandGroup(Provisioning prov, String groupName, Account authedAcct) {
         try {
             // get the dl object for ACL checking
-            DistributionList dl = prov.getAclGroup(DistributionListBy.name, groupName);
+            Group group = prov.getGroupBasic(Key.DistributionListBy.name, groupName);
 
             // the DL might have been deleted since the last GAL sync account sync, throw.
             // or should we just let the request through?
-            if (dl == null) {
-                ZimbraLog.gal.warn("GalGroup - unable to find distribution list " + groupName + " for permission checking");
+            if (group == null) {
+                ZimbraLog.gal.warn("GalGroup - unable to find group " + groupName + " for permission checking");
                 return false;
             }
 
-            if (!AccessManager.getInstance().canDo(authedAcct, dl, User.R_viewDistList, false))
+            if (!AccessManager.getInstance().canDo(authedAcct, group, User.R_viewDistList, false))
                 return false;
 
         } catch (ServiceException e) {
@@ -355,12 +340,14 @@ public abstract class GalGroup {
         
         // no need to synchronize because we would never modify/get the set concurrently.
         // No one would call this method when the GalGroup object is still syncing  
+        @Override
         public boolean isInternalGroup(String addr) {
             return internalGroups.contains(addr.toLowerCase());
         }
         
         // no need to synchronize because we would never modify/get the set concurrently.
         // No one would call this method when the GalGroup object is still syncing  
+        @Override
         public boolean isExternalGroup(String addr) {
             return externalGroups.contains(addr.toLowerCase());
         }
@@ -409,7 +396,7 @@ public abstract class GalGroup {
                 int pageSize = 1000;
                 int limit = (max == 0) ? pageSize : Math.min(pageSize, max); // page size for GAL sync account search
                 
-                Provisioning.GalSearchType searchType = Provisioning.GalSearchType.group;
+                GalSearchType searchType = GalSearchType.group;
                 
                 boolean hasMore = true;
                 
@@ -564,7 +551,7 @@ public abstract class GalGroup {
         EmailAddrGalGroupCache(String addr, Account requestedAcct) {
             GalSearchParams params = new GalSearchParams(requestedAcct);
             params.setQuery(addr);
-            params.setType(Provisioning.GalSearchType.group);
+            params.setType(GalSearchType.group);
             params.setLimit(1);
             resultCallback = new SearchGroupCallback(params);
             params.setResultCallback(resultCallback);
@@ -577,10 +564,12 @@ public abstract class GalGroup {
             }
         }
         
+        @Override
         public boolean isInternalGroup(String addr) {
             return resultCallback.isInternalGroup();
         }
         
+        @Override
         public boolean isExternalGroup(String addr) {
             return resultCallback.isExternalGroup();
         }

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
@@ -29,6 +30,11 @@ import com.zimbra.cs.account.EntryCacheDataKey;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.extension.ExtensionUtil;
 
+/**
+ * 
+ * @author pshao
+ *
+ */
 public abstract class DomainNameMappingHandler {
     
     private static Map<String, HandlerInfo> sHandlers = new ConcurrentHashMap<String,HandlerInfo>();
@@ -97,7 +103,7 @@ public abstract class DomainNameMappingHandler {
         }
     }
     
-    static class HandlerConfig {
+    public static class HandlerConfig {
         String mApplication;
         String mClassName;
         String mParams;
@@ -121,7 +127,7 @@ public abstract class DomainNameMappingHandler {
         }
     }
     
-    static HandlerConfig getHandlerConfig(Domain domain, String application) {
+    public static HandlerConfig getHandlerConfig(Domain domain, String application) {
         Map<String, HandlerConfig> handlers = 
             (Map<String, HandlerConfig>)domain.getCachedData(EntryCacheDataKey.DOMAIN_FOREIGN_NAME_HANDLERS.getKeyName());
         
@@ -152,7 +158,7 @@ public abstract class DomainNameMappingHandler {
         return handlers.get(application);
     }
 
-    static String mapName(HandlerConfig handlerConfig, String foreignName, String zimbraDomainName) throws ServiceException {
+    public static String mapName(HandlerConfig handlerConfig, String foreignName, String zimbraDomainName) throws ServiceException {
         DomainNameMappingHandler handler = getHandler(handlerConfig);
         
         if (handler instanceof UnknownDomainNameMappingHandler)
@@ -173,7 +179,7 @@ public abstract class DomainNameMappingHandler {
 
         Provisioning prov = Provisioning.getInstance();
         
-        Domain domain = prov.get(Provisioning.DomainBy.name, "phoebe.mbp");
+        Domain domain = prov.get(Key.DomainBy.name, "phoebe.mbp");
         domain.addForeignName("app1:name1");
         domain.addForeignName("app2:name2");
         domain.addForeignName("app3:name3");

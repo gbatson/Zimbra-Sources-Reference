@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -284,52 +284,50 @@ public class YContactSync {
         Collections.sort(this.contactOperations);
 
         boolean success = false;
-        synchronized (mbox) {
-            try {
-                mbox.beginTransaction("yahoo-contacts-dbupdate", null);
-                for (ContactOperation contactOp : this.contactOperations) {
-                    switch (contactOp.getOp()) {
-                    case ADD:
-                        if (contactOp.isPushOperation()) {
-                            SyncResult result = (SyncResult) ySyncResult;
-                            String refId = result.getRefIdByContactId(contactOp.getRemoteId());
-                            if (refId != null) {
-                                int itemId = this.localContactIdMap.get(refId);
-                                this.updateContactAndAddMapping(itemId, contactOp.getParsedContact(), 
-                                        contactOp.getYContact());
-                            } else {
-                                OfflineLog.yab.debug("** refId is null, remoteId (%s)", contactOp.getRemoteId());
-                            }
+        try {
+            mbox.beginTransaction("yahoo-contacts-dbupdate", null);
+            for (ContactOperation contactOp : this.contactOperations) {
+                switch (contactOp.getOp()) {
+                case ADD:
+                    if (contactOp.isPushOperation()) {
+                        SyncResult result = (SyncResult) ySyncResult;
+                        String refId = result.getRefIdByContactId(contactOp.getRemoteId());
+                        if (refId != null) {
+                            int itemId = this.localContactIdMap.get(refId);
+                            this.updateContactAndAddMapping(itemId, contactOp.getParsedContact(),
+                                    contactOp.getYContact());
                         } else {
-                            this.saveContact(contactOp.getParsedContact(), contactOp.getYContact());    
+                            OfflineLog.yab.debug("** refId is null, remoteId (%s)", contactOp.getRemoteId());
                         }
-                        addCount++;
-                        break;
-                    case UPDATE:
-                        this.updateContact(contactOp.getParsedContact(), contactOp.getYContact());
-                        updateCount++;
-                        break;
-                    case REMOVE:
-                        this.deleteContact(contactOp.getItemId());
-                        break;
-                    default:
-                        break;
+                    } else {
+                        this.saveContact(contactOp.getParsedContact(), contactOp.getYContact());
                     }
+                    addCount++;
+                    break;
+                case UPDATE:
+                    this.updateContact(contactOp.getParsedContact(), contactOp.getYContact());
+                    updateCount++;
+                    break;
+                case REMOVE:
+                    this.deleteContact(contactOp.getItemId());
+                    break;
+                default:
+                    break;
                 }
-
-                ss.setLastRevision(String.valueOf(ySyncResult.getYahooRev()));
-                ss.setLastModSequence(mbox.getLastChangeID());
-                this.localData.saveState(ss);
-
-                OfflineLog.yab.debug("SyncState after sync (persisted): %s", ss);
-                OfflineLog.yab.info("Yahoo contacts synced, %d added, %d updated, %d deleted", addCount,
-                        updateCount, this.contactOperations.size() - addCount - updateCount);
-                success = true;
-            } catch (Exception e) {
-                throw new YContactException("exception raised when syncing contacts to db", "", false, e, null);
-            } finally {
-                mbox.endTransaction(success);
             }
+
+            ss.setLastRevision(String.valueOf(ySyncResult.getYahooRev()));
+            ss.setLastModSequence(mbox.getLastChangeID());
+            this.localData.saveState(ss);
+
+            OfflineLog.yab.debug("SyncState after sync (persisted): %s", ss);
+            OfflineLog.yab.info("Yahoo contacts synced, %d added, %d updated, %d deleted", addCount, updateCount,
+                    this.contactOperations.size() - addCount - updateCount);
+            success = true;
+        } catch (Exception e) {
+            throw new YContactException("exception raised when syncing contacts to db", "", false, e, null);
+        } finally {
+            mbox.endTransaction(success);
         }
     }
 
@@ -422,24 +420,21 @@ public class YContactSync {
         }
         Collections.sort(delItemIds);
         boolean success = false;
-        synchronized (mbox) {
-            try {
-                mbox.beginTransaction("yahoo-contacts-migrate", null);
-                for (Integer itemId : delItemIds) {
-                    mbox.delete(null, itemId, MailItem.TYPE_CONTACT);
-                }
-                DbDataSource.deleteAllMappingsInFolder(ds, YAB_FOLDER_ID, true);
-                md = new Metadata();
-                md.put("migrated", "yes");
-                mbox.setConfig(null, MIGRATE_FLAG, md);
-                localData.saveState(ss);
-                success = true;
-            } catch (Exception e) {
-                throw new YContactException("exception raised when migrating existing yahoo contacts", "", false, e,
-                        null);
-            } finally {
-                mbox.endTransaction(success);
+        try {
+            mbox.beginTransaction("yahoo-contacts-migrate", null);
+            for (Integer itemId : delItemIds) {
+                mbox.delete(null, itemId, MailItem.Type.CONTACT);
             }
+            DbDataSource.deleteAllMappingsInFolder(ds, YAB_FOLDER_ID, true);
+            md = new Metadata();
+            md.put("migrated", "yes");
+            mbox.setConfig(null, MIGRATE_FLAG, md);
+            localData.saveState(ss);
+            success = true;
+        } catch (Exception e) {
+            throw new YContactException("exception raised when migrating existing yahoo contacts", "", false, e, null);
+        } finally {
+            mbox.endTransaction(success);
         }
         isMigrated = true;
     }

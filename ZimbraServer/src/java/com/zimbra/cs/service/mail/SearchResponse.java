@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -43,7 +43,6 @@ import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.mailbox.WikiItem;
-import com.zimbra.cs.mailbox.Mailbox.SearchResultMode;
 import com.zimbra.cs.service.mail.GetCalendarItemSummaries.EncodeCalendarItemResult;
 import com.zimbra.cs.service.mail.ToXML.EmailType;
 import com.zimbra.cs.service.util.ItemId;
@@ -57,7 +56,7 @@ import com.zimbra.soap.ZimbraSoapContext;
  *
  * @author ysasaki
  */
-public class SearchResponse {
+final class SearchResponse {
     protected static final Log LOG = LogFactory.getLog(SearchResponse.class);
 
     private final ZimbraSoapContext zsc;
@@ -69,15 +68,19 @@ public class SearchResponse {
     private int size = 0;
     private ExpandResults expand;
     private SortBy sortOrder = SortBy.NONE;;
+    private boolean allRead = false;
 
-    public SearchResponse(ZimbraSoapContext zsc, OperationContext octxt,
-            Element element, SearchParams params) {
+    SearchResponse(ZimbraSoapContext zsc, OperationContext octxt, Element el, SearchParams params) {
         this.zsc = zsc;
         this.params = params;
         this.octxt = octxt;
-        this.element = element;
+        this.element = el;
         ifmt = new ItemIdFormatter(zsc);
         expand = params.getInlineRule();
+    }
+
+    void setAllRead(boolean value) {
+        allRead = value;
     }
 
     /**
@@ -85,11 +88,11 @@ public class SearchResponse {
      *
      * @param value true to include, otherwise false
      */
-    public void setIncludeMailbox(boolean value) {
+    void setIncludeMailbox(boolean value) {
         includeMailbox = value;
     }
 
-    public void setSortOrder(SortBy value) {
+    void setSortOrder(SortBy value) {
         sortOrder = value;
     }
 
@@ -98,7 +101,7 @@ public class SearchResponse {
      *
      * @param hasMore true if the search result has more pages, otherwise false
      */
-    public void addHasMore(boolean hasMore) {
+    void addHasMore(boolean hasMore) {
         element.addAttribute(MailConstants.A_QUERY_MORE, hasMore);
     }
 
@@ -107,7 +110,7 @@ public class SearchResponse {
      *
      * @return result
      */
-    public Element toElement() {
+    Element toElement() {
         return element;
     }
 
@@ -116,7 +119,7 @@ public class SearchResponse {
      *
      * @return number of hits
      */
-    public int size() {
+    int size() {
         return size;
     }
 
@@ -126,22 +129,16 @@ public class SearchResponse {
      * @param hit hit to append
      * @throws ServiceException error
      */
-    public void add(ZimbraHit hit) throws ServiceException {
-        boolean inline = (size == 0 && expand == ExpandResults.FIRST) ||
-            expand == ExpandResults.ALL || expand == ExpandResults.HITS ||
-            expand.matches(hit.getParsedItemID());
-
+    void add(ZimbraHit hit) throws ServiceException {
         Element el = null;
-        if (params.getMode() == SearchResultMode.IDS) {
+        if (params.getFetchMode() == SearchParams.Fetch.IDS) {
             if (hit instanceof ConversationHit) {
                 // need to expand the contained messages
                 el = element.addElement("hit");
-                el.addAttribute(MailConstants.A_ID,
-                        ifmt.formatItemId(hit.getParsedItemID()));
+                el.addAttribute(MailConstants.A_ID, ifmt.formatItemId(hit.getParsedItemID()));
             } else {
                 el = element.addElement("hit");
-                el.addAttribute(MailConstants.A_ID,
-                        ifmt.formatItemId(hit.getParsedItemID()));
+                el.addAttribute(MailConstants.A_ID, ifmt.formatItemId(hit.getParsedItemID()));
             }
         } else if (hit instanceof ProxiedHit) {
             element.addElement(((ProxiedHit) hit).getElement().detach());
@@ -151,7 +148,7 @@ public class SearchResponse {
             if (hit instanceof ConversationHit) {
                 el = add((ConversationHit) hit);
             } else if (hit instanceof MessageHit) {
-                el = add((MessageHit) hit, inline);
+                el = add((MessageHit) hit);
             } else if (hit instanceof MessagePartHit) {
                 el = add((MessagePartHit) hit);
             } else if (hit instanceof ContactHit) {
@@ -170,17 +167,15 @@ public class SearchResponse {
 
         if (el != null) {
             size++;
-            el.addAttribute(MailConstants.A_SORT_FIELD,
-                    hit.getSortField(sortOrder).toString());
+            el.addAttribute(MailConstants.A_SORT_FIELD, hit.getSortField(sortOrder).toString());
             if (includeMailbox) {
-                el.addAttribute(MailConstants.A_ID, new ItemId(
-                        hit.getAcctIdStr(), hit.getItemId()).toString());
+                el.addAttribute(MailConstants.A_ID, new ItemId(hit.getAcctIdStr(), hit.getItemId()).toString());
             }
         }
     }
 
     private Element add(ConversationHit hit) throws ServiceException {
-        if (params.getMode() == SearchResultMode.IDS) {
+        if (params.getFetchMode() == SearchParams.Fetch.IDS) {
             Element el = element.addElement(MailConstants.E_CONV);
             for (MessageHit mhit : hit.getMessageHits()) {
                 el.addElement(MailConstants.E_MSG).addAttribute(
@@ -203,43 +198,55 @@ public class SearchResponse {
                     mel.addAttribute(MailConstants.A_SIZE, msg.getSize()).addAttribute(
                             MailConstants.A_FOLDER, msg.getFolderId());
                 }
-                if (msg.isDraft() && msg.getDraftAutoSendTime() != 0)
+                if (msg.isDraft() && msg.getDraftAutoSendTime() != 0) {
                     mel.addAttribute(MailConstants.A_AUTO_SEND_TIME, msg.getDraftAutoSendTime());
+                }
             }
             return el;
         }
     }
 
-    private Element add(MessageHit hit, boolean inline)
-        throws ServiceException {
+    private boolean isInlineExpand(MessageHit hit) throws ServiceException {
+        if (expand == ExpandResults.FIRST) {
+            return size == 0;
+        } else if (expand == ExpandResults.ALL) {
+            return true;
+        } else if (expand == ExpandResults.HITS) {
+            return true;
+        } else if (expand == ExpandResults.UNREAD) {
+            return hit.getMessage().isUnread();
+        } else if (expand == ExpandResults.UNREAD_FIRST) {
+            return allRead ? size == 0 : hit.getMessage().isUnread();
+        } else {
+            return expand.matches(hit.getParsedItemID());
+        }
+    }
 
+    private Element add(MessageHit hit) throws ServiceException {
         Message msg = hit.getMessage();
-
+        boolean inline = isInlineExpand(hit);
         // for bug 7568, mark-as-read must happen before the response is encoded.
         if (inline && msg.isUnread() && params.getMarkRead()) {
             // Mark the message as READ
             try {
-                msg.getMailbox().alterTag(octxt, msg.getId(), msg.getType(),
-                        Flag.ID_FLAG_UNREAD, false);
+                msg.getMailbox().alterTag(octxt, msg.getId(), msg.getType(), Flag.FlagInfo.UNREAD, false, null);
             } catch (ServiceException e) {
                 if (e.getCode().equals(ServiceException.PERM_DENIED)) {
-                    LOG.info("no permissions to mark message as read (ignored): " +
-                            msg.getId());
+                    LOG.info("no permissions to mark message as read (ignored): %d", msg.getId());
                 } else {
-                    LOG.warn("problem marking message as read (ignored): " +
-                            msg.getId(), e);
+                    LOG.warn("problem marking message as read (ignored): %d", msg.getId(), e);
                 }
             }
         }
 
         Element el;
         if (inline) {
-            el = ToXML.encodeMessageAsMP(element, ifmt, octxt, msg, null,
-                    params.getMaxInlinedLength(), params.getWantHtml(),
-                    params.getNeuterImages(), params.getInlinedHeaders(), true);
+            el = ToXML.encodeMessageAsMP(element, ifmt, octxt, msg, null, params.getMaxInlinedLength(),
+                    params.getWantHtml(), params.getNeuterImages(), params.getInlinedHeaders(), true,
+                    params.getWantExpandGroupInfo());
         } else {
-            el = ToXML.encodeMessageSummary(element, ifmt, octxt, msg,
-                    params.getWantRecipients());
+            el = ToXML.encodeMessageSummary(element, ifmt, octxt, msg, params.getWantRecipients(),
+                    params.isQuick() ? PendingModifications.Change.CONTENT : ToXML.NOTIFY_FIELDS);
         }
 
         el.addAttribute(MailConstants.A_CONTENTMATCHED, true);
@@ -248,12 +255,11 @@ public class SearchResponse {
         if (parts != null) {
             for (MessagePartHit mph : parts) {
                 String partNameStr = mph.getPartName();
-                if (partNameStr.length() > 0)
-                    el.addElement(MailConstants.E_HIT_MIMEPART).addAttribute(
-                            MailConstants.A_PART, partNameStr);
+                if (partNameStr.length() > 0) {
+                    el.addElement(MailConstants.E_HIT_MIMEPART).addAttribute(MailConstants.A_PART, partNameStr);
+                }
             }
         }
-
         return el;
     }
 
@@ -271,30 +277,27 @@ public class SearchResponse {
         ToXML.encodeEmail(el, msg.getSender(), EmailType.FROM);
         String subject = msg.getSubject();
         if (subject != null) {
-            el.addAttribute(MailConstants.E_SUBJECT, subject,
-                    Element.Disposition.CONTENT);
+            el.addAttribute(MailConstants.E_SUBJECT, subject, Element.Disposition.CONTENT);
         }
 
         return el;
     }
 
     private Element add(ContactHit hit) throws ServiceException {
-        return ToXML.encodeContact(element, ifmt, hit.getContact(), true, null);
+        return ToXML.encodeContact(element, ifmt, octxt, hit.getContact(), true, null);
     }
 
     private Element add(NoteHit hit) throws ServiceException {
-        return ToXML.encodeNote(element, ifmt, hit.getNote());
+        return ToXML.encodeNote(element, ifmt, octxt, hit.getNote());
     }
 
     private Element add(DocumentHit hit) throws ServiceException {
-        if (hit.getItemType() == MailItem.TYPE_DOCUMENT) {
+        if (hit.getItemType() == MailItem.Type.DOCUMENT) {
             return ToXML.encodeDocument(element, ifmt, octxt, hit.getDocument());
-        } else if (hit.getItemType() == MailItem.TYPE_WIKI) {
-            return ToXML.encodeWiki(element, ifmt, octxt,
-                    (WikiItem) hit.getDocument());
+        } else if (hit.getItemType() == MailItem.Type.WIKI) {
+            return ToXML.encodeWiki(element, ifmt, octxt, (WikiItem) hit.getDocument());
         } else {
-            throw ServiceException.UNKNOWN_DOCUMENT(
-                    "invalid document type " + hit.getItemType(), null);
+            throw ServiceException.UNKNOWN_DOCUMENT("invalid document type " + hit.getItemType(), null);
         }
     }
 
@@ -305,7 +308,6 @@ public class SearchResponse {
      * @return could be NULL
      */
     private Element add(CalendarItemHit hit) throws ServiceException {
-
         CalendarItem item = hit.getCalendarItem();
         Account acct = DocumentHandler.getRequestedAccount(zsc);
         long rangeStart = params.getCalItemExpandStart();
@@ -332,13 +334,10 @@ public class SearchResponse {
      * Append the query information to this response.
      *
      * @param qinfo query information
-     * @param estimatedResultSize estimated result size
      */
-    public void add(List<QueryInfo> qinfo, int estimatedResultSize) {
-        if ((qinfo.size() > 0) || params.getEstimateSize()) {
+    public void add(List<QueryInfo> qinfo) {
+        if (qinfo.size() > 0) {
             Element el = element.addElement(MailConstants.E_INFO);
-            el.addElement("sizeEstimate").addAttribute("value",
-                    estimatedResultSize);
             for (QueryInfo inf : qinfo) {
                 inf.toXml(el);
             }

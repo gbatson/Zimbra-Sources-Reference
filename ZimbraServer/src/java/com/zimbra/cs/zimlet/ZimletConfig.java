@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ import java.util.Map;
 
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.ZimletConstants;
 
 /**
  * 
@@ -56,10 +57,10 @@ public class ZimletConfig extends ZimletMeta implements ZimletConf {
 	}
 	
 	protected void validateElement(Element elem) throws ZimletException {
-		if (elem.getName().equals(ZIMLET_TAG_GLOBAL)) {
+		if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_GLOBAL)) {
 			parseConfig(elem, mGlobalConfig);
-		} else if (elem.getName().equals(ZIMLET_TAG_HOST)) {
-			String hostname = elem.getAttribute(ZIMLET_ATTR_NAME, "").toLowerCase();
+		} else if (elem.getName().equals(ZimletConstants.ZIMLET_TAG_HOST)) {
+			String hostname = elem.getAttribute(ZimletConstants.ZIMLET_ATTR_NAME, "").toLowerCase();
 			if (mLocalHost.equals(hostname)) {
 				parseConfig(elem, mSiteConfig);
 			} else {
@@ -74,7 +75,7 @@ public class ZimletConfig extends ZimletMeta implements ZimletConf {
 		Iterator iter = elem.listElements().iterator();
 		while (iter.hasNext()) {
 			Element e = (Element) iter.next();
-			config.put(e.getAttribute(ZIMLET_ATTR_NAME, ""), e.getText());
+			config.put(e.getAttribute(ZimletConstants.ZIMLET_ATTR_NAME, ""), e.getText());
 		}
 	}
 

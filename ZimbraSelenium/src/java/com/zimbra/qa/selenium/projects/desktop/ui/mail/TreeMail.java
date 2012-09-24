@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -398,8 +382,9 @@ public class TreeMail extends AbsTree {
 	/**
 	 * To get whether the tree is collapsed or not
 	 * @return true if tree is collapsed, otherwise false
+	 * @throws HarnessException 
 	 */
-	public boolean isCollapsed() {
+	public boolean isCollapsed() throws HarnessException {
 	   // Browse all inventory in case of multiple accounts situation
 	   int i = 1;
 	   String locator = null;
@@ -627,12 +612,12 @@ public class TreeMail extends AbsTree {
 	 */
 	public AbsPage zTreeItem(Action action, IItem folder) throws HarnessException {
 
-		tracer.trace("Click "+ action +" on folder "+ folder.getName());
-
 		// Validate the arguments
 		if ( (action == null) || (folder == null) ) {
 			throw new HarnessException("Must define an action and addressbook");
 		}
+
+		tracer.trace("Click "+ action +" on folder "+ folder.getName());
 
 		if ( folder instanceof FolderItem ) {
 			return (zTreeItem(action, (FolderItem)folder));
@@ -648,12 +633,12 @@ public class TreeMail extends AbsTree {
 	@Override
 	public AbsPage zTreeItem(Action action, Button option, IItem folder) throws HarnessException {
 
-		tracer.trace("Click "+ action +" then "+ option +" on folder "+ folder.getName());
-
 		// Validate the arguments
 		if ( (action == null) || (option == null) || (folder == null) ) {
 			throw new HarnessException("Must define an action, option, and addressbook");
 		}
+
+		tracer.trace("Click "+ action +" then "+ option +" on folder "+ folder.getName());
 
 		if ( folder instanceof FolderItem ) {
 			return (zTreeItem(action, option, (FolderItem)folder));

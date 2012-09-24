@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui;
 
 import com.zimbra.qa.selenium.framework.items.FolderItem;
@@ -23,6 +7,7 @@ import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
 import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.PageAddressbook;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.PageBriefcase;
+import com.zimbra.qa.selenium.projects.ajax.ui.calendar.PageCalendar;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.PageMail;
 import com.zimbra.qa.selenium.projects.ajax.ui.tasks.PageTasks;
 
@@ -48,8 +33,7 @@ public class DialogMove extends AbsDialog {
 
 	@Override
 	public String myPageName() {
-		// TODO Auto-generated method stub
-		return null;
+		return (this.getClass().getName());
 	}
 
 	@Override
@@ -165,16 +149,23 @@ public class DialogMove extends AbsDialog {
 
 		} else if (MyTab instanceof PageAddressbook) {
 
-		   if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
-		      locator = "css=div[id='" + Locators.zDialogId
-            + "'] td[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
-            ":ZmChooseFolderDialog_Contacts__'][id$=':"
-            + folder.getId() + "_textCell']";
-		   } else {
-   			locator = "css=div[id='" + Locators.zDialogId
-   			+ "'] td[id='zti__ZmChooseFolderDialog_Contacts__"
-   			+ folder.getId() + "_textCell']";
-		   }
+			   if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {
+			      locator = "css=div[id='" + Locators.zDialogId
+	            + "'] td[id^='zti__" + MyApplication.zGetActiveAccount().EmailAddress +
+	            ":ZmChooseFolderDialog_Contacts__'][id$=':"
+	            + folder.getId() + "_textCell']";
+			   } else {
+	   			locator = "css=div[id='" + Locators.zDialogId
+	   			+ "'] td[id='zti__ZmChooseFolderDialog_Contacts__"
+	   			+ folder.getId() + "_textCell']";
+			   }
+
+		} else if (MyTab instanceof PageCalendar) {
+
+			locator = String.format(
+					"css=div[id='%s'] td[id='zti__ZmChooseFolderDialog_Calendar__%s_textCell']", 
+					Locators.zDialogId, 
+					folder.getId());
 
 		}else if (MyTab instanceof PageTasks){
 			if (ZimbraSeleniumProperties.getAppType() == AppType.DESKTOP) {

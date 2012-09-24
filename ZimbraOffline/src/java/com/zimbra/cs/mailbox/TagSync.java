@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -20,8 +20,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.zimbra.common.service.ServiceException;
@@ -29,7 +29,6 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.LruMap;
 import com.zimbra.cs.account.DataSource;
-import com.zimbra.cs.account.DataSource.Type;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.datasource.DataSourceDbMapping;
@@ -37,13 +36,14 @@ import com.zimbra.cs.datasource.DataSourceMapping;
 import com.zimbra.cs.db.DbDataSource.DataSourceItem;
 import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.offline.OfflineLog;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 public class TagSync {
 
-    private static final String dsName = "zcs8tag";
+    private static final String dsName = "zcs7tag";
     private boolean mappingRequired = false;
     private DataSource tagDs = null;
-    private ZcsMailbox mbox;
+    private final ZcsMailbox mbox;
 
     private LruMap<Integer, Integer> localIdFromRemote;
     private LruMap<Integer, Integer> remoteIdFromLocal;
@@ -51,8 +51,9 @@ public class TagSync {
 
     public TagSync(ZcsMailbox mbox) {
         this.mbox = mbox;
+        //TODO: will need inverse implementation for ZD 8 to work with ZCS 7; underpinnings are here but need to work out details
         try {
-            if (mbox.getRemoteServerVersion().isAtLeast8xx()) {
+            if (!mbox.getRemoteServerVersion().isAtLeast8xx()) {
                 enableTagDataSource(mbox);
             }
         } catch (ServiceException e) {
@@ -73,13 +74,20 @@ public class TagSync {
         tagDs = account.getDataSourceByName(dsName);
         if (tagDs == null) {
             OfflineLog.offline.debug("initializing tag datasource");
-            tagDs = prov.createDataSource(account, Type.tagmap, dsName, new HashMap<String, Object>());
+            tagDs = prov.createDataSource(account, DataSourceType.tagmap, dsName, new HashMap<String, Object>());
             //initially any previously existing local tags also have same ID as remote.
             List<Tag> tags = mbox.getTagList(null);
             for (Tag tag : tags) {
                 mapTag(tag.getId(), tag.getId());
             }
         }
+    }
+
+    static int TAG_ID_OFFSET = 64, MAX_TAG_COUNT = 63;
+
+    static boolean validateId(int tagId) {
+        return true; //TODO: cleanup 7.x backward compat. preemptive validation doesn't work in reverse; 7.x will always create tag IDs that are valid in 8.0
+//        return tagId >= TAG_ID_OFFSET && tagId < TAG_ID_OFFSET + MAX_TAG_COUNT;
     }
 
     /**
@@ -107,7 +115,7 @@ public class TagSync {
         StringBuilder sb = new StringBuilder();
         for (String remoteTag : remoteTags.split(",")) {
             int localId = localTagId(Integer.valueOf(remoteTag));
-            if (!Tag.validateId(localId)) {
+            if (!validateId(localId)) {
                 continue;
             } else {
                 sb.append(localId).append(",");
@@ -173,7 +181,7 @@ public class TagSync {
                 Integer tagId = localIdsByName.get(name);
                 if (tagId == null) {
                     try {
-                        Tag tag = mbox.getTagByName(name);
+                        Tag tag = mbox.getTagByName(null, name);
                         tagId = tag.getId();
                         localIdsByName.put(name, tagId);
                     } catch (MailServiceException mse) {
@@ -343,7 +351,7 @@ public class TagSync {
      * @throws ServiceException
      */
     public void mapTag(int remote, int id) throws ServiceException {
-        if (!Tag.validateId(id)) {
+        if (!validateId(id)) {
             throw MailServiceException.NO_SUCH_TAG(id);
         }
         mapTagInternal(remote, id);
@@ -362,7 +370,7 @@ public class TagSync {
      * @throws ServiceException
      */
     public void mapOverflowTag(int remote) throws ServiceException {
-        int max = Tag.TAG_ID_OFFSET;
+        int max = TAG_ID_OFFSET;
         Collection<DataSourceItem> items = DataSourceDbMapping.getInstance().getAllMappingsInFolder(tagDs, Mailbox.ID_FOLDER_TAGS);
         for (DataSourceItem item : items) {
             if (item.itemId > max) {
@@ -390,7 +398,7 @@ public class TagSync {
      * @throws ServiceException
      */
     public boolean isMappingRequired(int remoteId) throws ServiceException {
-        if (!mappingRequired && !Tag.validateId(remoteId)) {
+        if (!mappingRequired && !validateId(remoteId)) {
             OfflineLog.offline.info("Detected new tag ID outside valid range; enabling tag mapping");
             enableTagDataSource(mbox);
         }

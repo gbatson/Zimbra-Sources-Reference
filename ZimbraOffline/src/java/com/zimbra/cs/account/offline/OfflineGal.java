@@ -1,21 +1,21 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.account.offline;
 
-import java.io.IOException;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -24,6 +24,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.google.common.io.Closeables;
 import com.zimbra.common.mailbox.ContactConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AccountConstants;
@@ -73,7 +74,6 @@ public class OfflineGal {
     private OfflineAccount mAccount;
     private Mailbox mGalMbox = null;
     private OperationContext mOpContext = null;
-    private static byte[] GAL_TYPES = new byte[] { MailItem.TYPE_CONTACT };
     private SearchParams searchParams = null;
 
     public OfflineGal(OfflineAccount account) throws OfflineServiceException {
@@ -129,19 +129,13 @@ public class OfflineGal {
         Folder folder = getSyncFolder(mGalMbox, mOpContext, false);
 
         String query = buildGalSearchQueryString(names, type, folder);
-
-        try {
-            this.searchParams = new SearchParams();
-            this.searchParams.setQueryStr(query.toString());
-            this.searchParams.setTypes(GAL_TYPES);
-            this.searchParams.setSortBy(sortBy);
-            this.searchParams.setOffset(offset);
-            this.searchParams.setLimit(limit);
-            return mGalMbox.search(SoapProtocol.Soap12, mOpContext, this.searchParams);
-        } catch (IOException e) {
-            OfflineLog.offline.debug("gal mailbox IO error (" + mAccount.getName() + "): " + e.getMessage());
-            return null;
-        }
+        this.searchParams = new SearchParams();
+        this.searchParams.setQueryString(query);
+        this.searchParams.setTypes(EnumSet.of(MailItem.Type.CONTACT));
+        this.searchParams.setSortBy(sortBy);
+        this.searchParams.setOffset(offset);
+        this.searchParams.setLimit(limit);
+        return mGalMbox.index.search(SoapProtocol.Soap12, mOpContext, this.searchParams);
     }
 
     private String buildGalSearchQueryString(Set<String> names, String type, Folder folder) {
@@ -179,7 +173,7 @@ public class OfflineGal {
             throws ServiceException {
         limit = limit == 0 ? mAccount.getIntAttr(Provisioning.A_zimbraGalMaxResults, 100) : limit;
         if (sortBy == null) {
-            sortBy = SortBy.NAME_ASCENDING;
+            sortBy = SortBy.NAME_ASC;
         }
         ZimbraQueryResults zqr = search(name, type, sortBy, offset, limit + 1, cursor); // use limit + 1 so that we know when to set "had more"
         if (zqr == null) {
@@ -193,7 +187,7 @@ public class OfflineGal {
                 ZimbraHit hit = pager.getNextHit();
                 if (hit instanceof ContactHit) {
                     int id = hit.getItemId();
-                    Contact contact = (Contact) mGalMbox.getItemById(mOpContext, id, MailItem.TYPE_CONTACT);
+                    Contact contact = (Contact) mGalMbox.getItemById(mOpContext, id, MailItem.Type.CONTACT);
                     Element cn = response.addElement(MailConstants.E_CONTACT);
                     cn.addAttribute(MailConstants.A_ID, hit.getAcctIdStr() + ":" + Integer.toString(id));
                     Map<String, String> fields = contact.getFields();
@@ -219,50 +213,48 @@ public class OfflineGal {
         } catch (Exception e) {
             OfflineLog.offline.debug("search on GalSync account failed...%s", e.getCause());
         } finally {
-            if (zqr != null)
-                try {
-                    zqr.doneWithSearchResults();
-                } catch (ServiceException e) {
-                }
+            if (zqr != null) {
+                Closeables.closeQuietly(zqr);
+            }
         }
     }
 
     public void search(AutoCompleteResult result, String name, int limit, String type) throws ServiceException {
-        ZimbraQueryResults zqr = search(name, type, SortBy.NAME_ASCENDING, 0, limit, null);
-        if (zqr == null)
+        ZimbraQueryResults zqr = search(name, type, SortBy.NAME_ASC, 0, limit, null);
+        if (zqr == null) {
             return;
-
+        }
         ContactAutoComplete ac = new OfflineGalContactAutoComplete(mAccount, mOpContext);
         ac.setNeedCanExpand(true);
         try {
             while (zqr.hasNext()) {
                 int id = zqr.getNext().getItemId();
-                Contact contact = (Contact) mGalMbox.getItemById(mOpContext, id, MailItem.TYPE_CONTACT);
+                Contact contact = (Contact) mGalMbox.getItemById(mOpContext, id, MailItem.Type.CONTACT);
                 ItemId iid = new ItemId(mGalMbox, id);
                 ac.addMatchedContacts(name, contact.getFields(), ContactAutoComplete.FOLDER_ID_GAL, iid, result);
                 if (!result.canBeCached)
                     break;
             }
         } finally {
-            zqr.doneWithSearchResults();
+            Closeables.closeQuietly(zqr);
         }
     }
 
     private static ConcurrentMap<String, Folder> syncFolderCache = new ConcurrentHashMap<String, Folder>();
 
     /*
-     * We used to have two alternating folders to store GAL. After the upgrade, we should continue to use the "current" folder (sync folder) to store GAL, until a full-sync when we can safely delete
-     * the "second" folder and only use the system folder "Contacts" from then on.
+     * We used to have two alternating folders to store GAL. After the upgrade, we should continue to use the 
+     * "current" folder (sync folder) to store GAL, until a full-sync when we can safely delete the "second"
+     * folder and only use the system folder "Contacts" from then on.
      */
-    public static Folder getSyncFolder(Mailbox galMbox, OperationContext context, boolean fullSync)
-            throws ServiceException {
+    public static Folder getSyncFolder(Mailbox galMbox, OperationContext context, boolean fullSync) throws ServiceException {
         if (fullSync) {
             Folder sndFolder = getSecondFolder(galMbox, context);
             if (sndFolder != null) { // migration: empty and delete "Contacts2" folder
                 // there is a small chance (only on full sync) of race condition here if user is searching in gal when
                 // this migration is run. but since the chance is small and is one-time only, the condition is not handled
                 galMbox.emptyFolder(context, sndFolder.getId(), false);
-                galMbox.delete(context, sndFolder.getId(), MailItem.TYPE_FOLDER);
+                galMbox.delete(context, sndFolder.getId(), MailItem.Type.FOLDER);
                 syncFolderCache.remove(galMbox.getAccountId());
                 OfflineLog.offline.debug("Offline GAL deleted second sync folder");
             }

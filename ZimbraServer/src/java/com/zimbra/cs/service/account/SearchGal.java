@@ -1,21 +1,19 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
 package com.zimbra.cs.service.account;
 
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -33,13 +31,15 @@ import com.zimbra.cs.account.EntrySearchFilter.Operator;
 import com.zimbra.cs.account.EntrySearchFilter.Single;
 import com.zimbra.cs.account.EntrySearchFilter.Visitor;
 import com.zimbra.cs.account.gal.GalUtil;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
 import com.zimbra.cs.gal.GalExtraSearchFilter;
+import com.zimbra.cs.gal.GalSearchConfig;
 import com.zimbra.cs.gal.GalSearchControl;
 import com.zimbra.cs.gal.GalSearchParams;
 import com.zimbra.cs.gal.GalSearchQueryCallback;
 import com.zimbra.cs.gal.GalExtraSearchFilter.GalExtraQueryCallback;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.account.type.MemberOfSelector;
+import com.zimbra.soap.type.GalSearchType;
 
 /**
  * @since May 26, 2004
@@ -65,13 +65,23 @@ public class SearchGal extends GalDocumentHandler {
     
     private static Element searchGal(ZimbraSoapContext zsc, Account account, Element request) throws ServiceException {
         
-        String name = request.getAttribute(AccountConstants.E_NAME);
+        // if searhc by ref is requested, honor it
+        String ref = request.getAttribute(AccountConstants.A_REF, null);
+        
+        // otherwise require a query
+        String name = null;
+        if (ref == null) {
+            name = request.getAttribute(AccountConstants.E_NAME);
+        }
         
         EntrySearchFilter filter = GalExtraSearchFilter.parseSearchFilter(request);
                 
         String typeStr = request.getAttribute(AccountConstants.A_TYPE, "all");
-        Provisioning.GalSearchType type = Provisioning.GalSearchType.fromString(typeStr);
+        GalSearchType type = GalSearchType.fromString(typeStr);
         boolean needCanExpand = request.getAttributeBool(AccountConstants.A_NEED_EXP, false);
+        boolean needIsOwner = request.getAttributeBool(AccountConstants.A_NEED_IS_OWNER, false);
+        MemberOfSelector needIsMember = MemberOfSelector.fromString(
+                request.getAttribute(AccountConstants.A_NEED_IS_MEMBER, MemberOfSelector.none.name()));
         
         // internal attr, for proxied GSA search from GetSMIMEPublicCerts only
         boolean needSMIMECerts = request.getAttributeBool(AccountConstants.A_NEED_SMIME_CERTS, false);
@@ -80,10 +90,17 @@ public class SearchGal extends GalDocumentHandler {
         
         GalSearchParams params = new GalSearchParams(account, zsc);
         
-        params.setQuery(name);
+        if (ref == null) {
+            params.setQuery(name);
+        } else {
+            // search GAL by ref, which is a dn
+            params.setSearchEntryByDn(ref);
+        }
         params.setType(type);
         params.setRequest(request);
         params.setNeedCanExpand(needCanExpand);
+        params.setNeedIsOwner(needIsOwner);
+        params.setNeedIsMember(needIsMember);
         params.setNeedSMIMECerts(needSMIMECerts);
         params.setResponseName(AccountConstants.SEARCH_GAL_RESPONSE);
         
@@ -168,7 +185,7 @@ public class SearchGal extends GalDocumentHandler {
             namedFilter = namedFilter + "_" + op.name();
             String filter = null;
             try {
-                String filterDef = LdapProvisioning.getFilterDef(namedFilter);
+                String filterDef = GalSearchConfig.getFilterDef(namedFilter);
                 if (filterDef != null) {
                     filter = GalUtil.expandFilter(null, filterDef, value, null);
                 }

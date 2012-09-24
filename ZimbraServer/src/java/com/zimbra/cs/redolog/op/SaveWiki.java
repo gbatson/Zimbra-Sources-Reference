@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,7 @@ import java.io.IOException;
 import com.zimbra.cs.mailbox.MailServiceException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -28,14 +29,12 @@ public class SaveWiki extends SaveDocument {
     private String mWikiword;
 
     public SaveWiki() {
+        mOperation = MailboxOperation.SaveWiki;
     }
 
     public SaveWiki(int mailboxId, String digest, int msgSize, int folderId) {
-        super(mailboxId, digest, msgSize, folderId);
-    }
-
-    @Override public int getOpCode() {
-        return OP_SAVE_WIKI;
+        super(mailboxId, digest, msgSize, folderId, 0);
+        mOperation = MailboxOperation.SaveWiki;
     }
 
     public String getWikiword() {

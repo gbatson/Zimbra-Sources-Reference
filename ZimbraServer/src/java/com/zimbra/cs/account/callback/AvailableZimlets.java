@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -24,8 +24,8 @@ import com.zimbra.cs.zimlet.ZimletPresence.Presence;
 public class AvailableZimlets extends AttributeCallback {
     
     @Override 
-    public void preModify(Map context, String attrName, Object value,
-            Map attrsToModify, Entry entry, boolean isCreate) {
+    public void preModify(CallbackContext context, String attrName, Object value,
+            Map attrsToModify, Entry entry) {
         
         Object replacing = attrsToModify.get(attrName);
         Object deleting = attrsToModify.get("-" + attrName);
@@ -134,8 +134,7 @@ public class AvailableZimlets extends AttributeCallback {
     }
     
     @Override 
-    public void postModify(Map context, String attrName, Entry entry, boolean isCreate) {
-        
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
     }
 
 }

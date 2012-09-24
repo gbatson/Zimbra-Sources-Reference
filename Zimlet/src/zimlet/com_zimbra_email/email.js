@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,13 +29,13 @@ com_zimbra_email_handlerObject.prototype.constructor = com_zimbra_email_handlerO
 var EmailTooltipZimlet = com_zimbra_email_handlerObject;
 
 
-// static Contst
+// static content
 EmailTooltipZimlet.IM_NEW_IM = "im new im";
 EmailTooltipZimlet.IM_NEW_BUDDY = "im new buddy";
 EmailTooltipZimlet.NEW_FILTER = "__new__";
 EmailTooltipZimlet.MAILTO_RE = /^mailto:[\x27\x22]?([^@?&\x22\x27]+@[^@?&]+\.[^@?&\x22\x27]+)[\x27\x22]?/;
 EmailTooltipZimlet.tooltipWidth = 280;
-EmailTooltipZimlet.tooltipHeight = 150;
+//EmailTooltipZimlet.tooltipHeight = 150;
 
 EmailTooltipZimlet.prototype.init =
 function() {
@@ -48,7 +48,10 @@ function() {
 	this._prefDialog = new EmailToolTipPrefDialog(this);
 
 	this._subscriberZimlets = [];
+    this._presenceProvider = null; // For the subscriber zimlet that can provide presence info. Only one presence provider
 	this._preLoadImgs();
+	this._convModeCount = 0;
+    this._presenceCache = []; // Cache for holding presence information
 };
 
 /**
@@ -114,21 +117,42 @@ function(ev) {
 	}
 };
 
+EmailTooltipZimlet.prototype.onConvStart =
+function() {
+    if (this._convModeCount == 0) {
+        this._clearBubbles();
+    }
+    this._convModeCount++;
+};
+
+EmailTooltipZimlet.prototype.onConvEnd =
+function() {
+    this._convModeCount--;
+};
+
 EmailTooltipZimlet.prototype.onFindMsgObjects =
 function() {
-	
-	if (appCtxt.get(ZmSetting.USE_ADDR_BUBBLES)) {
+    if (this._convModeCount == 0) {
+        this._clearBubbles();
+    }
+};
+
+EmailTooltipZimlet.prototype._clearBubbles =
+function() {
+    DBG.println(AjxDebug.DBG3, "EmailTooltipZimlet._clearBubbles");
+    if (appCtxt.get(ZmSetting.USE_ADDR_BUBBLES)) {
 		// TODO: dispose old bubbles
 		this._bubbleList = new ZmAddressBubbleList();
 		this._bubbleList.addSelectionListener(new AjxListener(this, this._bubbleSelectionListener));
 		this._bubbleList.addActionListener(new AjxListener(this, this._bubbleActionListener));
 		this._bubbleParams = {};
 	}
-};
+}
 
 // create bubble for address in header
 EmailTooltipZimlet.prototype.generateSpan =
 function(html, idx, obj, spanId, context, options) {
+    DBG.println(AjxDebug.DBG3, "EmailTooltipZimlet.generateSpan");
 	options = options || {};
 	if (options.addrBubbles) {
 		this._isBubble[spanId] = true;
@@ -139,7 +163,8 @@ function(html, idx, obj, spanId, context, options) {
 				dataClass:		appCtxt.getAutocompleter(),
 				matchValue:		ZmAutocomplete.AC_VALUE_FULL,
 				options:		{addrBubbles:true, massDLComplete:true},
-				compCallback:	new AjxCallback(this, this._dlAddrSelected)
+				selectionCallback:	this._dlAddrSelected.bind(this),
+				contextId:		this.name
 			};
 			this._aclv = new ZmAutocompleteListView(aclvParams);
 		}
@@ -157,7 +182,8 @@ function(html, idx, obj, spanId, context, options) {
 		};
 		ZmAddressInputField.BUBBLE_OBJ_ID[spanId] = this._internalId;	// pretend to be a ZmAddressInputField
 		this._bubbleParams[spanId] = bubbleParams;
-		
+        DBG.println(AjxDebug.DBG3, "  create span = " + spanId + ", email = " + bubbleParams.email);
+
 		// placeholder SPAN
 		html[idx++] = "<span id='" + spanId + "'>";
 		html[idx++] = "</span>";
@@ -169,9 +195,22 @@ function(html, idx, obj, spanId, context, options) {
 
 EmailTooltipZimlet.prototype.onMsgView =
 function() {
-	
+	this._createBubbles();
+};
+
+// Called from conversation view - used there instead of onMsgView because onMsgView is a
+// commonly implemented call whose use would invoke numerous Zimlets that are inappropriate
+// for a conversation view.
+EmailTooltipZimlet.prototype.onConvView =
+function() {
+	this._createBubbles();
+};
+
+EmailTooltipZimlet.prototype._createBubbles =
+function() {
+	DBG.println(AjxDebug.DBG3, "EmailTooltipZimlet._createBubble");
 	for (var id in this._bubbleParams) {
-		// make sure SPAN was actually added to DOM (may have been ignored by template, for example) 
+		// make sure SPAN was actually added to DOM (may have been ignored by template, for example)
 		if (!document.getElementById(id)) {
 			continue;
 		}
@@ -181,8 +220,9 @@ function() {
 		if (this._bubbleList) {
 			this._bubbleList.add(bubble);
 		}
+		DBG.println(AjxDebug.DBG3, "  span = " + id + ", email = " + bubbleParams.email);
 	}
-};
+}
 
 EmailTooltipZimlet.prototype._bubbleSelectionListener =
 function(ev) {
@@ -191,8 +231,8 @@ function(ev) {
 	if (ev.detail == DwtEvent.ONDBLCLICK) {
 		this._composeListener(ev, bubble.address);
 	}
-	else if (this._bubbleList) {
-		this._bubbleList.selectText(bubble);
+	else if (this._bubbleList && this._bubbleList.selectAddressText) {
+		this._bubbleList.selectAddressText();
 	}
 };
 
@@ -337,9 +377,13 @@ function(contact, address) {
 
 EmailTooltipZimlet.prototype.hoverOut =
 function(object, context, span, spanId) {
-
+    //console.log("In hoverout");
+    //console.log("Object " + object && object.currentTarget);
 	if(!this.tooltip) {	return;	}
-	if (spanId && this._bubbleParams[spanId]) { return; }
+	if (spanId && this._bubbleParams[spanId]) {
+        //console.log("Bubble params");
+        return;
+    }
 
 	this._hoverOver =  false;
 	this.tooltip._poppedUp = false;//makes the tooltip sticky
@@ -350,10 +394,13 @@ function(object, context, span, spanId) {
 EmailTooltipZimlet.prototype.popDownIfMouseNotOnSlide =
 function() {
 	if(this._hoverOver) {
+        //console.log("_hoverOver is true")
 		return;
 	} else if(this.slideShow && this.slideShow.isMouseOverTooltip) {
+        //console.log("isMouseOverTooltip is true");
 		return;
 	} else if(this.tooltip) {
+        //console.log("Popping down tooltip");
 		this.tooltip._poppedUp = true;//makes the tooltip non-sticky
 		this.tooltip.popdown();
 	}
@@ -370,11 +417,18 @@ function() {
 };
 
 EmailTooltipZimlet.prototype.addSubscriberZimlet =
-function(subscriberZimlet, isPrimary) {
+function(subscriberZimlet, isPrimary, cbObject) {
+    //debugger;
 	this._subscriberZimlets.push(subscriberZimlet);	
 	if(isPrimary) {
 		this.primarySubscriberZimlet = subscriberZimlet;
 	}
+
+    // Presence provider set up - only one presence provider assumed
+
+    if (cbObject && cbObject.presenceCallback && !this._presenceProvider){
+        this._presenceProvider = cbObject.presenceCallback;
+    }
 };
 
 // This is called by the zimlet framework.
@@ -430,14 +484,11 @@ function(object, context, x, y, span, spanId) {
 		this.primarySubscriberZimlet.showTooltip();
 		return true;
 	}
-	else if (this._subscriberZimlets.length > 0 && !this.primarySubscriberZimlet) {
-		this._unknownPersonSlide = new UnknownPersonSlide();
-		this._unknownPersonSlide.onEmailHoverOver(this);
-		this._unknownPersonSlide.showTooltip();
-		return true;
-	}
 
-	return false;
+    this._unknownPersonSlide = new UnknownPersonSlide();
+    this._unknownPersonSlide.onEmailHoverOver(this);
+    this._unknownPersonSlide.showTooltip();
+    return true;
 };
 
 EmailTooltipZimlet.prototype._initializeProps =
@@ -471,7 +522,6 @@ EmailTooltipZimlet.prototype._preLoadImgs =
 function() {
 	this._busyImg = new Image();
 	this._busyImg.src = this.getResource("img/EmailZimlet_busy.gif");
-	this.getShell().getHtmlElement().appendChild(this._busyImg);
 	this._unknownPersonImg = new Image();
 	this._unknownPersonImg.src = this.getResource("img/UnknownPerson_dataNotFound.jpg");
 };
@@ -550,8 +600,6 @@ function(actionMenu) {
     searchOp.setMenu(this._searchMenu);
 };
 
-
-
 EmailTooltipZimlet.prototype._resetFilterMenu =
 function() {
 	var filterItems = this._filterMenu.getItems();
@@ -611,8 +659,8 @@ function(ev){
 	if (AjxUtil.isString(addr) && this.isMailToLink(addr)) {
 		addr = (this.parseMailToLink(addr)).to || addr;
 	}
-	var subjMod = ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_FROM];
-	rule.addCondition(ZmFilterRule.TEST_HEADER, ZmFilterRule.OP_IS, addr, subjMod);
+	var subjMod = ZmFilterRule.C_ADDRESS_VALUE[ZmFilterRule.C_FROM];
+	rule.addCondition(ZmFilterRule.TEST_ADDRESS, ZmFilterRule.OP_IS, addr, subjMod);
 
 	appCtxt.getFilterRuleDialog().popup(rule, editMode);
 };
@@ -679,18 +727,23 @@ function(obj, span, context) {
         }
     }
 
-	if (actionMenu.getOp("SEARCHBUILDER") && (isDetachWindow || !appCtxt.get(ZmSetting.BROWSE_ENABLED))) {
-		ZmOperation.removeOperation(actionMenu, "SEARCHBUILDER", actionMenu._menuItems);
-	}
-
 	if (actionMenu.getOp("ADDTOFILTER") && (isDetachWindow || !appCtxt.get(ZmSetting.FILTERS_ENABLED))) {
 		ZmOperation.removeOperation(actionMenu, "ADDTOFILTER", actionMenu._menuItems);
 	}
 
 	var contactsApp = appCtxt.getApp(ZmApp.CONTACTS);
 	var contact = contactsApp && contactsApp.getContactByEmail(addr);
+	var newContactAction = actionMenu.getOp("NEWCONTACT");
+	if (newContactAction) {
+		newContactAction.setVisible(true);
+	}
 	if (contact) {
 		// contact for this address was found in the cache
+		if (contact.isDistributionList() && newContactAction) {
+			//do not allow editing a DL in this way (if user is owner, they can edit via the DL folder/toolbar)
+			// And most likley this is a regular user that is not the owner anyway. So let's keep it simple
+			newContactAction.setVisible(false);
+		}
 		ZmOperation.setOperation(actionMenu, "NEWCONTACT", ZmOperation.EDIT_CONTACT);
 	} else {
 		// contact not found, do a search
@@ -753,7 +806,7 @@ function(spanElement, contentObjText, matchContext, ev) {
 	}
 
 	this._actionObject = contentObjText;
-	this._composeListener(ev, contentObjText);
+	this._composeListener(ev, this._getAddress(contentObjText));
 };
 
 EmailTooltipZimlet.prototype.menuItemSelected =
@@ -862,7 +915,7 @@ function(ev, addr) {
 		params.toOverride = addr + AjxEmailAddress.SEPARATOR;
 	}
 	if (obj && obj.isAjxEmailAddress && obj.address == addr) {
-		params.toOverrideObj = obj;
+		params.toOverride = obj;
 	}
 
 	AjxDispatcher.run("Compose", params );
@@ -910,8 +963,8 @@ function() {
 	if (AjxUtil.isString(addr) && this.isMailToLink(addr)) {
 		addr = (this.parseMailToLink(addr)).to || addr;
 	}
-	var subjMod = ZmFilterRule.C_HEADER_VALUE[ZmFilterRule.C_FROM];
-	rule.addCondition(ZmFilterRule.TEST_HEADER, ZmFilterRule.OP_IS, addr, subjMod);
+	var subjMod = ZmFilterRule.C_ADDRESS_VALUE[ZmFilterRule.C_FROM];
+	rule.addCondition(ZmFilterRule.TEST_ADDRESS, ZmFilterRule.OP_IS, addr, subjMod);
 	rule.addAction(ZmFilterRule.A_KEEP);
 
 	appCtxt.getFilterRuleDialog().popup(rule);
@@ -938,6 +991,18 @@ function() {
 	}
 };
 
+// To call a phone by clicking on it in the contact card
+
+EmailTooltipZimlet.prototype._phoneListener =
+    function(phone) {
+        if (!phone) return;
+        appCtxt.notifyZimlets("onPhoneClicked", [phone], {waitUntilLoaded:true});
+    };
+
+EmailTooltipZimlet.prototype._imListener =
+    function(imURI) {
+        if (!imURI) return;
+    };
 /**
  * Helper function
  */
@@ -1005,12 +1070,12 @@ function(bubbleId, email) {
 	if (bubble) {
 		var loc = Dwt.getLocation(bubble);
 		loc.y += Dwt.getSize(bubble).y + 2;
-		this._aclv.expandDL(email, null, null, null, loc);
+		this._aclv.expandDL({email:email, loc:loc});
 	}
 };
 
 // handle click on an address (or "Select All") in popup DL expansion list
 EmailTooltipZimlet.prototype._dlAddrSelected =
-function(text, el, match, ev) {
-	this._composeListener(ev, text);
+function(match, ev) {
+	this._composeListener(ev, match);
 };

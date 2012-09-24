@@ -1,7 +1,7 @@
 <%--
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -52,11 +52,13 @@
                <table width="100%" cellspacing="0" cellpadding="0">
                <tr>
                    <td width="200" class='List' valign='top'>
-                       <table>
+                       <table class='ZPropertySheet' cellspacing='6'>
                            <tr>
                                <td nowrap="nowrap">
-                                   <label for="searchField"><fmt:message key="find"/>&nbsp;:&nbsp;</label>
-                                   <input onkeydown="return handleEnter(event);" style="background-color:#FFFFFF;height:auto;padding:2px 4px;cursor:text;" type="text" id="searchField" maxlength="50" name="contactsq" value="${fn:escapeXml(param.sq)}">
+                                   <label for="searchField"><fmt:message key="find"/>:&nbsp;</label>
+                                   <input type="text" id="searchField" maxlength="50" name="contactsq" value="${fn:escapeXml(param.sq)}" 
+										onkeydown="return handleEnter(event);" 
+										style="background-color:white;height:auto;padding:2px 4px;cursor:text;">
                                </td>
                                <td>
                                    <app:button name="actionSearch" id="SEARCH_CONTACT" tooltip="search" text="search"/>
@@ -91,7 +93,7 @@
                                        <c:set var="noName" value="${noNameStr} ${not empty hit.contactHit.email ? hit.contactHit.email : hit.contactHit.email2 }" />
                                        <c:choose>
                                            <c:when test="${not empty hit.contactHit.fileAsStr}">
-                                               <c:set var="contactUrlText">
+                                               <c:set var="contactFileAsText">
                                                    <app:contactFileAs
                                                        fileAs="${hit.contactHit.fileAs}"
                                                        firstName="${hit.contactHit.firstName}" lastName="${hit.contactHit.lastName}"
@@ -99,8 +101,9 @@
                                                        nickname="${hit.contactHit.nickname}"
                                                     />
                                                </c:set>
+                                               <c:set var="contactUrlText" value="${fn:escapeXml(contactFileAsText)}"/>
                                            </c:when>
-                                           <c:when test="${empty hit.contactHit.fileAsStr and context.isGALSearch}">
+                                           <c:when test="${empty hit.contactHit.fileAsStr and (context.isGALSearch or hit.contactHit.isGroup)}">
                                                <c:set var="contactUrlText" value="${fn:escapeXml(hit.contactHit.fullName)}" />
                                            </c:when>
                                            <c:otherwise>

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -27,6 +27,7 @@ import org.apache.commons.httpclient.HttpVersion;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
@@ -39,7 +40,6 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.ZimbraAuthTokenEncoded;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
-import com.zimbra.cs.mailbox.OfflineServiceException;
 import com.zimbra.cs.offline.common.OfflineConstants;
 import com.zimbra.cs.service.FileUploadServlet;
 import com.zimbra.cs.service.util.ItemId;
@@ -52,56 +52,41 @@ public class OfflineDocumentHandlers {
         throws ServiceException {
         String acctId = zsc.getRequestedAccountId();
         Provisioning prov = Provisioning.getInstance();
-        return prov.get(Provisioning.AccountBy.id, acctId);
+        return prov.get(Key.AccountBy.id, acctId);
     }
 
-    static class DiffDocument extends com.zimbra.cs.service.wiki.DiffDocument {
+    static class DiffDocument extends com.zimbra.cs.service.doc.DiffDocument {
+        @Override
         protected String getAuthor(ZimbraSoapContext zsc) throws ServiceException {
             return getTargetAccount(zsc).getName();
         }
     }
 
     static class ListDocumentRevisions extends
-        com.zimbra.cs.service.wiki.ListDocumentRevisions {
+        com.zimbra.cs.service.doc.ListDocumentRevisions {
+        @Override
         protected String getAuthor(ZimbraSoapContext zsc) throws ServiceException {
             return getTargetAccount(zsc).getName();
         }
     }
 
-    static class GetWiki extends com.zimbra.cs.service.wiki.GetWiki {
+    static class SaveDocument extends com.zimbra.cs.service.doc.SaveDocument {
+        @Override
         protected String getAuthor(ZimbraSoapContext zsc) throws ServiceException {
             return getTargetAccount(zsc).getName();
         }
     }
 
-    static class SaveDocument extends com.zimbra.cs.service.wiki.SaveDocument {
-        protected String getAuthor(ZimbraSoapContext zsc) throws ServiceException {
-            return getTargetAccount(zsc).getName();
-        }
-    }
-
-    static class SaveWiki extends com.zimbra.cs.service.wiki.SaveWiki {
-        protected String getAuthor(ZimbraSoapContext zsc) throws ServiceException {
-            return getTargetAccount(zsc).getName();
-        }
-    }
-
-    static class WikiAction extends com.zimbra.cs.service.wiki.WikiAction {
-        protected String getAuthor(ZimbraSoapContext zsc) throws ServiceException {
-            return getTargetAccount(zsc).getName();
-        }
-    }
-	
     public static String uploadOfflineDocument(String id, String acctId) throws ServiceException {
         HttpClient client = ZimbraHttpConnectionManager.getInternalHttpConnMgr().getDefaultHttpClient();
-        boolean ka = ZimbraHttpConnectionManager.getInternalHttpConnMgr().getKeepAlive();
+        boolean ka = LC.httpclient_soaphttptransport_keepalive_connections.booleanValue();
         FileUploadServlet.Upload upload = FileUploadServlet.fetchUpload(
             OfflineConstants.LOCAL_ACCOUNT_ID, id, null);
         OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
-        Account account = prov.get(Provisioning.AccountBy.id, acctId);
+        Account account = prov.get(Key.AccountBy.id, acctId);
 
         if (prov.isMountpointAccount(account))
-            account = prov.get(Provisioning.AccountBy.id, account.getAttr(
+            account = prov.get(Key.AccountBy.id, account.getAttr(
                 OfflineProvisioning.A_offlineMountpointProxyAccountId));
         String url = account.getAttr(OfflineConstants.A_offlineRemoteServerUri);
         if (url == null)

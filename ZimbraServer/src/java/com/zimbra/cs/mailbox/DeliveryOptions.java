@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,8 @@
 
 package com.zimbra.cs.mailbox;
 
+import java.util.Collection;
+
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata;
 
 /**
@@ -25,7 +27,7 @@ public class DeliveryOptions {
     private int mFolderId = -1;
     private boolean mNoICal = false;
     private int mFlags = 0;
-    private String mTagString = null;
+    private String[] mTags = null;
     private int mConversationId = Mailbox.ID_AUTO_INCREMENT;
     private String mRecipientEmail = ":API:";
     private Message.DraftInfo mDraftInfo = null;
@@ -34,14 +36,19 @@ public class DeliveryOptions {
     public int getFolderId() { return mFolderId; }
     public boolean getNoICal() { return mNoICal; }
     public int getFlags() { return mFlags; }
-    public String getTagString() { return mTagString; }
+    public String[] getTags() { return mTags; }
     public int getConversationId() { return mConversationId; }
     public String getRecipientEmail() { return mRecipientEmail; }
     public Message.DraftInfo getDraftInfo() { return mDraftInfo; }
     public CustomMetadata getCustomMetadata() { return mCustomMetadata; }
-    
+
     public DeliveryOptions setFolderId(int folderId) {
         mFolderId = folderId;
+        return this;
+    }
+
+    public DeliveryOptions setFolderId(Folder folder) {
+        mFolderId = folder.getId();
         return this;
     }
     
@@ -54,9 +61,14 @@ public class DeliveryOptions {
         mFlags = flags;
         return this;
     }
-    
-    public DeliveryOptions setTagString(String tagString) {
-        mTagString = tagString;
+
+    public DeliveryOptions setTags(Collection<String> tags) {
+        mTags = tags == null ? null : tags.toArray(new String[tags.size()]);
+        return this;
+    }
+
+    public DeliveryOptions setTags(String[] tags) {
+        mTags = tags;
         return this;
     }
     

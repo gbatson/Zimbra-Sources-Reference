@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.mailbox.alerts;
 
 import java.text.DateFormat;
@@ -32,14 +18,12 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailSender;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.Invite;
+import com.zimbra.cs.mailbox.calendar.Util;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.util.JMSession;
 
-/**
- */
 public class CalItemSmsReminderTask extends CalItemReminderTaskBase {
 
     static final String TASK_NAME_PREFIX = "smsReminderTask";
@@ -52,10 +36,11 @@ public class CalItemSmsReminderTask extends CalItemReminderTaskBase {
         return TASK_NAME_PREFIX + getProperty(CAL_ITEM_ID_PROP_NAME);
     }
 
+    @Override
     protected void sendReminder(CalendarItem calItem, Invite invite) throws Exception {
         Account account = calItem.getAccount();
         Locale locale = account.getLocale();
-        TimeZone tz = ICalTimeZone.getAccountTimeZone(account);
+        TimeZone tz = Util.getAccountTimeZone(account);
         MimeMessage mm = new Mime.FixedMimeMessage(JMSession.getSmtpSession(account));
         String to = account.getAttr(Provisioning.A_zimbraCalendarReminderDeviceEmail);
         if (to == null) {
@@ -78,7 +63,7 @@ public class CalItemSmsReminderTask extends CalItemReminderTaskBase {
 
         String formattedStart;
         String formattedEnd;
-        if (calItem.getType() == MailItem.TYPE_APPOINTMENT) {
+        if (calItem.getType() == MailItem.Type.APPOINTMENT) {
             Date start = new Date(new Long(getProperty(NEXT_INST_START_PROP_NAME)));
             formattedStart = dateTimeFormat.format(start);
             Date end = invite.getEffectiveDuration().addToDate(start);
@@ -99,9 +84,9 @@ public class CalItemSmsReminderTask extends CalItemReminderTaskBase {
             organizer = zOrganizer.hasCn() ? zOrganizer.getCn() : zOrganizer.getAddress();
         if (organizer == null) organizer = "";
 
-        String folder = calItem.getMailbox().getFolderById(calItem.getFolderId()).getName();
+        String folder = calItem.getMailbox().getFolderById(null, calItem.getFolderId()).getName();
 
-        return L10nUtil.getMessage(calItem.getType() == MailItem.TYPE_APPOINTMENT ?
+        return L10nUtil.getMessage(calItem.getType() == MailItem.Type.APPOINTMENT ?
                                            L10nUtil.MsgKey.apptReminderSmsText : L10nUtil.MsgKey.taskReminderSmsText,
                                    locale, calItem.getSubject(), formattedStart, formattedEnd, location, organizer, folder);
     }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -23,6 +23,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.ACL;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
+import com.zimbra.cs.mailbox.MailboxOperation;
 import com.zimbra.cs.redolog.RedoLogInput;
 import com.zimbra.cs.redolog.RedoLogOutput;
 
@@ -33,23 +34,24 @@ public class GrantAccess extends RedoableOp {
     private byte mGranteeType;
     private short mRights;
     private String mPassword;
+    private long mExpiry;
 
     public GrantAccess() {
+        super(MailboxOperation.GrantAccess);
         mFolderId = UNKNOWN_ID;
         mGrantee = "";
     }
 
-    public GrantAccess(int mailboxId, int folderId, String grantee, byte granteeType, short rights, String password) {
+    public GrantAccess(int mailboxId, int folderId, String grantee, byte granteeType, short rights, String password,
+            long expiry) {
+        this();
         setMailboxId(mailboxId);
         mFolderId = folderId;
         mGrantee = grantee == null ? "" : grantee;
         mGranteeType = granteeType;
         mRights = rights;
         mPassword = password == null ? "" : password;
-    }
-
-    @Override public int getOpCode() {
-        return OP_GRANT_ACCESS;
+        mExpiry = expiry;
     }
 
     @Override protected String getPrintableData() {
@@ -58,6 +60,7 @@ public class GrantAccess extends RedoableOp {
         sb.append(", type=").append(mGranteeType);
         sb.append(", rights=").append(ACL.rightsToString(mRights));
         sb.append(", args=").append(mPassword);
+        sb.append(", expiry=").append(mExpiry);
         return sb.toString();
     }
 
@@ -67,8 +70,8 @@ public class GrantAccess extends RedoableOp {
         out.writeByte(mGranteeType);
         out.writeShort(mRights);
         out.writeBoolean(true);
-        if (getVersion().atLeast(1, 2))
-        	out.writeUTF(mPassword);
+        out.writeUTF(mPassword);
+        out.writeLong(mExpiry);
     }
 
     @Override protected void deserializeData(RedoLogInput in) throws IOException {
@@ -77,12 +80,16 @@ public class GrantAccess extends RedoableOp {
         mGranteeType = in.readByte();
         mRights = in.readShort();
         in.readBoolean();  // "INHERIT", deprecated as of 02-Apr-2006
-        if (getVersion().atLeast(1, 2))
+        if (getVersion().atLeast(1, 2)) {
         	mPassword = in.readUTF();
+        }
+        if (getVersion().atLeast(1, 36)) {
+            mExpiry = in.readLong();
+        }
     }
 
     @Override public void redo() throws ServiceException {
         Mailbox mbox = MailboxManager.getInstance().getMailboxById(getMailboxId());
-        mbox.grantAccess(getOperationContext(), mFolderId, mGrantee, mGranteeType, mRights, mPassword);
+        mbox.grantAccess(getOperationContext(), mFolderId, mGrantee, mGranteeType, mRights, mPassword, mExpiry);
     }
 }

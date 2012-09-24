@@ -1,20 +1,16 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
- */
-
-/*
- * Created on Jul 7, 2004
  */
 package com.zimbra.cs.db;
 
@@ -24,36 +20,37 @@ import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
-
 import com.zimbra.cs.util.Config;
 
 /**
+ * @since Jul 7, 2004
  * @author tim
  */
-public class Versions {
+public final class Versions {
 
-    private static Log mLog = LogFactory.getLog(Versions.class);
+    private static final Log LOG = LogFactory.getLog(Versions.class);
 
     /**
-     * The DB_VERSION is stored into the config table of the DB when the DB is created.  
+     * The DB_VERSION is stored into the config table of the DB when the DB is created.
      * If the DB_VERSION does not match our server's version, we will not run.
-     * 
+     *
      * UPDATE THESE TO REQUIRE RESET-WORLD TO BE RUN
-     *  
      */
-    public static final int DB_VERSION = 65;
+    public static final int DB_VERSION = 91;
 
     /**
-     * The INDEX_VERSION is stored into the config table of the DB when the DB is created.  
+     * The INDEX_VERSION is stored into the config table of the DB when the DB is created.
      * If the INDEX_VERSION does not match our server's version, we will not run.
      *
      * UPDATE THESE TO REQUIRE RESET-WORLD TO BE RUN
-     *  
      */
     public static final int INDEX_VERSION = 2;
 
+    private Versions() {
+    }
 
     /////////////////////////////////////////////////////////////
     // Called at boot time
@@ -67,7 +64,7 @@ public class Versions {
         if (val.equals(Integer.toString(DB_VERSION))) {
             return true;
         } else {
-            mLog.error("DB Version Mismatch: ours=\""+DB_VERSION+"\" from DB=\""+val+"\"");
+            LOG.error("DB Version Mismatch: ours=%s from DB=%s", DB_VERSION, val);
             return false;
         }
     }
@@ -77,7 +74,7 @@ public class Versions {
         if (val.equals(Integer.toString(INDEX_VERSION))) {
             return true;
         } else {
-            mLog.error("Index Version Mismatch: ours=\""+INDEX_VERSION+"\" from DB=\""+val+"\"");
+            LOG.error("Index Version Mismatch: ours=%s from DB=%s", INDEX_VERSION, val);
             return false;
         }
     }
@@ -96,7 +93,7 @@ public class Versions {
 
     public static void usage(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp(Versions.class.getName(), options); 
+        formatter.printHelp(Versions.class.getName(), options);
         System.exit(1);
     }
 

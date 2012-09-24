@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -18,14 +18,16 @@ package com.zimbra.cs.mailbox.calendar.cache;
 import java.util.Iterator;
 import java.util.List;
 
+import com.zimbra.common.calendar.Geo;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.util.ArrayUtil;
 import com.zimbra.cs.account.IDNUtil;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.calendar.Alarm;
-import com.zimbra.cs.mailbox.calendar.Geo;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
+import com.zimbra.cs.mailbox.util.TagUtil;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.soap.ZimbraSoapContext;
 
@@ -265,7 +267,7 @@ public class CacheToXML {
                                                  CalendarItemData calItemData,
                                                  boolean allowPrivateAccess, boolean legacyFormat)
     throws ServiceException {
-        boolean isAppointment = calItemData.getType() == MailItem.TYPE_APPOINTMENT;
+        boolean isAppointment = calItemData.getType() == MailItem.Type.APPOINTMENT;
 
         Element calItemElem = zsc.createElement(
                 isAppointment ? MailConstants.E_APPOINTMENT : MailConstants.E_TASK);
@@ -279,9 +281,12 @@ public class CacheToXML {
             String flags = calItemData.getFlags();
             if (flags != null && !flags.equals(""))
                 calItemElem.addAttribute(MailConstants.A_FLAGS, flags);
-            String tags = calItemData.getTags();
-            if (tags != null && !tags.equals(""))
-                calItemElem.addAttribute(MailConstants.A_TAGS, tags);
+            String[] tags = calItemData.getTags();
+            if (!ArrayUtil.isEmpty(tags)) {
+                calItemElem.addAttribute(MailConstants.A_TAG_NAMES, TagUtil.encodeTags(tags));
+                // FIXME: want to serialize tag IDs for backwards compatibility
+                calItemElem.addAttribute(MailConstants.A_TAGS, calItemData.getTagIds());
+            }
         }
         calItemElem.addAttribute(MailConstants.A_FOLDER, ifmt.formatItemId(calItemData.getFolderId()));
         if (calItemData.isRecurring()) {

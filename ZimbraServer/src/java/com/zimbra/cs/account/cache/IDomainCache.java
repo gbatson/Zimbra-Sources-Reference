@@ -1,7 +1,7 @@
 package com.zimbra.cs.account.cache;
 
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.cs.account.Domain;
-import com.zimbra.cs.account.Provisioning.DomainBy;
 import com.zimbra.cs.account.cache.DomainCache.GetFromDomainCacheOption;
 
 public interface IDomainCache extends IEntryCache {

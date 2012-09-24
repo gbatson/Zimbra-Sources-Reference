@@ -1,6 +1,6 @@
 <%@ page buffer="8kb" session="false" autoFlush="true" pageEncoding="UTF-8" contentType="text/html; charset=UTF-8" %>
 <%@ page session="false" %>
-<%@ page import="java.util.Locale,com.zimbra.cs.zclient.ZAuthResult" %>
+<%@ page import="java.util.Locale,com.zimbra.client.ZAuthResult" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fmt" uri="com.zimbra.i18n" %>
 <%@ taglib prefix="zd" tagdir="/WEB-INF/tags/desktop" %>
@@ -40,7 +40,7 @@
  launchZD.jsp
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -242,8 +242,8 @@
 <script>
     // compile locale specific templates
     for (var pkg in window.AjxTemplateMsg) {
-		var text = AjxTemplateMsg[pkg];
-		AjxTemplate.compile(pkg, true, false, text);
+	var text = AjxTemplateMsg[pkg];
+	AjxTemplate.compile(pkg, true, true, text);
     }
 </script>
 

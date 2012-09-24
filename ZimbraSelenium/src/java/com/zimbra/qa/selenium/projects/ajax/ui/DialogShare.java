@@ -1,23 +1,8 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
 package com.zimbra.qa.selenium.projects.ajax.ui;
+
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
@@ -58,32 +43,59 @@ public class DialogShare extends AbsDialog {
 
 	}
 	
-	public void zSetShareWith(ShareWith name) throws HarnessException {
-		logger.info(myPageName() + " zSetShareWith("+ name +")");
+	public void zSetShareWith(ShareWith type) throws HarnessException {
+		logger.info(myPageName() + " zSetShareWith("+ type +")");
 
-		String locator = "implement me";
+		String locator = null;
+		
+		if ( type == ShareWith.InternalUsers ) {
+			
+			locator = "css=input#ShareWith_user";
+
+		} else if ( type == ShareWith.ExternalGuests ) {
+			
+			locator = "css=input#ShareWith_external";
+			
+		} else if ( type == ShareWith.Public ) {
+			
+			locator = "css=input#ShareWith_public";
+			
+		} else {
+			throw new HarnessException("type = " + type + " not implemented yet");
+		}
 		
 		// Make sure the locator exists
 		if ( !this.sIsElementPresent(locator) ) {
 			throw new HarnessException("zSetShareWith "+ locator +" is not present");
 		}
 		
+		// check the box
+		this.sClick(locator);
+		this.zWaitForBusyOverlay();
+		
 	}
 	
 	public void zSetEmailAddress(String email) throws HarnessException {
-		logger.info(myPageName() + " zSetEmailAddress("+ email +")");
+		logger.info(myPageName() + " zSetEmailAddress(" + email + ")");
 
-		String locator = "//div[@id='ShareDialog_grantee']/input";
-		
-		
+		String locator = "css=div#ShareDialog_grantee>input";
+
 		// Make sure the locator exists
-		if ( !this.sIsElementPresent(locator) ) {
-			throw new HarnessException("zSetEmailAddress "+ locator +" is not present");
+		if (!this.sIsElementPresent(locator)) {
+			throw new HarnessException("zSetEmailAddress " + locator + " is not present");
 		}
+		
+		
+		// Seems that the client can't handle filling out the new mail form too quickly
+		// Click in the "To" fields, etc, to make sure the client is ready
 		this.sFocus(locator);
-	    this.zClick(locator);
-	    zKeyboard.zTypeCharacters(email);
-		//this.sType(locator, email);
+		this.zClick(locator);
+		this.zWaitForBusyOverlay();
+
+		// Instead of sType() use zKeyboard
+		this.zKeyboard.zTypeCharacters(email + ";");
+		
+
 	}
 	
 	public static class ShareRole {
@@ -155,11 +167,11 @@ public class DialogShare extends AbsDialog {
 		
 		if ( button == Button.B_OK ) {
 			
-			locator =  "//div[@id='"+ Locators.zDialogShareId +"']//div[@id='"+ Locators.zButtonsId +"']//td[text()='OK']";
+			locator = "css=div[id='"+ Locators.zDialogShareId +"'] td[id^='OK'] td[id$='_title']";
 			
 		} else if ( button == Button.B_CANCEL ) {
 			
-			locator =  "implement me";
+			locator = "css=div[id='"+ Locators.zDialogShareId +"'] td[id^='Cancel'] td[id$='_title']";
 
 		} else {
 			throw new HarnessException("Button "+ button +" not implemented");

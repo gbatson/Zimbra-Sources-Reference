@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -154,13 +154,15 @@ public class SmtpTransport extends Transport {
         config.setHost(host);
         config.setPort(port);
         config.setDomain(session.getProperty("mail." + protocol + ".localhost"));
-        config.setSecurity(ssl ? SmtpConfig.Security.SSL : SmtpConfig.Security.NONE);
+        config.setSecurity(ssl ? SmtpConfig.Security.SSL : 
+            PropUtil.getBooleanSessionProperty(session, "mail.smtp.starttls.enable", false) ? SmtpConfig.Security.TLS_IF_AVAILABLE : SmtpConfig.Security.NONE);
         config.setAllowPartialSend(PropUtil.getBooleanSessionProperty(session,
                 "mail." + protocol + ".sendpartial", false));
         config.setConnectTimeout(PropUtil.getIntSessionProperty(session,
                 "mail." + protocol + ".connectiontimeout", 0) / 1000); // msec to sec
         config.setReadTimeout(PropUtil.getIntSessionProperty(session,
                 "mail." + protocol + ".timeout", 0) / 1000); // msec to sec
+        config.setDsn(session.getProperty("mail." + protocol + ".dsn.notify"));
 
         Properties props = session.getProperties();
         Object socketFactory = props.get("mail." + protocol + ".socketFactory");

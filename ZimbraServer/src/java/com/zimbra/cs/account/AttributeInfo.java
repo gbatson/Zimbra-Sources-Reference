@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 import javax.mail.internet.AddressException;
 import javax.mail.internet.InternetAddress;
 
-import com.zimbra.cs.localconfig.DebugConfig;
+import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ByteUtil;
@@ -89,6 +89,8 @@ public class AttributeInfo {
 
     protected List<String> mDefaultCOSValues;
 
+    private List<String> mDefaultExternalCOSValues;
+
     private List<String> mDefaultCOSValuesUpgrade;
 
     private long mMin = Long.MIN_VALUE, mMax = Long.MAX_VALUE;
@@ -139,14 +141,15 @@ public class AttributeInfo {
     }
 
 
-    protected AttributeInfo (String attrName, int id, String parentId, int groupId,
-            AttributeCallback callback, AttributeType type,  AttributeOrder order,
+    protected AttributeInfo(
+            String attrName, int id, String parentId, int groupId,
+            AttributeCallback callback, AttributeType type, AttributeOrder order,
             String value, boolean immutable, String min, String max,
             AttributeCardinality cardinality, Set<AttributeClass> requiredIn,
             Set<AttributeClass> optionalIn, Set<AttributeFlag> flags,
             List<String> globalConfigValues, List<String> defaultCOSValues,
-            List<String> globalConfigValuesUpgrade, List<String> defaultCOSValuesUpgrade,
-            String description, List<AttributeServerType> requiresRestart,
+            List<String> defaultExternalCOSValues, List<String> globalConfigValuesUpgrade,
+            List<String> defaultCOSValuesUpgrade, String description, List<AttributeServerType> requiresRestart,
             Version since, Version deprecatedSince) {
         mName = attrName;
         mImmutable = immutable;
@@ -164,6 +167,7 @@ public class AttributeInfo {
         mGlobalConfigValues = globalConfigValues;
         mGlobalConfigValuesUpgrade = globalConfigValuesUpgrade;
         mDefaultCOSValues = defaultCOSValues;
+        mDefaultExternalCOSValues = defaultExternalCOSValues;
         mDefaultCOSValuesUpgrade = defaultCOSValuesUpgrade;
         mDescription = description;
         mRequiresRestart = requiresRestart;
@@ -464,7 +468,7 @@ public class AttributeInfo {
         return mOrder;
     }
 
-    String getDescription() {
+    public String getDescription() {
         if (AttributeType.TYPE_DURATION == getType())
             return mDescription + ".  " + DURATION_PATTERN_DOC;
         else    
@@ -509,6 +513,10 @@ public class AttributeInfo {
 
     public List<String> getDefaultCosValues() {
         return mDefaultCOSValues;
+    }
+
+    public List<String> getDefaultExternalCosValues() {
+        return mDefaultExternalCOSValues;
     }
 
     public List<String> getDefaultCosValuesUpgrade() {

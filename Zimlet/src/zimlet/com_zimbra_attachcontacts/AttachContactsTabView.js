@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Zimlets
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -24,12 +24,12 @@
 AttachContactsTabView =
 function(parent, zimlet, className) {
 	this.zimlet = zimlet;
-	DwtTabViewPage.call(this, parent, className, Dwt.STATIC_STYLE);
-	this.setScrollStyle(Dwt.SCROLL);
+    DwtComposite.call(this,parent,className,Dwt.STATIC_STYLE);
+    this._createHtml1();
 	this.closed = true;
 };
 
-AttachContactsTabView.prototype = new DwtTabViewPage;
+AttachContactsTabView.prototype = new DwtComposite;
 AttachContactsTabView.prototype.constructor = AttachContactsTabView;
 
 /**
@@ -77,7 +77,7 @@ function() {
 	}
 	if (this.prevAccount && (acct.id == this.prevAccount.id)) {
 		this.reset();
-		this.setSize(Dwt.DEFAULT, "255");
+		this.setSize(Dwt.DEFAULT, "295");
 		return;
 	}
 	this.prevAccount = acct;
@@ -129,20 +129,19 @@ function() {
  */
 AttachContactsTabView.prototype._createHtml1 =
 function() {
-	this._contentEl = this.getContentHtmlElement();
 	this._tableID = Dwt.getNextId();
 	this._folderTreeCellId = Dwt.getNextId();
 	this._folderListId = Dwt.getNextId();
 	var html = [];
-	html.push("<table class='AttachContacts_table' width='100%' height='5%'>",
+	html.push("<table class='AttachContacts_table' width='100%' style='margin-bottom:5px;'>",
 	"<TR><td><INPUT type='text' id='", AttachContactsTabView.ELEMENT_ID_SEARCH_FIELD,"'></INPUT></td>",
-	"<td width='80%'><SPAN id='", AttachContactsTabView.ELEMENT_ID_SEARCH_BUTTON, "' /></td>",
+	"<td width='80%' style='padding:0 2px'><SPAN id='", AttachContactsTabView.ELEMENT_ID_SEARCH_BUTTON, "' /></td>",
 	"<td><SPAN id='", AttachContactsTabView.ELEMENT_ID_NAV_BUTTON_CELL,"' /></td></TR></table>",
-	"<table><tr><td valign='top' id='", this._folderTreeCellId, "'></td>",
+	"<table width='100%'><tr><td valign='top' id='", this._folderTreeCellId, "'></td>",
 	"<td  valign='top'><div  id='", this._folderListId, "' ></div>",
 	"</td></tr></table>");
 
-	Dwt.setInnerHtml(this._contentEl, html.join(""));
+    this.setContent(html.join(""));
 
 	var searchButton = new DwtButton({parent:this});
 	var searchButtonLabel = this.zimlet.getMessage("ACZ_tab_button_search");
@@ -160,7 +159,97 @@ function() {
 	Dwt.byId(AttachContactsTabView.ELEMENT_ID_NAV_BUTTON_CELL).appendChild(this._navTB.getHtmlElement());
 
 	this.showAttachContactsTreeView();
+	Dwt.byId(this._folderListId)
+	Dwt.byId(this._folderListId).onclick = AjxCallback.simpleClosure(this._handleItemSelect, this);
+
 };
+
+AttachContactsTabView.prototype._handleItemSelect =
+function(ev) {
+	if (AjxEnv.isIE) {
+		ev = window.event;
+	}
+	var dwtev = DwtShell.mouseEvent;
+	dwtev.setFromDhtmlEvent(ev);
+	var rowEl = dwtev.target;
+	var rowWasClicked = true;
+	if(rowEl.className == "ImgCheckboxunChecked" || rowEl.className == "ImgCheckboxChecked") {
+		 rowWasClicked = false;
+	}
+	while (rowEl && (rowEl.id.indexOf("attachContactsZimlet_row_") == -1)) {
+		rowEl = rowEl.parentNode;
+	}
+	if(!rowEl) {
+		return;
+	}
+	this._resetRowSelection(rowWasClicked);
+
+	var itemId = rowEl.id.replace("attachContactsZimlet_row_", "");
+	var checkboxEl = document.getElementById("attachContactsZimlet_checkbox_"+itemId);
+
+	if(checkboxEl && !rowWasClicked) {
+		if(checkboxEl.className == "ImgCheckboxunChecked") {
+			this._setCheckBoxSelection(checkboxEl, true);
+		} else if(checkboxEl.className == "ImgCheckboxChecked" ) {
+			this._setCheckBoxSelection(checkboxEl, false);
+		}
+	}
+	if(rowEl) {
+		if(rowEl.className.indexOf("Row-selected") >= 0) {
+			if(checkboxEl.className != "ImgCheckboxChecked") {
+				this._setRowSelection(rowEl, false);
+				this._selectedItemIds[itemId] =  false;
+			}
+		} else {
+			this._setRowSelection(rowEl, true);
+			this._selectedItemIds[itemId] = true;
+		}
+	}
+};
+
+AttachContactsTabView.prototype._resetRowSelection =
+function(rowWasClicked) {
+	 for(var itemId in this._selectedItemIds) {
+
+		 var checkboxEl = document.getElementById("attachContactsZimlet_checkbox_"+itemId);
+		 var rowEl =  document.getElementById("attachContactsZimlet_row_"+itemId);
+		 //if checkbox for item1 was selected but already has a row-selected for a different item
+		 // item2, unselect that item item2
+		 if(!rowWasClicked &&  checkboxEl && checkboxEl.className == "ImgCheckboxChecked") {
+			 continue;
+		 }
+		 this._setRowSelection(rowEl, false);
+		 this._setCheckBoxSelection(checkboxEl, false);
+		 if(this._selectedItemIds && this._selectedItemIds[itemId]) {
+		 	this._selectedItemIds[itemId] = false;
+		 }
+	 }
+};
+
+AttachContactsTabView.prototype._setCheckBoxSelection =
+function(checkboxEl, selected) {
+	if(!checkboxEl) {
+		return;
+	}
+	if(!selected) {
+		checkboxEl.className =  "ImgCheckboxunChecked";
+	} else {
+		checkboxEl.className = "ImgCheckboxChecked";
+	}
+};
+
+AttachContactsTabView.prototype._setRowSelection =
+function(rowEl, selected) {
+	if(!rowEl) {
+		return;
+	}
+	if(!selected) {
+		rowEl.className =  AjxStringUtil.trim(rowEl.className.replace("Row-selected", ""));
+	} else if(rowEl.className.indexOf("Row-selected") == -1) {
+		rowEl.className = rowEl.className + " Row-selected";
+	}
+};
+
 
 /**
  * Listens for "search" button events.
@@ -205,6 +294,7 @@ function(getNext) {
 AttachContactsTabView.prototype.showResultContents =
 function(params) {
 	this._checkboxIdAndItemIdMap = [];
+	this._selectedItemIds = {};
 	var items = [];
 	var response = {}
 	if(params.response && params.response.SearchResponse &&  params.response.SearchResponse.cn) {
@@ -249,7 +339,7 @@ function(items) {
 				continue;
 			}
 
-			var rowClass = (isRowOdd) ? "RowOdd" : "RowEven";
+			var rowClass = (isRowOdd) ? "RowOdd AttachContactRow" : "RowEven AttachContactRow";
 			isRowOdd = !isRowOdd;
 
 			var primary = [contact.getAttr(ZmContact.F_firstName), contact.getAttr(ZmContact.F_middleName), contact.getAttr(ZmContact.F_lastName), contact.getAttr(ZmContact.F_company) ? "("+contact.getAttr(ZmContact.F_company)+")" : null];
@@ -266,27 +356,35 @@ function(items) {
 						fields.push(wattr);
 				}
 
-                var chkId = "attachContactsZimlet_"+Dwt.getNextId();
-                this._checkboxIdAndItemIdMap[chkId] = item.id;
-                html[idx++] = "<div class='";
+                var chkId = "attachContactsZimlet_checkbox_"+item.id;
+				var rowId = "attachContactsZimlet_row_"+item.id;
+                //this._checkboxIdAndItemIdMap[chkId] = item.id;
+                html[idx++] = "<div  class='";
                 html[idx++] = rowClass;
-                html[idx++] = "'>";
+                html[idx++] = "' id='";
+				html[idx++] = rowId;
+				html[idx++] = "'>";
 
                 html[idx++] = "<table width=100%>";
-                html[idx++] = "<tr><td width=16px><input id='";
-                html[idx++] = chkId;
-                html[idx++] = "' type='checkbox'/></td>";
+                html[idx++] = "<tr>";
 
-                html[idx++] = "<td width=16px>";
+
+
+				html[idx++] = "<td width='1px'><div  id='";
+                html[idx++] = chkId;
+                html[idx++] = "' class='ImgCheckboxunChecked'></div></td>";
+
+
+                html[idx++] = "<td width='1px'>";
                 html[idx++] = AjxImg.getImageHtml(contact.getIcon());
                 html[idx++] = "</td>";
 
-                html[idx++] = "<td><span style=\"font-weight:bold;\">";
-                html[idx++] = AjxStringUtil.htmlEncode(name);
+                html[idx++] = "<td width='98%'><span style=\"font-weight:bold;\">";
+                html[idx++] = AjxStringUtil.htmlEncode(name || ZmMsg.noName);
                 html[idx++] = "</span></td></tr>";
 
                 for (var j=0; j<fields.length; j++) {
-                    html[idx++] = "<tr><td></td><td colspan=2>";
+                    html[idx++] = "<tr><td></td><td colspan=3>";
                     html[idx++] = AjxStringUtil.htmlEncode(fields[j]);
                     html[idx++] = "</td></tr>";
                 }
@@ -297,6 +395,7 @@ function(items) {
 	}
 	
 	Dwt.setInnerHtml(Dwt.byId(this._folderListId), html.join(""));
+
 };
 
 AttachContactsTabView.prototype._getFirstWorkingAttr =
@@ -337,9 +436,9 @@ function() {
 AttachContactsTabView.prototype._getSelectedItems =
 function() {
 	var selectedIds = [];
-	for (var chkboxId in this._checkboxIdAndItemIdMap) {
-		if (Dwt.byId(chkboxId).checked) {
-			selectedIds.push(this._checkboxIdAndItemIdMap[chkboxId]);
+	for (var id in this._selectedItemIds) {
+		if (this._selectedItemIds[id]) {
+			selectedIds.push(id);
 		}
 	}
 	return selectedIds;
@@ -353,7 +452,7 @@ function() {
     var controller = appCtxt.getApp(ZmApp.MAIL).getComposeController(appCtxt.getApp(ZmApp.MAIL).getCurrentSessionId(ZmId.VIEW_COMPOSE));
 	this.zimlet.contactIdsToAttach = this._getSelectedItems();
 	this.zimlet._isDrafInitiatedByThisZimlet = true;   //set this to true
-	controller.saveDraft(ZmComposeController.DRAFT_TYPE_MANUAL,null,null,null,this.zimlet.contactIdsToAttach);
+	controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO,null,null,null,this.zimlet.contactIdsToAttach);
 };
 
 /**
@@ -368,14 +467,7 @@ function() {
 
 AttachContactsTabView.prototype.reset =
 function() {
-	 Dwt.byId(AttachContactsTabView.ELEMENT_ID_SEARCH_FIELD).value = "";
-	 if (this._checkboxIdAndItemIdMap && (this._checkboxIdAndItemIdMap.length != 0)) {
-		 for (var chkboxId in this._checkboxIdAndItemIdMap) {
-		     var input = Dwt.byId(chkboxId);
-		     input.checked = false;
-		}
-	 }
-
+	Dwt.byId(AttachContactsTabView.ELEMENT_ID_SEARCH_FIELD).value = "";
 	var folderId = AttachContactsTabView.DEFAULT_CONTACTS_FOLDER;
 	this._currentQuery = this._getQueryFromFolder(folderId);
 	this.treeView.setSelected(folderId);
@@ -398,7 +490,7 @@ function() {
 	};
 	this._setOverview(params);
 
-	this.setSize(Dwt.DEFAULT, "255");
+	this.setSize(Dwt.DEFAULT, "295");
 	this.reset();
 };
 /**
@@ -420,7 +512,9 @@ function(params) {
 		};
 		overview =  opc.createOverview(ovParams);
 		overview.account = this.prevAccount;
-		overview.set(params.treeIds);
+		var omit = {};
+		omit[ZmOrganizer.ID_DLS] = true;
+		overview.set(params.treeIds, omit);
 	} else if (params.account) {
 		overview.account = params.account;
 	}
@@ -469,7 +563,8 @@ function(width, height) {
 	var size = this.getSize();
 
 	var treeWidth = size.x * 0.350;
-	var listWidth = size.x - treeWidth - 15;
+	//var listWidth = size.x - treeWidth - 15;
+	var listWidth = size.x - treeWidth;
 	var newHeight = height - 55;
 	this._overview.setSize(treeWidth, newHeight);
 	var listEl = Dwt.byId(this._folderListId);

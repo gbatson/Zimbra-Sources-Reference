@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,7 +22,8 @@ package com.zimbra.cs.filter.jsieve;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.filter.ZimbraMailAdapter;
 import com.zimbra.cs.filter.ZimbraSieveException;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
+import com.zimbra.cs.mailbox.calendar.Util;
+
 import org.apache.jsieve.Argument;
 import org.apache.jsieve.Arguments;
 import org.apache.jsieve.SieveContext;
@@ -74,7 +75,7 @@ public class CurrentTimeTest extends AbstractTest {
         DateFormat timeFormat = new SimpleDateFormat("HHmm");
         TimeZone accountTimeZone;
         try {
-            accountTimeZone = ICalTimeZone.getAccountTimeZone(((ZimbraMailAdapter) mail).getMailbox().getAccount());
+            accountTimeZone = Util.getAccountTimeZone(((ZimbraMailAdapter) mail).getMailbox().getAccount());
         } catch (ServiceException e) {
             throw new ZimbraSieveException(e);
         }

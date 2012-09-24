@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -31,13 +31,19 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.dom4j.Element;
 
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.calendar.ParsedDateTime;
+import com.zimbra.common.calendar.ParsedDuration;
+import com.zimbra.common.calendar.ZCalendar;
+import com.zimbra.common.calendar.ZCalendar.ICalTok;
+import com.zimbra.common.calendar.ZCalendar.ZComponent;
+import com.zimbra.common.calendar.ZCalendar.ZProperty;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.dav.DavContext;
 import com.zimbra.cs.dav.DavElements;
 import com.zimbra.cs.dav.DavException;
@@ -52,27 +58,21 @@ import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.FriendlyCalendaringDescription;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
-import com.zimbra.cs.mailbox.calendar.ParsedDuration;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
-import com.zimbra.cs.mailbox.calendar.ZCalendar;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ICalTok;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZComponent;
-import com.zimbra.cs.mailbox.calendar.ZCalendar.ZProperty;
 import com.zimbra.cs.mailbox.calendar.ZOrganizer;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 
 public class ScheduleOutbox extends Collection {
-	public ScheduleOutbox(DavContext ctxt, Folder f) throws DavException, ServiceException {
-		super(ctxt, f);
-		addResourceType(DavElements.E_SCHEDULE_OUTBOX);
-	}
+    public ScheduleOutbox(DavContext ctxt, Folder f) throws DavException, ServiceException {
+        super(ctxt, f);
+        addResourceType(DavElements.E_SCHEDULE_OUTBOX);
+    }
 
-	@Override
+    @Override
     public void handlePost(DavContext ctxt) throws DavException, IOException, ServiceException {
-		String      originator = ctxt.getRequest().getHeader(DavProtocol.HEADER_ORIGINATOR);
-		Enumeration recipients = ctxt.getRequest().getHeaders(DavProtocol.HEADER_RECIPIENT);
+        String      originator = ctxt.getRequest().getHeader(DavProtocol.HEADER_ORIGINATOR);
+        Enumeration recipients = ctxt.getRequest().getHeaders(DavProtocol.HEADER_RECIPIENT);
 
         InputStream in = ctxt.getUpload().getInputStream();
 
@@ -222,39 +222,39 @@ public class ScheduleOutbox extends Collection {
         }
     }
 
-	private void handleFreebusyRequest(DavContext ctxt, ZComponent vfreebusy, String originator, String rcpt, Element resp) throws DavException, ServiceException {
-		ZProperty dtstartProp = vfreebusy.getProperty(ICalTok.DTSTART);
-		ZProperty dtendProp = vfreebusy.getProperty(ICalTok.DTEND);
-		ZProperty durationProp = vfreebusy.getProperty(ICalTok.DURATION);
-		if (dtstartProp == null || dtendProp == null && durationProp == null)
-			throw new DavException("missing dtstart or dtend/duration in the schedule request", HttpServletResponse.SC_BAD_REQUEST, null);
-		long start, end;
-		try {
-			ParsedDateTime startTime = ParsedDateTime.parseUtcOnly(dtstartProp.getValue());
-			start = startTime.getUtcTime();
-			if (dtendProp != null) {
-				end = ParsedDateTime.parseUtcOnly(dtendProp.getValue()).getUtcTime();
-			} else {
-				ParsedDuration dur = ParsedDuration.parse(durationProp.getValue());
-				ParsedDateTime endTime = startTime.add(dur);
-				end = endTime.getUtcTime();
-			}
-		} catch (ParseException pe) {
-			throw new DavException("can't parse date", HttpServletResponse.SC_BAD_REQUEST, pe);
-		}
+    private void handleFreebusyRequest(DavContext ctxt, ZComponent vfreebusy, String originator, String rcpt, Element resp) throws DavException, ServiceException {
+        ZProperty dtstartProp = vfreebusy.getProperty(ICalTok.DTSTART);
+        ZProperty dtendProp = vfreebusy.getProperty(ICalTok.DTEND);
+        ZProperty durationProp = vfreebusy.getProperty(ICalTok.DURATION);
+        if (dtstartProp == null || dtendProp == null && durationProp == null)
+            throw new DavException("missing dtstart or dtend/duration in the schedule request", HttpServletResponse.SC_BAD_REQUEST, null);
+        long start, end;
+        try {
+            ParsedDateTime startTime = ParsedDateTime.parseUtcOnly(dtstartProp.getValue());
+            start = startTime.getUtcTime();
+            if (dtendProp != null) {
+                end = ParsedDateTime.parseUtcOnly(dtendProp.getValue()).getUtcTime();
+            } else {
+                ParsedDuration dur = ParsedDuration.parse(durationProp.getValue());
+                ParsedDateTime endTime = startTime.add(dur);
+                end = endTime.getUtcTime();
+            }
+        } catch (ParseException pe) {
+            throw new DavException("can't parse date", HttpServletResponse.SC_BAD_REQUEST, pe);
+        }
 
-		ZimbraLog.dav.debug("rcpt: "+rcpt+", start: "+new Date(start)+", end: "+new Date(end));
+        ZimbraLog.dav.debug("rcpt: "+rcpt+", start: "+new Date(start)+", end: "+new Date(end));
 
-		FreeBusy fb = null;
+        FreeBusy fb = null;
         if (ctxt.isFreebusyEnabled()) {
-        	FreeBusyQuery fbQuery = new FreeBusyQuery(ctxt.getRequest(), ctxt.getAuthAccount(), start, end, null);
-        	fbQuery.addEmailAddress(getAddressFromPrincipalURL(rcpt), FreeBusyQuery.CALENDAR_FOLDER_ALL);
-        	java.util.Collection<FreeBusy> fbResult = fbQuery.getResults();
+            FreeBusyQuery fbQuery = new FreeBusyQuery(ctxt.getRequest(), ctxt.getAuthAccount(), start, end, null);
+            fbQuery.addEmailAddress(getAddressFromPrincipalURL(rcpt), FreeBusyQuery.CALENDAR_FOLDER_ALL);
+            java.util.Collection<FreeBusy> fbResult = fbQuery.getResults();
             if (fbResult.size() > 0)
-            	fb = fbResult.iterator().next();
+                fb = fbResult.iterator().next();
         }
         if (fb != null) {
-        	String fbMsg = fb.toVCalendar(FreeBusy.Method.REPLY, originator, rcpt, null);
+            String fbMsg = fb.toVCalendar(FreeBusy.Method.REPLY, originator, rcpt, null);
             resp.addElement(DavElements.E_RECIPIENT).addElement(DavElements.E_HREF).setText(rcpt);
             resp.addElement(DavElements.E_REQUEST_STATUS).setText("2.0;Success");
             resp.addElement(DavElements.E_CALENDAR_DATA).setText(fbMsg);
@@ -262,7 +262,7 @@ public class ScheduleOutbox extends Collection {
             resp.addElement(DavElements.E_RECIPIENT).addElement(DavElements.E_HREF).setText(rcpt);
             resp.addElement(DavElements.E_REQUEST_STATUS).setText("5.3;No f/b for the user");
         }
-	}
+    }
 
     private void handleEventRequest(DavContext ctxt, ZCalendar.ZVCalendar cal, ZComponent req, String originator, String rcpt, Element resp)
     throws ServiceException, DavException {
@@ -314,7 +314,7 @@ public class ScheduleOutbox extends Collection {
             if (organizerProp != null) {
                 String organizerStr = this.getAddressFromPrincipalURL(new ZOrganizer(organizerProp).getAddress());
                 if (!AccountUtil.addressMatchesAccount(getMailbox(ctxt).getAccount(), organizerStr)) {
-                	ZimbraLog.dav.debug("scheduling appointment on behalf of %s", organizerStr);
+                    ZimbraLog.dav.debug("scheduling appointment on behalf of %s", organizerStr);
                 }
             }
         } else if (method.equals("REPLY")) {
@@ -351,7 +351,7 @@ public class ScheduleOutbox extends Collection {
             Mailbox mbox = MailboxManager.getInstance().getMailboxByAccount(ctxt.getAuthAccount());
             MimeMessage mm = CalendarMailSender.createCalendarMessage(target, from, sender, recipients, subject, desc, descHtml, uid, cal);
             mbox.getMailSender().setSendPartial(true).sendMimeMessage(
-                ctxt.getOperationContext(), mbox, true, mm, null, null, null, null, null, false);
+                    ctxt.getOperationContext(), mbox, true, mm, null, null, null, null, false);
         } catch (ServiceException e) {
             resp.addElement(DavElements.E_RECIPIENT).addElement(DavElements.E_HREF).setText(rcpt);
             resp.addElement(DavElements.E_REQUEST_STATUS).setText("5.1");

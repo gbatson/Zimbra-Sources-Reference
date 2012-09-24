@@ -1,24 +1,19 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
-/*
- * Created on Apr 30, 2005
- */
 package com.zimbra.cs.imap;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,15 +21,15 @@ import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
 
@@ -44,6 +39,7 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimePart;
 import javax.mail.internet.ParseException;
+import javax.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.codec.EncoderException;
 import org.apache.commons.codec.net.BCodec;
@@ -55,6 +51,7 @@ import com.zimbra.common.mime.ContentType;
 import com.zimbra.common.mime.MimeCompoundHeader;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
+import com.zimbra.common.util.ArrayUtil;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.cs.imap.ImapFlagCache.ImapFlag;
@@ -62,11 +59,15 @@ import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.Flag;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.Message;
+import com.zimbra.cs.mailbox.util.TagUtil;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.service.formatter.VCard;
 import com.zimbra.cs.util.JMSession;
 
+/**
+ * @since Apr 30, 2005
+ */
 public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializable {
     private static final long serialVersionUID = -1756550148606322493L;
 
@@ -83,7 +84,8 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
         }
     }
 
-    public static final List<Byte> SUPPORTED_TYPES = Arrays.asList(MailItem.TYPE_MESSAGE, MailItem.TYPE_CHAT, MailItem.TYPE_CONTACT);
+    public static final Set<MailItem.Type> SUPPORTED_TYPES = EnumSet.of(
+            MailItem.Type.MESSAGE, MailItem.Type.CHAT, MailItem.Type.CONTACT);
 
     static final int IMAP_FLAGS = Flag.BITMASK_UNREAD | Flag.BITMASK_FLAGGED | Flag.BITMASK_DELETED |
                                   Flag.BITMASK_DRAFT  | Flag.BITMASK_REPLIED | Flag.BITMASK_FORWARDED |
@@ -105,28 +107,28 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
     int   sequence;
     int   msgId;
     int   imapUid;
-    int   flags;
-    long  tags;
     short sflags;
+    int   flags;
+    String[] tags;
 
-    public ImapMessage(int id, byte type, int imapId, int flags, long tags) {
+    public ImapMessage(int id, MailItem.Type type, int imapId, int flags, String[] tags) {
         this.msgId   = id;
         this.imapUid = imapId;
+        this.sflags  = (type == MailItem.Type.CONTACT ? FLAG_IS_CONTACT : 0);
         this.flags   = flags & IMAP_FLAGS;
         this.tags    = tags;
-        this.sflags  = (type == MailItem.TYPE_CONTACT ? FLAG_IS_CONTACT : 0);
     }
 
     public ImapMessage(MailItem item) {
-        this(item.getId(), item.getType(), item.getImapUid(), item.getFlagBitmask(), item.getTagBitmask());
+        this(item.getId(), item.getType(), item.getImapUid(), item.getFlagBitmask(), item.getTags());
     }
 
     ImapMessage(ImapMessage i4msg) {
         this.msgId   = i4msg.msgId;
         this.imapUid = i4msg.imapUid;
+        this.sflags  = (short) (i4msg.sflags & FLAG_IS_CONTACT);
         this.flags   = i4msg.flags;
         this.tags    = i4msg.tags;
-        this.sflags  = (short) (i4msg.sflags & FLAG_IS_CONTACT);
     }
 
     ImapMessage reset() {
@@ -134,8 +136,12 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
         return this;
     }
 
-    byte getType() {
-        return (sflags & FLAG_IS_CONTACT) == 0 ? MailItem.TYPE_MESSAGE : MailItem.TYPE_CONTACT;
+    MailItem.Type getType() {
+        return (sflags & FLAG_IS_CONTACT) == 0 ? MailItem.Type.MESSAGE : MailItem.Type.CONTACT;
+    }
+
+    boolean isTagged(ImapFlag i4flag) {
+        return i4flag == null ? false : i4flag.matches(this);
     }
 
     boolean isExpunged() {
@@ -202,7 +208,7 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
         GMT_DATE_FORMAT.setTimeZone(TimeZone.getTimeZone("GMT"));
     }
 
-    static final Pair<Long, InputStream> EMPTY_CONTENT = new Pair<Long, InputStream>(0L, new ByteArrayInputStream(new byte[0]));
+    static final Pair<Long, InputStream> EMPTY_CONTENT = new Pair<Long, InputStream>(0L, new SharedByteArrayInputStream(new byte[0]));
 
     static Pair<Long, InputStream> getContent(MailItem item) throws ServiceException {
         if (item instanceof Message) {
@@ -223,7 +229,7 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
                 baos.write(header.toString().getBytes(MimeConstants.P_CHARSET_ASCII));
                 baos.write(ImapHandler.LINE_SEPARATOR_BYTES);
                 baos.write(vcard.formatted.getBytes(MimeConstants.P_CHARSET_UTF8));
-                return new Pair<Long, InputStream>((long) baos.size(), new ByteArrayInputStream(baos.toByteArray()));
+                return new Pair<Long, InputStream>((long) baos.size(), new SharedByteArrayInputStream(baos.toByteArray()));
             } catch (Exception e) {
                 throw ServiceException.FAILURE("problems serializing contact " + item.getId(), e);
             }
@@ -241,39 +247,24 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
         try {
             return new Mime.FixedMimeMessage(JMSession.getSession(), is);
         } catch (MessagingException e) {
-            throw ServiceException.FAILURE("error creating MimeMessage for " + MailItem.getNameForType(item.getType()) + ' ' + item.getId(), e);
+            throw ServiceException.FAILURE("error creating MimeMessage for " + item.getType() + ' ' + item.getId(), e);
         } finally {
             ByteUtil.closeStream(is);
         }
     }
 
-    int getModseq(MailItem item, ImapFlagCache i4cache) {
-        return Math.max(item.getModifiedSequence(), getFlagModseq(i4cache));
+    int getModseq(MailItem item) {
+        return item.getModifiedSequence();
     }
 
-    int getFlagModseq(ImapFlagCache i4cache) {
-        int modseq = 0;
-        long tagBuffer = tags;
-        for (int i = 0; tagBuffer != 0 && i < 64; i++) {
-            long mask = 1L << i;
-            if ((tagBuffer & mask) != 0) {
-                ImapFlag i4flag = i4cache.getByMask(mask);
-                if (i4flag != null) {
-                    modseq = Math.max(modseq, i4flag.mModseq);
-                }
-                tagBuffer &= ~mask;
-            }
-        }
-        return modseq;
-    }
-
-    void setPermanentFlags(int f, long t, int changeId, ImapFolder parent) {
-        if (t == tags && (f & IMAP_FLAGS) == (flags & IMAP_FLAGS))
+    void setPermanentFlags(int f, String[] t, int changeId, ImapFolder parent) {
+        if (TagUtil.tagsMatch(t, tags) && (f & IMAP_FLAGS) == (flags & IMAP_FLAGS))
             return;
 
         this.flags = f & IMAP_FLAGS;
         this.tags  = t;
         if (parent != null) {
+            parent.updateTagCache(this);
             parent.dirtyMessage(this, changeId);
         }
     }
@@ -291,7 +282,7 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
     private static final String NO_FLAGS = "FLAGS ()";
 
     String getFlags(ImapFolder i4folder) {
-        if ((flags & IMAP_FLAGS) == Flag.BITMASK_UNREAD && tags == 0 && sflags == 0) {
+        if ((flags & IMAP_FLAGS) == Flag.BITMASK_UNREAD && ArrayUtil.isEmpty(tags) && sflags == 0) {
             return NO_FLAGS;
         }
 
@@ -316,7 +307,7 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
         if ((flags & Flag.BITMASK_FORWARDED) != 0) {
             result.append(result.length() == empty ? "" : " ").append("$Forwarded Forwarded");
         }
-        // note: \Seen is the IMAP flag, but we store "unread", so the test here is == not !=
+        // note: \Seen is the IMAP flag, but we store "unread", so the test here is "== 0" not "!= 0"
         if ((flags & Flag.BITMASK_UNREAD) == 0) {
             result.append(result.length() == empty ? "" : " ").append("\\Seen");
         }
@@ -334,11 +325,10 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
             result.append(result.length() == empty ? "" : " ").append("JunkRecorded");
         }
 
-        long tagBuffer = tags;
-        for (int i = 0; tagBuffer != 0 && i < 64; i++) {
-            long mask = 1L << i;
-            if ((tagBuffer & mask) != 0) {
-                ImapFlag i4flag = i4folder.getTagByMask(mask);
+        ImapFlagCache i4cache = i4folder.getTagset();
+        if (!ArrayUtil.isEmpty(tags)) {
+            for (String tag : tags) {
+                ImapFlag i4flag = i4cache.getByZimbraName(tag);
                 if (i4flag != null) {
                     // make sure there's no naming conflict with a system flag like "Forwarded" or "NonJunk"
                     ImapFlag other = i4folder.getFlagByName(i4flag.mImapName);
@@ -346,9 +336,9 @@ public class ImapMessage implements Comparable<ImapMessage>, java.io.Serializabl
                         result.append(result.length() == empty ? "" : " ").append(i4flag);
                     }
                 }
-                tagBuffer &= ~mask;
             }
         }
+
         return result.append(')').toString();
     }
 

@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
 
@@ -42,7 +26,7 @@ public class ForwardContact extends AjaxCommonTest  {
 	}
 	
 	@Test(	description = "Forward a contact by click Forward on the toolbar",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void InDisplayViewClickForwardOnToolbar() throws HarnessException {
 			
 		  // Create a contact via Soap then select
@@ -51,8 +35,9 @@ public class ForwardContact extends AjaxCommonTest  {
         //click Forward icon on toolbar
         FormMailNew formMail = (FormMailNew) app.zPageAddressbook.zToolbarPressButton(Button.B_FORWARD);
 
+        
         //wait for attachment link present
-        for (int i=0; (i<10) && !app.zPageAddressbook.sIsElementPresent("css=div[id$=_attachments_div] div[class='ImgAttachment']") ; i++ , SleepUtil.sleepVerySmall());
+        for (int i=0; (i<20) && !app.zPageAddressbook.sIsElementPresent("css=div[id$=_attachments_div] div[class='ImgAttachment']") ; i++ , SleepUtil.sleepVerySmall());
    
         Assert.assertTrue(formMail.zHasAttachment(contactItem.fileAs + ".vcf"), "Verify there is  attachment named: " + contactItem.fileAs );
 
@@ -66,7 +51,7 @@ public class ForwardContact extends AjaxCommonTest  {
    	}
 
 	@Test(	description = "Forward an editing contact by click Forward on the toolbar",
-			groups = { "functional" })
+			groups = { "deprecated" })
 	public void InEditViewClickForwardOnToolbar() throws HarnessException {
 			
 		// Create a contact via Soap then select
@@ -79,7 +64,7 @@ public class ForwardContact extends AjaxCommonTest  {
         FormMailNew formMail = (FormMailNew) app.zPageAddressbook.zToolbarPressButton(Button.B_FORWARD);
 
         //wait for attachment link present
-        for (int i=0; (i<10) && !app.zPageAddressbook.sIsElementPresent("css=div[id$=_attachments_div] div[class='ImgAttachment']") ; i++ , SleepUtil.sleepVerySmall());
+        for (int i=0; (i<20) && !app.zPageAddressbook.sIsElementPresent("css=div[id$=_attachments_div] div[class='ImgAttachment']") ; i++ , SleepUtil.sleepVerySmall());
    
         Assert.assertTrue(formMail.zHasAttachment(contactItem.fileAs + ".vcf"), "Verify there is  attachment named: " + contactItem.fileAs );
 
@@ -97,16 +82,22 @@ public class ForwardContact extends AjaxCommonTest  {
 	public void ClickForwardOnContextmenu() throws HarnessException {
 		  // Create a contact via Soap then select
 		ContactItem contactItem = app.zPageAddressbook.createUsingSOAPSelectContact(app, Action.A_LEFTCLICK);
-	
+		
         //click Forward icon on context menu
         FormMailNew formMail = (FormMailNew) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_FORWARD, contactItem.fileAs);        
-        
-        
-        //wait for attachment link present
-        for (int i=0; (i<10) && !app.zPageAddressbook.sIsElementPresent("css=div[id$=_attachments_div] div[class='ImgAttachment']") ; i++ , SleepUtil.sleepVerySmall());
-        	
                 
-        Assert.assertTrue(formMail.zHasAttachment(contactItem.fileAs + ".vcf"), "Verify there is  attachment named: " + contactItem.fileAs);
+        //wait for attachment link present
+        for (int i=0; (i<20) && !app.zPageAddressbook.sIsElementPresent("css=div[id$=_attachments_div] div[class='ImgAttachment']") ; i++ , SleepUtil.sleepVerySmall());
+        	
+        //since the contact.fileAs length probably large, it is usually trim in the middle and replace with ...
+        
+        int length = contactItem.fileAs.length();        
+        String attachmentName = contactItem.fileAs.substring(0,15) + "..." +
+                                contactItem.fileAs.substring(length - (33-15-7)) + // 7= "...".length() + ".vcf".length()
+                                ".vcf";
+        
+        Assert.assertEquals(formMail.sGetText("css=a[class='AttLink']"), attachmentName,
+        		         "Verify there is  attachment named: " + attachmentName);
         	           
         
         //TODO: verify attachment file content

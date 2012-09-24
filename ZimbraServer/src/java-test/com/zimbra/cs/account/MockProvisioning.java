@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010, 2011, 2012 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -15,6 +15,7 @@
 package com.zimbra.cs.account;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -23,14 +24,26 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.google.common.collect.Maps;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.ShareLocatorBy;
+import com.zimbra.common.account.Key.UCServiceBy;
+import com.zimbra.common.account.ProvisioningConstants;
+import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.account.DataSource.Type;
 import com.zimbra.cs.account.NamedEntry.Visitor;
 import com.zimbra.cs.account.auth.AuthContext;
 import com.zimbra.cs.account.auth.AuthContext.Protocol;
 import com.zimbra.cs.mime.MimeTypeInfo;
 import com.zimbra.cs.mime.MockMimeTypeInfo;
+import com.zimbra.cs.mime.handler.MessageRFC822Handler;
+import com.zimbra.cs.mime.handler.TextCalendarHandler;
+import com.zimbra.cs.mime.handler.TextHtmlHandler;
+import com.zimbra.cs.mime.handler.TextPlainHandler;
 import com.zimbra.cs.mime.handler.UnknownTypeHandler;
+import com.zimbra.cs.redolog.MockRedoLogProvider;
+import com.zimbra.soap.admin.type.CacheEntryType;
+import com.zimbra.soap.admin.type.DataSourceType;
 
 /**
  * Mock implementation of {@link Provisioning} for testing.
@@ -38,28 +51,49 @@ import com.zimbra.cs.mime.handler.UnknownTypeHandler;
  * @author ysasaki
  */
 public final class MockProvisioning extends Provisioning {
+    public static final String DEFAULT_ACCOUNT_ID = new UUID(0L, 0L).toString();
 
     private final Map<String, Account> id2account = Maps.newHashMap();
     private final Map<String, Account> name2account = Maps.newHashMap();
 
     private final Map<String, Domain> id2domain = Maps.newHashMap();
 
+    private final Map<String, Cos> id2cos = Maps.newHashMap();
+
     private final Map<String, List<MimeTypeInfo>> mimeConfig = Maps.newHashMap();
     private final Config config = new Config(new HashMap<String, Object>(), this);
+    private final Map<String, ShareLocator> shareLocators = Maps.newHashMap();
+
     private final Server localhost;
 
     public MockProvisioning() {
         Map<String, Object> attrs = new HashMap<String, Object>();
         attrs.put(A_zimbraServiceHostname, "localhost");
+        attrs.put(A_zimbraRedoLogProvider, MockRedoLogProvider.class.getName());
+        attrs.put(A_zimbraId, UUID.randomUUID().toString());
+        attrs.put(A_zimbraMailMode, MailMode.http.toString());
         attrs.put(A_zimbraSmtpPort, "7025");
         localhost = new Server("localhost", "localhost", attrs, Collections.<String, Object>emptyMap(), this);
+
+        initializeMimeHandlers();
     }
 
     @Override
-    public Account createAccount(String email, String password,
-            Map<String, Object> attrs) throws ServiceException {
+    public Account createAccount(String email, String password, Map<String, Object> attrs) throws ServiceException {
         validate(ProvisioningValidator.CREATE_ACCOUNT, email, null, attrs);
-
+        if (!attrs.containsKey(A_zimbraId)) {
+            attrs.put(A_zimbraId, DEFAULT_ACCOUNT_ID);
+        }
+        if (!attrs.containsKey(A_zimbraMailHost)) {
+            attrs.put(A_zimbraMailHost, "localhost");
+        }
+        if (!attrs.containsKey(A_zimbraAccountStatus)) {
+            attrs.put(A_zimbraAccountStatus, ACCOUNT_STATUS_ACTIVE);
+        }
+        if (!attrs.containsKey(A_zimbraDumpsterEnabled)) {
+            attrs.put(A_zimbraDumpsterEnabled, TRUE);
+        }
+        attrs.put(A_zimbraBatchedIndexingSize, Integer.MAX_VALUE); // suppress indexing
         Account account = new Account(email, email, attrs, null, this);
         try {
             name2account.put(email, account);
@@ -111,24 +145,57 @@ public final class MockProvisioning extends Provisioning {
         list.add(info);
     }
 
+    private void initializeMimeHandlers() {
+        MockMimeTypeInfo plain = new MockMimeTypeInfo();
+        plain.setMimeTypes(MimeConstants.CT_TEXT_PLAIN);
+        plain.setHandlerClass(TextPlainHandler.class.getName());
+        plain.setIndexingEnabled(true);
+        addMimeType(MimeConstants.CT_TEXT_PLAIN, plain);
+
+        MockMimeTypeInfo html = new MockMimeTypeInfo();
+        html.setMimeTypes(MimeConstants.CT_TEXT_HTML);
+        html.setHandlerClass(TextHtmlHandler.class.getName());
+        html.setFileExtensions("html", "htm");
+        html.setIndexingEnabled(true);
+        addMimeType(MimeConstants.CT_TEXT_HTML, html);
+
+        MockMimeTypeInfo calendar = new MockMimeTypeInfo();
+        calendar.setMimeTypes(MimeConstants.CT_TEXT_CALENDAR);
+        calendar.setHandlerClass(TextCalendarHandler.class.getName());
+        calendar.setIndexingEnabled(true);
+        addMimeType(MimeConstants.CT_TEXT_CALENDAR, calendar);
+
+        MockMimeTypeInfo message = new MockMimeTypeInfo();
+        message.setMimeTypes(MimeConstants.CT_MESSAGE_RFC822);
+        message.setHandlerClass(MessageRFC822Handler.class.getName());
+        message.setIndexingEnabled(true);
+        addMimeType(MimeConstants.CT_MESSAGE_RFC822, message);
+    }
+
+    public void clearMimeHandlers() {
+        mimeConfig.clear();
+    }
+
     @Override
     public Config getConfig() {
         return config;
     }
 
     @Override
-    public List<Zimlet> getObjectTypes() {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public void modifyAttrs(Entry entry, Map<String, ? extends Object> attrs,
-            boolean checkImmutable) {
-
+    public void modifyAttrs(Entry entry, Map<String, ? extends Object> attrs, boolean checkImmutable) {
         Map<String, Object> map = entry.getAttrs(false);
         for (Map.Entry<String, ? extends Object> attr : attrs.entrySet()) {
             if (attr.getValue() != null) {
-                map.put(attr.getKey(), attr.getValue());
+                Object value = attr.getValue();
+                if (value instanceof List) { // Convert list to string array.
+                    List<?> list = (List<?>) value;
+                    String[] strArray = new String[list.size()];
+                    for (int i = 0; i < list.size(); i++) { 
+                        strArray[i] = list.get(i).toString();
+                    }
+                    value = strArray;
+                }
+                map.put(attr.getKey(), value);
             } else {
                 map.remove(attr.getKey());
             }
@@ -148,7 +215,6 @@ public final class MockProvisioning extends Provisioning {
 
     @Override
     public void reload(Entry e) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -160,7 +226,7 @@ public final class MockProvisioning extends Provisioning {
     public Set<String> getDistributionLists(Account acct) {
         throw new UnsupportedOperationException();
     }
-    
+
     @Override
     public Set<String> getDirectDistributionLists(Account acct)
             throws ServiceException {
@@ -197,17 +263,14 @@ public final class MockProvisioning extends Provisioning {
 
     @Override
     public void deleteAccount(String zimbraId) {
-        throw new UnsupportedOperationException();
+        Account account = id2account.remove(zimbraId);
+        if (account != null) {
+            name2account.remove(account.getName());
+        }
     }
 
     @Override
     public void renameAccount(String zimbraId, String newName) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<NamedEntry> searchAccounts(String query, String[] returnAttrs,
-            String sortAttr, boolean sortAscending, int flags) {
         throw new UnsupportedOperationException();
     }
 
@@ -232,27 +295,23 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public void authAccount(Account acct, String password, Protocol proto,
-            Map<String, Object> authCtxt) {
+    public void authAccount(Account acct, String password, Protocol proto, Map<String, Object> authCtxt) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void preAuthAccount(Account acct, String accountName,
-            String accountBy, long timestamp, long expires, String preAuth,
-            Map<String, Object> authCtxt) {
+    public void preAuthAccount(Account acct, String accountName, String accountBy, long timestamp, long expires,
+            String preAuth, Map<String, Object> authCtxt) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt)
-    throws ServiceException {
+    public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void changePassword(Account acct, String currentPassword,
-            String newPassword) {
+    public void changePassword(Account acct, String currentPassword, String newPassword) {
         throw new UnsupportedOperationException();
     }
 
@@ -279,7 +338,7 @@ public final class MockProvisioning extends Provisioning {
     @Override
     public Domain createDomain(String name, Map<String, Object> attrs) throws ServiceException {
         name = name.trim().toLowerCase();
-        if (get(DomainBy.name, name) != null) {
+        if (get(Key.DomainBy.name, name) != null) {
             throw AccountServiceException.DOMAIN_EXISTS(name);
         }
 
@@ -297,7 +356,7 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Domain get(DomainBy keyType, String key) {
+    public Domain get(Key.DomainBy keyType, String key) {
         switch (keyType) {
             case id:
                 return id2domain.get(key);
@@ -325,8 +384,20 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Cos createCos(String name, Map<String, Object> attrs) {
-        throw new UnsupportedOperationException();
+    public Cos createCos(String name, Map<String, Object> attrs) throws ServiceException {
+        name = name.trim().toLowerCase();
+        if (get(Key.CosBy.name, name) != null) {
+            throw AccountServiceException.COS_EXISTS(name);
+        }
+
+        String id = (String) attrs.get(A_zimbraId);
+        if (id == null) {
+            attrs.put(A_zimbraId, id = UUID.randomUUID().toString());
+        }
+
+        Cos cos = new Cos(name, id, attrs, this);
+        id2cos.put(id, cos);
+        return cos;
     }
 
     @Override
@@ -340,8 +411,21 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Cos get(CosBy keyType, String key) {
-        throw new UnsupportedOperationException();
+    public Cos get(Key.CosBy keyType, String key) {
+        switch (keyType) {
+            case id:
+                return id2cos.get(key);
+
+            case name:
+                for (Cos cos : id2cos.values()) {
+                    if (cos.getName().equals(key)) {
+                        return cos;
+                    }
+                }
+                break;
+        }
+
+        return null;
     }
 
     @Override
@@ -360,13 +444,20 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Server get(ServerBy keyName, String key) {
-        throw new UnsupportedOperationException();
+    public Server get(Key.ServerBy keyName, String key) {
+        switch (keyName) {
+            case id:
+                return localhost.getId().equals(key) ? localhost : null;
+            case name:
+                return localhost.getName().equals(key) ? localhost : null;
+            default:
+                throw new UnsupportedOperationException();
+        }
     }
 
     @Override
     public List<Server> getAllServers() {
-        throw new UnsupportedOperationException();
+        return Arrays.asList(localhost);
     }
 
     @Override
@@ -380,13 +471,12 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public DistributionList createDistributionList(String listAddress,
-            Map<String, Object> listAttrs) {
+    public DistributionList createDistributionList(String listAddress, Map<String, Object> listAttrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public DistributionList get(DistributionListBy keyType, String key) {
+    public DistributionList get(Key.DistributionListBy keyType, String key) {
         throw new UnsupportedOperationException();
     }
 
@@ -431,8 +521,7 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public CalendarResource createCalendarResource(String emailAddress,
-            String password, Map<String, Object> attrs) {
+    public CalendarResource createCalendarResource(String emailAddress, String password, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
@@ -447,13 +536,7 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public CalendarResource get(CalendarResourceBy keyType, String key) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<NamedEntry> searchCalendarResources(EntrySearchFilter filter,
-            String[] returnAttrs, String sortAttr, boolean sortAscending) {
+    public CalendarResource get(Key.CalendarResourceBy keyType, String key) {
         throw new UnsupportedOperationException();
     }
 
@@ -493,37 +576,6 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public List<NamedEntry> searchAccounts(Domain d, String query,
-            String[] returnAttrs, String sortAttr, boolean sortAscending,
-            int flags) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<NamedEntry> searchDirectory(SearchOptions options) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public SearchGalResult searchGal(Domain d, String query,
-            GalSearchType type, String token) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public SearchGalResult autoCompleteGal(Domain d, String query,
-            GalSearchType type, int limit) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public List<NamedEntry> searchCalendarResources(Domain d,
-            EntrySearchFilter filter, String[] returnAttrs, String sortAttr,
-            boolean sortAscending) {
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
     public void addMembers(DistributionList list, String[] members) {
         throw new UnsupportedOperationException();
     }
@@ -534,20 +586,25 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Identity createIdentity(Account account, String identityName,
-            Map<String, Object> attrs) {
+    public Identity getDefaultIdentity(Account account) {
+        Map<String, Object> attrs = new HashMap<String, Object>();
+        attrs.put(A_zimbraPrefIdentityName, ProvisioningConstants.DEFAULT_IDENTITY_NAME);
+        attrs.put(A_zimbraPrefIdentityId, account.getId());
+        return new Identity(account, ProvisioningConstants.DEFAULT_IDENTITY_NAME, account.getId(), attrs, this);
+    }
+
+    @Override
+    public Identity createIdentity(Account account, String identityName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Identity restoreIdentity(Account account, String identityName,
-            Map<String, Object> attrs) {
+    public Identity restoreIdentity(Account account, String identityName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void modifyIdentity(Account account, String identityName,
-            Map<String, Object> attrs) {
+    public void modifyIdentity(Account account, String identityName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
@@ -562,25 +619,22 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Identity get(Account account, IdentityBy keyType, String key) {
+    public Identity get(Account account, Key.IdentityBy keyType, String key) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Signature createSignature(Account account, String signatureName,
-            Map<String, Object> attrs) {
+    public Signature createSignature(Account account, String signatureName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public Signature restoreSignature(Account account, String signatureName,
-            Map<String, Object> attrs) {
+    public Signature restoreSignature(Account account, String signatureName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public void modifySignature(Account account, String signatureId,
-            Map<String, Object> attrs) {
+    public void modifySignature(Account account, String signatureId, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
@@ -595,26 +649,23 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public Signature get(Account account, SignatureBy keyType, String key) {
+    public Signature get(Account account, Key.SignatureBy keyType, String key) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public DataSource createDataSource(Account account, Type type,
-            String dataSourceName, Map<String, Object> attrs) {
+    public DataSource createDataSource(Account account, DataSourceType type, String dataSourceName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public DataSource createDataSource(Account account, Type type,
-            String dataSourceName, Map<String, Object> attrs,
+    public DataSource createDataSource(Account account, DataSourceType type, String dataSourceName, Map<String, Object> attrs,
             boolean passwdAlreadyEncrypted) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public DataSource restoreDataSource(Account account, Type type,
-            String dataSourceName, Map<String, Object> attrs) {
+    public DataSource restoreDataSource(Account account, DataSourceType type, String dataSourceName, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
@@ -637,18 +688,17 @@ public final class MockProvisioning extends Provisioning {
     }
 
     @Override
-    public DataSource get(Account account, DataSourceBy keyType, String key) {
+    public DataSource get(Account account, Key.DataSourceBy keyType, String key) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public XMPPComponent createXMPPComponent(String name, Domain domain,
-            Server server, Map<String, Object> attrs) {
+    public XMPPComponent createXMPPComponent(String name, Domain domain, Server server, Map<String, Object> attrs) {
         throw new UnsupportedOperationException();
     }
 
     @Override
-    public XMPPComponent get(XMPPComponentBy keyName, String key) {
+    public XMPPComponent get(Key.XMPPComponentBy keyName, String key) {
         throw new UnsupportedOperationException();
     }
 
@@ -664,6 +714,49 @@ public final class MockProvisioning extends Provisioning {
 
     @Override
     public void flushCache(CacheEntryType type, CacheEntry[] entries) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public ShareLocator get(ShareLocatorBy keyType, String key) throws ServiceException {
+        return shareLocators.get(key);
+    }
+
+    @Override
+    public ShareLocator createShareLocator(String id, Map<String, Object> attrs) throws ServiceException {
+        ShareLocator shloc = new ShareLocator(id, attrs, this);
+        shareLocators.put(id, shloc);
+        return shloc;
+    }
+
+    @Override
+    public void deleteShareLocator(String id) throws ServiceException {
+        shareLocators.remove(id);
+    }
+
+    @Override
+    public UCService createUCService(String name, Map<String, Object> attrs)
+            throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void deleteUCService(String zimbraId) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public UCService get(UCServiceBy keyName, String key) throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<UCService> getAllUCServices() throws ServiceException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void renameUCService(String zimbraId, String newName) throws ServiceException {
         throw new UnsupportedOperationException();
     }
 

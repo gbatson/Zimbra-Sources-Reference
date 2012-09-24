@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,6 +14,7 @@
  */
 package com.zimbra.cs.account.accesscontrol;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
@@ -62,9 +63,9 @@ public class AccessControlUtil {
         Account granteeAcct = null;
         try {
             if (emailAddr != null) {
-                granteeAcct = Provisioning.getInstance().get(Provisioning.AccountBy.name, emailAddr);
+                granteeAcct = Provisioning.getInstance().get(Key.AccountBy.name, emailAddr);
             }
-            
+
             if (granteeAcct == null) {
                 // not an internal user
                 if (rightNeeded.isUserRight()) {

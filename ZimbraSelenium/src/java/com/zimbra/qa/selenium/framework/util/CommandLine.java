@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.util;
 
 import java.io.BufferedReader;
@@ -49,11 +33,12 @@ class StreamGobbler extends Thread
          InputStreamReader isr = new InputStreamReader(is);
          BufferedReader br = new BufferedReader(isr);
          String line = null;
-         while ( (line = br.readLine()) != null)
+         while ( (line = br.readLine()) != null) {
             this.output.append(line).append("\n");   
             logger.info(line);
+         }
        } catch (IOException ioe) {
-          ioe.printStackTrace();  
+    	   logger.warn(ioe);
        }
     }
 }
@@ -205,7 +190,7 @@ public class CommandLine {
 
       while ((Calendar.getInstance().getTimeInMillis() - startTime) < 30000 &&
             (errorGobbler.isAlive() || outputGobbler.isAlive())) {
-         //logger.debug("Execution thread is still alive, retry...");
+    	  continue;
       }
 
       logger.debug("Starting the reader thread");

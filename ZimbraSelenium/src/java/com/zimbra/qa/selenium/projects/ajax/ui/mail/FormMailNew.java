@@ -1,29 +1,25 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import com.zimbra.qa.selenium.framework.items.*;
+import com.zimbra.qa.selenium.framework.core.SeleniumService;
+import com.zimbra.qa.selenium.framework.items.IItem;
+import com.zimbra.qa.selenium.framework.items.MailItem;
+import com.zimbra.qa.selenium.framework.items.RecipientItem;
 import com.zimbra.qa.selenium.framework.items.RecipientItem.RecipientType;
-import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.*;
+import com.zimbra.qa.selenium.framework.ui.AbsApplication;
+import com.zimbra.qa.selenium.framework.ui.AbsForm;
+import com.zimbra.qa.selenium.framework.ui.AbsPage;
+import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
-import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.ajax.ui.AutocompleteEntry;
+import com.zimbra.qa.selenium.projects.ajax.ui.AutocompleteEntry.Icon;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 
 
 
@@ -45,12 +41,12 @@ public class FormMailNew extends AbsForm {
 	 */
 	public static class Locators {
 		
-		public static final String zSendIconBtn			= "css=[id^=zb__COMPOSE][id$=__SEND_title]";
+		public static final String zSendIconBtn			= "css=div[id^='ztb__COMPOSE'] div[id*='SEND'] td[id$='_title']";
 		public static final String zCancelIconBtn		= "css=[id^=zb__COMPOSE][id$=__CANCEL_title]";
 		public static final String zSaveDraftIconBtn	= "css=[id^=zb__COMPOSE][id$=__SAVE_DRAFT_title]";
 		public static final String zSpellCheckIconBtn	= "css=[id^=zb__COMPOSE][id$=__SPELL_CHECK_title]";
 
-		public static final String zToField				= "css=[id^=zv__COMPOSE][id$=_to_control]";
+		public static final String zToField				= "css=div>input[id^=zv__COMPOSE][id$=_to_control]";
 		public static final String zCcField				= "css=[id^=zv__COMPOSE][id$=_cc_control]";
 		public static final String zBccField			= "css=[id^=zv__COMPOSE][id$=_bcc_control]";
 		public static final String zSubjectField		= "css=div[id^=zv__COMPOSE] input[id$=_subject_control]";
@@ -78,6 +74,7 @@ public class FormMailNew extends AbsForm {
 		public static final Field To = new Field("To");
 		public static final Field Cc = new Field("Cc");
 		public static final Field Bcc = new Field("Bcc");
+		public static final Field From = new Field("From");
 		public static final Field Subject = new Field("Subject");
 		public static final Field Body = new Field("Body");
 		
@@ -202,6 +199,23 @@ public class FormMailNew extends AbsForm {
 
 			throw new HarnessException("use zToolbarPressPulldown to attach signature");
 			
+		} else if ( button == Button.B_TO ) {
+			
+			locator = "css=div[id$='__TO'] td[id$='__TO_title']";
+			page = new FormAddressPicker(this.MyApplication);
+
+		} else if ( button == Button.B_CC ) {
+			
+			locator = "css=div[id$='__CC'] td[id$='__CC_title']";
+			page = new FormAddressPicker(this.MyApplication);
+
+		} else if ( button == Button.B_BCC ) {
+			
+			// In the test case, make sure B_SHOWBCC was activated first
+			// (i.e. make sure BCC button is showing
+			
+			throw new HarnessException("implement me");
+
 		} else if ( button == Button.B_SHOWBCC) {
 
 			page = this;
@@ -278,7 +292,21 @@ public class FormMailNew extends AbsForm {
 		// Based on the button specified, take the appropriate action(s)
 		//
 		
-		if ( pulldown == Button.B_PRIORITY ) {
+		if ( pulldown == Button.B_OPTIONS ) {
+			
+			if ( option == Button.O_OPTION_REQUEST_READ_RECEIPT ) {
+				
+				pulldownLocator = "css=div[id^='ztb__COMPOSE'] div[id$='__COMPOSE_OPTIONS'] td[id$='_dropdown']";
+	            optionLocator = "css=div[id^='zm__COMPOSE'] div[id='REQUEST_READ_RECEIPT'] td[id$='_title']";
+	            page = null;
+	            
+	            // FALL THROUGH
+	            
+			} else {
+				throw new HarnessException("implement "+ pulldown +" and "+ option);
+			}
+
+		} else if ( pulldown == Button.B_PRIORITY ) {
 			
 			if ( option == Button.O_PRIORITY_HIGH ) {
 				
@@ -308,7 +336,82 @@ public class FormMailNew extends AbsForm {
 			} else {
 				throw new HarnessException("unsupported priority option "+ option);
 			}
+		
+		} else if ( pulldown == Button.B_SEND ) {
+			
+			pulldownLocator = "css=div[id$='__SEND_MENU'] td[id$='__SEND_MENU_dropdown']>div";
+
+			if ( option == Button.O_SEND_SEND ) {
+
+				// This action requires a 'wait for postfix queue'
+				optionLocator = "css=tr#POPUP_SEND td#SEND_title";
+				page = null;
 				
+				// Make sure the locator exists
+				if ( !this.sIsElementPresent(pulldownLocator) ) {
+					throw new HarnessException("Button "+ pulldown +" option "+ option +" pulldownLocator "+ pulldownLocator +" not present!");
+				}
+				
+				// For some reason, zClick() activates the entire button, not the pulldown
+				// As a work around use right click
+				// this.zClick(pulldownLocator);
+				this.zRightClick(pulldownLocator);
+
+				this.zWaitForBusyOverlay();
+				
+				// Make sure the locator exists
+				if ( !this.sIsElementPresent(optionLocator) ) {
+					throw new HarnessException("Button "+ pulldown +" option "+ option +" optionLocator "+ optionLocator +" not present!");
+				}
+					
+				this.zClick(optionLocator);
+
+				this.zWaitForBusyOverlay();
+
+				// Wait for the message to be delivered
+				Stafpostqueue sp = new Stafpostqueue();
+				sp.waitForPostqueue();
+			
+				
+				return (page);
+				
+
+
+			} else if ( option == Button.O_SEND_SEND_LATER ) {
+				
+				optionLocator = "css=tr#POPUP_SEND_LATER td#SEND_LATER_title";
+				page = new DialogSendLater(this.MyApplication, ((AppAjaxClient)MyApplication).zPageMail);
+
+				// Make sure the locator exists
+				if ( !this.sIsElementPresent(pulldownLocator) ) {
+					throw new HarnessException("Button "+ pulldown +" option "+ option +" pulldownLocator "+ pulldownLocator +" not present!");
+				}
+				
+				// For some reason, zClick() activates the entire button, not the pulldown
+				// As a work around use right click
+				// this.zClick(pulldownLocator);
+				this.zRightClick(pulldownLocator);
+
+				this.zWaitForBusyOverlay();
+				
+				// Make sure the locator exists
+				if ( !this.sIsElementPresent(optionLocator) ) {
+					throw new HarnessException("Button "+ pulldown +" option "+ option +" optionLocator "+ optionLocator +" not present!");
+				}
+					
+				this.zClick(optionLocator);
+
+				this.zWaitForBusyOverlay();
+
+
+				page.zWaitForActive();
+				
+				return (page);
+
+			} else {
+				throw new HarnessException("unsupported pulldown/option "+ pulldown +"/"+ option);
+			}
+
 		} else {
 			throw new HarnessException("no logic defined for pulldown "+ pulldown);
 		}
@@ -351,6 +454,45 @@ public class FormMailNew extends AbsForm {
 	}
 	
 	/**
+	 * Set the 'From' value
+	 * @param value
+	 */
+	public void zSetFromIdentity(String value) throws HarnessException {
+		logger.info(myPageName() + " zSetFrom("+ value +")");
+
+		String pulldownLocator = "css=div[id^='zv__COMPOSE'] tr[id$='_identity_row'] td[id$='_dropdown']";
+		String optionLocator = "css=td[id$='_title']:contains("+ value +")";
+		
+		// Default behavior
+		if ( pulldownLocator != null ) {
+						
+			// Make sure the locator exists
+			if ( !this.sIsElementPresent(pulldownLocator) ) {
+				throw new HarnessException("pulldownLocator not present! "+ pulldownLocator);
+			}
+			
+			this.zClick(pulldownLocator);
+
+			this.zWaitForBusyOverlay();
+			
+			if ( optionLocator != null ) {
+
+				// Make sure the locator exists
+				if ( !this.sIsElementPresent(optionLocator) ) {
+					throw new HarnessException("optionLocator not present! "+ optionLocator);
+				}
+				
+				this.zClick(optionLocator);
+
+				this.zWaitForBusyOverlay();
+
+			}
+			
+		}
+		
+	}
+	
+	/**
 	 * Fill in the form field with the specified text
 	 * @param field
 	 * @param value
@@ -366,14 +508,55 @@ public class FormMailNew extends AbsForm {
 			
 			locator = Locators.zToField;
 			
-			// FALL THROUGH
+			// Make sure the button exists
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("Field is not present field="+ field +" locator="+ locator);
+			
+			// Seems that the client can't handle filling out the new mail form too quickly
+			// Click in the "To" fields, etc, to make sure the client is ready
+			this.sFocus(locator);
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+
+			// Enter text
+			this.sType(locator, value);
+			
+			// For some reason, no bubble takes place.  As a workaround, type Tab
+			this.sTypeKeys(locator, "\t");
+			
+			this.zWaitForBusyOverlay();
+
+			return;
+			
+		} else if ( field == Field.From ) {
+			
+			zSetFromIdentity(value);
+			return;
 			
 		} else if ( field == Field.Cc ) {
 			
 			locator = Locators.zCcField;
 			
-			// FALL THROUGH
+			// Make sure the button exists
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("Field is not present field="+ field +" locator="+ locator);
 			
+			// Seems that the client can't handle filling out the new mail form too quickly
+			// Click in the "To" fields, etc, to make sure the client is ready
+			this.sFocus(locator);
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+
+			// Enter text
+			this.sType(locator, value);
+			
+			// For some reason, no bubble takes place.  As a workaround, type Tab
+			this.sTypeKeys(locator, "\t");
+			
+			this.zWaitForBusyOverlay();
+
+			return;
+						
 		} else if ( field == Field.Bcc ) {
 			
 			locator = Locators.zBccField;
@@ -383,15 +566,33 @@ public class FormMailNew extends AbsForm {
 				this.zToolbarPressButton(Button.B_SHOWBCC);
 			}
 			
-			// FALL THROUGH
+			// Make sure the button exists
+			if ( !this.sIsElementPresent(locator) )
+				throw new HarnessException("Field is not present field="+ field +" locator="+ locator);
 			
+			// Seems that the client can't handle filling out the new mail form too quickly
+			// Click in the "To" fields, etc, to make sure the client is ready
+			this.sFocus(locator);
+			this.zClick(locator);
+			this.zWaitForBusyOverlay();
+
+			// Enter text
+			this.sType(locator, value);
+			
+			// For some reason, no bubble takes place.  As a workaround, type Tab
+			this.sTypeKeys(locator, "\t");
+			
+			this.zWaitForBusyOverlay();
+
+			return;
+						
 		} else if ( field == Field.Subject ) {
 			
 			locator = Locators.zSubjectField;
 			
 			// FALL THROUGH
 			
-		} else if ( field == Field.Body ) {
+		} else if (field == Field.Body) {
 
 			// For some reason, the client expects a bit of a delay here.
 			// A cancel compose will not register unless this delay is here
@@ -400,63 +601,146 @@ public class FormMailNew extends AbsForm {
 			//
 			SleepUtil.sleepLong();
 
-			int frames = this.sGetXpathCount("//iframe");
-			logger.debug("Body: # of frames: "+ frames);
+			int frames = this.sGetCssCount("css=iframe");
+			logger.debug("Body: # of frames: " + frames);
+			String browser = SeleniumService.getInstance().getSeleniumBrowser();
+			/*
+			 * Added IE specific condition because IE recognized frame=1 for text compose and frame=2 for html compose
+			 */
+			if (browser.equalsIgnoreCase("iexplore")) {
+				if (frames == 1) {
+					// //
+					// Text compose
+					// //
 
-			if ( frames == 0 ) {
-				////
-				// Text compose
-				////
-				
-				locator = "//textarea[contains(@id,'textarea_')]";
-				
-				if ( !this.sIsElementPresent(locator))
-					throw new HarnessException("Unable to locate compose body");
+					locator = "css=textarea[id*='textarea_']";
 
-				
-				this.sFocus(locator);
-				this.zClick(locator);
-				this.zWaitForBusyOverlay();
-				this.sType(locator, value);
-				
-				return;
-				
-			} else if ( frames == 1 ) {
-				////
-				// HTML compose
-				////
-				
-				try {
-					
-					this.sSelectFrame("index=0"); // iframe index is 0 based
-					
-					locator = "//html//body";
-					
-					if ( !this.sIsElementPresent(locator))
+					if (!this.sIsElementPresent(locator))
+						throw new HarnessException(
+								"Unable to locate compose body");
+
+					this.sFocus(locator);
+					this.zClick(locator);
+					this.zWaitForBusyOverlay();
+					this.sType(locator, value);
+
+					return;
+
+				} else if (frames == 2) {
+
+					//locator = "css=iframe[id^='iframe_DWT']";
+					locator ="css=iframe[id$='_content_ifr']";
+					if (!this.sIsElementPresent(locator))
+						throw new HarnessException(
+								"Unable to locate compose body");
+
+					zTypeFormattedText(locator, value);
+
+					// Is this requried?
+					this.zWaitForBusyOverlay();
+
+					return;
+
+				}
+
+			} else {
+				if (frames == 0) {
+					// //
+					// Text compose
+					// //
+
+					locator = "css=textarea[class='DwtHtmlEditorTextArea']";
+
+					if (!this.sIsElementPresent(locator))
 						throw new HarnessException("Unable to locate compose body");
 
 					this.sFocus(locator);
 					this.zClick(locator);
+					this.zWaitForBusyOverlay();
 					this.sType(locator, value);
+
+					return;
+
+				} else if (frames == 1) {
+					// //
+					// HTML compose
+					// //
+
+					try {
+
+						this.sSelectFrame("index=0"); // iframe index is 0 based
+
+						locator = "css=body[id='tinymce']";
+
+						if (!this.sIsElementPresent(locator))
+							throw new HarnessException("Unable to locate compose body");
+
+						this.sFocus(locator);
+						this.zClick(locator);
+						
+						/*
+						 * Oct 25, 2011: The new TinyMCE editor broke sType().  Use zKeyboard instead,
+						 * however, it is preferred to use sType() if possible, but I can't find a
+						 * solution right now. 
+						 */
+						// this.sType(locator, value);
+						this.zKeyboard.zTypeCharacters(value);
+
+					} finally {
+						// Make sure to go back to the original iframe
+						this.sSelectFrame("relative=top");
+
+					}
+
+					// Is this requried?
+					this.zWaitForBusyOverlay();
+
+					return;
 					
-				} finally {
-					// Make sure to go back to the original iframe
-					this.sSelectFrame("relative=top");
+				} else if (frames == 2) {
+					// //
+					// HTML compose
+					// //
 
+					try {
+
+						this.sSelectFrame("css=iframe[id$='_content_ifr']"); // iframe index is 0 based
+
+						locator = "css=html body";
+
+						if (!this.sIsElementPresent(locator))
+							throw new HarnessException(
+									"Unable to locate compose body");
+
+						this.sFocus(locator);
+						this.zClick(locator);
+						
+						/*
+						 * Oct 25, 2011: The new TinyMCE editor broke sType().  Use zKeyboard instead,
+						 * however, it is preferred to use sType() if possible, but I can't find a
+						 * solution right now. 
+						 */
+						// this.sType(locator, value);
+						this.zKeyboard.zTypeCharacters(value);
+
+					} finally {
+						// Make sure to go back to the original iframe
+						this.sSelectFrame("relative=top");
+
+					}
+
+					// Is this requried?
+					this.zWaitForBusyOverlay();
+
+					return;
+					
+				} else {
+					throw new HarnessException("Compose //iframe count was " + frames);
 				}
-				
-				// Is this requried?
-				this.zWaitForBusyOverlay();
-
-				return;
-
-			} else {
-				throw new HarnessException("Compose //iframe count was "+ frames);
 			}
-			
 
 		} else {
-			throw new HarnessException("not implemented for field "+ field);
+			throw new HarnessException("not implemented for field " + field);
 		}
 		
 		if ( locator == null ) {
@@ -534,7 +818,6 @@ public class FormMailNew extends AbsForm {
 			
 		}
 		
-		// TODO: how to handle HTML body?
 		
 		// Handle the Recipient list, which can be a combination
 		// of To, Cc, Bcc, and From
@@ -630,4 +913,217 @@ public class FormMailNew extends AbsForm {
 	            sIsElementPresent(Locators.zAttachmentText + "'" + name + "'" + ")");	    		   
 	}
 
+	/**
+	 * Autocompleting is more complicated than zFillField().  Use this
+	 * method when filling out a field that will autocomplete.
+	 * @param field The form field to use (to, cc, bcc, etc.)
+	 * @param value The partial string to use to autocomplete
+	 * @throws HarnessException 
+	 */
+	public List<AutocompleteEntry> zAutocompleteFillField(Field field, String value) throws HarnessException {
+		logger.info(myPageName() + " zAutocompleteFillField("+ field +", "+ value +")");
+
+		tracer.trace("Set "+ field +" to "+ value);
+
+		String locator = null;
+		
+		if ( field == Field.To ) {
+			
+			locator = Locators.zToField;
+			
+			// FALL THROUGH
+			
+		} else if ( field == Field.Cc ) {
+			
+			locator = Locators.zCcField;
+			
+			// FALL THROUGH
+			
+		} else if ( field == Field.Bcc ) {
+			
+			locator = Locators.zBccField;
+			
+			// Make sure the BCC field is showing
+			if ( !zBccIsActive() ) {
+				this.zToolbarPressButton(Button.B_SHOWBCC);
+			}
+			
+			// FALL THROUGH
+			
+		} else {
+			throw new HarnessException("Unsupported field: "+ field);
+		}
+		
+		if ( locator == null ) {
+			throw new HarnessException("locator was null for field "+ field);
+		}
+		
+		
+		// Make sure the button exists
+		if ( !this.sIsElementPresent(locator) )
+			throw new HarnessException("Field is not present field="+ field +" locator="+ locator);
+		
+		// Seems that the client can't handle filling out the new mail form too quickly
+		// Click in the "To" fields, etc, to make sure the client is ready
+		this.sFocus(locator);
+		this.sClickAt(locator,"");
+		this.zWaitForBusyOverlay();
+
+		// Instead of sType() use zKeyboard
+		// this.zKeyboard.zTypeCharacters(value);
+		
+		// workaround
+		if(ZimbraSeleniumProperties.isWebDriver()){
+		    clearField(locator);
+		    sType(locator, value);
+		}else{
+		    if(value.length() > 0){
+			sType(locator, value.substring(0, value.length()-1));
+			sFireEvent(locator, "keyup");
+		    }
+		    zWaitForBusyOverlay();
+		    sType(locator, value);
+		    sFireEvent(locator, "keyup");
+		}
+				
+		this.zWaitForBusyOverlay();
+
+		waitForAutocomplete();
+		
+// logger.info(this.sGetHtmlSource());		// For debugging
+
+		return (zAutocompleteListGetEntries());
+		
+	}
+
+	
+	/**
+
+  <div x-display="block" parentid="z_shell" class="ZmAutocompleteListView" style="position: absolute; overflow: auto; display: block; left: 263px; top: 132px; z-index: 750;" id="zac__COMPOSE-1">
+    <table id="DWT117" border="0" cellpadding="0" cellspacing="0">
+      <tbody>
+        <tr id="zac__COMPOSE-1_acRow_0" class="acRow-selected">
+          <td class="Icon">
+            <div class="ImgContact" style=""></div>
+          </td>
+
+          <td>"&Atilde;&lsquo;&Atilde;&copy;&Atilde;&iexcl;l Wilson"
+          &lt;enus13173367893124@testdomain.com&gt;</td>
+
+          <td class="Link"></td>
+
+          <td class="Link"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <span style= "position: absolute; left: -10000px; top: -10000px; font-size: 13.3333px;">&Atilde;&lsquo;&Atilde;&copy;&Atilde;&iexcl;l</span>
+
+
+  <div x-display="block" style="position: absolute; left: 263px; top: 132px; z-index: 100; display: none;" class="acWaiting">
+    <table border="0" cellpadding="0" cellspacing="0">
+      <tbody>
+        <tr>
+          <td>
+            <div class="ImgSpinner"></div>
+          </td>
+
+          <td>Autocompleting...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+		 */
+
+	/**
+	 * Wait for the autocomplete spinner to go away
+	 */
+	protected void waitForAutocomplete() throws HarnessException {
+		String locator = "css=div[class='acWaiting'][style*='display: none;']";
+		for (int i = 0; i < 30; i++) {
+			if ( this.sIsElementPresent(locator) )
+				return; // Found it!
+			SleepUtil.sleep(1000);
+		}
+		throw new HarnessException("autocomplete never completed");
+	}
+	
+	protected AutocompleteEntry parseAutocompleteEntry(String itemLocator) throws HarnessException {
+		logger.info(myPageName() + " parseAutocompleteEntry()");
+
+		String locator = null;
+		
+		// Get the icon
+		locator = itemLocator + " td.Icon div@class";
+		String image = this.sGetAttribute(locator);
+		
+		// Get the address
+		locator = itemLocator + " td + td";
+		String address = this.sGetText(locator);
+		
+		AutocompleteEntry entry = new AutocompleteEntry(
+									Icon.getIconFromImage(image), 
+									address, 
+									false,
+									itemLocator);
+
+		return (entry);
+	}
+	
+	public List<AutocompleteEntry> zAutocompleteListGetEntries() throws HarnessException {
+		logger.info(myPageName() + " zAutocompleteListGetEntries()");
+		
+		List<AutocompleteEntry> items = new ArrayList<AutocompleteEntry>();
+		
+		String containerLocator = "css=div[id^='zac__COMPOSE-'][style*='display: block;']";
+
+		if ( !this.zWaitForElementPresent(containerLocator,"5000") ) {
+			// Autocomplete is not visible, return an empty list.
+			return (items);
+		}
+
+		
+		String rowsLocator = containerLocator + " tr[id*='_acRow_']";
+		int count = this.sGetCssCount(rowsLocator);
+		for (int i = 0; i < count; i++) {
+			
+			items.add(parseAutocompleteEntry(containerLocator + " tr[id$='_acRow_"+ i +"']"));
+			
+		}
+		
+		return (items);
+	}
+
+	public void zAutocompleteSelectItem(AutocompleteEntry entry) throws HarnessException {
+		logger.info(myPageName() + " zAutocompleteSelectItem("+ entry +")");
+		
+		// Click on the address
+		this.sMouseDown(entry.getLocator() + " td + td");
+		this.zWaitForBusyOverlay();
+		
+	}
+	
+	public void zAutocompleteForgetItem(AutocompleteEntry entry) throws HarnessException {
+		logger.info(myPageName() + " zAutocompleteForgetItem("+ entry +")");
+		
+		// Mouse over the entry
+		zAutocompleteMouseOverItem(entry);
+		
+		// Click on the address
+		this.sMouseDown(entry.getLocator() + " div[id*='_acForgetText_']");
+		this.zWaitForBusyOverlay();
+		
+	}
+
+	public void zAutocompleteMouseOverItem(AutocompleteEntry entry) throws HarnessException {
+		logger.info(myPageName() + " zAutocompleteMouseOverItem("+ entry +")");
+		
+		// Click on the address
+		this.sMouseOver(entry.getLocator() + " td + td");
+		this.zWaitForBusyOverlay();
+		
+	}
+
+	
 }

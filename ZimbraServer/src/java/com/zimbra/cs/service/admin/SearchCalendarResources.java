@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,6 +18,8 @@ package com.zimbra.cs.service.admin;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
@@ -27,10 +29,13 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.EntrySearchFilter;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DomainBy;
+import com.zimbra.cs.account.SearchDirectoryOptions;
+import com.zimbra.cs.account.SearchDirectoryOptions.SortOpt;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
+import com.zimbra.cs.account.ldap.LdapEntrySearchFilter;
 import com.zimbra.cs.gal.GalExtraSearchFilter;
+import com.zimbra.cs.ldap.ZLdapFilterFactory.FilterId;
 import com.zimbra.cs.session.AdminSession;
 import com.zimbra.cs.session.Session;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -81,7 +86,7 @@ public class SearchCalendarResources extends AdminDocumentHandler {
 
         Domain d = null;
         if (domain != null) {
-            d = prov.get(DomainBy.name, domain);
+            d = prov.get(Key.DomainBy.name, domain);
             if (d == null)
                 throw AccountServiceException.NO_SUCH_DOMAIN(domain);
         }
@@ -90,16 +95,25 @@ public class SearchCalendarResources extends AdminDocumentHandler {
         AdminAccessControl.SearchDirectoryRightChecker rightChecker = 
             new AdminAccessControl.SearchDirectoryRightChecker(aac, prov, null);
         
+        // filter is not RFC 2254 escaped 
+        // query is RFC 2254 escaped
+        String query = LdapEntrySearchFilter.toLdapCalendarResourcesFilter(filter);
+        
+        SearchDirectoryOptions options = new SearchDirectoryOptions();
+        options.setDomain(d);
+        options.setTypes(SearchDirectoryOptions.ObjectType.resources);
+        options.setFilterString(FilterId.ADMIN_SEARCH, query);
+        options.setReturnAttrs(attrs);
+        options.setSortOpt(sortAscending ? SortOpt.SORT_ASCENDING : SortOpt.SORT_DESCENDING);
+        options.setSortAttr(sortBy);
+        options.setConvertIDNToAscii(true);
+        
         List resources;
         AdminSession session = (AdminSession) getSession(zsc, Session.Type.ADMIN);
         if (session != null) {
-            resources = session.searchCalendarResources(d, filter, attrs, sortBy, sortAscending, offset, rightChecker);
+            resources = session.searchDirectory(options, offset, rightChecker);
         } else {
-            if (d != null) {
-                resources = prov.searchCalendarResources(d, filter, attrs, sortBy, sortAscending);
-            } else {
-                resources = prov.searchCalendarResources(filter, attrs, sortBy, sortAscending);
-            }
+            resources = prov.searchDirectory(options);
             resources = rightChecker.getAllowed(resources);
         }
 

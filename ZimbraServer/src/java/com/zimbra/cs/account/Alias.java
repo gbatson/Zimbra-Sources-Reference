@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,10 +21,8 @@
  */
 package com.zimbra.cs.account;
 
-import java.util.List;
 import java.util.Map;
 
-import com.zimbra.cs.account.Provisioning.SearchOptions;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
@@ -32,8 +30,6 @@ import com.zimbra.common.util.ZimbraLog;
 /**
  * @author anandp
  *
- * TODO To change the template for this generated type comment go to
- * Window - Preferences - Java - Code Style - Code Templates
  */
 public class Alias extends MailTarget {
     
@@ -42,6 +38,11 @@ public class Alias extends MailTarget {
 
     public Alias(String name, String id, Map<String, Object> attrs, Provisioning prov) {
         super(name, id, attrs, null, prov);
+    }
+    
+    @Override
+    public EntryType getEntryType() {
+        return EntryType.ALIAS;
     }
     
     public NamedEntry getTarget(Provisioning prov) {
@@ -92,6 +93,8 @@ public class Alias extends MailTarget {
             return TargetType.account;
         else if (target instanceof DistributionList)
             return TargetType.dl;
+        else if (target instanceof DynamicGroup)
+            return TargetType.group;
         else
             throw ServiceException.FAILURE("invalid target type for alias " + getName(), null);
     }

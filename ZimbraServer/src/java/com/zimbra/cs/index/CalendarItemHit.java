@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -15,6 +15,7 @@
 
 package com.zimbra.cs.index;
 
+import com.google.common.base.Objects;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.MailItem;
@@ -25,24 +26,13 @@ import com.zimbra.cs.mailbox.Mailbox;
  */
 public class CalendarItemHit extends ZimbraHit {
 
-    protected int mId;
-    protected CalendarItem mCalItem;
-    private byte mType = MailItem.TYPE_UNKNOWN;
+    protected int id;
+    protected CalendarItem item;
 
-    CalendarItemHit(ZimbraQueryResultsImpl results, Mailbox mbx, int id, CalendarItem cal) {
-        super(results, mbx);
-        mId = id;
-        mCalItem = cal;
-        if (cal != null) {
-            mType = cal.getType();
-        }
-    }
-
-    CalendarItemHit(ZimbraQueryResultsImpl results, Mailbox mbx, int id, CalendarItem cal, byte type) {
-        super(results, mbx);
-        mId = id;
-        mCalItem = cal;
-        mType = type;
+    CalendarItemHit(ZimbraQueryResultsImpl results, Mailbox mbx, int id, CalendarItem cal, Object sortValue) {
+        super(results, mbx, sortValue);
+        this.id = id;
+        item = cal;
     }
 
     @Override
@@ -51,20 +41,10 @@ public class CalendarItemHit extends ZimbraHit {
     }
 
     public CalendarItem getCalendarItem() throws ServiceException {
-        if (mCalItem == null) {
-            mCalItem = this.getMailbox().getCalendarItemById(null, mId);
+        if (item == null) {
+            item = getMailbox().getCalendarItemById(null, id);
         }
-        return mCalItem;
-    }
-
-    @Override
-    public long getDate() throws ServiceException {
-        return getCalendarItem().getDate();
-    }
-
-    @Override
-    public long getSize() throws ServiceException {
-        return getCalendarItem().getSize();
+        return item;
     }
 
     @Override
@@ -75,31 +55,17 @@ public class CalendarItemHit extends ZimbraHit {
 
     @Override
     public int getItemId() {
-        return mId;
-    }
-
-    public byte getItemType() {
-        return mType;
+        return id;
     }
 
     @Override
-    void setItem(MailItem item) {
-        mCalItem = (CalendarItem)item;
-        if (mCalItem != null) {
-            mType = mCalItem.getType();
-        } else {
-            mType = MailItem.TYPE_UNKNOWN;
-        }
+    void setItem(MailItem value) {
+        item = (CalendarItem) value;
     }
 
     @Override
     boolean itemIsLoaded() {
-        return (mId == 0) || (mCalItem != null);
-    }
-
-    @Override
-    public String getSubject() throws ServiceException {
-        return getCalendarItem().getSubject();
+        return (id == 0) || (item != null);
     }
 
     @Override
@@ -109,16 +75,10 @@ public class CalendarItemHit extends ZimbraHit {
 
     @Override
     public String toString() {
-        String name= "";
-        String subject= "";
         try {
-            name = getName();
-        } catch(Exception e) {
+            return Objects.toStringHelper(this).add("name", getName()).toString();
+        } catch (Exception e) {
+            return e.toString();
         }
-        try {
-            subject=getSubject();
-        } catch(Exception e) {
-        }
-        return "CalendarItem: " + super.toString() + " " + name + " " + subject;
     }
 }

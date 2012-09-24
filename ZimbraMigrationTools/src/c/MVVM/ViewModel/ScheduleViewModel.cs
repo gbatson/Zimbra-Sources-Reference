@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Collections;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Threading;
 using System.Windows.Input;
@@ -85,6 +86,8 @@ public class ScheduleViewModel: BaseViewModel
          *  proc.Start();
          * }
          */
+        const int TR_MAX_SIZE = 261;
+
         if ((m_configFile.Length == 0) || (m_usermapFile.Length == 0))
         {
             MessageBox.Show("There must be a config file and usermap file", "Zimbra Migration",
@@ -99,10 +102,51 @@ public class ScheduleViewModel: BaseViewModel
         proc.StartInfo.FileName = "c:\\windows\\system32\\schtasks.exe";
 
         // set up date, time, and name for task scheduler
-        string dtStr = Convert.ToDateTime(this.ScheduleDate).ToString("MM/dd/yyyy");    // formatting in C# is nuts -- only way to get this to work
+        // FBS Bug 74232 -- need to get the right format for Schtasks SD parameter (dtStr)
+        // Has to be either MM/DD/YYYY, DD/MM/YYYY, or YYYY/MM/DD
+        // C# formatting stuff and schtasks are both very fussy.  Only MM capitalized (because of minutes)
+        string dtStr = Convert.ToDateTime(this.ScheduleDate).ToString("MM/dd/yyyy");
+        CultureInfo currentCulture = Thread.CurrentThread.CurrentCulture;
+        String shortDatePattern = currentCulture.DateTimeFormat.ShortDatePattern; 
+        if ((shortDatePattern.StartsWith("d")) || (shortDatePattern.StartsWith("D")))   // being safe with "D"
+        {
+            dtStr = Convert.ToDateTime(this.ScheduleDate).ToString("dd/MM/yyyy");
+        }
+        else
+        if ((shortDatePattern.StartsWith("y")) || (shortDatePattern.StartsWith("Y")))   // being safe with "Y"
+        {
+            dtStr = Convert.ToDateTime(this.ScheduleDate).ToString("yyyy/MM/dd");
+        }
+        if (v.Major < 6)    // XP is a pain -- you have to make sure is has slashes.  W7 doesn't care
+        {
+            if (dtStr.Contains("."))
+            {
+                dtStr = dtStr.Replace(".", "/");
+            }
+            else
+            if (dtStr.Contains("-"))
+            {
+                dtStr = dtStr.Replace("-", "/");
+            }
+        }
+        //
+        //
+
         string dtTime = MakeTimeStr();
         string dtName = "Migrate" + dtTime.Substring(0, 2) + dtTime.Substring(3, 2);
 
+        //
+
+        // FBS Bug 75004 -- 6/6/12
+        string userEntry = dtStr + " " + dtTime;
+        DateTime userDT = Convert.ToDateTime(userEntry);
+        DateTime nowDT = DateTime.Now;
+        if (DateTime.Compare(userDT, nowDT) < 0)
+        {
+            MessageBox.Show("You can't schedule a task in the past", "Zimbra Migration",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
         //
 
         proc.StartInfo.Arguments = "/Create /SC ONCE /TR ";
@@ -117,11 +161,22 @@ public class ScheduleViewModel: BaseViewModel
         proc.StartInfo.Arguments += @"""";
         proc.StartInfo.Arguments += " ";
 
-        proc.StartInfo.Arguments += m_configFile + " ";
-        proc.StartInfo.Arguments += m_usermapFile + " ";
+        // FBS bug 74232 -- 6/1/12 -- have to put \" around arguments since they might have spaces
+        proc.StartInfo.Arguments += "\\\"" + "ConfigxmlFile="  + m_configFile + "\\\"" + " ";
+        proc.StartInfo.Arguments += "\\\"" + "Users=" + m_usermapFile + "\\\"";
         proc.StartInfo.Arguments += @"""";
+
+        // FBS bug 74232 -- make sure value for /TR option does not exceed 261 characters
+        int trLen = proc.StartInfo.Arguments.Length - 21;  // 21 is length of "/Create /SC ONCE /TR "
+        if (trLen > TR_MAX_SIZE)
+        {
+            MessageBox.Show("Taskrun argument string exceeds 261 characters.  Please use config files with smaller path sizes.",
+                "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         if (v.Major >= 6)
-            proc.StartInfo.Arguments += "/F /Z /V1";
+            proc.StartInfo.Arguments += " /F /Z /V1";
         proc.StartInfo.Arguments += " /TN " + dtName + " /SD " + dtStr + " /ST " + dtTime;
 
         proc.Start();
@@ -252,7 +307,24 @@ public class ScheduleViewModel: BaseViewModel
                         // end 73395
                         // end 71646
 
-                        if (zimbraAPI.CreateAccount(accountName, displayName, givenName, sn, zfp, defaultPWD, cosID) == 0)
+                        string historyfile = Path.GetTempPath() + accountName.Substring(0, accountName.IndexOf('@')) + "history.log";
+                        if (File.Exists(historyfile))
+                        {
+                            try
+                            {
+
+                                File.Delete(historyfile);
+                            }
+                            catch (Exception e)
+                            {
+                                string msg = "exception in deleteing the Histroy file " + e.Message;
+                                System.Console.WriteLine(msg);
+                            }
+
+                        }
+
+                        bool mustChangePW = usersViewModel.UsersList[i].MustChangePassword;
+                        if (zimbraAPI.CreateAccount(accountName, displayName, givenName, sn, zfp, defaultPWD, mustChangePW, cosID) == 0)
                         {
                             tempMessage += string.Format("{0} Provisioned", userName) + "\n";
                             // MessageBox.Show(string.Format("{0} Provisioned", userName), "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -450,9 +522,30 @@ public class ScheduleViewModel: BaseViewModel
         {
             if (value == m_schedule.ScheduleDate.ToShortDateString())
                 return;
-            m_schedule.ScheduleDate = Convert.ToDateTime(value);
+            try
+            {
+                m_schedule.ScheduleDate = Convert.ToDateTime(value);
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Please enter a valid date in the indicated format", "Zimbra Migration", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             OnPropertyChanged(new PropertyChangedEventArgs("ScheduleDate"));
+        }
+    }
+    private string dateFormatLabelContent2;
+    public string DateFormatLabelContent2
+    {
+        get { return dateFormatLabelContent2; }
+        set
+        {
+            if (value == dateFormatLabelContent2)
+                return;
+            dateFormatLabelContent2 = value;
+
+            OnPropertyChanged(new PropertyChangedEventArgs("DateFormatLabelContent2"));
         }
     }
     public int HrSelection {
@@ -585,9 +678,10 @@ public class ScheduleViewModel: BaseViewModel
             itemFolderFlags = itemFolderFlags | ItemsAndFoldersOptions.OOO;
         importOpts.ItemsAndFolders = itemFolderFlags;
         importOpts.DateFilter = (ovm.IsOnOrAfter) ? ovm.MigrateONRAfter : null;
-        importOpts.MessageSizeFilter = ovm.MaxMessageSize;
+        importOpts.MessageSizeFilter = (ovm.IsMaxMessageSize) ? ovm.MaxMessageSize : null;
         importOpts.SkipFolders = (ovm.IsSkipFolders) ? ovm.FoldersToSkip : null;
-
+        importOpts.SkipPrevMigrated = ovm.IsSkipPrevMigratedItems;
+        importOpts.MaxErrorCnt = ovm.MaxErrorCount;
          switch(ovm.LogLevel)
                 {
                 case"Debug":
@@ -647,6 +741,13 @@ public class ScheduleViewModel: BaseViewModel
         return retval;
     }
 
+    private void FormatGlobalMsg(AccountResultsViewModel ar)
+    {
+        string msg = "{0} of {1} ({2}%)";
+        string msgG = String.Format(msg, ar.TotalItemsToMigrate, ar.TotalItemsToMigrate, 100);
+        ar.GlobalAcctProgressMsg = msgG;
+    }
+
     private ObservableCollection<CosInfo> coslist = new ObservableCollection<CosInfo>();
     public ObservableCollection<CosInfo> CosList {
         get { return coslist; }
@@ -702,6 +803,7 @@ public class ScheduleViewModel: BaseViewModel
         MigrationOptions importOpts = SetOptions();
         bool isVerbose = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]).LoggingVerbose;
         bool doRulesAndOOO = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]).OEnableRulesAndOOO;
+        
 
         if (isVerbose)
         {
@@ -726,6 +828,10 @@ public class ScheduleViewModel: BaseViewModel
                 bool isOOOorRules = ((MyFolder.FolderView == "OOO") || (MyFolder.FolderView == "All Rules"));
                 accountResultsViewModel.AccountResultsList[num].UserResultsList[count - 1].UserProgressMsg = FormatTheLastMsg(MyFolder, isOOOorRules);
                 accountResultsViewModel.AccountResultsList[num].PBValue = 100;  // to make sure
+                if (accountResultsViewModel.AccountResultsList[num].CurrentItemNum != accountResultsViewModel.AccountResultsList[num].TotalItemsToMigrate)
+                {
+                    FormatGlobalMsg(accountResultsViewModel.AccountResultsList[num]);
+                }
             }
             else
             {   // For preview, take the "foldername (n items)" message we constructed, extract the n, and make "Total n"
@@ -840,6 +946,17 @@ public class ScheduleViewModel: BaseViewModel
         {
             ar.NumErrs = (int)a.TotalErrors + 1;      // this happens first
             ar.AccountProblemsList.Add(a.LastProblemInfo);
+            OptionsViewModel ovm = ((OptionsViewModel)ViewModelPtrs[(int)ViewType.OPTIONS]);
+            if (ovm.MaxErrorCount > 0)
+            {
+                if (ar.NumErrs > ovm.MaxErrorCount)
+                {
+                    for (int i = 0; i < this.BGWList.Count; i++)
+                    {
+                        this.BGWList[i].CancelAsync();
+                    }
+                }
+            }
         }
         else if (e.PropertyName == "TotalWarnings")
         {
@@ -884,6 +1001,12 @@ public class ScheduleViewModel: BaseViewModel
                     ar.CurrentItemNum++;
                     ar.PBValue = (int)Math.Round(((Decimal)ar.CurrentItemNum /
                         (Decimal)ar.TotalItemsToMigrate) * 100);
+
+                    // FBS bug 74960 -- 6/1/12
+                    string msg2 = "{0} of {1} ({2}%)";
+                    string msgG = String.Format(msg2, ar.CurrentItemNum, ar.TotalItemsToMigrate, ar.PBValue);
+                    ar.GlobalAcctProgressMsg = msgG;
+
                     bgwlist[tnum].ReportProgress(ar.PBValue, f.AccountNum);
                 }
             }

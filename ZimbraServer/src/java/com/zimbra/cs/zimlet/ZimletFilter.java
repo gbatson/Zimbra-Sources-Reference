@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -29,7 +29,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.zimbra.cs.account.*;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.service.admin.AdminAccessControl;
 import com.zimbra.common.localconfig.LC;
@@ -61,14 +61,14 @@ public class ZimletFilter extends ZimbraServlet implements Filter {
 				res instanceof HttpServletResponse);
 	}
 
-	private AuthToken getAuthTokenForApp(HttpServletRequest req, HttpServletResponse resp)
+	private AuthToken getAuthTokenForApp(HttpServletRequest req, HttpServletResponse resp, boolean doNotSendHttpError)
 			throws IOException, ServiceException {
 		Config config = Provisioning.getInstance().getConfig();
 		int adminPort = config.getIntAttr(Provisioning.A_zimbraAdminPort, 0);
 		if (adminPort == req.getLocalPort()) {
-			return getAdminAuthTokenFromCookie(req, resp);
+			return getAdminAuthTokenFromCookie(req, resp, doNotSendHttpError);
 		}
-		return getAuthTokenFromCookie(req, resp, true);
+		return getAuthTokenFromCookie(req, resp, doNotSendHttpError);
 	}
 
 	public void doFilter(ServletRequest request, ServletResponse response,
@@ -81,7 +81,7 @@ public class ZimletFilter extends ZimbraServlet implements Filter {
 
         AuthToken authToken;
 		try {
-        	authToken = getAuthTokenForApp(req, resp);
+        	authToken = getAuthTokenForApp(req, resp, false);
 		} catch (ServiceException se) {
         	ZimbraLog.zimlet.info("can't get authToken: "+se.getMessage());
         	resp.sendError(HttpServletResponse.SC_FORBIDDEN);

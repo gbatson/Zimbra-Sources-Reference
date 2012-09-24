@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -26,8 +26,10 @@ import com.zimbra.cs.account.AttributeManager;
 import com.zimbra.cs.account.DataSource;
 
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.DataSourceBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DataSourceBy;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.datasource.DataSourceManager;
@@ -63,11 +65,11 @@ public class ModifyDataSource extends AdminDocumentHandler {
         Map<String, Object> attrs = AdminService.getAttrs(dsEl);
         
         String dsId = dsEl.getAttribute(AccountConstants.A_ID);
-        DataSource ds = prov.get(account, DataSourceBy.id, dsId);
+        DataSource ds = prov.get(account, Key.DataSourceBy.id, dsId);
         if (ds == null)
             throw ServiceException.INVALID_REQUEST("Cannot find data source with id=" + dsId, null);
         
-        DataSource.Type type = ds.getType();
+        DataSourceType type = ds.getType();
         
         // Note: isDomainAdminOnly *always* returns false for pure ACL based AccessManager 
         if (isDomainAdminOnly(zsc)) {
@@ -85,14 +87,14 @@ public class ModifyDataSource extends AdminDocumentHandler {
         return response;
     }
     
-    static AttributeClass getAttributeClassFromType(DataSource.Type type) {
-        if (type == DataSource.Type.pop3)
+    static AttributeClass getAttributeClassFromType(DataSourceType type) {
+        if (type == DataSourceType.pop3)
             return AttributeClass.pop3DataSource;
-        else if (type == DataSource.Type.imap)
+        else if (type == DataSourceType.imap)
             return AttributeClass.imapDataSource;
-        else if (type == DataSource.Type.rss)
+        else if (type == DataSourceType.rss)
             return AttributeClass.rssDataSource;
-        else if (type == DataSource.Type.gal)
+        else if (type == DataSourceType.gal)
             return AttributeClass.galDataSource;
         else
             return AttributeClass.dataSource;

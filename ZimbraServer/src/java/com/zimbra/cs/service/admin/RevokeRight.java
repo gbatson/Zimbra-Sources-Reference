@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -17,13 +17,13 @@ package com.zimbra.cs.service.admin;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.GranteeBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.GranteeBy;
-import com.zimbra.cs.account.Provisioning.TargetBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.GranteeType;
 import com.zimbra.cs.account.accesscontrol.RightCommand;
@@ -31,6 +31,7 @@ import com.zimbra.cs.account.accesscontrol.RightModifier;
 import com.zimbra.cs.account.accesscontrol.TargetType;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.soap.ZimbraSoapContext;
+import com.zimbra.soap.type.TargetBy;
 
 public class RevokeRight extends RightDocumentHandler {
 
@@ -48,10 +49,10 @@ public class RevokeRight extends RightDocumentHandler {
             
         Element eGrantee = request.getElement(AdminConstants.E_GRANTEE);
         String granteeType = eGrantee.getAttribute(AdminConstants.A_TYPE);
-        GranteeBy granteeBy = null;
+        Key.GranteeBy granteeBy = null;
         String grantee = null;
         if (GranteeType.fromCode(granteeType).needsGranteeIdentity()) {
-            granteeBy = GranteeBy.fromString(eGrantee.getAttribute(AdminConstants.A_BY));
+            granteeBy = Key.GranteeBy.fromString(eGrantee.getAttribute(AdminConstants.A_BY));
             grantee   = eGrantee.getText();
         }
         

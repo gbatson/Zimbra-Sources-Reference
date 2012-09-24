@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -34,6 +34,7 @@ import org.dom4j.QName;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.HttpUtil;
@@ -304,9 +305,6 @@ public abstract class DavResource {
 	public DavResource copy(DavContext ctxt, DavResource dest) throws DavException {
 		throw new DavException("not supported", HttpServletResponse.SC_NOT_ACCEPTABLE);
 	}
-	public void rename(DavContext ctxt, String newName, DavResource destCollection) throws DavException {
-		throw new DavException("not supported", HttpServletResponse.SC_NOT_ACCEPTABLE);
-	}
 
     protected QName[] getSupportedReports() {
         return new QName[0];
@@ -323,7 +321,7 @@ public abstract class DavResource {
         buf.append("\tDate:\t\t\t").append(getLastModifiedDate()).append("\n");
         try {
             Provisioning prov = Provisioning.getInstance();
-            Account account = prov.get(Provisioning.AccountBy.name, getOwner());
+            Account account = prov.get(Key.AccountBy.name, getOwner());
             buf.append("\tOwner account name:\t").append(account.getName()).append("\n");
         } catch (ServiceException se) {
         }

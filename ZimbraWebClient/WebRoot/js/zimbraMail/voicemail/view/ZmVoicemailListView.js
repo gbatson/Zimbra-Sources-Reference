@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,6 +14,9 @@
  */
 
 ZmVoicemailListView = function(parent, controller, dropTgt) {
+	if(!parent) {
+		return;
+	}
 	var headerList = this._getHeaderList(parent);
 	ZmVoiceListView.call(this, {parent:parent, className:"DwtListView ZmVoicemailListView",
 								posStyle:Dwt.ABSOLUTE_STYLE, view:ZmId.VIEW_VOICEMAIL,
@@ -36,10 +39,7 @@ function() {
 
 ZmVoicemailListView.FROM_WIDTH		= ZmMsg.COLUMN_WIDTH_FROM_CALL;
 ZmVoicemailListView.PLAYING_WIDTH	= null; // Auto
-ZmVoicemailListView.PRIORITY_WIDTH	= ZmListView.COL_WIDTH_ICON;
 ZmVoicemailListView.DATE_WIDTH		= ZmMsg.COLUMN_WIDTH_DATE_CALL;
-
-ZmVoicemailListView.F_PRIORITY		= "py";
 
 ZmVoicemailListView.prototype.setPlaying =
 function(voicemail) {
@@ -84,13 +84,11 @@ function(compact) {
 
 ZmVoicemailListView.prototype._getHeaderList =
 function(parent) {
-
 	var headerList = [];
 
 	if (appCtxt.get(ZmSetting.SHOW_SELECTION_CHECKBOX)) {
 		headerList.push(new DwtListHeaderItem({field:ZmItem.F_SELECTION, icon:"CheckboxUnchecked", width:ZmListView.COL_WIDTH_ICON, name:ZmMsg.selection}));
 	}
-	headerList.push(new DwtListHeaderItem({field:ZmVoicemailListView.F_PRIORITY, icon:"TaskHigh", width:ZmVoicemailListView.PRIORITY_WIDTH}));
 	headerList.push(new DwtListHeaderItem({field:ZmVoiceListView.F_CALLER, text:ZmMsg.from, width:ZmVoicemailListView.FROM_WIDTH, resizeable:true}));
 	headerList.push(new DwtListHeaderItem({field:ZmVoiceListView.F_DURATION, text:ZmMsg.message, width:ZmVoicemailListView.PLAYING_WIDTH, sortable:ZmVoiceListView.F_DURATION, resizeable:true}));
 	headerList.push(new DwtListHeaderItem({field:ZmVoiceListView.F_DATE, text:ZmMsg.received, width:ZmVoicemailListView.DATE_WIDTH, sortable:ZmVoiceListView.F_DATE, resizeable:true}));
@@ -109,9 +107,7 @@ function(item, field) {
 
 ZmVoicemailListView.prototype._getCellContents =
 function(htmlArr, idx, voicemail, field, colIdx, params) {
-	if (field == ZmVoicemailListView.F_PRIORITY) {
-		htmlArr[idx++] = this._getPriorityHtml(voicemail);
-	} else if (field == ZmVoiceListView.F_DURATION) {
+	if (field == ZmVoiceListView.F_DURATION) {
 		// No-op. This is handled in _addRow()
 	} else {
 		idx = ZmVoiceListView.prototype._getCellContents.apply(this, arguments);
@@ -253,6 +249,9 @@ ZmVoicemailListView.prototype._helpListener =
 function(ev) {
 	var dialog = appCtxt.getMsgDialog();
 	var message = AjxEnv.isIE ? ZmMsg.missingPluginHelpIE : ZmMsg.missingPluginHelp;
+    if (AjxEnv.isIE8) {
+        message = ZmMsg.missingPluginHelpIE8;
+    }
 	dialog.setMessage(message, DwtMessageDialog.CRITICAL_STYLE);
 	dialog.popup();
 };
@@ -267,15 +266,9 @@ function(ev) {
 	}
 };
 
-ZmVoicemailListView.prototype._getPriorityHtml =
-function(voicemail) {
-	return voicemail.isHighPriority ? "<div class='ImgTaskHigh'></div>" : "";
-};
-
 ZmVoicemailListView.prototype._getHeaderToolTip =
 function(prefix) {
 	switch (prefix) {
-		case ZmVoicemailListView.F_PRIORITY: 	return ZmMsg.priority; break;
 		case ZmVoiceListView.F_CALLER:			return ZmMsg.from; break;
 		case ZmVoiceListView.F_DURATION:		return ZmMsg.sortByDuration; break;
 		case ZmVoiceListView.F_DATE:			return ZmMsg.sortByReceived; break;

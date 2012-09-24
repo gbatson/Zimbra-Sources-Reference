@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 //helper class for retrieving properties
 package com.zimbra.qa.selenium.framework.util;
 
@@ -23,6 +7,9 @@ import java.util.*;
 import java.util.Map.Entry;
 
 import org.apache.commons.configuration.*;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URIUtils;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.log4j.*;
 
 import com.zimbra.qa.selenium.framework.util.performance.*;;
@@ -127,7 +114,7 @@ public class ZimbraSeleniumProperties {
 				configProp = new PropertiesConfiguration();
 				configProp.load(PropertiesConfigurationFilename);
 			} catch (ConfigurationException e) {
-				ZimbraSeleniumLogger.mLog.error("Unable to open config file: " + PropertiesConfigurationFilename.getAbsolutePath(), e);
+				logger.error("Unable to open config file: " + PropertiesConfigurationFilename.getAbsolutePath(), e);
 				logger.info("config.properties is default");
 				configProp = createDefaultProperties();
 			}
@@ -211,17 +198,35 @@ public class ZimbraSeleniumProperties {
 		return defaultProp;
 	}
 
-	private static class CurClassGetter extends SecurityManager {
-		private Class<?> getCurrentClass() {
-			return getClassContext()[1];
-		}
+	/**
+	 * isWebDriver() 
+	 * method to check whether WebDriver mode is enabled
+	 * in the configuration settings
+	 */
+	public static boolean isWebDriver() {
+		if (ZimbraSeleniumProperties.getStringProperty("seleniumDriver") != null && ZimbraSeleniumProperties.getStringProperty("seleniumDriver").contentEquals("WebDriver"))
+			return true;
+		else
+			return false;
+	}
+	
+	/**
+	 * isWebDriverBackedSelenium() 
+	 * method to check whether WebDriverBackedSelenium mode is enabled
+	 * in the configuration settings
+	 */
+	public static boolean isWebDriverBackedSelenium() {
+		if (ZimbraSeleniumProperties.getStringProperty("seleniumDriver") != null && ZimbraSeleniumProperties.getStringProperty("seleniumDriver").contentEquals("WebDriverBackedSelenium"))
+			return true;
+		else
+			return false;
 	}
 
 	/**
 	 * App type
 	 */
 	public enum AppType {
-		AJAX, HTML, MOBILE, DESKTOP, ADMIN, APPLIANCE
+		AJAX, HTML, MOBILE, DESKTOP, ADMIN, APPLIANCE, OCTOPUS
 	}
 	
 	private static AppType appType = AppType.AJAX;
@@ -241,7 +246,116 @@ public class ZimbraSeleniumProperties {
 			return "127.0.0.1";
 		}
 	}
+	
+	private static final String CalculatedBrowser = "CalculatedBrowser";
+	public static String getCalculatedBrowser() {
+		
+		String browser = getStringProperty(CalculatedBrowser);
+		
+		if ( browser != null ) {
+			// Calculated browser already determined, just return it
+			return (browser);
+		}
+				
+		browser = ZimbraSeleniumProperties.getStringProperty(
+				ZimbraSeleniumProperties.getLocalHost() + ".browser",
+				ZimbraSeleniumProperties.getStringProperty("browser"));
+		
+		if (browser.charAt(0) == '*') {
+			browser = browser.substring(1);
+			if ((browser.indexOf(" ")) > 0) {
+				String str = browser.split(" ")[0];
+				int i;
+				if ((i = browser.lastIndexOf("\\")) > 0) {
+					str += "_" + browser.substring(i+1);
+				}
+				browser = str;
+			}
+		}
+		
+		// Save the browser value (for logging)
+		ZimbraSeleniumProperties.setStringProperty(CalculatedBrowser, browser);
 
+		return (browser);
+	}
+	
+	/**
+	 * Get Logout URL for selenium to sign out from the application
+	 * @return Logout URL String
+	 * 
+	 */
+	public static String getLogoutURL() {
+		// get Base URL
+		String url =  getBaseURL();
+		if(url == null){
+			return "";
+		}
+		URI uri = URI.create(url);
+		StringBuilder sb = new StringBuilder();
+		sb.append(URIUtils.extractHost(uri));
+		try {		
+			Map<String, String> query = getUrlParameters(uri);
+			query.put("loginOp", "logout");	
+			String params = buildQueryFromMap(query);
+			if(params !=null && !params.isEmpty()){
+				sb.append("?");
+				sb.append(params);
+			}
+		} catch (Exception ex) {
+			 logger.info(ex);
+		}	
+		url = sb.toString();
+		return url;
+	}
+	
+	/**
+	 * Get URL parameters
+	 * @param uri
+	 * @return Map of arguments
+	 * 
+	 */
+	public static Map<String, String> getUrlParameters(URI uri) {
+		 Map<String, String> params =  new HashMap<String, String>();
+		 if (uri == null) {
+		        return params;
+		 }		
+		 try {
+			 for (NameValuePair param : URLEncodedUtils.parse(uri, "UTF-8")) {
+            	params.put(param.getName(), param.getValue());
+            }           
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return params;
+    }
+	
+	/**
+	 * Build Query from the map
+	 * @return String
+	 *  
+	 */
+	public static String buildQueryFromMap(Map<String, String> queryMap){
+		// Build the query from the map
+		StringBuilder sb = null;
+		for (Entry<String, String> set : queryMap.entrySet()) {
+			String q;
+			if ( set.getValue() == null ) {
+				q = set.getKey(); // If value is null, just use the key as the parameter value
+			} else {
+				q = set.getKey() +"="+ set.getValue();
+			}
+			if ( sb == null ) {
+				sb = new StringBuilder();
+				sb.append(q);
+			} else {
+				sb.append('&').append(q);
+			}
+		}
+		String query = ( sb == null ? null : sb.toString());
+		
+		return query;
+	}
+	
 	/**
 	 * Get Base URL for selenium to open to access the application
 	 * under test
@@ -257,7 +371,7 @@ public class ZimbraSeleniumProperties {
 		Map<String, String> queryMap = new HashMap<String, String>();
 		String fragment = null;
 		
-		if ( CodeCoverage.getInstance().Enabled ) {
+		if ( CodeCoverage.getInstance().isEnabled() ) {
 			queryMap.putAll(CodeCoverage.getInstance().getQueryMap());
 		}
 		
@@ -311,23 +425,13 @@ public class ZimbraSeleniumProperties {
 
 		}
 
-		// Build the query from the map
-		StringBuilder sb = null;
-		for (Entry<String, String> set : queryMap.entrySet()) {
-			String q;
-			if ( set.getValue() == null ) {
-				q = set.getKey(); // If value is null, just use the key as the parameter value
-			} else {
-				q = set.getKey() +"="+ set.getValue();
-			}
-			if ( sb == null ) {
-				sb = new StringBuilder();
-				sb.append(q);
-			} else {
-				sb.append('&').append(q);
-			}
+		if ( appType == AppType.OCTOPUS ) {
+			
+			// FALL THROUGH
+
 		}
-		String query = ( sb == null ? null : sb.toString());
+	
+		String query = buildQueryFromMap(queryMap);
 		
 		try {
 			URI uri = new URI(scheme, userinfo, host, Integer.parseInt(port), path, query, fragment);
@@ -343,7 +447,59 @@ public class ZimbraSeleniumProperties {
 		return (scheme + "://"+ host +":"+ port);
 
 	}
+	
+	/**
+	 * Given a URL, add the necessary parameters.
+	 * This method is useful for external user registration, for example,
+	 * add the code coverage parameters to the registration URL
+	 * @return
+	 */
+	public static String getConvertedURL(URL url) {
+		
+		String scheme = url.getProtocol();
+		String userinfo = url.getUserInfo();
+		String host = url.getHost();
+		String port = ZimbraSeleniumProperties.getStringProperty("server.port", "7070");
+		if ( url.getPort() > 0 ) {
+			port = "" + url.getPort();
+		}
+		String path = url.getPath();
+		Map<String, String> queryMap = new HashMap<String, String>();
+		for (String pair : url.getQuery().split("&")) {
+			if ( pair.contains("=") ) {
+				String[] split = pair.split("=");
+				queryMap.put(split[0], split[1]);
+			}
+		}
+		String fragment = url.getRef();
+		
+		if ( CodeCoverage.getInstance().isEnabled() ) {
+			queryMap.putAll(CodeCoverage.getInstance().getQueryMap());
+		}
+		
+		if ( PerfMetrics.getInstance().Enabled ) {
+			queryMap.putAll(PerfMetrics.getInstance().getQueryMap());
+		}
+		
+	
+		String query = buildQueryFromMap(queryMap);
+		
+		try {
+			URI uri = new URI(scheme, userinfo, host, Integer.parseInt(port), path, query, fragment);
+			logger.info("Converted URL: "+ uri.toString());
+			return (uri.toString());
+		} catch (NumberFormatException e) {
+			logger.error("Unable to parse port into integer: "+ port, e);
+		} catch (URISyntaxException e) {
+			logger.error("Unable to build Base URL.  Use default.", e);
+		}
 
+		// Use default
+		return (url.toString());
+
+	}
+
+		
 	public static String zimbraGetVersionString() throws HarnessException {		
 		ZimbraAdminAccount.GlobalAdmin().soapSend("<GetVersionInfoRequest xmlns='urn:zimbraAdmin'/>");
 		String version = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:info", "version");
@@ -357,7 +513,6 @@ public class ZimbraSeleniumProperties {
 
 	// for unit test need to change access to public
 	public static void main(String[] args) {
-		ZimbraSeleniumLogger.setmLog(new CurClassGetter().getCurrentClass());
 
 		System
 				.setProperty("log4j.configuration",
@@ -369,12 +524,12 @@ public class ZimbraSeleniumProperties {
 		String br = (String) ZimbraSeleniumProperties.getInstance()
 				.getConfigProp().getProperty("browser");
 		System.out.println(br);
-		ZimbraSeleniumLogger.mLog.debug(br);
+		logger.debug(br);
 
 		ResourceBundle zmMsg = (ResourceBundle) ZimbraSeleniumProperties
 				.getInstance().getConfigProp().getProperty("zmMsg");
 		System.out.println(zmMsg.getLocale());
-		ZimbraSeleniumLogger.mLog.debug(zmMsg.getLocale());
+		logger.debug(zmMsg.getLocale());				
 	}
 
 }

@@ -31,7 +31,9 @@ public class UsersViewModel: BaseViewModel
         this.MappedName = mappedname;
         this.OPInfo = new ObjectPickerInfo("", "", "", "");
         this.IsProvisioned = false;
+        this.MustChangePassword = false;
         this.EnablePopButtons = true;
+        this.DomainsFilledIn = false;
     }
 
     // a bit of a hack, but with the LDAP Browser now being controlled by the UsersView,
@@ -49,8 +51,10 @@ public class UsersViewModel: BaseViewModel
 
         CSMigrationWrapper mw = ((IntroViewModel)ViewModelPtrs[(int)ViewType.INTRO]).mw;
 
-        string[] users = mw.GetListFromObjectPicker();
 
+        string[] users = mw.GetListFromObjectPicker();
+        if(users != null)
+        {
         // FBS rewrite -- bug 71646 -- 3/26/12
         for (int i = 0; i < users.Length; i++)
         {
@@ -87,6 +91,7 @@ public class UsersViewModel: BaseViewModel
             scheduleViewModel.EnablePreview = scheduleViewModel.EnableMigrate;
             EnableNext = (UsersList.Count > 0);
         }
+    }
         EnablePopButtons = true;
     }
     public ICommand UserMapCommand {
@@ -184,14 +189,16 @@ public class UsersViewModel: BaseViewModel
                                     tempuser.UserName = strres[0];
                                     tempuser.MappedName = strres[1];
 
-                                    // tempuser.ChangePWD = Convert.ToBoolean(strres[2]);
+                                    tempuser.ChangePWD = Convert.ToBoolean(strres[2]);
                                     // tempuser.PWDdefault = strres[3];
                                     // string result = tempuser.UserName + "," + tempuser.MappedName +"," + tempuser.ChangePWD + "," + tempuser.PWDdefault;
                                     string result = tempuser.Username + "," + tempuser.MappedName;
 
                                     Username = strres[0];
                                     MappedName = strres[1];
-                                    UsersList.Add(new UsersViewModel(Username, MappedName));
+                                    UsersViewModel uvm = new UsersViewModel(Username, MappedName);
+                                    uvm.MustChangePassword = tempuser.ChangePWD;
+                                    UsersList.Add(uvm);
                                     scheduleViewModel.SchedList.Add(new SchedUser(Username, false));
                                 }
                             }
@@ -290,7 +297,15 @@ public class UsersViewModel: BaseViewModel
 
             tempUser.UserName = nameTokens.GetValue(0).ToString();
             tempUser.MappedName = nameTokens.GetValue(1).ToString();
-            // tempUser.ChangePWD = Convert.ToBoolean(nameTokens.GetValue(2).ToString());
+            if (nameTokens.Length > 2)
+            {
+                tempUser.ChangePWD = Convert.ToBoolean(nameTokens.GetValue(2).ToString());
+            }
+            else
+            {
+                tempUser.ChangePWD = false;
+            }
+            
             // tempUser.PWDdefault = nameTokens.GetValue(3).ToString();
 
             ListofUsers.Add(tempUser);
@@ -449,6 +464,7 @@ public class UsersViewModel: BaseViewModel
                 if (d == DomainList[i])
                 {
                     CurrentDomainSelection = i;
+                    DomainsFilledIn = true;
                     break;
                 }
             }
@@ -594,6 +610,16 @@ public class UsersViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("IsProvisioned"));
         }
     }
+    private bool mustChangePassword;
+    public bool MustChangePassword
+    {
+        get { return mustChangePassword; }
+        set
+        {
+            mustChangePassword = value;
+            OnPropertyChanged(new PropertyChangedEventArgs("MustChangePassword"));
+        }
+    }
     private bool enableNext;
     public bool EnableNext {
         get { return enableNext; }
@@ -610,6 +636,16 @@ public class UsersViewModel: BaseViewModel
         {
             enablePopButtons = value;
             OnPropertyChanged(new PropertyChangedEventArgs("EnablePopButtons"));
+        }
+    }
+    private bool domainsFilledIn;
+    public bool DomainsFilledIn
+    {
+        get { return domainsFilledIn; }
+        set
+        {
+            domainsFilledIn = value;
+            OnPropertyChanged(new PropertyChangedEventArgs("DomainsFilledIn"));
         }
     }
 }

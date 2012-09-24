@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,8 +19,8 @@ import junit.framework.TestCase;
 
 import com.google.common.base.Strings;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
 import com.zimbra.cs.account.Provisioning;
 
 public class TestFolders extends TestCase
@@ -41,13 +41,13 @@ public class TestFolders extends TestCase
     public void testEmptyLargeFolder()
     throws Exception {
         TestUtil.setServerAttr(Provisioning.A_zimbraMailEmptyFolderBatchSize, Integer.toString(3));
-        
+
         // Create folders.
         String parentPath = "/" + NAME_PREFIX + "-parent";
         ZMailbox mbox = TestUtil.getZMailbox(USER_NAME);
         ZFolder parent = TestUtil.createFolder(mbox, parentPath);
         ZFolder child = TestUtil.createFolder(mbox, parent.getId(), "child");
-        
+
         // Add messages.
         for (int i = 1; i <= 5; i++) {
             TestUtil.addMessage(mbox, NAME_PREFIX + " parent " + i, parent.getId());
@@ -62,7 +62,7 @@ public class TestFolders extends TestCase
         mbox.noOp();
         assertEquals(0, parent.getMessageCount());
         assertEquals(5, child.getMessageCount());
-        
+
         // Add more messages to the parent folder.
         for (int i = 6; i <= 10; i++) {
             TestUtil.addMessage(mbox, NAME_PREFIX + " parent " + i, parent.getId());
@@ -70,7 +70,7 @@ public class TestFolders extends TestCase
         mbox.noOp();
         assertEquals(5, parent.getMessageCount());
         assertEquals(5, child.getMessageCount());
-        
+
         // Empty parent folder and delete subfolders.
         String childPath = child.getPath();
         assertNotNull(mbox.getFolderByPath(childPath));

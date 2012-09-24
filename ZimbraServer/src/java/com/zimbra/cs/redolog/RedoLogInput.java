@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -12,7 +12,6 @@
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
  */
-
 package com.zimbra.cs.redolog;
 
 import java.io.DataInput;
@@ -33,18 +32,18 @@ import com.zimbra.common.util.ByteUtil;
  * @author jhahm
  */
 public class RedoLogInput {
-	private DataInput mIN;
+    private DataInput mIN;
     private String mPath;
 
-	public RedoLogInput(InputStream is) {
-		mIN = new DataInputStream(is);
-	}
+    public RedoLogInput(InputStream is) {
+        mIN = new DataInputStream(is);
+    }
 
-	public RedoLogInput(RandomAccessFile raf, String path) {
+    public RedoLogInput(RandomAccessFile raf, String path) {
         mPath = path;
-		mIN = raf;
-	}
-    
+        mIN = raf;
+    }
+
     /**
      * Returns the path to the redo log file, or <tt>null</tt> if this object
      * reads from an <tt>InputStream</tt>. 
@@ -52,7 +51,7 @@ public class RedoLogInput {
     public String getPath() {
         return mPath;
     }
-    
+
     /**
      * Returns the current offset in this file, or <tt>-1</tt> if this object
      * reads from an <tt>InputStream</tt>.
@@ -65,27 +64,40 @@ public class RedoLogInput {
         }
         return -1;
     }
-    
-	public int skipBytes(int n) throws IOException { return mIN.skipBytes(n); }
-	public void readFully(byte[] b) throws IOException { mIN.readFully(b); }
-	public void readFully(byte[] b, int off, int len) throws IOException { mIN.readFully(b, off, len); }
-	public boolean readBoolean() throws IOException { return mIN.readBoolean(); }
-	public byte readByte() throws IOException { return mIN.readByte(); }
-	public int readUnsignedByte() throws IOException { return mIN.readUnsignedByte(); }
-	public short readShort() throws IOException { return mIN.readShort(); }
-	public int readUnsignedShort() throws IOException { return mIN.readUnsignedShort(); }
-	public int readInt() throws IOException { return mIN.readInt(); }
-	public long readLong() throws IOException { return mIN.readLong(); }
-	public double readDouble() throws IOException { return mIN.readDouble(); }
 
-	public String readUTF() throws IOException {
-		return ByteUtil.readUTF8(mIN);
-	}
+    public int skipBytes(int n) throws IOException { return mIN.skipBytes(n); }
+    public void readFully(byte[] b) throws IOException { mIN.readFully(b); }
+    public void readFully(byte[] b, int off, int len) throws IOException { mIN.readFully(b, off, len); }
+    public boolean readBoolean() throws IOException { return mIN.readBoolean(); }
+    public byte readByte() throws IOException { return mIN.readByte(); }
+    public int readUnsignedByte() throws IOException { return mIN.readUnsignedByte(); }
+    public short readShort() throws IOException { return mIN.readShort(); }
+    public int readUnsignedShort() throws IOException { return mIN.readUnsignedShort(); }
+    public int readInt() throws IOException { return mIN.readInt(); }
+    public long readLong() throws IOException { return mIN.readLong(); }
+    public double readDouble() throws IOException { return mIN.readDouble(); }
 
-	// methods of DataInput that shouldn't be used in redo logging
-	// not implemented on purpose
+    public String readUTF() throws IOException {
+        return ByteUtil.readUTF8(mIN);
+    }
 
-	//public String readLine() throws IOException { return mIN.readLine(); }
-	//public char readChar(int v) throws IOException { return mIN.readChar(); }
-	//public float readFloat() throws IOException { return mIN.readFloat(); }
+    public String[] readUTFArray() throws IOException {
+        int count = readInt();
+        if (count < 0) {
+            return null;
+        }
+
+        String[] v = new String[count];
+        for (int i = 0; i < count; i++) {
+            v[i] = readUTF();
+        }
+        return v;
+    }
+
+    // methods of DataInput that shouldn't be used in redo logging
+    // not implemented on purpose
+
+    //public String readLine() throws IOException { return mIN.readLine(); }
+    //public char readChar(int v) throws IOException { return mIN.readChar(); }
+    //public float readFloat() throws IOException { return mIN.readFloat(); }
 }

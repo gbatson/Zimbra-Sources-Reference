@@ -3,7 +3,7 @@ package com.zimbra.cs.mailbox.calendar;
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
+import com.zimbra.common.calendar.ParsedDateTime;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.Log;
@@ -31,9 +32,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.mailbox.CalendarItem;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 import com.zimbra.cs.mailbox.calendar.Recurrence;
 import com.zimbra.cs.mailbox.calendar.ZAttendee;
 import com.zimbra.cs.mailbox.calendar.ZRecur;
@@ -122,7 +121,7 @@ public class FriendlyCalendaringDescription {
             // client.  Currently, this information is not stored in the Calendar.
             // Might be able to extract the information from messages in the Sent folder at
             // some point in the future?
-            CalendarItem calItem = mbox.getCalendarItemByUid(uid);
+            CalendarItem calItem = mbox.getCalendarItemByUid(null, uid);
             if (calItem != null) {
                 Invite [] calInvites = calItem.getInvites();
                 if ((calInvites != null) && (calInvites.length > 1))
@@ -221,27 +220,29 @@ public class FriendlyCalendaringDescription {
         mHtml.append(StringUtil.escapeHtml(value));
         mHtml.append("</td></tr>\n");
     }
-    
-    private TimeZone getTimeZone(ParsedDateTime date) {
-        if (date.getTimeZone() != null)
-            return date.getTimeZone();
-        else
-            return Util.getAccountTimeZone(mAccount);
-    }
 
     public String getTimeDisplayString(ParsedDateTime start, ParsedDateTime end,
             boolean isRecurrence, boolean isAllDayEvent) throws ServiceException {
+        return getTimeDisplayString(start, end, isRecurrence, isAllDayEvent, mLc, mAccount);
+    }
+    
+    public static String getTimeDisplayString(ParsedDateTime start, ParsedDateTime end,
+            boolean isRecurrence, boolean isAllDayEvent, Locale locale, Account account) throws ServiceException {
         StringBuilder sb = new StringBuilder();
-        TimeZone timeZone = getTimeZone(start);
+        TimeZone timeZone;
+        if (start.getTimeZone() != null)
+            timeZone = start.getTimeZone();
+        else
+            timeZone = Util.getAccountTimeZone(account);
         if (!isRecurrence) {
-            DateFormat df = DateFormat.getDateInstance(DateFormat.FULL, mLc);
+            DateFormat df = DateFormat.getDateInstance(DateFormat.FULL, locale);
             df.setTimeZone(timeZone);
             sb.append(df.format(start.getDate())).append(", ");
         }
         if (isAllDayEvent) {
-            sb.append(L10nUtil.getMessage(L10nUtil.MsgKey.zsAllDay, mLc));
+            sb.append(L10nUtil.getMessage(L10nUtil.MsgKey.zsAllDay, locale));
         } else {
-            DateFormat timeFormat = DateFormat.getTimeInstance(DateFormat.LONG, mLc);
+            DateFormat timeFormat = DateFormat.getTimeInstance(DateFormat.LONG, locale);
             timeFormat.setTimeZone(timeZone);
             sb.append(timeFormat.format(start.getDate())).append(" - ");
             if (!isRecurrence) {
@@ -251,7 +252,7 @@ public class FriendlyCalendaringDescription {
                                     calStart.get(Calendar.MONTH) == calEnd.get(Calendar.MONTH) &&
                                     calStart.get(Calendar.DATE) == calEnd.get(Calendar.DATE);
                 if (!isSameday) {
-                    DateFormat df = DateFormat.getDateInstance(DateFormat.FULL, mLc);
+                    DateFormat df = DateFormat.getDateInstance(DateFormat.FULL, locale);
                     df.setTimeZone(timeZone); // use start date timezone even to format end date.
                     sb.append(df.format(end.getDate())).append(", ");
                 }

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -59,7 +59,7 @@ public class OfflineSearchGal extends DocumentHandler {
             int offset = (int) request.getAttributeLong(MailConstants.A_QUERY_OFFSET, 0);
             int limit = (int) request.getAttributeLong(MailConstants.A_QUERY_LIMIT, 0);
             Element cursor = request.getOptionalElement(MailConstants.E_CURSOR);
-            SortBy sortBy = sortByStr == null ? null : SortBy.lookup(sortByStr);
+            SortBy sortBy = sortByStr == null ? null : SortBy.of(sortByStr);
             (new OfflineGal((OfflineAccount)account)).search(response, name, type, sortBy, offset, limit, cursor);                  
         } else { // proxy mode
             response = ((ZcsMailbox)mbox).proxyRequest(request, ctxt.getResponseProtocol(), true, "search GAL");

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -27,9 +27,10 @@ import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
-import com.zimbra.cs.account.Provisioning.AclGroups;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.common.account.Key.DistributionListBy;
+import com.zimbra.cs.account.Provisioning.GroupMembership;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.soap.ZimbraSoapContext;
@@ -55,7 +56,7 @@ public class GetAdminConsoleUIComp extends AdminDocumentHandler {
         Account authedAcct = getAuthenticatedAccount(zsc);
         
         Set<String> added = new HashSet<String>();
-        AclGroups aclGroups;
+        GroupMembership aclGroups;
         
         if (eAccount != null) {
             AccountBy by = AccountBy.fromString(eAccount.getAttribute(AdminConstants.A_BY));
@@ -69,12 +70,12 @@ public class GetAdminConsoleUIComp extends AdminDocumentHandler {
                 checkRight(zsc, context, acct, Admin.R_viewAccountAdminUI);
             
             addValues(acct, resp, added, false);
-            aclGroups = prov.getAclGroups(acct, true);
+            aclGroups = prov.getGroupMembership(acct, true);
             
         } else if (eDL != null) {
-            DistributionListBy by = DistributionListBy.fromString(eDL.getAttribute(AdminConstants.A_BY));
+            Key.DistributionListBy by = Key.DistributionListBy.fromString(eDL.getAttribute(AdminConstants.A_BY));
             String key = eDL.getText();
-            DistributionList dl = prov.getAclGroup(by, key);
+            DistributionList dl = prov.getDLBasic(by, key);
             
             if (dl == null)
                 throw AccountServiceException.NO_SUCH_DISTRIBUTION_LIST(key);
@@ -82,15 +83,15 @@ public class GetAdminConsoleUIComp extends AdminDocumentHandler {
             checkRight(zsc, context, dl, Admin.R_viewDistributionListAdminUI);
             
             addValues(dl, resp, added, false);
-            aclGroups = prov.getAclGroups(dl, true);
+            aclGroups = prov.getGroupMembership(dl, true);
         } else {
             // use the authed account
             addValues(authedAcct, resp, added, false);
-            aclGroups = prov.getAclGroups(authedAcct, true);
+            aclGroups = prov.getGroupMembership(authedAcct, true);
         }
         
         for (String groupId : aclGroups.groupIds()) {
-            DistributionList dl = prov.get(DistributionListBy.id, groupId);
+            DistributionList dl = prov.get(Key.DistributionListBy.id, groupId);
             addValues(dl, resp, added, true);
         }
         

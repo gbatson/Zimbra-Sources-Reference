@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.admin.tests.resources;
 
 
@@ -46,7 +30,7 @@ public class CreateResource extends AdminCommonTest {
 	 * @throws HarnessException
 	 */
 	@Test(	description = "Create a basic resource",
-			groups = { "sanity" })
+			groups = { "obsolete" })
 			public void CreateResource_01() throws HarnessException {
 
 		// Create a new resource in the Admin Console
@@ -75,11 +59,11 @@ public class CreateResource extends AdminCommonTest {
 	/**
 	 * Testcase : Create a basic resource.
 	 * Steps :
-	 * 1. Create a resource from GUI i.e. New --> Resource.
+	 * 1. Create a resource from GUI i.e. Manage Accounts --> Resources --> Gear box --> New
 	 * 2. Verify resource is created using SOAP.
 	 * @throws HarnessException
 	 */
-	@Test(	description = "Create a basic resource using New --> Resource",
+	@Test(	description = "Create a basic resource using Manage Accounts --> Resources --> Gear box --> New",
 			groups = { "sanity" })
 			public void CreateResource_02() throws HarnessException {
 
@@ -89,7 +73,7 @@ public class CreateResource extends AdminCommonTest {
 
 		// Click "New --> Resources"
 		WizardCreateResource wizard = 
-			(WizardCreateResource)app.zPageManageResources.zToolbarPressPulldown(Button.B_NEW, Button.O_RESOURCES_RESOURCE);
+			(WizardCreateResource)app.zPageManageResources.zToolbarPressPulldown(Button.B_GEAR_BOX, Button.O_NEW);
 
 		// Fill out the wizard and click Finish
 		wizard.zCompleteWizard(resource);
@@ -107,13 +91,13 @@ public class CreateResource extends AdminCommonTest {
 	}
 
 	/**
-	 * Testcase : Create a basic resource.
+	 * Testcase : Create a basic location resource.
 	 * Steps :
 	 * 1. Create a Location resource from GUI.
 	 * 2. Verify resource is created using SOAP.
 	 * @throws HarnessException
 	 */
-	@Test(	description = "Create a basic resource",
+	@Test(	description = "Create a basic Location resource",
 			groups = { "sanity" })
 			public void CreateResource_03() throws HarnessException {
 
@@ -123,7 +107,7 @@ public class CreateResource extends AdminCommonTest {
 
 		// Click "New"
 		WizardCreateResource wizard = 
-			(WizardCreateResource)app.zPageManageResources.zToolbarPressButton(Button.B_NEW);
+			(WizardCreateResource)app.zPageManageResources.zToolbarPressPulldown(Button.B_GEAR_BOX, Button.O_NEW);
 
 		// Fill out the wizard and click Finish
 		wizard.setResourceType(WizardCreateResource.Locators.LOCATION);
@@ -142,13 +126,13 @@ public class CreateResource extends AdminCommonTest {
 	}
 	
 	/**
-	 * Testcase : Create a basic resource.
+	 * Testcase : Create a basic equipment resource.
 	 * Steps :
 	 * 1. Create a Equipment resource from GUI.
 	 * 2. Verify resource is created using SOAP.
 	 * @throws HarnessException
 	 */
-	@Test(	description = "Create a basic resource",
+	@Test(	description = "Create a basic Equipment resource",
 			groups = { "sanity" })
 			public void CreateResource_04() throws HarnessException {
 
@@ -158,7 +142,7 @@ public class CreateResource extends AdminCommonTest {
 
 		// Click "New"
 		WizardCreateResource wizard = 
-			(WizardCreateResource)app.zPageManageResources.zToolbarPressButton(Button.B_NEW);
+			(WizardCreateResource)app.zPageManageResources.zToolbarPressPulldown(Button.B_GEAR_BOX, Button.O_NEW);
 
 		// Fill out the wizard and click Finish
 		wizard.setResourceType(WizardCreateResource.Locators.EQUIPMENT);

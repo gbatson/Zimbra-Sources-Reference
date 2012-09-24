@@ -1,35 +1,17 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
 package com.zimbra.qa.selenium.projects.ajax.ui.preferences;
 
-import com.zimbra.qa.selenium.framework.ui.AbsApplication;
-import com.zimbra.qa.selenium.framework.ui.AbsPage;
-import com.zimbra.qa.selenium.framework.ui.AbsTab;
-import com.zimbra.qa.selenium.framework.ui.Action;
-import com.zimbra.qa.selenium.framework.ui.Button;
-import com.zimbra.qa.selenium.framework.util.HarnessException;
-import com.zimbra.qa.selenium.framework.util.SleepUtil;
-import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
+import java.util.*;
+
+import org.apache.commons.lang.StringUtils;
+
+import com.zimbra.qa.selenium.framework.ui.*;
+import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
+import com.zimbra.qa.selenium.projects.ajax.ui.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.DialogWarningID;
 
 
 /**
@@ -204,17 +186,25 @@ public class PagePreferences extends AbsTab {
 		
 		if ( preference.equals("zimbraPrefIncludeSpamInSearch")) {
 			
-			locator = "//input[contains(@id,'_SEARCH_INCLUDES_SPAM')]";
+			locator = "css=input[id$=_SEARCH_INCLUDES_SPAM]";
 
 		} else if (preference.equals("zimbraPrefIncludeTrashInSearch")) {
 			
-			locator = "//input[contains(@id,'_SEARCH_INCLUDES_TRASH')]";
+			locator = "css=input[id$=_SEARCH_INCLUDES_TRASH]";
 
 		} else if (preference.equals("zimbraPrefShowSearchString")) {
 
-			locator = "//input[contains(@id,'_SHOW_SEARCH_STRING')]";
+			locator = "css=input[id$=_SHOW_SEARCH_STRING]";
 
-		} else {
+		} else if (preference.equals("zimbraPrefAutoAddAddressEnabled")) {
+
+			locator = "css=input[id$=_AUTO_ADD_ADDRESS]";
+			
+		}  else if (preference.equals("zimbraPrefAutocompleteAddressBubblesEnabled")) {
+
+			locator = "css=input[id$=_USE_ADDR_BUBBLES]";
+			
+		}else {
 			throw new HarnessException("zGetCheckboxStatus() not defined for preference "+ preference);
 		}
 		
@@ -278,6 +268,31 @@ public class PagePreferences extends AbsTab {
 			locator = "id="+ Locators.zToolbarCancelID;
 			page = null;
 						
+		} else if ( button == Button.B_CHANGE_PASSWORD ) {
+			
+			locator = "css=td[id='CHANGE_PASSWORD_title']";
+			page = new SeparateWindowChangePassword(MyApplication);
+	
+		} else if ( button == Button.B_NEW_FILTER ) {
+			
+			locator = "css=div[id='zb__FRV__ADD_FILTER_RULE'] td[id$='_title']";
+			page = new DialogEditFilter(MyApplication,((AppAjaxClient) MyApplication).zPagePreferences);
+	
+		} else if ( button == Button.B_NEW_QUICK_COMMAND ) {
+			
+			locator = "css=div[id='zb__QCV__ADD_QUICK_COMMAND'] td[id$='_title']";
+			page = new DialogEditQuickCommand(MyApplication,((AppAjaxClient) MyApplication).zPagePreferences);
+
+		} else if ( button == Button.B_EDIT_QUICK_COMMAND ) {
+			
+			locator = "css=div[id='zb__QCV__EDIT_QUICK_COMMAND'] td[id$='_title']";
+			page = new DialogEditQuickCommand(MyApplication,((AppAjaxClient) MyApplication).zPagePreferences);
+
+		} else if ( button == Button.B_DELETE_QUICK_COMMAND ) {
+			
+			locator = "css=div[id='zb__QCV__REMOVE_QUICK_COMMAND'] td[id$='_title']";
+			page = new DialogWarning(DialogWarningID.QuickCommandConfirmDelete, MyApplication,((AppAjaxClient) MyApplication).zPagePreferences);
+
 		} else {
 			throw new HarnessException("no logic defined for button "+ button);
 		}
@@ -295,6 +310,13 @@ public class PagePreferences extends AbsTab {
 		
 		// Click it
 		this.zClick(locator);
+		
+		this.zWaitForBusyOverlay();
+		
+		if ( page != null ) {
+			page.zWaitForActive();
+			page.zWaitForBusyOverlay();
+		}
 
 		return (page);
 	}
@@ -306,7 +328,309 @@ public class PagePreferences extends AbsTab {
 		throw new HarnessException("implement me!");
 	}
 
+	/**
+	 * Check/Uncheck a checkbox (just returns if checkbox already checked)
+	 * @param locator The locator for the checkbox
+	 * @param status The desired status of the checkbox (true=checked, false=unchecked)
+	 * @throws HarnessException 
+	 */
+	public void zCheckboxSet(String locator, boolean status) throws HarnessException {
+		
+		if ( !this.sIsElementPresent(locator) ) {
+			throw new HarnessException(locator + " no present!");
+		}
+		
+		if ( this.sIsChecked(locator) == status ) {
+			logger.debug("checkbox status matched.  not doing anything");
+			return;
+		}
+		
+		if ( status == true ) {
+			this.sCheck(locator);
+		} else {
+			this.sUncheck(locator);
+		}
+		
+		this.zWaitForBusyOverlay();
+		
+	}
+
+	public static class ShareItem {
+		public String name = null;
+		public String item = null;
+		public String type = null;
+		public String role = null;
+		public String folder = null;
+		public String email = null;
+		public String with = null;
+		
+		public ShareItem() {	
+		}
+		
+		public String toString() {
+			return (String.format("name:%s with:%s item:%s type:%s role:%s folder:%s email:%s", name, with, item, type, role, folder, email));
+		}
+		
+	}
 	
+	// See https://bugzilla.zimbra.com/show_bug.cgi?id=65919
+	// parseUnacceptedShareItem and parseAcceptedShareItem can
+	// likely be combined once unique ID's are added to the DOM
+	//
+	
+	protected ShareItem parseUnacceptedShareItem(String itemLocator) throws HarnessException {
+		logger.info(myPageName() + " parseUnacceptedShareItem("+ itemLocator +")");
+		
+		
+		if ( !this.sIsElementPresent(itemLocator) ) {
+			throw new HarnessException("item is not present! "+ itemLocator);
+		}
+
+		/**
+
+			<!-- Unaccepted -->
+			<tr id="DWT398">
+				<td width="180">enus13186341202964</td>
+				<td id="DWT397_it" width="auto">/Inbox/ownerfolder13186341358436</td>
+				<td width="60">Folder</td>
+				<td id="DWT397_ro" width="50">Viewer</td>
+				<td width="180">
+					<a href="javascript:;" onclick='ZmSharingView._handleAcceptLink("DWT397");'>Accept</a>
+				</td>
+				<td width="180">enus13186341276255@testdomain.com</td>
+			</tr>
+			
+		 */
+		
+		String locator = null;
+		
+		ShareItem item = new ShareItem();
+		
+		locator = itemLocator + " td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.name = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_it']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.item = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td + td + td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.type = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_ro']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.role = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td + td + td + td + td + td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.email = this.sGetText(locator);
+		}
+		
+		
+		return (item);
+	}
+	
+	protected ShareItem parseAcceptedShareItem(String itemLocator) throws HarnessException {
+		logger.info(myPageName() + " parseAcceptedShareItem("+ itemLocator +")");
+		
+		
+		if ( !this.sIsElementPresent(itemLocator) ) {
+			throw new HarnessException("item is not present! "+ itemLocator);
+		}
+
+		/**
+
+			<!-- Accepted -->
+			<tr id="DWT334">
+				<td width="180">enus13186341202964</td>
+				<td id="DWT333_it" width="auto">/Inbox/ownerfolder13186341358436</td>
+				<td width="60">Folder</td>
+				<td id="DWT333_ro" width="50">Viewer</td>
+				<td id="DWT333_fo" width="150">mountpoint13186341362347</td>
+				<td width="180">enus13186341276255@testdomain.com</td>
+			</tr>
+
+		 */
+		
+		String locator = null;
+		
+		ShareItem item = new ShareItem();
+		
+		locator = itemLocator + " td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.name = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_it']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.item = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td + td + td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.type = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_ro']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.role = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_fo']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.folder = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td + td + td + td + td + td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.email = this.sGetText(locator);
+		}
+		
+		
+		return (item);
+	}
+	
+	
+	protected ShareItem parseSharedByMeShareItem(String itemLocator) throws HarnessException {
+		logger.info(myPageName() + " parseAcceptedShareItem("+ itemLocator +")");
+		
+		
+		if ( !this.sIsElementPresent(itemLocator) ) {
+			throw new HarnessException("item is not present! "+ itemLocator);
+		}
+
+		/**
+
+			<!-- Shared By Me -->
+			<tr id="DWT435">
+				<td width="180">admin@zqa-069.eng.vmware.com</td>
+				<td id="DWT434_it" width="auto">Inbox</td>
+				<td width="60">Mail Folder</td>
+				<td id="DWT434_ro" width="50">Viewer</td>
+				<td width="180">
+					<a href="javascript:;" onclick='ZmSharingView._handleShareAction("DWT434", "_handleEditShare");'>Edit</a>
+					<a href="javascript:;" onclick='ZmSharingView._handleShareAction("DWT434", "_handleRevokeShare");'>Revoke</a>
+					<a href="javascript:;" onclick='ZmSharingView._handleShareAction("DWT434", "_handleResendShare");'>Resend</a>
+				</td>
+			</tr>
+
+		 */
+		
+		String locator = null;
+		
+		ShareItem item = new ShareItem();
+		
+		locator = itemLocator + " td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.with = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_it']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.item = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td + td + td";
+		if ( this.sIsElementPresent(locator) ) {
+			item.type = this.sGetText(locator);
+		}
+		
+		locator = itemLocator + " td[id$='_ro']";
+		if ( this.sIsElementPresent(locator) ) {
+			item.role = this.sGetText(locator);
+		}		
+		
+		return (item);
+	}
+	
+	/**
+	 * Get a list of share rows from the Preferences->Sharing page
+	 * @throws HarnessException 
+	 */
+	public List<ShareItem> zSharesGetUnaccepted() throws HarnessException {
+		logger.info(myPageName() + " zSharesGetUnaccepted()");
+		
+		List<ShareItem> items = new ArrayList<ShareItem>();
+		
+		
+		String rowsLocator = "css=div[id='zl__SVP__rows'] tr";
+		if ( !this.sIsElementPresent(rowsLocator) ) {
+			logger.info("No rows - return empty list");
+			return (items);
+		}
+		
+		int count = this.sGetCssCount(rowsLocator);
+		for (int i = 0; i < count; i++) {
+			String itemLocator = "css=div[id='zl__SVP__rows'] tr"+ StringUtils.repeat(" + tr", i);
+			ShareItem item = parseUnacceptedShareItem(itemLocator);
+			items.add(item);
+		}
+		
+		return (items);
+		
+	}
+
+	/**
+	 * Get a list of share rows from the Preferences->Sharing page
+	 * @throws HarnessException 
+	 */
+	public List<ShareItem> zSharesGetAccepted() throws HarnessException {
+		logger.info(myPageName() + " zSharesGetUnaccepted()");
+		
+		List<ShareItem> items = new ArrayList<ShareItem>();
+		
+		
+		String rowsLocator = "css=div[id='zl__SVM__rows'] tr";
+		if ( !this.sIsElementPresent(rowsLocator) ) {
+			logger.info("No rows - return empty list");
+			return (items);
+		}
+		
+		int count = this.sGetCssCount(rowsLocator);
+		for (int i = 0; i < count; i++) {
+			String itemLocator = "css=div[id='zl__SVM__rows'] tr"+ StringUtils.repeat(" + tr", i);
+			ShareItem item = parseAcceptedShareItem(itemLocator);
+			items.add(item);
+		}
+		
+		return (items);
+		
+	}
+
+	/**
+	 * Get a list of share rows from the Preferences->Sharing page
+	 * @throws HarnessException 
+	 */
+	public List<ShareItem> zSharesGetSharedByMe() throws HarnessException {
+		logger.info(myPageName() + " zSharesGetUnaccepted()");
+		
+		List<ShareItem> items = new ArrayList<ShareItem>();
+		
+		
+		String rowsLocator = "css=div[id='zl__SVP__rows'] tr";
+		if ( !this.sIsElementPresent(rowsLocator) ) {
+			logger.info("No rows - return empty list");
+			return (items);
+		}
+		
+		int count = this.sGetCssCount(rowsLocator);
+		for (int i = 0; i < count; i++) {
+			String itemLocator = "css=div[id='zl__SVG__rows'] tr"+ StringUtils.repeat(" + tr", i);
+			ShareItem item = parseSharedByMeShareItem(itemLocator);
+			items.add(item);
+		}
+		
+		return (items);
+		
+	}
+
+
+
 
 
 

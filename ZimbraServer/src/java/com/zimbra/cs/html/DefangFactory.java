@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -49,15 +49,18 @@ public class DefangFactory {
         if(contentType == null) {
             return noopDefang;
         }
-        
-        if(contentType.startsWith(MimeConstants.CT_TEXT_HTML)) {
+        String contentTypeLowerCase = contentType.toLowerCase();
+        if (contentTypeLowerCase.startsWith(MimeConstants.CT_TEXT_HTML) ||
+            contentTypeLowerCase.startsWith(MimeConstants.CT_APPLICATION_ZIMBRA_DOC) ||
+            contentTypeLowerCase.startsWith(MimeConstants.CT_APPLICATION_ZIMBRA_SLIDES) ||
+            contentTypeLowerCase.startsWith(MimeConstants.CT_APPLICATION_ZIMBRA_SPREADSHEET)) {
             return htmlDefang;
         }
-        
-        if(contentType.startsWith(MimeConstants.CT_TEXT_XML) ||
-           contentType.startsWith(MimeConstants.CT_APPLICATION_XHTML) ||
-           contentType.startsWith(MimeConstants.CT_IMAGE_SVG)){
-            return xhtmlDefang;            
+
+        if(contentTypeLowerCase.startsWith(MimeConstants.CT_TEXT_XML) ||
+           contentTypeLowerCase.startsWith(MimeConstants.CT_APPLICATION_XHTML) ||
+           contentTypeLowerCase.startsWith(MimeConstants.CT_IMAGE_SVG)){
+            return xhtmlDefang;
         }
         return noopDefang;
     }

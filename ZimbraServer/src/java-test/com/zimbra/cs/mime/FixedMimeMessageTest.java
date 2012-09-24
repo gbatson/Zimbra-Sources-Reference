@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -14,9 +14,8 @@
  */
 package com.zimbra.cs.mime;
 
-import java.io.ByteArrayInputStream;
-
 import javax.mail.internet.MimeMessage;
+import javax.mail.util.SharedByteArrayInputStream;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -40,7 +39,7 @@ public final class FixedMimeMessageTest {
             "\n" +
             "Hello World.";
 
-        MimeMessage message = new FixedMimeMessage(JMSession.getSession(), new ByteArrayInputStream(raw.getBytes()));
+        MimeMessage message = new FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(raw.getBytes()));
         Assert.assertNull(message.getMessageID());
         message.setHeader("X-TEST", "test");
         message.saveChanges();
@@ -53,7 +52,7 @@ public final class FixedMimeMessageTest {
             "\n" +
             "Hello World.";
 
-        message = new FixedMimeMessage(JMSession.getSession(), new ByteArrayInputStream(raw.getBytes()));
+        message = new FixedMimeMessage(JMSession.getSession(), new SharedByteArrayInputStream(raw.getBytes()));
         Assert.assertEquals("<12345@zimbra.com>", message.getMessageID());
         message.setHeader("X-TEST", "test");
         message.saveChanges();
@@ -70,7 +69,7 @@ public final class FixedMimeMessageTest {
             "\u3042\u3042\u3042\u3044\u3044\u3044\u3046\u3046\u3046\u3048\u3048\u3048\u304a\u304a\u304a";
 
         MimeMessage message = new FixedMimeMessage(JMSession.getSession(),
-                new ByteArrayInputStream(raw.getBytes(Charsets.UTF_8)));
+                new SharedByteArrayInputStream(raw.getBytes(Charsets.UTF_8)));
         Assert.assertNull(message.getEncoding());
         message.setHeader("X-TEST", "test");
         message.saveChanges();

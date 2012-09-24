@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
+ * Copyright (C) 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -21,9 +21,9 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.L10nUtil;
+import com.zimbra.common.util.L10nUtil.MsgKey;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.common.util.L10nUtil.MsgKey;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.GuestAccount;
@@ -31,26 +31,32 @@ import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
+import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Mountpoint;
-import com.zimbra.cs.mailbox.MailServiceException.NoSuchItemException;
+import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.UserServlet;
 import com.zimbra.cs.service.UserServletContext;
 import com.zimbra.cs.service.UserServletException;
 import com.zimbra.cs.service.formatter.FormatterFactory.FormatType;
+import com.zimbra.cs.servlet.ZimbraServlet;
 import com.zimbra.cs.servlet.util.AuthUtil;
 
 public class UserServletUtil {
 
     public static void resolveItems(UserServletContext context) throws ServiceException {
+        if (context == null || context.params == null) {
+            return;
+        }
+
         for (UserServletContext.Item item : context.requestedItems) {
             try {
                 if (item.versioned)
-                    item.mailItem = context.targetMailbox.getItemRevision(context.opContext, item.id, MailItem.TYPE_UNKNOWN, item.ver);
+                    item.mailItem = context.targetMailbox.getItemRevision(context.opContext, item.id, MailItem.Type.UNKNOWN, item.ver, context.fromDumpster);
                 else
-                    item.mailItem = context.targetMailbox.getItemById(context.opContext, item.id, MailItem.TYPE_UNKNOWN);
+                    item.mailItem = context.targetMailbox.getItemById(context.opContext, item.id, MailItem.Type.UNKNOWN, context.fromDumpster);
             } catch (NoSuchItemException x) {
                 ZimbraLog.misc.info(x.getMessage());
             } catch (ServiceException x) {
@@ -92,9 +98,18 @@ public class UserServletUtil {
         }
 
         if (context.itemId != null) {
-            context.target = mbox.getItemById(context.opContext,
+            OperationContext opContext = null;
+            if (context.fromDumpster && context.isUsingAdminPrivileges() ) {
+                //should have the admin rights to search dumpster
+                opContext = new OperationContext(context.authToken); // use the authToken passed by invoker to generate a new one
+            } else {
+                opContext = context.opContext; // use the opContext generated from account
+            }
+
+            context.target = mbox.getItemById(opContext,
                                               context.itemId.getId(),
-                                              MailItem.TYPE_UNKNOWN);
+                                              MailItem.Type.UNKNOWN,
+                                              context.fromDumpster);
 
             context.itemPath = context.target.getPath();
             if (context.target instanceof Mountpoint || context.extraPath == null || context.extraPath.equals(""))
@@ -165,8 +180,7 @@ public class UserServletUtil {
                 }
             }
 
-            // don't think this code can ever get called because <tt>context.target</tt> can't be null at this point
-            if (context.target == null && context.getQueryString() == null)
+            if (context.target == null)
                 throw failure;
         }
 
@@ -247,7 +261,7 @@ public class UserServletUtil {
 
             // check query string
             if (context.queryParamAuthAllowed()) {
-                String auth = context.params.get(UserServlet.QP_ZAUTHTOKEN);
+                String auth = context.params.get(ZimbraServlet.QP_ZAUTHTOKEN);
                 if (auth == null)
                     auth = context.params.get(UserServlet.QP_AUTHTOKEN);  // not sure who uses this parameter; zauthtoken is preferred
                 if (auth != null) {

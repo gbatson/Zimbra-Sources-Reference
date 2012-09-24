@@ -1,35 +1,27 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.addressbook.contacts;
 
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import com.zimbra.qa.selenium.framework.items.ContactItem;
+import com.zimbra.qa.selenium.framework.items.ContextMenuItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem;
+import com.zimbra.qa.selenium.framework.items.MailItem;
+import com.zimbra.qa.selenium.framework.ui.Action;
+import com.zimbra.qa.selenium.framework.ui.Button;
+import com.zimbra.qa.selenium.framework.util.GeneralUtility;
+import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.ZAssert;
+import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.framework.items.*;
-import com.zimbra.qa.selenium.framework.items.ContactItem.GenerateItemType;
-import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
-import com.zimbra.qa.selenium.framework.ui.*;
-import com.zimbra.qa.selenium.framework.util.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.*;
-import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.*;
+import com.zimbra.qa.selenium.projects.ajax.ui.ContextMenu;
+import com.zimbra.qa.selenium.projects.ajax.ui.PagePrint;
+import com.zimbra.qa.selenium.projects.ajax.ui.addressbook.PageAddressbook;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 import com.zimbra.qa.selenium.projects.ajax.ui.search.PageAdvancedSearch;
 
@@ -99,8 +91,7 @@ public class ContactContextMenu extends AjaxCommonTest  {
         
         //verify all items in the context menu list
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_SEARCH),"Verify contact search in context menu");
-        ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_ADVANCED_SEARCH),"Verify advanced search in context menu");
-        ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_NEW_EMAIL),"Verify new email in context menu");
+         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_NEW_EMAIL),"Verify new email in context menu");
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_EDIT),"Verify edit contact  in context menu");
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_FORWARD),"Verify forward email in context menu");
         ZAssert.assertTrue(list.contains(PageAddressbook.CONTEXT_MENU.CONTACT_TAG),"Verify tag option in context menu");
@@ -110,7 +101,6 @@ public class ContactContextMenu extends AjaxCommonTest  {
 
         //Verify all items enabled
         ZAssert.assertTrue(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_SEARCH),"Verify contact search is enabled");
-        ZAssert.assertTrue(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_ADVANCED_SEARCH),"Verify contact advanced search is enabled");
         ZAssert.assertTrue(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_NEW_EMAIL),"Verify new email is enabled");
         ZAssert.assertTrue(contextMenu.isEnable(PageAddressbook.CONTEXT_MENU.CONTACT_EDIT),"Verify edit contact is enabled");
 
@@ -138,8 +128,9 @@ public class ContactContextMenu extends AjaxCommonTest  {
         //Verify Form New mail is active
         ZAssert.assertTrue(formMailNew.zIsActive(),"Verify Form New Mail is active");
         
-        //Verify contactItem.email displayed in the "To" field
-        ZAssert.assertTrue(app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField).contains(contactItem.email), "Verify contact email displayed in field To - expected " + contactItem.email + " - was " + app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField));
+        //Verify contactItem.first contactItem.last displayed in the "To" field
+        ZAssert.assertTrue(app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField).contains(contactItem.firstName + " "  + contactItem.lastName),
+        		     "Verify contact email displayed in field To - expected " + contactItem.firstName + " " +  contactItem.lastName +" - was " + app.zPageAddressbook.sGetText(FormMailNew.Locators.zBubbleToField));
         
         //TODO: Verify send email
 	}
@@ -180,41 +171,7 @@ public class ContactContextMenu extends AjaxCommonTest  {
 	    
 	}
 
-	@Test(	description = "Right click then click Tag Contact->New Tag",
-			groups = { "smoke" })	
-	public void ClickTagContactNewTag() throws HarnessException {
-		ContactItem contactItem = createSelectARandomContactItem();
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
 
-		String tagName = "tag"+ ZimbraSeleniumProperties.getUniqueString();
-			
-		//click Tag Contact->New Tag	
-        DialogTag dialogTag = (DialogTag) app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_TAG, Button.O_TAG_NEWTAG , contactItem.fileAs);        
-    	dialogTag.zSetTagName(tagName);
-		dialogTag.zClickButton(Button.B_OK);		
-
-		// Make sure the tag was created on the server (get the tag ID)
-		app.zGetActiveAccount().soapSend("<GetTagRequest xmlns='urn:zimbraMail'/>");;
-		String tagID = app.zGetActiveAccount().soapSelectValue("//mail:GetTagResponse//mail:tag[@name='"+ tagName +"']", "id");
-
-		// Make sure the tag was applied to the contact
-		app.zGetActiveAccount().soapSend(
-					"<GetContactsRequest xmlns='urn:zimbraMail'>" +
-						"<cn id='"+ contactItem.getId() +"'/>" +
-					"</GetContactsRequest>");
-		
-		String contactTags = app.zGetActiveAccount().soapSelectValue("//mail:GetContactsResponse//mail:cn", "t");
-		 
-		ZAssert.assertEquals(contactTags, tagID, "Verify the tag appears on the contact id=" +  contactItem.getId());
-		
-		//verify toasted message '1 contact tagged ...'
-		Toaster toast = app.zPageMain.zGetToaster();
-		String toastMsg = toast.zGetToastMessage();
-		ZAssert.assertStringContains(toastMsg, "1 contact tagged \"" + tagName + "\"", "Verify toast message '" + "1 contact tagged \"" + tagName + "\"'" );
- 
-	}
-
-	
 	
 	
 	@Test(	description = "Right click then  click Find Emails->Sent To contact",
@@ -239,18 +196,15 @@ public class ContactContextMenu extends AjaxCommonTest  {
 					"</SendMsgRequest>");
 		MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
 
-		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().DisplayName, lastName, app.zGetActiveAccount().EmailAddress);
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());		
+		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().getPref("displayName"), lastName, app.zGetActiveAccount().EmailAddress);
 		
 		//Click Find Emails->Sent To Contact
         app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_SEARCH, Button.O_SEARCH_MAIL_SENT_TO_CONTACT , contactItem.fileAs);
 
         
-        // Get all the messages in the inbox
-		List<ConversationItem> messages = app.zPageMail.zListGetConversations();
-		ZAssert.assertNotNull(messages, "Verify the message list exists");
-
-		// TODO: "Verify the message is in the inbox");
+        // Get the bubleText
+		String bubleText = app.zPageSearch.sGetText("css=[class='addrBubble']");
+		ZAssert.assertEquals(bubleText, "tocc:"+ app.zGetActiveAccount().EmailAddress ,"Verify the message list exists");
                 
 	}
 	
@@ -276,19 +230,17 @@ public class ContactContextMenu extends AjaxCommonTest  {
 
 		MailItem.importFromSOAP(ZimbraAccount.AccountB(), "subject:("+ subject +")");
 
-		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().DisplayName,lastName, ZimbraAccount.AccountB().EmailAddress);
-		GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
+		ContactItem contactItem = createSelectAContactItem(app.zGetActiveAccount().getPref("displayName"),lastName, ZimbraAccount.AccountB().EmailAddress);
 		
 		
 		//Click Find Emails->Received From Contact
         app.zPageAddressbook.zListItem(Action.A_RIGHTCLICK, Button.B_SEARCH, Button.O_SEARCH_MAIL_RECEIVED_FROM_CONTACT, contactItem.fileAs);
 
         
-        // Get all the messages in the inbox
-		List<ConversationItem> messages = app.zPageMail.zListGetConversations();
-		ZAssert.assertNotNull(messages, "Verify the message list exists");
-
-		// TODO: "Verify the message is in the inbox");
+        // Get the bubleText
+		String bubleText = app.zPageSearch.sGetText("css=[class='addrBubble']");
+		ZAssert.assertEquals(bubleText, "from:"+ ZimbraAccount.AccountB().EmailAddress ,"Verify the message list exists");
+		
                 
 	}
 }

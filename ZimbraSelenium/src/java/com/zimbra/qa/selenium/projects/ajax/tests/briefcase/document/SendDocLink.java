@@ -1,22 +1,4 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.projects.ajax.tests.briefcase.document;
-
-import java.util.HashMap;
 
 import org.testng.annotations.Test;
 import com.zimbra.qa.selenium.framework.items.DocumentItem;
@@ -31,24 +13,20 @@ import com.zimbra.qa.selenium.framework.util.XmlStringUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
+import com.zimbra.qa.selenium.projects.ajax.core.FeatureBriefcaseTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.ajax.ui.briefcase.DialogConfirm;
 import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
 
-public class SendDocLink extends AjaxCommonTest {
+public class SendDocLink extends FeatureBriefcaseTest {
 
-	@SuppressWarnings("serial")
 	public SendDocLink() {
 		logger.info("New " + SendDocLink.class.getCanonicalName());
 
 		super.startingPage = app.zPageBriefcase;
 
-		super.startingAccountPreferences = new HashMap<String, String>() {
-			{
-				put("zimbraPrefComposeFormat", "html");
-			}
-		};
+		super.startingAccountPreferences.put("zimbraPrefComposeFormat", "html");
+		super.startingAccountPreferences.put("zimbraPrefBriefcaseReadingPaneLocation", "bottom");				
 	}
 
 	@Test(description = "Create document through SOAP - click Send Link, Cancel & verify through GUI", groups = { "functional" })
@@ -93,9 +71,13 @@ public class SendDocLink extends AjaxCommonTest {
 
 		// Click on Send Link
 		DialogConfirm confDlg;
-		confDlg = (DialogConfirm) app.zPageBriefcase
+		if (ZimbraSeleniumProperties.zimbraGetVersionString().contains("7.1."))
+			confDlg = (DialogConfirm) app.zPageBriefcase
 			.zToolbarPressPulldown(Button.B_SEND, Button.O_SEND_LINK, docItem);
-		
+		else
+			confDlg = (DialogConfirm) app.zPageBriefcase.zToolbarPressPulldown(
+					Button.B_ACTIONS, Button.O_SEND_LINK, docItem);
+	
 		// Click Yes on confirmation dialog
 		FormMailNew mailform = (FormMailNew) confDlg.zClickButton(Button.B_YES);
 
@@ -103,9 +85,9 @@ public class SendDocLink extends AjaxCommonTest {
 		ZAssert.assertTrue(mailform.zIsActive(), "Verify the new form opened");
 
 		// Verify link
-		ZAssert.assertTrue(mailform.zWaitForIframeText(
-				FormMailNew.Locators.zLinkText, docName),
-				"Verify the link text");
+		boolean visible = mailform.zWaitForIframeText(
+				"css=iframe[id*=_content_ifr]", docName);
+		ZAssert.assertTrue(visible,"Verify the link text");
 
 		// Cancel the message
 		// A warning dialog should appear regarding losing changes
@@ -177,7 +159,7 @@ public class SendDocLink extends AjaxCommonTest {
 
 		// Verify link
 		ZAssert.assertTrue(mailform.zWaitForIframeText(
-				FormMailNew.Locators.zLinkText, docName),
+				"css=iframe[id*=_content_ifr]", docName),
 				"Verify the link text");
 
 		// Cancel the message

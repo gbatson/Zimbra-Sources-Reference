@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -155,6 +155,16 @@ function(delta) {
 	this.notifyModify( { u: newValue } );
 };
 
+/**
+ * This updates the num total in the folder 
+ * @param delta {int} value to change num total by
+ */
+ZmVoiceFolder.prototype.changeNumTotal = 
+function(delta) {
+	var newValue = (this.numTotal || 0 ) + delta;
+	this.notifyModify( {n: newValue});
+};
+
 ZmVoiceFolder.get =
 function(phone, folderType) {
 	var folderId = [folderType, "-", phone.name].join("");
@@ -175,20 +185,29 @@ function(folderA, folderB) {
 
 ZmVoiceFolder.prototype.getToolTip =
 function (force) {
-	if (this.callType == ZmVoiceFolder.VOICEMAIL) {
-   		return ZmOrganizer.prototype.getToolTip.call(this, force);
-	} else {
-		return null;
-	}
+     return ZmOrganizer.prototype.getToolTip.call(this, force);
 };
 
 ZmVoiceFolder.prototype._getItemsText =
 function() {
-	if (this.callType == ZmVoiceFolder.VOICEMAIL || this.callType == ZmVoiceFolder.TRASH) {
-		return ZmMsg.voicemailMessages;
-	} else {
-		return ZmMsg.calls;
-	}
+    switch (this.callType){
+        case ZmVoiceFolder.VOICEMAIL:
+        case ZmVoiceFolder.TRASH:
+            return ZmMsg.voicemailMessages;
+        case ZmVoiceFolder.ANSWERED_CALL:
+            return ZmMsg.answeredCalls;
+        case ZmVoiceFolder.MISSED_CALL:
+            return ZmMsg.missedCalls;
+        case ZmVoiceFolder.PLACED_CALL:
+            return ZmMsg.placedCalls;
+        default:
+            return ZmMsg.calls;
+    }
+};
+
+ZmVoiceFolder.prototype._getUnreadLabel = 
+function() {
+	return ZmMsg.unheard;	
 };
 
 ZmVoiceFolder.prototype.empty =
@@ -214,6 +233,6 @@ function() {
 	// If this folder is visible, clear the contents of the view. 
 	var controller = AjxDispatcher.run("GetVoiceController");
 	if (controller.getFolder() == this) {
-		controller.getCurrentView().removeAll();
+		controller.getListView().removeAll();
 	}
 };

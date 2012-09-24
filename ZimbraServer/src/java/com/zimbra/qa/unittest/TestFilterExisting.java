@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,23 +29,23 @@ import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.filter.RuleManager;
 import com.zimbra.cs.mailbox.Mailbox;
-import com.zimbra.cs.zclient.ZFilterAction;
-import com.zimbra.cs.zclient.ZFilterCondition;
-import com.zimbra.cs.zclient.ZFilterRule;
-import com.zimbra.cs.zclient.ZFilterRules;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMessage;
-import com.zimbra.cs.zclient.ZTag;
-import com.zimbra.cs.zclient.ZFilterAction.MarkOp;
-import com.zimbra.cs.zclient.ZFilterAction.ZDiscardAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZFileIntoAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZKeepAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZMarkAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZRedirectAction;
-import com.zimbra.cs.zclient.ZFilterAction.ZTagAction;
-import com.zimbra.cs.zclient.ZFilterCondition.HeaderOp;
-import com.zimbra.cs.zclient.ZFilterCondition.ZHeaderCondition;
+import com.zimbra.client.ZFilterAction;
+import com.zimbra.client.ZFilterCondition;
+import com.zimbra.client.ZFilterRule;
+import com.zimbra.client.ZFilterRules;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMessage;
+import com.zimbra.client.ZTag;
+import com.zimbra.client.ZFilterAction.MarkOp;
+import com.zimbra.client.ZFilterAction.ZDiscardAction;
+import com.zimbra.client.ZFilterAction.ZFileIntoAction;
+import com.zimbra.client.ZFilterAction.ZKeepAction;
+import com.zimbra.client.ZFilterAction.ZMarkAction;
+import com.zimbra.client.ZFilterAction.ZRedirectAction;
+import com.zimbra.client.ZFilterAction.ZTagAction;
+import com.zimbra.client.ZFilterCondition.HeaderOp;
+import com.zimbra.client.ZFilterCondition.ZHeaderCondition;
 
 public class TestFilterExisting extends TestCase {
 

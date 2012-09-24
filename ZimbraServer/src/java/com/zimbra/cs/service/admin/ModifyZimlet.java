@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,13 +18,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.CosBy;
+import com.zimbra.common.account.ProvisioningConstants;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.Cos;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Zimlet;
-import com.zimbra.cs.account.Provisioning.CosBy;
 import com.zimbra.cs.account.accesscontrol.AdminRight;
 import com.zimbra.cs.account.accesscontrol.Rights.Admin;
 import com.zimbra.cs.zimlet.ZimletException;
@@ -62,7 +64,7 @@ public class ModifyZimlet extends AdminDocumentHandler {
         String cosName = a.getAttribute(AdminConstants.A_COS, null);
         if (cosName == null) return;
         
-        Cos cos = Provisioning.getInstance().get(CosBy.name, cosName);
+        Cos cos = Provisioning.getInstance().get(Key.CosBy.name, cosName);
         if (cos == null)
             throw AccountServiceException.NO_SUCH_COS(cosName);
         checkRight(zsc, context, cos, Admin.R_manageZimlet);
@@ -97,7 +99,7 @@ public class ModifyZimlet extends AdminDocumentHandler {
 	    boolean status = val.equalsIgnoreCase("enabled");
 
 	    Map<String, String> attrRightNeeded = new HashMap<String,String>();
-	    attrRightNeeded.put(Provisioning.A_zimbraZimletEnabled, status ? Provisioning.TRUE : Provisioning.FALSE);
+	    attrRightNeeded.put(Provisioning.A_zimbraZimletEnabled, status ? ProvisioningConstants.TRUE : ProvisioningConstants.FALSE);
 	    checkRight(zsc, context, zimlet, attrRightNeeded);
 	    
 		try {

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -28,10 +28,11 @@ import javax.mail.internet.MimeUtility;
 
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
-import org.apache.lucene.analysis.tokenattributes.TermAttribute;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 
 import com.google.common.base.Strings;
 import com.google.common.net.InternetDomainName;
+import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.InternetAddress;
 
 /**
@@ -58,12 +59,9 @@ import com.zimbra.common.mime.InternetAddress;
  * @author ysasaki
  */
 public final class RFC822AddressTokenStream extends TokenStream {
-    private static final int MAX_TOKEN_LEN = 256;
-    private static final int MAX_TOKEN_COUNT = 100;
-
     private final List<String> tokens = new LinkedList<String>();
     private Iterator<String> itr;
-    private final TermAttribute termAttr = addAttribute(TermAttribute.class);
+    private final CharTermAttribute termAttr = addAttribute(CharTermAttribute.class);
 
     public RFC822AddressTokenStream(String raw) {
         if (Strings.isNullOrEmpty(raw)) {
@@ -80,13 +78,13 @@ public final class RFC822AddressTokenStream extends TokenStream {
         // casually parse addresses, then tokenize them
         Set<String> emails = new HashSet<String>();
         Tokenizer tokenizer = new AddrCharTokenizer(new StringReader(decoded));
-        TermAttribute term = tokenizer.addAttribute(TermAttribute.class);
+        CharTermAttribute term = tokenizer.addAttribute(CharTermAttribute.class);
         try {
             while (tokenizer.incrementToken()) {
-                if (term.termLength() == 1 && !Character.isLetter(term.termBuffer()[0])) { // ignore single signs
+                if (term.length() == 1 && !Character.isLetter(term.charAt(0))) { // ignore single signs
                     continue;
                 }
-                tokenize(term.term(), emails);
+                tokenize(term.toString(), emails);
             }
             tokenizer.close();
         } catch (IOException ignore) {
@@ -160,7 +158,8 @@ public final class RFC822AddressTokenStream extends TokenStream {
     }
 
     private void add(String token) {
-        if (token.length() <= MAX_TOKEN_LEN && tokens.size() < MAX_TOKEN_COUNT) {
+        if (token.length() <= LC.zimbra_index_rfc822address_max_token_length.intValue() &&
+                tokens.size() < LC.zimbra_index_rfc822address_max_token_count.intValue()) {
             tokens.add(token);
         }
     }
@@ -168,7 +167,7 @@ public final class RFC822AddressTokenStream extends TokenStream {
     @Override
     public boolean incrementToken() throws IOException {
         if (itr.hasNext()) {
-            termAttr.setTermBuffer(itr.next());
+            termAttr.setEmpty().append(itr.next());
             return true;
         } else {
             return false;

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -21,16 +21,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.naming.directory.Attributes;
-import javax.naming.directory.SearchResult;
-
 import com.zimbra.common.mailbox.ContactConstants;
+import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.gal.GalGroupHandler;
+import com.zimbra.cs.account.grouphandler.GroupHandler;
+import com.zimbra.cs.ldap.IAttributes;
+import com.zimbra.cs.ldap.ILdapContext;
+
 
 /*
  * maps LDAP attrs into contact attrs. 
@@ -41,7 +42,7 @@ public class LdapGalMapRules {
     private List<String> mLdapAttrs;
     private Set<String> mBinaryLdapAttrs; // attrs need to be set in JNDI "java.naming.ldap.attributes.binary" environment property
     private Map<String, LdapGalValueMap> mValueMaps;
-    private GalGroupHandler mGroupHandler;
+    private GroupHandler mGroupHandler;
     private boolean mFetchGroupMembers;
     private boolean mNeedSMIMECerts;
 
@@ -82,7 +83,7 @@ public class LdapGalMapRules {
         for (String rule: rules)
             add(rule);
         
-        mGroupHandler = GalGroupHandler.getHandler(groupHandlerClass);
+        mGroupHandler = GroupHandler.getHandler(groupHandlerClass);
         ZimbraLog.gal.debug("groupHandlerClass=" + groupHandlerClass + ", handler instantiated=" + mGroupHandler.getClass().getCanonicalName());
     }
     
@@ -103,10 +104,8 @@ public class LdapGalMapRules {
         return mBinaryLdapAttrs;
     }
     
-    public Map<String, Object> apply(ZimbraLdapContext zlc, String searchBase, SearchResult sr) {
-        String dn = sr.getNameInNamespace();
-        Attributes ldapAttrs = sr.getAttributes();
-        
+    public Map<String, Object> apply(ILdapContext ldapContext, String searchBase, String entryDN, IAttributes ldapAttrs) {
+         
         HashMap<String,Object> contactAttrs = new HashMap<String, Object>();        
         for (LdapGalMapRule rule: mRules) {
         	if (!mNeedSMIMECerts && rule.isSMIMECertificate()) {
@@ -115,15 +114,18 @@ public class LdapGalMapRules {
             rule.apply(ldapAttrs, contactAttrs);
         }
         
-        if (mGroupHandler.isGroup(sr)) {
-            contactAttrs.put(ContactConstants.A_type, ContactConstants.TYPE_GROUP);
-            
-            if (mFetchGroupMembers)
-                contactAttrs.put(ContactConstants.A_member, mGroupHandler.getMembers(zlc, searchBase, sr));
-            else {
-                // for internal LDAP, all members are on the DL entry and have been fetched/mapped
-                // delete it.
-                contactAttrs.remove(ContactConstants.A_member);
+        if (mGroupHandler.isGroup(ldapAttrs)) {
+            try {
+                if (mFetchGroupMembers) {
+                    contactAttrs.put(ContactConstants.A_member, mGroupHandler.getMembers(ldapContext, searchBase, entryDN, ldapAttrs));
+                } else {
+                    // for internal LDAP, all members are on the DL entry and have been fetched/mapped
+                    // delete it.
+                    contactAttrs.remove(ContactConstants.A_member);
+                }
+                contactAttrs.put(ContactConstants.A_type, ContactConstants.TYPE_GROUP);
+            } catch (ServiceException e) {
+                ZimbraLog.gal.warn("unable to retrieve group members ", e);
             }
         }
         

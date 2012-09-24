@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 /**
  * 
  */
@@ -21,6 +5,9 @@ package com.zimbra.qa.selenium.projects.ajax.ui.mail;
 
 import com.zimbra.qa.selenium.framework.ui.*;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogShare;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogShareRevoke;
 
 /**
  * Represents a "Create New Folder" dialog box
@@ -109,11 +96,42 @@ public class DialogEditFolder extends AbsDialog {
 
 			locator = "//div[@class='" + Locators.zEditPropertiesDialogId+ "']//div[contains(@id,'_buttons')]//td[text()=''Add Share...']";
 
+		} else if (button == Button.O_RESEND_LINK) {
+			
+			throw new HarnessException("implement me");
+			
+		} else if (button == Button.O_REVOKE_LINK) {
+			
+			locator = "//div[@class='" + Locators.zEditPropertiesDialogId+ "']//div[contains(@id,'_content')]//div/fieldset/div/table/tbody/tr/td/a[contains(text(),'Revoke')]";
+			page = new DialogShareRevoke(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+			
+			// Click the link
+			this.sClick(locator);
+			this.zWaitForBusyOverlay();
+
+			// Wait for the Edit dialog to appear
+			page.zWaitForActive();
+			this.zWaitForBusyOverlay();
+
+			// Done
+			return (page);
+
 		} else if (button == Button.O_EDIT_LINK) {
 
 			locator = "//div[@class='" + Locators.zEditPropertiesDialogId+ "']//div[contains(@id,'_content')]//div/fieldset/div/table/tbody/tr/td/a[contains(text(),'Edit')]";
+			page = new DialogShare(MyApplication,((AppAjaxClient) MyApplication).zPageMail);
+			
+			// Click the link
 			this.sClick(locator);
+			this.zWaitForBusyOverlay();
+
+			// Wait for the Edit dialog to appear
+			page.zWaitForActive();
+			this.zWaitForBusyOverlay();
+
+			// Done
 			return (page);
+			
 		} else {
 			throw new HarnessException("Button " + button + " not implemented");
 		}

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -75,7 +75,8 @@ public class ExpandProperty extends Report {
 			Prop p = new Prop(property);
 			ResourceProperty rp = rs.getProperty(p.getQName());
 			if (rp == null) {
-				propstat.add(p.getQName(), null, HttpServletResponse.SC_NOT_FOUND);
+			    if (!ctxt.isBrief())
+			        propstat.add(p.getQName(), null, HttpServletResponse.SC_NOT_FOUND);
 			} else {
 				Iterator subProps = property.elementIterator();
 				if (subProps.hasNext()) {

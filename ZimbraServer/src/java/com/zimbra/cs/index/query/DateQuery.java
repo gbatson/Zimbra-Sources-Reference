@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -29,6 +29,7 @@ import org.apache.lucene.document.DateTools;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.index.DBQueryOperation;
 import com.zimbra.cs.index.QueryOperation;
+import com.zimbra.cs.mailbox.Mailbox;
 
 /**
  * Query by absolute date or relative date.
@@ -103,7 +104,7 @@ import com.zimbra.cs.index.QueryOperation;
 public final class DateQuery extends Query {
 
     public enum Type {
-        APPT_START, APPT_END, CONV_START, CONV_END, BEFORE, AFTER, DATE, DAY, WEEK, MONTH, YEAR
+        APPT_START, APPT_END, CONV_START, CONV_END, BEFORE, AFTER, DATE, MDATE, DAY, WEEK, MONTH, YEAR
     }
 
     private static final Pattern NUMERIC_DATE_PATTERN = Pattern.compile("^[0-9]+$");
@@ -137,17 +138,25 @@ public final class DateQuery extends Query {
     }
 
     @Override
-    public QueryOperation getQueryOperation(boolean bool) {
+    public boolean hasTextOperation() {
+        return false;
+    }
+
+    @Override
+    public QueryOperation compile(Mailbox mbox, boolean bool) {
         DBQueryOperation op = new DBQueryOperation();
         switch (type) {
             case APPT_START:
-                op.addCalStartDateClause(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
+                op.addCalStartDateRange(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
                 break;
             case APPT_END:
-                op.addCalEndDateClause(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
+                op.addCalEndDateRange(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
+                break;
+            case MDATE:
+                op.addMDateRange(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
                 break;
             default:
-                op.addDateClause(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
+                op.addDateRange(lowestTime, lowerEq, highestTime, higherEq, evalBool(bool));
                 break;
         }
 
@@ -233,6 +242,7 @@ public final class DateQuery extends Query {
             case BEFORE:
             case AFTER:
             case DATE:
+            case MDATE:
             case DAY:
                 field = Calendar.DATE;
                 break;
@@ -358,7 +368,7 @@ public final class DateQuery extends Query {
             }
         }
 
-        ZimbraLog.index_search.debug("Parsed date range to: (%s - %s)", beginDate, endDate);
+        ZimbraLog.search.debug("Parsed date range to: (%s - %s)", beginDate, endDate);
 
         // convert BEFORE, AFTER and DATE to the right explicit params...
         if (!hasExplicitComparasins) {
@@ -442,7 +452,7 @@ public final class DateQuery extends Query {
 
     @Override
     public void dump(StringBuilder out) {
-        out.append("DATE,");
+        out.append("DATE:");
         out.append(type);
         out.append(',');
         out.append(DateTools.timeToString(lowestTime, DateTools.Resolution.MINUTE));

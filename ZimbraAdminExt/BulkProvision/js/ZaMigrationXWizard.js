@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -47,10 +47,13 @@ ZaMigrationXWizard.STEP_DOWNLOAD_FILE = ZaMigrationXWizard.STEP_INDEX++;
 
 ZaMigrationXWizard.prototype = new ZaXWizardDialog;
 ZaMigrationXWizard.prototype.constructor = ZaMigrationXWizard;
-
+ZaMigrationXWizard.prototype.cacheDialog = false;
+ZaMigrationXWizard.prototype.miniType = 2;
 ZaXDialog.XFormModifiers["ZaMigrationXWizard"] = new Array();
 ZaMigrationXWizard.helpURL = "appliance/zap_migrating_multiple_accounts.htm";
-
+ZaMigrationXWizard.prototype.getCacheName =  function () {
+     return "migrationWizard";
+}
 /**
  * server callbacks
  */
@@ -145,6 +148,25 @@ function (loc) {
     this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(false);
 }
 
+ZaMigrationXWizard.prototype.handleXFormChange =
+function () {
+    var cStep = this._containedObject[ZaModel.currentStep] ;
+    if(cStep != ZaMigrationXWizard.STEP_INTRODUCTION) {
+        this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(false);
+		this._button[DwtWizardDialog.NEXT_BUTTON].setEnabled(true);
+		this._button[DwtWizardDialog.PREV_BUTTON].setEnabled(true);
+		this._button[DwtDialog.CANCEL_BUTTON].setEnabled(true);
+    }
+    if(cStep == ZaMigrationXWizard.STEP_DOWNLOAD_FILE) {
+        this._button[DwtWizardDialog.FINISH_BUTTON].setEnabled(true);
+		this._button[DwtWizardDialog.NEXT_BUTTON].setEnabled(false);
+		this._button[DwtDialog.CANCEL_BUTTON].setEnabled(false);
+     }
+
+
+
+}
+
 ZaMigrationXWizard.prototype.goNext =
 function() {
 	var cStep = this._containedObject[ZaModel.currentStep] ;
@@ -193,8 +215,8 @@ function() {
 		 */
 		if(!this._containedObject[ZaBulkProvision.A2_TargetDomainName]) {
 			ZaApp.getInstance().getCurrentController().popupErrorDialog(com_zimbra_bulkprovision.MUST_SELECT_TARGET_DOMAIN);
-			return;	
-		}
+		    return;
+        }
 		
 		/**
 		 * Set defaults
@@ -309,11 +331,15 @@ function() {
 **/
 ZaMigrationXWizard.prototype.setObject =
 function(entry) {
-	this._containedObject = new Object();
+	this._containedObject = new ZaBulkProvision();
 	this._containedObject = entry ;
 
-	this._containedObject[ZaModel.currentStep] = ZaMigrationXWizard.STEP_INTRODUCTION;
-	this._containedObject[ZaBulkProvision.A_mustChangePassword] = "TRUE";
+	this._containedObject[ZaModel.currentStep] = entry[ZaModel.currentStep]||ZaMigrationXWizard.STEP_INTRODUCTION;
+	this._containedObject[ZaBulkProvision.A_mustChangePassword] = entry[ZaBulkProvision.A_mustChangePassword]||"TRUE";
+
+    this._containedObject._uuid = entry._uuid||ZaUtil.getItemUUid();
+
+    this.prevCallback = entry.prevCallback;
     this._localXForm.setInstance(this._containedObject);
 }
 
@@ -369,34 +395,34 @@ ZaMigrationXWizard.myXFormModifier = function(xFormObject,entry) {
 					enableDisableChangeEventSources:[ZaBulkProvision.A2_generatePassword],
 					enableDisableChecks:[[XForm.checkInstanceValue,ZaBulkProvision.A2_generatePassword,"FALSE"]]
 				},
-				{ref:ZaBulkProvision.A_mustChangePassword,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A_mustChangePassword,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.RequireChangePassword,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_provisionUsers,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_provisionUsers,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.A2_provisionUsers,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},				
-				{ref:ZaBulkProvision.A2_importMails,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_importMails,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigImportMails,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_importContacts,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_importContacts,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigImportContacts,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_importTasks,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_importTasks,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigImportTasks,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_importCalendar,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_importCalendar,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigImportCalendar,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_importDeletedItems,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_importDeletedItems,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigImportDeletedItems,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_importJunk,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_importJunk,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigImportJunk,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_ignorePreviouslyImported,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_ignorePreviouslyImported,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigIgnorePreviouslyImported,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				},
-				{ref:ZaBulkProvision.A2_InvalidSSLOk,  type:_CHECKBOX_,  
+				{ref:ZaBulkProvision.A2_InvalidSSLOk,  type:_WIZ_CHECKBOX_,
 					label:com_zimbra_bulkprovision.MigInvalidSSLOk,trueValue:"TRUE", falseValue:"FALSE",visibilityChecks:[],enableDisableChecks:[]
 				}						
 		]
@@ -573,7 +599,7 @@ ZaMigrationXWizard.myXFormModifier = function(xFormObject,entry) {
 	
 
 	
-    var contentW = 630;
+    var contentW = 620;
     xFormObject.items = [
 			{type:_OUTPUT_, colSpan:2, align:_CENTER_, valign:_TOP_, ref:ZaModel.currentStep,
                 choices:this.stepChoices, valueChangeEventSources:[ZaModel.currentStep]},

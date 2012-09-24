@@ -11,15 +11,18 @@ namespace CssLib
 public class Log {
     public enum Level { None, Err, Warn, Info, Debug, Trace };
 
-    public static void init(string file, Level level) {
+    public static void init(string file, Level level)
+    {
         log_init(file, level);
     }
 
-    public static void log(Level level, object obj) {
+    public static void log(Level level, object obj)
+    {
         log_print(level, obj.ToString());
     }
 
-    public static void log(Level level, params object[] objs) {
+    public static void log(Level level, params object[] objs)
+    {
         StringBuilder s = new StringBuilder();
         String last = null;
 
@@ -43,8 +46,12 @@ public class Log {
     public static void warn(string str) { log_print(Level.Warn, str); }
     public static void warn(params object[] objs) { log(Level.Warn, objs); }
 
-    public static void open(string file) { log_open(file); }
+    public static void dump(string str, string data)
+    {
+        log_print(Level.Trace, (str + "\r\n" + data).ToString());
+    }
     public static string file() { return log_file(); }
+    public static void open(string file) { log_open(file); }
     public static void prefix(string prefix) { log_prefix(prefix); }
 
     #region PInvokes
@@ -79,12 +86,14 @@ public enum ZimbraFolders
     Contacts = 7, Tags = 8, Conversations = 9, Calendar = 10, MailboxRoot = 11, Wiki = 12,
     EmailedContacts = 13, Chats = 14, Tasks = 15, Max = 16
 }
+
 public enum LogLevel
 {
-Info = 3,
-Debug = 4,
-Trace = 5,
+    Info = 3,
+    Debug = 4,
+    Trace = 5,
 }
+
 public class MigrationOptions
 {
     public ItemsAndFoldersOptions ItemsAndFolders;
@@ -93,96 +102,9 @@ public class MigrationOptions
     public string MessageSizeFilter;
     public string SkipFolders;
     public LogLevel VerboseOn;
+    public bool SkipPrevMigrated;
+    public Int32 MaxErrorCnt;
 }
-
-
-public class CompatibilityChk
-{
-
-
-    public enum MachineType : ushort
-    {
-        IMAGE_FILE_MACHINE_UNKNOWN = 0x0,
-        IMAGE_FILE_MACHINE_AM33 = 0x1d3,
-        IMAGE_FILE_MACHINE_AMD64 = 0x8664,
-        IMAGE_FILE_MACHINE_ARM = 0x1c0,
-        IMAGE_FILE_MACHINE_EBC = 0xebc,
-        IMAGE_FILE_MACHINE_I386 = 0x14c,
-        IMAGE_FILE_MACHINE_IA64 = 0x200,
-        IMAGE_FILE_MACHINE_M32R = 0x9041,
-        IMAGE_FILE_MACHINE_MIPS16 = 0x266,
-        IMAGE_FILE_MACHINE_MIPSFPU = 0x366,
-        IMAGE_FILE_MACHINE_MIPSFPU16 = 0x466,
-        IMAGE_FILE_MACHINE_POWERPC = 0x1f0,
-        IMAGE_FILE_MACHINE_POWERPCFP = 0x1f1,
-        IMAGE_FILE_MACHINE_R4000 = 0x166,
-        IMAGE_FILE_MACHINE_SH3 = 0x1a2,
-        IMAGE_FILE_MACHINE_SH3DSP = 0x1a3,
-        IMAGE_FILE_MACHINE_SH4 = 0x1a6,
-        IMAGE_FILE_MACHINE_SH5 = 0x1a8,
-        IMAGE_FILE_MACHINE_THUMB = 0x1c2,
-        IMAGE_FILE_MACHINE_WCEMIPSV2 = 0x169,
-    }
-    public static MachineType GetDllMachineType(string dllPath)
-    {
-        // http://www.microsoft.com/whdc/system/platform/firmware/PECOFF.mspx 
-
-        FileStream fs = new FileStream(dllPath, FileMode.Open, FileAccess.Read);
-        BinaryReader br = new BinaryReader(fs);
-        fs.Seek(0x3c, SeekOrigin.Begin);
-        Int32 peOffset = br.ReadInt32();
-        fs.Seek(peOffset, SeekOrigin.Begin);
-        UInt32 peHead = br.ReadUInt32();
-        if (peHead != 0x00004550) // "PE\0\0", little-endian 
-            throw new Exception("Can't find PE header");
-        MachineType machineType = (MachineType)br.ReadUInt16();
-        br.Close();
-        fs.Close();
-        return machineType;
-    }
-
-    // returns true if the dll is 64-bit, false if 32-bit, and null if unknown 
-    public static bool? UnmanagedDllIs64Bit(string dllPath)
-    {
-        switch (GetDllMachineType(dllPath))
-        {
-        case MachineType.IMAGE_FILE_MACHINE_AMD64:
-        case MachineType.IMAGE_FILE_MACHINE_IA64:
-            return true;
-        case MachineType.IMAGE_FILE_MACHINE_I386:
-            return false;
-        default:
-            return null;
-        }
-    }
-
-
-    public static string CheckCompat(string path)
-    {
-        string status = "";
-        string absolutepath = Path.GetFullPath("Exchange.dll");
-
-        bool retval = UnmanagedDllIs64Bit(absolutepath).Value;
-
-
-        string Bitness = (string)Microsoft.Win32.Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Office\14.0\Outlook", "Bitness", null);
-        if (Bitness != null)
-        {
-            if ((Bitness == "x64") && (!retval))
-            {
-
-                status = "Outlook is 64 bit and migration is 32 bit";
-
-            }
-
-        }
-        return status;
-
-    }
-
-
-}
-
 
 public class CSMigrationWrapper
 {
@@ -196,7 +118,7 @@ public class CSMigrationWrapper
         get { return m_MailClient; }
         set { m_MailClient = value; }
     }
-    
+
     dynamic MailWrapper;
 
     dynamic m_umUser = null; // used to store user object so Exit can do a user.Uninit
@@ -205,23 +127,25 @@ public class CSMigrationWrapper
         set { m_umUser = value; }
     }
 
-    public CSMigrationWrapper(string mailClient)
+    public CSMigrationWrapper(string mailClient, LogLevel opts=LogLevel.Info)
     {
-        try
+        // try
         {
-            InitLogFile("migration", Log.Level.Info);
+            Log.Level level = (Log.Level)opts;
+            InitLogFile("migration",level);
             Log.info("Initializing migration");
+
             MailClient = mailClient;
             if (MailClient == "MAPI")
             {
-                //MailWrapper = new Exchange.MapiWrapper();
                 MailWrapper = new MapiMigration();
             }
         }
-        catch (Exception e)
+        /* catch (Exception e)
         {
             Log.err("Exception in CSMigrationWrapper construcor", e.Message);
-        }
+        }*/
+      
     }
 
     public string GlobalInit(string Target, string AdminUser, string AdminPassword)
@@ -267,6 +191,7 @@ public class CSMigrationWrapper
         {
             // FBS bug 73020 -- 4/18/12
             string tmp = msg;
+
             msg = string.Format("GetListofMapiProfiles Exception: {0}", e.Message);
             if (tmp.Length > 0)
             {
@@ -436,8 +361,8 @@ public class CSMigrationWrapper
         ZimbraAPI api, string path, MigrationOptions options)
     {
         DateTime dt = DateTime.UtcNow;
-        
         dynamic[] itemobjectarray = null ;
+        
         try
         {
             itemobjectarray = user.GetItemsForFolder(folder, dt.ToOADate());
@@ -446,7 +371,10 @@ public class CSMigrationWrapper
         {
             Log.err("exception in ProcessItems->user.GetItemsFolder", e.Message);
         }
+
         int iProcessedItems = 0;
+        string historyfile = Path.GetTempPath() + Acct.AccountName.Substring(0,Acct.AccountName.IndexOf('@')) + "history.log";
+        string historyid = "";
 
         if (itemobjectarray.GetLength(0) > 0)
         {
@@ -455,7 +383,14 @@ public class CSMigrationWrapper
                 Log.debug("Processing folder", folder.Name, "-- Total items:", folder.ItemCount);
                 foreach (dynamic itemobject in itemobjectarray)
                 {
-                   
+                    if (options.MaxErrorCnt > 0)
+                    {
+                        if (Acct.TotalErrors > options.MaxErrorCnt)
+                        {
+                            Log.err("Cancelling migration -- error threshold reached");
+                            return;
+                        }
+                    }
                     foldertype type = (foldertype)itemobject.Type;
                     if (ProcessIt(options, type))
                     {
@@ -463,6 +398,34 @@ public class CSMigrationWrapper
                         bool bSkipMessage = false;
                         Dictionary<string, string> dict = new Dictionary<string, string>();
                         string[,] data = null;
+                        string itemtype = type.ToString();
+                        try
+                        {
+
+                                string hex = BitConverter.ToString(itemobject.ItemID);
+                                hex = hex.Replace("-", "");
+                                historyid = itemtype + hex;
+                                
+                        }
+                        catch (Exception e)
+                        {
+                           Log.err("exception in Bitconverter cconverting itemid to a hexstring", e.Message);
+                            
+                       
+                        }
+                        if (options.SkipPrevMigrated)
+                        {
+                            if (historyid != "")
+                            {
+                                if (CheckifAlreadyMigrated(historyfile, historyid))
+                                {
+                                    bSkipMessage = true;
+                                    iProcessedItems++;
+                                    continue;
+                                }
+                            }
+                            //uncomment after more testing
+                        }
                         try
                         {
                             data = itemobject.GetDataForItemID(user.GetInternalUser(),
@@ -515,20 +478,10 @@ public class CSMigrationWrapper
                                     {
                                         msf = Int32.Parse(options.MessageSizeFilter);
                                         msf *= 1000000;
-                                        try
+                                        if (dict["wstrmimeBuffer"].Length > msf)    // FBS bug 74000 -- 5/14/12 
                                         {
-                                            FileInfo f = new FileInfo(dict["filePath"]);
-                                            if (f.Length > msf)
-                                            {
-                                                bSkipMessage = true;
-                                                File.Delete(dict["filePath"]);
-                                                // FBS -- When logging implemented, we should log this
-                                                // Should we put a message in the UI as well?
-                                            }
-                                        }
-                                        catch (Exception)
-                                        {
-                                            Log.info("File exception on ", dict["filePath"]);
+                                            bSkipMessage = true;
+                                            Log.debug("Skipping", dict["Subject"], "-- message size exceeds size filter value");
                                         }
                                     }
                                 }
@@ -541,6 +494,7 @@ public class CSMigrationWrapper
                                         if (DateTime.Compare(dtm, filterDtm) < 0)
                                         {
                                             bSkipMessage = true;
+                                            Log.debug("Skipping", dict["Subject"], "-- message older than date filter value");
                                         }
                                     }
                                     catch (Exception)
@@ -563,15 +517,17 @@ public class CSMigrationWrapper
                                         stat = api.AddMessage(dict);
                                         if (stat != 0)
                                         {
-                                            Acct.LastProblemInfo = new ProblemInfo(dict["Subject"], api.LastError,
-                                                                                   ProblemInfo.TYPE_ERR);
+                                            string errMsg = (api.LastError.IndexOf("upload ID: null") != -1)    // FBS bug 75159 -- 6/7/12
+                                                            ? "Unable to upload file. Please check server message size limits."
+                                                            : api.LastError;                                            
+                                            Acct.LastProblemInfo = new ProblemInfo(dict["Subject"], errMsg, ProblemInfo.TYPE_ERR);                                                                                   
                                             Acct.TotalErrors++;
                                             bError = true;
                                         }
                                     }
                                     catch (Exception e)
                                     {
-
+                                        Acct.TotalErrors++;
                                         Log.err("Exception caught in ProcessItems->api.AddMessage", e.Message);
 
                                     }
@@ -582,7 +538,7 @@ public class CSMigrationWrapper
                                 //Log.debug("Contact Firstname: ", dict["firstName"]);
                                 if (dict["tags"].Length > 0)
                                 {
-                                    // change the tag names into tag numbers for AddMessage
+                                    // change the tag names into tag numbers for CreateContact
                                     string tagsNumstrs = DealWithTags(dict["tags"], Acct, api);
                                     bool bRet = dict.Remove("tags");
                                     dict.Add("tags", tagsNumstrs);
@@ -593,6 +549,7 @@ public class CSMigrationWrapper
                                 }
                                 catch (Exception e)
                                 {
+                                    Acct.TotalErrors++;
                                     Log.err("Exception caught in ProcessItems->api.CreateContact", e.Message);
 
 
@@ -605,11 +562,12 @@ public class CSMigrationWrapper
                                 {
                                     try
                                     {
-                                        DateTime dtm = DateTime.Parse(dict["sCommon"]);
+                                        DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
                                         DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
                                         if (DateTime.Compare(dtm, filterDtm) < 0)
                                         {
                                             bSkipMessage = true;
+                                            Log.debug("Skipping", dict["su"], "-- appointment older than date filter value");
                                         }
                                     }
                                     catch (Exception)
@@ -621,6 +579,13 @@ public class CSMigrationWrapper
                                 {
                                     try
                                     {
+                                        if (dict["tags"].Length > 0)
+                                        {
+                                            // change the tag names into tag numbers for AddAppointment
+                                            string tagsNumstrs = DealWithTags(dict["tags"], Acct, api);
+                                            bool bRet = dict.Remove("tags");
+                                            dict.Add("tags", tagsNumstrs);
+                                        }
                                         dict.Add("accountNum", Acct.AccountNum.ToString());
                                         stat = api.AddAppointment(dict, path);
                                         if (stat != 0)
@@ -634,7 +599,10 @@ public class CSMigrationWrapper
                                     }
                                     catch(Exception e)
                                     {
-                                        Log.err("exception caught in ProcessItems->api.AddAppointment", e.Message);
+                                        Acct.LastProblemInfo = new ProblemInfo(dict["su"], e.Message,
+                                                                               ProblemInfo.TYPE_ERR);
+                                        Acct.TotalErrors++;
+                                        Log.err(dict["su"], "exception caught in ProcessItems->api.AddAppointment", e.Message);
 
                                     }
                                 }
@@ -646,25 +614,37 @@ public class CSMigrationWrapper
                                 {
                                     try
                                     {
-                                        DateTime dtm = DateTime.Parse(dict["sCommon"]);
+                                        DateTime dtm = DateTime.Parse(dict["sFilterDate"]);
                                         DateTime filterDtm = Convert.ToDateTime(options.DateFilter);
 
                                         if (DateTime.Compare(dtm, filterDtm) < 0)
+                                        {
                                             bSkipMessage = true;
+                                            Log.debug("Skipping", dict["su"], "-- task older than date filter value");
+                                        }
                                     }
                                     catch (Exception)
                                     {
+
                                         Log.info(dict["su"], ": unable to parse date");
                                     }
                                 }
                                 if (!bSkipMessage)
                                 {
+                                    if (dict["tags"].Length > 0)
+                                    {
+                                        // change the tag names into tag numbers for AddTask
+                                        string tagsNumstrs = DealWithTags(dict["tags"], Acct, api);
+                                        bool bRet = dict.Remove("tags");
+                                        dict.Add("tags", tagsNumstrs);
+                                    }
                                     try
                                     {
                                         stat = api.AddTask(dict, path);
                                     }
                                     catch (Exception e)
                                     {
+                                        Acct.TotalErrors++;
                                         Log.err("exception caught in ProcessItems->api.AddTask", e.Message);
                                     }
                                 }
@@ -687,6 +667,11 @@ public class CSMigrationWrapper
                                 : Acct.migrationFolder.CurrentCountOfItems + 1;
                         }
                     }
+                    if (historyid != "")
+                    {
+                        File.AppendAllText(historyfile, historyid); //uncomment after more testing
+                        File.AppendAllText(historyfile, "\n");
+                    }
                     iProcessedItems++;
                 }
             }
@@ -694,24 +679,23 @@ public class CSMigrationWrapper
     }
 
     public void StartMigration(MigrationAccount Acct, MigrationOptions options, bool isServer = true,
-        LogLevel isVerbose = LogLevel.Info, bool isPreview = false, bool doRulesAndOOO = true)      
+        LogLevel logLevel = LogLevel.Info, bool isPreview = false, bool doRulesAndOOO = true)      
     {
         string accountName = "";
         dynamic[] folders = null;
         int idx = Acct.AccountName.IndexOf("@");
+        Log.Level level = (Log.Level)logLevel;
         dynamic user = null;
-        if (MailClient == "MAPI")
-        {
-            //user = new Exchange.UserObject();
-            user = new MapiUser();
-        }
         string value = "";
 
+        if (MailClient == "MAPI")
+        {
+            user = new MapiUser();
+        }
         if (!isServer)
         {
             m_umUser = user;
         }
-
         if (idx == -1)
         {
             Acct.LastProblemInfo = new ProblemInfo(Acct.AccountName, "Illegal account name",
@@ -724,8 +708,6 @@ public class CSMigrationWrapper
             accountName = Acct.AccountName.Substring(0, idx);
         }
 
-        //Log.Level level = isVerbose ? Log.Level.Debug : Log.Level.Info;
-        Log.Level level = (Log.Level)isVerbose;
         Log.init(Path.GetTempPath() + "migration.log", level);  // might have gotten a new level from options
         InitLogFile(accountName, level);
         try
@@ -797,11 +779,28 @@ public class CSMigrationWrapper
         }
         Log.info("Acct.TotalItems=", Acct.TotalItems.ToString());
 
-        ZimbraAPI api = new ZimbraAPI(isServer);
+        ZimbraAPI api = new ZimbraAPI(isServer, logLevel);
+        api.AccountID = Acct.AccountID;
+        api.AccountName = Acct.AccountName;
+
+        api.GetTags();
+        foreach (TagInfo taginfo in ZimbraValues.GetZimbraValues().Tags)
+        {
+            Acct.tagDict.Add(taginfo.TagName, taginfo.TagID);
+        }
 
         foreach (dynamic folder in folders)
         {
             string path = "";
+
+            if (options.MaxErrorCnt > 0)
+            {
+                if (Acct.TotalErrors > options.MaxErrorCnt)
+                {
+                    Log.err("Cancelling migration -- error threshold reached");
+                    return;
+                }
+            }
 
             if (SkipFolder(options, skipList, folder))
             {
@@ -811,9 +810,6 @@ public class CSMigrationWrapper
             Log.info("Processing folder", folder.Name);
             if (folder.Id == 0)
             {
-                api.AccountID = Acct.AccountID;
-                api.AccountName = Acct.AccountName;
-
                 string ViewType = GetFolderViewType(folder.ContainerClass);
                 try
                 {
@@ -941,6 +937,36 @@ public class CSMigrationWrapper
         {
             m_umUser = null;
         }
-    }    
-}
+    }
+
+    private bool CheckifAlreadyMigrated(string filename, string itemid)
+    {
+
+        List<string> parsedData = new List<string>();
+
+        if (File.Exists(filename))
+        {
+            using (StreamReader readFile = new StreamReader(filename))
+            {
+                string line;
+
+                string row;
+                while ((line = readFile.ReadLine()) != null)
+                {
+                    row = line;
+                    if (row.CompareTo(itemid) == 0)
+                    {
+                        return true;
+                    }
+                }
+                readFile.Close();
+                return false;
+            }
+
+        }
+
+        return false;
+    }
+
+  }
 }

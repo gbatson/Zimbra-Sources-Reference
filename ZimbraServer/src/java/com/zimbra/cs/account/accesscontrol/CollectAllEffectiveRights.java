@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.account.accesscontrol;
 
 import java.util.ArrayList;
@@ -22,38 +8,41 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import javax.naming.directory.Attributes;
-
+import com.zimbra.common.account.Key.DistributionListBy;
+import com.zimbra.common.account.Key.DomainBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Domain;
+import com.zimbra.cs.account.DynamicGroup;
 import com.zimbra.cs.account.Entry;
+import com.zimbra.cs.account.Group;
 import com.zimbra.cs.account.NamedEntry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
-import com.zimbra.cs.account.Provisioning.DomainBy;
-import com.zimbra.cs.account.Provisioning.TargetBy;
 import com.zimbra.cs.account.accesscontrol.RightBearer.GlobalAdmin;
 import com.zimbra.cs.account.accesscontrol.RightBearer.Grantee;
 import com.zimbra.cs.account.accesscontrol.RightCommand.AllEffectiveRights;
 import com.zimbra.cs.account.accesscontrol.RightCommand.EffectiveRights;
 import com.zimbra.cs.account.accesscontrol.SearchGrants.GrantsOnTarget;
 import com.zimbra.cs.account.ldap.LdapDIT;
-import com.zimbra.cs.account.ldap.LdapDomain;
-import com.zimbra.cs.account.ldap.LdapFilter;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
-import com.zimbra.cs.account.ldap.LdapUtil;
+import com.zimbra.cs.account.ldap.LdapProv;
+import com.zimbra.cs.ldap.IAttributes;
+import com.zimbra.cs.ldap.ZLdapFilter;
+import com.zimbra.cs.ldap.ZLdapFilterFactory;
+import com.zimbra.cs.ldap.LdapTODO.ACLTODO;
+import com.zimbra.cs.ldap.SearchLdapOptions.SearchLdapVisitor;
+import com.zimbra.soap.type.TargetBy;
 
+@ACLTODO   // check refs of targetType.dl and handle the same for group
 public class CollectAllEffectiveRights {
 
     
     /*
-     * represents a "shape" of groups.  Entries in the same "shape" belong to 
+     * represents a "shape" of groups.  Members in the same "shape" belong to 
      * all groups in the shape.
      * 
-     * e.g. if we are calculating shapes for group A, B, C, D, the possible shapes are:
+     * e.g. if we are calculating shapes for group A, B, C, D, possible shapes are:
      *      A, B, C, D, AB, AC, AD, BC, BD, CD, ABC, ABD, ACD, BCD, ABCD
      *      
      *      If groups are shaped in the order of A, B, C, D, the resulting shapes(at most) would look like:
@@ -65,7 +54,7 @@ public class CollectAllEffectiveRights {
      *      when members in group D is being shaped: A(1) AD(8)  AC(4) ACD(9)  AB(2) ABD(10)  ABC(5) ABCD(11)  B(3) BD(12)  BC(6) BCD(13)  C(7) CD(14)  D(15)
      *      
      */
-    private static class GroupShape {
+    public static class GroupShape {
         Set<String> mGroups = new HashSet<String>();   // groups all entries in mMembers are a member of
         Set<String> mMembers = new HashSet<String>();  // members belongs to all entries of mGroups
         
@@ -97,7 +86,7 @@ public class CollectAllEffectiveRights {
             mGroups.add(group);
         }
         
-        private Set<String> getGroups() {
+        public Set<String> getGroups() {
             return mGroups;
         }
         
@@ -109,7 +98,7 @@ public class CollectAllEffectiveRights {
             mMembers.add(member);
         }
         
-        private Set<String> getMembers() {
+        public Set<String> getMembers() {
             return mMembers;
         }
         
@@ -125,11 +114,11 @@ public class CollectAllEffectiveRights {
             return !mMembers.isEmpty();
         }
         
-        static void shapeMembers(TargetType targetType, Set<GroupShape> shapes, 
+        public static void shapeMembers(TargetType targetType, Set<GroupShape> shapes, 
                 AllGroupMembers group) 
         throws ServiceException {
 
-            // Stage newly spawn GroupShape's in a seperate Set so 
+            // Stage newly spawn GroupShape's in a separate Set so 
             // we don't add entries to shapes while iterating through it.
             // Add entries in the new Set back into shapes after iterating 
             // through it for this group. 
@@ -137,7 +126,7 @@ public class CollectAllEffectiveRights {
             Set<GroupShape> newShapes = new HashSet<GroupShape>();
                 
             // holds members in the group being shaped that 
-            // do not belong to any shapes in the current discovered shapes
+            // do not belong to any shape in the current discovered shapes
             GroupShape newShape = new GroupShape();
             newShape.addGroup(group.getGroupName());
             newShape.addMembers(group.getMembers(targetType));
@@ -172,22 +161,22 @@ public class CollectAllEffectiveRights {
                 
             // add the new shape that contain members that are not in 
             // any other shapes 
-            if (newShape.hasMembers())
+            if (newShape.hasMembers()) {
                 shapes.add(newShape);
-                
+            }
         }
     }
     
-    private static class AllGroupMembers {
+    public static class AllGroupMembers {
         String mGroupName; // name of the group
+        
+        Set<String> mAccounts = new HashSet<String>();  // all account members of the group
+        Set<String> mCalendarResources = new HashSet<String>(); // all calendar resource memners of the group
+        Set<String> mDistributionLists = new HashSet<String>(); // all distribution list members of the group
         
         AllGroupMembers(String groupName) {
             mGroupName = groupName;
         }
-        
-        Set<String> mAccounts = new HashSet<String>();
-        Set<String> mCalendarResources = new HashSet<String>();
-        Set<String> mDistributionLists = new HashSet<String>();
         
         String getGroupName() {
             return mGroupName;
@@ -206,22 +195,26 @@ public class CollectAllEffectiveRights {
         }
     }
     
-    private static class Visitor implements LdapUtil.SearchLdapVisitor {
+    private static class Visitor extends SearchLdapVisitor {
+        private LdapProv mProv;
         private LdapDIT mLdapDIT;
         
         // set of names
         private Set<String> mNames = new HashSet<String>();
 
-        Visitor(LdapDIT ldapDIT) {
-            mLdapDIT = ldapDIT;
+        Visitor(LdapProv prov) {
+            super(false);
+            mProv = prov;
+            mLdapDIT = mProv.getDIT();
         }
         
-        public void visit(String dn, Map<String, Object> attrs, Attributes ldapAttrs) {
+        @Override
+        public void visit(String dn, IAttributes ldapAttrs) {
             try {
                 String name = mLdapDIT.dnToEmail(dn, ldapAttrs);
                 mNames.add(name);
             } catch (ServiceException e) {
-                ZimbraLog.acl.warn("canno get name from dn [" + dn + "]", e);
+                ZimbraLog.acl.warn("cannot get name from dn [" + dn + "]", e);
             }
         }
         
@@ -236,7 +229,7 @@ public class CollectAllEffectiveRights {
     private boolean mExpandSetAttrs;
     private boolean mExpandGetAttrs;
     private AllEffectiveRights mResult;
-    private Provisioning mProv;
+    private LdapProv mProv;
     
     static void getAllEffectiveRights(RightBearer rightBearer, 
             boolean expandSetAttrs, boolean expandGetAttrs,
@@ -247,9 +240,9 @@ public class CollectAllEffectiveRights {
         caer.collect();
     }
             
-    private CollectAllEffectiveRights(RightBearer rightBearer, 
+    public CollectAllEffectiveRights(RightBearer rightBearer, 
             boolean expandSetAttrs, boolean expandGetAttrs,
-            AllEffectiveRights result) {
+            AllEffectiveRights result) throws ServiceException {
         
         mRightBearer = rightBearer;
         
@@ -259,7 +252,8 @@ public class CollectAllEffectiveRights {
         mExpandSetAttrs = expandSetAttrs;
         mExpandGetAttrs = expandGetAttrs;
         mResult = result;
-        mProv = Provisioning.getInstance();
+
+        mProv = LdapProv.getInst();
     }
     
     private void collect() throws ServiceException {
@@ -290,11 +284,17 @@ public class CollectAllEffectiveRights {
         // get the set of zimbraId of the grantees to search for
         Set<String> granteeIdsToSearch = mGrantee.getIdAndGroupIds();
         
+        // add external group grants that *may* apply
+        if (mGrantee.isAccount()) {
+            Domain domain = mProv.getDomain(mGrantee.getAccount());
+            granteeIdsToSearch.add(ZimbraACE.ExternalGroupInfo.encode(domain.getId(), ""));
+        }
+        
         SearchGrants searchGrants = new SearchGrants(mProv, targetTypesToSearch, granteeIdsToSearch);
-        Set<GrantsOnTarget> grantsOnTargets = searchGrants.doSearch().getResults();
+        Set<GrantsOnTarget> grantsOnTargets = searchGrants.doSearch().getResults(true);
         
         // staging for group grants
-        Set<DistributionList> groupsWithGrants = new HashSet<DistributionList>();
+        Set<Group> groupsWithGrants = new HashSet<Group>();
         
         //
         // Stage1
@@ -316,6 +316,8 @@ public class CollectAllEffectiveRights {
                 computeSubDomainRightsInheritedFromDomain(acl, (Domain)grantedOnEntry);
             } else if (targetType == TargetType.dl) {
                 groupsWithGrants.add((DistributionList)grantedOnEntry);
+            } else if (targetType == TargetType.group) {
+                groupsWithGrants.add((DynamicGroup)grantedOnEntry);
             }
         }
         
@@ -325,6 +327,19 @@ public class CollectAllEffectiveRights {
         // process group grants
         //
         // first, shape all members in all groups with grants into "shapes"
+        //
+        // e.g. if the grant search returned three groups: A, B, C
+        //      group A contains members m1, m2, m3
+        //      group B contains members m2, m3, m4
+        //      group C contains members m5
+        //
+        //      (assuming all m{X} are accounts)
+        //
+        //      After "shaping", the accountShapes Set will contain 4 shapes:
+        //      shape A  - m1
+        //      shape AB - m2, m3
+        //      shape B  - m4
+        //      shape C  - m5
         //
         
         /*
@@ -355,30 +370,31 @@ public class CollectAllEffectiveRights {
         Set<GroupShape> accountShapes = new HashSet<GroupShape>();
         Set<GroupShape> calendarResourceShapes = new HashSet<GroupShape>();
         Set<GroupShape> distributionListShapes = new HashSet<GroupShape>();
-        for (DistributionList group : groupsWithGrants) {
+           
+        for (Group group : groupsWithGrants) {
             String groupName = group.getName().toLowerCase();
             if (processedGroups.contains(groupName)) {
                 continue;
             } else {
                 processedGroups.add(groupName);
-            }
-            
-            // group is an AclGroup, which contains only upward membership, 
-            // not downward membership. re-get the DistributionList object, 
-            // which has the downward membership.
-            DistributionList dl = mProv.get(DistributionListBy.id, group.getId());
-            
-            AllGroupMembers allMembers = getAllGroupMembers(dl);
-            
+            }    
+        
+            AllGroupMembers allMembers = getAllGroupMembers(group);
             GroupShape.shapeMembers(TargetType.account, accountShapes, allMembers);
             GroupShape.shapeMembers(TargetType.calresource, calendarResourceShapes, allMembers);
             GroupShape.shapeMembers(TargetType.dl, distributionListShapes, allMembers);
+            // no need to get TargetType.group members of the group, because 
+            // dynamic group cannot be a member of a Distribution list or another 
+            // dynamic group
+            
             processedGroups.add(group.getId());
             
             /*
              * handle sub groups.  allMembers already contains a flat set of all members 
              * of group that is a DistributionList, just go through the flat set and compute 
-             * shares for each
+             * shares for each.  If group is a dynamic group, we should never get into 
+             * the following loop, because there should be no nested groups member of 
+             * dynamic group.
              */
             for (String nestedGoupMember : allMembers.getMembers(TargetType.dl)) {
                 String nestedGoupMemberName = nestedGoupMember.toLowerCase();
@@ -387,7 +403,7 @@ public class CollectAllEffectiveRights {
                 } else {
                     processedGroups.add(nestedGoupMemberName);
                 }
-                
+        
                 DistributionList subDl = mProv.get(DistributionListBy.name, nestedGoupMemberName);
                 // sanity check, shout not be null
                 if (subDl != null) {
@@ -405,11 +421,9 @@ public class CollectAllEffectiveRights {
             GroupShape.debug("distributionListShapes", distributionListShapes);
         }
         
-        //
         // then, for each group shape, generate a RightAggregation and record in the AllEffectiveRights.
         // if any of the entries in a shape also have grants as an individual, the effective rigths for 
         // those entries will be replaced in stage 3.
-        //
         Set<String> entryIdsHasGrants = new HashSet<String>();
         for (GrantsOnTarget grantsOnTarget : grantsOnTargets) {
             Entry grantedOnEntry = grantsOnTarget.getTargetEntry();
@@ -432,12 +446,13 @@ public class CollectAllEffectiveRights {
             ZimbraACL acl = grantsOnTarget.getAcl();
             TargetType targetType = TargetType.getTargetType(grantedOnEntry);
             
-            if (targetType != TargetType.global)
+            if (targetType != TargetType.global) {
                 computeRightsOnEntry(targetType, grantedOnEntry);
         }
     }
+    }
     
-    private AllGroupMembers getAllGroupMembers(DistributionList group) throws ServiceException {
+    public AllGroupMembers getAllGroupMembers(Group group) throws ServiceException {
         /*
          * get all groups and crs in the front and use the Set.contains method
          * to test if a member name is a cr/group
@@ -454,28 +469,29 @@ public class CollectAllEffectiveRights {
         return allMembers;
     }
     
-    private void getAllGroupMembers(
-            DistributionList group,
-            Set<String> allGroups, Set<String> allCalendarResources, 
-            AllGroupMembers result) 
+    private void getAllGroupMembers(Group group, Set<String> allGroups, 
+            Set<String> allCalendarResources, AllGroupMembers result) 
     throws ServiceException {
         
         Set<String> members = group.getAllMembersSet();
-        Set<String> accountMembers = new HashSet<String>(members);  // make a copy, assumcing all members are account
+        Set<String> accountMembers = new HashSet<String>(members);  // make a copy, assuming all members are account
                 
         // expand if a member is a group
         for (String member : members) {
             // if member is a group, remove it from the result
             // and expand the group if it has not been expanded yet
+            // In this case member must be a DistributionList, it 
+            // must be a Dynamic group.
             if (allGroups.contains(member)) {
                 // remove it from the accountMembers
                 accountMembers.remove(member);
                 
-                // haven't expaned this group yet
+                // haven't expand this group yet
                 if (!result.getMembers(TargetType.dl).contains(member)) {
                     result.getMembers(TargetType.dl).add(member);
                     DistributionList grp = mProv.get(DistributionListBy.name, member);
                     if (grp != null) {
+                        // collect members recursively
                         getAllGroupMembers(grp, allGroups, allCalendarResources, result);
                     }
                 }
@@ -488,28 +504,28 @@ public class CollectAllEffectiveRights {
     }
     
     private Set<String> getAllGroups() throws ServiceException {
-        LdapDIT ldapDIT = ((LdapProvisioning)mProv).getDIT();
+        LdapDIT ldapDIT = mProv.getDIT();
         String base = ldapDIT.mailBranchBaseDN();
-        String query = LdapFilter.allDistributionLists();
+        ZLdapFilter filter = ZLdapFilterFactory.getInstance().allGroups();
         
         // hack, see LDAPDIT.dnToEmail, for now we get naming rdn for both default and possible custom DIT
         String[] returnAttrs = new String[] {Provisioning.A_cn, Provisioning.A_uid}; 
         
-        Visitor visitor = new Visitor(ldapDIT);
-        LdapUtil.searchLdapOnMaster(base, query, returnAttrs, visitor);
+        Visitor visitor = new Visitor(mProv);
+        mProv.searchLdapOnMaster(base, filter, returnAttrs, visitor);
         return visitor.getResult();
     }
     
     private Set<String> getAllCalendarResources() throws ServiceException {
-        LdapDIT ldapDIT = ((LdapProvisioning)mProv).getDIT();
+        LdapDIT ldapDIT = mProv.getDIT();
         String base = ldapDIT.mailBranchBaseDN();
-        String query = LdapFilter.allCalendarResources();
+        ZLdapFilter filter = ZLdapFilterFactory.getInstance().allCalendarResources();
         
         // hack, see LDAPDIT.dnToEmail, for now we get naming rdn for both default and possible custom DIT
         String[] returnAttrs = new String[] {Provisioning.A_cn, Provisioning.A_uid}; 
         
-        Visitor visitor = new Visitor(ldapDIT);
-        LdapUtil.searchLdapOnMaster(base, query, returnAttrs, visitor);
+        Visitor visitor = new Visitor(mProv);
+        mProv.searchLdapOnMaster(base, filter, returnAttrs, visitor);
         return visitor.getResult();
     }
     
@@ -517,12 +533,13 @@ public class CollectAllEffectiveRights {
         
         for (TargetType tt : TargetType.values()) {
             Entry targetEntry;
-            if (tt == TargetType.global)
+            if (tt == TargetType.global) {
                 targetEntry = mProv.getGlobalGrant();
-            else if (tt == TargetType.config)
+            } else if (tt == TargetType.config) {
                 targetEntry = mProv.getConfig();
-            else
+            } else {
                 targetEntry = PseudoTarget.createPseudoTarget(mProv, tt, null, null, true, null, null);
+            }
             
             EffectiveRights er = new EffectiveRights(
                     tt.getCode(), TargetType.getId(targetEntry), targetEntry.getLabel(), 
@@ -541,15 +558,20 @@ public class CollectAllEffectiveRights {
         computeRightsInheritedFromDomain(TargetType.calresource, grantedOnDomain);
         
         computeRightsInheritedFromDomain(TargetType.dl, grantedOnDomain);
+        
+        computeRightsInheritedFromDomain(TargetType.group, grantedOnDomain);
     }
     
-    private void computeRightsInheritedFromDomain(TargetType targetType, Domain grantedOnDomain) throws ServiceException {
+    private void computeRightsInheritedFromDomain(TargetType targetType, Domain grantedOnDomain) 
+    throws ServiceException {
         
         String domainId = TargetType.getId(grantedOnDomain);
         String domainName = grantedOnDomain.getLabel();
         
         // create a pseudo object(account, cr, dl) in this domain
-        Entry pseudoTarget = PseudoTarget.createPseudoTarget(mProv, targetType, DomainBy.id, grantedOnDomain.getId(), false, null, null);
+        Entry pseudoTarget = PseudoTarget.createPseudoTarget(
+                mProv, targetType, DomainBy.id, grantedOnDomain.getId(), 
+                false, null, null);
         
         // get effective rights on the pseudo target
         EffectiveRights er = new EffectiveRights(
@@ -561,7 +583,8 @@ public class CollectAllEffectiveRights {
         mResult.addDomainEntry(targetType, domainName, er);
     }
     
-    private void computeSubDomainRightsInheritedFromDomain(ZimbraACL acl, Domain grantedOnDomain) throws ServiceException {
+    private void computeSubDomainRightsInheritedFromDomain(ZimbraACL acl, Domain grantedOnDomain) 
+    throws ServiceException {
         
         boolean noSubDomainGrants = acl.getSubDomainACEs().isEmpty();
         if (noSubDomainGrants) {
@@ -576,9 +599,11 @@ public class CollectAllEffectiveRights {
             String targetName = subDomain.getName();
             
             EffectiveRights er = new EffectiveRights(
-                    TargetType.domain.getCode(), targetId, targetName, mGrantee.getId(), mGrantee.getName());
+                    TargetType.domain.getCode(), targetId, targetName, 
+                    mGrantee.getId(), mGrantee.getName());
             
-            CollectEffectiveRights.getEffectiveRights(mGrantee, subDomain, mExpandSetAttrs, mExpandGetAttrs, er);
+            CollectEffectiveRights.getEffectiveRights(mGrantee, subDomain, 
+                    mExpandSetAttrs, mExpandGetAttrs, er);
             mResult.addEntry(TargetType.domain, targetName, er);
         }
     }
@@ -587,17 +612,12 @@ public class CollectAllEffectiveRights {
         
         List<Domain> subDomains = new ArrayList<Domain>();
         
-        if (!(domain instanceof LdapDomain)) {
-            ZimbraLog.acl.error("domain " + domain.getName() + " is not an LdapDomain");
-            return subDomains;
-        }
-                
-        String base = ((LdapDomain)domain).getDN();
-        String query = LdapFilter.allDomains();
+        String base = mProv.getDIT().domainNameToDN(domain.getName());
+        ZLdapFilter filter = ZLdapFilterFactory.getInstance().allDomains();
         String returnAttrs[] = new String[] {Provisioning.A_zimbraId};
         SearchSubDomainVisitor visitor = new SearchSubDomainVisitor();
         
-        LdapUtil.searchLdapOnMaster(base, query, returnAttrs, visitor);
+        mProv.searchLdapOnMaster(base, filter, returnAttrs, visitor);
         
         List<String> zimbraIds = visitor.getResults();
         for (String zimbraId : zimbraIds) {
@@ -607,7 +627,8 @@ public class CollectAllEffectiveRights {
             }
             
             try {
-                Domain subDomain = (Domain)TargetType.lookupTarget(mProv, TargetType.domain, TargetBy.id, zimbraId);
+                Domain subDomain = (Domain)TargetType.lookupTarget(mProv, 
+                        TargetType.domain, TargetBy.id, zimbraId);
                 subDomains.add(subDomain);
             } catch (ServiceException e) {
                 ZimbraLog.acl.warn("canot find domain by id " + zimbraId, e);
@@ -617,10 +638,11 @@ public class CollectAllEffectiveRights {
         return subDomains;
     }
     
-    private static class SearchSubDomainVisitor implements LdapUtil.SearchLdapVisitor {
+    private static class SearchSubDomainVisitor extends SearchLdapVisitor {
         List<String> mDomainIds = new ArrayList<String>();
 
-        public void visit(String dn, Map<String, Object> attrs, Attributes ldapAttrs) {
+        @Override
+        public void visit(String dn, Map<String, Object> attrs, IAttributes ldapAttrs) {
             String zimbraId = (String)attrs.get(Provisioning.A_zimbraId);
             if (zimbraId != null) {
                 mDomainIds.add(zimbraId);
@@ -676,26 +698,32 @@ public class CollectAllEffectiveRights {
                     String targetId = TargetType.getId(target);
                     if (!entryIdsHasGrants.contains(targetId)) {
                         er = new EffectiveRights(
-                                targetType.getCode(), targetId, target.getLabel(), mGrantee.getId(), mGrantee.getName());
-                        CollectEffectiveRights.getEffectiveRights(mGrantee, target, mExpandSetAttrs, mExpandGetAttrs, er);
+                                targetType.getCode(), targetId, target.getLabel(), 
+                                mGrantee.getId(), mGrantee.getName());
+                        CollectEffectiveRights.getEffectiveRights(mGrantee, target, 
+                                mExpandSetAttrs, mExpandGetAttrs, er);
                         break;
                     } // else the member itself has grants, skip it for being used as a pilot target entry
                 }
             }
             
-            if (er != null)
+            if (er != null) {
                 mResult.addAggregation(targetType, shape.getMembers(), er);
         }
     }
+    }
     
-    private void computeRightsOnEntry(TargetType grantedOnTargetType, Entry grantedOnEntry) throws ServiceException {
+    private void computeRightsOnEntry(TargetType grantedOnTargetType, Entry grantedOnEntry) 
+    throws ServiceException {
         String targetId = TargetType.getId(grantedOnEntry);
         String targetName = grantedOnEntry.getLabel();
         
         EffectiveRights er = new EffectiveRights(
-                grantedOnTargetType.getCode(), targetId, targetName, mGrantee.getId(), mGrantee.getName());
+                grantedOnTargetType.getCode(), targetId, targetName, 
+                mGrantee.getId(), mGrantee.getName());
         
-        CollectEffectiveRights.getEffectiveRights(mGrantee, grantedOnEntry, mExpandSetAttrs, mExpandGetAttrs, er);
+        CollectEffectiveRights.getEffectiveRights(mGrantee, grantedOnEntry, 
+                mExpandSetAttrs, mExpandGetAttrs, er);
         mResult.addEntry(grantedOnTargetType, targetName, er);
     }
     

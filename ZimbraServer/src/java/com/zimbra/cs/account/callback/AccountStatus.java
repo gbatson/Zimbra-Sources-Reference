@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -16,26 +16,28 @@
 package com.zimbra.cs.account.callback;
 
 import java.util.Map;
+import java.util.Set;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AttributeCallback;
+import com.zimbra.cs.account.DistributionList;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.ldap.LdapProvisioning;
 
 public class AccountStatus extends AttributeCallback {
-	
-    private static final String KEY = AccountStatus.class.getName();
 
     /**
      * disable mail delivery if account status is changed to closed
      * reset lockout attributes if account status is changed to active
      */
     @SuppressWarnings("unchecked")
-    public void preModify(Map context, String attrName, Object value,
-            Map attrsToModify, Entry entry, boolean isCreate) throws ServiceException {
+    @Override
+    public void preModify(CallbackContext context, String attrName, Object value,
+            Map attrsToModify, Entry entry) 
+    throws ServiceException {
         
         String status;
         
@@ -60,43 +62,43 @@ public class AccountStatus extends AttributeCallback {
         }
     }
 
-    /**
-     * need to keep track in context on whether or not we have been called yet, only 
-     * reset info once
-     */
+    @Override
+    public void postModify(CallbackContext context, String attrName, Entry entry) {
 
-    public void postModify(Map context, String attrName, Entry entry, boolean isCreate) {
-        if (!isCreate) {
-            Object done = context.get(KEY);
-            if (done == null) {
-                context.put(KEY, KEY);
-                if (entry instanceof Account) {
-                    try {
-                        handleAccountStatusClosed((Account)entry);
-                    } catch (ServiceException se) {
-                        // all exceptions are already swallowed by LdapProvisioning, just to be safe here.
-                        ZimbraLog.account.warn("unable to remove account address and aliases from all DLs for closed account", se);
-                        return;
-                    }
-                }    
-            }
+        if (context.isDoneAndSetIfNot(AccountStatus.class)) {
+            return;
+        }
+        
+        if (!context.isCreate()) {
+            if (entry instanceof Account) {
+                try {
+                    handleAccountStatusClosed((Account)entry);
+                } catch (ServiceException se) {
+                    // all exceptions are already swallowed by LdapProvisioning, just to be safe here.
+                    ZimbraLog.account.warn("unable to remove account address and aliases from all DLs for closed account", se);
+                    return;
+                }
+            }   
         }
     }
     
     private void handleAccountStatusClosed(Account account)  throws ServiceException {
-        LdapProvisioning prov = (LdapProvisioning) Provisioning.getInstance();
+        Provisioning prov = Provisioning.getInstance();
         String status = account.getAccountStatus(prov);
         
         if (status.equals(Provisioning.ACCOUNT_STATUS_CLOSED)) {
             ZimbraLog.misc.info("removing account address and all its aliases from all distribution lists");
             
-            String aliases[] = account.getMailAlias();
-            String addrs[] = new String[aliases.length+1];
-            addrs[0] = account.getName();
-            if (aliases.length > 0)
-                System.arraycopy(aliases, 0, addrs, 1, aliases.length);
+            String[] addrToRemove = new String[] {account.getName()};
             
-            prov.removeAddressesFromAllDistributionLists(addrs);
+            Set<String> dlIds = prov.getDistributionLists(account);
+            for (String dlId : dlIds) {
+                DistributionList dl = prov.get(Key.DistributionListBy.id, dlId);
+                if (dl != null) {
+                    // will remove all members that are aliases of the account too
+                    prov.removeMembers(dl, addrToRemove);
+                }
+            }
         }
     }
     

@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -18,10 +18,10 @@ package com.zimbra.cs.mailbox.calendar.cache;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.ParsedDateTime;
 import com.zimbra.common.util.Pair;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
 import com.zimbra.cs.mailbox.calendar.Invite;
-import com.zimbra.cs.mailbox.calendar.ParsedDateTime;
 
 public class Util {
 
@@ -43,12 +43,12 @@ public class Util {
 
     /**
      * Get start/end times in millis for months range around now.
-     * 
+     *
      * start time = midnight UTC of current month + N months
      * end time = midnight UTC of current month + (N + M) months
-     * 
+     *
      * where N = monthFrom (can be negative) and M = numMonths.
-     * 
+     *
      * @param now
      * @param monthFrom
      * @param numMonths
@@ -135,7 +135,7 @@ public class Util {
             if (dtStart != null) {
                 ICalTimeZone tz = dtStart.getTimeZone();
                 if (tz != null)
-                    return new Long(tz.getOffset(instanceStart));
+                    return Long.valueOf(tz.getOffset(instanceStart));
             }
         }
         return null;

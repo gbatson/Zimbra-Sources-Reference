@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
+import com.zimbra.common.calendar.ICalTimeZone;
+import com.zimbra.common.calendar.WellKnownTimeZones;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
@@ -35,7 +37,8 @@ import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Server;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailServiceException;
@@ -43,8 +46,8 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.mailbox.calendar.ICalTimeZone;
-import com.zimbra.cs.mailbox.calendar.WellKnownTimeZones;
+import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
+import com.zimbra.cs.mailbox.calendar.Util;
 import com.zimbra.cs.mailbox.calendar.cache.CalSummaryCache;
 import com.zimbra.cs.mailbox.calendar.cache.CalendarCacheManager;
 import com.zimbra.cs.mailbox.calendar.cache.CalendarData;
@@ -54,9 +57,9 @@ import com.zimbra.cs.mailbox.calendar.cache.CalSummaryCache.CalendarDataResult;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.service.util.ItemIdFormatter;
 import com.zimbra.cs.util.AccountUtil;
-import com.zimbra.cs.zclient.ZMailbox;
-import com.zimbra.cs.zclient.ZMailbox.ZGetMiniCalResult;
-import com.zimbra.cs.zclient.ZMailbox.ZMiniCalError;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.client.ZMailbox.ZGetMiniCalResult;
+import com.zimbra.client.ZMailbox.ZMiniCalError;
 import com.zimbra.soap.ZimbraSoapContext;
 
 /*
@@ -72,8 +75,8 @@ import com.zimbra.soap.ZimbraSoapContext;
 public class GetMiniCal extends CalendarRequest {
 
     @Override
-	public Element handle(Element request, Map<String, Object> context)
-			throws ServiceException {
+    public Element handle(Element request, Map<String, Object> context)
+            throws ServiceException {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Mailbox mbox = getRequestedMailbox(zsc);
         Account authAcct = getAuthenticatedAccount(zsc);
@@ -92,7 +95,7 @@ public class GetMiniCal extends CalendarRequest {
 
         ICalTimeZone tz = parseTimeZone(request);
         if (tz == null)
-            tz = ICalTimeZone.getAccountTimeZone(authAcct);  // requestor's time zone, not mailbox owner's
+            tz = Util.getAccountTimeZone(authAcct);  // requestor's time zone, not mailbox owner's
         TreeSet<String> busyDates = new TreeSet<String>();
 
         Provisioning prov = Provisioning.getInstance();
@@ -132,7 +135,8 @@ public class GetMiniCal extends CalendarRequest {
                     for (Iterator<Integer> iterFolderId = folderIds.iterator(); iterFolderId.hasNext(); ) {
                         int folderId = iterFolderId.next();
                         try {
-                            CalendarDataResult result = calCache.getCalendarSummary(octxt, acctId, folderId, MailItem.TYPE_APPOINTMENT, rangeStart, rangeEnd, true);
+                            CalendarDataResult result = calCache.getCalendarSummary(octxt, acctId, folderId,
+                                    MailItem.Type.APPOINTMENT, rangeStart, rangeEnd, true);
                             if (result != null) {
                                 // Found data in cache.
                                 iterFolderId.remove();
@@ -209,19 +213,25 @@ public class GetMiniCal extends CalendarRequest {
         }
 
         for (String datestamp : busyDates) {
-        	Element dateElem = response.addElement(MailConstants.E_CAL_MINICAL_DATE);
-        	dateElem.setText(datestamp);
+            Element dateElem = response.addElement(MailConstants.E_CAL_MINICAL_DATE);
+            dateElem.setText(datestamp);
         }
 
         return response;
-	}
+    }
 
-	private static void addBusyDates(Calendar cal, CalendarData calData, long rangeStart, long rangeEnd, Set<String> busyDates)
-	throws ServiceException {
+    private static void addBusyDates(Calendar cal, CalendarData calData, long rangeStart, long rangeEnd, Set<String> busyDates)
+    throws ServiceException {
         for (Iterator<CalendarItemData> itemIter = calData.calendarItemIterator(); itemIter.hasNext(); ) {
             CalendarItemData item = itemIter.next();
             for (Iterator<InstanceData> instIter = item.instanceIterator(); instIter.hasNext(); ) {
                 InstanceData inst = instIter.next();
+                // ignore declined meetings.
+                String partStat = inst.getPartStat();
+                if (partStat == null)
+                    partStat = item.getDefaultData().getPartStat();
+                if (IcalXmlStrMap.PARTSTAT_DECLINED.equals(partStat))
+                    continue;   
                 Long start = inst.getDtStart();
                 if (start != null) {
                     String datestampStart = getDatestamp(cal, start);
@@ -235,23 +245,23 @@ public class GetMiniCal extends CalendarRequest {
                 }
             }
         }
-	}
+    }
 
-	private static void doLocalFolder(OperationContext octxt, ICalTimeZone tz, Mailbox mbox, int folderId,
-									  long rangeStart, long rangeEnd, Set<String> busyDates)
-	throws ServiceException {
-		Calendar cal = new GregorianCalendar(tz);
+    private static void doLocalFolder(OperationContext octxt, ICalTimeZone tz, Mailbox mbox, int folderId,
+            long rangeStart, long rangeEnd, Set<String> busyDates) throws ServiceException {
+        Calendar cal = new GregorianCalendar(tz);
         CalendarDataResult result = mbox.getCalendarSummaryForRange(
-                octxt, folderId, MailItem.TYPE_APPOINTMENT, rangeStart, rangeEnd);
-        if (result != null)
+                octxt, folderId, MailItem.Type.APPOINTMENT, rangeStart, rangeEnd);
+        if (result != null) {
             addBusyDates(cal, result.data, rangeStart, rangeEnd, busyDates);
-	}
+        }
+    }
 
     private static void doRemoteFolders(
             ZimbraSoapContext zsc, String remoteAccountId, List<String> remoteFolders, long rangeStart, long rangeEnd,
             Set<String> busyDates, Element response, Map<ItemId, ItemId> reverseIidMap, ItemIdFormatter ifmt) {
         try {
-            Account target = Provisioning.getInstance().get(Provisioning.AccountBy.id, remoteAccountId);
+            Account target = Provisioning.getInstance().get(Key.AccountBy.id, remoteAccountId);
             if (target == null)
                 throw AccountServiceException.NO_SUCH_ACCOUNT(remoteAccountId);
             ZMailbox.Options zoptions = new ZMailbox.Options(zsc.getAuthToken().toZAuthToken(), AccountUtil.getSoapUri(target));
@@ -293,15 +303,15 @@ public class GetMiniCal extends CalendarRequest {
         }
     }
 
-	private static String getDatestamp(Calendar cal, long millis) {
-		cal.setTimeInMillis(millis);
-		int year = cal.get(Calendar.YEAR);
-		int month = cal.get(Calendar.MONTH) + 1;
-		int day = cal.get(Calendar.DAY_OF_MONTH);
-		return Integer.toString(year * 10000 + month * 100 + day);
-	}
+    private static String getDatestamp(Calendar cal, long millis) {
+        cal.setTimeInMillis(millis);
+        int year = cal.get(Calendar.YEAR);
+        int month = cal.get(Calendar.MONTH) + 1;
+        int day = cal.get(Calendar.DAY_OF_MONTH);
+        return Integer.toString(year * 10000 + month * 100 + day);
+    }
 
-	private static ICalTimeZone parseTimeZone(Element request) throws ServiceException {
+    private static ICalTimeZone parseTimeZone(Element request) throws ServiceException {
         Element tzElem = request.getOptionalElement(MailConstants.E_CAL_TZ);
         if (tzElem != null) {
             String tzid = tzElem.getAttribute(MailConstants.A_ID, null);
@@ -311,30 +321,30 @@ public class GetMiniCal extends CalendarRequest {
                     return knownTZ;
             }
 
-            // custom timezone            
+            // custom timezone
             String stdOffset = tzElem.getAttribute(MailConstants.A_CAL_TZ_STDOFFSET, null);
             if (stdOffset == null)
                 throw ServiceException.INVALID_REQUEST(
                         "Unknown TZ: \"" + tzid + "\" and no " + MailConstants.A_CAL_TZ_STDOFFSET + " specified", null);
-            
+
             return CalendarUtils.parseTzElement(tzElem);
         } else {
             return null;
         }
-	}
+    }
 
-	private static class Resolved {
-	    public ItemId iid;
-	    public ServiceException error;
-	    Resolved(ItemId iid, ServiceException e) {
-	        this.iid = iid;
-	        this.error = e;
-	    }
-	}
+    private static class Resolved {
+        public ItemId iid;
+        public ServiceException error;
+        Resolved(ItemId iid, ServiceException e) {
+            this.iid = iid;
+            this.error = e;
+        }
+    }
 
-	// Resolve mountpoints for each requested folder.  Resolution can result in error per folder.  Typical errors
-	// include PERM_DENIED (if sharer revoked permission), NO_SUCH_FOLDER (if sharer deleted shared folder), and
-	// NO_SUCH_ACCOUNT (if sharer account has been deleted).
+    // Resolve mountpoints for each requested folder.  Resolution can result in error per folder.  Typical errors
+    // include PERM_DENIED (if sharer revoked permission), NO_SUCH_FOLDER (if sharer deleted shared folder), and
+    // NO_SUCH_ACCOUNT (if sharer account has been deleted).
     private static Map<ItemId, Resolved> resolveMountpoints(OperationContext octxt, Mailbox mbox, List<ItemId> folderIids) {
         Map<ItemId, Resolved> result = new HashMap<ItemId, Resolved>();
         for (ItemId iidFolder : folderIids) {
@@ -355,7 +365,7 @@ public class GetMiniCal extends CalendarRequest {
                             if (!mp.isLocal()) {
                                 // done resolving if pointing to a different account
                                 targetAccountId = mp.getOwnerId();
-                                Account targetAcct = Provisioning.getInstance().get(Provisioning.AccountBy.id, targetAccountId);
+                                Account targetAcct = Provisioning.getInstance().get(Key.AccountBy.id, targetAccountId);
                                 if (targetAcct == null)
                                     error = AccountServiceException.NO_SUCH_ACCOUNT(targetAccountId);
                                 break;

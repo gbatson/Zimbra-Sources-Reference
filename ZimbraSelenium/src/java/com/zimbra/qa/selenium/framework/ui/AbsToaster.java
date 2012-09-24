@@ -1,24 +1,8 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 import java.awt.event.KeyEvent;
 
-import com.zimbra.qa.selenium.framework.util.HarnessException;
+import com.zimbra.qa.selenium.framework.util.*;
 
 
 /**
@@ -27,8 +11,21 @@ import com.zimbra.qa.selenium.framework.util.HarnessException;
  *
  */
 public abstract class AbsToaster extends AbsSeleniumObject {
-	protected String locator   = "css=div[id='z_toast_text']";
-    protected String idVisibleLocator = "z_toast";
+	
+	public static class Locators {
+		
+		public static final String ToastDivContainerCSS = "css=div[id='z_toast']";
+		public static final String idVisibleLocator = "z_toast";
+		
+		public static final String ToastTextLocatorCSS   = ToastDivContainerCSS + " div[id='z_toast_text']";
+
+		public static final String ToastUndoLocatorCSS = ToastDivContainerCSS + " div[id='z_toast_text'] a";
+		
+
+	}
+    
+    
+    
 	/**
 	 * A pointer to the application that created this object
 	 */
@@ -52,13 +49,13 @@ public abstract class AbsToaster extends AbsSeleniumObject {
 	public String zGetToastMessage() throws HarnessException {
 		String text=null;		
 		
-		zWaitForElementVisible(locator);
-    	text=sGetText(locator);
+		zWaitForElementVisible(Locators.ToastTextLocatorCSS);
+    	text=sGetText(Locators.ToastTextLocatorCSS);
     	    
     	//make the toasted message invisible if it contains "Undo" link
     	sKeyPressNative(String.valueOf(KeyEvent.VK_ESCAPE));
     	    	
-    	zWaitForElementInvisible(locator);
+    	zWaitForElementInvisible(Locators.ToastTextLocatorCSS);
 		return text;					
 	}
 	
@@ -69,7 +66,8 @@ public abstract class AbsToaster extends AbsSeleniumObject {
 	 * @throws HarnessException
 	 */
 	public void zClickUndo() throws HarnessException {
-		throw new HarnessException("implement me!");
+		sClick(Locators.ToastUndoLocatorCSS);
+		zWaitForBusyOverlay();
 	}
 	
     public boolean isContainedText(String text) throws HarnessException {
@@ -82,10 +80,60 @@ public abstract class AbsToaster extends AbsSeleniumObject {
     }
 	
     public boolean zIsActive() throws HarnessException {        
-    	return zIsVisiblePerPosition(locator,0,0);
+    	return zIsVisiblePerPosition(Locators.ToastDivContainerCSS,0,0);
     	
     }
 
+	public void zWaitForActive() throws HarnessException {
+		zWaitForActive(AbsPage.PageLoadDelay);
+	}
+    
+	public void zWaitForActive(long millis) throws HarnessException {
+		if ( zIsActive() ) {
+			return; // Toaster is already active
+		}
+		
+		do {
+			SleepUtil.sleep(SleepUtil.SleepGranularity);
+			millis = millis - SleepUtil.SleepGranularity;
+			if ( zIsActive() ) {
+				return; // Toaster became active
+			}
+		} while (millis > SleepUtil.SleepGranularity);
+		
+		SleepUtil.sleep(millis);
+		if ( zIsActive() ) {
+			return;	// Toaster became active
+		}
+
+		throw new HarnessException("Toaster never became active");
+	}
+
+	public void zWaitForClose() throws HarnessException {
+		zWaitForClose(AbsPage.PageLoadDelay);
+	}
+    
+	public void zWaitForClose(long millis) throws HarnessException {
+		if ( !zIsActive() ) {
+			return; // Toaster is already closed
+		}
+		
+		do {
+			SleepUtil.sleep(SleepUtil.SleepGranularity);
+			millis = millis - SleepUtil.SleepGranularity;
+			if ( !zIsActive() ) {
+				return; // Toaster closed
+			}
+		} while (millis > SleepUtil.SleepGranularity);
+		
+		SleepUtil.sleep(millis);
+		if ( !zIsActive() ) {
+			return;	// Toaster closed
+		}
+
+		throw new HarnessException("Toaster never closed");
+	}
+	
     public boolean clickLink(String innerText) throws HarnessException {
     	throw new HarnessException("fill in later");
     }

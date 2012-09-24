@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010, 2011 Zimbra, Inc.
  *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -31,9 +31,10 @@ import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 
-import org.apache.jsieve.mail.Action;
-
 import com.google.common.collect.Sets;
+import com.zimbra.client.ZFolder;
+import com.zimbra.client.ZMailbox;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mime.MimeConstants;
 import com.zimbra.common.mime.shim.JavaMailInternetAddress;
@@ -42,7 +43,6 @@ import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.ArrayUtil;
 import com.zimbra.common.util.CharsetUtil;
-import com.zimbra.common.util.DateParser;
 import com.zimbra.common.util.L10nUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
@@ -51,9 +51,9 @@ import com.zimbra.common.zmime.ZInternetHeader;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.filter.jsieve.ActionFlag;
 import com.zimbra.cs.mailbox.DeliveryContext;
+import com.zimbra.cs.mailbox.DeliveryOptions;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
 import com.zimbra.cs.mailbox.MailSender;
@@ -61,7 +61,6 @@ import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.Message;
 import com.zimbra.cs.mailbox.Mountpoint;
 import com.zimbra.cs.mailbox.OperationContext;
-import com.zimbra.cs.mailbox.Tag;
 import com.zimbra.cs.mime.MPartInfo;
 import com.zimbra.cs.mime.Mime;
 import com.zimbra.cs.mime.ParsedMessage;
@@ -69,121 +68,10 @@ import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.service.util.ItemId;
 import com.zimbra.cs.util.AccountUtil;
 import com.zimbra.cs.util.JMSession;
-import com.zimbra.cs.zclient.ZFolder;
-import com.zimbra.cs.zclient.ZMailbox;
 
-public class FilterUtil {
+public final class FilterUtil {
 
-    public static final DateParser SIEVE_DATE_PARSER = new DateParser("yyyyMMdd");
-
-    public enum Condition {
-        allof, anyof;
-
-        public static Condition fromString(String value)
-        throws ServiceException {
-            if (value == null) {
-                return null;
-            }
-            try {
-                return Condition.valueOf(value);
-            } catch (IllegalArgumentException e) {
-                throw ServiceException.PARSE_ERROR(
-                    "Invalid value: " + value + ", valid values: " + Arrays.asList(Condition.values()), e);
-            }
-        }
-
-    }
-
-    public enum Flag {
-        read, flagged;
-
-        public static Flag fromString(String value)
-        throws ServiceException {
-            if (value == null) {
-                return null;
-            }
-            try {
-                return Flag.valueOf(value);
-            } catch (IllegalArgumentException e) {
-                throw ServiceException.PARSE_ERROR(
-                    "Invalid value: " + value + ", valid values: " + Arrays.asList(Flag.values()), e);
-            }
-        }
-    }
-
-    public enum StringComparison {
-        is, contains, matches;
-
-        public static StringComparison fromString(String value)
-        throws ServiceException {
-            if (value == null) {
-                return null;
-            }
-            try {
-                return StringComparison.valueOf(value);
-            } catch (IllegalArgumentException e) {
-                throw ServiceException.PARSE_ERROR(
-                    "Invalid value: "+ value +", valid values: " + Arrays.asList(StringComparison.values()), e);
-            }
-        }
-    }
-
-    public enum Comparator {
-        ioctet, iasciicasemap;
-
-        private static String VALUE_STR_CASE_SENSITIVE = "i;octet";
-        private static String VALUE_STR_CASE_INSENSITIVE = "i;ascii-casemap";
-
-        public static Comparator fromString(String value)
-        throws ServiceException {
-            if (value == null)
-                return null;
-            if (VALUE_STR_CASE_SENSITIVE.equals(value))
-                return ioctet;
-            else if (VALUE_STR_CASE_INSENSITIVE.equals(value))
-                return iasciicasemap;
-            else
-                throw ServiceException.PARSE_ERROR("Invalid Comparator value: " + value, null);
-        }
-
-        @Override
-        public String toString() {
-            return this == ioctet ? VALUE_STR_CASE_SENSITIVE : VALUE_STR_CASE_INSENSITIVE;
-        }
-    }
-
-    public enum NumberComparison {
-        over, under;
-
-        public static NumberComparison fromString(String value)
-        throws ServiceException {
-            if (value == null) {
-                return null;
-            }
-            try {
-                return NumberComparison.valueOf(value);
-            } catch (IllegalArgumentException e) {
-                throw ServiceException.PARSE_ERROR(
-                    "Invalid value: "+ value +", valid values: " + Arrays.asList(NumberComparison.values()), e);
-            }
-        }
-    }
-
-    public enum DateComparison {
-        before, after;
-
-        public static DateComparison fromString(String value)
-        throws ServiceException {
-            if (value == null) {
-                return null;
-            }
-            try {
-                return DateComparison.valueOf(value);
-            } catch (IllegalArgumentException e) {
-                throw ServiceException.PARSE_ERROR(
-                    "Invalid value: "+ value +", valid values: " + Arrays.asList(StringComparison.values()), e);
-            }
-        }
+    private FilterUtil() {
     }
 
     /**
@@ -261,7 +149,7 @@ public class FilterUtil {
      * @return the id of the new message, or <tt>null</tt> if it was a duplicate
      */
     public static ItemId addMessage(DeliveryContext context, Mailbox mbox, ParsedMessage pm, String recipient,
-                                    String folderPath, boolean noICal, int flags, String tags, int convId, OperationContext octxt)
+                                    String folderPath, boolean noICal, int flags, String[] tags, int convId, OperationContext octxt)
     throws ServiceException {
         // Do initial lookup.
         Pair<Folder, String> folderAndPath = mbox.getFolderByPathLongestMatch(
@@ -298,8 +186,7 @@ public class FilterUtil {
                     throw ServiceException.FAILURE("Unable to get message content", e);
                 }
                 String msgId = remoteMbox.addMessage(remoteFolder.getId(),
-                    com.zimbra.cs.mailbox.Flag.bitmaskToFlags(flags),
-                    null, 0, content, false);
+                        com.zimbra.cs.mailbox.Flag.toString(flags), null, 0, content, false);
                 return new ItemId(msgId, remoteAccountId);
             } else {
                 String msg = String.format("Unable to find remote folder %s for mountpoint %s.",
@@ -311,10 +198,12 @@ public class FilterUtil {
                 // Only part of the folder path matched.  Auto-create the remaining path.
                 ZimbraLog.filter.info("Could not find folder %s.  Automatically creating it.",
                     folderPath);
-                folder = mbox.createFolder(octxt, folderPath, (byte) 0, MailItem.TYPE_MESSAGE);
+                folder = mbox.createFolder(octxt, folderPath, new Folder.FolderOptions().setDefaultView(MailItem.Type.MESSAGE));
             }
             try {
-                Message msg = mbox.addMessage(octxt, pm, folder.getId(), noICal, flags, tags, convId, recipient, null, context);
+                DeliveryOptions dopt = new DeliveryOptions().setFolderId(folder).setNoICal(noICal);
+                dopt.setFlags(flags).setTags(tags).setConversationId(convId).setRecipientEmail(recipient);
+                Message msg = mbox.addMessage(octxt, pm, dopt, context);
                 if (msg == null) {
                     return null;
                 } else {
@@ -383,12 +272,13 @@ public class FilterUtil {
             }
         }
 
-        MailSender sender = sourceMbox.getMailSender().setSaveToSent(false).setSkipSendAsCheck(true);
+        MailSender sender = sourceMbox.getMailSender().setSaveToSent(false).setRedirectMode(true).setSkipHeaderUpdate(true);
 
         try {
             if (Provisioning.getInstance().getLocalServer().isMailRedirectSetEnvelopeSender()) {
                 if (isDeliveryStatusNotification(msg) && LC.filter_null_env_sender_for_dsn_redirect.booleanValue()) {
                     sender.setEnvelopeFrom("<>");
+                    sender.setDsnNotifyOptions(MailSender.DsnNotifyOption.NEVER);
                 } else {
                     // Set envelope sender to the account name (bug 31309).
                     Account account = sourceMbox.getAccount();
@@ -435,7 +325,7 @@ public class FilterUtil {
             throw ServiceException.FAILURE(error, null);
         }
         if (isDeliveryStatusNotification(mimeMessage)) {
-            ZimbraLog.filter.debug("Not auto-relying to a DSN message");
+            ZimbraLog.filter.debug("Not auto-replying to a DSN message");
             return;
         }
 
@@ -472,6 +362,7 @@ public class FilterUtil {
 
         MailSender mailSender = mailbox.getMailSender();
         mailSender.setReplyType(MailSender.MSGTYPE_REPLY);
+        mailSender.setDsnNotifyOptions(MailSender.DsnNotifyOption.NEVER);
         mailSender.sendMimeMessage(octxt, mailbox, replyMsg);
     }
 
@@ -527,7 +418,7 @@ public class FilterUtil {
                     notification.setSubject(subject, getCharset(account, subject));
                 }
             }
-            mailSender.setSkipSendAsCheck(true);
+            mailSender.setRedirectMode(true);
             mailSender.setRecipients(emailAddr);
         }
 
@@ -541,6 +432,7 @@ public class FilterUtil {
         } else {
             mailSender.setEnvelopeFrom(account.getName());
         }
+        mailSender.setDsnNotifyOptions(MailSender.DsnNotifyOption.NEVER);
         mailSender.sendMimeMessage(octxt, mailbox, notification);
     }
 
@@ -639,26 +531,28 @@ public class FilterUtil {
         return false;
     }
 
-    public static int getFlagBitmask(Collection<ActionFlag> flagActions, int startingBitMask, Mailbox mailbox) {
-        int flagBits = startingBitMask;
-        for (Action action : flagActions) {
-            ActionFlag flagAction = (ActionFlag) action;
-            int flagId = flagAction.getFlagId();
-            try {
-                com.zimbra.cs.mailbox.Flag flag = mailbox.getFlagById(flagId);
-                if (flagAction.isSetFlag())
-                    flagBits |= flag.getBitmask();
-                else
-                    flagBits &= (~flag.getBitmask());
-            } catch (ServiceException e) {
-                ZimbraLog.filter.warn("Unable to flag message", e);
+    public static int getFlagBitmask(Collection<ActionFlag> actions, int startingBitMask) {
+        int bitmask = startingBitMask;
+        for (ActionFlag action : actions) {
+            if (action.isSet()) {
+                bitmask |= action.getFlag().toBitmask();
+            } else {
+                bitmask &= ~action.getFlag().toBitmask();
             }
         }
-        return flagBits;
+        return bitmask;
     }
 
-    public static String getTagsUnion(String tags1, String tags2) {
-        return Tag.bitmaskToTags(Tag.tagsToBitmask(tags1) | Tag.tagsToBitmask(tags2));
+    public static String[] getTagsUnion(String[] tags1, String[] tags2) {
+        if (tags2 == null) {
+            return tags1;
+        } else if (tags1 == null) {
+            return tags2;
+        }
+
+        Set<String> tags = Sets.newHashSet(tags1);
+        tags.addAll(Arrays.asList(tags2));
+        return tags.toArray(new String[tags.size()]);
     }
 }
 

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -20,6 +20,7 @@ import java.io.OutputStream;
 
 import javax.security.sasl.SaslServer;
 
+import com.zimbra.common.account.Key;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AuthToken;
@@ -88,7 +89,7 @@ public class ZimbraAuthenticator extends Authenticator {
         }
 
         // make sure that the authentication account is valid
-        Account authAccount = prov.get(Provisioning.AccountBy.name, authenticateId, at);
+        Account authAccount = prov.get(Key.AccountBy.name, authenticateId, at);
         if (authAccount == null)
             return null;
 

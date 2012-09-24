@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Web Client
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -69,6 +69,7 @@ ZmListView = function(params) {
 	this._handleEventType[this.type] = true;
 	this._disallowSelection = {};
 	this._disallowSelection[ZmItem.F_FLAG] = true;
+	this._disallowSelection[ZmItem.F_MSG_PRIORITY] = true;
 	this._selectAllEnabled = false;
 
 	if (params.dropTgt) {
@@ -135,7 +136,7 @@ function(list, sortField) {
 
 	this._sortByString = this._controller._currentSearch && this._controller._currentSearch.sortBy;
     var settings = appCtxt.getSettings();
-	if(this.view && ( settings && settings.persistImplicitSortPrefs(this.view) ) )
+	if(!appCtxt.isExternalAccount() && this.view && ( settings && settings.persistImplicitSortPrefs(this.view) ) )
         appCtxt.set(ZmSetting.SORTING_PREF, this._sortByString, this.view);
 
 	this.setSelectionHdrCbox(false);
@@ -156,7 +157,7 @@ function(list, sortField) {
 			}
 		} else {
 			var lvList = list;
-			if (list instanceof ZmList) {
+			if (list && list.isZmList) {
 				list.addChangeListener(this._listChangeListener);
 				lvList = list.getSubList(0, list.size());
 			}
@@ -165,7 +166,7 @@ function(list, sortField) {
 		this._setRowHeight();
 	} else {
 		var subList;
-		if (list instanceof ZmList) {
+		if (list && list.isZmList) {
 			list.addChangeListener(this._listChangeListener);
 			subList = list.getSubList(this.offset, this.getLimit());
 		} else {
@@ -240,7 +241,7 @@ ZmListView.prototype._changeListener =
 function(ev) {
 
 	var item = this._getItemFromEvent(ev);
-	if (!item || ev.handled || !this._handleEventType[item.type] && (this.type != ZmItem.MIXED)) { return; }
+	if (!item || ev.handled || !this._handleEventType[item.type]) { return; }
 
 	if (ev.event == ZmEvent.E_TAGS || ev.event == ZmEvent.E_REMOVE_ALL) {
 		DBG.println(AjxDebug.DBG2, "ZmListView: TAG");
@@ -257,6 +258,8 @@ function(ev) {
 				this._setImage(item, ZmItem.F_FLAG, on ? "FlagRed" : "FlagDis");
 			} else if (flag == ZmItem.FLAG_ATTACH) {
 				this._setImage(item, ZmItem.F_ATTACHMENT, on ? "Attachment" : null);
+			} else if (flag == ZmItem.FLAG_PRIORITY) {
+				this._setImage(item, ZmItem.F_MSG_PRIORITY, on ? "Priority" : "PriorityDis");
 			}
 		}
 	}
@@ -272,16 +275,23 @@ function(ev) {
 				// We've moved the item into this folder
 				if (this._getRowIndex(item) === null) { // Not already here
 					this.addItem(item);
+					// TODO: couldn't we just find the sort index and insert it?
 					needsSort = true;
 				}
 			} else {
-				this.removeItem(item, true, ev.batchMode);
-				// if we've removed it from the view, we should remove it from the reference
-				// list as well so it doesn't get resurrected via replenishment *unless*
-				// we're dealing with a canonical list (i.e. contacts)
-				var itemList = this.getItemList();
-				if (ev.event != ZmEvent.E_MOVE || !itemList.isCanonical) {
-					itemList.remove(item);
+				// remove the item if the user is working in this view, 
+				// if we know the item no longer matches the search, or if the item was hard-deleted
+				if ((ev.event == ZmEvent.E_DELETE) || (this.view == appCtxt.getCurrentViewId()) ||
+						(this._controller._currentSearch.matches(item) === false)) {
+
+					this.removeItem(item, true, ev.batchMode);
+					// if we've removed it from the view, we should remove it from the reference
+					// list as well so it doesn't get resurrected via replenishment *unless*
+					// we're dealing with a canonical list (i.e. contacts)
+					var itemList = this.getItemList();
+					if (ev.event != ZmEvent.E_MOVE || !itemList.isCanonical) {
+						itemList.remove(item);
+					}
 				}
 			}
 		}
@@ -331,6 +341,19 @@ function(ev) {
 	return items;
 };
 
+// refreshes the content of the given field for the given item
+ZmListView.prototype._updateField =
+function(item, field) {
+	var fieldId = this._getFieldId(item, field);
+	var el = document.getElementById(fieldId);
+	if (el) {
+		var html = [];
+		var colIdx = this._headerHash[field] && this._headerHash[field]._index;
+		this._getCellContents(html, 0, item, field, colIdx, new Date());
+		el.innerHTML = html.join("");
+	}
+};
+
 ZmListView.prototype._checkReplenishOnTimer =
 function(ev) {
 	if (!this.allSelected) {
@@ -357,7 +380,7 @@ function(skipSelection) {
 	if (this.size() == 0) {
 		this._controller._handleEmptyList(this);
 	} else {
-		this._controller._resetNavToolBarButtons(this._controller._getViewType());
+		this._controller._resetNavToolBarButtons();
 	}
 	if (!skipSelection) {
 		this._setNextSelection();
@@ -379,7 +402,7 @@ function(ev) {
 	if (ev.event == ZmEvent.E_MODIFY) {
 		if (!fields) { return; }
 		if (fields[ZmOrganizer.F_TOTAL]) {
-			this._controller._resetNavToolBarButtons(this._controller._getViewType());
+			this._controller._resetNavToolBarButtons();
 		}
 	}
 };
@@ -389,24 +412,28 @@ function(ev) {
 	if (ev.type != ZmEvent.S_TAG) return;
 
 	var fields = ev.getDetail("fields");
-	if (ev.event == ZmEvent.E_MODIFY && (fields && fields[ZmOrganizer.F_COLOR])) {
-		var divs = this._getChildren();
-		var tag = ev.getDetail("organizers")[0];
-		for (var i = 0; i < divs.length; i++) {
-			var item = this.getItemFromElement(divs[i]);
-			if (item && item.tags && (item.tags.length == 1) && (item.tags[0] == tag.id))
-				this._setImage(item, ZmItem.F_TAG, item.getTagImageInfo());
+
+	var divs = this._getChildren();
+	var tag = ev.getDetail("organizers")[0];
+	for (var i = 0; i < divs.length; i++) {
+		var item = this.getItemFromElement(divs[i]);
+		if (!item || !item.tags || !item.hasTag(tag.name)) {
+			continue;
 		}
-	} else if(ev.event == ZmEvent.E_DELETE) {
-		var divs = this._getChildren();
-		var tag = ev.getDetail("organizers")[0];
-		for (var i=0; i < divs.length; i++) {
-			var item = this.getItemFromElement(divs[i]);
-			var nTagId = ZmOrganizer.normalizeId(tag.id);
-			if (item && item.tags && item.hasTag(nTagId)) {
-				 item.tagLocal(nTagId, false);
-				 this._setImage(item, ZmItem.F_TAG, item.getTagImageInfo());
-			}
+		var updateRequired = false;
+		if (ev.event == ZmEvent.E_MODIFY && (fields && (fields[ZmOrganizer.F_COLOR] || fields[ZmOrganizer.F_NAME]))) {
+			//rename could change the color (for remote shared items, from the remote gray icon to local color and vice versa)
+			updateRequired = item.tags.length == 1;
+		}
+		else if (ev.event == ZmEvent.E_DELETE) {
+			updateRequired = true;
+		}
+		else if (ev.event == ZmEvent.E_CREATE) {
+			//this could affect item if it had a tag not on tag list (remotely created on shared item, either shared by this user or shared to this user)
+			updateRequired = true;
+		}
+		if (updateRequired) {
+			this._setImage(item, ZmItem.F_TAG, item.getTagImageInfo());
 		}
 	}
 };
@@ -728,7 +755,8 @@ function(clickedEl, bContained, ev) {
  */
 ZmListView.prototype._isAllChecked = 
 function() {
-	return this.getSelection().length == this.getList().size();
+	var list = this.getList();
+	return (list && (this.getSelection().length == list.size()));
 };
 
 
@@ -797,7 +825,8 @@ function(allResults) {
 	if (this._selectAllEnabled) {
 		var curResult = this._controller._activeSearch;
 		if (curResult && curResult.getAttribute("more")) {
-			var toastMsg = AjxMessageFormat.format(ZmMsg.allPageSelected, this.getList().size());
+			var list = this.getList();
+			var toastMsg = AjxMessageFormat.format(ZmMsg.allPageSelected, list ? list.size() : ZmMsg.all);
 			if (allResults) {
 				this.allSelected = true;
 				toastMsg = ZmMsg.allSearchSelected;
@@ -865,7 +894,7 @@ function (sortFields, defaultSortField) {
 
 	for (var i = 0; i < sortFields.length; i++) {
 		var column = sortFields[i];
-		var label = AjxMessageFormat.format(ZmMsg.arrangedBy, ZmMsg[column.msg]);
+		var label = AjxMessageFormat.format(ZmMsg.arrangeBy, ZmMsg[column.msg]);
 		var mi = menu.createMenuItem(column.field, {text:label, style:DwtMenuItem.RADIO_STYLE});
 		if (column.field == defaultSortField) {
 			mi.setChecked(true, true);
@@ -885,11 +914,12 @@ function(ev) {
 	var column = this._headerHash[ZmItem.F_SORTED_BY];
 	var cell = document.getElementById(DwtId.getListViewHdrId(DwtId.WIDGET_HDR_LABEL, this._view, column._field));
 	if (cell) {
-		cell.innerHTML = ev.item.getText();
+        var text = ev.item.getText();
+        cell.innerHTML = text && text.replace(ZmMsg.sortBy, ZmMsg.sortedBy);
 	}
 	column._sortable = ev.item.getData(ZmListView.KEY_ID);
 	this._sortColumn(column, this._bSortAsc);
-}
+};
 
 
 ZmListView.prototype._getActionMenuForColHeader =
@@ -902,13 +932,14 @@ function(force) {
 			var hCol = this._headerList[i];
 			// lets not allow columns w/ relative width to be removed (for now) - it messes stuff up
 			if (hCol._width) {
-				var mi = this._colHeaderActionMenu.createMenuItem(hCol._id, {text:hCol._name, style:DwtMenuItem.CHECK_STYLE});
+				var id = ZmId.getMenuItemId(this._view + "_header", hCol._field);
+				var mi = this._colHeaderActionMenu.createMenuItem(id, {text:hCol._name, style:DwtMenuItem.CHECK_STYLE});
 				mi.setData(ZmListView.KEY_ID, hCol._id);
 				mi.setChecked(hCol._visible, true);
                 if (hCol._noRemove) {
 					mi.setEnabled(false);
 				}
-                this._colHeaderActionMenu.addSelectionListener(hCol._id, actionListener);
+                this._colHeaderActionMenu.addSelectionListener(id, actionListener);
 			}
 		}
 	}
@@ -963,6 +994,11 @@ function(ev) {
 	return tooltip;
 };
 
+ZmListView.prototype.getTooltipBase =
+function(hoverEv) {
+	return hoverEv ? DwtUiEvent.getTargetWithProp(hoverEv.object, "id") : DwtListView.prototype.getTooltipBase.apply(this, arguments);
+};
+
 ZmListView.prototype._getHeaderToolTip =
 function(field, itemIdx, isOutboundFolder) {
 
@@ -973,7 +1009,7 @@ function(field, itemIdx, isOutboundFolder) {
 	} else if (field == ZmItem.F_FLAG) {
         tooltip = ZmMsg.flagHeaderToolTip;
     } else if (field == ZmItem.F_PRIORITY){
-        tooltip = ZmMsg.priority;
+        tooltip = ZmMsg.priorityHeaderTooltip;
     } else if (field == ZmItem.F_TAG) {
         tooltip = ZmMsg.tag;
     } else if (field == ZmItem.F_ATTACHMENT) {
@@ -998,7 +1034,9 @@ function(field, itemIdx, isOutboundFolder) {
 		tooltip = ZmMsg.account;
     } else if (field == ZmItem.F_FOLDER) {
         tooltip = ZmMsg.folder;
-    }
+    } else if (field == ZmItem.F_MSG_PRIORITY) {
+		tooltip = ZmMsg.messagePriority
+	} 
     
     return tooltip;
 };
@@ -1041,18 +1079,18 @@ function(item) {
 	if (!item) { return; }
 	var numTags = item.tags && item.tags.length;
 	if (!numTags) { return; }
-	var account = appCtxt.multiAccounts ? item.getAccount() : null;
-	var tagList = appCtxt.getTagTree(account);
+	var tagList = appCtxt.getAccountTagList(item);
 	var tags = item.tags;
 	var html = [];
 	var idx = 0;
     for (var i = 0; i < numTags; i++) {
-		var tag = tagList.getById(tags[i]);
+		var tag = tagList.getByNameOrRemote(tags[i]);
         if (!tag) { continue; }        
+		var nameText = tag.notLocal ? AjxMessageFormat.format(ZmMsg.tagNotLocal, tag.name) : tag.name;
         html[idx++] = "<table><tr><td>";
 		html[idx++] = AjxImg.getImageHtml(tag.getIconWithColor());
 		html[idx++] = "</td><td valign='middle'>";
-		html[idx++] = AjxStringUtil.htmlEncode(tag.name);
+		html[idx++] = AjxStringUtil.htmlEncode(nameText);
 		html[idx++] = "</td></tr></table>";
 	}
 	return html.join("");
@@ -1147,17 +1185,36 @@ function(columnItem, bSortAsc, callback) {
 	// change the sort preference for this view in the settings
 	var sortBy;
 	switch (columnItem._sortable) {
-		case ZmItem.F_FROM:		sortBy = bSortAsc ? ZmSearch.NAME_ASC : ZmSearch.NAME_DESC; break;
-		case ZmItem.F_NAME:		sortBy = bSortAsc ? ZmSearch.SUBJ_ASC : ZmSearch.SUBJ_DESC; break; //used for Briefcase only now. SUBJ is mappaed to the filename of the document on the server side
-		case ZmItem.F_SUBJECT:	sortBy = bSortAsc ? ZmSearch.SUBJ_ASC : ZmSearch.SUBJ_DESC;	break;
-		case ZmItem.F_DATE:		sortBy = bSortAsc ? ZmSearch.DATE_ASC : ZmSearch.DATE_DESC;	break;
-		case ZmItem.F_SIZE:		sortBy = bSortAsc ? ZmSearch.SIZE_ASC : ZmSearch.SIZE_DESC;	break;
-		case ZmItem.F_SORTED_BY:sortBy = bSortAsc ? ZmSearch.DATE_ASC : ZmSearch.DATE_DESC;	break;
+		case ZmItem.F_FROM:		    sortBy = bSortAsc ? ZmSearch.NAME_ASC : ZmSearch.NAME_DESC; break;
+        case ZmItem.F_TO:           sortBy = bSortAsc ? ZmSearch.RCPT_ASC : ZmSearch.RCPT_DESC; break;
+		case ZmItem.F_NAME:		    sortBy = bSortAsc ? ZmSearch.SUBJ_ASC : ZmSearch.SUBJ_DESC; break; //used for Briefcase only now. SUBJ is mappaed to the filename of the document on the server side
+		case ZmItem.F_SUBJECT:	    sortBy = bSortAsc ? ZmSearch.SUBJ_ASC : ZmSearch.SUBJ_DESC;	break;
+		case ZmItem.F_DATE:		    sortBy = bSortAsc ? ZmSearch.DATE_ASC : ZmSearch.DATE_DESC;	break;
+		case ZmItem.F_SIZE:		    sortBy = bSortAsc ? ZmSearch.SIZE_ASC : ZmSearch.SIZE_DESC;	break;
+        case ZmItem.F_FLAG:		    sortBy = bSortAsc ? ZmSearch.FLAG_ASC : ZmSearch.FLAG_DESC;	break;
+        case ZmItem.F_ATTACHMENT:   sortBy = bSortAsc ? ZmSearch.ATTACH_ASC : ZmSearch.ATTACH_DESC; break;
+		case ZmItem.F_READ:		    sortBy = bSortAsc ? ZmSearch.READ_ASC : ZmSearch.READ_DESC;	break;
+        case ZmItem.F_PRIORITY:     sortBy = bSortAsc ? ZmSearch.PRIORITY_ASC : ZmSearch.PRIORITY_DESC; break;
+		case ZmItem.F_SORTED_BY:    sortBy = bSortAsc ? ZmSearch.DATE_ASC : ZmSearch.DATE_DESC;	break;
 	}
 
 	if (sortBy) {
+		//special case - switching from read/unread to another sort column - remove it from the query, so users are not confused that they still see only unread messages after clicking on another sort column.
+		if (columnItem._sortable != ZmItem.F_READ && (this._sortByString == ZmSearch.READ_ASC || this._sortByString == ZmSearch.READ_DESC)) {
+			var controller = this._controller;
+			var query = controller.getSearchString();
+			if (query) {
+				 controller.setSearchString(AjxStringUtil.trim(query.replace("is:unread", "")));
+			}
+		}
 		this._sortByString = sortBy;
-		appCtxt.set(ZmSetting.SORTING_PREF, sortBy, this.view);
+		var skipFirstNotify = this._folderId ? true : false; //just making it explicit boolean
+        if (!appCtxt.isExternalAccount()) {
+            appCtxt.set(ZmSetting.SORTING_PREF, sortBy, this.view, null, skipFirstNotify);
+            if (this._folderId) {
+                appCtxt.set(ZmSetting.SORTING_PREF, sortBy, this._folderId);
+            }
+        }
 	}
 	if (callback)
 		callback.run();
@@ -1198,7 +1255,9 @@ function() {
 	}
 	var value = fields.join(ZmListView.COL_JOIN);
 	value = (value == this._defaultCols) ? "" : value;
-	appCtxt.set(ZmSetting.LIST_VIEW_COLUMNS, value, this.view);
+    if (!appCtxt.isExternalAccount()) {
+	    appCtxt.set(ZmSetting.LIST_VIEW_COLUMNS, value, appCtxt.getViewTypeFromId(this.view));
+    }
 
 	this._getActionMenuForColHeader(true); // re-create action menu so order is correct
 };
@@ -1384,4 +1443,71 @@ function() {
 		this._listDiv.scrollTop = s.scrollTop * (this._rowHeight / s.rowHeight);
 	}
 	this._state = {};
+};
+
+ZmListView.prototype._renderList =
+function(list, noResultsOk, doAdd) {
+    var group = this._group;
+    if (!group) {
+        return DwtListView.prototype._renderList.call(this, list, noResultsOk, doAdd);
+    }
+	if (list instanceof AjxVector && list.size()) {
+		var now = new Date();
+		var size = list.size();
+		var htmlArr = [];
+        var section;
+        var headerDiv;
+		for (var i = 0; i < size; i++) {
+			var item = list.get(i);
+			var div = this._createItemHtml(item, {now:now}, !doAdd, i);
+			if (div) {
+				if (div instanceof Array) {
+					for (var j = 0; j < div.length; j++){
+                        section = group.addMsgToSection(item, div[j]);
+                        if (group.getSectionSize(section) == 1){
+                            headerDiv = this._getSectionHeaderDiv(group, section);
+                            this._addRow(headerDiv);
+                        }
+						this._addRow(div[j]);
+					}
+				} else if (div.tagName || doAdd) {
+                    section = group.addMsgToSection(item, div);
+                    if (group.getSectionSize(section) == 1){
+                        headerDiv = this._getSectionHeaderDiv(group, section);
+                        this._addRow(headerDiv);
+                    }
+                    this._addRow(div);
+				} else {
+                    group.addMsgToSection(item, div);
+				}
+			}
+		}
+		if (group && !doAdd) {
+			group.resetSectionHeaders();
+			htmlArr.push(group.getAllSections(this._bSortAsc));
+		}
+
+		if (htmlArr.length && !doAdd) {
+			this._parentEl.innerHTML = htmlArr.join("");
+		}
+	} else if (!noResultsOk) {
+		this._setNoResultsHtml();
+	}
+
+};
+
+ZmListView.prototype._getSectionHeaderDiv =
+function(group, section) {
+    if (group && section) {
+        var headerDiv = document.createElement("div");
+        var sectionTitle = group.getSectionTitle(section);
+        var html = group.getSectionHeader(sectionTitle);
+        headerDiv.innerHTML = html;
+        return headerDiv.firstChild;
+    }
+};
+
+ZmListView.prototype.deactivate =
+function() {
+	this._controller.inactive = true;
 };

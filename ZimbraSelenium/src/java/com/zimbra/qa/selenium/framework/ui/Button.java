@@ -1,19 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * 
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * 
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.qa.selenium.framework.ui;
 
 
@@ -47,6 +31,8 @@ public class Button {
 
 	// General buttons and pulldown options
 	public static final Button B_NEW = new Button("B_NEW");
+	public static final Button B_GEAR_BOX=new Button("B_GEAR_BOX");
+	public static final Button B_NEW_IN_NEW_WINDOW = new Button("B_NEW_IN_NEW_WINDOW");
 	public static final Button B_DELETE = new Button("B_DELETE");
 	public static final Button B_MOVE = new Button("B_MOVE");
 	public static final Button B_PRINT = new Button("B_PRINT");
@@ -56,7 +42,12 @@ public class Button {
 	public static final Button B_SHARE = new Button("B_SHARE");
 	public static final Button B_CLOSE = new Button("B_CLOSE");
 	public static final Button B_ACTIONS = new Button("B_ACTIONS");
-	
+	public static final Button B_REDIRECT = new Button("B_REDIRECT");
+	public static final Button B_MUTE = new Button("B_MUTE");
+	public static final Button B_HELP = new Button("B_HELP");
+	public static final Button B_USER_NAME = new Button("B_USER_NAME");
+
+	public static final Button O_NEW = new Button("O_NEW");
 	public static final Button O_NEW_MESSAGE = new Button("O_NEW_MESSAGE");
 	public static final Button O_NEW_CONTACT = new Button("O_NEW_CONTACT");
 	public static final Button O_NEW_CONTACTGROUP = new Button("O_NEW_CONTACTGROUP");
@@ -71,14 +62,34 @@ public class Button {
 	public static final Button O_NEW_BRIEFCASE = new Button("O_NEW_BRIEFCASE");
 	public static final Button O_TAG_NEWTAG = new Button("O_TAG_NEWTAG");
 	public static final Button O_TAG_REMOVETAG = new Button("O_TAG_REMOVETAG");
+	public static final Button O_PRINT_TASKFOLDER = new Button("O_PRINT_TASKFOLDER");
 
-
+	// Accept decline options
+	public static final Button O_ACCEPT_NOTIFY_ORGANIZER = new Button("O_ACCEPT_NOTIFY_ORGANIZER");
+	public static final Button O_ACCEPT_EDIT_REPLY = new Button("O_ACCEPT_EDIT_REPLY");
+	public static final Button O_ACCEPT_DONT_NOTIFY_ORGANIZER = new Button("O_ACCEPT_DONTNOTIFY_ORGANIZER");
+	public static final Button O_TENTATIVE_NOTIFY_ORGANIZER = new Button("O_TENTATIVE_NOTIFY_ORGANIZER");
+	public static final Button O_TENTATIVE_EDIT_REPLY = new Button("O_TENTATIVE_EDIT_REPLY");
+	public static final Button O_TENTATIVE_DONT_NOTIFY_ORGANIZER = new Button("O_TENTATIVE_DONTNOTIFY_ORGANIZER");
+	public static final Button O_DECLINE_NOTIFY_ORGANIZER = new Button("O_DECLINE_NOTIFY_ORGANIZER");
+	public static final Button O_DECLINE_EDIT_REPLY = new Button("O_DECLINE_EDIT_REPLY");
+	public static final Button O_DECLINE_DONT_NOTIFY_ORGANIZER = new Button("O_DECLINE_DONTNOTIFY_ORGANIZER");
+	
 	// General dialog buttons
 	public static final Button B_YES = new Button("B_YES");
 	public static final Button B_NO = new Button("B_NO");
 	public static final Button B_CANCEL = new Button("B_CANCEL");
 	public static final Button B_OK = new Button("B_OK");
+	public static final Button B_ADD = new Button("B_ADD");
+	public static final Button B_BACK = new Button("B_BACK");
+	public static final Button B_NEXT = new Button("B_NEXT");
 	public static final Button O_EDIT_LINK = new Button("O_EDIT_LINK");
+	public static final Button O_REVOKE_LINK = new Button("O_REVOKE_LINK");
+	public static final Button O_RESEND_LINK = new Button("O_RESEND_LINK");
+	public static final Button B_MORE_DETAILS = new Button("B_MORE_DETAILS");
+	public static final Button B_SENDCANCELLATION = new Button("B_SENDCANCELLATION");
+	public static final Button B_EDITMESSAGE = new Button("B_EDITMESSAGE");
+	public static final Button B_CANCEL_CONFIRMDELETE = new Button("B_CANCEL_CONFIRMDELETE");
 
 	// Zimbra Desktop's Accounts page
 	public static final Button B_VALIDATE_AND_SAVE = new Button("B_VALIDATE_AND_SAVE");
@@ -99,6 +110,14 @@ public class Button {
 	public static final Button O_LISTVIEW_READINGPANEBOTTOM = new Button("O_LISTVIEW_READINGPANEBOTTOM");
 	public static final Button O_LISTVIEW_READINGPANERIGHT = new Button("O_LISTVIEW_READINGPANERIGHT");
 	public static final Button O_LISTVIEW_READINGPANEOFF = new Button("O_LISTVIEW_READINGPANEOFF");
+
+	// MailPage list buttons (sort by options)
+	public static final Button B_MAIL_LIST_SORTBY_FLAGGED = new Button("B_MAIL_LIST_SORTBY_FLAGGED");;
+	public static final Button B_MAIL_LIST_SORTBY_FROM = new Button("B_MAIL_LIST_SORTBY_FROM");;
+	public static final Button B_MAIL_LIST_SORTBY_ATTACHMENT = new Button("B_MAIL_LIST_SORTBY_ATTACHMENT");
+	public static final Button B_MAIL_LIST_SORTBY_SUBJECT = new Button("B_MAIL_LIST_SORTBY_SUBJECT");;
+	public static final Button B_MAIL_LIST_SORTBY_SIZE = new Button("B_MAIL_LIST_SORTBY_SIZE");;
+	public static final Button B_MAIL_LIST_SORTBY_RECEIVED = new Button("B_MAIL_LIST_SORTBY_RECEIVED");;
 
 	// MailPage context menu
 	public static final Button O_MARK_AS_READ = new Button("O_MARK_AS_READ");
@@ -126,8 +145,14 @@ public class Button {
 	public static final Button B_SIGNATURE = new Button("B_SIGNATURE");
 	public static final Button B_OPTIONS = new Button("B_OPTIONS");
 	public static final Button B_PRIORITY = new Button("B_PRIORITY");
+	public static final Button B_TO = new Button("B_TO");
+	public static final Button B_CC = new Button("B_CC");
+	public static final Button B_BCC = new Button("B_BCC");
 	public static final Button B_SHOWBCC = new Button("B_SHOWBCC");
+	public static final Button B_REMOVE = new Button("B_REMOVE");
+	public static final Button B_SHOW_NAMES_FROM = new Button("B_SHOW_NAMES_FROM");
 
+	public static final Button O_SEND_SEND = new Button("O_SEND_SEND");
 	public static final Button O_SEND_SEND_LATER = new Button("O_SEND_SEND_LATER");
 	public static final Button O_SIGNATURE_DO_NOT_ADD_SIGNATURE = new Button("O_SIGNATURE_DO_NOT_ADD_SIGNATURE");
 	public static final Button O_ADD_SIGNATURE = new Button("O_ADD_SIGNATURE");
@@ -137,7 +162,15 @@ public class Button {
 	public static final Button O_PRIORITY_HIGH = new Button("O_PRIORITY_HIGH");
 	public static final Button O_PRIORITY_NORMAL = new Button("O_PRIORITY_NORMAL");
 	public static final Button O_PRIORITY_LOW = new Button("O_PRIORITY_LOW");
+	public static final Button O_CONTACTS = new Button("O_CONTACTS");
+	public static final Button O_PERSONAL_AND_SHARED_CONTACTS = new Button("O_PERSONAL_AND_SHARED_CONTACTS");
+	public static final Button O_GLOBAL_ADDRESS_LIST = new Button("O_GLOBAL_ADDRESS_LIST");
 
+	// Dumpster dialog
+	public static final Button B_RECOVER_DELETED_ITEMS = new Button("B_RECOVER_DELETED_ITEMS");
+	public static final Button B_RECOVER_TO = new Button("B_RECOVER_TO");
+
+	
 	// SearchPage buttons and pulldown options
 	public static final Button B_SEARCHTYPE = new Button("B_SEARCHTYPE");
 	public static final Button B_SEARCH = new Button("B_SEARCH");
@@ -153,6 +186,48 @@ public class Button {
 	public static final Button O_SEARCHTYPE_FILES = new Button("O_SEARCHTYPE_FILES");
 	public static final Button O_SEARCHTYPE_INCLUDESHARED = new Button("O_SEARCHTYPE_INCLUDESHARED");
 
+	//Octopus buttons
+	public static final Button B_TAB_MY_FILES = new Button("B_TAB_MY_FILES");
+	public static final Button B_MY_FILES = new Button("B_MY_FILES");
+	public static final Button B_MY_FILES_LIST_ITEM = new Button("B_MY_FILES_LIST_ITEM");
+	public static final Button O_FOLDER_SHARE =  new Button("O_FOLDER_SHARE");
+	public static final Button O_FILE_SHARE =  new Button("O_FILE_SHARE");
+	public static final Button B_STOP_SHARING =  new Button("B_STOP_SHARING");
+	public static final Button B_LEAVE_THIS_SHARED_FOLDER =  new Button("O_LEAVE_THIS_SHARED_FOLDER");
+	public static final Button B_SHOW_MESSAGE = new Button("B_SHOW_MESSAGE");
+	public static final Button B_EXPAND = new Button("B_EXPAND");
+	public static final Button B_COLLAPSE = new Button("B_COLLAPSE");
+	public static final Button B_HISTORY =  new Button("B_HISTORY");
+	public static final Button B_COMMENTS =  new Button("B_COMMENTS");
+	public static final Button O_SIGN_OUT = new Button("O_SIGN_OUT");
+	public static final Button O_SETTINGS = new Button("O_SETTINGS");
+	
+	public static final Button B_TAB_SHARING = new Button("B_TAB_SHARING");
+	public static final Button B_IGNORE =  new Button("B_IGNORE");
+	public static final Button B_ADD_TO_MY_FILES = new Button("B_ADD_TO_MY_FILES");
+
+	public static final Button B_TAB_FAVORITES = new Button("B_TAB_FAVORITES");
+	public static final Button O_FAVORITE =  new Button("O_FAVORITE");
+	public static final Button O_NOT_FAVORITE =  new Button("O_NOT_FAVORITE");
+	public static final Button B_WATCH =  new Button("B_WATCH");
+	public static final Button B_UNWATCH =  new Button("B_UNWATCH");
+
+	public static final Button B_TAB_HISTORY = new Button("B_TAB_HISTORY");
+	public static final Button O_ALL_TYPES =  new Button("O_ALL_TYPES");
+	public static final Button O_FAVORITES =  new Button("O_FAVORITES");
+	public static final Button O_COMMENT =  new Button("O_COMMENT");
+	public static final Button O_SHARING =  new Button("O_SHARING");
+	public static final Button O_NEW_VERSION =  new Button("O_NEW_VERSION");
+
+	public static final Button B_TAB_TRASH = new Button("B_TAB_TRASH");
+	
+	public static final Button B_TAB_SEARCH = new Button("B_TAB_SEARCH");
+	
+	public static final Button B_SETTINGS = new Button("B_SETTINGS");
+
+	public static final Button B_DONE = new Button("B_DONE");
+	
+	public static final Button B_UNLINK_AND_WIPE = new Button("B_UNLINK_AND_WIPE");
 	
 	//Briefcase buttons
 	public static final Button B_UPLOAD_FILE = new Button("B_UPLOAD_FILE");
@@ -168,12 +243,19 @@ public class Button {
 	public static final Button O_RENAME = new Button("O_RENAME");
 	public static final Button O_CHECK_IN_FILE = new Button("O_CHECK_IN_FILE");
 	public static final Button O_DISCARD_CHECK_OUT = new Button("O_DISCARD_CHECK_OUT");
-	
+	public static final Button B_TREE_EDIT_PROPERTIES = new Button("B_TREE_EDIT_PROPERTIES");
+	public static final Button B_BROWSE = new Button("B_BROWSE");
+
+
     //Addressbook button
 	public static final Button B_EDIT = new Button("zb__CNS__EDIT");
+	public static final Button B_FILEAS = new Button("td$=_FILE_AS_select_container");
+	
+	public static final Button B_CONTACTGROUP = new Button("zmi__Contacts__CONTACTGROUP_MENU");
+  
 	public static final Button O_SEARCH_MAIL_SENT_TO_CONTACT = new Button("O_SEARCH_MAIL_SENT_TO_CONTACT");
 	public static final Button O_SEARCH_MAIL_RECEIVED_FROM_CONTACT = new Button("O_SEARCH_MAIL_RECEIVED_FROM_CONTACT");
-	
+	 
 	//Addressbook alphabet bar buttons
 	public static final Button B_AB_ALL = new Button("0"); //_idx="0"
 	public static final Button B_AB_123 = new Button("1");
@@ -210,13 +292,18 @@ public class Button {
 	
 	// Task buttons
 	public static final Button B_TASK_FILTERBY = new Button("B_TASK_FILTERBY");
-	public static final Button B_TASK_MARKCOMPLETED = new Button("B_TASK_FILTERBY");
-
+	public static final Button B_TASK_MARKCOMPLETED = new Button("B_TASK_MARKCOMPLETED");
+	public static final Button O_TASK_TODOLIST = new Button("O_TASK_TODOLIST");
 	
 	// Tree buttons
+	public static final Button B_TREE_FOLDERS_OPTIONS = new Button("B_TREE_FOLDERS_PROPERTIES");
+	public static final Button B_TREE_SEARCHES_OPTIONS = new Button("B_TREE_FOLDERS_PROPERTIES");
+	public static final Button B_TREE_TAGS_OPTIONS = new Button("B_TREE_TAGS_PROPERTIES");
+
 	public static final Button B_TREE_NEWFOLDER = new Button("B_TREE_NEWFOLDER");
 	public static final Button B_TREE_NEWADDRESSBOOK = new Button("B_TREE_NEWADDRESSBOOK");
 	public static final Button B_TREE_NEWCALENDAR = new Button("B_TREE_NEWCALENDAR");
+	public static final Button B_TREE_NEW_EXTERNAL_CALENDAR = new Button("B_TREE_NEW_EXTERNAL_CALENDAR");
 	public static final Button B_TREE_NEWTASKLIST = new Button("B_TREE_NEWTASKLIST");
 	public static final Button B_TREE_NEWBRIEFCASE = new Button("B_TREE_NEWBRIEFCASE");
 	public static final Button B_TREE_BRIEFCASE_EXPANDCOLLAPSE = new Button("B_TREE_BRIEFCASE_EXPANDCOLLAPSE");
@@ -224,29 +311,117 @@ public class Button {
 	public static final Button B_TREE_RENAMETAG = new Button("B_TREE_RENAMETAG");
 	public static final Button B_TREE_DELETE = new Button("B_TREE_DELETE");
 	public static final Button B_TREE_EDIT = new Button("B_TREE_EDIT");
+	public static final Button B_TREE_FIND_SHARES = new Button("B_TREE_FIND_SHARES");
 	// Tree buttons (Mail folders)
 	public static final Button B_TREE_FOLDER_MARKASREAD = new Button("B_TREE_FOLDER_MARKASREAD");
 	public static final Button B_TREE_FOLDER_EXPANDALL = new Button("B_TREE_FOLDER_EXPANDALL");
 	public static final Button B_TREE_FOLDER_EMPTY = new Button("B_TREE_FOLDER_EMPTY");
-	
+	public static final Button B_TREE_FOLDER_GET_EXTERNAL = new Button("B_TREE_FOLDER_GET_EXTERNAL");
+	public static final Button B_TREE_SHOW_REMAINING_FOLDERS = new Button("B_TREE_SHOW_REMAINING_FOLDERS");
+
 	// Mail 'Display' buttons
 	public static final Button B_ACCEPT = new Button("B_ACCEPT");
+	public static final Button B_ACCEPT_DROPDOWN = new Button("B_ACCEPT_DROPDOWN");
 	public static final Button B_DECLINE = new Button("B_DECLINE");
+	public static final Button B_DECLINE_DROPDOWN = new Button("B_DECLINE_DROPDOWN");
 	public static final Button B_TENTATIVE = new Button("B_TENTATIVE");
+	public static final Button B_TENTATIVE_DROPDOWN = new Button("B_TENTATIVE_DROPDOWN");
+	public static final Button B_ACCEPT_SHARE = new Button("B_ACCEPT_SHARE");;
+	public static final Button B_DECLINE_SHARE = new Button("B_DECLINE_SHARE");;
+
 	public static final Button B_PROPOSE_NEW_TIME = new Button("B_PROPOSE_NEW_TIME");
 	public static final Button B_VIEW_ENTIRE_MESSAGE = new Button("B_VIEW_ENTIRE_MESSAGE");
 	public static final Button B_HIGHLIGHT_OBJECTS = new Button("B_HIGHLIGHT_OBJECTS");
 	
-	// Calendar Buttons
+	public static final Button B_QUICK_REPLY_REPLY = new Button("B_QUICK_REPLY_REPLY");
+	public static final Button B_QUICK_REPLY_REPLY_ALL = new Button("B_QUICK_REPLY_REPLY_ALL");
+	public static final Button B_QUICK_REPLY_FORWARD = new Button("B_QUICK_REPLY_FORWARD");
+	public static final Button B_QUICK_REPLY_MORE_ACTIONS = new Button("B_QUICK_REPLY_MORE_ACTIONS");
+	public static final Button B_QUICK_REPLY_SEND = new Button("B_QUICK_REPLY_SEND");
+	public static final Button B_QUICK_REPLY_CANCEL = new Button("B_QUICK_REPLY_CANCEL");
+	public static final Button B_QUICK_REPLY_MORE = new Button("B_QUICK_REPLY_MORE");
+
+	// Calendar
+	public static final Button B_SAVEANDCLOSE = new Button("B_SAVEANDCLOSE");
 	public static final Button B_REFRESH = new Button("B_REFRESH");
 	
-    // Calendar	Views
-	public static final Button O_LISTVIEW_DAY = new Button("POPUP_DAY_VIEW");
-	public static final Button O_LISTVIEW_WORKWEEK = new Button("POPUP_WORK_WEEK_VIEW");
-	public static final Button O_LISTVIEW_WEEK = new Button("POPUP_WEEK_VIEW");
-	public static final Button O_LISTVIEW_MONTH = new Button("POPUP_MONTH_VIEW");
-	public static final Button O_LISTVIEW_LIST = new Button("POPUP_CAL_LIST_VIEW");
-	public static final Button O_LISTVIEW_SCHEDULE = new Button("POPUP_SCHEDULE_VIEW");
+	public static final Button B_VIEW = new Button("B_VIEWTOOLBAR");
+	public static final Button O_LISTVIEW_DAY = new Button("O_LISTVIEW_DAY");
+	public static final Button O_LISTVIEW_WORKWEEK = new Button("O_LISTVIEW_WORKWEEK");
+	public static final Button O_LISTVIEW_WEEK = new Button("O_LISTVIEW_WEEK");
+	public static final Button O_LISTVIEW_MONTH = new Button("O_LISTVIEW_MONTH");
+	public static final Button O_LISTVIEW_LIST = new Button("O_LISTVIEW_LIST");
+	public static final Button O_LISTVIEW_SCHEDULE = new Button("O_LISTVIEW_SCHEDULE");
+	public static final Button O_LISTVIEW_FREEBUSY = new Button("O_LISTVIEW_FREEBUSY");
+	
+	public static final Button O_VIEW_DAY_MENU = new Button("O_VIEW_DAY_MENU");
+	public static final Button O_VIEW_WORK_WEEK_MENU = new Button("O_VIEW_WORK_WEEK_MENU");
+	public static final Button O_VIEW_WEEK_MENU = new Button("O_VIEW_WEEK_MENU");
+	public static final Button O_VIEW_MONTH_MENU = new Button("O_VIEW_MONTH_MENU");
+	public static final Button O_VIEW_LIST_MENU = new Button("O_VIEW_LIST_MENU");
+	public static final Button O_VIEW_SCHEDULE_MENU = new Button("O_VIEW_SCHEDULE_MENU");
+	public static final Button O_OPEN_MENU = new Button("O_OPEN_MENU");
+	public static final Button O_PRINT_MENU = new Button("O_PRINT_MENU");
+	public static final Button O_ACCEPT_MENU = new Button("O_ACCEPT_MENU");
+	public static final Button O_TENTATIVE_MENU = new Button("O_TENTATIVE_MENU");
+	public static final Button O_DECLINE_MENU = new Button("O_DECLINE_MENU");
+	public static final Button O_EDIT_REPLY_MENU = new Button("O_EDIT_REPLY_MENU");
+	public static final Button O_EDIT_REPLY_ACCEPT_SUB_MENU = new Button("O_EDIT_REPLY_ACCEPT_SUB_MENU");
+	public static final Button O_EDIT_REPLY_TENTATIVE_SUB_MENU = new Button("O_EDIT_REPLY_TENTATIVE_SUB_MENU");
+	public static final Button O_EDIT_REPLY_DECLINE_SUB_MENU = new Button("O_EDIT_REPLY_DECLINE_SUB_MENU");
+	public static final Button O_PROPOSE_NEW_TIME_MENU = new Button("O_PROPOSE_NEW_TIME_MENU");
+	public static final Button O_CREATE_A_COPY_MENU = new Button("O_CREATE_A_COPY_MENU");
+	public static final Button O_REPLY_MENU = new Button("O_REPLY_MENU");
+	public static final Button O_REPLY_TO_ALL_MENU = new Button("O_REPLY_TO_ALL_MENU");
+	public static final Button O_REINVITE = new Button("O_REINVITE");
+	public static final Button O_FORWARD_MENU = new Button("O_FORWARD_MENU");
+	public static final Button O_DELETE_MENU = new Button("O_DELETE_MENU");
+	public static final Button O_CANCEL_MENU = new Button("O_CANCEL_MENU");
+	public static final Button O_MOVE_MENU = new Button("O_MOVE_MENU");
+	public static final Button O_TAG_APPOINTMENT_MENU = new Button("O_TAG_APPOINTMENT_MENU");
+	public static final Button O_TAG_APPOINTMENT_NEW_TAG_SUB_MENU = new Button("O_TAG_APPOINTMENT_NEW_TAG_SUB_MENU");
+	public static final Button O_TAG_APPOINTMENT_REMOVE_TAG_SUB_MENU = new Button("O_TAG_APPOINTMENT_REMOVE_TAG_SUB_MENU");
+	public static final Button O_SHOW_ORIGINAL_MENU = new Button("O_SHOW_ORIGINAL_MENU");
+	public static final Button O_QUICK_COMMANDS_MENU = new Button("O_QUICK_COMMANDS_MENU");
+	public static final Button O_INSTANCE_MENU = new Button("O_INSTANCE_MENU");
+	public static final Button O_SERIES_MENU = new Button("O_SERIES_MENU");
+	public static final Button O_OPEN_INSTANCE_MENU = new Button("O_OPEN_INSTANCE_MENU");
+	public static final Button O_FORWARD_INSTANCE_MENU = new Button("O_FORWARD_INSTANCE_MENU");
+	public static final Button O_DELETE_INSTANCE_MENU = new Button("O_DELETE_INSTANCE_MENU");
+	public static final Button O_OPEN_SERIES_MENU = new Button("O_OPEN_SERIES_MENU");
+	public static final Button O_FORWARD_SERIES_MENU = new Button("O_FORWARD_SERIES_MENU");
+	public static final Button O_NEW_APPOINTMENT_MENU = new Button("O_NEW_APPOINTMENT_MENU");
+	public static final Button O_NEW_ALL_DAY_APPOINTMENT_MENU = new Button("O_NEW_ALL_DAY_APPOINTMENT_MENU");
+	public static final Button O_GO_TO_TODAY_MENU = new Button("O_GO_TO_TODAY_MENU");
+	public static final Button O_VIEW_MENU = new Button("O_VIEW_MENU");
+	public static final Button O_VIEW_DAY_SUB_MENU = new Button("O_VIEW_DAY_SUB_MENU");
+	public static final Button O_VIEW_WORK_WEEK_SUB_MENU = new Button("O_VIEW_WORK_WEEK_SUB_MENU");
+	public static final Button O_VIEW_WEEK_SUB_MENU = new Button("O_VIEW_WEEK_SUB_MENU");
+	public static final Button O_VIEW_MONTH_SUB_MENU = new Button("O_VIEW_MONTH_SUB_MENU");
+	public static final Button O_VIEW_LIST_SUB_MENU = new Button("O_VIEW_LIST_SUB_MENU");
+	public static final Button O_VIEW_SCHEDULE_SUB_MENU = new Button("O_VIEW_SCHEDULE_SUB_MENU");
+	
+	public static final Button B_OPEN_THIS_INSTANCE = new Button("B_OPEN_THIS_INSTANCE");
+	public static final Button B_OPEN_THE_SERIES = new Button("B_OPEN_THE_SERIES");
+	public static final Button B_DELETE_THIS_INSTANCE = new Button("B_DELETE_THIS_INSTANCE");
+	public static final Button B_DELETE_THE_SERIES = new Button("B_DELETE_THE_SERIES");
+
+	// Calendar dialogs
+	public static final Button B_SEND_CANCELLATION = new Button("B_SEND_CANCELLATION");
+	public static final Button B_EDIT_CANCELLATION = new Button("B_EDIT_CANCELLATION");
+	public static final Button B_NOTIFY_ORGANIZER = new Button("B_NOTIFY_ORGANIZER");
+	public static final Button B_DONT_NOTIFY_ORGANIZER = new Button("B_DONT_NOTIFY_ORGANIZER");
+
+	// Calendar tree
+	public static final Button B_RELOAD = new Button("B_RELOAD");
+
+	// Preferences
+	public static final Button B_CHANGE_PASSWORD 		= new Button("B_CHANGE_PASSWORD");
+	public static final Button B_NEW_FILTER 			= new Button("B_NEW_FILTER");
+	public static final Button B_NEW_QUICK_COMMAND		= new Button("B_NEW_QUICK_COMMAND");
+	public static final Button B_EDIT_QUICK_COMMAND		= new Button("B_EDIT_QUICK_COMMAND");
+	public static final Button B_DELETE_QUICK_COMMAND	= new Button("B_DELETE_QUICK_COMMAND");
+
 
 	//// Admin Console
 	
@@ -262,8 +437,6 @@ public class Button {
 	// Resources button
 	public static final Button O_RESOURCES_RESOURCE = new Button("O_RESOURCES_RESOURCE");
 
-	// Preferences
-	public static final Button B_NEW_FILTER = new Button("B_NEW_FILTER");
 
 	
 	// Button properties

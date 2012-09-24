@@ -1,22 +1,10 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.cs.account.accesscontrol;
 
 import java.util.HashSet;
 import java.util.Set;
 
+import com.zimbra.common.account.Key;
+import com.zimbra.common.account.Key.DistributionListBy;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.SetUtil;
@@ -27,8 +15,7 @@ import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Entry;
 import com.zimbra.cs.account.GlobalGrant;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AclGroups;
-import com.zimbra.cs.account.Provisioning.DistributionListBy;
+import com.zimbra.cs.account.Provisioning.GroupMembership;
 import com.zimbra.cs.account.accesscontrol.RightBearer.Grantee;
 import com.zimbra.cs.account.accesscontrol.SearchGrants.GrantsOnTarget;
 
@@ -48,16 +35,16 @@ public class ParticallyDenied {
                     return true;
                 else {
                     // see if targetSub is in a group that is in the domain
-                    AclGroups groups = null;
+                    GroupMembership groups = null;
                     if (targetSub instanceof Account)
-                        groups = prov.getAclGroups((Account)targetSub, false);
+                        groups = prov.getGroupMembership((Account)targetSub, false);
                     else if (targetSub instanceof DistributionList)
-                        groups = prov.getAclGroups((DistributionList)targetSub, false);
+                        groups = prov.getGroupMembership((DistributionList)targetSub, false);
                     else 
                         return false;
                     
                     for (String groupId : groups.groupIds()) {
-                        DistributionList group = prov.getAclGroup(DistributionListBy.id, groupId);
+                        DistributionList group = prov.getDLBasic(Key.DistributionListBy.id, groupId);
                         Domain groupInDomain = prov.getDomain(group);
                         if (groupInDomain!= null &&  // hmm, log a warn if groupInDomain is null? throw internal err?
                             domain.getId().equals(groupInDomain.getId()))

@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Zimbra, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -18,12 +18,13 @@
  */
 package com.zimbra.cs.service.account;
 
+import java.io.IOException;
 import java.util.Map;
 
-import org.mortbay.io.EndPoint;
-import org.mortbay.io.nio.SelectChannelEndPoint;
-import org.mortbay.jetty.HttpConnection;
-import org.mortbay.thread.Timeout;
+import org.eclipse.jetty.io.EndPoint;
+import org.eclipse.jetty.io.nio.SelectChannelEndPoint;
+import org.eclipse.jetty.server.AbstractHttpConnection;
+import org.eclipse.jetty.util.thread.Timeout;
 
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.mailbox.ContactConstants;
@@ -38,6 +39,7 @@ import com.zimbra.cs.gal.GalSearchControl;
 import com.zimbra.cs.gal.GalSearchParams;
 import com.zimbra.cs.gal.GalSearchResultCallback;
 import com.zimbra.common.soap.Element;
+import com.zimbra.soap.type.GalSearchType;
 import com.zimbra.soap.ZimbraSoapContext;
 
 /**
@@ -45,6 +47,7 @@ import com.zimbra.soap.ZimbraSoapContext;
  */
 public class SyncGal extends GalDocumentHandler {
 
+    @Override
     public Element handle(Element request, Map<String, Object> context) throws ServiceException {
         disableJettyTimeout();
         
@@ -59,7 +62,7 @@ public class SyncGal extends GalDocumentHandler {
         boolean idOnly   = request.getAttributeBool(AccountConstants.A_ID_ONLY, false);
 
         GalSearchParams params = new GalSearchParams(account, zsc);
-        params.setType(Provisioning.GalSearchType.all);
+        params.setType(GalSearchType.all);
         params.setToken(tokenAttr);
         params.setRequest(request);
         params.setResponseName(AccountConstants.SYNC_GAL_RESPONSE);
@@ -166,10 +169,14 @@ public class SyncGal extends GalDocumentHandler {
      */
     private void disableJettyTimeout() {
         if (LC.zimbra_gal_sync_disable_timeout.booleanValue()) {
-            EndPoint endPoint = HttpConnection.getCurrentConnection().getEndPoint();
+            EndPoint endPoint = AbstractHttpConnection.getCurrentConnection().getEndPoint();
             if (endPoint instanceof SelectChannelEndPoint) {
                 SelectChannelEndPoint scEndPoint = (SelectChannelEndPoint) endPoint;
-                scEndPoint.setIdleExpireEnabled(false);
+                try {
+                    scEndPoint.setMaxIdleTime(0);
+                } catch (IOException e) {
+                    // ignore
+                }
             }
         }
     }

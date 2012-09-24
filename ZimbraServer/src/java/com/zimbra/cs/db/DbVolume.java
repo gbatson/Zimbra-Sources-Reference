@@ -1,21 +1,16 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
- */
-
-/*
- * Created on 2005. 6. 9.
- *
  */
 package com.zimbra.cs.db;
 
@@ -26,19 +21,18 @@ import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
-import com.zimbra.cs.db.DbPool.Connection;
-import com.zimbra.cs.mailbox.MailboxManager;
-import com.zimbra.cs.store.file.Volume;
-import com.zimbra.cs.store.file.VolumeServiceException;
+import com.zimbra.cs.db.DbPool.DbConnection;
+import com.zimbra.cs.volume.Volume;
+import com.zimbra.cs.volume.VolumeServiceException;
 
 /**
- * @author jhahm
+ * volume table and current_volumes table.
  *
- * volume table and current_volumes table
+ * @since 2005. 6. 9.
+ * @author jhahm
  */
-public class DbVolume {
+public final class DbVolume {
 
     private static final String CN_ID = "id";
     private static final String CN_TYPE = "type";
@@ -51,90 +45,71 @@ public class DbVolume {
     private static final String CN_COMPRESS_BLOBS = "compress_blobs";
     private static final String CN_COMPRESSION_THRESHOLD = "compression_threshold";
 
-    public static synchronized Volume create(Connection conn, short id,
-                                             short type, String name, String path,
-                                             short mboxGroupBits, short mboxBits,
-                                             short fileGroupBits, short fileBits,
-                                             boolean compressBlobs, long compressionThreshold)
-    throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
-        short nextId = id;
-        if (nextId == Volume.ID_AUTO_INCREMENT)
+    public static synchronized Volume create(DbConnection conn, Volume volume) throws ServiceException {
+        short nextId = volume.getId();
+        if (nextId == Volume.ID_AUTO_INCREMENT) {
             nextId = getNextVolumeID(conn);
-        if (nextId <= 0 || nextId > Volume.ID_MAX)
+        }
+        if (nextId <= 0 || nextId > Volume.ID_MAX) {
             throw VolumeServiceException.ID_OUT_OF_RANGE(nextId);
-
+        }
         PreparedStatement stmt = null;
         try {
-            stmt = conn.prepareStatement(
-                    "INSERT INTO volume " +
-                    "(id, type, name, path, " +
-                    "mailbox_group_bits, mailbox_bits, " +
-                    "file_group_bits, file_bits, " +
-                    "compress_blobs, compression_threshold) " +
+            stmt = conn.prepareStatement("INSERT INTO volume (id, type, name, path, mailbox_group_bits, " +
+                    "mailbox_bits, file_group_bits, file_bits, compress_blobs, compression_threshold) " +
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             int pos = 1;
             stmt.setShort(pos++, nextId);
-            stmt.setShort(pos++, type);
-            stmt.setString(pos++, name);
-            stmt.setString(pos++, path);
-            stmt.setShort(pos++, mboxGroupBits);
-            stmt.setShort(pos++, mboxBits);
-            stmt.setShort(pos++, fileGroupBits);
-            stmt.setShort(pos++, fileBits);
-            stmt.setBoolean(pos++, compressBlobs);
-            stmt.setLong(pos++, compressionThreshold);
+            stmt.setShort(pos++, volume.getType());
+            stmt.setString(pos++, volume.getName());
+            stmt.setString(pos++, volume.getRootPath());
+            stmt.setShort(pos++, volume.getMboxGroupBits());
+            stmt.setShort(pos++, volume.getMboxBits());
+            stmt.setShort(pos++, volume.getFileGroupBits());
+            stmt.setShort(pos++, volume.getFileBits());
+            stmt.setBoolean(pos++, volume.isCompressBlobs());
+            stmt.setLong(pos++, volume.getCompressionThreshold());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            if (Db.errorMatches(e, Db.Error.DUPLICATE_ROW))
-                throw VolumeServiceException.ALREADY_EXISTS(nextId, name, path, e);
-            else
+            if (Db.errorMatches(e, Db.Error.DUPLICATE_ROW)) {
+                throw VolumeServiceException.ALREADY_EXISTS(nextId, volume.getName(), volume.getRootPath(), e);
+            } else {
                 throw ServiceException.FAILURE("inserting new volume " + nextId, e);
+            }
         } finally {
             DbPool.closeStatement(stmt);
         }
         return get(conn, nextId);
     }
 
-    public static Volume update(Connection conn, short id,
-                                short type, String name, String path,
-                                short mboxGroupBits, short mboxBits,
-                                short fileGroupBits, short fileBits,
-                                boolean compressBlobs, long compressionThreshold)
-    throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
+    public static Volume update(DbConnection conn, Volume volume) throws ServiceException {
         PreparedStatement stmt = null;
         try {
-            stmt = conn.prepareStatement(
-                    "UPDATE volume SET " +
-                    "type=?, name=?, path=?, " +
-                    "mailbox_group_bits=?, mailbox_bits=?, " +
-                    "file_group_bits=?, file_bits=?, " +
-                    "compress_blobs=?, compression_threshold=? " +
-                    "WHERE id=?");
+            stmt = conn.prepareStatement("UPDATE volume SET type = ?, name = ?, path = ?, " +
+                    "mailbox_group_bits = ?, mailbox_bits = ?, file_group_bits = ?, file_bits = ?, " +
+                    "compress_blobs = ?, compression_threshold = ? WHERE id = ?");
             int pos = 1;
-            stmt.setShort(pos++, type);
-            stmt.setString(pos++, name);
-            stmt.setString(pos++, path);
-            stmt.setShort(pos++, mboxGroupBits);
-            stmt.setShort(pos++, mboxBits);
-            stmt.setShort(pos++, fileGroupBits);
-            stmt.setShort(pos++, fileBits);
-            stmt.setBoolean(pos++, compressBlobs);
-            stmt.setLong(pos++, compressionThreshold);
-            stmt.setShort(pos++, id);
+            stmt.setShort(pos++, volume.getType());
+            stmt.setString(pos++, volume.getName());
+            stmt.setString(pos++, volume.getRootPath());
+            stmt.setShort(pos++, volume.getMboxGroupBits());
+            stmt.setShort(pos++, volume.getMboxBits());
+            stmt.setShort(pos++, volume.getFileGroupBits());
+            stmt.setShort(pos++, volume.getFileBits());
+            stmt.setBoolean(pos++, volume.isCompressBlobs());
+            stmt.setLong(pos++, volume.getCompressionThreshold());
+            stmt.setShort(pos++, volume.getId());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            if (Db.errorMatches(e, Db.Error.DUPLICATE_ROW))
-                throw VolumeServiceException.ALREADY_EXISTS(id, name, path, e);
-            else
-                throw ServiceException.FAILURE("updating volume " + id, e);
+            if (Db.errorMatches(e, Db.Error.DUPLICATE_ROW)) {
+                throw VolumeServiceException.ALREADY_EXISTS(volume.getId(), volume.getName(), volume.getRootPath(), e);
+            } else {
+                throw ServiceException.FAILURE("updating volume " + volume.getId(), e);
+            }
         } finally {
             DbPool.closeStatement(stmt);
         }
-        return get(conn, id);
+        return get(conn, volume.getId());
     }
 
     /**
@@ -144,9 +119,7 @@ public class DbVolume {
      * @return true if it existed and was deleted
      * @throws SQLException
      */
-    public static boolean delete(Connection conn, short id) throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
+    public static boolean delete(DbConnection conn, short id) throws ServiceException {
         PreparedStatement stmt = null;
         try {
             stmt = conn.prepareStatement("DELETE FROM volume WHERE id=?");
@@ -160,12 +133,10 @@ public class DbVolume {
                 throw ServiceException.FAILURE("deleting volume entry: " + id, e);
         } finally {
             DbPool.closeStatement(stmt);
-        }        
+        }
     }
 
-    private static short getNextVolumeID(Connection conn) throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
+    private static short getNextVolumeID(DbConnection conn) throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
@@ -185,25 +156,20 @@ public class DbVolume {
     }
 
     /**
-     * get the specified volume entry
-     * @param conn
-     * @param id
-     * @return
-     * @throws SQLException
+     * Get the specified volume entry.
      */
-    public static Volume get(Connection conn, short id) throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
+    public static Volume get(DbConnection conn, short id) throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         try {
-            stmt = conn.prepareStatement("SELECT * FROM volume WHERE id=?");
+            stmt = conn.prepareStatement("SELECT * FROM volume WHERE id = ?");
             stmt.setShort(1, id);
             rs = stmt.executeQuery();
-            if (rs.next())
+            if (rs.next()) {
                 return constructVolume(rs);
-            else
+            } else {
                 throw VolumeServiceException.NO_SUCH_VOLUME(id);
+            }
         } catch (SQLException e) {
             throw ServiceException.FAILURE("getting volume entry: " + id, e);
         } finally {
@@ -213,15 +179,9 @@ public class DbVolume {
     }
 
     /**
-     * Return all volume entries in a map, where id is the key and a 
-     * Volume object is the value.
-     * @param conn
-     * @return Map containing volume entries
-     * @throws SQLException
+     * Return all {@link Volume} entries in a map, where ID is the key and a {@link Volume} object is the value.
      */
-    public static Map<Short, Volume> getAll(Connection conn) throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
+    public static Map<Short, Volume> getAll(DbConnection conn) throws ServiceException {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         Map<Short, Volume> result = new HashMap<Short, Volume>();
@@ -242,14 +202,12 @@ public class DbVolume {
     }
 
     public static class CurrentVolumes {
-    	public short msgVolId = Volume.ID_NONE;
+        public short msgVolId = Volume.ID_NONE;
         public short secondaryMsgVolId = Volume.ID_NONE;
         public short indexVolId = Volume.ID_NONE;
     }
 
-    public static CurrentVolumes getCurrentVolumes(Connection conn) throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
+    public static CurrentVolumes getCurrentVolumes(DbConnection conn) throws ServiceException {
         CurrentVolumes currVols = new CurrentVolumes();
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -275,25 +233,29 @@ public class DbVolume {
             return null;
     }
 
-    public static void updateCurrentVolume(Connection conn, short volType, short volumeId)
-    throws ServiceException {
-        assert(Db.supports(Db.Capability.ROW_LEVEL_LOCKING) || Thread.holdsLock(MailboxManager.getInstance()));
-
-        String colName;
-        if (volType == Volume.TYPE_MESSAGE)
-            colName = "message_volume_id";
-        else if (volType == Volume.TYPE_MESSAGE_SECONDARY)
-            colName = "secondary_message_volume_id";
-        else
-            colName = "index_volume_id";
+    public static void updateCurrentVolume(DbConnection conn, short type, short id) throws ServiceException {
+        String col;
+        switch (type) {
+            case Volume.TYPE_MESSAGE:
+                col = "message_volume_id";
+                break;
+            case Volume.TYPE_MESSAGE_SECONDARY:
+                col = "secondary_message_volume_id";
+                break;
+            case Volume.TYPE_INDEX:
+                col = "index_volume_id";
+                break;
+            default:
+                throw new IllegalArgumentException("invalid volume type: " + type);
+        }
         PreparedStatement stmt = null;
         try {
-            String sql = "UPDATE current_volumes SET " + colName + " = ?";
-            stmt = conn.prepareStatement(sql);
-            if (volumeId >= 0)
-                stmt.setShort(1, volumeId);
-            else
+            stmt = conn.prepareStatement("UPDATE current_volumes SET " + col + " = ?");
+            if (id >= 0) {
+                stmt.setShort(1, id);
+            } else {
                 stmt.setNull(1, Types.TINYINT);
+            }
             stmt.executeUpdate();
         } catch (SQLException e) {
             throw ServiceException.FAILURE("updating current volume", e);
@@ -302,23 +264,55 @@ public class DbVolume {
         }
     }
 
-    /**
-     * @param rs
-     * @return
-     */
-    private static Volume constructVolume(ResultSet rs) throws SQLException {
-        short id = rs.getShort(CN_ID);
-        short type = rs.getShort(CN_TYPE);
-        String name = rs.getString(CN_NAME);
-        String path = Volume.getAbsolutePath(rs.getString(CN_PATH));
-        short mboxGroupBits = rs.getShort(CN_MAILBOX_GROUP_BITS);
-        short mboxBits = rs.getShort(CN_MAILBOX_BITS);
-        short fileGroupBits = rs.getShort(CN_FILE_GROUP_BITS);
-        short fileBits = rs.getShort(CN_FILE_BITS);
-        boolean compressBlobs = rs.getBoolean(CN_COMPRESS_BLOBS);
-        long compressionThreshold = rs.getLong(CN_COMPRESSION_THRESHOLD);
-        Volume v = new Volume(id, type, name, path, mboxGroupBits, mboxBits,
-            fileGroupBits, fileBits, compressBlobs, compressionThreshold);
-        return v;
+    private static Volume constructVolume(ResultSet rs) throws SQLException, VolumeServiceException {
+        return Volume.builder().setId(rs.getShort(CN_ID)).setType(rs.getShort(CN_TYPE)).setName(rs.getString(CN_NAME))
+                .setPath(Volume.getAbsolutePath(rs.getString(CN_PATH)), false)
+                .setMboxGroupBits(rs.getShort(CN_MAILBOX_GROUP_BITS)).setMboxBit(rs.getShort(CN_MAILBOX_BITS))
+                .setFileGroupBits(rs.getShort(CN_FILE_GROUP_BITS)).setFileBits(rs.getShort(CN_FILE_BITS))
+                .setCompressBlobs(rs.getBoolean(CN_COMPRESS_BLOBS))
+                .setCompressionThreshold(rs.getLong(CN_COMPRESSION_THRESHOLD)).build();
+    }
+
+    public static boolean isVolumeReferenced(DbConnection conn, short volumeId) throws ServiceException {
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            stmt = conn.prepareStatement("SELECT distinct group_id from mailbox");
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                int groupId = rs.getShort(1);
+                if (isVolumeReferenced(conn, volumeId, groupId)) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("getting mailbox groups", e);
+        } finally {
+            DbPool.closeResults(rs);
+            DbPool.closeStatement(stmt);
+        }
+    }
+
+    private static boolean isVolumeReferenced(DbConnection conn, short volumeId, int groupId) throws ServiceException {
+        return tableRefsVolume(conn, volumeId, groupId, "revision") || tableRefsVolume(conn, volumeId, groupId, "revision_dumpster") ||
+            tableRefsVolume(conn, volumeId, groupId, "mail_item_dumpster") || tableRefsVolume(conn, volumeId, groupId, "mail_item");
+    }
+
+    private static boolean tableRefsVolume(DbConnection conn, short volumeId, int groupId, String table) throws ServiceException {
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        try {
+            stmt = conn.prepareStatement("SELECT count(*) from "+DbMailbox.qualifyTableName(groupId, table) +
+                " where locator=?");
+            stmt.setInt(1, volumeId);
+            rs = stmt.executeQuery();
+            return (rs.next() && rs.getInt(1) > 0);
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("counting "+table+" refs", e);
+        } finally {
+            DbPool.closeResults(rs);
+            DbPool.closeStatement(stmt);
+        }
     }
 }

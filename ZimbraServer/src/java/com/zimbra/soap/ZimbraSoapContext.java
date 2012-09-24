@@ -1,13 +1,13 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Zimbra, Inc.
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -19,9 +19,10 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
 import org.dom4j.QName;
-import org.mortbay.util.ajax.Continuation;
+import org.eclipse.jetty.continuation.Continuation;
 
 import com.google.common.base.Strings;
+import com.zimbra.common.account.Key.AccountBy;
 import com.zimbra.common.auth.ZAuthToken;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
@@ -30,17 +31,17 @@ import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.soap.SoapTransport;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
+import com.zimbra.cs.account.AccessManager;
 import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.AuthToken;
 import com.zimbra.cs.account.AuthTokenException;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.mailbox.OperationContext;
 import com.zimbra.cs.service.AuthProvider;
 import com.zimbra.cs.session.Session;
-import com.zimbra.cs.session.SoapSession;
 import com.zimbra.cs.session.SessionCache;
+import com.zimbra.cs.session.SoapSession;
 import com.zimbra.cs.session.SoapSession.PushChannel;
 import com.zimbra.cs.util.BuildInfo;
 
@@ -67,7 +68,7 @@ public final class ZimbraSoapContext {
         }
 
         private class SoapPushChannel implements SoapSession.PushChannel {
-            private boolean mLocalChangesOnly;
+            private final boolean mLocalChangesOnly;
 
             SoapPushChannel(boolean localOnly)  { mLocalChangesOnly = localOnly; }
 
@@ -90,6 +91,11 @@ public final class ZimbraSoapContext {
             @Override
             public boolean localChangesOnly() {
                 return mLocalChangesOnly;
+            }
+
+            @Override
+            public boolean isPersistent() {
+                return false;
             }
 
             @Override
@@ -178,7 +184,7 @@ public final class ZimbraSoapContext {
      * @param zsc context to clone
      * @param targetAccountId different account ID from the original request
      */
-    public ZimbraSoapContext(ZimbraSoapContext zsc, String targetAccountId) 
+    public ZimbraSoapContext(ZimbraSoapContext zsc, String targetAccountId)
     throws ServiceException {
         this(zsc, targetAccountId, null);
     }
@@ -186,32 +192,32 @@ public final class ZimbraSoapContext {
     /**
      * Creates a {@link ZimbraSoapContext} from another existing
      * {@link ZimbraSoapContext} for use in proxying.
-     * 
+     *
      * @param zsc context to clone
      * @param targetAccountId different account ID from the original request
      * @param session If session is non-null, it will be used for proxy notifications
      * @throws ServiceException
      */
-    public ZimbraSoapContext(ZimbraSoapContext zsc, String targetAccountId, Session session) 
+    public ZimbraSoapContext(ZimbraSoapContext zsc, String targetAccountId, Session session)
     throws ServiceException {
         this(zsc, null, targetAccountId, session);
     }
-    
+
     /** Creates a <code>ZimbraSoapContext</code> from another existing
      *  <code>ZimbraSoapContext</code> for use in proxying.
      *  If session is non-null, it will be used for proxy notifications.
      *  If authToken is not null, the auth token in the clone will be replaced by authToken.
      */
-    public ZimbraSoapContext(ZimbraSoapContext zsc, AuthToken authToken, String targetAccountId, Session session) 
+    public ZimbraSoapContext(ZimbraSoapContext zsc, AuthToken authToken, String targetAccountId, Session session)
     throws ServiceException {
         mUserAgent = zsc.mUserAgent;
         mRequestIP = zsc.mRequestIP;
         mVia = zsc.mVia;
-        
+
         mRawAuthToken = authToken == null? zsc.mRawAuthToken : authToken.toZAuthToken();
         mAuthToken = authToken == null? zsc.mAuthToken : authToken;
         mAuthTokenAccountId = authToken == null? zsc.mAuthTokenAccountId : authToken.getAccountId();
-        
+
         mRequestedAccountId = targetAccountId;
         mRequestProtocol = zsc.mRequestProtocol;
         mResponseProtocol = zsc.mResponseProtocol;
@@ -258,12 +264,12 @@ public final class ZimbraSoapContext {
             if (mAuthToken != null) {
                 if (mAuthToken.isExpired()) {
                     boolean voidOnExpired = false;
-                    
+
                     Element eAuthTokenControl = ctxt.getOptionalElement(HeaderConstants.E_AUTH_TOKEN_CONTROL);
                     if (eAuthTokenControl != null) {
                         voidOnExpired = eAuthTokenControl.getAttributeBool(HeaderConstants.A_VOID_ON_EXPIRED, false);
                     }
-                    
+
                     if (voidOnExpired) {
                         // erase the auth token and continue
                         mAuthToken = null;
@@ -291,22 +297,30 @@ public final class ZimbraSoapContext {
             if (key == null) {
                 mRequestedAccountId = null;
             } else if (key.equals(HeaderConstants.BY_NAME)) {
+                if (mAuthToken == null) {
+                    throw ServiceException.AUTH_REQUIRED();
+                }
                 Account account = prov.get(AccountBy.name, value, mAuthToken);
                 if (account == null) {
-                    if (mAuthToken == null || !mAuthToken.isAdmin())
+                    if (!mAuthToken.isAdmin()) {
                         throw ServiceException.DEFEND_ACCOUNT_HARVEST(value);
-                    else
+                    } else {
                         throw AccountServiceException.NO_SUCH_ACCOUNT(value);
+                    }
                 }
 
                 mRequestedAccountId = account.getId();
             } else if (key.equals(HeaderConstants.BY_ID)) {
+                if (mAuthToken == null) {
+                    throw ServiceException.AUTH_REQUIRED();
+                }
                 Account account = prov.get(AccountBy.id, value, mAuthToken);
                 if (account == null) {
-                    if (mAuthToken == null || !mAuthToken.isAdmin())
+                    if (!mAuthToken.isAdmin()) {
                         throw ServiceException.DEFEND_ACCOUNT_HARVEST(value);
-                    else
+                    } else {
                         throw AccountServiceException.NO_SUCH_ACCOUNT(value);
+                    }
                 }
 
                 mRequestedAccountId = value;
@@ -549,7 +563,9 @@ public final class ZimbraSoapContext {
     synchronized public void signalNotification(boolean canceled) {
         mWaitForNotifications = false;
         mCanceledWaitForNotifications = canceled;
-        mContinuation.resume();
+        if (mContinuation.isSuspended()) {
+            mContinuation.resume();
+        }
     }
 
     synchronized public boolean isCanceledWaitForNotifications() {
@@ -573,11 +589,11 @@ public final class ZimbraSoapContext {
         ctxt.addAttribute(HeaderConstants.A_HOPCOUNT, mHopCount);
 
         String proxyAuthToken = null;
-        
+
         if (mAuthToken != null) {
             proxyAuthToken = mAuthToken.getProxyAuthToken();
         }
-        
+
         if (proxyAuthToken != null) {
             new ZAuthToken(proxyAuthToken).encodeSoapCtxt(ctxt);
         } else if (mRawAuthToken != null) {
@@ -657,6 +673,24 @@ public final class ZimbraSoapContext {
 
     public Element createRequestElement(QName qname) {
         return mRequestProtocol.getFactory().createElement(qname);
+    }
+
+    /**
+     * Only use this for response objects (or requests)
+     * {@link jaxbToNamedElement} should be used for all other cases.
+     */
+    public Element jaxbToElement(Object resp) throws ServiceException {
+        return JaxbUtil.jaxbToElement(resp, mResponseProtocol.getFactory());
+    }
+
+    /**
+     * Use this rather than {@link jaxbToElement} when dealing with a
+     * class that is not in the JAXB context.  This will be true if the
+     * class is not for a top level Soap request or response.
+     */
+    public Element jaxbToNamedElement(String name, String namespace,
+            Object o) throws ServiceException {
+        return JaxbUtil.jaxbToNamedElement(name, namespace, o, mResponseProtocol.getFactory());
     }
 
     /**
@@ -755,5 +789,18 @@ public final class ZimbraSoapContext {
     public void resetProxyAuthToken() {
         mAuthToken.resetProxyAuthToken();
         mRawAuthToken.resetProxyAuthToken();
+    }
+
+    public boolean isAuthUserOnLocalhost() {
+        if (mAuthTokenAccountId != null) {
+            try {
+                Account a = Provisioning.getInstance().getAccountById(mAuthTokenAccountId);
+                if (a != null) {
+                    return Provisioning.onLocalServer(a);
+                }
+            } catch (ServiceException e) {
+            }
+        }
+        return false;
     }
 }

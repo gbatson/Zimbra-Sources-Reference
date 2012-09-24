@@ -1,17 +1,3 @@
-/*
- * ***** BEGIN LICENSE BLOCK *****
- * Zimbra Collaboration Suite Server
- * Copyright (C) 2010, 2011 VMware, Inc.
- * 
- * The contents of this file are subject to the Zimbra Public License
- * Version 1.3 ("License"); you may not use this file except in
- * compliance with the License.  You may obtain a copy of the License at
- * http://www.zimbra.com/license.
- * 
- * Software distributed under the License is distributed on an "AS IS"
- * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
- * ***** END LICENSE BLOCK *****
- */
 package com.zimbra.bp;
 
 import java.io.IOException;
@@ -36,7 +22,9 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.AccountServiceException;
 import com.zimbra.cs.account.DataSource;
 import com.zimbra.cs.account.Provisioning;
-import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.common.soap.AdminExtConstants;
+import com.zimbra.common.account.Key.AccountBy;
+import com.zimbra.soap.admin.type.DataSourceType;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.datasource.ImportStatus;
 import com.zimbra.cs.account.Server;
@@ -61,15 +49,15 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
         ZimbraSoapContext zsc = getZimbraSoapContext(context);
         Server localServer = Provisioning.getInstance().getLocalServer();
         checkRight(zsc, context, localServer, Admin.R_createMigrationTask);
-        String op = request.getAttribute(ZimbraBulkProvisionExt.A_op);
-        Element response = zsc.createElement(ZimbraBulkProvisionService.BULK_IMAP_DATA_IMPORT_RESPONSE);
+        String op = request.getAttribute(AdminExtConstants.A_op);
+        Element response = zsc.createElement(AdminExtConstants.BULK_IMAP_DATA_IMPORT_RESPONSE);
         Map<accountState, List<ExternalIMAPAccount>> IMAPAccounts = null;
         String IMAPhost = null, IMAPport = null, adminLogin = null, adminPassword = null, connectionType = null, sourceServerType = null;
-        String sourceType = request.getElement(ZimbraBulkProvisionExt.A_sourceType).getTextTrim();
+        String sourceType = request.getElement(AdminExtConstants.A_sourceType).getTextTrim();
         String indexBatchSize = ZimbraBulkProvisionExt.DEFAULT_INDEX_BATCH_SIZE;
         boolean useAdminLogin = false;
         if (sourceType.equalsIgnoreCase(AdminFileDownload.FILE_FORMAT_BULK_XML)) {
-            String aid = request.getElement(ZimbraBulkProvisionExt.E_attachmentID).getTextTrim();
+            String aid = request.getElement(AdminExtConstants.E_attachmentID).getTextTrim();
             ZimbraLog.extensions.debug("Uploaded XML file id = " + aid);
             FileUploadServlet.Upload up = FileUploadServlet.fetchUpload(zsc.getAuthtokenAccountId(), aid, zsc.getAuthToken());
             if (up == null) {
@@ -81,57 +69,57 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
                 Document doc = reader.read(up.getInputStream());
                 org.dom4j.Element root = doc.getRootElement();
 
-                if (!root.getName().equals(ZimbraBulkProvisionExt.E_ZCSImport)) {
-                    throw new DocumentException("Bulk provisioning XML file's root element must be " + ZimbraBulkProvisionExt.E_ZCSImport);
+                if (!root.getName().equals(AdminExtConstants.E_ZCSImport)) {
+                    throw new DocumentException("Bulk provisioning XML file's root element must be " + AdminExtConstants.E_ZCSImport);
                 }
-                Iterator rootIter = root.elementIterator(ZimbraBulkProvisionExt.E_ImportUsers);
+                Iterator rootIter = root.elementIterator(AdminExtConstants.E_ImportUsers);
                 if (!rootIter.hasNext()) {
-                    throw new DocumentException("Cannot find element " + ZimbraBulkProvisionExt.E_ImportUsers + " in uploaded bulk provisioning XML file");
+                    throw new DocumentException("Cannot find element " + AdminExtConstants.E_ImportUsers + " in uploaded bulk provisioning XML file");
                 }
                 org.dom4j.Element elImportUsers = (org.dom4j.Element) rootIter.next();
 
                 IMAPAccounts = parseExternalIMAPAccounts(elImportUsers, zsc);
 
-                Iterator connectionTypeIter = root.elementIterator(ZimbraBulkProvisionExt.E_connectionType);
+                Iterator connectionTypeIter = root.elementIterator(AdminExtConstants.E_connectionType);
                 if (connectionTypeIter.hasNext()) {
                     org.dom4j.Element elConnectionType = (org.dom4j.Element) connectionTypeIter.next();
                     connectionType = elConnectionType.getTextTrim();
                 }
-                Iterator sourceServerTypeIter = root.elementIterator(ZimbraBulkProvisionExt.E_sourceServerType);
+                Iterator sourceServerTypeIter = root.elementIterator(AdminExtConstants.E_sourceServerType);
                 if (sourceServerTypeIter.hasNext()) {
-                    org.dom4j.Element elSourceServerType = (org.dom4j.Element) connectionTypeIter.next();
+                    org.dom4j.Element elSourceServerType = (org.dom4j.Element) sourceServerTypeIter.next();
                     sourceServerType = elSourceServerType.getTextTrim();
                 }
-                Iterator IMAPHostIter = root.elementIterator(ZimbraBulkProvisionExt.E_IMAPHost);
+                Iterator IMAPHostIter = root.elementIterator(AdminExtConstants.E_IMAPHost);
                 if (IMAPHostIter.hasNext()) {
                     org.dom4j.Element elIMAPHost = (org.dom4j.Element) IMAPHostIter.next();
                     IMAPhost = elIMAPHost.getTextTrim();
                 }
 
-                Iterator IMAPPortIter  = root.elementIterator(ZimbraBulkProvisionExt.E_IMAPPort);
+                Iterator IMAPPortIter  = root.elementIterator(AdminExtConstants.E_IMAPPort);
                 if (IMAPPortIter.hasNext()) {
                     org.dom4j.Element elIMAPPort = (org.dom4j.Element) IMAPPortIter.next();
                     IMAPport = elIMAPPort.getTextTrim();
                 }
 
-                Iterator IndexBatchSizeIter  = root.elementIterator(ZimbraBulkProvisionExt.E_indexBatchSize);
+                Iterator IndexBatchSizeIter  = root.elementIterator(AdminExtConstants.E_indexBatchSize);
                 if (IndexBatchSizeIter.hasNext()) {
                     org.dom4j.Element elIxBatchSize = (org.dom4j.Element) IndexBatchSizeIter.next();
                     indexBatchSize = elIxBatchSize.getTextTrim();
                 }
 
-                Iterator useAdminLoginIter = root.elementIterator(ZimbraBulkProvisionExt.E_useAdminLogin);
+                Iterator useAdminLoginIter = root.elementIterator(AdminExtConstants.E_useAdminLogin);
                 if (useAdminLoginIter.hasNext()) {
                     org.dom4j.Element elUseAdminLogin = (org.dom4j.Element) useAdminLoginIter.next();
                     useAdminLogin = "1".equalsIgnoreCase(elUseAdminLogin.getTextTrim());
                     if (useAdminLogin) {
-                        Iterator adminLoginIter = root.elementIterator(ZimbraBulkProvisionExt.E_IMAPAdminLogin);
+                        Iterator adminLoginIter = root.elementIterator(AdminExtConstants.E_IMAPAdminLogin);
                         if (adminLoginIter.hasNext()) {
                             org.dom4j.Element elAdminLogin = (org.dom4j.Element) adminLoginIter.next();
                             adminLogin = elAdminLogin.getTextTrim();
                         }
 
-                        Iterator adminPassIter = root.elementIterator(ZimbraBulkProvisionExt.E_IMAPAdminPassword);
+                        Iterator adminPassIter = root.elementIterator(AdminExtConstants.E_IMAPAdminPassword);
                         if (adminPassIter.hasNext()) {
                             org.dom4j.Element elAdminPassword = (org.dom4j.Element) adminPassIter.next();
                             adminPassword = elAdminPassword.getTextTrim();
@@ -144,10 +132,12 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
             } catch (IOException e) {
                 throw ServiceException.FAILURE("Bulk provisioning failed to read uploaded XML document.",e);
             }
-        } /*else if (sourceType.equalsIgnoreCase(ZimbraBulkProvisionExt.FILE_FORMAT_BULK_LDAP) || sourceType.equalsIgnoreCase(ZimbraBulkProvisionExt.FILE_FORMAT_BULK_AD)) {
-            IMAPAccounts = getExternalIMAPAccounts(request, zsc);
-        } */ else if (sourceType.equalsIgnoreCase(ZimbraBulkProvisionExt.FILE_FORMAT_ZIMBRA)) {
+        } else if (sourceType.equalsIgnoreCase(ZimbraBulkProvisionExt.FILE_FORMAT_ZIMBRA)) {
             IMAPAccounts = getZimbraAccounts(request, zsc);
+        } else {
+        	throw ServiceException.INVALID_REQUEST(
+        			String.format("Invalid value of %s parameter: %s. Allowed values: %s, %s",
+        					AdminExtConstants.A_sourceType, sourceType, ZimbraBulkProvisionExt.FILE_FORMAT_ZIMBRA,AdminFileDownload.FILE_FORMAT_BULK_XML), null);
         }
 
         /*
@@ -167,7 +157,7 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
         if (IMAPAccounts.containsKey(accountState.running)) {
             runningAccounts = IMAPAccounts.get(accountState.running);
             if (runningAccounts != null) {
-                Element elRunningAccounts = response.addElement(ZimbraBulkProvisionExt.E_runningAccounts);
+                Element elRunningAccounts = response.addElement(AdminExtConstants.E_runningAccounts);
                 numRunningAccounts = runningAccounts.size();
                 Iterator<ExternalIMAPAccount> accountsIter = runningAccounts.iterator();
                 while (accountsIter.hasNext()) {
@@ -189,40 +179,40 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
         /*
          * Check for overwritten options
          */
-        Element elConnectionType = request.getOptionalElement(ZimbraBulkProvisionExt.E_connectionType);
+        Element elConnectionType = request.getOptionalElement(AdminExtConstants.E_connectionType);
         if (elConnectionType != null) {
             connectionType = elConnectionType.getTextTrim();
         }
-        Element elSourceServerType = request.getOptionalElement(ZimbraBulkProvisionExt.E_sourceServerType);
+        Element elSourceServerType = request.getOptionalElement(AdminExtConstants.E_sourceServerType);
         if (elSourceServerType != null) {
             sourceServerType = elSourceServerType.getTextTrim();
         }
-        Element elIMAPHost = request.getOptionalElement(ZimbraBulkProvisionExt.E_IMAPHost);
+        Element elIMAPHost = request.getOptionalElement(AdminExtConstants.E_IMAPHost);
         if (elIMAPHost != null) {
             IMAPhost = elIMAPHost.getTextTrim();
         }
 
-        Element elIMAPPort = request.getOptionalElement(ZimbraBulkProvisionExt.E_IMAPPort);
+        Element elIMAPPort = request.getOptionalElement(AdminExtConstants.E_IMAPPort);
         if (elIMAPPort != null) {
             IMAPport = elIMAPPort.getTextTrim();
         }
 
-        Element elBatchSize = request.getOptionalElement(ZimbraBulkProvisionExt.E_indexBatchSize);
+        Element elBatchSize = request.getOptionalElement(AdminExtConstants.E_indexBatchSize);
         if (elBatchSize != null) {
             indexBatchSize = elBatchSize.getTextTrim();
         }
 
-        Element elUseAdminLogin = request.getOptionalElement(ZimbraBulkProvisionExt.E_useAdminLogin);
+        Element elUseAdminLogin = request.getOptionalElement(AdminExtConstants.E_useAdminLogin);
         if (elUseAdminLogin != null) {
             useAdminLogin = "1".equalsIgnoreCase(elUseAdminLogin.getTextTrim());
         }
 
         if (useAdminLogin) {
-            Element elAdminLogin = request.getOptionalElement(ZimbraBulkProvisionExt.E_IMAPAdminLogin);
+            Element elAdminLogin = request.getOptionalElement(AdminExtConstants.E_IMAPAdminLogin);
             if (elAdminLogin != null) {
                 adminLogin = elAdminLogin.getTextTrim();
             }
-            Element elAdminPassword = request.getOptionalElement(ZimbraBulkProvisionExt.E_IMAPAdminPassword);
+            Element elAdminPassword = request.getOptionalElement(AdminExtConstants.E_IMAPAdminPassword);
             if (elAdminPassword != null) {
                 adminPassword = elAdminPassword.getTextTrim();
             }
@@ -233,21 +223,21 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
              * Do not start the import. Just generate a preview. We will count
              * idle and non-idle accounts.
              */
-            response.addElement(ZimbraBulkProvisionExt.E_totalCount).setText(Integer.toString(numIdleAccounts + numRunningAccounts + numFinishedAccounts));
-            response.addElement(ZimbraBulkProvisionExt.E_idleCount).setText(Integer.toString(numIdleAccounts));
-            response.addElement(ZimbraBulkProvisionExt.E_runningCount).setText(Integer.toString(numRunningAccounts));
-            response.addElement(ZimbraBulkProvisionExt.E_finishedCount).setText(Integer.toString(numFinishedAccounts));
+            response.addElement(AdminExtConstants.E_totalCount).setText(Integer.toString(numIdleAccounts + numRunningAccounts + numFinishedAccounts));
+            response.addElement(AdminExtConstants.E_idleCount).setText(Integer.toString(numIdleAccounts));
+            response.addElement(AdminExtConstants.E_runningCount).setText(Integer.toString(numRunningAccounts));
+            response.addElement(AdminExtConstants.E_finishedCount).setText(Integer.toString(numFinishedAccounts));
 
-            response.addElement(ZimbraBulkProvisionExt.E_connectionType).setText(connectionType);
-            response.addElement(ZimbraBulkProvisionExt.E_IMAPHost).setText(IMAPhost);
-            response.addElement(ZimbraBulkProvisionExt.E_IMAPPort).setText(IMAPport);
-            response.addElement(ZimbraBulkProvisionExt.E_indexBatchSize).setText(indexBatchSize);
+            response.addElement(AdminExtConstants.E_connectionType).setText(connectionType);
+            response.addElement(AdminExtConstants.E_IMAPHost).setText(IMAPhost);
+            response.addElement(AdminExtConstants.E_IMAPPort).setText(IMAPport);
+            response.addElement(AdminExtConstants.E_indexBatchSize).setText(indexBatchSize);
             if(useAdminLogin) {
-                response.addElement(ZimbraBulkProvisionExt.E_useAdminLogin).setText("1");
-                response.addElement(ZimbraBulkProvisionExt.E_IMAPAdminLogin).setText(adminLogin);
-                response.addElement(ZimbraBulkProvisionExt.E_IMAPAdminPassword).setText(adminPassword);
+                response.addElement(AdminExtConstants.E_useAdminLogin).setText("1");
+                response.addElement(AdminExtConstants.E_IMAPAdminLogin).setText(adminLogin);
+                response.addElement(AdminExtConstants.E_IMAPAdminPassword).setText(adminPassword);
             } else {
-                response.addElement(ZimbraBulkProvisionExt.E_useAdminLogin).setText("0");
+                response.addElement(AdminExtConstants.E_useAdminLogin).setText("0");
             }
         } else if (ZimbraBulkProvisionExt.OP_START_IMPORT.equalsIgnoreCase(op)) {
             if (idleAccounts == null) {
@@ -271,7 +261,7 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
                 if (adminPassword == null || adminLogin == null) {
                     throw ServiceException.INVALID_REQUEST(
                             "Must specify admin credentials in order to log in as admin to IMAP server if "
-                                    + ZimbraBulkProvisionExt.E_useAdminLogin
+                                    + AdminExtConstants.E_useAdminLogin
                                     + " option is selected!", null);
                 }
 
@@ -353,7 +343,7 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
                 List<DataSource> sources = Provisioning.getInstance().getAllDataSources(localAccount);
                 for (DataSource ds : sources) {
                     if (ZimbraBulkProvisionExt.IMAP_IMPORT_DS_NAME.equalsIgnoreCase(ds.getName())
-                            && ds.getType() == DataSource.Type.imap
+                            && ds.getType() == DataSourceType.imap
                             && ds.isImportOnly()
                             && "1".equalsIgnoreCase(ds.getAttr(Provisioning.A_zimbraDataSourceFolderId))) {
                         ImportStatus importStatus = DataSourceManager.getImportStatus(localAccount, ds);
@@ -494,7 +484,7 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
         Map<accountState, List<ExternalIMAPAccount>> accts = new HashMap<accountState, List<ExternalIMAPAccount>>();
         Provisioning prov = Provisioning.getInstance();
 
-        for (Iterator userIter = root.elementIterator(ZimbraBulkProvisionExt.E_User); userIter.hasNext();) {
+        for (Iterator userIter = root.elementIterator(AdminExtConstants.E_User); userIter.hasNext();) {
             org.dom4j.Element elUser = (org.dom4j.Element) userIter.next();
             String userEmail = "";
             String userLogin = "";
@@ -508,16 +498,16 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
                  * desktop based Exchange Migration utility <RemoteEmailAddress>
                  * takes prevalence over <ExchangeMail> element
                  */
-                if (ZimbraBulkProvisionExt.E_ExchangeMail.equalsIgnoreCase(el.getName())) {
+                if (AdminExtConstants.E_ExchangeMail.equalsIgnoreCase(el.getName())) {
                     userEmail = el.getTextTrim();
                 }
-                if (ZimbraBulkProvisionExt.E_remoteEmail.equalsIgnoreCase(el.getName())) {
+                if (AdminExtConstants.E_remoteEmail.equalsIgnoreCase(el.getName())) {
                     userEmail = el.getTextTrim();
                 }
-                if (ZimbraBulkProvisionExt.E_remoteIMAPLogin.equalsIgnoreCase(el.getName())) {
+                if (AdminExtConstants.E_remoteIMAPLogin.equalsIgnoreCase(el.getName())) {
                     userLogin = el.getTextTrim();
                 }
-                if (ZimbraBulkProvisionExt.E_remoteIMAPPassword.equalsIgnoreCase(el.getName())) {
+                if (AdminExtConstants.E_remoteIMAPPassword.equalsIgnoreCase(el.getName())) {
                     userPassword = el.getTextTrim();
                 }
             }
@@ -544,7 +534,7 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
                     localAccount);
             for (DataSource ds : sources) {
                 if (ZimbraBulkProvisionExt.IMAP_IMPORT_DS_NAME.equalsIgnoreCase(ds.getName())
-                        && ds.getType() == DataSource.Type.imap
+                        && ds.getType() == DataSourceType.imap
                         && ds.isImportOnly()
                         && "1".equalsIgnoreCase(ds.getAttr(Provisioning.A_zimbraDataSourceFolderId))) {
                     ImportStatus importStatus = DataSourceManager.getImportStatus(
@@ -621,7 +611,7 @@ public class BulkIMAPDataImport extends AdminDocumentHandler {
         StringUtil.addToMultiMap(dsAttrs, Provisioning.A_zimbraDataSourceIsInternal, "TRUE");
         StringUtil.addToMultiMap(dsAttrs, Provisioning.A_zimbraDataSourceName,ZimbraBulkProvisionExt.IMAP_IMPORT_DS_NAME);
         StringUtil.addToMultiMap(dsAttrs,Provisioning.A_zimbraDataSourceEnabled, "TRUE");
-        DataSource importDS = Provisioning.getInstance().createDataSource(account, DataSource.Type.imap,ZimbraBulkProvisionExt.IMAP_IMPORT_DS_NAME, dsAttrs);
+        DataSource importDS = Provisioning.getInstance().createDataSource(account, DataSourceType.imap,ZimbraBulkProvisionExt.IMAP_IMPORT_DS_NAME, dsAttrs);
         Map<String, Object> accAttrs = new HashMap<String, Object>();
         StringUtil.addToMultiMap(accAttrs,Provisioning.A_zimbraBatchedIndexingSize, batchSize);
         Provisioning.getInstance().modifyAttrs(account, accAttrs, true);

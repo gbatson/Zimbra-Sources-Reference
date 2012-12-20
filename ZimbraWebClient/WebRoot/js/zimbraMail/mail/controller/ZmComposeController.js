@@ -466,19 +466,19 @@ function(params) {
 
 /**
  * Sends the message represented by the content of the compose view.
- * 
+ *
  * @param	{String}		attId					the id
  * @param	{constant}		draftType				the draft type (see <code>ZmComposeController.DRAFT_TYPE_</code> constants)
  * @param	{AjxCallback}	callback				the callback
- * @param	{Boolean}		processDataURIImages
+ * @param	{Boolean}		processImages           remove webkit-fake-url images and upload data uri images
  */
 ZmComposeController.prototype.sendMsg =
-function(attId, draftType, callback, contactId, processDataURIImages) {
-	
-    if (processDataURIImages !== false && this._composeView) {
+function(attId, draftType, callback, contactId, processImages) {
+
+    if (processImages !== false && this._composeView) {
         //Dont use bind as its arguments cannot be modified before its execution.
-        var processDataURIImagesCallback = new AjxCallback(this, this._sendMsg, [attId, null, draftType, callback, contactId]);
-        var result = this._processDataURIImages(this._composeView._getIframeDoc(), processDataURIImagesCallback);
+        var processImagesCallback = new AjxCallback(this, this._sendMsg, [attId, null, draftType, callback, contactId]);
+        var result = this._processImages(processImagesCallback);
         if (result) {
             return;
         }
@@ -2076,7 +2076,10 @@ function() {
 	if (ZmComposeController.IS_INVITE_REPLY[this._action]) {
 		var ops = [ ZmOperation.SAVE_DRAFT, ZmOperation.ATTACHMENT ];
 		this._toolbar.enable(ops, false);
-	}
+        this._composeView.enableAttachButton(false);
+	} else {
+        this._composeView.enableAttachButton(true);
+    }
 	var op = this._toolbar.getOp(ZmOperation.COMPOSE_OPTIONS);
 	if (op) {
 		op.setVisible(appCtxt.get(ZmSetting.HTML_COMPOSE_ENABLED));
@@ -2133,16 +2136,50 @@ function(){
     return this._msg;
 };
 
-ZmComposeController.prototype._processDataURIImages = function(idoc, callback){
+ZmComposeController.prototype._processImages =
+function(callback){
+
+    var idoc = this._composeView._getIframeDoc();//editor iframe document
+    if (!idoc) {
+        return;
+    }
+
+    var imgArray = idoc.getElementsByTagName("img"),
+        length = imgArray.length;
+    if (length === 0) {//No image elements in the editor document
+        return;
+    }
+
+    var isWebkitFakeURLImage = false;
+    for (var i = 0; i < length; i++) {
+        var img = imgArray[i],
+            imgSrc = img.src;
+
+        if (imgSrc && imgSrc.indexOf("webkit-fake-url://") === 0) {
+            img.parentNode.removeChild(img);
+            length--;
+            i--;
+            isWebkitFakeURLImage = true;
+        }
+    }
+
+    if (isWebkitFakeURLImage) {
+        appCtxt.setStatusMsg(ZmMsg.invalidPastedImages);
+        if (length === 0) {//No image elements in the editor document
+            return;
+        }
+    }
+
+    return this._processDataURIImages(imgArray, length, callback);
+};
+
+ZmComposeController.prototype._processDataURIImages = function(imgArray, length, callback){
+
     var BlobBuilder = window.MozBlobBuilder || window.WebKitBlobBuilder || window.MSBlobBuilder || window.BlobBuilder;
-    if(!BlobBuilder || !idoc || !window.atob){
+    if(!BlobBuilder || !window.atob){
         return;
     }
-    var imgArray = idoc.getElementsByTagName("img");
-    var length = imgArray.length;
-    if(length === 0){//No image elements in the editor document
-        return;
-    }
+
     //converts datauri string to blob object used for uploading the image
     //dataURI format  data:image/png;base64,iVBORw0
     var dataURItoBlob = function( dataURI ){
@@ -2224,7 +2261,10 @@ ZmComposeController.prototype._uploadMyComputerFile =
     function(files, prevData, start){
     try {
         var req = new XMLHttpRequest(); // we do not call this function in IE
-        var curView = appCtxt.getAppViewMgr().getCurrentView();
+        var curView = this._composeView;
+        if (!curView){
+            return;
+        }
         this.upLoadC = this.upLoadC + 1;
         var controller = this;
 
@@ -2261,40 +2301,13 @@ ZmComposeController.prototype._uploadMyComputerFile =
 	        };
             progress(curView);
         }
-
-	    req.onreadystatechange = function(){
-		    if(req.readyState === 4 && req.status === 200) {
-			    var resp = eval("["+req.responseText+"]");
-			    var response = resp.length && resp[2];
-			    if (response){
-                    DBG.println(AjxDebug.DBG1,"Uploaded file: "  + fileName + "Successfully.");
-                    prevData.push(response[0]);
-                    if (start < files.length){
-                        curView.updateAttachFileNode(files, start);
-                        controller._uploadMyComputerFile(files, prevData, start )
-                    }else {
-				        var callback = new AjxCallback(this, curView._resetUpload);
-				        controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, prevData, null, callback);
-                    }
-			    }else {
-                    DBG.println("Error while uploading file: "  + fileName + " response is null.");
-                    var callback = new AjxCallback(this, curView._resetUpload);
-				    controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, prevData, null, callback);
-				    var msgDlg = appCtxt.getMsgDialog();
-				    this.upLoadC = this.upLoadC - 1;
-				    msgDlg.setMessage(ZmMsg.importErrorUpload, DwtMessageDialog.CRITICAL_STYLE);
-				    msgDlg.popup();
-				    return false;
-			    }
-		    }
-	    }
+	    req.onreadystatechange = this._handleUploadResponse.bind(this, req, prevData, start, files, fileName);
         req.send(file);
         delete req;
     } catch(exp) {
         DBG.println("Error while uploading file: "  + fileName);
         DBG.println("Exception: "  + exp);
-	    var curView = appCtxt.getAppViewMgr().getCurrentView();
-	    curView._resetUpload(true);
+	    this._composeView._resetUpload(true);
         var msgDlg = appCtxt.getMsgDialog();
         this.upLoadC = this.upLoadC - 1;
         msgDlg.setMessage(ZmMsg.importErrorUpload, DwtMessageDialog.CRITICAL_STYLE);
@@ -2303,6 +2316,36 @@ ZmComposeController.prototype._uploadMyComputerFile =
     }
 };
 
+ZmComposeController.prototype._handleUploadResponse =
+function(req, prevData, start, files, fileName){
+    var curView = this._composeView;
+    this._initAutoSave()
+		    if(req.readyState === 4 && req.status === 200) {
+			    var resp = eval("["+req.responseText+"]");
+			    var response = resp.length && resp[2];
+			    if (response){
+                    DBG.println(AjxDebug.DBG1,"Uploaded file: "  + fileName + "Successfully.");
+                    prevData.push(response[0]);
+                    if (start < files.length){
+                        curView.updateAttachFileNode(files, start);
+                        this._uploadMyComputerFile(files, prevData, start )
+                    }else {
+				        var callback = curView._resetUpload.bind(curView);
+				        this.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, prevData, null, callback);
+                    }
+			    }else {
+                    DBG.println("Error while uploading file: "  + fileName + " response is null.");
+				    var callback = curView._resetUpload.bind(curView);
+				    this.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, prevData, null, callback);
+				    var msgDlg = appCtxt.getMsgDialog();
+				    this.upLoadC = this.upLoadC - 1;
+				    msgDlg.setMessage(ZmMsg.importErrorUpload, DwtMessageDialog.CRITICAL_STYLE);
+				    msgDlg.popup();
+				    return false;
+			    }
+		    }
+
+};
 
 ZmComposeController.prototype._uploadImage = function(blob, callback){
     var req = new XMLHttpRequest();

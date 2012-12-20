@@ -494,7 +494,6 @@ public class LdapProvisioning extends LdapProv {
                         LdapUsage.modifyEntryfromEntryType(entry.getEntryType()));
             }
             helper.modifyAttrs(zlc, ((LdapEntry)entry).getDN(), attrs, entry);
-            refreshEntry(entry, zlc);
         } catch (LdapInvalidAttrNameException e) {
             throw AccountServiceException.INVALID_ATTR_NAME(
                     "invalid attr name: " + e.getMessage(), e);
@@ -505,6 +504,7 @@ public class LdapProvisioning extends LdapProv {
             throw ServiceException.FAILURE("unable to modify attrs: "
                     + e.getMessage(), e);
         } finally {
+            refreshEntry(entry, zlc);
             if (initZlc == null) {
                 LdapClient.closeContext(zlc);
             }
@@ -892,8 +892,9 @@ public class LdapProvisioning extends LdapProv {
         if (account == null) {
             if (checkAliasDomain) {
                 String addrByDomainAlias = getEmailAddrByDomainAlias(emailAddress);
-                if (addrByDomainAlias != null)
+                if (addrByDomainAlias != null) {
                     account = getAccountByNameInternal(addrByDomainAlias, loadFromMaster);
+                }
             }
         }
 
@@ -2400,12 +2401,48 @@ public class LdapProvisioning extends LdapProv {
                 domainAttrs.remove(A_zimbraDomainStatus); // add back later
             }
 
+            String smimeLdapURL = (String) domainAttrs.get(A_zimbraSMIMELdapURL);
+            if (!StringUtil.isNullOrEmpty(smimeLdapURL)) {
+                domainAttrs.remove(A_zimbraSMIMELdapURL); // add back later
+            }
+            String smimeLdapStartTlsEnabled = (String) domainAttrs.get(A_zimbraSMIMELdapStartTlsEnabled);
+            if (!StringUtil.isNullOrEmpty(smimeLdapStartTlsEnabled)) {
+                domainAttrs.remove(A_zimbraSMIMELdapStartTlsEnabled); // add back later
+            }
+            String smimeLdapBindDn = (String) domainAttrs.get(A_zimbraSMIMELdapBindDn);
+            if (!StringUtil.isNullOrEmpty(smimeLdapBindDn)) {
+                domainAttrs.remove(A_zimbraSMIMELdapBindDn); // add back later
+            }
+            String smimeLdapBindPassword = (String) domainAttrs.get(A_zimbraSMIMELdapBindPassword);
+            if (!StringUtil.isNullOrEmpty(smimeLdapBindPassword)) {
+                domainAttrs.remove(A_zimbraSMIMELdapBindPassword); // add back later
+            }
+            String smimeLdapSearchBase = (String) domainAttrs.get(A_zimbraSMIMELdapSearchBase);
+            if (!StringUtil.isNullOrEmpty(smimeLdapSearchBase)) {
+                domainAttrs.remove(A_zimbraSMIMELdapSearchBase); // add back later
+            }
+            String smimeLdapFilter = (String) domainAttrs.get(A_zimbraSMIMELdapFilter);
+            if (!StringUtil.isNullOrEmpty(smimeLdapFilter)) {
+                domainAttrs.remove(A_zimbraSMIMELdapFilter); // add back later
+            }
+            String smimeLdapAttribute = (String) domainAttrs.get(A_zimbraSMIMELdapAttribute);
+            if (!StringUtil.isNullOrEmpty(smimeLdapAttribute)) {
+                domainAttrs.remove(A_zimbraSMIMELdapAttribute); // add back later
+            }
+
             CallbackContext callbackContext = new CallbackContext(CallbackContext.Op.CREATE);
             AttributeManager.getInstance().preModify(domainAttrs, null, callbackContext, true);
 
             // Add back attrs we circumvented from attribute checking
             domainAttrs.put(A_zimbraDomainType, domainType);
             domainAttrs.put(A_zimbraDomainStatus, domainStatus);
+            domainAttrs.put(A_zimbraSMIMELdapURL, smimeLdapURL);
+            domainAttrs.put(A_zimbraSMIMELdapStartTlsEnabled, smimeLdapStartTlsEnabled);
+            domainAttrs.put(A_zimbraSMIMELdapBindDn, smimeLdapBindDn);
+            domainAttrs.put(A_zimbraSMIMELdapBindPassword, smimeLdapBindPassword);
+            domainAttrs.put(A_zimbraSMIMELdapSearchBase, smimeLdapSearchBase);
+            domainAttrs.put(A_zimbraSMIMELdapFilter, smimeLdapFilter);
+            domainAttrs.put(A_zimbraSMIMELdapAttribute, smimeLdapAttribute);
 
             String parts[] = name.split("\\.");
             String dns[] = mDIT.domainToDNs(parts);
@@ -2909,10 +2946,19 @@ public class LdapProvisioning extends LdapProv {
 
         // delete all aliases of the account
         String aliases[] = acc.getMailAlias();
-        if (aliases != null)
-            for (int i=0; i < aliases.length; i++)
-                removeAlias(acc, aliases[i]); // this also removes each alias from any DLs
-
+        if (aliases != null) {
+            for (int i=0; i < aliases.length; i++) {
+                try {
+                    removeAlias(acc, aliases[i]); // this also removes each alias from any DLs
+                } catch (ServiceException se) {
+                    if (AccountServiceException.NO_SUCH_ALIAS.equals(se.getCode())) {
+                        ZimbraLog.account.warn("got no such alias from removeAlias call when deleting account; likely alias was previously in a bad state");
+                    } else {
+                        throw se;
+                    }
+                }
+            }
+        }
         // delete all grants granted to the account
         try {
             RightCommand.revokeAllRights(this, GranteeType.GT_USER, zimbraId);
@@ -4069,7 +4115,14 @@ public class LdapProvisioning extends LdapProv {
             case id:
                 return getDistributionListByIdInternal(key);
             case name:
-                return getDistributionListByNameInternal(key);
+                DistributionList dl = getDistributionListByNameInternal(key);
+                if (dl == null) {
+                    String localDomainAddr = getEmailAddrByDomainAlias(key);
+                    if (localDomainAddr != null) {
+                        dl = getDistributionListByNameInternal(localDomainAddr);
+                    }
+                }
+                return dl;
             default:
                 return null;
         }
@@ -4153,7 +4206,18 @@ public class LdapProvisioning extends LdapProv {
 
     @Override
     public boolean isDistributionList(String addr) {
-        return allDLs.isGroup(addr);
+        boolean isDL = allDLs.isGroup(addr);
+        if (!isDL) {
+            try {
+                addr = getEmailAddrByDomainAlias(addr);
+                if (addr != null) {
+                    isDL = allDLs.isGroup(addr);    
+                }
+            } catch (ServiceException e) {
+                ZimbraLog.account.warn("unable to get local domain address of " + addr, e);
+            }
+        }
+        return isDL;
     }
 
     private Group getGroupFromCache(Key.DistributionListBy keyType, String key) {
@@ -8627,7 +8691,14 @@ public class LdapProvisioning extends LdapProv {
             case id:
                 return getGroupById(key, null, basicAttrsOnly, loadFromMaster);
             case name:
-                return getGroupByName(key, null, basicAttrsOnly, loadFromMaster);
+                Group group = getGroupByName(key, null, basicAttrsOnly, loadFromMaster);
+                if (group == null) {
+                    String localDomainAddr = getEmailAddrByDomainAlias(key);
+                    if (localDomainAddr != null) {
+                        group = getGroupByName(localDomainAddr, null, basicAttrsOnly, loadFromMaster);
+                    }
+                }
+                return group;
             default:
                 return null;
         }

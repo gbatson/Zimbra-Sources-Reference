@@ -323,11 +323,14 @@ public final class LC {
     public static final KnownKey zimbra_servlet_output_stream_buffer_size = KnownKey.newKey(5120);
 
     public static final KnownKey rest_response_cache_control_value = KnownKey.newKey("no-store, no-cache");
-    public static final KnownKey rest_request_max_upload_size = KnownKey.newKey(1 * 1024 * 1024 * 1024); // 1GB
 
     @Reloadable
     @Supported
     public static final KnownKey servlet_max_concurrent_requests_per_session = KnownKey.newKey(0);
+
+    @Reloadable
+    @Supported
+    public static final KnownKey servlet_max_concurrent_http_requests_per_account = KnownKey.newKey(10);
 
     public static final KnownKey index_store = KnownKey.newKey("lucene");
 
@@ -553,6 +556,7 @@ public final class LC {
     public static final KnownKey postfix_enable_smtpd_policyd = KnownKey.newKey("no");
     public static final KnownKey postfix_delay_warning_time = KnownKey.newKey("0h");
     public static final KnownKey postfix_header_checks = KnownKey.newKey("pcre:${zimbra_home}/conf/postfix_header_checks");
+    public static final KnownKey postfix_import_environment = KnownKey.newKey("");
     public static final KnownKey postfix_in_flow_delay = KnownKey.newKey("1s");
     public static final KnownKey postfix_lmtp_connection_cache_destinations = KnownKey.newKey("");
     public static final KnownKey postfix_lmtp_connection_cache_time_limit = KnownKey.newKey("4s");
@@ -639,7 +643,7 @@ public final class LC {
             " -Dsun.net.inetaddr.ttl=${networkaddress_cache_ttl}" +
             " -XX:+UseConcMarkSweepGC" +
             " -XX:PermSize=128m" +
-            " -XX:MaxPermSize=128m" +
+            " -XX:MaxPermSize=350m" +
             " -XX:SoftRefLRUPolicyMSPerMB=1" +
             " -verbose:gc" +
             " -XX:+PrintGCDetails" +
@@ -715,8 +719,6 @@ public final class LC {
     public static final KnownKey calendar_cache_range_months = KnownKey.newKey(3);
     public static final KnownKey calendar_cache_max_stale_items = KnownKey.newKey(10);
     public static final KnownKey calendar_exchange_form_auth_url = KnownKey.newKey("/exchweb/bin/auth/owaauth.dll");
-
-    public static final KnownKey syncgal_non_idonly_use_ldap = KnownKey.newKey(true);
 
     public static final KnownKey spnego_java_options =  KnownKey.newKey(
             "-Djava.security.krb5.conf=${mailboxd_directory}/etc/krb5.ini " +
@@ -845,6 +847,7 @@ public final class LC {
     // This is a workaround for an issue in Jetty 6.1.22.zc6m when we upgrade
     // we should re-evaluate/remove these settings and the code that uses them
     public static final KnownKey zimbra_archive_formatter_disable_timeout = KnownKey.newKey(true);
+    public static final KnownKey zimbra_csv_formatter_disable_timeout = KnownKey.newKey(true);
     public static final KnownKey zimbra_archive_formatter_search_chunk_size = KnownKey.newKey(4096);
     public static final KnownKey zimbra_gal_sync_disable_timeout = KnownKey.newKey(true);
 
@@ -854,6 +857,8 @@ public final class LC {
 
     public static final KnownKey zimbra_waitset_initial_sleep_time = KnownKey.newKey(1000);
     public static final KnownKey zimbra_waitset_nodata_sleep_time = KnownKey.newKey(3000);
+
+    public static final KnownKey zimbra_dos_filter_max_requests_per_sec  = KnownKey.newKey(30);
 
     public static final KnownKey zimbra_csv_mapping_file = KnownKey.newKey("${zimbra_home}/conf/zimbra-contact-fields.xml");
 
@@ -1075,10 +1080,11 @@ public final class LC {
     public static final KnownKey zimbra_activesync_autodiscover_use_service_url = KnownKey.newKey(false);
     public static final KnownKey zimbra_activesync_metadata_cache_expiration = KnownKey.newKey(3600);
     public static final KnownKey zimbra_activesync_metadata_cache_max_size = KnownKey.newKey(5000);
-    public static final KnownKey zimbra_activesync_heartbeat_interval_min = KnownKey.newKey(60); //60 Seconds = 1 min
+    public static final KnownKey zimbra_activesync_heartbeat_interval_min = KnownKey.newKey(300); //300 Seconds = 5 mins
     //make sure it's less than nginx's zimbraReverseProxyUpstreamPollingTimeout, which is now 3600 seconds
-    public static final KnownKey zimbra_activesync_heartbeat_interval_max = KnownKey.newKey(3540); //3540 Seconds = 59 mins,
+    public static final KnownKey zimbra_activesync_heartbeat_interval_max = KnownKey.newKey(3540); //3540 Seconds = 59 mins
     public static final KnownKey zimbra_activesync_search_max_results = KnownKey.newKey(500);
+    public static final KnownKey zimbra_activesync_general_cache_size = KnownKey.newKey(500); //active device number
 
     public static final KnownKey zimbra_slow_logging_enabled = KnownKey.newKey(false);
     public static final KnownKey zimbra_slow_logging_threshold = KnownKey.newKey(5000);
@@ -1211,6 +1217,8 @@ public final class LC {
     public static final KnownKey check_dl_membership_enabled = KnownKey.newKey(true);
 
     public static final KnownKey octopus_public_static_folder = KnownKey.newKey("${zimbra_home}/jetty/static");
+
+    public static final KnownKey conversation_ignore_maillist_prefix = KnownKey.newKey(true);
 
     static {
         // Automatically set the key name with the variable name.

@@ -135,7 +135,15 @@ ZmListView.prototype.set =
 function(list, sortField) {
 
 	this._sortByString = this._controller._currentSearch && this._controller._currentSearch.sortBy;
-    var settings = appCtxt.getSettings();
+    //TODO: We need a longer term fix but this is to prevent a sort by that doesn't match our ZmSearch
+	//constants and lead to notification issues. 
+	if (this._sortByString && this._sortByString.indexOf("asc") != -1) {
+	    this._sortByString = this._sortByString.replace("asc", "Asc");   
+    }
+	else if (this._sortByString && this._sortByString.indexOf("desc")!= -1) {
+	    this._sortByString = this._sortByString.replace("desc", "Desc");
+    } 
+	var settings = appCtxt.getSettings();
 	if(!appCtxt.isExternalAccount() && this.view && ( settings && settings.persistImplicitSortPrefs(this.view) ) )
         appCtxt.set(ZmSetting.SORTING_PREF, this._sortByString, this.view);
 
@@ -826,7 +834,10 @@ function(allResults) {
 		var curResult = this._controller._activeSearch;
 		if (curResult && curResult.getAttribute("more")) {
 			var list = this.getList();
-			var toastMsg = AjxMessageFormat.format(ZmMsg.allPageSelected, list ? list.size() : ZmMsg.all);
+			var typeText = AjxMessageFormat.format(ZmMsg[ZmItem.COUNT_KEY[this.type]], list ? list.size() : 2);
+			var shortcut = appCtxt.getShortcutHint(null, ZmKeyMap.SELECT_ALL);
+			var args = [list ? list.size() : ZmMsg.all, typeText, shortcut, "ZmListView.selectAllResults()"];
+			var toastMsg = AjxMessageFormat.format(ZmMsg.allPageSelected, args);
 			if (allResults) {
 				this.allSelected = true;
 				toastMsg = ZmMsg.allSearchSelected;
@@ -835,8 +846,19 @@ function(allResults) {
 		}
 
 		var sel = this._selectedItems.getArray();
-		for (var i=0; i<sel.length; i++)
+		for (var i = 0; i < sel.length; i++) {
 			this.setSelectionCbox(sel[i], false);
+		}
+	}
+};
+
+// Handle click of link in toast
+ZmListView.selectAllResults =
+function() {
+	var ctlr = appCtxt.getCurrentController();
+	var view = ctlr && ctlr.getListView();
+	if (view && view.selectAll) {
+		view.selectAll(true);
 	}
 };
 

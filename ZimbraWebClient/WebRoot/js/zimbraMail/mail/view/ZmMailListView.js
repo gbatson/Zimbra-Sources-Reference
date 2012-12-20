@@ -439,7 +439,7 @@ function(userHeaders, headerList) {
 			if (hdr == ZmId.FLD_ACCOUNT) {
 				starred[ZmItem.F_ACCOUNT] = true;
 			}
-			if (hdr = ZmId.FLD_SELECTION) {
+			if (hdr == ZmId.FLD_SELECTION) {
 				//re-add selection checkbox at the beginning (no idea why the rest is added one before last item, but not gonna change it for now
 				headers.unshift(hdr); //unshift adds item at the beginning
 			}
@@ -634,8 +634,7 @@ function() {
 	if (headerCol) { //this means viewing pane on bottom
 		var colLabel = this._isOutboundFolder() ? ZmMsg.to : ZmMsg.from;
         //bug:1108 & 43789#c19 since sort-by-rcpt affects server performance avoid using in convList instead used in outbound folder
-        headerCol._sortable = this._isOutboundFolder() ? ZmItem.F_TO :
-				((this._mode == ZmId.VIEW_CONVLIST) ? null : ZmItem.F_FROM);
+        headerCol._sortable = this._isOutboundFolder() ? ZmItem.F_TO : ZmItem.F_FROM;
 
         var fromColSpan = document.getElementById(DwtId.getListViewHdrId(DwtId.WIDGET_HDR_LABEL, this._view, headerCol._field));
 		if (fromColSpan) {
@@ -694,7 +693,7 @@ function(field, itemIdx) {
 
 	var isOutboundFolder = this._isOutboundFolder();
 	if (field == ZmItem.F_FROM && isOutboundFolder) {
-	   return this._headerList[itemIdx]._sortable ? ZmMsg.to : ZmMsg.to;
+	   return ZmMsg.to;
 	}
 	if (field == ZmItem.F_STATUS) {
 		return ZmMsg.messageStatus;
@@ -1180,6 +1179,13 @@ ZmMailListView.prototype.reset =
 function() {
 	this.clearGroupSections(this.getActiveSearchFolderId());
 	ZmListView.prototype.reset.call(this);
+};
+
+ZmMailListView.prototype.removeAll =
+function() {
+	//similar to reset, but can't call reset since it sets _rendered to false and that prevents pagination from working.
+	this.clearGroupSections(this.getActiveSearchFolderId());
+	ZmListView.prototype.removeAll.call(this);
 };
 
 

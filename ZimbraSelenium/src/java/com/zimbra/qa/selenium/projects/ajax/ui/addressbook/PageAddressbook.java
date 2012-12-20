@@ -2,34 +2,18 @@ package  com.zimbra.qa.selenium.projects.ajax.ui.addressbook;
 
 
 import java.awt.event.KeyEvent;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.regex.*;
+import java.util.*;
 
 import org.apache.log4j.LogManager;
 
-import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
-import com.zimbra.qa.selenium.projects.ajax.ui.ContextMenu;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogAssistant;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
-import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
-import com.zimbra.qa.selenium.projects.ajax.ui.PageMain;
-
-import com.zimbra.qa.selenium.framework.core.ExecuteHarnessMain;
 import com.zimbra.qa.selenium.framework.items.*;
-
 import com.zimbra.qa.selenium.framework.ui.*;
-
-
 import com.zimbra.qa.selenium.framework.util.*;
-
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties.AppType;
+import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.*;
-
-
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.FormMailNew;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.TreeMail;
+import com.zimbra.qa.selenium.projects.ajax.ui.DialogTag;
+import com.zimbra.qa.selenium.projects.ajax.ui.mail.*;
 
 public class PageAddressbook extends AbsTab {
 
@@ -61,7 +45,7 @@ public class PageAddressbook extends AbsTab {
 	public static class CONTEXT_SUB_MENU {
 				
 		public static final ContextMenuItem CONTACT_SUB_NEW_TAG = new ContextMenuItem("div#contacts_newtag","New Tag","div[class='ImgNewTag']",":contains('nt')");
-		public static final ContextMenuItem CONTACT_SUB_REMOVE_TAG = new ContextMenuItem("div[id='contacts_removetag']","Remove Tag","div[class='ImgDeleteTag']","");
+		public static final ContextMenuItem CONTACT_SUB_REMOVE_TAG = new ContextMenuItem("div[id*='contacts_removetag']","Remove Tag","div[class='ImgDeleteTag']","");
 		//public static final ContextMenuItem CONTACT_SUB_REMOVE_TAG = new ContextMenuItem("td#zmi__Contacts__TAG_MENU|MENU|REMOVETAG_title","Remove Tag","div[class='ImgDeleteTag']","");
 
 		
@@ -72,6 +56,42 @@ public class PageAddressbook extends AbsTab {
 	    
 	}
 	
+	/**
+	 * A mapping of letter characters (upper case) to addressbook buttons, e.g. 'A' -> Button.B_AB_A
+	 */
+	public static final HashMap<Character, Button> buttons = new HashMap<Character, Button>() {
+		private static final long serialVersionUID = -8341258587369022596L;
+	{
+    	put(Character.valueOf('A'), Button.B_AB_A);		         
+    	put(Character.valueOf('B'), Button.B_AB_B);		         
+    	put(Character.valueOf('C'), Button.B_AB_C);		         
+    	put(Character.valueOf('D'), Button.B_AB_D);		         
+    	put(Character.valueOf('E'), Button.B_AB_E);		         
+    	put(Character.valueOf('F'), Button.B_AB_F);		         
+    	put(Character.valueOf('G'), Button.B_AB_G);		         
+    	put(Character.valueOf('H'), Button.B_AB_H);		         
+    	put(Character.valueOf('I'), Button.B_AB_I);		         
+    	put(Character.valueOf('J'), Button.B_AB_J);		         
+    	put(Character.valueOf('K'), Button.B_AB_K);		         
+    	put(Character.valueOf('L'), Button.B_AB_L);		         
+    	put(Character.valueOf('M'), Button.B_AB_M);		         
+    	put(Character.valueOf('N'), Button.B_AB_N);		         
+    	put(Character.valueOf('O'), Button.B_AB_O);		         
+    	put(Character.valueOf('P'), Button.B_AB_P);		         
+    	put(Character.valueOf('Q'), Button.B_AB_Q);		         
+    	put(Character.valueOf('R'), Button.B_AB_R);		         
+    	put(Character.valueOf('S'), Button.B_AB_S);		         
+    	put(Character.valueOf('T'), Button.B_AB_T);		         
+    	put(Character.valueOf('U'), Button.B_AB_U);		         
+    	put(Character.valueOf('V'), Button.B_AB_V);		         
+    	put(Character.valueOf('W'), Button.B_AB_W);		         
+    	put(Character.valueOf('X'), Button.B_AB_X);		         
+    	put(Character.valueOf('Y'), Button.B_AB_Y);		         
+    	put(Character.valueOf('Z'), Button.B_AB_Z);		         
+
+	}};
+
+
 	public PageAddressbook(AbsApplication application) {
 		super(application);		
 		logger.info("new " + PageAddressbook.class.getCanonicalName());
@@ -145,6 +165,15 @@ public class PageAddressbook extends AbsTab {
 
 	}
 
+	/* (non-Javadoc)
+	 * @see com.zimbra.qa.selenium.framework.ui.AbsTab#zRefresh()
+	 */
+	public void zRefresh() throws HarnessException {
+		
+		// Click refresh on the main app
+		((AppAjaxClient)this.MyApplication).zPageMain.zToolbarPressButton(Button.B_REFRESH);
+		
+	}
 	
 	//get subFolders
 	public List<FolderItem> zListGetFolders(ZimbraAccount account, FolderItem parentFolder) throws HarnessException {
@@ -212,7 +241,7 @@ public class PageAddressbook extends AbsTab {
 			logger.info("...found "+ contactType + " - " + fileAs );
 			isContactFound = ((contactType.equals(ContactGroupItem.IMAGE_CLASS) &&  contactItem instanceof ContactGroupItem) ||
 				  (contactType.equals(ContactItem.IMAGE_CLASS) &&  contactItem instanceof ContactItem)) &&
-				  (contactItem.fileAs.equals(fileAs));
+				  (contactItem.fileAs.equals(fileAs.trim()));
 			
 				    	      
 		}
@@ -364,7 +393,7 @@ public class PageAddressbook extends AbsTab {
 			// To use "NEW" with a pulldown option, see  zToolbarPressPulldown(Button, Button)
 
 			
-			locator = "css=div#zb__NEW_MENU td#zb__NEW_MENU_title";			
+			locator = "css=div#zb__NEW_MENU td[id$='_title']";			
 			page = new FormContactNew(this.MyApplication);
 
 	
@@ -446,7 +475,6 @@ public class PageAddressbook extends AbsTab {
 
 		// Click it
 		zClickAt(locator,"0,0");
-		  ExecuteHarnessMain.ResultListener.captureScreen();
 		if (isAlphabetButton(button)) {
  		  //for addressbook alphabet button only
 		  sClick(locator);
@@ -456,9 +484,7 @@ public class PageAddressbook extends AbsTab {
 		
 		if ( page != null ) {
 			//sWaitForPageToLoad();			
-			  ExecuteHarnessMain.ResultListener.captureScreen();
 			page.zWaitForActive();
-			  ExecuteHarnessMain.ResultListener.captureScreen();
 		}
 		return (page);
 	}
@@ -507,43 +533,7 @@ public class PageAddressbook extends AbsTab {
 	      app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);	    		
 	}
 	
-	public ContactGroupItem createUsingSOAPSelectContactGroup(AppAjaxClient app, Action action, String ... tagIDArray)  throws HarnessException {	
-	  // Create a contact group via Soap
-	  ContactGroupItem group = ContactGroupItem.createUsingSOAP(app, tagIDArray);
-		             
-	  group.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-	  //String[] dlist = app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn/mail:a[@n='dlist']", null).split(","); //a[2]   
-	  //for (int i=0; i<dlist.length; i++) {
-	  //	  group.addDListMember(dlist[i]);
-	  //}
-	  
-	  
-      // Refresh the view, to pick up the new contact
-      FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
-      app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
-    
-      // Select the item
-      zListItem(action, group.fileAs);
-      
-      return group;
-    }
 
-	public ContactItem createUsingSOAPSelectContact(AppAjaxClient app, Action action, String ... tagIDArray)  throws HarnessException {	
-		  // Create a contact via Soap
-		  ContactItem contactItem = ContactItem.createUsingSOAP(app, tagIDArray);			             
-		  contactItem.setId(app.zGetActiveAccount().soapSelectValue("//mail:CreateContactResponse/mail:cn", "id"));
-		  		  
-		  
-	      // Refresh the view, to pick up the new contact
-	      FolderItem contactFolder = FolderItem.importFromSOAP(app.zGetActiveAccount(), "Contacts");
-	      GeneralUtility.syncDesktopToZcsWithSoap(app.zGetActiveAccount());
-	      app.zTreeContacts.zTreeItem(Action.A_LEFTCLICK, contactFolder);
-	    
-	      // Select the item
-	      zListItem(action, contactItem.fileAs);
-	      
-	      return contactItem;
-	    }
 		
 
 	@Override
@@ -627,20 +617,21 @@ public class PageAddressbook extends AbsTab {
 			}
 
 			//central coordinate "x,y" 
-			String center= sGetElementWidth(pulldownLocator)/2 + "," + sGetElementHeight(pulldownLocator)/2;
+			//String center= sGetElementWidth(pulldownLocator)/2 + "," + sGetElementHeight(pulldownLocator)/2;
 			if ( this.zIsBrowserMatch(BrowserMasks.BrowserMaskIE)){
 			 				 
 				// TODO check if the following code make the test case CreateContactGroup.GroupOfNewEmail() pass in wdc			
-			    sGetEval("var evObj = document.createEventObject();" 
+			    	/*
+			    	sGetEval("return var evObj = document.createEventObject();" 
 						+ "var x = selenium.browserbot.findElementOrNull('" + pulldownLocator + "');"
 						+ "x.focus();x.blur();x.fireEvent('onclick');");
-
+			    	*/
 				//the following code failed in wdc, but pass in my machine :
-				//sClickAt(pulldownLocator,center);
+				sClickAt(pulldownLocator,"");
 			}
 			else {
 			    //others
-			    zClickAt(pulldownLocator,center);
+			    zClickAt(pulldownLocator,"");
 			}
 			
 			zWaitForBusyOverlay();
@@ -910,10 +901,14 @@ public class PageAddressbook extends AbsTab {
 			// Log this item to the debug output
 			LogManager.getLogger("projects").info("zListItem: found contact "+ displayAs);
 
-			if ( contact.equals(displayAs) ) {
-			   contactLocator = itemLocator;
-			   break;
-			}     		
+			if ( displayAs != null ) {
+				if ( displayAs.toLowerCase().contains(contact.toLowerCase()) ) {
+					// Found the item!
+				   contactLocator = itemLocator;
+				   break;
+				}
+			}
+
 		} 
 	
 		
@@ -1005,7 +1000,7 @@ public class PageAddressbook extends AbsTab {
 				if (subOption == Button.O_NEW_CONTACTGROUP) {
 					cmi= CONTEXT_MENU.CONTACT_GROUP;
 					sub_cmi= CONTEXT_SUB_MENU.CONTACT_SUB_NEW_CONTACT_GROUP;
-					page = new SimpleFormContactGroupNew(MyApplication);
+					page = new DialogNewContactGroup(MyApplication, this);
 				}				
 			}
 			else if (option == Button.B_SEARCH) {
@@ -1140,8 +1135,13 @@ public class PageAddressbook extends AbsTab {
 				locator="css=td[id^=SEARCH__DWT][id$=_title]:contains('Received From Contact')";
 			}
        }		
+       		//if (subOption == Button.O_TAG_REMOVETAG) {
+       		//    ExecuteHarnessMain.ResultListener.captureScreen();
+       		//}
+
     		sFocus(locator);
             sMouseOver(locator);
+            SleepUtil.sleepSmall();
             //jClick(locator);
             //zClickAt(locator, "0,0");
              sClickAt(locator, "0,0");
@@ -1159,165 +1159,167 @@ public class PageAddressbook extends AbsTab {
 	
 
   
-	public AbsPage zListItem(Action action, Button option ,Button subOption, String tagName, String contact) throws HarnessException {
-		String locator = null;			// If set, this will be clicked
-		AbsPage page = null;	// If set, this page will be returned
-		
-		String parentLocator = null;
-		String extraLocator="";
-		
-		tracer.trace(action +" then "+ option +" then "+ subOption + " and tag " + tagName + " on contact = "+ contact);
+	/**
+	 * Action -> Option -> suboption -> object on contact.  For example,
+	 * Right click -> Tag -> Remove Tag -> tagname on ContactA
+	 * @param action e.g. A_RIGHTCLICK
+	 * @param option e.g B_TAG
+	 * @param subOption e.g O_TAG_REMOVETAG
+	 * @param choice e.g. String tagname
+	 * @param contact The contact to take the action on
+	 * @return
+	 * @throws HarnessException
+	 */
+	public AbsPage zListItem(Action action, Button option, Button subOption, Object choice, String contact) throws HarnessException {
+
+		AbsPage page = null;	// If set, this page will be returned		
+		String contactLocator = getContactLocator(contact);
+		String locator = null;
+	
+
+		tracer.trace(action +" then "+ option +" then "+ subOption + " and choose " + choice + " on contact = "+ contact);
 
         if ( action == Action.A_RIGHTCLICK ) {
-			ContextMenuItem cmi=null;
-		    ContextMenuItem sub_cmi = null;
-		
-		    zRightClickAt(getContactLocator(contact),"0,0");
-		      
-		    
-			if (option == Button.B_TAG) {		        
-				cmi=CONTEXT_MENU.CONTACT_TAG;
-						
+        		    
+			if (option == Button.B_TAG) {
+			
 				if (subOption == Button.O_TAG_REMOVETAG) {
-					sub_cmi = CONTEXT_SUB_MENU.CONTACT_SUB_REMOVE_TAG;					
-					parentLocator= "div[id=TAG_MENU|MENU]";					//id = cmi.locator;
-					locator = "css=div#zm__Contacts tr#"+ cmi.locator;
-									
-					//  Make sure the context menu exists
-					zWaitForElementPresent(locator) ;
-			
-					ExecuteHarnessMain.ResultListener.captureScreen();
-					// Mouse over the option
-					sFocus(locator);
-					sMouseOver(locator);		    			 
-					zWaitForBusyOverlay();
-	
-					locator = "css=" + parentLocator + " " + sub_cmi.locator + extraLocator;		        			
-					zWaitForElementPresent(locator) ;
-			
-			
-						
-					// mouse over the sub menu
-					sFocus(locator);
-					sMouseOver(locator);
-					SleepUtil.sleepSmall();
-
-					//the above sMouseOver not work on my ff browser for some unknown reason, work around steps need here					
-					int count= Integer.parseInt(sGetEval("window.document.getElementById('TAG_MENU|MENU').children[0].children[0].children.length"));
 					
-					
-					for (int i=0; i<count -1 ; i++) {
-						zKeyboard.zTypeKeyEvent(KeyEvent.VK_DOWN);					
-						SleepUtil.sleepSmall();
+					if ( !(choice instanceof String) ) {
+						throw new HarnessException("choice must be a string of the tag name! "+ choice);
 					}
-					zKeyboard.zTypeKeyEvent(KeyEvent.VK_RIGHT);		
-																
-					zWaitForBusyOverlay();
 					
-				    							
-				    if (tagName.equals("All Tags")) {					
-				    	locator = "css=div[id=REMOVE_ALL_TAGS]";
-				    }
-				    else {
-				    	locator = "css=td[id=^Remove_tag_][id$=_title]:contains('" + tagName + "')";														    
-				    }
-						
-				    
-				    //  Make sure the sub context menu exists			
-				    zWaitForElementPresent(locator) ;
-			
-				    // 	make sure the sub context menu enabled			
-				    zWaitForElementEnabled(locator);
+					String tagName = (String)choice;
 					
-				   //sClick not work on my ff browser for some unknown reason, work around  here					
-				    sClick(locator);
 
-					count= Integer.parseInt(sGetEval("window.document.getElementById('REMOVE_TAG_MENU_TAG_MENU|MENU').children[0].children[0].children.length"));
-					
-					
-					for (int i=1; i<count ; i++) {
-												
-						if (sGetText("css=div[id='REMOVE_TAG_MENU_TAG_MENU|MENU'] tr:nth-child(" + i + ")").contains(tagName)){
-							break;
-						}
-								   	
-				        zKeyboard.zTypeKeyEvent(KeyEvent.VK_DOWN);					
-						SleepUtil.sleepSmall();
+					String tagContactLocator = "css=div[id^='zm__Contacts'] div[id^='TAG_MENU'] td[id$='_title']";
+					String removeTagLocator = "css=div[id^='TAG_MENU|MENU'] div[id^='contacts_removetag'] td[id$='_title']";
+					locator = "css=div[id='REMOVE_TAG_MENU_TAG_MENU|MENU'] td[id=^Remove_tag_][id$=_title]:contains('" +  tagName + "')";														    							
+
+				    // Right click on contact
+				    zRightClickAt(contactLocator,"0,0");
+					zWaitForBusyOverlay();
+
+				    // Left Click "Tag"
+					this.sMouseOver(tagContactLocator);					
+					SleepUtil.sleepMedium();
+					zClickAt(tagContactLocator, "");
+					SleepUtil.sleepMedium();
+					zWaitForBusyOverlay();
+
+					/*
+					 The context menu has two different looks, depending on how
+					 many tags are on the item.
+					 
+					 If 0 tags, then the "remove tag" option is disabled.
+					 If 1 tag, then the "remove tag" option appears without a sub menu.
+					 If 1+ tags, then the "remove tag" option appears with a sub menu, where
+					   a specific tag may be chosen.
+					   
+					 */
+
+					if ( this.sIsElementPresent("css=div[id^='TAG_MENU|MENU'] div[id^='contacts_removetag'].ZHasDropDown") ) {
 						
+					    // Has sub menu
+						// Mouse over "remove tag", then Left Click "<tag name>"
+						this.sMouseOver(removeTagLocator);
+						zWaitForBusyOverlay();
+
+					    // Left Click "<tag name>"
+						zClickAt(locator, "");
+						zWaitForBusyOverlay();
+
+
+					} else {
+						
+					    // No sub menu, just Left Click "Remove Tag"
+						zClickAt(removeTagLocator, "");
+						zWaitForBusyOverlay();
+
+
 					}
-			
-					zKeyboard.zTypeKeyEvent(KeyEvent.VK_ENTER);														
-			     	
-				    zWaitForBusyOverlay();
-				    //ExecuteHarnessMain.ResultListener.captureScreen();
-				    	
+
+					return (page);
 				}
 			}     		       		
 	    }
 		return (page);    
 	}
 	
-	public void zListItem(Action action, Button option ,IItem item, String contact) throws HarnessException {
-		String locator = null;			// If set, this will be clicked
-	
+	public AbsPage zListItem(Action action, Button option, IItem item, String contact) throws HarnessException {
+		
+		AbsPage page = null;
+		String contactLocator = getContactLocator(contact);
+		String optionLocator = null;
 		String itemLocator = null;
 
         
 		tracer.trace(action +" then "+ option +" then "+ item +" on contact = "+ contact);
+		
+		
         if ( action == Action.A_RIGHTCLICK ) {
-			ContextMenuItem cmi=null;
-		    
-			zRightClickAt(getContactLocator(contact),"0,0");
 
 			
 			if (option == Button.B_TAG) {		        
-				cmi=CONTEXT_MENU.CONTACT_TAG;
-													
+						
+				// Hover over the context menu "tags" item
+				optionLocator = "css=div#zm__Contacts div#TAG_MENU td[id$='_title']";
+
 				if (item instanceof TagItem) {
-					TagItem ti = (TagItem) item;
-					itemLocator = "css=td[id$=title]:contains('" + ti.getName() + "')";
 					
-				}				
+					// Left click the existing tag
+					itemLocator = "css=div[id^='TAG_MENU|MENU'] td[id$='_title']:contains('" + item.getName() + "')";
+					
+				}
 			
-				locator = "css=div#zm__Contacts tr#"+ cmi.locator;
-				
 			}
 			else if (option == Button.B_CONTACTGROUP) {
+				
+				optionLocator = "css=div#zm__Contacts div[id^='CONTACTGROUP_MENU'] td[id$='_title']";
+
 				if ( item instanceof ContactGroupItem) {
-					ContactGroupItem cgi= (ContactGroupItem) item;
-					cmi= CONTEXT_MENU.CONTACT_GROUP;
-				    itemLocator = "css=td[id$=title]:contains('" + cgi.fileAs + "')";
+					itemLocator = "css=div[id^='CONTACTGROUP_MENU'] td[id$='_title']:contains('"+ item.getName() +"')";
 				}				
 
-				locator = "css=div#zm__Contacts tr[id^="+ cmi.locator + "]";
 			}
 			
+			if ( !this.sIsElementPresent(contactLocator) ) {
+				throw new HarnessException("Unable to right click on contact");
+			}
 			
-			//  Make sure the context menu exists
-			zWaitForElementPresent(locator) ;
-			
-			// Check if the item is enabled
-			//if (sIsElementPresent("css=div[id=" + id + "][class*=ZDisabled]")) {
-			//	throw new HarnessException("Tried clicking on "+ cmi.text +" but it was disabled ");
-			//}
+        	// Right click on contact
+			zRightClickAt(contactLocator,"0,0");
+			this.zWaitForBusyOverlay();
+
+			if ( !this.sIsElementPresent(optionLocator) ) {
+				throw new HarnessException("Unable to hover over context menu");
+			}
 			
 			// Mouse over the option
-			sFocus(locator);
-			sMouseOver(locator);
-							
-			//  Make sure the sub context menu exists			
-			zWaitForElementPresent(itemLocator) ;
+			sMouseOver(optionLocator);
+			this.zWaitForBusyOverlay();
 			
-			// make sure the sub context menu enabled			
-			zWaitForElementEnabled("div#" + itemLocator);
+			// It seems to take a while to draw the context menu
+			// Sleep a bit to let it draw.
+			SleepUtil.sleepLong();
+			
+
+			if ( !this.sIsElementPresent(itemLocator) ) {
+				throw new HarnessException("Unable to click on sub-menu");
+			}
+			
+			// Left click the sub-option
+			this.zClickAt(itemLocator, "");
+			this.zWaitForBusyOverlay();
 			
         } 
 
              
-        zClickAt(itemLocator,"0,0");		
-        zWaitForBusyOverlay();
-       
+        if ( page != null ) {
+        	page.zWaitForActive();
+        }
         
+        return (page);
     
 	}
 	
@@ -1408,6 +1410,9 @@ public class PageAddressbook extends AbsTab {
 	}
 	
 	
+	/* (non-Javadoc)
+	 * @see com.zimbra.qa.selenium.framework.ui.AbsTab#zListItem(com.zimbra.qa.selenium.framework.ui.Action, java.lang.String)
+	 */
 	@Override
 	public AbsPage zListItem(Action action, String contact) throws HarnessException {
 		logger.info(myPageName() + " zListItem("+ action +", "+ contact +")");

@@ -30,7 +30,7 @@
 
     <fmt:message var="yearTitleFormat" key="CAL_DAY_TITLE_YEAR_FORMAT"/>
 
-    <c:set var="currentDay" value="${zm:getStartOfMultiDayView(date, firstDOW, view)}"/>
+    <c:set var="currentDay" value="${view eq 'day' ? zm:getFirstDayOfMultiDayView(date, firstDOW, view) : zm:getStartOfMultiDayView(date, firstDOW, view)}"/>
     <c:set var="scheduleView" value="${view eq 'schedule'}"/>
     <c:set var="today" value="${zm:getToday(timezone)}"/>
     <c:set var="rangeEnd" value="${zm:addDay(currentDay,numdays).timeInMillis}"/>
@@ -84,6 +84,7 @@
             <td class='ZhCalDayHSB' height="100%" width="1px">&nbsp;</td>
         </c:otherwise>
     </c:choose>
+    <c:set var="preDay" value="" />
     <c:forEach var="day" items="${layout.days}">
         <c:if test="${workDays[day.day % 7] eq true}">
         <td nowrap class='ZhCalDaySEP ZhCalDayHeader${(day.startTime eq today.timeInMillis and empty day.folderId) ? 'Today':''}' colspan="${day.maxColumns}" width="${day.width}%">
@@ -93,11 +94,18 @@
                     ${fname}
                 </c:when>
                 <c:otherwise>
+                    <fmt:message var="titleFormat" key="CAL_${numdays > 1 ? 'MDAY_':''}DAY_TITLE_FORMAT"/>
+                    <fmt:formatDate value="${zm:getCalendar(day.startTime, timezone).time}" pattern="${titleFormat}" timeZone="${timezone}" var="currDay"/>
                     <rest:calendarUrl var="dayUrl" view="${view eq 'day' ? 'week' : 'day'}" timezone="${timezone}" rawdate="${zm:getCalendar(day.startTime, timezone)}" action=""/>
+                    <c:if test="${currDay eq preDay}">
+                        <fmt:formatDate value="${zm:addDay(zm:getCalendar(day.startTime, timezone),1).time}" pattern="${titleFormat}" timeZone="${timezone}" var="currDay"/>
+                        <rest:calendarUrl var="dayUrl" view="${view eq 'day' ? 'week' : 'day'}" timezone="${timezone}" rawdate="${zm:addDay(zm:getCalendar(day.startTime, timezone),1)}" action=""/>
+                    </c:if>
+
                     <a href="${fn:escapeXml(dayUrl)}">
-                        <fmt:message var="titleFormat" key="CAL_${numdays > 1 ? 'MDAY_':''}DAY_TITLE_FORMAT"/>
-                        <fmt:formatDate value="${zm:getCalendar(day.startTime, timezone).time}" pattern="${titleFormat}" timeZone="${timezone}"/>
+                        ${currDay}
                     </a>
+                <c:set var="preDay" value="${currDay}"/>
                 </c:otherwise>
             </c:choose>
         </td>

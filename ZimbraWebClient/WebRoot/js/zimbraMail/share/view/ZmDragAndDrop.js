@@ -21,12 +21,14 @@
  * @private
  */
 
-function ZmDragAndDrop(parent) {
+ZmDragAndDrop = function(parent) {
     this._view = parent;
     this._controller = parent._controller;
     this._element = parent.getHtmlElement();
     this._initialize();
-}
+};
+
+ZmDragAndDrop.prototype.constructor = ZmDragAndDrop;
 
 /**
 * @return	{boolean}	true if drag and drop is supported
@@ -87,6 +89,13 @@ ZmDragAndDrop.isAttachmentSizeExceeded = function(files, showDialog) {
 };
 
 ZmDragAndDrop.prototype._initialize = function () {
+	if (!ZmDragAndDrop.isSupported() && this._element && this._element.id) {
+		var tooltip = document.getElementById(this._element.id + '_zdnd_tooltip');
+		if (tooltip) {
+			tooltip.style.display = "none";
+			tooltip.innerHTML = "";
+		}
+	}
     if (!this._view || !this._controller || !this._element || !ZmDragAndDrop.isSupported()) {
         return;
     }
@@ -135,7 +144,7 @@ ZmDragAndDrop.prototype._onDrop = function(ev, isEditorDND) {
         j,
         filesLength;
 
-    if (!ev) {
+    if (!ev || this._view._disableAttachments === true ) {
         return;
     }
 

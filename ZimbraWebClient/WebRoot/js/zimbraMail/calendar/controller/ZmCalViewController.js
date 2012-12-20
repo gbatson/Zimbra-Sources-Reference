@@ -1857,7 +1857,7 @@ function() {
 
 ZmCalViewController.prototype._handleGetDetails =
 function() {
-	var batchCmd = new ZmBatchCommand(true);
+	var batchCmd = new ZmBatchCommand(true, null, true);
 	for (var j in this._deleteList) {
 		var list = this._deleteList[j];
 		for (var i = 0; i < list.length; i++) {
@@ -2599,9 +2599,9 @@ function(appt, mode) {
 
 ZmCalViewController.prototype._showApptForwardComposeView =
 function(appt, mode) {
-	if(!appt.isOrganizer()) {
-		appt.name = ZmMsg.fwd + ": " + appt.name;
-	}
+	/*if(!appt.isOrganizer()) { */
+	appt.name = ZmMsg.fwd + ": " + appt.name;
+	//}
 	this._app.getApptComposeController().show(appt, mode);
 };
 
@@ -3718,7 +3718,7 @@ function(appts, newFolderId) {
 	var isMovingBetw = false;
 	for (var i = 0; i < appts.length; i++) {
 		var appt = appts[i];
-		if (!appt.isReadOnly() && appt._orig) {
+		if (!appt.isReadOnly() && appt._orig && appt.otherAttendees) {
 			var origFolder = appt._orig.getFolder();
 			var newFolder = appCtxt.getById(newFolderId);
 			if (origFolder && newFolder) {
@@ -4115,11 +4115,11 @@ function(ev) {
 
 ZmCalViewController.prototype._showApptSource =
 function(appt) {
-	var restUrl = appt.getRestUrl();
-	if (restUrl) {
-		var url = [restUrl, (restUrl.indexOf("?")==-1) ? "?" : "&", "mime=text/plain", "&", "noAttach=1"].join("");
-		window.open(url, "_blank", "menubar=yes,resizable=yes,scrollbars=yes");
-	}
+    var apptFetchUrl = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI)
+                    + "&id=" + AjxStringUtil.urlComponentEncode(appt.id || appt.invId)
+                    +"&mime=text/plain&noAttach=1";
+    // create a new window w/ generated msg based on msg id
+    window.open(apptFetchUrl, "_blank", "menubar=yes,resizable=yes,scrollbars=yes");
 };
 
 ZmCalViewController.prototype.getAppointmentByInvite =

@@ -290,7 +290,7 @@ public abstract class AbsSeleniumObject {
 			int topLimit) throws HarnessException {
 		if (ZimbraSeleniumProperties.isWebDriver()){
 			logger.info("...WebDriver...findElement:getLocation().x:y");
-			return elementVisible(locator);
+			return elementVisiblePerPosition(locator);
 		}else{
 			// Check if the locator is present
 			if (!sIsElementPresent(locator)) {
@@ -781,7 +781,9 @@ public abstract class AbsSeleniumObject {
 			int n = -1;
 			if (ZimbraSeleniumProperties.isWebDriver()){
 				logger.info("...WebDriver... getSize().width");
-				n = getElement(locator).getSize().width;				
+				WebElement el = getElement(locator);
+				Dimension dim = el.getSize();
+				n = dim.width;				
 			}else{
 				n = ClientSessionFactory.session().selenium().getElementWidth(
 				locator).intValue();
@@ -1440,28 +1442,29 @@ public abstract class AbsSeleniumObject {
 		//
 
 		try {
+		    logger.info("getAttribute(" + locator + ")");
 
-			logger.info("getAttribute(" + locator + ")");
-			
-			String attrs = "";
-			if (ZimbraSeleniumProperties.isWebDriver()) {
-				logger.info("...WebDriver...findElement.getAttribute()");
-				String [] elements = locator.split("@");
-				if(elements != null && elements.length > 1){
-					try {
-						WebElement we = getElement(elements[0]);
-						attrs = we.getAttribute(elements[1]);
-					} catch (Exception ex) {
-						logger.error(ex);
-					}								
-				}
-			} else{
-				attrs = ClientSessionFactory.session().selenium()
-					.getAttribute(locator);
+		    String attrs = "";
+		    if (ZimbraSeleniumProperties.isWebDriver()) {
+			logger.info("...WebDriver...findElement.getAttribute()");
+			if(locator!=null && locator.lastIndexOf("@") + 1 < locator.length()){
+			    String elementLocator = locator.substring(0, locator.lastIndexOf("@"));
+			    if(elementLocator.length() > 1){
+				try {
+				    WebElement we = getElement(elementLocator);
+				    attrs = we.getAttribute(locator.substring(locator.lastIndexOf("@")+1));
+				} catch (Exception ex) {
+				    logger.error(ex);
+				}								
+			    }
 			}
+		    } else{
+			attrs = ClientSessionFactory.session().selenium()
+				.getAttribute(locator);
+		    }
 			
-			logger.info("getAttribute(" + locator + ") = " + attrs);
-			return (attrs);
+		    logger.info("getAttribute(" + locator + ") = " + attrs);
+		    return (attrs);
 
 		} catch (SeleniumException e) {
 			logger.error(e.getMessage(), e); // SeleniumExceptions don't use
@@ -1476,7 +1479,7 @@ public abstract class AbsSeleniumObject {
 	public boolean sIsVisible(String locator) throws HarnessException {
 		boolean visible = false;
 		if (ZimbraSeleniumProperties.isWebDriver()) {
-			logger.info("...WebDriver...findElement.getLocation()");
+			logger.info("...WebDriver...findElement.isDisplayed()");
 			visible = elementVisible(locator);					
 		} 
 		else if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()){
@@ -1773,19 +1776,21 @@ public abstract class AbsSeleniumObject {
 	 */
 	public void zWaitForElementVisible(String locator) throws HarnessException {
 		logger.info("zWaitForElementVisible(" + locator + ")");
+		/*
 		if (ZimbraSeleniumProperties.isWebDriver())	{
-			logger.info("...WebDriver...findElement.getLocation()");
-			if(waitForElementVisible(locator, true, 5)){
+			logger.info("...WebDriver...waitForElementVisible()");
+			if(waitForElementVisible(locator, true, 15)){
 				return;
 			}
 		}else{
-			for (int i = 0; i < 15; i++) {
+		*/
+		    for (int i = 0; i < 15; i++) {
 				if (zIsVisiblePerPosition(locator, 0, 0)) {
 					return;
 				}
 				SleepUtil.sleepSmall();
 			}
-		}
+		//}
 		throw new HarnessException(locator + " - never visibled!");		
 	}
 
@@ -2777,11 +2782,27 @@ public abstract class AbsSeleniumObject {
 		WebElement el = getElementOrNull(locator);
 		return el != null;
 	}
-
+	
 	private boolean elementVisible(String locator) {
 		logger.info("...WebDriver...elementVisible()");
 		Boolean visible = false;
 		WebElement we = getElementOrNull(locator);
+		
+		if( we != null){
+			visible = we.isDisplayed();
+			logger.info("locator: " + locator
+				+  " - visible : " + (visible));						
+		}else{
+			logger.info("WebElement is null - " + locator );
+		}
+		return visible;
+	}
+
+	private boolean elementVisiblePerPosition(String locator) {
+		logger.info("...WebDriver...elementVisiblePerPosition()");
+		Boolean visible = false;
+		WebElement we = getElementOrNull(locator);
+		
 		if( we != null){
 			int left = we.getLocation().x;
 			int top = we.getLocation().y;
@@ -2829,9 +2850,9 @@ public abstract class AbsSeleniumObject {
 						.until(new ExpectedCondition<Boolean>(){
 							public Boolean apply(WebDriver d) {
 								if(flag){
-									return elementVisible(locator);
+									return elementVisiblePerPosition(locator);
 								}else{
-									return !elementVisible(locator);
+									return !elementVisiblePerPosition(locator);
 								}
 				}});
 			}catch(TimeoutException  e){
@@ -2873,17 +2894,19 @@ public abstract class AbsSeleniumObject {
 	
 	protected boolean switchTo(String name) throws HarnessException {
 		logger.info("...WebDriver...switchTo() " + name);	
-		WebDriver driver = null;
+		WebDriver driver = webDriver();
 		Set<String> handles = null;
+		String defaultContent;
 		boolean found = false;
-		if (ZimbraSeleniumProperties.isWebDriverBackedSelenium()){
-			driver = webDriverBackedSelenium().getWrappedDriver();
-		}else{ 
-			driver = webDriver();
-		}	
+		if(name == null){
+		    defaultContent = driver.switchTo().defaultContent().getTitle();
+		    logger.info("selecting defaultContent()" + defaultContent);
+		    sWindowFocus();
+		}
 		
 		try{	
 			logger.info("handles size" );
+			SleepUtil.sleepSmall();
 			handles = driver.getWindowHandles();	
 			logger.info(" : " + handles.size());
 			if (handles != null && !handles.isEmpty()) {
@@ -2912,7 +2935,7 @@ public abstract class AbsSeleniumObject {
 		}
 		finally{
 			if(!found){
-				String defaultContent = driver.switchTo().defaultContent().getTitle();
+				defaultContent = driver.switchTo().defaultContent().getTitle();
 				logger.info("back to defaultContent()" + defaultContent);
 				sWindowFocus();
 			}

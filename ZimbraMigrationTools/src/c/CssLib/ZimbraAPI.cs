@@ -96,14 +96,19 @@ public class ZimbraAPI
         }
     }
     private Dictionary<string, string> dFolderMap;
+    
 
     private LogLevel loglevel;
 
-    public ZimbraAPI(bool isServer,LogLevel level = LogLevel.Info)
+    private string ReplaceSlash;
+
+    public ZimbraAPI(bool isServer,LogLevel level = LogLevel.Info,string replaceslash = "_")
     {
         bIsServerMigration = isServer;
         loglevel = level;
         dFolderMap = new Dictionary<string, string>();
+        ReplaceSlash = replaceslash;
+        
     }
 
     private string GetSpecialFolderNum(string folderPath)
@@ -919,6 +924,7 @@ public class ZimbraAPI
     public void CreateContactRequest(XmlWriter writer, Dictionary<string, string> contact,
         string folderId, int requestId)
     {
+        bool IsGroup = false;
         writer.WriteStartElement("CreateContactRequest", "urn:zimbraMail");
         if (requestId != -1)
             writer.WriteAttributeString("requestId", requestId.ToString());
@@ -928,10 +934,15 @@ public class ZimbraAPI
         {
             writer.WriteAttributeString("t", contact["tags"]);
         }
+
+        
+
         foreach (KeyValuePair<string, string> pair in contact)
         {
             string nam = pair.Key;
             string val = pair.Value;
+
+            
 
             if (nam == "image")
             {
@@ -939,7 +950,9 @@ public class ZimbraAPI
                 {
                     string uploadToken = "";
                     string tmp = "";
-                    if (UploadFile(val, tmp, "", "", CONTACT_MODE, out uploadToken) == 0)
+                    //if (UploadFile(val, tmp, "", "", CONTACT_MODE, out uploadToken) == 0)
+
+                    if (UploadFile(val, tmp, contact["imageContentDisp"], contact["imageContentType"], CONTACT_MODE, out uploadToken) == 0)
                     {
                         writer.WriteStartElement("a");
                         writer.WriteAttributeString("n", nam);
@@ -951,8 +964,61 @@ public class ZimbraAPI
             }
             else
             {
-                WriteAttrNVPair(writer, "a", "n", nam, val);
+                if ((nam.CompareTo("imageContentDisp")== 0) || (nam.CompareTo("imageContentType")==0))
+                { }
+                else
+                    if (nam.CompareTo("dlist") == 0)
+                    {
+                        IsGroup = true;
+                        string[] tokens = contact["dlist"].Split(',');
+
+                        if (tokens.Length > 0)
+                        {
+
+                            for (int i = 0; i < tokens.Length; i++)
+                            {
+                                writer.WriteStartElement("m");
+                                writer.WriteAttributeString("type", "I");
+                                writer.WriteAttributeString("value", tokens.GetValue(i).ToString());
+
+                                writer.WriteEndElement();
+                            }
+                        }
+                        else
+                        {
+                            writer.WriteStartElement("m");
+                            writer.WriteAttributeString("type", "I");
+                            writer.WriteAttributeString("value",val);
+
+                            writer.WriteEndElement();
+                        }
+
+                    }
+                    else
+                        WriteAttrNVPair(writer, "a", "n", nam, val);
+
             }
+        }
+        
+        if(IsGroup)
+        {
+
+            string tempname = contact["fileAs"];
+            int index = tempname.IndexOf(":");
+            if (index > 0)
+            {
+                string nickname = tempname.Substring((index + 1));
+
+
+                if (nickname.Length > 0)
+                {
+                   
+                    WriteAttrNVPair(writer, "a", "n", "nickname", nickname);
+
+
+                }
+            }
+
         }
         writer.WriteEndElement();               // cn
         writer.WriteEndElement();               // CreateContactRequest
@@ -1334,13 +1400,34 @@ public class ZimbraAPI
         writer.WriteStartElement("or");
         writer.WriteAttributeString("d", appt["orName"]);
 
+       
+
         // always convert -- not like old tool that gives you a choice
-        string theOrganizer = AccountName;
+        //string theOrganizer = AccountName;
+        string theOrganizer = "";
         if (appt["orAddr"].Length > 0)
         {
+            theOrganizer = AccountName;
             if (!IAmTheOrganizer(appt["orAddr"]))
             {
                 theOrganizer = appt["orAddr"];
+            }
+        }
+        else
+        {
+            if (appt["orName"].Length > 0)
+            {
+                theOrganizer = appt["orName"];
+            }
+            else
+            {
+                theOrganizer = AccountName;
+                if (!IAmTheOrganizer(AccountName))
+                {
+                    theOrganizer = AccountName;
+                }
+
+
             }
         }
         writer.WriteAttributeString("a", theOrganizer);
@@ -1356,14 +1443,29 @@ public class ZimbraAPI
                 writer.WriteAttributeString("d",    tokens.GetValue(i).ToString());
                 writer.WriteAttributeString("a",    tokens.GetValue(i + 1).ToString());
                 writer.WriteAttributeString("role", tokens.GetValue(i + 2).ToString());
-                if (tokens.GetValue(i + 3).ToString().Length > 0)   // FBS bug 75686 -- 6/27/12
+                writer.WriteAttributeString("rsvp", appt["rsvp"]);
+                if(appt["currst"] == "OR")
                 {
-                    writer.WriteAttributeString("ptst", tokens.GetValue(i + 3).ToString());
+                    if (tokens.GetValue(i + 3).ToString().Length > 0)   // FBS bug 75686 -- 6/27/12
+                    {
+                        writer.WriteAttributeString("ptst", tokens.GetValue(i + 3).ToString());
+                    }
+                    else
+                    {
+                        writer.WriteAttributeString("ptst", "NE");
+                    }
                 }
                 else
                 {
-                    writer.WriteAttributeString("ptst", "NE");
+                    if (appt["orAddr"] != tokens.GetValue(i + 1).ToString())
+                    {
+                        if(AccountID == tokens.GetValue(i).ToString())
+                        writer.WriteAttributeString("ptst", appt["currst"]);
+                        else
+                            writer.WriteAttributeString("ptst", "NE");
+                    }
                 }
+
                 writer.WriteEndElement();
             }
         }
@@ -1457,7 +1559,7 @@ public class ZimbraAPI
         writer.WriteAttributeString("ct", appt["contentType1"]);
         if (appt["content1"].Length > 0)
         {
-            WriteNVPair(writer, "content", System.Text.Encoding.Default.GetString(File.ReadAllBytes(appt["content1"])));
+	    WriteNVPair(writer, "content", System.Text.Encoding.Unicode.GetString(File.ReadAllBytes(appt["content1"])));
         }
     
         writer.WriteEndElement();   // mp
@@ -1598,12 +1700,40 @@ public class ZimbraAPI
         attr = "orName" + "_" + num.ToString();
         writer.WriteAttributeString("d", appt[attr]);
         attr = "orAddr" + "_" + num.ToString();
+        /*
         string theOrganizer = AccountName;
         if (appt[attr].Length > 0)
         {
             if (!IAmTheOrganizer(appt[attr]))
             {
                 theOrganizer = appt[attr];
+            }
+        }*/
+        string theOrganizer = "";
+        if (appt["orAddr"].Length > 0)
+        {
+            theOrganizer = AccountName;
+            if (!IAmTheOrganizer(appt["orAddr"]))
+            {
+                theOrganizer = appt["orAddr"];
+            }
+        }
+        else
+        {
+            
+            if (appt["orName"].Length > 0)
+            {
+                theOrganizer = appt["orName"];
+            }
+            else
+            {
+                theOrganizer = AccountName;
+                if (!IAmTheOrganizer(AccountName))
+                {
+                    theOrganizer = AccountName;
+                }
+
+
             }
         }
         writer.WriteAttributeString("a", theOrganizer);
@@ -1620,13 +1750,21 @@ public class ZimbraAPI
                 writer.WriteAttributeString("d", tokens.GetValue(i).ToString());
                 writer.WriteAttributeString("a", tokens.GetValue(i + 1).ToString());
                 writer.WriteAttributeString("role", tokens.GetValue(i + 2).ToString());
-                if (tokens.GetValue(i + 3).ToString().Length > 0)   // FBS bug 75686 -- 6/27/12
+                if (appt["currst"] == "OR")
                 {
-                    writer.WriteAttributeString("ptst", tokens.GetValue(i + 3).ToString());
+                    if (tokens.GetValue(i + 3).ToString().Length > 0)   // FBS bug 75686 -- 6/27/12
+                    {
+                        writer.WriteAttributeString("ptst", tokens.GetValue(i + 3).ToString());
+                    }
+                    else
+                    {
+                        writer.WriteAttributeString("ptst", "NE");
+                    }
                 }
                 else
                 {
-                    writer.WriteAttributeString("ptst", "NE");
+                    if (appt["orAddr"] != tokens.GetValue(i + 1).ToString())
+                        writer.WriteAttributeString("ptst", appt["currst"]);
                 }
                 writer.WriteEndElement();
             }
@@ -1673,7 +1811,7 @@ public class ZimbraAPI
         attr = "content1" + "_" + num.ToString();
         if (appt[attr].Length > 0)
         {
-            WriteNVPair(writer, "content", System.Text.Encoding.Default.GetString(File.ReadAllBytes(appt[attr])));
+            WriteNVPair(writer, "content", System.Text.Encoding.Unicode.GetString(File.ReadAllBytes(appt[attr])));
         }        
         writer.WriteEndElement();   // mp
         writer.WriteEndElement();   // mp
@@ -2009,7 +2147,7 @@ public class ZimbraAPI
         writer.WriteAttributeString("ct", task["contentType1"]);
         if (task["content1"].Length > 0)
         {
-            WriteNVPair(writer, "content", System.Text.Encoding.Default.GetString(File.ReadAllBytes(task["content1"])));
+            WriteNVPair(writer, "content", System.Text.Encoding.Unicode.GetString(File.ReadAllBytes(task["content1"])));
             File.Delete(task["content1"]);
         }
 
@@ -2407,7 +2545,6 @@ public class ZimbraAPI
 
         parent = fullPath.Substring(0, lastSlash);
         child = fullPath.Substring(folderNameStart, (len - folderNameStart));
-        //
 
         return true;
     }
@@ -2434,12 +2571,67 @@ public class ZimbraAPI
         // if it's not there, look in the map
         string strParentNum = GetSpecialFolderNum(parentPath);
 
+        
+
         if (strParentNum.Length == 0)
         {
             if (dFolderMap.ContainsKey(parentPath))
                 strParentNum = dFolderMap[parentPath];
             else
-                return FOLDER_CREATE_FAILED_SEM;
+            {
+
+                if (strParentNum == "")
+                {
+                    string[] words = FolderPath.Split('/');
+
+                    int ind = 0;
+                    int  mnIndex = 3;
+                    int len = 0;
+                    if (words[mnIndex] != "")
+                        ind = FolderPath.IndexOf(words[mnIndex]);
+                    else
+                    {
+                        ind = FolderPath.IndexOf(words[++mnIndex]);
+                        ind = ind - 1;
+                    }
+
+                   
+                    len = FolderPath.Length;
+
+                    string newpath = FolderPath.Substring(ind, (len - ind));
+                    validatefoldernames(FolderPath, newpath, out parentPath);
+                    if (ReplaceSlash == null)
+                    {
+                        ReplaceSlash = "_";
+                    }
+                 
+                    if (parentPath != "")
+                    {
+                        int newlen = parentPath.Length;
+                        folderName = FolderPath.Substring(newlen+1);
+
+                        folderName = folderName.Replace("/", ReplaceSlash);
+                        if (dFolderMap.ContainsKey(parentPath))
+                            strParentNum = dFolderMap[parentPath];
+                        else
+                            return FOLDER_CREATE_FAILED_SEM;
+                    }
+                    else
+                    {
+                        folderName = newpath.Replace("/", ReplaceSlash);
+                        string NewParentPath = FolderPath.Substring(0, (ind - 1));
+                        strParentNum = GetSpecialFolderNum(NewParentPath);
+                        if (strParentNum.Length == 0)
+                        {
+                            if (dFolderMap.ContainsKey(NewParentPath))
+                                strParentNum = dFolderMap[NewParentPath];
+                            else
+                                return FOLDER_CREATE_FAILED_SEM;
+                        }
+                    }
+                }
+               // return FOLDER_CREATE_FAILED_SEM;
+            }
         }
 
         string folderID = "";
@@ -2447,8 +2639,48 @@ public class ZimbraAPI
             Color, Flags), out folderID);
 
         if (dcfReturnVal == 0)
-            dFolderMap.Add(FolderPath, folderID);
+        { dFolderMap.Add(FolderPath, folderID);}
         return dcfReturnVal;
+    }
+
+    private void validatefoldernames(string folderpath,string newfolderpath,out string currentpath)
+    {
+        //int inds = 0;
+         int itercnt = 0;
+         int len = folderpath.Length;
+         string[] nwords = newfolderpath.Split('/');
+         string currentfoldername = "";
+         currentpath = "" ;
+         string np ="";
+
+        while (itercnt <= (nwords.Length - 1))
+        {
+
+            string temp = nwords[itercnt];
+            if (temp != "")
+            {
+
+                int i = folderpath.LastIndexOf(temp);
+                np = folderpath.Substring(0, (i - 1));
+                currentfoldername = np + '/' + nwords[itercnt];
+            }
+            else
+                currentfoldername = currentfoldername + '/' ;
+          
+             if (dFolderMap.ContainsKey(currentfoldername))
+             {
+                // foldername = nwords[itercnt];
+                 currentpath = currentfoldername;
+             }
+             else
+             {
+             }
+             itercnt = itercnt + 1;
+
+        }
+        
+        
+
     }
 
     private void CreateTagRequest(XmlWriter writer, string tag, string color, int requestId)

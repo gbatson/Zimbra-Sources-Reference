@@ -54,7 +54,6 @@ import com.zimbra.common.localconfig.DebugConfig;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.ListUtil;
 import com.zimbra.common.util.Pair;
-import com.zimbra.common.util.SpoolingCache;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.UUIDUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -81,6 +80,7 @@ import com.zimbra.cs.pop3.Pop3Message;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StoreManager;
+import com.zimbra.cs.util.SpoolingCache;
 
 /**
  * DAO for MAIL_ITEM table.
@@ -110,9 +110,13 @@ public class DbMailItem {
     static final int RESULTS_STREAMING_MIN_ROWS = 10000;
 
     public static final int setMailboxId(PreparedStatement stmt, Mailbox mbox, int pos) throws SQLException {
+        return setMailboxId(stmt, mbox.getId(), pos);
+    }
+
+    public static final int setMailboxId(PreparedStatement stmt, int mboxId, int pos) throws SQLException {
         int nextPos = pos;
         if (!DebugConfig.disableMailboxGroups) {
-            stmt.setInt(nextPos++, mbox.getId());
+            stmt.setInt(nextPos++, mboxId);
         }
         return nextPos;
     }
@@ -3234,33 +3238,75 @@ public class DbMailItem {
         }
     }
 
-    public static SpoolingCache<MailboxBlob.MailboxBlobInfo> getAllBlobs(Mailbox mbox) throws ServiceException {
+    public static SpoolingCache<MailboxBlob.MailboxBlobInfo> getAllBlobs(DbConnection conn, int groupId, int volumeId,
+            int lastSyncDate, int currentSyncDate) throws ServiceException {
         SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs = new SpoolingCache<MailboxBlob.MailboxBlobInfo>(5000);
-
-        DbConnection conn = mbox.getOperationConnection();
         PreparedStatement stmt = null;
         try {
-            stmt = conn.prepareStatement("SELECT id, mod_content, locator FROM " + getMailItemTableName(mbox) +
+            boolean[] dumpsterOrNot = new boolean[] { false, true };
+            for (boolean fromDumpster : dumpsterOrNot) {
+                String query = "SELECT " + (DebugConfig.disableMailboxGroups ? groupId : "mailbox_id") + ", id, mod_content," +
+                " locator, blob_digest FROM " + getMailItemTableName(groupId, fromDumpster) + " WHERE blob_digest IS NOT NULL " +
+                (currentSyncDate > 0 ? " AND ((date >= ? AND date < ?) OR (change_date >= ? AND change_date < ?))" : "") +
+                (volumeId > -1 ? " AND locator = ?" : "");
+                stmt = conn.prepareStatement(query);
+                getAllBlobs(stmt, volumeId, lastSyncDate, currentSyncDate, blobs);
+            
+                query = "SELECT " + (DebugConfig.disableMailboxGroups ? groupId : "mailbox_id") + ", item_id, mod_content," +
+                " locator, blob_digest FROM " + getRevisionTableName(groupId, fromDumpster) + " WHERE blob_digest IS NOT NULL " +
+                (currentSyncDate > 0 ? " AND ((date >= ? AND date < ?) OR (change_date >= ? AND change_date < ?))" : "") +
+                (volumeId > -1 ? " AND locator = ?" : "");
+                stmt = conn.prepareStatement(query);
+                getAllBlobs(stmt, volumeId, lastSyncDate, currentSyncDate, blobs);
+            }
+            ZimbraLog.mailbox.info("got blob list for group %d volume %d (%d blobs)", groupId, volumeId, blobs.size());
+            return blobs;
+        } catch (SQLException e) {
+            throw ServiceException.FAILURE("fetching blob list for group " + groupId, e);
+        } catch (IOException e) {
+            throw ServiceException.FAILURE("fetching blob list for group " + groupId, e);
+        } finally {
+            DbPool.closeStatement(stmt);
+        }
+    }
+
+    /**
+     * Get the list of blobs related to this mailbox. This must be called inside the mailbox transaction.
+     * @param mbox 
+     * @return all the blobs related to this mailbox
+     * @throws ServiceException
+     */
+    public static SpoolingCache<MailboxBlob.MailboxBlobInfo> getAllBlobs(Mailbox mbox) throws ServiceException {
+        DbConnection conn = mbox.getOperationConnection();
+        return getAllBlobs(conn, mbox);
+    }
+
+    public static SpoolingCache<MailboxBlob.MailboxBlobInfo> getAllBlobs(DbConnection conn, Mailbox mbox) throws ServiceException {
+        SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs = new SpoolingCache<MailboxBlob.MailboxBlobInfo>(5000);
+
+        PreparedStatement stmt = null;
+        try {
+            stmt = conn.prepareStatement("SELECT id, mod_content, locator, blob_digest FROM " + getMailItemTableName(mbox) +
                     " WHERE " + IN_THIS_MAILBOX_AND + "blob_digest IS NOT NULL");
-            getAllBlobs(stmt, mbox, blobs);
+            getAllBlobs(stmt, mbox.getAccountId(), mbox.getId(), blobs);
             stmt.close();
             stmt = null;
 
-            stmt = conn.prepareStatement("SELECT id, mod_content, locator FROM " + getMailItemTableName(mbox, true) +
+            stmt = conn.prepareStatement("SELECT id, mod_content, locator, blob_digest FROM " + getMailItemTableName(mbox, true) +
                     " WHERE " + IN_THIS_MAILBOX_AND + "blob_digest IS NOT NULL");
-            getAllBlobs(stmt, mbox, blobs);
+            getAllBlobs(stmt, mbox.getAccountId(), mbox.getId(), blobs);
             stmt.close();
             stmt = null;
 
-            stmt = conn.prepareStatement("SELECT item_id, mod_content, locator FROM " + getRevisionTableName(mbox) +
+            stmt = conn.prepareStatement("SELECT item_id, mod_content, locator, blob_digest FROM " + getRevisionTableName(mbox) +
                     " WHERE " + IN_THIS_MAILBOX_AND + "blob_digest IS NOT NULL");
-            getAllBlobs(stmt, mbox, blobs);
+            getAllBlobs(stmt, mbox.getAccountId(), mbox.getId(), blobs);
             stmt.close();
             stmt = null;
 
-            stmt = conn.prepareStatement("SELECT item_id, mod_content, locator FROM " + getRevisionTableName(mbox, true) +
+            stmt = conn.prepareStatement("SELECT item_id, mod_content, locator, blob_digest FROM " + getRevisionTableName(mbox, true) +
                     " WHERE " + IN_THIS_MAILBOX_AND + "blob_digest IS NOT NULL");
-            getAllBlobs(stmt, mbox, blobs);
+            getAllBlobs(stmt, mbox.getAccountId(), mbox.getId(), blobs);
 
             ZimbraLog.mailbox.info("got blob list for mailbox %d (%d blobs)", mbox.getId(), blobs.size());
 
@@ -3274,16 +3320,40 @@ public class DbMailItem {
         }
     }
 
-    private static void getAllBlobs(PreparedStatement stmt, Mailbox mbox, SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs)
+    private static void getAllBlobs(PreparedStatement stmt, int volumeId, int lastSyncDate, int currentSyncDate,
+            SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs) throws ServiceException, SQLException, IOException {
+        ResultSet rs = null;
+        try {
+            int pos = 1;
+            if (currentSyncDate > 0) {
+                stmt.setInt(pos++, lastSyncDate);
+                stmt.setInt(pos++, currentSyncDate);
+                stmt.setInt(pos++, lastSyncDate);
+                stmt.setInt(pos++, currentSyncDate);
+            }
+            if (volumeId > -1) {
+                stmt.setInt(pos++, volumeId);
+            }
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                blobs.add(new MailboxBlob.MailboxBlobInfo(null, rs.getInt(1), rs.getInt(2), rs.getInt(3), rs.getString(4), rs.getString(5)));
+            }
+            stmt.close();
+        } finally {
+            DbPool.closeResults(rs);
+        }
+    }
+
+    private static void getAllBlobs(PreparedStatement stmt, String accountId, int mboxId, SpoolingCache<MailboxBlob.MailboxBlobInfo> blobs)
     throws SQLException, IOException, ServiceException {
         ResultSet rs = null;
         try {
             int pos = 1;
-            pos = setMailboxId(stmt, mbox, pos);
+            pos = setMailboxId(stmt, mboxId, pos);
             rs = stmt.executeQuery();
 
             while (rs.next()) {
-                blobs.add(new MailboxBlob.MailboxBlobInfo(mbox.getAccountId(), rs.getInt(1), rs.getInt(2), rs.getString(3)));
+                blobs.add(new MailboxBlob.MailboxBlobInfo(accountId, mboxId, rs.getInt(1), rs.getInt(2), rs.getString(3), rs.getString(4)));
             }
         } finally {
             DbPool.closeResults(rs);
@@ -3315,6 +3385,8 @@ public class DbMailItem {
             visitAllBlobDigests(stmt, mbox, callback);
         } catch (SQLException e) {
             throw ServiceException.FAILURE("visiting blob digests list for mailbox " + mbox.getId(), e);
+        } finally {
+            DbPool.closeStatement(stmt);  
         }
     }
 
@@ -3603,8 +3675,7 @@ public class DbMailItem {
         return stmt;
     }
 
-    public static List<Integer> getItemListByDates(Mailbox mbox, MailItem.Type type, long start, long end, int folderId,
-            boolean descending) throws ServiceException {
+    public static List<Integer> getItemIdList(Mailbox mbox, MailItem.Type type, int folderId, SearchOpts searchOpts) throws ServiceException {
         boolean allTypes = type == MailItem.Type.UNKNOWN;
         List<Integer> result = new ArrayList<Integer>();
 
@@ -3613,18 +3684,24 @@ public class DbMailItem {
         ResultSet rs = null;
         try {
             String typeConstraint = allTypes ? "" : "type = ? AND ";
-            stmt = conn.prepareStatement("SELECT id FROM " + getMailItemTableName(mbox) +
-                        " WHERE " + IN_THIS_MAILBOX_AND + typeConstraint + "folder_id = ?" +
-                        " AND date > ? AND date < ?" +
-                        " ORDER BY date" + (descending ? " DESC" : ""));
+            StringBuilder statement = new StringBuilder();
+            statement.append("SELECT id FROM ").append(getMailItemTableName(mbox))
+                     .append(" WHERE ").append(IN_THIS_MAILBOX_AND).append(typeConstraint).append("folder_id = ?");
+            if (searchOpts.isByDate) {
+                statement.append(" AND date > ? AND date < ?");
+            }
+            statement.append(" ORDER BY date").append(searchOpts.isDescending ? " DESC" : "");
+            stmt = conn.prepareStatement(statement.toString());
             int pos = 1;
             pos = setMailboxId(stmt, mbox, pos);
             if (!allTypes) {
                 stmt.setByte(pos++, type.toByte());
             }
             stmt.setInt(pos++, folderId);
-            stmt.setInt(pos++, (int)(start / 1000));
-            stmt.setInt(pos++, (int)(end / 1000));
+            if (searchOpts.isByDate) {
+                stmt.setInt(pos++, (int)(searchOpts.start / 1000));
+                stmt.setInt(pos++, (int)(searchOpts.end / 1000));
+            }
 
             rs = stmt.executeQuery();
 
@@ -3636,6 +3713,24 @@ public class DbMailItem {
         } finally {
             DbPool.closeResults(rs);
             DbPool.closeStatement(stmt);
+        }
+    }
+
+    public static class SearchOpts {
+        private boolean isByDate = false;
+        private long start = 0L;
+        private long end = 0L;
+        private boolean isDescending = true;
+
+        public SearchOpts(long start, long end, boolean isDescending) {
+            this.isByDate = true;
+            this.start = start;
+            this.end = end;
+            this.isDescending = isDescending;
+        }
+
+        public SearchOpts(boolean isDescending) {
+            this.isDescending = isDescending;
         }
     }
 
@@ -4129,7 +4224,7 @@ public class DbMailItem {
      * Returns the name of the table that stores {@link MailItem} data.  The table name is qualified
      * with the name of the database (e.g. <tt>mboxgroup1.mail_item</tt>).
      */
-    public static String getMailItemTableName(int mailboxId, int groupId, boolean dumpster) {
+    public static String getMailItemTableName(int groupId, boolean dumpster) {
         return DbMailbox.qualifyTableName(groupId, !dumpster ? TABLE_MAIL_ITEM : TABLE_MAIL_ITEM_DUMPSTER);
     }
     public static String getMailItemTableName(MailItem item) {
@@ -4155,7 +4250,7 @@ public class DbMailItem {
      * Returns the name of the table that stores data on old revisions of {@link MailItem}s.
      * The table name is qualified by the name of the database (e.g. <tt>mailbox1.revision</tt>).
      */
-    public static String getRevisionTableName(int mailboxId, int groupId, boolean dumpster) {
+    public static String getRevisionTableName(int groupId, boolean dumpster) {
         return DbMailbox.qualifyTableName(groupId, !dumpster ? TABLE_REVISION : TABLE_REVISION_DUMPSTER);
     }
     public static String getRevisionTableName(MailItem item) {

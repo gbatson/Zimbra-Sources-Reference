@@ -27,7 +27,8 @@ public class CreateMailHtml extends PrefGroupMailByMessageTest {
 		MailItem mail = new MailItem();
 		mail.dToRecipients.add(new RecipientItem(ZimbraAccount.AccountA()));
 		mail.dSubject = "subject" + ZimbraSeleniumProperties.getUniqueString();
-		mail.dBodyHtml = "body" + ZimbraSeleniumProperties.getUniqueString();
+		/* TODO: ... debugging to be removed */ 
+		//mail.dBodyHtml = "body" + ZimbraSeleniumProperties.getUniqueString();
 
 
 		// Open the new mail form
@@ -40,17 +41,28 @@ public class CreateMailHtml extends PrefGroupMailByMessageTest {
 			window.zSetWindowTitle("Compose");
 			window.zWaitForActive();		// Make sure the window is there
 
+			window.waitForComposeWindow();
+			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 
 			// Fill out the form with the data
 			window.zFill(mail);
-
+			
+			/* TODO: ... debugging to be removed */ 
+			mail.dBodyHtml = "body" + ZimbraSeleniumProperties.getUniqueString();
+			window.sSelectWindow("Zimbra: Compose");
+			String locator = "css=iframe[id*=ifr]";
+			window.zWaitForElementPresent(locator, "5000");
+			window.sClickAt(locator,"");
+			window.zTypeFormattedText(locator, mail.dBodyHtml);
+			
 			// Send the message
 			window.zToolbarPressButton(Button.B_SEND);
-
-			// Window closes automatically
-			window = null;
-
+			
+			if(window.zWaitForWindowClosed("Zimbra: Compose")){
+			    // Window closes automatically
+			    window = null;
+			}
 		} finally {
 
 			// Make sure to close the window
@@ -58,6 +70,28 @@ public class CreateMailHtml extends PrefGroupMailByMessageTest {
 				window.zCloseWindow();
 				window = null;
 			}
+
+		}
+
+		// Sometimes, the harness is too fast for the client.
+		// Since we are composing in a new window, there is no
+		// busy overlay to block.
+		//
+		// Add a loop, while waiting for the message
+		//
+		for (int i = 0; i < 30; i++) {
+
+			ZimbraAccount.AccountA().soapSend(
+					"<SearchRequest types='message' xmlns='urn:zimbraMail'>"
+			+			"<query>subject:("+ mail.dSubject +")</query>"
+			+		"</SearchRequest>");
+			com.zimbra.common.soap.Element node = ZimbraAccount.AccountA().soapSelectNode("//mail:m", 1);
+			if ( node != null ) {
+				// found the message
+				break;
+			}
+			
+			SleepUtil.sleep(1000);
 
 		}
 

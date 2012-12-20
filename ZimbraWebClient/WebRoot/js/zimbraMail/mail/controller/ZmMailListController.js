@@ -171,7 +171,7 @@ function(view, force) {
 			delete this._showingAccountColumn;
 		}
 
-		if (!appCtxt.isExternalAccount() && !this.isSearchResults && !this._currentSearch.isOutboundFolder) {
+		if (!appCtxt.isExternalAccount() && !this.isSearchResults) {
 			this._app.setGroupMailBy(ZmMailListController.GROUP_BY_SETTING[view]);
 		}
 
@@ -201,8 +201,7 @@ function(view, force) {
 			offset:			0,
 			limit:			limit,
 			sortBy:			sortBy,
-			getHtml:		getHtml,
-			isViewSwitch:	true
+			getHtml:		getHtml
 		};
 		appCtxt.getSearchController().redoSearch(this._currentSearch, null, params);
 	}
@@ -808,7 +807,7 @@ function(ev) {
 		return false;
 	}
 	if (ev.field == ZmItem.F_READ) {
-		var folderId = ev.item.folderId || search.folderId;
+		var folderId = ev.item.folderId || (search && search.folderId);
 		var folder = folderId && appCtxt.getById(folderId);
 		if (!(folder && folder.isReadOnly())) {
 			this._doMarkRead([ev.item], ev.item.isUnread);

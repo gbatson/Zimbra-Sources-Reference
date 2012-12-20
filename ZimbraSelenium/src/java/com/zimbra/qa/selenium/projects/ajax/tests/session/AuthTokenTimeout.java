@@ -17,8 +17,9 @@ public class AuthTokenTimeout extends PrefGroupMailByMessageTest {
 		logger.info("New "+ AuthTokenTimeout.class.getCanonicalName());
 		
 		super.startingAccountPreferences.put("zimbraPrefComposeFormat", "text");
-		super.startingAccountPreferences.put("zimbraPrefAutoSaveDraftInterval", "90s");
-		super.startingAccountPreferences.put("zimbraAuthTokenLifetime", "30s");
+		super.startingAccountPreferences.put("zimbraPrefAutoSaveDraftInterval", "240s");
+		super.startingAccountPreferences.put("zimbraAuthTokenLifetime", "100s");
+
 
 	}
 	
@@ -45,21 +46,23 @@ public class AuthTokenTimeout extends PrefGroupMailByMessageTest {
 
 		// Wait for the authtoken timeout
 		ZimbraAccount a = app.zGetActiveAccount();
-		SleepUtil.sleep(60000);
+		SleepUtil.sleep(120000);
 
 		// Send the message
 		mailform.zSubmit();
 
 		// User will automatically be logged out
+		app.zPageLogin.zWaitForActive();
 		app.zPageLogin.zLogin(a);
 		
 		
 
-		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ subject +")");
-
+		MailItem draft = MailItem.importFromSOAP(app.zGetActiveAccount(), "subject:("+ subject +")");
+		ZAssert.assertNotNull(draft, "Verify the draft exists");
+		
 		// TODO: add checks for TO, Subject, Body
-		ZAssert.assertEquals(received.dSubject, subject, "Verify the subject field is correct");
-		ZAssert.assertStringContains(received.dBodyText, body, "Verify the body field is correct");
+		ZAssert.assertEquals(draft.dSubject, subject, "Verify the subject field is correct");
+		ZAssert.assertStringContains(draft.dBodyText, body, "Verify the body field is correct");
 		
 	}
 

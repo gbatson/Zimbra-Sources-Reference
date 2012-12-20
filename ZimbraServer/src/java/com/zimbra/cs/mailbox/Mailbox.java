@@ -76,7 +76,6 @@ import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.MapUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.SetUtil;
-import com.zimbra.common.util.SpoolingCache;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.UUIDUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -91,10 +90,12 @@ import com.zimbra.cs.account.ShareLocator;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailItem.QueryParams;
+import com.zimbra.cs.db.DbMailItem.SearchOpts;
 import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.db.DbPool.DbConnection;
 import com.zimbra.cs.db.DbTag;
+import com.zimbra.cs.db.DbVolumeBlobs;
 import com.zimbra.cs.fb.FreeBusy;
 import com.zimbra.cs.fb.FreeBusyQuery;
 import com.zimbra.cs.fb.LocalFreeBusyProvider;
@@ -223,6 +224,7 @@ import com.zimbra.cs.store.StagedBlob;
 import com.zimbra.cs.store.StoreManager;
 import com.zimbra.cs.store.StoreManager.StoreFeature;
 import com.zimbra.cs.util.AccountUtil;
+import com.zimbra.cs.util.SpoolingCache;
 import com.zimbra.cs.util.AccountUtil.AccountAddressMatcher;
 import com.zimbra.cs.util.Zimbra;
 import com.zimbra.soap.admin.type.DataSourceType;
@@ -1088,6 +1090,14 @@ public class Mailbox {
             authuser = null;
         }
         return authuser;
+    }
+
+    Account getLockAccount() throws ServiceException {
+        Account authenticatedAccount = getAuthenticatedAccount();
+        if (authenticatedAccount == null) {
+            authenticatedAccount = getAccount();
+        }
+        return authenticatedAccount;
     }
 
     /** Returns whether the authenticated user for the transaction is using
@@ -2029,7 +2039,7 @@ public class Mailbox {
                     DbConnection conn = getOperationConnection();
                     DbMailbox.clearMailboxContent(this);
                     DbMailbox.deleteMailbox(conn, this);
-
+                    DbVolumeBlobs.deleteBlobRef(conn, this);
                     // Remove all data related to this mailbox from memcached, so the data doesn't
                     // get used by another user later by mistake if/when mailbox id gets reused.
                     MemcachedCacheManager.purgeMailbox(this);
@@ -2115,6 +2125,20 @@ public class Mailbox {
             return mData.version;
         } finally {
             lock.release();
+        }
+    }
+
+    public void resetMailboxForRestore() throws ServiceException {
+        boolean success = false;
+        try {
+            beginTransaction("resetMailboxForRestore", null);
+            for (int tagId : REIFIED_FLAGS) {
+                DbTag.deleteTagRow(this, tagId);
+            }
+            DbMailbox.updateVersion(this, null);
+            success = true;
+        } finally {
+            endTransaction(success);
         }
     }
 
@@ -3784,19 +3808,28 @@ public class Mailbox {
 
     public List<Message> getMessagesByConversation(OperationContext octxt, int convId, SortBy sort, int limit)
             throws ServiceException {
+        return getMessagesByConversation(octxt, convId, sort, limit, false);
+    }
+
+    public List<Message> getMessagesByConversation(OperationContext octxt, int convId, SortBy sort, int limit, boolean excludeSpamAndTrash)
+            throws ServiceException {
         boolean success = false;
         try {
             beginTransaction("getMessagesByConversation", octxt);
             List<Message> msgs = getConversationById(convId).getMessages(sort, limit);
-            if (!hasFullAccess()) {
-                List<Message> visible = new ArrayList<Message>(msgs.size());
-                for (Message msg : msgs) {
-                    if (msg.canAccess(ACL.RIGHT_READ)) {
-                        visible.add(msg);
-                    }
+
+            boolean hasMailboxAccess = hasFullAccess();
+            List<Message> filteredMsgs = new ArrayList<Message>(msgs.size());
+            for (Message msg : msgs) {
+                if (!hasMailboxAccess && !msg.canAccess(ACL.RIGHT_READ)) {
+                    continue;
                 }
-                msgs = visible;
+                if (excludeSpamAndTrash && (msg.inTrash() || msg.inSpam())) {
+                    continue;
+                }
+                filteredMsgs.add(msg);
             }
+            msgs = filteredMsgs;
             success = true;
             return msgs;
         } finally {
@@ -4055,12 +4088,12 @@ public class Mailbox {
         }
     }
 
-    public List<Integer> getItemListByDates(OperationContext octxt, MailItem.Type type,
-            long start, long end, int folderId, boolean descending) throws ServiceException {
+    public List<Integer> getItemIdList(OperationContext octxt, MailItem.Type type, int folderId,
+            SearchOpts searchOpts) throws ServiceException {
         boolean success = false;
         try {
-            beginTransaction("getItemListByDates", octxt);
-            List<Integer> msgIds = DbMailItem.getItemListByDates(this, type, start, end, folderId, descending);
+            beginTransaction("getItemIdList", octxt);
+            List<Integer> msgIds = DbMailItem.getItemIdList(this, type, folderId, searchOpts);
             success = true;
             return msgIds;
         } finally {
@@ -4433,10 +4466,13 @@ public class Mailbox {
             // Make a single list containing default and exceptions.
             int scidLen = (defaultInv != null ? 1 : 0) + (exceptions != null ? exceptions.length : 0);
             List<SetCalendarItemData> scidList = new ArrayList<SetCalendarItemData>(scidLen);
-            if (defaultInv != null)
+            if (defaultInv != null) {
+                defaultInv.invite.setLastFullSeqNo(defaultInv.invite.getSeqNo());
                 scidList.add(defaultInv);
+            }
             if (exceptions != null) {
                 for (SetCalendarItemData scid : exceptions) {
+                    scid.invite.setLastFullSeqNo(scid.invite.getSeqNo());
                     scidList.add(scid);
                 }
             }
@@ -7833,7 +7869,7 @@ public class Mailbox {
                     }
 
                     long folderTimeout = getOperationTimestampMillis() - folderLifetime;
-                    int numPurged = Folder.purgeMessages(this, folder, folderTimeout, null, false, true, maxItemsPerFolder);
+                    int numPurged = Folder.purgeMessages(this, folder, folderTimeout, null, false, false, maxItemsPerFolder);
                     purgedAll = updatePurgedAll(purgedAll, numPurged, maxItemsPerFolder);
                 }
             }

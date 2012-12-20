@@ -104,6 +104,9 @@ public class MigrationOptions
     public LogLevel VerboseOn;
     public bool SkipPrevMigrated;
     public Int32 MaxErrorCnt;
+    public string SpecialCharRep;
+    public bool IsMaintainenceMode;
+    
 }
 
 public class CSMigrationWrapper
@@ -174,6 +177,11 @@ public class CSMigrationWrapper
             string msg = string.Format("GetListofMapiProfiles Exception: {0}", e.Message);
             return msg;
         }
+    }
+
+    public bool AvoidInternalErrors(string strErr)
+    {
+	return MailWrapper.AvoidInternalErrors(strErr);
     }
 
     public string[] GetListofMapiProfiles()
@@ -395,10 +403,18 @@ public class CSMigrationWrapper
                     if (ProcessIt(options, type))
                     {
                         bool bError = false;
+                      
                         bool bSkipMessage = false;
                         Dictionary<string, string> dict = new Dictionary<string, string>();
                         string[,] data = null;
                         string itemtype = type.ToString();
+                        if (options.IsMaintainenceMode)
+                        {
+                            Log.err("Cancelling migration -- Mailbox is in maintainence  mode.Try back later");
+
+                            return;
+                        }
+
                         try
                         {
 
@@ -434,12 +450,15 @@ public class CSMigrationWrapper
                         catch (Exception e)
                         {
                             Log.err("exception in ProcessItems->itemobject.GetDataForItemID", e.Message);
+			    iProcessedItems++;
                             continue;
                         }
                         //check if data is valid
-                        if (data == null)
-                            continue;
-
+			if (data == null)
+			{
+			    iProcessedItems++;
+			    continue;
+			}
                         int bound0 = data.GetUpperBound(0);
                         if (bound0 > 0)
                         {
@@ -519,7 +538,13 @@ public class CSMigrationWrapper
                                         {
                                             string errMsg = (api.LastError.IndexOf("upload ID: null") != -1)    // FBS bug 75159 -- 6/7/12
                                                             ? "Unable to upload file. Please check server message size limits."
-                                                            : api.LastError;                                            
+                                                            : api.LastError;
+                                            if (errMsg.Contains("maintenance") || errMsg.Contains("not active"))
+                                            {
+                                                errMsg = errMsg + " Try Back later";
+                                                options.IsMaintainenceMode = true;
+                                            }
+
                                             Acct.LastProblemInfo = new ProblemInfo(dict["Subject"], errMsg, ProblemInfo.TYPE_ERR);                                                                                   
                                             Acct.TotalErrors++;
                                             bError = true;
@@ -546,6 +571,18 @@ public class CSMigrationWrapper
                                 try
                                 {
                                     stat = api.CreateContact(dict, path);
+
+                                    if (stat != 0)
+                                    {
+                                        string errMsg = api.LastError;
+                                        if (errMsg.Contains("maintenance") || errMsg.Contains("not active") )
+                                        {
+                                            errMsg = errMsg + " Try Back later";
+                                            
+                                            options.IsMaintainenceMode = true;
+                                        }
+                                        Log.err("Error in CreateContact ", errMsg);
+                                    }
                                 }
                                 catch (Exception e)
                                 {
@@ -590,10 +627,19 @@ public class CSMigrationWrapper
                                         stat = api.AddAppointment(dict, path);
                                         if (stat != 0)
                                         {
-                                            Acct.LastProblemInfo = new ProblemInfo(dict["su"], api.LastError,
+                                            string errMsg = api.LastError;
+                                            if (errMsg.Contains("maintenance") || errMsg.Contains("not active"))
+                                            {
+                                                errMsg = errMsg + " Try Back later";
+
+                                                options.IsMaintainenceMode = true;
+                                            }
+                                            Acct.LastProblemInfo = new ProblemInfo(dict["su"], errMsg,
                                                                                    ProblemInfo.TYPE_ERR);
                                             Acct.TotalErrors++;
                                             bError = true;
+                                             
+                                            
                                         }
 
                                     }
@@ -641,6 +687,21 @@ public class CSMigrationWrapper
                                     try
                                     {
                                         stat = api.AddTask(dict, path);
+
+                                        if (stat != 0)
+                                        {
+                                            string errMsg = api.LastError;
+                                            if (errMsg.Contains("maintenance") || errMsg.Contains("not active"))
+                                            {
+                                                errMsg = errMsg + " Try Back later";
+
+                                                options.IsMaintainenceMode = true;
+                                            }
+                                            
+                                            Log.err("error in AddTask ", errMsg);
+
+
+                                        }
                                     }
                                     catch (Exception e)
                                     {
@@ -688,6 +749,8 @@ public class CSMigrationWrapper
         dynamic user = null;
         string value = "";
 
+        options.IsMaintainenceMode = false;
+
         if (MailClient == "MAPI")
         {
             user = new MapiUser();
@@ -728,8 +791,8 @@ public class CSMigrationWrapper
 
         if (value.Length > 0)
         {
-            Log.err("Unable to initialize", accountName, value);
-            Acct.LastProblemInfo = new ProblemInfo(accountName, value, ProblemInfo.TYPE_ERR);
+            Log.err("Unable to initialize", accountName, value +"or verify if source mailbox exists.");
+            Acct.LastProblemInfo = new ProblemInfo(accountName, value + " Or Verify if source mailbox exists.", ProblemInfo.TYPE_ERR);
             Acct.TotalErrors++;
             return;
         }
@@ -778,8 +841,8 @@ public class CSMigrationWrapper
                 Acct.TotalItems += folder.ItemCount;
         }
         Log.info("Acct.TotalItems=", Acct.TotalItems.ToString());
+        ZimbraAPI  api = new ZimbraAPI(isServer, logLevel, options.SpecialCharRep);
 
-        ZimbraAPI api = new ZimbraAPI(isServer, logLevel);
         api.AccountID = Acct.AccountID;
         api.AccountName = Acct.AccountName;
 
@@ -788,10 +851,17 @@ public class CSMigrationWrapper
         {
             Acct.tagDict.Add(taginfo.TagName, taginfo.TagID);
         }
-
+        
         foreach (dynamic folder in folders)
         {
             string path = "";
+
+            if (options.IsMaintainenceMode)
+            {
+                Log.err("Cancelling migration -- Mailbox is in maintainence  mode.try back later");
+                return;
+            }
+
 
             if (options.MaxErrorCnt > 0)
             {

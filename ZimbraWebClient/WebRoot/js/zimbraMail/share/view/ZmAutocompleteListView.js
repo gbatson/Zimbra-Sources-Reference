@@ -193,7 +193,7 @@ ZmAutocompleteListView = function(params) {
 	this._hideSelLinkTextClass = "LinkText-hide-selected";
 
 	this._contexts 			= {};	// key is element ID
-	this._inputLength		= {};	// key is element ID
+	this._inputValue		= {};	// key is element ID
 	
 	this.setVisible(false);
 	this.setScrollStyle(Dwt.SCROLL);
@@ -269,10 +269,15 @@ function(ev) {
 			result = true;
 		}
 		
-		aclv._inputLength[element.id] = element.value.length;
+		aclv._inputValue[element.id] = element.value;
 		var cbResult = aclv._runCallbacks(ZmAutocompleteListView.CB_KEYDOWN, element && element.id, [ev, aclv, result, element]);
 		// DBG.println("ac", ev.type.toUpperCase() + " cbResult: " + cbResult);
 		result = (cbResult === true || cbResult === false) ? cbResult : result;
+	}
+	if (AjxEnv.isFirefox){
+		ZmAutocompleteListView.clearTimer();
+		ZmAutocompleteListView.timer =  new AjxTimedAction(this, ZmAutocompleteListView.onKeyUp, [ev]);
+		AjxTimedAction.scheduleAction(ZmAutocompleteListView.timer, 300)
 	}
 	return ZmAutocompleteListView._echoKey(result, ev);
 };
@@ -349,7 +354,7 @@ function(ev) {
 	var value = element.value;
 	var elId = element.id;
 	DBG.println("ac", ev.type + " event, key = " + key + ", value = " + value);
-	ev.inputLengthChanged = (value.length != aclv._inputLength[elId]);
+	ev.inputChanged = (value != aclv._inputValue[elId]);
 
 	// reset timer on any address field key activity
 	if (aclv._acActionId[elId] != -1 && !DwtKeyMap.IS_MODIFIER[key] && key != 9) {
@@ -374,10 +379,12 @@ function(ev) {
 		return false;
 	}
 
-	// skip if it's some weird character that didn't change the input
-	if (!ev.inputLengthChanged) {
+	// skip if input value is not changed
+	if (!ev.inputChanged) {
 		return true;
 	}
+
+	ZmAutocompleteListView.clearTimer();
 
 	// regular input, schedule autocomplete
 	var ev1 = new DwtKeyEvent();
@@ -393,6 +400,13 @@ function(ev) {
 	aclv._acActionId[elId] = AjxTimedAction.scheduleAction(acAction, aclv._acInterval);
 	
 	return true;
+};
+
+ZmAutocompleteListView.clearTimer =
+function(ev){
+    if (ZmAutocompleteListView.timer){
+        AjxTimedAction.cancelAction(ZmAutocompleteListView.timer)
+    }
 };
 
 /**
@@ -458,6 +472,9 @@ function(element, addrInputId) {
 	Dwt.setHandler(element, DwtEvent.ONKEYDOWN, ZmAutocompleteListView.onKeyDown);
 	Dwt.setHandler(element, DwtEvent.ONKEYPRESS, ZmAutocompleteListView.onKeyPress);
 	Dwt.setHandler(element, DwtEvent.ONKEYUP, ZmAutocompleteListView.onKeyUp);
+	if (AjxEnv.isFirefox){
+		Dwt.setHandler(element, DwtEvent.ONBLUR, ZmAutocompleteListView.clearTimer);
+	}
 	this.isActive = true;
 };
 

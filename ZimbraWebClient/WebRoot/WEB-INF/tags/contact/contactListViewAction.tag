@@ -161,7 +161,9 @@
                             <c:set var="emailIds" value="" />
                             <c:forEach var="member" items="${contact.groupMembers}">
                                 <c:if test="${not empty emailIds}"><c:set var="grpsep" value=", " /></c:if>
-                                <c:set var="emailIds" value="${emailIds}${grpsep}${member}" /> 
+                                <c:set var="memberContact" value="${zm:groupMemberById(contact, member)}"/>
+                                <c:set var="memberContactFullAddress" value="${memberContact.fullAddress}"/>
+                                <c:set var="emailIds" value="${emailIds}${grpsep}${memberContactFullAddress}" />
                                 </tr>
                             </c:forEach>
                         </c:when>
@@ -198,7 +200,8 @@
                     </c:choose>
                     <c:set var="contactIds" value="${contactIds}${sep}${emailIds}" />
                 </c:forEach>
-                <c:redirect url="/h/search?action=compose&to=${contactIds}" />
+                <c:set var="toAddresses" value="${contactIds}" scope="session"/>
+                <c:redirect url="/h/search?action=compose&to=toAddresses" />
             </c:when>
             <c:when test="${fn:startsWith(actionOp, 't:') or fn:startsWith(actionOp, 'u:')}">
                 <c:set var="untagall" value="${fn:startsWith(actionOp, 'u:all')}"/>

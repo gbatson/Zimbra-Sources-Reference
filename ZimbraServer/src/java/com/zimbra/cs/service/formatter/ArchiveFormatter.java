@@ -63,6 +63,7 @@ import com.zimbra.common.util.BufferStream;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.HttpUtil;
 import com.zimbra.common.util.HttpUtil.Browser;
+import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.index.SortBy;
 import com.zimbra.cs.index.ZimbraQueryResults;
@@ -285,6 +286,20 @@ public abstract class ArchiveFormatter extends Formatter {
                         query = "under:\"" + f.getPath() + "\"" + (query == null ? "" : " " + query);
                     }
                 }
+                String taskQuery = query;
+                if (query == null) {
+                    query = "";
+                }
+                String calendarQuery = query;
+                if (context.getStartTime() != TIME_UNSPECIFIED) {
+                    query = query + " after:" + context.getStartTime();
+                    calendarQuery = calendarQuery + " appt-start:>=" + context.getStartTime();
+                }
+                if (context.getEndTime() != TIME_UNSPECIFIED) {
+                    query = query + " before:" + context.getEndTime();
+                    calendarQuery = calendarQuery + " appt-end:<" + context.getEndTime();
+                }
+
                 if (query == null || query.equals("")) {
                     SortPath sp = new SortPath();
 
@@ -298,25 +313,41 @@ public abstract class ArchiveFormatter extends Formatter {
                     }
                     query = "is:local";
                 }
-
-                results = context.targetMailbox.index.search(context.opContext,
-                    query, searchTypes, SortBy.NONE,
-                    LC.zimbra_archive_formatter_search_chunk_size.intValue());
-
-                try {
-                    while (results.hasNext()) {
-                        if (saveTargetFolder) {
-                            saveTargetFolder = false;
-                            aos = saveItem(context, context.target, fldrs, cnts, false, aos, encoder, names);
-                        }
-                        aos = saveItem(context, results.getNext().getMailItem(), fldrs, cnts, false, aos, encoder, names);
+                Map<Set<MailItem.Type>, String> typesMap = new HashMap<Set<MailItem.Type>, String>();
+                typesMap.put(searchTypes, query);
+                if (context.getStartTime() != TIME_UNSPECIFIED || context.getEndTime() != TIME_UNSPECIFIED) {
+                    if (searchTypes.contains(MailItem.Type.APPOINTMENT)) {
+                        searchTypes.remove(MailItem.Type.APPOINTMENT);
+                        Set<MailItem.Type> calendarTypes = new HashSet<MailItem.Type>();
+                        calendarTypes.add(MailItem.Type.APPOINTMENT);
+                        typesMap.put(calendarTypes, calendarQuery);
                     }
-                    Closeables.closeQuietly(results);
-                    results = null;
-                } catch (Exception e) {
-                    warn(e);
-                } finally {
-                    Closeables.closeQuietly(results);
+                    if (searchTypes.contains(MailItem.Type.TASK)) {
+                        searchTypes.remove(MailItem.Type.TASK);
+                        Set<MailItem.Type> taskTypes = new HashSet<MailItem.Type>();
+                        taskTypes.add(MailItem.Type.TASK);
+                        typesMap.put(taskTypes, (StringUtil.isNullOrEmpty(taskQuery)) ? "is:local" : taskQuery);
+                    }
+                }
+                for (Map.Entry<Set<MailItem.Type>, String> entry : typesMap.entrySet()) {
+                    results = context.targetMailbox.index.search(context.opContext,
+                            entry.getValue(), entry.getKey(), SortBy.NONE,
+                            LC.zimbra_archive_formatter_search_chunk_size.intValue());
+                    try {
+                        while (results.hasNext()) {
+                            if (saveTargetFolder) {
+                                saveTargetFolder = false;
+                                aos = saveItem(context, context.target, fldrs, cnts, false, aos, encoder, names);
+                            }
+                            aos = saveItem(context, results.getNext().getMailItem(), fldrs, cnts, false, aos, encoder, names);
+                        }
+                        Closeables.closeQuietly(results);
+                        results = null;
+                    } catch (Exception e) {
+                        warn(e);
+                    } finally {
+                        Closeables.closeQuietly(results);
+                    }
                 }
             }
             if (aos == null) {
@@ -324,7 +355,7 @@ public abstract class ArchiveFormatter extends Formatter {
                     context.resp.setHeader("Content-Disposition", null);
                     throw new UserServletException(HttpServletResponse.SC_NO_CONTENT, "No data found");
                 }
-                context.resp.setHeader("Content-Disposition", HttpUtil.createContentDisposition(context.req, Part.ATTACHMENT, filename));
+                context.resp.setHeader("Content-Disposition", HttpUtil.createContentDisposition(context.req, Part.ATTACHMENT, emptyname));
                 aos = getOutputStream(context, UTF8);
             }
         } finally {
@@ -782,9 +813,6 @@ public abstract class ArchiveFormatter extends Formatter {
             try {
                 ais = getInputStream(context, charset.name());
             } catch (Exception e) {
-                if (e instanceof UserServletException && ((UserServletException) e).getHttpStatusCode() == HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE) {
-                    throw FormatterServiceException.UNKNOWN_ERROR(e);
-                }
                 String filename = context.params.get(UserServlet.UPLOAD_NAME);
                 throw FormatterServiceException.INVALID_FORMAT(filename == null ? "unknown" : filename);
             }
@@ -800,10 +828,12 @@ public abstract class ArchiveFormatter extends Formatter {
                     try {
                         List<Integer> delIds;
 
+                        /* TODO Uncomment when bug 76892 is fixed.
                         if (System.currentTimeMillis() - last > interval) {
                             updateClient(context, true);
                             last = System.currentTimeMillis();
                         }
+                        */
                         if (searchTypes == null) {
                             delIds = context.targetMailbox.listItemIds(context.opContext, MailItem.Type.UNKNOWN, f.getId());
                         } else {
@@ -846,10 +876,12 @@ public abstract class ArchiveFormatter extends Formatter {
                 Boolean meta = false;
 
                 while ((aie = ais.getNextEntry()) != null) {
+                    /* TODO Uncomment when bug 76892 is fixed.
                     if (System.currentTimeMillis() - last > interval) {
                         updateClient(context, true);
                         last = System.currentTimeMillis();
                     }
+                    */
                     if (aie.getName().startsWith("__MACOSX/")) {
                         continue;
                     } else if (aie.getName().endsWith(".meta")) {

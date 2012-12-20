@@ -695,27 +695,31 @@ function(callback, result) {
 	var resp = result.getResponse().GetContactsResponse;
 
 	// for now, we just assume only one contact was requested at a time
-	this.attr = resp.cn[0]._attrs;
-	if (resp.cn[0].m) {
-		for (var i=0; i<resp.cn[0].m.length; i++) {
+	var contact = resp.cn[0];
+	this.attr = contact._attrs;
+	if (contact.m) {
+		for (var i = 0; i < contact.m.length; i++) {
 			//cache contacts from contact groups (e.g. GAL contacts, shared contacts have not already been cached)
-			var contact = resp.cn[0].m[i];
+			var member = contact.m[i];
 			var isGal = false;
-			if (contact.type == ZmContact.GROUP_GAL_REF) { 
+			if (member.type == ZmContact.GROUP_GAL_REF) {
 				isGal = true;
 			}
-			if (contact.cn && contact.cn.length > 0) {
-				var loadContact = ZmContact.createFromDom(contact.cn[0], {list : this.list, isGal : isGal}); //pass GAL so fileAS gets set correctly
-				loadContact.isDL = isGal && loadContact.attr[ZmContact.F_type] == "group";
-				appCtxt.cacheSet(contact.value, loadContact);
+			if (member.cn && member.cn.length > 0) {
+				var memberContact = member.cn[0];
+				memberContact.ref = memberContact.ref || (isGal && member.value); //we sometimes don't get "ref" but the "value" for GAL is the ref.
+				var loadMember = ZmContact.createFromDom(memberContact, {list: this.list, isGal: isGal}); //pass GAL so fileAS gets set correctly
+				loadMember.isDL = isGal && loadMember.attr[ZmContact.F_type] == "group";
+				appCtxt.cacheSet(member.value, loadMember);
 			}
 			
 		}
-		this._loadFromDom(resp.cn[0], {list : this.list}); //load group
+		this._loadFromDom(contact); //load group
 	}
 	this.isLoaded = true;
-	if (callback)
-		callback.run(resp.cn[0], this);
+	if (callback) {
+		callback.run(contact, this);
+	}
 };
 
 /**
@@ -810,78 +814,60 @@ function() {
 // parses "groups" attr into AjxEmailAddress objects stored in 3 vectors (all, good, and bad)
 /**
  * Gets the group members.
- * 
+ *
  * @return	{AjxVector}		the group members or <code>null</code> if not group
  */
 ZmContact.prototype.getGroupMembers =
 function() {
+	var allMembers = this.getAllGroupMembers();
 	var addrs = [];
-	if(this.isGroup()) {
-		var groupMembers = this.attr[ZmContact.F_groups];
-		if (!groupMembers){
-			return AjxEmailAddress.parseEmailString(this.attr[ZmContact.F_email]);
-		}
-		for (var i=0; i<groupMembers.length; i++) {
-			var type = groupMembers[i].type;
-			var value = groupMembers[i].value;
-			if (type == ZmContact.GROUP_INLINE_REF) {
-				addrs.push(value);	
-			}
-			else if(type == ZmContact.GROUP_CONTACT_REF || type == ZmContact.GROUP_GAL_REF) {
-				var contact = ZmContact.getContactFromCache(value);	 //TODO: handle contacts not cached?
-				if (!contact) {
-					DBG.println(AjxDebug.DBG1, "Disregarding uncached contact: " + value);
-					continue;
-				}
-				var email = contact.getEmail();
-				if (email && email != "") {
-					var ajxEmailAddress = new AjxEmailAddress(email, null, contact.getFileAs(), contact.getFullNameForDisplay(), false);
-					addrs.push(ajxEmailAddress.toString());
-				}
-			}
-		}
-		return AjxEmailAddress.parseEmailString(addrs.join(", "));
+	for (var i = 0; i < allMembers.length; i++) {
+		addrs.push(allMembers[i].toString());
 	}
-	return null;
-};
+	return AjxEmailAddress.parseEmailString(addrs.join(", "));
+};	
 
-// parses "groups" attr into an object {type : "I"|"G"|"C", value : id or email address (inline type) address : email address }
 /**
- * Gets the group members.
+ * parses "groups" attr into an AjxEmailAddress with a few extra attributes (see ZmContactsHelper._wrapInlineContact)
  * 
- * @return	{Array}		the group members or <code>null</code> if not group
- */	
-ZmContact.prototype.getGroupMembersObj = 
+ * @return	{AjxVector}		the group members or <code>null</code> if not group
+ */
+ZmContact.prototype.getAllGroupMembers =
 function() {
-	if (!this.isGroup()) {
-		return null;
-	}
+
 	if (this.isDistributionList()) {
 		return this.dlMembers;
 	}
-	var members = [];
+
+	var addrs = [];
+
 	var groupMembers = this.attr[ZmContact.F_groups];
-	if (!groupMembers) {
-		return null;
+	if (!groupMembers){
+		return AjxEmailAddress.parseEmailString(this.attr[ZmContact.F_email]);  //I doubt this is needed or works correctly, but I keep this logic from before. If we don't have the group members, how can we return the group email instead?
 	}
-	for (var i=0; i<groupMembers.length; i++) {
-		var type = groupMembers[i].type;
-		var value = groupMembers[i].value;
+	for (var i = 0; i < groupMembers.length; i++) {
+		var member = groupMembers[i];
+		var type = member.type;
+		var value = member.value;
 		if (type == ZmContact.GROUP_INLINE_REF) {
-			members.push({type : type, value : value, address : value});
+			addrs.push(ZmContactsHelper._wrapInlineContact(value));
 		}
-		else if(type == ZmContact.GROUP_CONTACT_REF || type == ZmContact.GROUP_GAL_REF) {
-			var contact = ZmContact.getContactFromCache(value);  //TODO: handle contacts not cached?
+		else {
+			var contact = ZmContact.getContactFromCache(value);	 //TODO: handle contacts not cached?
 			if (!contact) {
 				DBG.println(AjxDebug.DBG1, "Disregarding uncached contact: " + value);
 				continue;
 			}
-			var email = contact.getEmail();
-			var ajxEmailAddress = new AjxEmailAddress(email, null, contact.getFileAs(), contact.getFullNameForDisplay(), false);
-			members.push({type : type, value : value, address : ajxEmailAddress.toString()});
+			var ajxEmailAddress = ZmContactsHelper._wrapContact(contact);
+			if (ajxEmailAddress && type === ZmContact.GROUP_CONTACT_REF) {
+				ajxEmailAddress.groupRefValue = value; //don't normalize value
+			}
+			if (ajxEmailAddress) {
+				addrs.push(ajxEmailAddress);
+			}
 		}
 	}
-	return members;
+	return addrs;
 };
 
 
@@ -923,16 +909,27 @@ function(includeUserZid) {
 };
 /**
  * Gets the icon.
- * 
+ * @param 	{ZmAddrBook} addrBook	address book of contact 
  * @return	{String}	the icon
  */
 ZmContact.prototype.getIcon =
-function() {
-	if (this.isDistributionList()) { return "DistributionList"; }
-	if (this.isGal)			{ return "GALContact"; }
-	if (this.isShared())	{ return "SharedContact"; }
-	if (this.isGroup())		{ return "Group"; }
+function(addrBook) {
+	if (this.isDistributionList()) 						{ return "DistributionList"; }
+	if (this.isGal)										{ return "GALContact"; }
+	if (this.isShared() || (addrBook && addrBook.link))	{ return "SharedContact"; }
+	if (this.isGroup())									{ return "Group"; }
 	return "Contact";
+};
+
+ZmContact.prototype.getIconLarge =
+function() {
+	if (this.isDistributionList()) {
+		return "Group_48";
+	}
+	if (this.isGal) {
+		//todo - get a big version of ImgGalContact.png 
+	}
+	return "Person_48";
 };
 
 /**
@@ -2266,12 +2263,18 @@ function(cn, name, value) {
 	
 ZmContact.prototype._addContactGroupAttr = 
 function(cn, group) {
-	var groups = group[ZmContact.F_groups];
-	for (var i=0; i<groups.length; i++) {
+	var groupMembers = group[ZmContact.F_groups];
+	for (var i = 0; i < groupMembers.length; i++) {
+		var member = groupMembers[i];
 		if (!cn.m) {
 			cn.m = [];
 		}
-		cn.m.push(groups[i]);
+
+		var m = {type: member.type,	value: member.value}; //for the JSON object this is all we need.
+		if (member.op) {
+			m.op = member.op; //this is only for modify, not for create.
+		}
+		cn.m.push(m);
 	}
 };
 
@@ -2298,13 +2301,14 @@ function(node) {
 	this.folderId = node.l;
 	this.created = node.cd;
 	this.modified = node.md;
-	this.ref = node.ref;
 
 	this.attr = node._attrs || {};
 	if (node.m) {
 		this.attr[ZmContact.F_groups] = node.m;
 	}
-
+	
+	this.ref = node.ref || this.attr.dn; //bug 78425
+	
 	// for shared contacts, we get these fields outside of the attr part
 	if (node.email)		{ this.attr[ZmContact.F_email] = node.email; }
 	if (node.email2)	{ this.attr[ZmContact.F_email2] = node.email2; }
@@ -2581,7 +2585,10 @@ function(contactId) {
 	else {
 		contact = appCtxt.cacheGet(contactId);
 	}
-	return contact;
+	if (contact instanceof ZmContact) {
+		return contact;
+	}
+	return null;
 };
 
 // these need to be kept in sync with ZmContact.F_*

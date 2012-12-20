@@ -3,20 +3,19 @@ package com.zimbra.qa.selenium.projects.ajax.tests.conversation.bugs;
 import java.io.File;
 import java.util.HashMap;
 import java.util.List;
-
 import org.testng.annotations.Test;
-
+import com.zimbra.qa.selenium.framework.items.FolderItem;
+import com.zimbra.qa.selenium.framework.items.FolderItem.SystemFolder;
 import com.zimbra.qa.selenium.framework.items.MailItem;
 import com.zimbra.qa.selenium.framework.ui.Action;
 import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.LmtpInject;
+import com.zimbra.qa.selenium.framework.util.SleepUtil;
 import com.zimbra.qa.selenium.framework.util.ZAssert;
 import com.zimbra.qa.selenium.framework.util.ZimbraAccount;
 import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.projects.ajax.core.AjaxCommonTest;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.DisplayMail;
-import com.zimbra.qa.selenium.projects.ajax.ui.mail.DisplayMail.Field;
 
 
 public class Bug16213 extends AjaxCommonTest {
@@ -42,7 +41,7 @@ public class Bug16213 extends AjaxCommonTest {
 
 	@Test(	description = "Verify bug 16213 - Conversation list should show From=<blank>",
 			groups = { "functional" })
-	public void Bug_16213A() throws HarnessException {
+	public void Bug_16213CV() throws HarnessException {
 
 		String subject = "Encoding test";
 		String to = "ljk20k00k1je";
@@ -50,6 +49,11 @@ public class Bug16213 extends AjaxCommonTest {
 		String MimeFolder = ZimbraSeleniumProperties.getBaseDirectory() + "/data/private/mime/Bugs/Bug16213";
 		LmtpInject.injectFile(ZimbraAccount.AccountZWC().EmailAddress, new File(MimeFolder));
 
+		// Click on  folder in the tree
+		FolderItem inbox = FolderItem.importFromSOAP(app.zGetActiveAccount(), SystemFolder.Inbox);
+		app.zTreeMail.zTreeItem(Action.A_LEFTCLICK, inbox);
+
+		SleepUtil.sleepSmall();
 		
 		// Click Get Mail button
 		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
@@ -68,26 +72,5 @@ public class Bug16213 extends AjaxCommonTest {
 
 
 	}
-
-	@Test(	description = "Verify bug 16213 - Message display should show From=Unknown",
-			groups = { "functional" })
-	public void Bug_16213B() throws HarnessException {
-
-		String subject = "Encoding test";
-		String from = "Unknown";
-
-		String MimeFolder = ZimbraSeleniumProperties.getBaseDirectory() + "/data/private/mime/Bugs/Bug16213";
-		LmtpInject.injectFile(ZimbraAccount.AccountZWC().EmailAddress, new File(MimeFolder));
-
-		
-		// Click Get Mail button
-		app.zPageMail.zToolbarPressButton(Button.B_GETMAIL);
-
-		DisplayMail display = (DisplayMail)app.zPageMail.zListItem(Action.A_LEFTCLICK, subject);
-		
-		ZAssert.assertEquals(display.zGetMailProperty(Field.From), from, "Verify the default string for 'From' is 'Unknown'");
-
-	}
-
 
 }

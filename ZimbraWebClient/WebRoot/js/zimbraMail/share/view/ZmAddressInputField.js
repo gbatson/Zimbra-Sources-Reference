@@ -1046,11 +1046,6 @@ function(actionCode, ev) {
 	
 	switch (actionCode) {
 
-		case ZmKeyMap.COPY:
-			this._bubbleList.selectAddressText();
-			ev.forcePropagate = true;
-			break;
-
 		case DwtKeyMap.DELETE:
 			this.handleDelete();
 			break;
@@ -1272,6 +1267,7 @@ function(ev) {
 	}
 	else if (ev.action == DwtDragEvent.DRAG_END) {
 		DBG.println("aif", "ZmAddressInputField DRAG_END");
+		this._bubbleList._checkSelection();
 		if (AjxEnv.isWindows && (this.getSelectionCount() == 0)) {
 			this.blur();
 			this.focus();
@@ -1595,7 +1591,11 @@ function(ev) {
 	return {callback:ttCallback};
 };
 
-
+// Bug 78359 - hack so that shortcuts work even though browser focus is on hidden textarea
+ZmAddressBubble.prototype.hasFocus =
+function() {
+	return true;
+};
 
 
 /**
@@ -1889,6 +1889,8 @@ function() {
 	// hidden textarea used for copying address text
 	if (!ZmAddressBubbleList._textarea) {
 		var el = ZmAddressBubbleList._textarea = document.createElement("textarea");
+		el.id = "abcb";	// address bubble clipboard
+		el["data-hidden"] = "1";
 		appCtxt.getShell().getHtmlElement().appendChild(el);
 		Dwt.setPosition(el, Dwt.ABSOLUTE_STYLE);
 		Dwt.setLocation(el, Dwt.LOC_NOWHERE, Dwt.LOC_NOWHERE);
@@ -1924,6 +1926,7 @@ function() {
 		omem.stopListening(omemParams);
 		this._listening = false;
 	}
+	this.selectAddressText();
 };
 
 ZmAddressBubbleList.prototype._outsideMouseListener =

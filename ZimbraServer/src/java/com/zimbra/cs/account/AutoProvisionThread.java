@@ -16,12 +16,11 @@ package com.zimbra.cs.account;
 
 import java.util.Set;
 
-import com.zimbra.common.account.Key.DomainBy;
+import com.google.common.annotations.VisibleForTesting;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.ZimbraLog;
-
 import com.zimbra.cs.util.Zimbra;
 
 public class AutoProvisionThread extends Thread implements Provisioning.EagerAutoProvisionScheduler{
@@ -29,8 +28,9 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
     private static volatile AutoProvisionThread autoProvThread = null;
     private static Object THREAD_CONTROL_LOCK = new Object();
     private boolean shutdownRequested = false;
-    
-    private AutoProvisionThread() {
+
+    @VisibleForTesting
+    protected AutoProvisionThread() {
         setName("AutoProvision");
     }
 
@@ -91,7 +91,7 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
                 autoProvThread.interrupt();
                 autoProvThread = null;
             } else {
-                ZimbraLog.autoprov.debug("shutdown() called, but auto provision thread is not running.");
+                ZimbraLog.autoprov.info("shutdown() called, but auto provision thread is not running.");
             }
         }
     }
@@ -123,7 +123,7 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
     @Override public void run() {
         // Sleep before doing work, to give the server time to warm up.  Also limits the amount
         // of random effect when determining the next mailbox id.
-        long sleepTime = LC.autoprov_initial_sleep_ms.longValue();
+        long sleepTime = getInitialDelay();
         ZimbraLog.autoprov.info("Auto provision thread sleeping for %dms before doing work.", sleepTime);
 
         try {
@@ -133,9 +133,9 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
             autoProvThread = null;
             return;
         }
-        
+
         Provisioning prov = Provisioning.getInstance();
-        
+
         while (true) {
             if (isShutDownRequested()) {
                 ZimbraLog.autoprov.info("Shutting down auto provision thread.");
@@ -170,6 +170,11 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
             }
         }
     }
+
+    @VisibleForTesting
+    protected long getInitialDelay() {
+        return LC.autoprov_initial_sleep_ms.longValue();
+    }
     
     /**
      * Sleeps for the time interval specified by {@link Provisioning#A_zimbraAutoProvPollingInterval}.
@@ -177,13 +182,13 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
      */
     private void sleep() {
         long interval = getSleepInterval();
-        ZimbraLog.autoprov.debug("Sleeping for %d milliseconds.", interval);
-        
+        ZimbraLog.autoprov.info("Sleeping for %d milliseconds.", interval);
+
         if (interval > 0) {
             try {
                 Thread.sleep(interval);
             } catch (InterruptedException e) {
-                ZimbraLog.autoprov.debug("Auto provision thread was interrupted.");
+                ZimbraLog.autoprov.info("Auto provision thread was interrupted.");
                 shutdownRequested = true;
             }
         } else {
@@ -212,8 +217,7 @@ public class AutoProvisionThread extends Thread implements Provisioning.EagerAut
      */
     private static long getSleepInterval() {
         try {
-            Provisioning prov = Provisioning.getInstance();
-            Server server = prov.getLocalServer();
+            Server server = Provisioning.getInstance().getLocalServer();
             sleepInterval = server.getTimeInterval(Provisioning.A_zimbraAutoProvPollingInterval, 0);
         } catch (ServiceException e) {
             ZimbraLog.autoprov.warn("Unable to determine value of %s.  Using previous value: %d.",

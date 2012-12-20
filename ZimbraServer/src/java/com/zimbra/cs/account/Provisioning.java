@@ -301,7 +301,7 @@ public abstract class Provisioning extends ZAttrProvisioning {
     }
 
     public boolean isOctopus() throws ServiceException {
-        return getConfig().getProduct() == Product.OCTOPUS;
+        return getConfig().getProduct() != Product.ZCS;
     }
 
     /**
@@ -451,6 +451,12 @@ public abstract class Provisioning extends ZAttrProvisioning {
         return cos;
     }
 
+    /**
+     * returns addr@<local domain> for addr@<alias domain>, null if given address is a local domain address
+     * @param emailAddress original addr
+     * @return addr@<local domain> or null
+     * @throws ServiceException
+     */
     public String getEmailAddrByDomainAlias(String emailAddress) throws ServiceException {
         String addr = null;
 
@@ -846,6 +852,10 @@ public abstract class Provisioning extends ZAttrProvisioning {
     public Account autoProvAccountManual(Domain domain, AutoProvPrincipalBy by,
             String principal, String password)
     throws ServiceException {
+        throw ServiceException.UNSUPPORTED();
+    }
+
+    public void autoProvControl(String action) throws ServiceException {
         throw ServiceException.UNSUPPORTED();
     }
 

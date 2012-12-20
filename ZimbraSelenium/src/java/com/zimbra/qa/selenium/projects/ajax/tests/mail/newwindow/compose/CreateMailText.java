@@ -41,6 +41,8 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 			
 			window.zSetWindowTitle("Compose");
 			window.zWaitForActive();		// Make sure the window is there
+			/* TODO: ... debugging to be removed */
+			window.waitForComposeWindow();
 			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
@@ -63,6 +65,28 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 			
 		}
 		
+		// Sometimes, the harness is too fast for the client.
+		// Since we are composing in a new window, there is no
+		// busy overlay to block.
+		//
+		// Add a loop, while waiting for the message
+		//
+		for (int i = 0; i < 30; i++) {
+
+			ZimbraAccount.AccountA().soapSend(
+					"<SearchRequest types='message' xmlns='urn:zimbraMail'>"
+			+			"<query>subject:("+ mail.dSubject +")</query>"
+			+		"</SearchRequest>");
+			com.zimbra.common.soap.Element node = ZimbraAccount.AccountA().soapSelectNode("//mail:m", 1);
+			if ( node != null ) {
+				// found the message
+				break;
+			}
+			
+			SleepUtil.sleep(1000);
+
+		}
+
 
 		MailItem received = MailItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ mail.dSubject +")");
 
@@ -105,6 +129,8 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 
 			window.zSetWindowTitle("Compose");
 			window.zWaitForActive();		// Make sure the window is there
+			/* TODO: ... debugging to be removed */
+			window.waitForComposeWindow();
 			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
@@ -157,6 +183,8 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 			
 			window.zSetWindowTitle("Compose");
 			window.zWaitForActive();		// Make sure the window is there
+			/* TODO: ... debugging to be removed */
+			window.waitForComposeWindow();
 			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			
@@ -300,6 +328,8 @@ public class CreateMailText extends PrefGroupMailByMessageTest {
 			
 			window.zSetWindowTitle("Compose");
 			window.zWaitForActive();		// Make sure the window is there
+			/* TODO: ... debugging to be removed */
+			window.waitForComposeWindow();
 			
 			ZAssert.assertTrue(window.zIsActive(), "Verify the window is active");
 			

@@ -94,6 +94,7 @@ import com.zimbra.cs.mime.MimeVisitor;
 import com.zimbra.cs.mime.ParsedMessage;
 import com.zimbra.cs.mime.Mime.FixedMimeMessage;
 import com.zimbra.cs.mime.ParsedMessage.CalendarPartInfo;
+import com.zimbra.cs.service.mail.CalendarUtils;
 import com.zimbra.cs.session.PendingModifications.Change;
 import com.zimbra.cs.store.MailboxBlob;
 import com.zimbra.cs.store.StagedBlob;
@@ -1712,7 +1713,7 @@ public abstract class CalendarItem extends MailItem {
                             obsoletedRecurIdZs.remove(rid.getDtZ());  // "Un-obsolete" the surviving recurrence ids.
                         }
                     }
-                } else {
+                } else if (recur != null) {
                     // This shouldn't happen.
                     ZimbraLog.calendar.warn("Expected RecurrenceRule object, but got " + recur.getClass().getName());
                 }
@@ -2177,7 +2178,7 @@ public abstract class CalendarItem extends MailItem {
                     // Both old and new organizers are set.  They must be the
                     // same address.
                     String origOrgAddr = originalOrganizer.getAddress();
-                    if (newOrgAddr == null || !newOrgAddr.equalsIgnoreCase(origOrgAddr)) {
+                    if (newOrgAddr == null || !CalendarUtils.belongToSameAccount(origOrgAddr, newOrgAddr)) {
                         if (denyChange) {
                             throw ServiceException.INVALID_REQUEST(
                                     "Changing organizer of an appointment/task is not allowed: old=" + origOrgAddr + ", new=" + newOrgAddr, null);
@@ -3143,7 +3144,10 @@ public abstract class CalendarItem extends MailItem {
                 //     response, so that any earlier responses from an "Attendee" that are
                 //     received out of order (e.g., due to a delay in the transport) can be
                 //     correctly discarded.
-                if (cur.getSeqNo() > reply.getSeqNo()) {
+                // bug 74117 : Allow the replies from attendees whose event sequence number is not
+                //             up to date with the organizer's event, provided there were no major changes.
+                if ((cur.isOrganizer() && (cur.getLastFullSeqNo() > reply.getSeqNo())) ||
+                        (!cur.isOrganizer() && (cur.getSeqNo() > reply.getSeqNo()))) {
                     sLog.info("Invite-Reply "+reply.toString()+" is outdated (Calendar entry has higher SEQUENCE), ignoring!");
                     return false;
                 }

@@ -1,5 +1,7 @@
 package com.zimbra.qa.selenium.framework.util;
 
+import java.util.Date;
+
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
@@ -18,34 +20,40 @@ public class SleepUtil {
 	private static Logger logger = LogManager.getLogger(SleepUtil.class);
 
 	/// Public methods
-	public static int TotalSleepMillis = 0;
 	public static int SleepGranularity = 1000;
 	
 	public static void sleep(long millis) {
-		long target = millis;
-		long total = 0; // The total milliseconds slept in this method
+		
+		Date start = new Date();
 		
 		try {
+		
+			long target = millis;
+			long total = 0; // The total milliseconds slept in this method
 			
-			while (millis > 0) {
+			try {
 				
-				if ( millis >= SleepGranularity) {
-					logger.info("Sleep: "+ SleepGranularity +" milliseconds ... ("+ total +"/"+ target +")");
-					Thread.sleep(SleepGranularity);
-					total += SleepGranularity;
-				} else {
-					logger.info("Sleep: "+ millis +" milliseconds ... ("+ millis +"/"+ target +")");
-					Thread.sleep(millis);
-					total += millis;
+				while (millis > 0) {
+					
+					if ( millis >= SleepGranularity) {
+						logger.info("Sleep: "+ SleepGranularity +" milliseconds ... ("+ total +"/"+ target +")");
+						Thread.sleep(SleepGranularity);
+						total += SleepGranularity;
+					} else {
+						logger.info("Sleep: "+ millis +" milliseconds ... ("+ millis +"/"+ target +")");
+						Thread.sleep(millis);
+						total += millis;
+					}
+					
+					millis -= SleepGranularity;
 				}
-				
-				millis -= SleepGranularity;
+	
+			} catch (InterruptedException e) {
+				logger.warn("Sleep was interuppted", e);
 			}
-
-		} catch (InterruptedException e) {
-			logger.warn("Sleep was interuppted", e);
+			
 		} finally {
-			TotalSleepMillis += total;
+			SleepMetrics.RecordSleep((new Throwable()).getStackTrace(), millis, start, new Date());
 		}
 	}
 	

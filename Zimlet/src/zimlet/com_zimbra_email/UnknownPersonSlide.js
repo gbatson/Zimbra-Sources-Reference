@@ -379,7 +379,7 @@ function(attrs) {
 			else if (imProtocol && imProtocol == "aol") {
 				imProtocol = "aim";
 			}
-            im = "<a  id='UnknownPersonSlide_imAnchorId' href='" + imProtocol + ":" + im + "'>" + AjxStringUtil.htmlEncode(im.substring(2)) + "</a>" ;
+            im = "<a  id='UnknownPersonSlide_imAnchorId' href='" + imProtocol + ":" + AjxStringUtil.htmlEncode(im.substring(2)) + "'>" + AjxStringUtil.htmlEncode(im.substring(2)) + "</a>" ;
             this.imURI = attrs["imURI"] = im;
         }
     }
@@ -419,9 +419,10 @@ function(attrs) {
     if(attrs["presence"]) {
         delete attrs["presence"];
     }
+    /* See bug 77183. imagepart is not a generated attr so do not remove it
     if(attrs["imagepart"]) {
         delete attrs["imagepart"];
-    }
+    }*/
     if(attrs["imURI"]) {
         delete attrs["imURI"];
     }

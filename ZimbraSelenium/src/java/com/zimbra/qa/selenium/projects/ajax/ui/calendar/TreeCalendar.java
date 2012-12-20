@@ -307,7 +307,7 @@ public class TreeCalendar extends AbsTree {
 		
 		if ( pulldown == Button.B_TREE_FOLDERS_OPTIONS ) {
 			
-			pulldownLocator = "css=div[id='zov__main_Calendar'] td[id='ztih__main_Calendar__CALENDAR_optCell'] td[id$='_title']";
+			pulldownLocator = "css=div[id='zov__main_Calendar'] td[id='ztih__main_Calendar__CALENDAR_optCell'] div[class*=ImgContextMenu]";
 			
 			if ( option == Button.B_TREE_NEWFOLDER ) {
 				
@@ -480,7 +480,7 @@ public class TreeCalendar extends AbsTree {
 
 	}
 
-	protected AbsPage zTreeItem(Action action, String locator) throws HarnessException {
+	public AbsPage zTreeItem(Action action, String locator) throws HarnessException {
 		AbsPage page = null;
 
 

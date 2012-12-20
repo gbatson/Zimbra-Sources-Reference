@@ -458,7 +458,7 @@ function(contact, isGal, oldContact, expandDL, isBack) {
 		if (contact.isDistributionList()) {
 			var dlInfo = subs.dlInfo = contact.dlInfo;
 		}
-		subs.groupMembers = contact.getGroupMembersObj();
+		subs.groupMembers = contact.getAllGroupMembers();
 		subs.findObjects = AjxCallback.simpleClosure(this.__findObjects, this, this._groupObjectManager);
 
 		this._resetVisibility(true);
@@ -837,31 +837,27 @@ function(data) {
 		return "";
 	}
 	for (var i = 0; i < data.groupMembers.length; i++) {
+		var member = data.groupMembers[i];
 		var itemListData = {};
-		var type = data.groupMembers[i].type;
-		if (type == ZmContact.GROUP_GAL_REF || type == ZmContact.GROUP_CONTACT_REF) {
-			var contact = ZmContact.getContactFromCache(data.groupMembers[i].value);
-			if (contact) {
-				itemListData.imageUrl = contact.getImageUrl();
-				itemListData.imgClassName = "Person_48";
-				itemListData.email = data.findObjects(contact.getEmail(), ZmObjectManager.EMAIL, true);
-				itemListData.title = data.findObjects(contact.getAttr(ZmContact.F_jobTitle), ZmObjectManager.TITLE, true);
-				itemListData.phone = data.findObjects(contact.getPhone(), ZmObjectManager.PHONE, true);
-				var isPhonetic  = appCtxt.get(ZmSetting.PHONETIC_CONTACT_FIELDS);
-                var fullnameHtml= contact.getFullNameForDisplay(isPhonetic);
-				if (!isPhonetic) {
-					fullnameHtml = AjxStringUtil.htmlEncode(fullnameHtml);
-				}
-				itemListData.fullName = fullnameHtml;
+		var contact = member.__contact;
+		if (contact) {
+			itemListData.imageUrl = contact.getImageUrl();
+			itemListData.imgClassName = contact.getIconLarge();
+			itemListData.email = data.findObjects(contact.getEmail(), ZmObjectManager.EMAIL, true);
+			itemListData.title = data.findObjects(contact.getAttr(ZmContact.F_jobTitle), ZmObjectManager.TITLE, true);
+			itemListData.phone = data.findObjects(contact.getPhone(), ZmObjectManager.PHONE, true);
+			var isPhonetic = appCtxt.get(ZmSetting.PHONETIC_CONTACT_FIELDS);
+			var fullnameHtml = contact.getFullNameForDisplay(isPhonetic);
+			if (!isPhonetic) {
+				fullnameHtml = AjxStringUtil.htmlEncode(fullnameHtml);
 			}
-			
-			html.push(AjxTemplate.expand("abook.Contacts#SplitView_group", itemListData));
+			itemListData.fullName = fullnameHtml;
 		}
 		else {
 			itemListData.imgClassName = "PersonInline_48";
-			itemListData.email = data.findObjects(data.groupMembers[i].value, ZmObjectManager.EMAIL, true);
-			html.push(AjxTemplate.expand("abook.Contacts#SplitView_group", itemListData));
+			itemListData.email = data.findObjects(member.value, ZmObjectManager.EMAIL, true);
 		}
+		html.push(AjxTemplate.expand("abook.Contacts#SplitView_group", itemListData));
 	}
 	return html.join("");
 	
@@ -988,7 +984,7 @@ function(tagId) {
 	if (!tag) {
 		return;
 	}
-	appCtxt.getSearchController().search({query: tag.createQuery()});
+	appCtxt.getSearchController().search({query: tag.createQuery(), inclSharedItems: true});
 };
 
 ZmContactSplitView.prototype._sashCallback = function(delta) {
@@ -1218,7 +1214,7 @@ function(contact, params) {
 	params = params || {};
 
 	var div = this._getDiv(contact, params);
-
+	var folder = this._folderId && appCtxt.getById(this._folderId);
 	if (params.isDragProxy) {
 		div.style.width = "175px";
 		div.style.padding = "4px";
@@ -1242,7 +1238,7 @@ function(contact, params) {
 
 	// icon
 	htmlArr[idx++] = "<td style='vertical-align:middle;' width=20><center>";
-	htmlArr[idx++] = AjxImg.getImageHtml(contact.getIcon(), null, "id=" + this._getFieldId(contact, "type"));
+	htmlArr[idx++] = AjxImg.getImageHtml(contact.getIcon(folder), null, "id=" + this._getFieldId(contact, "type"));
 	htmlArr[idx++] = "</center></td>";
 
 	// file as
@@ -1253,7 +1249,8 @@ function(contact, params) {
 	if (!params.isDragProxy) {
 		// if read only, show lock icon in place of the tag column since we dont
 		// currently support tags for "read-only" contacts (i.e. shares)
-		if (contact.isLocked()) {
+		var isLocked = folder ? folder.link && folder.isReadOnly() : contact.isLocked();
+		if (isLocked) {
 			htmlArr[idx++] = "<td width=16>";
 			htmlArr[idx++] = AjxImg.getImageHtml("ReadOnly");
 			htmlArr[idx++] = "</td>";

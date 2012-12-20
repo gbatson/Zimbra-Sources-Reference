@@ -698,6 +698,8 @@ public class ScheduleViewModel: BaseViewModel
                     importOpts.VerboseOn = LogLevel.Info;
                     break;
                 }
+
+         importOpts.SpecialCharRep = ovm.SpecialCharReplace;
         
         return importOpts;
     }
@@ -817,6 +819,8 @@ public class ScheduleViewModel: BaseViewModel
         //mw.StartMigration(MyAcct, importOpts, isServer, (isVerbose ? (LogLevel.Debug):(LogLevel.Info)), m_isPreview);
         mw.StartMigration(MyAcct, importOpts, isServer, importOpts.VerboseOn, m_isPreview, doRulesAndOOO);
 
+       
+
         // special case to format last user progress message
         int count = accountResultsViewModel.AccountResultsList[num].UserResultsList.Count;
         if (count > 0)
@@ -859,6 +863,13 @@ public class ScheduleViewModel: BaseViewModel
         {
             string msg = "Total items: {0}";
             accountResultsViewModel.AccountResultsList[num].PBMsgValue = String.Format(msg, accountResultsViewModel.AccountResultsList[num].TotalItemsToMigrate);
+        }
+
+        if (importOpts.IsMaintainenceMode)
+        {
+
+            accountResultsViewModel.AccountResultsList[num].PBMsgValue = "Migration Incomplete";
+            accountResultsViewModel.AccountResultsList[num].AcctProgressMsg = "InComplete";
         }
     }
 

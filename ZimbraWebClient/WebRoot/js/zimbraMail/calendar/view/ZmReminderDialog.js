@@ -100,7 +100,7 @@ function() {
             var delta = startDelta ? this._formatDeltaString(startDelta) : "";
             var text = [appt.getName(), ", ", this._getDurationText(appt), "\n(", delta, ")"].join("");
             if (AjxEnv.isMac) {
-                ZmDesktopAlert.getInstance().start(ZmMsg.reminders, text);
+                ZmDesktopAlert.getInstance().start(ZmMsg.reminders, text, true);
             } else if (AjxEnv.isWindows) {
                 winText.push(text);
             }
@@ -110,7 +110,7 @@ function() {
             if (appts.length > 5) {
                 winText.push(ZmMsg.andMore);
             }
-            ZmDesktopAlert.getInstance().start(ZmMsg.reminders, winText.join("\n"), 5);
+            ZmDesktopAlert.getInstance().start(ZmMsg.reminders, winText.join("\n"), true);
         }
     }
 
@@ -553,11 +553,16 @@ function(snoozeString) {
     snoozeUnitStrings[1] = AjxMsg.hour;
     snoozeUnitStrings[2] = AjxMsg.day;
     snoozeUnitStrings[3] = AjxMsg.week;
+    // Plural
+    snoozeUnitStrings[4] = AjxMsg.minutes;
+    snoozeUnitStrings[5] = AjxMsg.hours;
+    snoozeUnitStrings[6] = AjxMsg.days;
+    snoozeUnitStrings[7] = AjxMsg.weeks;
 
     snoozeString = snoozeString.toLowerCase();
     var found = false;
-    for (i = 0; i < snoozeUnitStrings.length; i++) {
-        if (snoozeString.indexOf(snoozeUnitStrings[i]) >= 0) {
+    for (var i = 0; i < snoozeUnitStrings.length; i++) {
+        if (snoozeString.indexOf(snoozeUnitStrings[i].toLowerCase()) >= 0) {
             found = true;
             break;
         }

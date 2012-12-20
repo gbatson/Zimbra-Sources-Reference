@@ -474,7 +474,7 @@
           <include name="jcommon*.jar"/>
           <include name="jfreechart*.jar"/>
           <include name="junit*.jar"/>
-          <include name="jzlib.jar"/>
+          <include name="jzlib-1.0.7.jar"/>
           <include name="nekohtml.jar"/>
           <include name="tnef*.jar"/>
           <include name="xercesImpl*.jar"/>
@@ -1013,6 +1013,7 @@
         <include name="commons-io*.jar"/>
         <include name="commons-lang-*.jar"/>
         <include name="commons-logging.jar"/>
+        <include name="commons-collections*.jar"/>
         <include name="icu4j-*.jar"/>
 	<include name="commons-pool*.jar"/>
 	<include name="concurrentlinkedhashmap-lru*.jar"/>
@@ -1023,7 +1024,7 @@
         <include name="jcommon*.jar"/>
         <include name="jfreechart*.jar"/>
         <include name="junit*.jar"/>
-        <include name="jzlib.jar"/>
+        <include name="jzlib-1.0.7.jar"/>
         <include name="nekohtml.jar"/>
         <include name="tnef*.jar"/>
         <include name="xercesImpl*.jar"/>

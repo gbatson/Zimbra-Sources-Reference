@@ -13,8 +13,8 @@ MAPIAppointmentException::MAPIAppointmentException(HRESULT hrErrCode, LPCWSTR
     //
 }
 
-MAPIAppointmentException::MAPIAppointmentException(HRESULT hrErrCode, LPCWSTR lpszDescription, int
-    nLine, LPCSTR strFile): GenericException(hrErrCode, lpszDescription, nLine, strFile)
+MAPIAppointmentException::MAPIAppointmentException(HRESULT hrErrCode, LPCWSTR lpszDescription, LPCWSTR lpszShortDescription, 
+	int nLine, LPCSTR strFile): GenericException(hrErrCode, lpszDescription, lpszShortDescription, nLine, strFile)
 {
     //
 }
@@ -43,6 +43,7 @@ MAPIAppointment::MAPIAppointment(Zimbra::MAPI::MAPISession &session,  Zimbra::MA
 	pr_timezoneid = 0;
 	pr_reminderminutes = 0;
         pr_private = 0;
+		pr_reminderset =0;
 	pr_responsestatus = 0;
         pr_exceptionreplacetime = 0;
 	InitNamedPropsForAppt();
@@ -58,10 +59,13 @@ MAPIAppointment::MAPIAppointment(Zimbra::MAPI::MAPISession &session,  Zimbra::MA
     m_pAllday = L"";
     m_pTransparency = L"";
     m_pReminderMinutes = L"";
-    m_pResponseStatus = L"";
+    m_pCurrentStatus = L"";
+	m_pResponseStatus = L"";
     m_pOrganizerName = L"";
     m_pOrganizerAddr = L"";
     m_pPrivate = L"";
+	m_pReminderSet = L"";
+	m_pResponseRequested = L"";
 
     SetMAPIAppointmentValues();
 }
@@ -92,12 +96,14 @@ HRESULT MAPIAppointment::InitNamedPropsForAppt()
 
     nameIdsC[0] = 0x8501;
     nameIdsC[1] = 0x8506;
+	nameIdsC[2] = 0x8503;
 
     HRESULT hr = S_OK;
     Zimbra::Util::ScopedBuffer<SPropValue> pPropValMsgClass;
 
     if (FAILED(hr = HrGetOneProp(m_pMessage, PR_MESSAGE_CLASS, pPropValMsgClass.getptr())))
-        throw MAPIAppointmentException(hr, L"InitNamedPropsForAppt(): HrGetOneProp Failed.", __LINE__, __FILE__);
+        throw MAPIAppointmentException(hr, L"InitNamedPropsForAppt(): HrGetOneProp Failed.", 
+		ERR_MAPI_APPOINTMENT, __LINE__, __FILE__);
 
     // initialize the MAPINAMEID structure GetIDsFromNames requires
     LPMAPINAMEID ppNames[N_NUMAPPTPROPS] = { 0 };
@@ -124,11 +130,13 @@ HRESULT MAPIAppointment::InitNamedPropsForAppt()
 
     if (FAILED(hr = m_pMessage->GetIDsFromNames(N_NUMAPPTPROPS, ppNames, MAPI_CREATE,
             &pAppointmentTags)))
-        throw MAPIAppointmentException(hr, L"Init(): GetIDsFromNames on pAppointmentTags Failed.", __LINE__, __FILE__);
+        throw MAPIAppointmentException(hr, L"Init(): GetIDsFromNames on pAppointmentTags Failed.", 
+		ERR_MAPI_APPOINTMENT, __LINE__, __FILE__);
 
     if (FAILED(hr = m_pMessage->GetIDsFromNames(N_NUMCOMMONPROPS, ppNamesC, MAPI_CREATE,
             &pAppointmentTagsC)))
-        throw MAPIAppointmentException(hr, L"Init(): GetIDsFromNames on pAppointmentTagsC Failed.", __LINE__, __FILE__);
+        throw MAPIAppointmentException(hr, L"Init(): GetIDsFromNames on pAppointmentTagsC Failed.", 
+		ERR_MAPI_APPOINTMENT, __LINE__, __FILE__);
 
     // give the prop tag ID's a type
     pr_clean_global_objid = SetPropType(pAppointmentTags->aulPropTag[N_UID], PT_BINARY);
@@ -143,8 +151,9 @@ HRESULT MAPIAppointment::InitNamedPropsForAppt()
     pr_responsestatus = SetPropType(pAppointmentTags->aulPropTag[N_RESPONSESTATUS], PT_LONG);
     pr_exceptionreplacetime = SetPropType(pAppointmentTags->aulPropTag[N_EXCEPTIONREPLACETIME], PT_SYSTIME);
     pr_reminderminutes = SetPropType(pAppointmentTagsC->aulPropTag[N_REMINDERMINUTES], PT_LONG);
+	
     pr_private = SetPropType(pAppointmentTagsC->aulPropTag[N_PRIVATE], PT_BOOLEAN);
-
+	pr_reminderset = SetPropType(pAppointmentTagsC->aulPropTag[N_REMINDERSET], PT_BOOLEAN);
     // free the memory we allocated on the head
     for (int i = 0; i < N_NUMAPPTPROPS; i++)
     {
@@ -169,8 +178,8 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 	    PR_MESSAGE_FLAGS, PR_SUBJECT, PR_BODY, PR_HTML, pr_clean_global_objid,
 	    pr_appt_start, pr_appt_end, pr_location, pr_busystatus, pr_allday,
 	    pr_isrecurring, pr_recurstream, pr_timezoneid, pr_responsestatus,
-            pr_exceptionreplacetime,
-	    pr_reminderminutes, pr_private
+            PR_RESPONSE_REQUESTED,pr_exceptionreplacetime,
+			pr_reminderminutes, pr_private, pr_reminderset
 	}
     };
 
@@ -182,7 +191,8 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
 
     if (FAILED(hr = m_pMessage->GetProps((LPSPropTagArray) & appointmentProps, fMapiUnicode, &cVals,
             &m_pPropVals)))
-        throw MAPIAppointmentException(hr, L"SetMAPIAppointmentValues(): GetProps Failed.", __LINE__, __FILE__);
+        throw MAPIAppointmentException(hr, L"SetMAPIAppointmentValues(): GetProps Failed.",
+		ERR_MAPI_APPOINTMENT, __LINE__, __FILE__);
     
     if (m_pPropVals[C_MESSAGE_FLAGS].ulPropTag == appointmentProps.aulPropTag[C_MESSAGE_FLAGS])
     {
@@ -225,15 +235,28 @@ HRESULT MAPIAppointment::SetMAPIAppointmentValues()
     {
 	SetResponseStatus(m_pPropVals[C_RESPONSESTATUS].Value.l);
     }
-    if (m_pPropVals[C_REMINDERMINUTES].ulPropTag == appointmentProps.aulPropTag[C_REMINDERMINUTES])
+	 if (m_pPropVals[C_RESPONSEREQUESTED].ulPropTag == appointmentProps.aulPropTag[C_RESPONSEREQUESTED])
     {
-	SetReminderMinutes(m_pPropVals[C_REMINDERMINUTES].Value.l);
+	SetResponseRequested(m_pPropVals[C_RESPONSEREQUESTED].Value.b);
     }
+	
+	unsigned short usReminderSet=1;
+	if (m_pPropVals[C_REMINDERSET].ulPropTag == appointmentProps.aulPropTag[C_REMINDERSET])
+    {
+		usReminderSet= m_pPropVals[C_REMINDERSET].Value.b;
+    }
+	if(usReminderSet)
+	{
+		if (m_pPropVals[C_REMINDERMINUTES].ulPropTag == appointmentProps.aulPropTag[C_REMINDERMINUTES])
+		{
+		SetReminderMinutes(m_pPropVals[C_REMINDERMINUTES].Value.l);
+		}
+	}
     if (m_pPropVals[C_PRIVATE].ulPropTag == appointmentProps.aulPropTag[C_PRIVATE])
     {
 	SetPrivate(m_pPropVals[C_PRIVATE].Value.b);
     }
-
+	
     SetTransparency(L"O");
     SetPlainTextFileAndContent();
     SetHtmlFileAndContent();
@@ -350,10 +373,12 @@ void MAPIAppointment::SetTimezoneId(LPTSTR pStr)
     if (ulDayOfWeekMask & wdmFriday)    m_pRecurWkday += L"FR";
     if (ulDayOfWeekMask & wdmSaturday)  m_pRecurWkday += L"SA";
 
-    if ((m_pRecurPattern == L"DAI") && (m_pRecurWkday.length() > 0))	// every weekday
+	//bug 77574. not sure why this condition existed .probabaly server was not handling weekday option.
+
+    /*if ((m_pRecurPattern == L"DAI") && (m_pRecurWkday.length() > 0))	// every weekday
     {
 	m_pRecurPattern = L"WEE";
-    }
+    }*/
 
     if (m_pRecurPattern == L"MON")
     {
@@ -550,7 +575,11 @@ void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::CO
     {
         pEx->m_pResponseStatus = m_pResponseStatus;
     }
-    if (pEx->m_pOrganizerName.length() == 0)
+	if (pEx->m_pCurrentStatus.length() == 0)
+    {
+        pEx->m_pCurrentStatus = m_pCurrentStatus;
+    }
+	if (pEx->m_pOrganizerName.length() == 0)
     {
         pEx->m_pOrganizerName = m_pOrganizerName;
     }
@@ -566,6 +595,14 @@ void MAPIAppointment::FillInExceptionAppt(MAPIAppointment* pEx, Zimbra::Mapi::CO
     if (pEx->m_pPrivate.length() == 0)
     {
         pEx->m_pPrivate = m_pPrivate;
+    }
+	if (pEx->m_pReminderSet.length() == 0)
+    {
+        pEx->m_pReminderSet = m_pReminderSet;
+    }
+	if (pEx->m_pResponseRequested.length() == 0)
+    {
+        pEx->m_pResponseRequested = m_pResponseRequested;
     }
     if (pEx->m_pPlainTextFile.length() == 0)
     {
@@ -586,10 +623,13 @@ void MAPIAppointment::FillInCancelException(MAPIAppointment* pEx, Zimbra::Mapi::
     pEx->m_pBusyStatus = m_pBusyStatus;
     pEx->m_pAllday = m_pAllday;
     pEx->m_pResponseStatus = m_pResponseStatus;
+	pEx->m_pCurrentStatus = m_pCurrentStatus;
     pEx->m_pOrganizerName = m_pOrganizerName;
     pEx->m_pOrganizerAddr = m_pOrganizerAddr;
     pEx->m_pReminderMinutes = m_pReminderMinutes;
     pEx->m_pPrivate = m_pPrivate;
+	pEx->m_pReminderSet = m_pReminderSet;
+	pEx->m_pResponseRequested = m_pResponseRequested;
     pEx->m_pPlainTextFile = m_pPlainTextFile;
     pEx->m_pHtmlFile = m_pHtmlFile;
 }
@@ -763,6 +803,7 @@ void MAPIAppointment::SetResponseStatus(long responsestatus)
 	case oResponseNotResponded:	m_pResponseStatus = L"NE";	break;
 	default:			m_pResponseStatus = L"NE";
     }
+	m_pCurrentStatus = m_pResponseStatus;
 }
 
 void MAPIAppointment::SetReminderMinutes(long reminderminutes)
@@ -777,6 +818,15 @@ void MAPIAppointment::SetPrivate(unsigned short usPrivate)
     m_pPrivate = (usPrivate == 1) ? L"1" : L"0";
 }
 
+void MAPIAppointment::SetReminderSet(unsigned short usReminderset)
+{
+	m_pReminderSet = (usReminderset == 1) ? L"1" : L"0";
+}
+
+void MAPIAppointment::SetResponseRequested(unsigned short usPrivate)
+{
+    m_pResponseRequested = (usPrivate == 1) ? L"1" : L"0";
+}
 void MAPIAppointment::SetPlainTextFileAndContent()
 {
     m_pPlainTextFile = Zimbra::MAPI::Util::SetPlainText(m_pMessage, &m_pPropVals[C_BODY]);
@@ -817,11 +867,11 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
 
     typedef enum _AttendeePropTagIdx
     {
-        AT_DISPLAY_NAME, AT_SMTP_ADDR, AT_RECIPIENT_FLAGS, AT_RECIPIENT_TYPE, AT_RECIPIENT_TRACKSTATUS, AT_NPROPS
+        AT_DISPLAY_NAME, AT_SMTP_ADDR, AT_RECIPIENT_FLAGS, AT_RECIPIENT_TYPE, AT_RECIPIENT_TRACKSTATUS,AT_EMAIL_ADDRESS, AT_NPROPS
     } AttendeePropTagIdx;
 
-    SizedSPropTagArray(5, reciptags) = {
-        5, { PR_DISPLAY_NAME_W, PR_SMTP_ADDRESS_W, PR_RECIPIENT_FLAGS, PR_RECIPIENT_TYPE, PR_RECIPIENT_TRACKSTATUS }
+    SizedSPropTagArray(6, reciptags) = {
+        6, { PR_DISPLAY_NAME_W, PR_SMTP_ADDRESS_W, PR_RECIPIENT_FLAGS, PR_RECIPIENT_TYPE, PR_RECIPIENT_TRACKSTATUS,PR_EMAIL_ADDRESS }
     };
 
     ULONG ulRows = 0;
@@ -870,13 +920,20 @@ HRESULT MAPIAppointment::SetOrganizerAndAttendees()
 		        Attendee* pAttendee = new Attendee();   // delete done in CMapiAccessWrap::GetData after we allocate dict string for ZimbraAPI
 			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_DISPLAY_NAME].ulPropTag) != PT_ERROR)
 				    pAttendee->nam = pRecipRows->aRow[iRow].lpProps[AT_DISPLAY_NAME].Value.lpszW;
+				
 			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_SMTP_ADDR].ulPropTag) != PT_ERROR)
 				    pAttendee->addr = pRecipRows->aRow[iRow].lpProps[AT_SMTP_ADDR].Value.lpszW;
+				wstring attaddress = pAttendee->addr;
+				if(lstrcmpiW(attaddress.c_str(),L"") == 0) 
+				{
+					 if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_EMAIL_ADDRESS].ulPropTag) != PT_ERROR)
+				    pAttendee->addr = pRecipRows->aRow[iRow].lpProps[AT_EMAIL_ADDRESS].Value.lpszW;
+				}
 			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TYPE].ulPropTag) != PT_ERROR)
 				    pAttendee->role = ConvertValueToRole(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TYPE].Value.l);
-			    if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].ulPropTag) != PT_ERROR)
+				if (PROP_TYPE(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].ulPropTag) != PT_ERROR)
 				    pAttendee->partstat = ConvertValueToPartStat(pRecipRows->aRow[iRow].lpProps[AT_RECIPIENT_TRACKSTATUS].Value.l);
-		        m_vAttendees.push_back(pAttendee);
+				m_vAttendees.push_back(pAttendee);
                     }
 		}
 	    }
@@ -897,9 +954,12 @@ wstring MAPIAppointment::GetAllday() { return m_pAllday; }
 wstring MAPIAppointment::GetTransparency() { return m_pTransparency; }
 wstring MAPIAppointment::GetReminderMinutes() { return m_pReminderMinutes; }
 wstring MAPIAppointment::GetResponseStatus() { return m_pResponseStatus; }
+wstring MAPIAppointment::GetCurrentStatus() { return m_pCurrentStatus; }
+wstring MAPIAppointment::GetResponseRequested() { return m_pResponseRequested; }
 wstring MAPIAppointment::GetOrganizerName() { return m_pOrganizerName; }
 wstring MAPIAppointment::GetOrganizerAddr() { return m_pOrganizerAddr; }
 wstring MAPIAppointment::GetPrivate() { return m_pPrivate; }
+wstring MAPIAppointment::GetReminderSet() {return m_pReminderSet;}
 wstring MAPIAppointment::GetPlainTextFileAndContent() { return m_pPlainTextFile; }
 wstring MAPIAppointment::GetHtmlFileAndContent() { return m_pHtmlFile; }
 vector<Attendee*> MAPIAppointment::GetAttendees() { return m_vAttendees; }

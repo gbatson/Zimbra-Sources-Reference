@@ -89,29 +89,17 @@ ZaMigrationWizView.myXFormModifier = function(xFormObject) {
 				    {type:_GROUP_, numCols:3,
 				    	items: [
 				    	    {type:_OUTPUT_, value:AjxImg.getImageHtml("Migration")},
-				    	    {type:_OUTPUT_, cssStyle:"front-size:12px", labelLocation:_NONE_, label:null,
+				    	    {type:_OUTPUT_, cssStyle:"font-size:12px", labelLocation:_NONE_, label:null,
 				    	     id:"general_migration_x86_link",
 				    	     value: ZaMigrationWizView.getDownloadLink(ZaMsg.GENERAL_MIG_WIZ_X86_DOWNLOAD_LINK, ZaMsg.GENERAL_MIG_WIZ_X86_DOWNLOAD_LINK_MSG)
 				    	    },
-				    	    {type:_OUTPUT_, cssStyle:"front-size:12px", labelLocation:_NONE_, label:null,
+				    	    {type:_OUTPUT_, cssStyle:"font-size:12px", labelLocation:_NONE_, label:null,
 				    	     id:"general_migration_x64_link",
 				    	     value: ZaMigrationWizView.getDownloadLink(ZaMsg.GENERAL_MIG_WIZ_X64_DOWNLOAD_LINK, ZaMsg.GENERAL_MIG_WIZ_X64_DOWNLOAD_LINK_MSG)
 				    	    }
 				    	]
 				    },
 				    {type:_OUTPUT_, cssClass:"ZaDownloadText", label: null, value:ZaMsg.GENERAL_MIG_WIZ_DOWNLOAD_TEXT},
-
-					//Exchange Mig Wiz
-					{type:_GROUP_,numCols:2,
-						items: [
-							{type:_OUTPUT_,  value:AjxImg.getImageHtml("Migration")},
-							{type:_OUTPUT_, cssStyle:"font-size:12px;", labelLocation:_NONE_, label:null,
-							id:"exchange_migration_link",
-                                value: ZaMigrationWizView.getDownloadLink(ZaMsg.MIG_WIZ_DOWNLOAD_LINK, ZaMsg.MIG_WIZ_DOWNLOAD_LINK_MSG)
-                            }
-						]
-					},
-					{type:_OUTPUT_, cssClass:"ZaDownloadText", label: null, value:ZaMsg.MIG_WIZ_DOWNLOAD_TEXT},
 
 					//Groupwise Mig Wiz
 					/*Disable it for bug 19041
@@ -134,7 +122,19 @@ ZaMigrationWizView.myXFormModifier = function(xFormObject) {
                             }
 						]
 					},
-					{type:_OUTPUT_, cssClass:"ZaDownloadText", label: null, value:ZaMsg.DOMINO_MIG_WIZ_DOWNLOAD_TEXT}
+					{type:_OUTPUT_, cssClass:"ZaDownloadText", label: null, value:ZaMsg.DOMINO_MIG_WIZ_DOWNLOAD_TEXT},
+
+					//Exchange Mig Wiz
+					{type:_GROUP_,numCols:2,
+						items: [
+							{type:_OUTPUT_,  value:AjxImg.getImageHtml("Migration")},
+							{type:_OUTPUT_, cssStyle:"font-size:12px;", labelLocation:_NONE_, label:null,
+								id:"exchange_migration_link",
+								value: ZaMigrationWizView.getDownloadLink(ZaMsg.MIG_WIZ_DOWNLOAD_LINK, ZaMsg.MIG_WIZ_DOWNLOAD_LINK_MSG)
+							}
+						]
+					},
+					{type:_OUTPUT_, cssClass:"ZaDownloadText", label: null, value:ZaMsg.MIG_WIZ_DOWNLOAD_TEXT},
 				]
 			},
 			{type:_SPACER_, colSpan:"*"},

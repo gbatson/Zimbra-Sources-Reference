@@ -15,31 +15,22 @@
 
 package com.zimbra.cs.servlet;
 
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletRequest;
-import javax.servlet.http.HttpServletRequest;
 
-import com.zimbra.common.util.ZimbraLog;
-import com.zimbra.cs.account.AuthToken;
-import com.zimbra.cs.service.AuthProvider;
-import com.zimbra.cs.servlet.util.AuthUtil;
+import com.zimbra.common.localconfig.LC;
 
 
 public class DoSFilter extends org.eclipse.jetty.servlets.DoSFilter {
     
     @Override
+    public void init(FilterConfig filterConfig) {
+        super.init(filterConfig);
+        _maxRequestsPerSec = LC.zimbra_dos_filter_max_requests_per_sec.intValue();
+    }
+    
+    @Override
     protected String extractUserId(ServletRequest request) {
-        try {
-            if (request instanceof HttpServletRequest) {
-                HttpServletRequest req = (HttpServletRequest) request;
-                boolean isAdminRequest = AuthUtil.isAdminRequest(req);
-                AuthToken at = AuthProvider.getAuthToken(req, isAdminRequest);
-                if (at != null)
-                    return at.getAccountId();
-            } 
-        } catch (Exception e) {
-            // ignore
-            ZimbraLog.misc.debug("error while extracting authtoken" , e);
-        }
-        return null;
+        return ZimbraQoSFilter.extractUserId(request);
     }
 }

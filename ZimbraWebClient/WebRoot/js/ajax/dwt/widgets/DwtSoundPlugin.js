@@ -537,6 +537,7 @@ DwtHtml5SoundPlugin = function(params) {
 	DwtSoundPlugin.call(this, params);
 
 	this._playerId = Dwt.getNextId();
+    this._retryLoadAudio = 0;
 	this._createHtml(params);	
 };
 
@@ -550,28 +551,57 @@ function() {
 
 DwtHtml5SoundPlugin.prototype._createHtml = 
 function(params) {
-	var html = [
-		"<audio autoplay='yes' ",
-		"id='", this._playerId,
-		"' preload ",
-		"><source src='", params.url,
-		"' type='audio/wav' />",
-		"</audio>"
-	];
-	this.getHtmlElement().innerHTML = html.join("");
+    if (AjxEnv.isSafari) {
+        AjxRpc.invoke(null, params.url, { 'X-Zimbra-Encoding': 'x-base64' },
+            this._setSource.bind(this), AjxRpcRequest.HTTP_GET);
+    } else {
+        this.getHtmlElement().innerHTML = this._getAudioHtml(params.url);
+    }
+};
+
+DwtHtml5SoundPlugin.prototype._getAudioHtml =
+function(source) {
+    var html = [
+     "<audio autoplay='yes' ",
+     "id='", this._playerId,
+     "' preload ",
+     "><source src='", source,
+     "' type='", ZmVoiceApp.audioType, "' />",
+     "</audio>"
+     ];
+    return html.join("");
+};
+
+DwtHtml5SoundPlugin.prototype._setSource =
+function(response) {
+    if(response.success){
+        this.getHtmlElement().innerHTML = this._getAudioHtml('data:' + ZmVoiceApp.audioType +';base64,' + response.text);
+    }
 };
 
 DwtHtml5SoundPlugin.prototype.play =
 function() {
 	var player = this._getPlayer();
-	this._monitorStatus();
-	player.play();
+    if (player && player.readyState){
+        try {
+	        this._monitorStatus();
+            player.play();
+        } catch (ex){
+            DBG.println("Exception in DwtHtml5SoundPlugin.prototype.play: "+ ex);
+        }
+    }
 };
 
 DwtHtml5SoundPlugin.prototype.pause =
 function() {
 	var player = this._getPlayer();
-	player.pause();
+    if (player && player.readyState){
+        try {
+            player.pause();
+        } catch (ex){
+            DBG.println("Exception in DwtHtml5SoundPlugin.prototype.pause: "+ ex);
+        }
+    }
 };
 
 DwtHtml5SoundPlugin.prototype._getPlayer =
@@ -587,9 +617,21 @@ function() {
 
 DwtHtml5SoundPlugin.prototype.setTime =
 function(time) {
+    if (isNaN(time)){
+        time = 0;
+    }
+    time = (time > 0) ?  (time / 1000) : 0;
 	var player = this._getPlayer();
-	player.controls.currentPosition = time / 1000;
-	player.currentTime = time / 1000;
+    try {
+        if (player && player.readyState && player.currentTime != time ){
+            player.currentTime = time;
+            if (player.controls){
+                player.controls.currentPosition =  time;
+            }
+        }
+    } catch(ex){
+        DBG.println("Exception in DwtHtml5SoundPlugin.prototype.setTime: "+ ex);
+    }
 };
 
 DwtHtml5SoundPlugin.prototype._resetEvent =
@@ -646,6 +688,13 @@ function(event) {
 DwtHtml5SoundPlugin.prototype.addChangeListener =
 function(listener) {
 	var player = this._getPlayer();
+    if (!player){
+        if (this._retryLoadAudio < 10){
+            setTimeout(this.addChangeListener.bind(this,listener), 1000);
+        }
+        this._retryLoadAudio++;
+        return;
+    }
 	var obj = this;
 	player.addEventListener("timeupdate", function(e) { 
 			listener.handleEvent({time: player.currentTime * 1000, duration: player.duration * 1000, status: DwtSoundPlugin.PLAYABLE});}, false);

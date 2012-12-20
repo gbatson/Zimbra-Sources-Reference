@@ -226,17 +226,43 @@ public class ZimbraAccount {
 	private static ZimbraAccount _AccountB = null;
 
 
+	/**
+	 * Reset all static accounts.  This method should be used before/after
+	 * the harness has executed in the STAF service mode.  For example, if
+	 * one STAF request executes on server1 and the subsequent STAF request
+	 * executes on server2, then all accounts need to be reset, otherwise
+	 * the second request will have references to server1.
+	 */
+	public static void reset() {
+		ZimbraAccount._AccountA = null;
+		ZimbraAccount._AccountB = null;
+		ZimbraAccount._AccountHTML = null;
+		ZimbraAccount._AccountZDC = null;
+		ZimbraAccount._AccountZMC = null;
+		ZimbraAccount._AccountZWC = null;		
+	}
+	
 	// Set the default account settings
 	@SuppressWarnings("serial")
 	private static final Map<String, String> accountAttrs = new HashMap<String, String>() {{
+		
+		// The following settings can be tuned from config.properties
+		//
+		
 		put("zimbraPrefLocale", ZimbraSeleniumProperties.getStringProperty("locale"));
-		put("zimbraPrefAutoAddAddressEnabled", "FALSE");
-		put("zimbraPrefCalendarInitialView", "workWeek");
-		put("zimbraPrefCalendarApptReminderWarningTime", "0");
 		put("zimbraPrefTimeZoneId", ZimbraSeleniumProperties.getStringProperty("zimbraPrefTimeZoneId", "America/Los_Angeles"));
-		put("zimbraFeatureReadReceiptsEnabled", "TRUE");
-		put("zimbraPrefCalendarAlwaysShowMiniCal", "FALSE");
-		put("zimbraPrefComposeFormat", "html");
+
+		
+		// The following settings are specific to the test harness
+		// and deviate from the default settings to work around
+		// test harness issues/limitations
+		//
+		// zimbraPrefCalendarApptReminderWarningTime=0 ... A random reminder will throw off the tests
+		// zimbraPrefAutoAddAddressEnabled=FALSE ... Adding addresses to the addressbook might break a test
+		// zimbraPrefWarnOnExit=FALSE ... A system popup will occur if this is TRUE, which will freeze the tests
+
+		put("zimbraPrefAutoAddAddressEnabled", "FALSE");
+		put("zimbraPrefCalendarApptReminderWarningTime", "0");
 		put("zimbraPrefWarnOnExit","FALSE");
 	}};
 

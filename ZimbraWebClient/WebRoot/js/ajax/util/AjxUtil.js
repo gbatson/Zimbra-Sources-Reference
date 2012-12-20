@@ -147,11 +147,11 @@ function(size, units, round, fractions) {
 		case AjxUtil.SIZE_MEGABYTES: { size /= 1048576; break; }
 		case AjxUtil.SIZE_KILOBYTES: { size /= 1024; break; }
 	}
-	
+	var dot = I18nMsg.numberSeparatorDecimal !='' ? I18nMsg.numberSeparatorDecimal : '.';
 	var pattern = I18nMsg.formatNumber.replace(/\..*$/, ""); // Strip off decimal, we'll be adding one anyway
 	pattern = pattern.replace(/,/, "");       // Remove the ,
 	if (!round && fractions) {
-		pattern = pattern += ".";
+		pattern = pattern += dot;
 		for (var i = 0; i < fractions; i++) {
 			pattern += "#";
 		}
@@ -475,7 +475,7 @@ AjxUtil.dedup = function(array, keyfn) {
 		var key = keyfn(array[i]);
 
 		if (key !== undefined && seen[key]) {
-			array.splice(i, i+1);
+			array.splice(i, 1);
 			i -= 1;
 		}
 

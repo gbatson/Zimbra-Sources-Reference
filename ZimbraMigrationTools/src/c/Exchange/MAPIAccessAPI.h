@@ -101,6 +101,8 @@ typedef struct _ContactItemData: BaseItemData
     wstring IMAddress1;
     wstring Anniversary;
     wstring ContactImagePath;
+	wstring ImageContenttype;
+	wstring ImageContentdisp;
     vector<ContactUDFields> UserDefinedFields;
     vector<LPWSTR>* vTags;
 } ContactItemData;
@@ -144,6 +146,7 @@ typedef struct _ApptItemData: BaseItemData
     wstring Location;
     wstring Uid;
     wstring PartStat;
+	wstring CurrStat;
     wstring FreeBusy;
     wstring Transparency;
     wstring AllDay;
@@ -152,6 +155,7 @@ typedef struct _ApptItemData: BaseItemData
     wstring EndDate;
     wstring ApptClass;
     wstring AlarmTrigger;
+	wstring RSVP;
     Organizer organizer;
     Tz tz;
     vector<Attendee*> vAttendees;

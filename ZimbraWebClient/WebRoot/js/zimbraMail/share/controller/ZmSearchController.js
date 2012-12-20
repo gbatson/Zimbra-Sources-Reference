@@ -172,11 +172,12 @@ function(enabled) {
  */
 ZmSearchController.prototype.setDefaultSearchType =
 function(type) {
-	if (this._searchToolBar && !appCtxt.inStartup) {
-		var menu = this._searchToolBar.getButton(ZmSearchToolBar.TYPES_BUTTON).getMenu();
-		menu.checkItem(ZmSearchToolBar.MENUITEM_ID, type);
-		this._searchMenuListener(null, type, true);
+	if (!this._searchToolBar) {
+		return;
 	}
+	var menu = this._searchToolBar.getButton(ZmSearchToolBar.TYPES_BUTTON).getMenu();
+	menu.checkItem(ZmSearchToolBar.MENUITEM_ID, type);
+	this._searchMenuListener(null, type, true);
 };
 
 /**
@@ -479,6 +480,7 @@ function(types) {
  * @param {String}	params.query	the search query
  * @param {String}	params.userText	the user text
  * @param {Array}	params.type		an array of types
+ * @param {boolean}	params.inclSharedItems		overrides this._inclSharedItems - see ZmTagsHelper._tagClick
  * @param {boolean} params.forceSearch     Ignores special processing and just executes the search.
  * @param {Boolean}	noRender		if <code>true</code>, the search results will not be rendered
  * @param {AjxCallback}	callback		the callback
@@ -522,7 +524,7 @@ function(params, noRender, callback, errorCallback) {
 		types = AjxVector.fromArray(types);
 	}
 	if (searchFor == ZmId.SEARCH_MAIL) {
-        this._prevTypes = params.types || this._prevTypes; // Saves previous user action, if user selects view
+        this._prevTypes = types || this._prevTypes; // Saves previous user action, if user selects view
 		params = appCtxt.getApp(ZmApp.MAIL).getSearchParams(params);
 	}
 
@@ -535,7 +537,7 @@ function(params, noRender, callback, errorCallback) {
 		params.queryHint = appCtxt.accountList.generateQuery(null, types);
 		params.accountName = appCtxt.accountList.mainAccount.name;
 	}
-	else if (this._inclSharedItems) {
+	else if (params.inclSharedItems || this._inclSharedItems) {
 		// a query hint is part of the query that the user does not see
 		params.queryHint = ZmSearchController.generateQueryForShares(types.getArray());
 	}
@@ -552,15 +554,6 @@ function(params, noRender, callback, errorCallback) {
 	params.types = types;
 	var search = new ZmSearch(params);
 	
-	// force outbound folder into msg view
-	if (searchFor == ZmId.SEARCH_MAIL && !params.isViewSwitch && search.folderId) {
-		var folder = appCtxt.getById(search.folderId);
-		if (folder && folder.isOutbound()) {
-			search.types = new AjxVector([ZmItem.MSG]);
-			search.isOutboundFolder = true;
-		}
-	}
-
 	var respCallback = this._handleResponseDoSearch.bind(this, search, noRender, callback, params.noUpdateOverview);
 	if (!errorCallback) {
 		errorCallback = this._handleErrorDoSearch.bind(this, search);

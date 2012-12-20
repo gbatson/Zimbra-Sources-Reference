@@ -394,6 +394,8 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
 					pIt[L"outlookUserField3"] = SysAllocString((cd.UserField3).c_str());
 					pIt[L"outlookUserField4"] = SysAllocString((cd.UserField4).c_str());
 					pIt[L"image"] = SysAllocString((cd.ContactImagePath).c_str());
+					pIt[L"imageContentType"] = SysAllocString((cd.ImageContenttype).c_str());
+					pIt[L"imageContentDisp"] = SysAllocString((cd.ImageContentdisp).c_str());
 					if (cd.Type.length() > 0)
 					{
 						if (wcsicmp(cd.Type.c_str(), L"group") == 0)
@@ -560,7 +562,9 @@ STDMETHODIMP CMapiAccessWrap::GetData(BSTR UserId, VARIANT ItemId, FolderType ty
                     int numAttendees = (int)apptData.vAttendees.size();     // cast it because in delete loop, we'll go negative
                     wstring attendeeData = L"";
 
+					pIt[L"rsvp"] =  SysAllocString((apptData.RSVP).c_str());
                     pIt[L"ptst"] = SysAllocString((apptData.PartStat).c_str());
+					pIt[L"currst"]= SysAllocString((apptData.CurrStat).c_str());
                     pIt[L"fb"] = SysAllocString((apptData.FreeBusy).c_str());
                     pIt[L"allDay"] = SysAllocString((apptData.AllDay).c_str());
                     pIt[L"transp"] = SysAllocString((apptData.Transparency).c_str());

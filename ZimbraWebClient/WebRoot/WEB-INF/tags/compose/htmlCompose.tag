@@ -110,18 +110,12 @@ var myEditor;
 
         //Refer http://www.tinymce.com/i18n/index.php?ctrl=lang&act=download&pr_id=1
         var tinyMCELocaleArray = ['sq', 'ar', 'hy', 'az', 'eu', 'be', 'bn', 'nb', 'bs', 'br', 'bg', 'my', 'ca', 'km', 'ch', 'zh', 'hr', 'cs', 'da', 'dv', 'nl', 'en', 'eo', 'et', 'fi', 'fr', 'gl', 'ka', 'de', 'el', 'gu', 'he', 'hi', 'hu', 'is', 'id', 'ia', 'it', 'ja', 'kl', 'ko', 'lv', 'lt', 'lb', 'mk', 'ms', 'ml', 'mn', 'se', 'no', 'nn', 'fa', 'pl', 'pt', 'ps', 'ro', 'ru', 'sc', 'sr', 'si', 'sk', 'sl', 'es', 'sv', 'ta', 'tt', 'te', 'th', 'tn', 'tr', 'tw', 'uk', 'ur', 'vi', 'cy', 'zu', 'zh-tw', 'cn', 'zh-cn'],
-            locale = "${mailbox.prefs.locale}",
-            tinyMCELocale;
+            locale = "${mailbox.prefs.locale}" || "en";
 
-        if (locale) {
-            tinyMCELocale = locale.toLowerCase().replace("_", "-");
-            if (tinyMCELocale === "zh-hk") {//setting chinese language for Hong kong chinese
-                locale = "zh";
-            }
-            else if (tinymce.inArray(tinyMCELocaleArray, tinyMCELocale) !== -1) {
-                locale = tinyMCELocale;
-            }
-            else {
+        locale = locale.toLowerCase().replace("_", "-");
+        if (tinymce.inArray(tinyMCELocaleArray, locale) === -1) {
+            locale = locale.substr(0, 2);
+            if (tinymce.inArray(tinyMCELocaleArray, locale) === -1) {
                 locale = "en";
             }
         }
@@ -134,10 +128,10 @@ var myEditor;
             <c:if test="${param.op eq 'reply' or param.op eq 'replyAll'}" >
                 auto_focus : "body",
             </c:if>
-            plugins : "advlist,inlinepopups,table,paste,directionality" + (tinymce.isIE ? "" : ",autolink"),
+            plugins : "advlist,inlinepopups,table,paste,directionality,emotions" + (tinymce.isIE ? "" : ",autolink"),
             theme : "advanced",
-            theme_advanced_buttons1 : "fontselect,fontsizeselect,forecolor,backcolor,|,bold,italic,underline,strikethrough,|,bullist,numlist,|,outdent,indent,|,justifyleft,justifycenter,justifyright,|,image,link,unlink,|,spellchecker",
-            theme_advanced_buttons2 : "formatselect,undo,redo,|,removeformat,|,pastetext,pasteword,|,tablecontrols,|,blockquote,hr,charmap",
+            theme_advanced_buttons1 : "fontselect,fontsizeselect,forecolor,backcolor,|,bold,italic,underline,strikethrough,|,bullist,numlist,|,outdent,indent,|,justifyleft,justifycenter,justifyright,|,image,link,unlink,emotions,|,spellchecker",
+            theme_advanced_buttons2 : "formatselect,undo,redo,|,removeformat,|,pastetext,|,tablecontrols,|,blockquote,hr,charmap",
             theme_advanced_buttons3 : "",
             theme_advanced_buttons4 : "",
             theme_advanced_toolbar_location : "top",
@@ -153,8 +147,10 @@ var myEditor;
             table_default_cellpadding : 3,
             table_default_border: 1,
             content_css : false,
-            language : locale || "en",
+            language : locale,
             theme_advanced_show_current_color : true,
+            paste_retain_style_properties : "all",
+            paste_remove_styles_if_webkit : false,
             setup : function(ed) {
                 ed.onInit.add(onTinyMCEEditorInit);
                 ed.onLoadContent.add(handleContentLoad);

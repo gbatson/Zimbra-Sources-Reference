@@ -312,7 +312,7 @@ function(type, addr) {
 		else {
 			if (addr.isAjxEmailAddress) {
 				var match = {isDL: addr.isGroup && addr.canExpand, email: addrStr};
-				addrInput.addBubble({address:addrStr, match:match, skipNotify:true});
+				addrInput.addBubble({address:addrStr, match:match, skipNotify:true, noFocus:true});
 			}
 			else {
 				this._setAddrFieldValue(type, addrStr);
@@ -715,7 +715,7 @@ function(addrs) {
 		for (var i = 0; i < addrsArray.length; i++) {
 			var addr = addrsArray[i];
 			if (addr) {
-				if (addr.isGroup) {
+				if (addr.isGroup && !(addr.__contact && addr.__contact.isDL)) {
 					var members = addr.__contact ? addr.__contact.getGroupMembers().good.getArray() :
 												   AjxEmailAddress.split(addr.address);
 					addrsNew = addrsNew.concat(members);

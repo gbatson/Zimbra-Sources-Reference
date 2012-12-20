@@ -37,6 +37,7 @@ import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.Version;
+import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.mailbox.Contact;
 import com.zimbra.cs.mailbox.ContactGroup;
@@ -432,7 +433,7 @@ public class CreateContact extends MailDocumentHandler  {
         }
         return text;
     }
-    
+
     static boolean needToMigrateDlist(ZimbraSoapContext zsc) throws ServiceException {
         String ua = zsc.getUserAgent();
         //bug 73326, backward compatible for migrating contact group. 
@@ -440,18 +441,26 @@ public class CreateContact extends MailDocumentHandler  {
         if ("Zimbra Systems Client".equals(ua)) {
             return true;
         } else {
-            Version zcoZcbVersion = DocumentHandler.zimbraConnectorClientVersion(zsc);
-            if (zcoZcbVersion != null) {
-                // ZCO/ZCB support new contact group API since 8.0.0
-                Version newContactGroupAPISupported = new Version("8.0.0"); 
-                if (zcoZcbVersion.compareTo(newContactGroupAPISupported) < 0) {
-                    return true;
+            Pair<String, Version> connectorVersion = DocumentHandler.zimbraConnectorClientVersion(zsc);
+            if (connectorVersion != null) {
+                // ZimbraMigration need to migrate DL before 9.0.0
+                if ("ZimbraMigration".equals(connectorVersion.getFirst())) {
+                    Version newContactGroupAPISupported = new Version("9.0.0");
+                    if (connectorVersion.getSecond().compareTo(newContactGroupAPISupported) < 0) {
+                        return true;
+                    }
+                } else {
+                    // ZCO/ZCB support new contact group API since 8.0.0
+                    Version newContactGroupAPISupported = new Version("8.0.0");
+                    if (connectorVersion.getSecond().compareTo(newContactGroupAPISupported) < 0) {
+                        return true;
+                    }
                 }
             }
-            return false;   
+            return false;
         }
     }
-    
+
     static void migrateFromDlist(ParsedContact pc) throws ServiceException {
         /*
          * replace groupMember with dlist data
@@ -466,10 +475,14 @@ public class CreateContact extends MailDocumentHandler  {
         Map<String, String> fields = pc.getFields();
         String dlist = fields.get(ContactConstants.A_dlist);
         if (dlist != null) {
-            ContactGroup contactGroup = ContactGroup.init();
-            contactGroup.migrateFromDlist(dlist);
-            fields.put(ContactConstants.A_groupMember, contactGroup.encode());
-            fields.remove(ContactConstants.A_dlist);
+            try {
+                ContactGroup contactGroup = ContactGroup.init();
+                contactGroup.migrateFromDlist(dlist);
+                fields.put(ContactConstants.A_groupMember, contactGroup.encode());
+                fields.remove(ContactConstants.A_dlist);
+            } catch (Exception e) {
+                ZimbraLog.contact.info("skipped migrating contact group, dlist=[%s]", dlist, e);
+            }
         }
     }
 }

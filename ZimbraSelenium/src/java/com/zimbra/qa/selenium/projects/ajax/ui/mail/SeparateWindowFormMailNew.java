@@ -16,6 +16,7 @@ import com.zimbra.qa.selenium.framework.ui.Button;
 import com.zimbra.qa.selenium.framework.ui.Shortcut;
 import com.zimbra.qa.selenium.framework.util.HarnessException;
 import com.zimbra.qa.selenium.framework.util.SleepUtil;
+import com.zimbra.qa.selenium.framework.util.ZimbraSeleniumProperties;
 import com.zimbra.qa.selenium.framework.util.staf.Stafpostqueue;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.ajax.ui.SeparateWindowDialog;
@@ -72,9 +73,14 @@ public class SeparateWindowFormMailNew extends AbsSeparateWindow {
 			
 		}
 		if ( mail.dBodyHtml != null ) {
-			
+		    if(ZimbraSeleniumProperties.isWebDriver()){
+			sSelectWindow(this.DialogWindowID);
+			String locator = "css=iframe[id*=ifr]";
+			sClickAt(locator,"");
+			zTypeFormattedText(locator, mail.dBodyHtml);					
+		    }else{
 			zFillField(Field.Body, mail.dBodyHtml);
-			
+		    }
 		}
 				
 		// Handle the Recipient list, which can be a combination
@@ -334,7 +340,11 @@ public class SeparateWindowFormMailNew extends AbsSeparateWindow {
 			locator = container + " div[id$='__SEND'] td[id$='_title']";
 			page = null;
 			
-			this.zClickAt(locator,"0,0");
+			if(zIsBrowserMatch(BrowserMasks.BrowserMaskIE)){
+			    this.sDoubleClick(locator);	 
+			}else{
+			    this.zClickAt(locator,"0,0");
+			}
 			
 			Stafpostqueue postqueue = new Stafpostqueue();
 			postqueue.waitForPostqueue();
@@ -491,6 +501,28 @@ public class SeparateWindowFormMailNew extends AbsSeparateWindow {
 
 		return (page);	
 		
+	}
+	
+	/* TODO: ... debugging to be removed */
+	public boolean waitForComposeWindow() throws HarnessException {
+	    	String pageTitle = "Zimbra: Compose";
+	    	if (ZimbraSeleniumProperties.isWebDriver()){
+	    	    sWaitForPopUp(pageTitle,"60000");
+	    	}else{
+	    	    sWaitForCondition("var x; for(var windowName in selenium.browserbot.openedWindows)"
+			+ "{var targetWindow = selenium.browserbot.openedWindows[windowName];"
+			+ "if(!selenium.browserbot._windowClosed(targetWindow)&&"
+			+ "(targetWindow.name.indexOf('"
+			+ pageTitle.split("\\.")[0]
+			+ "')!=-1||targetWindow.document.title.indexOf('"
+			+ pageTitle.split("\\.")[0]
+			+ "')!=-1)){x=windowName;}};x!=null;","60000");
+	    	}
+		sSelectWindow(pageTitle);
+
+		zWaitForElementPresent("css=textarea[id*='DWT'][class='DwtHtmlEditorTextArea']","30000");
+
+		return true;
 	}
 
 }

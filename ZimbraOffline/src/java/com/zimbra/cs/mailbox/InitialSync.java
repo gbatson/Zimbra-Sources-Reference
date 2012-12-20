@@ -1295,8 +1295,9 @@ public class InitialSync {
         }
         try {
             digest = blob.getDigest();
+            //zimbraAttachmentsIndexingEnabled is not exposed in GetInfo, but its default value is TRUE.
             pm = new ParsedMessage(new ParsedMessageOptions(blob, data,
-                received * 1000L, false));
+                received * 1000L, this.getMailbox().getAccount().isAttachmentsIndexingEnabled()));
             long cutOffTime = 0l;
 
             switch (SyncMsgOptions.getOption(ombx.getOfflineAccount().getAttr(OfflineConstants.A_offlinesyncEmailDate))) {
@@ -1596,6 +1597,9 @@ public class InitialSync {
                     if (ombx.getItemRevision(sContext, existingItem.getId(), MailItem.Type.UNKNOWN, doc.getVersion()) == null) {
                         ombx.addDocumentRevision(new TracelessContext(player), id, pd);
                     }
+                    if (doc.getLockOwner() == null && ((Document) existingItem).getLockOwner() != null) {
+                        ombx.unlock(sContext, existingItem.getId(), doc.getType(), ((Document) existingItem).getLockOwner());
+                    }
                 } catch (MailServiceException.NoSuchItemException nsie) {
                     try {
                         ombx.createDocument(new TracelessContext(player), doc.getFolderId(), pd, doc.getType(), ud.getFlags() & ~Flag.BITMASK_UNCACHED);
@@ -1625,6 +1629,9 @@ public class InitialSync {
                 }
                 ombx.syncDate(sContext, id, doc.getType(), (int)(doc.getDate() / 1000L));
                 //ombx.setSyncedVersionForMailItem(itemIdStr, version);
+                if (doc.getLockOwner() != null) {
+                    ombx.lock(sContext, id, doc.getType(), doc.getLockOwner());
+                }
                 OfflineLog.offline.debug("initial: created document (" + id + "): " + doc.getName());
             }
             //put the documents in the folder corresponding to their latest revision

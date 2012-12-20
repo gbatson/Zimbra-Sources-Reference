@@ -831,6 +831,7 @@ function(msg, parent, id) {
 			onload = function() {            
 				ZmMailMsgView._resetIframeHeight(self);
 				this.onload = null; // *this* is reference to <img> el.
+				DBG.println(AjxDebug.DBG3, "external image onload called for  " + this.src);
 			};
 		}
 		for (var i = 0; i < images.length; i++) {
@@ -839,7 +840,10 @@ function(msg, parent, id) {
                 images[i].onload = onload;
 				// Fix for IE: Over HTTPS, http src urls for images might cause an issue.
 				try {
+					DBG.println(AjxDebug.DBG3, "displaying external images. src = " + images[i].src);
+					images[i].src = ''; //unload it first
 					images[i].src = images[i].getAttribute("dfsrc");
+					DBG.println(AjxDebug.DBG3, "displaying external images. src is now = " + images[i].src);
 				} catch (ex) {
 					// do nothing
 				}
@@ -886,7 +890,7 @@ function(origText) {
 	(function() {
 		var infoBarDiv = document.getElementById(self._infoBarId);
 		if (infoBarDiv) {
-			self._highlightObjectsId = ZmId.getViewId(this._viewId, ZmId.MV_HIGHLIGHT_OBJ, self._mode);
+			self._highlightObjectsId = ZmId.getViewId(self._viewId, ZmId.MV_HIGHLIGHT_OBJ, self._mode);
 			var subs = {
 				id: self._highlightObjectsId,
 				text: ZmMsg.objectsNotDisplayed,
@@ -1181,7 +1185,7 @@ function(addr) {
 ZmMailMsgView.prototype._isTrustedSender =
 function(msg) {
     var trustedList = this.getTrustedSendersList();
-    if (trustedList.contains(msg.sentByAddr) || trustedList.contains(msg.sentByDomain)){
+    if (trustedList.contains(msg.sentByAddr.toLowerCase()) || trustedList.contains(msg.sentByDomain.toLowerCase())){
         return true;
     }
     return false;
@@ -2392,7 +2396,7 @@ function() {
 
 ZmMailMsgView.prototype._msgTagClicked =
 function(tag) {
-	appCtxt.getSearchController().search({query: tag.createQuery()});
+	appCtxt.getSearchController().search({query: tag.createQuery(), inclSharedItems: true});
 };
 
 ZmMailMsgView.prototype._handleMsgTruncated =

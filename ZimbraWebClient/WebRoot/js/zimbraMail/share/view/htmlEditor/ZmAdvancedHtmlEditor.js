@@ -127,7 +127,7 @@ function(editor) {
         editor = editor || currentObj.getEditor();
         if (currentObj._editorInitialized && editor) {
             if (AjxEnv.isWebKitBased) {
-                Dwt.getElement(this._iFrameId).focus();
+                Dwt.getElement(currentObj._iFrameId).focus();
             }
             else {
                 editor.focus();
@@ -135,7 +135,7 @@ function(editor) {
             currentObj.setFocusStatus(true);
         }
         else {
-            currentObj._onTinyMCEEditorInitcallback = new AjxCallback(currentObj, currentObj.focus);
+            currentObj._onTinyMCEEditorInitcallback = currentObj.focus.bind(currentObj, editor);
         }
     }
     else {
@@ -489,14 +489,16 @@ function(parent, posStyle, content, mode, withAce, reparentContainer) {
 
         //Refer http://www.tinymce.com/i18n/index.php?ctrl=lang&act=download&pr_id=1
         var tinyMCELocaleArray = ['sq', 'ar', 'hy', 'az', 'eu', 'be', 'bn', 'nb', 'bs', 'br', 'bg', 'my', 'ca', 'km', 'ch', 'zh', 'hr', 'cs', 'da', 'dv', 'nl', 'en', 'eo', 'et', 'fi', 'fr', 'gl', 'ka', 'de', 'el', 'gu', 'he', 'hi', 'hu', 'is', 'id', 'ia', 'it', 'ja', 'kl', 'ko', 'lv', 'lt', 'lb', 'mk', 'ms', 'ml', 'mn', 'se', 'no', 'nn', 'fa', 'pl', 'pt', 'ps', 'ro', 'ru', 'sc', 'sr', 'si', 'sk', 'sl', 'es', 'sv', 'ta', 'tt', 'te', 'th', 'tn', 'tr', 'tw', 'uk', 'ur', 'vi', 'cy', 'zu', 'zh-tw', 'cn', 'zh-cn'],
-            locale = appCtxt.get(ZmSetting.LOCALE_NAME),
-            tinyMCELocale = locale.toLowerCase().replace("_", "-");
+            locale = appCtxt.get(ZmSetting.LOCALE_NAME).toLowerCase().replace("_", "-");
 
-        if (tinyMCELocale === "zh-hk") {//setting chinese language for Hong kong chinese
-            ZmAdvancedHtmlEditor.LOCALE = "zh";
+        if (AjxUtil.arrayContains(tinyMCELocaleArray, locale, true)) {
+            ZmAdvancedHtmlEditor.LOCALE = locale;
         }
-        else if (AjxUtil.arrayContains(tinyMCELocaleArray, tinyMCELocale, true)) {
-            ZmAdvancedHtmlEditor.LOCALE = tinyMCELocale;
+        else {
+            locale = locale.substr(0, 2);
+            if (AjxUtil.arrayContains(tinyMCELocaleArray, locale, true)) {
+                ZmAdvancedHtmlEditor.LOCALE = locale;
+            }
         }
 		var callback = new AjxCallback(this, this.initEditorManager, [id, content]);
         AjxDispatcher.require(["TinyMCE"], true, callback);
@@ -607,10 +609,10 @@ function(id, content) {
         // General options
 		mode :  (this._mode == DwtHtmlEditor.HTML)? "exact" : "none",
 		elements:  id,
-        plugins : "advlist,inlinepopups,table,paste,directionality,-zimbraplugin,-zbreakquote" + (AjxEnv.isIE ? "" : ",autolink"),
+        plugins : "advlist,inlinepopups,table,paste,directionality,emotions,-zimbraplugin,-zbreakquote" + (AjxEnv.isIE ? "" : ",autolink"),
 		theme : "advanced",
-        theme_advanced_buttons1 : "fontselect,fontsizeselect,forecolor,backcolor,|,bold,italic,underline,strikethrough,|,bullist,numlist,|,outdent,indent,|,justifyleft,justifycenter,justifyright,|,image,link,unlink,|,ltr,rtl,|,toggle",
-        theme_advanced_buttons2 : "formatselect,undo,redo,|,removeformat,|,pastetext,pasteword,|,tablecontrols,|,blockquote,hr,charmap",
+        theme_advanced_buttons1 : "fontselect,fontsizeselect,forecolor,backcolor,|,bold,italic,underline,strikethrough,|,bullist,numlist,|,outdent,indent,|,justifyleft,justifycenter,justifyright,|,image,link,unlink,emotions,|,ltr,rtl,|,toggle",
+        theme_advanced_buttons2 : "formatselect,undo,redo,|,removeformat,|,pastetext,|,tablecontrols,|,blockquote,hr,charmap",
 		theme_advanced_buttons3 : "",
 		theme_advanced_buttons4 : "",
 		theme_advanced_toolbar_location : "top",
@@ -633,6 +635,8 @@ function(id, content) {
         language_load : (ZmAdvancedHtmlEditor.LOCALE === "en") ? false : true,
         theme_advanced_show_current_color : true,
         directionality : appCtxt.get(ZmSetting.COMPOSE_INIT_DIRECTION),
+        paste_retain_style_properties : "all",
+        paste_remove_styles_if_webkit : false,
 		setup : function(ed) {
             ed.onLoadContent.add(obj.onLoadContent.bind(obj));
             ed.onPostRender.add(obj.onPostRender.bind(obj));
@@ -659,9 +663,9 @@ function(id, content) {
         Dwt.setVisible(obj.getHtmlElement(), true);
     }
 
+    this._iFrameId = this._bodyTextAreaId + "_ifr";
 	tinyMCE.init(tinyMCEInitObj);
 	this._editor = this.getEditor();
-	this._iFrameId = this._bodyTextAreaId + "_ifr";
 };
 
 ZmAdvancedHtmlEditor.prototype.onPaste = function(ed, ev) {
@@ -801,9 +805,6 @@ ZmAdvancedHtmlEditor.prototype.onInit = function(ed, ev) {
 
     obj.getEditorContainer().setFocusMember(obj.restoreFocus.bind(obj, ed));
 
-    if (obj._onTinyMCEEditorInitcallback) {
-        obj._onTinyMCEEditorInitcallback.run();
-    }
     if (tinymce.settings && tinymce.settings.language_load === false){
         tinymce.settings.language_load = true;
     }
@@ -817,6 +818,10 @@ ZmAdvancedHtmlEditor.prototype.onInit = function(ed, ev) {
     }
 
     obj._editorInitialized = true;
+
+    if (obj._onTinyMCEEditorInitcallback) {
+        obj._onTinyMCEEditorInitcallback();
+    }
 };
 
 /*
@@ -1098,6 +1103,8 @@ function(callback, keepModeDiv) {
 
 ZmAdvancedHtmlEditor.prototype._spellCheckCallback =
 function(words) {
+    // Remove the below comment for hard coded spell check response for development
+    //words = {"misspelled":[{"word":"onee","suggestions":"one,nee,knee,once,ones,one's"},{"word":"twoo","suggestions":"two,too,woo,twos,two's"},{"word":"fourrr","suggestions":"Fourier,furor,furry,firer,fuhrer,fore,furrier,four,furrow,fora,fury,fours,ferry,foray,flurry,four's"}],"available":true};
 	var wordsFound = false;
 
 	if (words && words.available) {
@@ -1306,11 +1313,6 @@ function(ev) {
 			   && (!word || modified) )
 			)))
 	{
-		//sc.menu._doPopdown();
-		// FIXME: menu.dispose() should remove any submenus that may be
-		//        present in its children; fix should go directly in DwtMenu.js
-		if (sc.menu._menuItems.fixall)
-			sc.menu._menuItems.fixall.getMenu().dispose();
 		sc.menu.dispose();
 		sc.menu = null;
 		window.status = "";
@@ -1322,13 +1324,6 @@ function(ev) {
 		(word == AjxUtil.getInnerText(p) && !this._ignoreWords[word]))
 	{
 		sc.menu = this._spellCheckCreateMenu(this.getParent(), 0, suggestions, word, p.id, modified);
-		if (sc.wordIds[word].length > 1) {
-			sc.menu.createSeparator();
-			this._replaceAllFormatter = this._replaceAllFormatter || new AjxMessageFormat(ZmMsg.replaceAllMenu);
-			var text = this._replaceAllFormatter.format(sc.wordIds[word].length);
-			var item = sc.menu.createMenuItem("fixall", {text:text});
-			item.setMenu(makeMenu(1, item));
-		}
 		var pos, ms = sc.menu.getSize(), ws = this._editorContainer.shell.getSize();
 		if (!plainText) {
 			// bug fix #5857 - use Dwt.toWindow instead of Dwt.getLocation so we can turn off dontIncScrollTop
@@ -1388,9 +1383,11 @@ ZmAdvancedHtmlEditor.prototype._spellCheckCreateMenu = function(parent, fixall, 
 		this._spellCheckCreateMenuItem(menu, "clear", {text:"<i>"+ZmMsg.clearText+"</i>" }, fixall, "", word, spanId);
 	}
 
-	menu.createSeparator();
+    var plainText = this._mode == DwtHtmlEditor.TEXT;
+    if (!fixall || plainText) {
+        menu.createSeparator();
+    }
 
-	var plainText = this._mode == DwtHtmlEditor.TEXT;
 	if (plainText) {
 		// in plain text mode we want to be able to edit misspelled words
 		var txt = fixall ? ZmMsg.editAll : ZmMsg.edit;

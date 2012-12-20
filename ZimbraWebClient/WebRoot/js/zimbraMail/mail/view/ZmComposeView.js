@@ -1245,7 +1245,7 @@ function(msg, idoc, account) {
 ZmComposeView.prototype._isTrustedSender =
 function(msg) {
     var trustedList = this.getTrustedSendersList();
-    if (trustedList.contains(msg.sentByAddr) || trustedList.contains(msg.sentByDomain)){
+    if (trustedList.contains(msg.sentByAddr.toLowerCase()) || trustedList.contains(msg.sentByDomain.toLowerCase())){
         return true;
     }
     return false;
@@ -1328,6 +1328,7 @@ function(idoc){
 
 ZmComposeView.prototype.showAttachmentDialog =
 function(val) {
+    if (this._disableAttachments) return;
 	var attachDialog = this._attachDialog = appCtxt.getAttachDialog();
 	if (val == ZmMsg.myComputer){
 		attachDialog.getMyComputerView();
@@ -2804,8 +2805,12 @@ function(templateId, data) {
         var fileInputNode = node.getElementsByClassName("BrowseAttachBtn")[0];
         var attachTextWidth = node.getElementsByClassName("attach_text")[0].clientWidth;
         if (fileInputNode && attachTextWidth){
-            if (AjxEnv.isFirefox)
+            if (AjxEnv.isFirefox){
                 fileInputNode.style.right = (fileInputNode.clientWidth - attachTextWidth) + "px";
+                if (fileInputNode.parentNode){
+                	fileInputNode.parentNode.style.maxWidth = attachTextWidth + "px";
+                }
+            }
             fileInputNode.style.maxWidth = attachTextWidth;
         }
         this._attcBtnFileInpId = newData.fileInputId;
@@ -2958,36 +2963,52 @@ function(controller, value){ // value : true or false
         controller._toolbar.getButton("SAVE_DRAFT").setEnabled(value);
 };
 
-ZmComposeView.prototype._resetUpload =
-function(err) {
-	var curView = appCtxt.getAppViewMgr().getCurrentView();
-	curView._attButton.setEnabled(true);
-    curView.enableToolbarButtons(curView._controller, true);
-    curView._setAttInline(false);
-    curView._controller._uploadingProgress = false;
-    if (curView._controller._uploadAttReq){
-		curView._controller._uploadAttReq = null;
-	}
-
-    if (curView._msgIds){
-      curView._msgIds = [];
+ZmComposeView.prototype.enableAttachButton =
+function(option){
+    if (this._attButton){
+       this._attButton.setEnabled(option);
+        var attachElement = this._attButton.getHtmlElement();
+        var node = attachElement && attachElement.getElementsByTagName("input");
+        if (node && node.length){
+            node[0].disabled = !(option);
+        }
     }
 
-	if(curView.si){
-		clearTimeout(curView.si);
-	}
-    if (err === true && curView._loadingSpan){
-		curView._loadingSpan.parentNode.removeChild(curView._loadingSpan);
-        curView._controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO);// Save the previous state
+    this._disableAttachments = !(option);
+
+    Dwt.setVisible(ZmId.getViewId(this._view, ZmId.CMP_DND_TOOLTIP),option);
+};
+
+
+ZmComposeView.prototype._resetUpload =
+function(err) {
+	this._attButton.setEnabled(true);
+    this.enableToolbarButtons(this._controller, true);
+    this._setAttInline(false);
+    this._controller._uploadingProgress = false;
+    if (this._controller._uploadAttReq){
+		this._controller._uploadAttReq = null;
 	}
 
-    if(curView._loadingSpan){
-		curView._loadingSpan = null;
+    if (this._msgIds){
+      this._msgIds = [];
+    }
+
+	if(this.si){
+		clearTimeout(this.si);
+	}
+    if (err === true && this._loadingSpan){
+		this._loadingSpan.parentNode.removeChild(this._loadingSpan);
+        this._controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO);// Save the previous state
 	}
 
-    if (curView._uploadElementForm){
-        curView._uploadElementForm.reset();
-        curView._uploadElementForm = null;
+    if(this._loadingSpan){
+		this._loadingSpan = null;
+	}
+
+    if (this._uploadElementForm){
+        this._uploadElementForm.reset();
+        this._uploadElementForm = null;
     }
 };
 
@@ -3648,7 +3669,7 @@ function(isDraft, status, attId, docIds, msgIds) {
         if (msgIds){
           this._setAttachedMsgIds(msgIds);
         }
-		var callback = new AjxCallback(this, this._resetUpload);
+		var callback = this._resetUpload.bind(this);
 		this._startUploadAttachment(); 
 		this._controller.saveDraft(ZmComposeController.DRAFT_TYPE_AUTO, attId, docIds, callback);
 	} else if (status == AjxPost.SC_UNAUTHORIZED) {

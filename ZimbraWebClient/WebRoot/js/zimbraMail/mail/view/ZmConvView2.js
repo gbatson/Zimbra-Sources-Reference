@@ -1374,10 +1374,19 @@ function(msg, container, callback) {
 
 	appCtxt.notifyZimlets("onConvStart", [this]);
 	this._header.set(this._expanded ? ZmMailMsgCapsuleViewHeader.EXPANDED : ZmMailMsgCapsuleViewHeader.COLLAPSED);
-	this._renderMessageBody(msg, container, callback);
+	var respCallback = this._handleResponseLoadMessage1.bind(this, msg, container, callback);
+	this._renderMessageBody(msg, container, respCallback);
+};
+
+// use a callback in case we needed to load an alternative part
+ZmMailMsgCapsuleView.prototype._handleResponseLoadMessage1 =
+function(msg, container, callback) {
 	this._renderMessageFooter(msg, container);
 	this._controller._handleMarkRead(msg);	// in case we need to mark read after a delay
 	appCtxt.notifyZimlets("onConvEnd", [this]);
+	if (callback) {
+		callback.run();
+	}
 };
 
 // Display all text messages and some HTML messages in a DIV rather than in an IFRAME.
@@ -1434,7 +1443,6 @@ function(msg, container, callback, index) {
 		}
 	}
 
-
 	var isCalendarInvite = this._isCalendarInvite;
 	var isShareInvite = this._isShareInvite = (appCtxt.get(ZmSetting.SHARING_ENABLED) &&
 												msg.share && msg.folderId != ZmFolder.ID_TRASH &&
@@ -1459,24 +1467,14 @@ function(msg, container, callback, index) {
 		ZmMailMsgView.prototype._renderMessageHeader.apply(this, arguments);
 	}
 	
-	if (!msg.isLoaded()) {
-		var params = {
-			getHtml:		appCtxt.get(ZmSetting.VIEW_AS_HTML),
-			callback:		ZmMailMsgView.prototype._renderMessageBody.bind(this, msg, container, callback, index),
-			needExp:		true
-		}
-		msg.load(params);
+	var params = {
+		getHtml:		appCtxt.get(ZmSetting.VIEW_AS_HTML),
+		callback:		ZmMailMsgView.prototype._renderMessageBody.bind(this, msg, container, callback, index),
+		needExp:		true
 	}
-	else {
-		ZmMailMsgView.prototype._renderMessageBody.call(this, msg, container, callback, index);
-	}
+	msg.load(params);
 
 	if (isCalendarInvite) {
-		// rearrange invite components to be part of the body
-		var imv = this._inviteMsgView;
-		if (imv && imv._dayView) {
-			imv._dayView.setVisible(false);
-		}
 		if (AjxEnv.isIE) {
 			// for some reason width=100% on inv header table makes it too wide (bug 65696)
 			Dwt.setSize(this._headerElement, this._header.getSize().x, Dwt.DEFAULT);
@@ -1929,6 +1927,10 @@ ZmMailMsgCapsuleView.prototype._handleMsgTruncated =
 function() {
 	this._msg.viewEntireMessage = true;	// remember so we reply to entire msg
 	this._showEntireMsg = true;			// set flag to load non-truncated msg
+	if (this._inviteMsgView) {
+		this._inviteMsgView._dayView = null; // for some reason the DOM of it gets lost so we have to null it so we don't try to access it later - instead of would be re-created.
+		this._inviteCalendarContainer = null;
+	}
 	// redo loading and display of entire msg
 	this.set(this._msg, true);
 	

@@ -140,6 +140,9 @@ public final class LC {
     public static final KnownKey zimbra_admin_service_port = KnownKey.newKey(7071);
 
     @Supported
+    public static final KnownKey zimbra_mail_service_port = KnownKey.newKey(80);
+
+    @Supported
     public static final KnownKey zimbra_admin_service_scheme = KnownKey.newKey("https://");
 
     @Supported
@@ -858,8 +861,6 @@ public final class LC {
     public static final KnownKey zimbra_waitset_initial_sleep_time = KnownKey.newKey(1000);
     public static final KnownKey zimbra_waitset_nodata_sleep_time = KnownKey.newKey(3000);
 
-    public static final KnownKey zimbra_dos_filter_max_requests_per_sec  = KnownKey.newKey(30);
-
     public static final KnownKey zimbra_csv_mapping_file = KnownKey.newKey("${zimbra_home}/conf/zimbra-contact-fields.xml");
 
     public static final KnownKey zimbra_auth_provider = KnownKey.newKey("");
@@ -1118,7 +1119,7 @@ public final class LC {
     public static final KnownKey antispam_mysql_errlogfile = KnownKey.newKey("${zimbra_home}/log/antispam-mysqld.log");
     public static final KnownKey antispam_mysql_mycnf = KnownKey.newKey("${zimbra_home}/conf/antispam-my.cnf");
     public static final KnownKey antispam_mysql_pidfile = KnownKey.newKey("${zimbra_home}/data/amavisd/mysql/mysql.pid");
-    public static final KnownKey antispam_mysql_host = KnownKey.newKey("localhost");
+    public static final KnownKey antispam_mysql_host = KnownKey.newKey("");
     public static final KnownKey antispam_mysql_port = KnownKey.newKey(7308);
     public static final KnownKey antispam_mysql_socket = KnownKey.newKey("${zimbra_home}/data/amavisd/mysql/mysql.sock");
     public static final KnownKey antispam_mysql_user = KnownKey.newKey("zimbra");
@@ -1134,6 +1135,8 @@ public final class LC {
     public static final KnownKey ldap_dit_base_dn_config        = KnownKey.newKey("");
     //LDAP Custom DIT base DN for cos entries
     public static final KnownKey ldap_dit_base_dn_cos           = KnownKey.newKey("");
+    //LDAP Custom DIT base DN for global dynamicgroup entries
+    public static final KnownKey ldap_dit_base_dn_global_dynamicgroup = KnownKey.newKey("");
     //LDAP Custom DIT base DN for domain entries
     public static final KnownKey ldap_dit_base_dn_domain        = KnownKey.newKey("");
     // LDAP Custom DIT base DN for mail(accounts, aliases, DLs, resources) entries
@@ -1142,23 +1145,30 @@ public final class LC {
     public static final KnownKey ldap_dit_base_dn_mime          = KnownKey.newKey("");
     // LDAP Custom DIT base DN for server entries
     public static final KnownKey ldap_dit_base_dn_server        = KnownKey.newKey("");
+    // LDAP Custom DIT base DN for uncservice entries
+    public static final KnownKey ldap_dit_base_dn_ucservice     = KnownKey.newKey("");
+    // LDAP Custom DIT base DN for share locator entries
+    public static final KnownKey ldap_dit_base_dn_share_locator = KnownKey.newKey("");
     // LDAP Custom DIT base DN for xmpp component entries
     public static final KnownKey ldap_dit_base_dn_xmppcomponent = KnownKey.newKey("");
     // LDAP Custom DIT base DN for zimlet entries
     public static final KnownKey ldap_dit_base_dn_zimlet        = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for cos entries
     public static final KnownKey ldap_dit_naming_rdn_attr_cos          = KnownKey.newKey("");
+    // LDAP Custom DIT RDN attr for dynamicgroup entries
+    public static final KnownKey ldap_dit_naming_rdn_attr_dynamicgroup = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for globalconfig entry
     public static final KnownKey ldap_dit_naming_rdn_attr_globalconfig = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for globalgrant entry
     public static final KnownKey ldap_dit_naming_rdn_attr_globalgrant  = KnownKey.newKey("");
-    // LDAP Custom DIT RDN attr for group entries
-    public static final KnownKey ldap_dit_naming_rdn_attr_group = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for mime entries
     public static final KnownKey ldap_dit_naming_rdn_attr_mime         = KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for server entries
     public static final KnownKey ldap_dit_naming_rdn_attr_server       = KnownKey.newKey("");
-    public static final KnownKey ldap_dit_naming_rdn_attr_user         =KnownKey.newKey("");
+    // LDAP Custom DIT RDN attr for ucservice entries
+    public static final KnownKey ldap_dit_naming_rdn_attr_ucservice    = KnownKey.newKey("");
+    public static final KnownKey ldap_dit_naming_rdn_attr_user         = KnownKey.newKey("");
+    public static final KnownKey ldap_dit_naming_rdn_attr_share_locator= KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for xmpp component entries
     public static final KnownKey ldap_dit_naming_rdn_attr_xmppcomponent= KnownKey.newKey("");
     // LDAP Custom DIT RDN attr for zimlet entries

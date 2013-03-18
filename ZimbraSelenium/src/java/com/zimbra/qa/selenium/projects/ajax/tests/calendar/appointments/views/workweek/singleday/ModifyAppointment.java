@@ -18,9 +18,10 @@ import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.FormApptNew;
 
 public class ModifyAppointment extends CalendarWorkWeekTest {
-
+	
 	public ModifyAppointment() {
 		logger.info("New " + ModifyAppointment.class.getCanonicalName());
+		super.startingPage = app.zPageCalendar;
 
 	}
 

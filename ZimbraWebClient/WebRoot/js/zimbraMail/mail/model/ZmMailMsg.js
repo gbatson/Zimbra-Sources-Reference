@@ -226,6 +226,8 @@ function(type, used, addAsContact, dontUpdateUsed) {
 		for (var i = 0; i < a.length; i++) {
 			var addr = a[i];
 			var email = addr.getAddress();
+			if (!email) { continue; }
+			email = email.toLowerCase();
 			if (!used[email]) {
 				var contact = addr;
 				if (addAsContact) {
@@ -257,8 +259,10 @@ function(type, used, addAsContact, dontUpdateUsed) {
 ZmMailMsg.prototype.getReplyAddresses =
 function(mode, aliases, isDefaultIdentity) {
 
-	// reply-to has precedence over everything else
-	var addrVec = this._addrs[AjxEmailAddress.REPLY_TO];
+	if (!this.isSent) { //ignore reply_to for sent messages.
+		// reply-to has precedence over everything else
+		var addrVec = this._addrs[AjxEmailAddress.REPLY_TO];
+	}
 	if (!addrVec && this.isInvite() && this.needsRsvp()) {
 		var invEmail = this.invite.getOrganizerEmail(0);
 		if (invEmail) {
@@ -840,19 +844,29 @@ function(contentType, callback) {
 		this._lastContentType = contentType;
 	}
 
-	var bodyPart;
-	var bodyParts = this.getBodyParts(contentType);
-	for (var i = 0; i < bodyParts.length; i++) {
-		var part = bodyParts[i];
-		// should be a ZmMimePart, but check just in case
-		part = part.isZmMimePart ? part : part[contentType];
-		if (!contentType || (part.contentType == contentType)) {
-			bodyPart = part;
-			break;
+	function getPart(ct) {
+		var bodyParts = this.getBodyParts(ct);
+		for (var i = 0; i < bodyParts.length; i++) {
+			var part = bodyParts[i];
+			// should be a ZmMimePart, but check just in case
+			part = part.isZmMimePart ? part : part[ct];
+			if (!ct || (part.contentType === ct)) {
+				return part;
+			}
 		}
 	}
+	var bodyPart = getPart.call(this,contentType);
 	
 	if (this.isInvite()) {
+		if (!bodyPart) {
+			if (contentType === ZmMimeTable.TEXT_HTML) {
+				//text/html not available so look for text/plain
+				bodyPart = getPart.call(this,ZmMimeTable.TEXT_PLAIN);
+			} else if (contentType === ZmMimeTable.TEXT_PLAIN) {
+				//text/plain not available so look for text/html
+				bodyPart = getPart.call(this,ZmMimeTable.TEXT_HTML);
+			}
+		}
 		// bug: 46071, handle missing body part/content
 		if (!bodyPart || (bodyPart && !bodyPart.getContent())) {
 			bodyPart = this.getInviteDescriptionContent(contentType);

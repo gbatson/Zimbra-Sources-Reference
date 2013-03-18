@@ -33,6 +33,7 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
@@ -2097,6 +2098,10 @@ abstract class ImapHandler {
         }
     }
 
+    private static boolean pathMatches(SubscribedImapPath path, Pattern pattern) {
+        return pattern.matcher(path.asImapPath().toUpperCase()).matches();
+    }
+
     private static boolean pathMatches(ImapPath path, Pattern pattern) {
         return pattern.matcher(path.asImapPath().toUpperCase()).matches();
     }
@@ -2170,8 +2175,17 @@ abstract class ImapHandler {
 
     private boolean isPathSubscribed(ImapPath path, Set<String> subscriptions) throws ServiceException {
         if (path.belongsTo(credentials)) {
-            Folder folder = (Folder) path.getFolder();
-            return folder.isTagged(Flag.FlagInfo.SUBSCRIBED);
+            Object folderObj = path.getFolder();
+            if (folderObj instanceof Folder) {
+                Folder folder = (Folder) path.getFolder();
+                return folder.isTagged(Flag.FlagInfo.SUBSCRIBED);
+            } else if (folderObj instanceof ZFolder) {
+                ZFolder folder = (ZFolder) path.getFolder();
+                return folder.isIMAPSubscribed();
+            } else {
+                ZimbraLog.imap.info("Unexpected class %s for folder for path %s",
+                        folderObj.getClass().getName(), path.asZimbraPath());
+            }
         } else if (subscriptions != null && !subscriptions.isEmpty()) {
             for (String sub : subscriptions) {
                 if (sub.equalsIgnoreCase(path.asImapPath())) {
@@ -2199,13 +2213,14 @@ abstract class ImapHandler {
             // you cannot access your own mailbox via the /home/username mechanism
             String owner = patternPath.getOwner();
             if (owner == null || owner.indexOf('*') != -1 || owner.indexOf('%') != -1 || !patternPath.belongsTo(credentials)) {
-                Map<ImapPath, Boolean> hits = new HashMap<ImapPath, Boolean>();
+                Map<SubscribedImapPath, Boolean> hits = new HashMap<SubscribedImapPath, Boolean>();
 
                 if (owner == null) {
                     Mailbox mbox = credentials.getMailbox();
                     for (Folder folder : mbox.getFolderById(getContext(), Mailbox.ID_FOLDER_USER_ROOT).getSubfolderHierarchy()) {
                         if (folder.isTagged(Flag.FlagInfo.SUBSCRIBED)) {
-                            checkSubscription(new ImapPath(null, folder, credentials), pattern, childPattern, hits);
+                            checkSubscription(new SubscribedImapPath(
+                                    new ImapPath(null, folder, credentials)), pattern, childPattern, hits);
                         }
                     }
                 }
@@ -2215,13 +2230,13 @@ abstract class ImapHandler {
                     for (String sub : remoteSubscriptions) {
                         ImapPath subscribed = new ImapPath(sub, credentials);
                         if ((owner == null) == (subscribed.getOwner() == null)) {
-                            checkSubscription(subscribed, pattern, childPattern, hits);
+                            checkSubscription(new SubscribedImapPath(subscribed), pattern, childPattern, hits);
                         }
                     }
                 }
 
                 subscriptions = new ArrayList<String>(hits.size());
-                for (Map.Entry<ImapPath, Boolean> hit : hits.entrySet()) {
+                for (Entry<SubscribedImapPath, Boolean> hit : hits.entrySet()) {
                     String attrs = hit.getValue() ? "" : "\\NoSelect";
                     subscriptions.add("LSUB (" + attrs + ") \"/\" " + hit.getKey().asUtf7String());
                 }
@@ -2243,21 +2258,75 @@ abstract class ImapHandler {
         return true;
     }
 
-    private void checkSubscription(ImapPath path, Pattern pattern, Pattern childPattern, Map<ImapPath, Boolean> hits)
+    /**
+     * Lightweight version of ImapPath, designed to avoid heap bloat in Map used during gathering
+     * of information for LSUB - see Bug 78659
+     */
+    private class SubscribedImapPath implements Comparable<SubscribedImapPath> {
+        private String imapPathString;
+        private boolean validSubscribeImapPath;
+        public SubscribedImapPath(ImapPath path)
+        throws ServiceException {
+            validSubscribeImapPath = path.isValidImapPath();
+            imapPathString = path.asImapPath();
+        }
+
+        /**
+         *
+         * @return true if this path is acceptable to keep in the list of subscribed folders.  Note, it does NOT have
+         * to be accessible or even exist to pass this test.
+         * @throws ServiceException
+         */
+        public boolean isValidSubscribeImapPath() throws ServiceException {
+            return validSubscribeImapPath;
+        }
+        public String asImapPath() {
+            return imapPathString;
+        }
+        public String asUtf7String() {
+            return ImapPath.asUtf7String(imapPathString);
+        }
+
+        public void addUnsubsribedMatchingParents(Pattern pattern, Map<SubscribedImapPath, Boolean> hits)
+        throws ServiceException {
+            int delimiter = imapPathString.lastIndexOf('/');
+            String pathString = imapPathString;
+            ImapPath path;
+            while (delimiter > 0) {
+                path = new ImapPath(pathString.substring(0, delimiter), credentials);
+                pathString = path.asImapPath();
+                SubscribedImapPath subsPath = new SubscribedImapPath(path);
+                if (!hits.containsKey(subsPath) && pathMatches(path, pattern)) {
+                    hits.put(subsPath, Boolean.FALSE);
+                }
+                delimiter = pathString.lastIndexOf('/');
+            }
+        }
+
+        @Override
+        public int compareTo(SubscribedImapPath other) {
+            return asImapPath().compareToIgnoreCase(other.asImapPath());
+        }
+    }
+    
+    private void checkSubscription(SubscribedImapPath path, Pattern pattern, Pattern childPattern, Map<SubscribedImapPath, Boolean> hits)
             throws ServiceException {
-        try {
-            if (!path.isVisible()) { // hidden folders are not exposed even if subscribed
-                return;
-            }
-        } catch (NoSuchItemException ignore) {
-            // 6.3.9.  LSUB Command
-            //   The server MUST NOT unilaterally remove an existing mailbox name
-            //   from the subscription list even if a mailbox by that name no
-            //   longer exists.
-        } catch (AccountServiceException e) { // ignore NO_SUCH_ACCOUNT as well
-            if (!AccountServiceException.NO_SUCH_ACCOUNT.equals(e.getCode())) {
-                throw e;
-            }
+        // Some notes from the IMAP RFC relating to subscriptions:
+        // http://tools.ietf.org/html/rfc3501
+        // 6.3.9 LSUB Command:
+        //     The server MUST NOT unilaterally remove an existing mailbox name from the subscription list even if a
+        //     mailbox by that name no longer exists.
+        //
+        // 6.3.6 SUBSCRIBE Command goes into some of the thinking behind this:
+        //     A server MAY validate the mailbox argument to SUBSCRIBE to verify that it exists.  However, it MUST NOT
+        //     unilaterally remove an existing mailbox name from the subscription list even if a mailbox by that name
+        //     no longer exists.
+        //
+        //         Note: This requirement is because a server site can choose to routinely remove a mailbox with a
+        //               well-known name (e.g., "system-alerts") after its contents expire, with the intention of
+        //               recreating it when new contents are appropriate.
+        if (!path.isValidSubscribeImapPath()) {
+            return;
         }
         if (pathMatches(path, pattern)) {
             hits.put(path, Boolean.TRUE);
@@ -2272,14 +2341,7 @@ abstract class ImapHandler {
         //         the LSUB response, and it MUST be flagged with the \Noselect attribute."
 
         // figure out the set of unsubscribed mailboxes that match the pattern and are parents of subscribed mailboxes
-        int delimiter = path.asImapPath().lastIndexOf('/');
-        while (delimiter > 0) {
-            path = new ImapPath(path.asImapPath().substring(0, delimiter), credentials);
-            if (!hits.containsKey(path) && pathMatches(path, pattern)) {
-                hits.put(path, Boolean.FALSE);
-            }
-            delimiter = path.asImapPath().lastIndexOf('/');
-        }
+        path.addUnsubsribedMatchingParents(pattern, hits);
     }
 
     static final int STATUS_MESSAGES      = 0x01;

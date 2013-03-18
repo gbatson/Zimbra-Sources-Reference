@@ -13,10 +13,10 @@ import com.zimbra.qa.selenium.projects.ajax.ui.calendar.ApptWorkWeekView;
 
 
 public class GetAppointment extends CalendarWorkWeekTest {
-
 	
 	public GetAppointment() {
 		logger.info("New "+ GetAppointment.class.getCanonicalName());
+		super.startingPage = app.zPageCalendar;
 		
 	}
 	
@@ -72,6 +72,5 @@ public class GetAppointment extends CalendarWorkWeekTest {
 		app.zPageCalendar.zWaitForElementPresent("css=div[id*=zli__CLWW__]");
 		
 		ZAssert.assertTrue(view.isApptExist(appt), "Verify appt gets displayed in work week view");
-	    
 	}
 }

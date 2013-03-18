@@ -12,11 +12,10 @@ import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
 
 
 public class GetAppointment extends CalendarWorkWeekTest {
-
 	
 	public GetAppointment() {
 		logger.info("New "+ GetAppointment.class.getCanonicalName());
-
+		super.startingPage = app.zPageCalendar;
 	}
 	
 	@Bugs(ids = "69132")
@@ -66,19 +65,17 @@ public class GetAppointment extends CalendarWorkWeekTest {
 		
 		//-- Verification
 		
-	    //verify appt displayed in workweek view
 		boolean found = false;
 		List<AppointmentItem> items = app.zPageCalendar.zListGetAppointments();
 		for (AppointmentItem item : items ) {
 			if ( subject.equals(item.getSubject()) ) {
 				found = true;
 				break;
-			}
-		}
+			}	
+		}	
 		
 		ZAssert.assertTrue(found, "Verify appt gets displayed in work week view");
-	    
+		
 	}
-
 
 }

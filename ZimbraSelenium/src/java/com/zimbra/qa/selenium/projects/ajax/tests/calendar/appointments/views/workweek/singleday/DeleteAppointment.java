@@ -13,13 +13,12 @@ import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
 import com.zimbra.qa.selenium.projects.ajax.ui.AppAjaxClient;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.DialogConfirmDeleteAppointment;
 
-
 @SuppressWarnings("unused")
 public class DeleteAppointment extends CalendarWorkWeekTest {
-
+	
 	public DeleteAppointment() {
 		logger.info("New "+ DeleteAppointment.class.getCanonicalName());
-		
+		super.startingPage = app.zPageCalendar;
 	}
 	
 	@Bugs(ids = "69132")
@@ -59,7 +58,9 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
         DialogConfirmDeleteAppointment dlgConfirm = (DialogConfirmDeleteAppointment)app.zPageCalendar.zToolbarPressButton(Button.B_DELETE);
 		dlgConfirm.zClickButton(Button.B_YES);
 		dlgConfirm.zWaitForClose();
+		
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetApptLocator(apptSubject)), false, "Verify appointment is deleted");
+
 	}
 	
 	@Bugs(ids = "69132")
@@ -99,7 +100,9 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
         DialogConfirmDeleteAppointment dlgConfirm = (DialogConfirmDeleteAppointment)app.zPageCalendar.zListItem(Action.A_RIGHTCLICK, Button.O_DELETE, apptSubject);
 		dlgConfirm.zClickButton(Button.B_YES);
 		dlgConfirm.zWaitForClose();
+		
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetApptLocator(apptSubject)), false, "Verify appointment is deleted");
+	
 	}
 	
 	@DataProvider(name = "DataProviderShortcutKeys")
@@ -148,7 +151,6 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
         app.zPageCalendar.zListItem(Action.A_LEFTCLICK, apptSubject);
         DialogConfirmDeleteAppointment dlgConfirm = (DialogConfirmDeleteAppointment)app.zPageCalendar.zKeyboardKeyEvent(keyEvent);
 		dlgConfirm.zClickButton(Button.B_YES);
-		
 		
 		//-- Verification
 		app.zGetActiveAccount().soapSend(

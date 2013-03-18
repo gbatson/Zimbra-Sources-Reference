@@ -23,13 +23,12 @@ import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning;
 import com.zimbra.qa.selenium.projects.ajax.ui.DialogWarning.DialogWarningID;
 import com.zimbra.qa.selenium.projects.ajax.ui.calendar.*;
 
-
 @SuppressWarnings("unused")
 public class DeleteAppointment extends CalendarWorkWeekTest {
-
+	
 	public DeleteAppointment() {
 		logger.info("New "+ DeleteAppointment.class.getCanonicalName());
-		
+		super.startingPage = app.zPageCalendar;
 
 	}
 	
@@ -82,8 +81,8 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
 		
 		
 		//-- Verification
-		
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetAllDayApptLocator(apptSubject)), false, "Verify all-day appointment is deleted");
+			
 	}
 	
 	@Bugs(ids = "69132")
@@ -134,8 +133,8 @@ public class DeleteAppointment extends CalendarWorkWeekTest {
 		
 		
 		//-- Verification
-		
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetAllDayApptLocator(apptSubject)), false, "Verify all-day appointment is deleted");
+			
 	}
 	
 	@DataProvider(name = "DataProviderShortcutKeys")

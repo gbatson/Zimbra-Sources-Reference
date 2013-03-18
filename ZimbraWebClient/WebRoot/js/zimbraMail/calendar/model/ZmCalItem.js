@@ -68,64 +68,70 @@ function() {
 /**
  * Defines the "new" mode.
  */
-ZmCalItem.MODE_NEW					    = 1;
+ZmCalItem.MODE_NEW					    = "NEW"; // Changing those constants from numbers to strings to be easier for debugging. I could not deal with 2,3 etc anymore.
 /**
  * Defines the "edit" mode.
  */
-ZmCalItem.MODE_EDIT					    = 2;
+ZmCalItem.MODE_EDIT					    = "EDIT";
+
+/**
+ * Defines the "copy single instance" mode.
+ */
+ZmCalItem.MODE_COPY_SINGLE_INSTANCE	    = "COPY_INST";
+
 /**
  * Defines the "edit single instance" mode.
  */
-ZmCalItem.MODE_EDIT_SINGLE_INSTANCE	    = 3;
+ZmCalItem.MODE_EDIT_SINGLE_INSTANCE	    = "EDIT_INST";
 /**
  * Defines the "edit series" mode.
  */
-ZmCalItem.MODE_EDIT_SERIES			    = 4;
+ZmCalItem.MODE_EDIT_SERIES			    = "EDIT_SER";
 /**
  * Defines the "delete" mode.
  */
-ZmCalItem.MODE_DELETE				    = 5;
+ZmCalItem.MODE_DELETE				    = "DELETE";
 /**
  * Defines the "delete instance" mode.
  */
-ZmCalItem.MODE_DELETE_INSTANCE		    = 6;
+ZmCalItem.MODE_DELETE_INSTANCE		    = "DELETE_INST";
 /**
  * Defines the "delete series" mode.
  */
-ZmCalItem.MODE_DELETE_SERIES		    = 7;
+ZmCalItem.MODE_DELETE_SERIES		    = "DELETE_SER";
 /**
  * Defines the "new from quick" mode.
  */
-ZmCalItem.MODE_NEW_FROM_QUICKADD 	    = 8;
+ZmCalItem.MODE_NEW_FROM_QUICKADD 	    = "NEW_FROM_QUICK";
 /**
  * Defines the "get" mode.
  */
-ZmCalItem.MODE_GET					    = 9;
+ZmCalItem.MODE_GET					    = "GET";
 /**
  * Defines the "forward" mode.
  */
-ZmCalItem.MODE_FORWARD				    = 10;
+ZmCalItem.MODE_FORWARD				    = "FORWARD";
 /**
  * Defines the "forward single instance" mode.
  */
-ZmCalItem.MODE_FORWARD_SINGLE_INSTANCE	= 11;
+ZmCalItem.MODE_FORWARD_SINGLE_INSTANCE	= "FORWARD_INST";
 /**
  * Defines the "forward series" mode.
  */
-ZmCalItem.MODE_FORWARD_SERIES			= 12;
+ZmCalItem.MODE_FORWARD_SERIES			= "FORWARD_SER";
 /**
  * Defines the "forward" mode.
  */
-ZmCalItem.MODE_FORWARD_INVITE			= 13;
+ZmCalItem.MODE_FORWARD_INVITE			= "FORWARD_INV";
 /**
  * Defines the "propose" mode.
  */
-ZmCalItem.MODE_PROPOSE_TIME 			= 14;
+ZmCalItem.MODE_PROPOSE_TIME 			= "PROPOSE_TIME";
 
 /**
  * Defines the "purge" (delete from trash) mode.
  */
-ZmCalItem.MODE_PURGE 					= 15
+ZmCalItem.MODE_PURGE 					= 15; //keeping this and the last one as 15 as I am not sure if it's a bug or intentional that they are the same
 
 /**
  * Defines the "last" mode index constant.
@@ -582,8 +588,19 @@ function() {
 			return false;
 		}
 	}
-
+   // TODO: Correct this method in order to return fasle for users with manager/admin rights
 	return (!this.isOrganizer() || (folder.link && folder.isReadOnly()));
+};
+
+/**
+ * Checks if the folder containing the item is read-only by the .
+ *
+ * @return	{Boolean}	<code>true</code> if the folder is read-only
+ */
+ZmCalItem.prototype.isFolderReadOnly =
+function() {
+	var folder = this.getFolder();
+    return (folder && folder.isReadOnly());
 };
 
 /*
@@ -1144,13 +1161,26 @@ function(message, viewMode) {
 	// only the original start time.
 	var start = message.invite.getServerStartTime();
 	var end = message.invite.getServerEndTime();
-	if (viewMode == ZmCalItem.MODE_EDIT_SINGLE_INSTANCE || viewMode == ZmCalItem.MODE_FORWARD_SINGLE_INSTANCE) {
+	if (viewMode === ZmCalItem.MODE_EDIT_SINGLE_INSTANCE || viewMode === ZmCalItem.MODE_FORWARD_SINGLE_INSTANCE
+			|| viewMode === ZmCalItem.MODE_COPY_SINGLE_INSTANCE) {
 		var usd = this.getUniqueStartDate();
-		if (usd) this.setStartDate(usd);
+		if (usd) {
+			this.setStartDate(usd);
+		}
 
 		var ued = this.getUniqueEndDate();
-		if (ued) this.setEndDate(ued);
-	} else {
+		if (ued) {
+			if (this.isAllDayEvent() && viewMode === ZmCalItem.MODE_COPY_SINGLE_INSTANCE) {
+				//special case - copying and all day event. The day it ends is a one too many days. Creating a copy gets confused otherwise and adds that day.
+				ued.setDate(ued.getDate() - 1);
+			}
+			this.setEndDate(ued);
+		}
+		if (viewMode === ZmCalItem.MODE_COPY_SINGLE_INSTANCE) {
+			viewMode = ZmCalItem.MODE_EDIT_SINGLE_INSTANCE; // kinda hacky - the copy mode has run its course. Now treat it like edit mode. Would be less impact.
+		}
+	}
+	else {
 		if (start) this.setStartDate(AjxDateUtil.parseServerDateTime(start));
 		if (end) this.setEndDate(AjxDateUtil.parseServerDateTime(end));
 	}
@@ -1436,22 +1466,15 @@ ZmCalItem.prototype._setAlarmData =
 function(comp) {
 
 	var useAbs = this._useAbsoluteReminder,
-        emailAlarmNode,
-        email,
-        action,
-        isEmailAlarm,
-        alarm,
-        trigger,
-        at,
-        i,
         time = useAbs ? this._reminderAbs : this._reminderMinutes;
 
     if (!time) {
         return;
     }
 
-	for (i = 0, len = this.alarmActions.size(); i < len; i++) {
-		action = this.alarmActions.get(i);
+	for (var i = 0, len = this.alarmActions.size(); i < len; i++) {
+		var email = null;
+		var action = this.alarmActions.get(i);
 		if (action == ZmCalItem.ALARM_EMAIL) {
 			email = appCtxt.get(ZmSetting.CAL_EMAIL_REMINDERS_ADDRESS);
 			if (!email) {
@@ -1466,22 +1489,14 @@ function(comp) {
             // NOTE: treat device email alarm as a standard email alarm
             action = ZmCalItem.ALARM_EMAIL;
         }
-        isEmailAlarm = action == ZmCalItem.ALARM_EMAIL;
-        alarm = isEmailAlarm && emailAlarmNode;
-        if (!alarm) {
-            alarm = comp.alarm = {};
-            alarm.action = action;
-            trigger = alarm.trigger = {};
-            this._setReminderUnits(trigger, time);
-            this._addXPropsToAlarm(alarm);
-            if (isEmailAlarm) {
-                emailAlarmNode = alarm;
-            }
-        }
+		var alarms = comp.alarm = comp.alarm || [];
+		var alarm = {action: action};
+		alarms.push(alarm);
+		var trigger = alarm.trigger = {};
+		this._setReminderUnits(trigger, time);
+		this._addXPropsToAlarm(alarm);
 		if (email) {
-			at = alarm.at = {};
-			at.a = email;
-            email = null;
+			alarm.at = {a: email};
 		}
 	}
 };
@@ -2393,7 +2408,7 @@ function(m, cancel) {
 	var hasAttendees = this.hasAttendees(),
         tprefix = hasAttendees ? this._getDefaultBlurb(cancel) : "",
         hprefix = hasAttendees ? this._getDefaultBlurb(cancel, true) : "",
-        mp = m.mp = {},
+        mp = m.mp = {"mp" : []},
         numSubParts,
         part,
         pct,
@@ -2416,26 +2431,26 @@ function(m, cancel) {
 			} else {
 				content = this._includeEditReply ? part.getContent() : AjxBuffer.concat(tprefix, part.getContent());
 			}
-            mp.mp = {
+            mp.mp.push({
                 ct : pct,
                 content : content
-            };
+            });
 		}
 	} else {
         ntp = this.notesTopPart;
 		tcontent = ntp ? ntp.getContent() : "";
         pct = ntp ? ntp.getContentType() : ZmMimeTable.TEXT_PLAIN;
-        mp.mp = {
+        mp.mp.push({
             ct : pct
-        };
+        });
         if (pct == ZmMimeTable.TEXT_HTML) {
             //bug fix #9592 - html encode the text before setting it as the "HTML" part
             hcontent = AjxStringUtil.nl2br(AjxStringUtil.htmlEncode(tcontent));
             html = "<html><body>" + (this._includeEditReply ? hcontent : AjxBuffer.concat(hprefix, hcontent)) + "</body></html>";
-            mp.mp.content = html;
+            mp.mp[0].content = html;
         }
         else {
-            mp.mp.content = (this._includeEditReply ? tcontent : AjxBuffer.concat(tprefix, tcontent));
+            mp.mp[0].content = (this._includeEditReply ? tcontent : AjxBuffer.concat(tprefix, tcontent));
         }
 	}
 };

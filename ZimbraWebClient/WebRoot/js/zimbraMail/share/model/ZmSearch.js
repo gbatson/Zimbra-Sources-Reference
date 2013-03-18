@@ -252,7 +252,7 @@ function(params) {
 						typeStr.push(ZmSearch.TYPE[a[i]]);
 					}
 					method.setAttribute("types", typeStr.join(","));
-					if (this.types.contains(ZmItem.MSG)) {
+					if (this.types.contains(ZmItem.MSG) || this.types.contains(ZmItem.CONV)) {
 						// special handling for showing participants ("To" instead of "From")
 						var folder = this.folderId && appCtxt.getById(this.folderId);
 						method.setAttribute("recip", (folder && folder.isOutbound()) ? "1" : "0");
@@ -401,7 +401,7 @@ function(params) {
 					}
 					request.types = typeStr.join(",");
 
-					if (this.types.contains(ZmItem.MSG)) {
+					if (this.types.contains(ZmItem.MSG) || this.types.contains(ZmItem.CONV)) {
 						// special handling for showing participants ("To" instead of "From")
 						var folder = this.folderId && appCtxt.getById(this.folderId);
 						request.recip = (folder && folder.isOutbound()) ? "1" : "0";
@@ -574,6 +574,9 @@ function(params) {
 	if (!params.noTruncate) {
 		request.max = appCtxt.get(ZmSetting.MAX_MESSAGE_SIZE);
 	}
+
+	//get both TO and From
+	request.recip =  "2";
 
 	var searchParams = {
 		jsonObj:		jsonObj,

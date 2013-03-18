@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: unknown unknown unknown unknown */
+    /* build: 9.0.0_BETA1_1111 pburgu 20130117-1610 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -5321,12 +5321,42 @@ public class ZAttrProvisioning {
     public static final String A_zimbraHsmPolicy = "zimbraHsmPolicy";
 
     /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public static final String A_zimbraHttpConnectorMaxIdleTimeMillis = "zimbraHttpConnectorMaxIdleTimeMillis";
+
+    /**
      * Whether to enable http debug handler on a server
      *
      * @since ZCS 6.0.0_GA
      */
     @ZAttr(id=1043)
     public static final String A_zimbraHttpDebugHandlerEnabled = "zimbraHttpDebugHandlerEnabled";
+
+    /**
+     * Delay imposed on all requests over the rate limit, before they are
+     * considered at all. -1 = Reject request, 0 = No delay, any other value
+     * = Delay in ms
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1430)
+    public static final String A_zimbraHttpDosFilterDelayMillis = "zimbraHttpDosFilterDelayMillis";
+
+    /**
+     * Maximum number of requests from a connection per second. Requests in
+     * excess of this are throttled.
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1431)
+    public static final String A_zimbraHttpDosFilterMaxRequestsPerSec = "zimbraHttpDosFilterMaxRequestsPerSec";
 
     /**
      * number of http handler threads
@@ -5347,6 +5377,23 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=519)
     public static final String A_zimbraHttpSSLNumThreads = "zimbraHttpSSLNumThreads";
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public static final String A_zimbraHttpThreadPoolMaxIdleTimeMillis = "zimbraHttpThreadPoolMaxIdleTimeMillis";
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public static final String A_zimbraHttpThrottleSafeIPs = "zimbraHttpThrottleSafeIPs";
 
     /**
      * Zimbra Systems Unique ID
@@ -6763,6 +6810,27 @@ public class ZAttrProvisioning {
     public static final String A_zimbraMimeType = "zimbraMimeType";
 
     /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public static final String A_zimbraMobileItemsToTrackPerFolderMaxSize = "zimbraMobileItemsToTrackPerFolderMaxSize";
+
+    /**
+     * whether or not to enable truncating on client metadata size, if
+     * enabled server will only track recent items on client device instead
+     * of all
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1425)
+    public static final String A_zimbraMobileMetadataMaxSizeEnabled = "zimbraMobileMetadataMaxSizeEnabled";
+
+    /**
      * whether the Bluetooth capabilities are allowed on the device. The
      * available options are Disable, HandsfreeOnly, and Allow. 0 - DISABLE 1
      * - HANDSFREE 2 - ALLOW ignored if
@@ -7307,7 +7375,8 @@ public class ZAttrProvisioning {
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
-     * also used as value for postconf message_size_limit
+     * also used as value for postconf message_size_limit. 0 means &quot;no
+     * limit&quot;
      */
     @ZAttr(id=198)
     public static final String A_zimbraMtaMaxMessageSize = "zimbraMtaMaxMessageSize";
@@ -8331,6 +8400,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=453)
     public static final String A_zimbraPrefClientType = "zimbraPrefClientType";
+
+    /**
+     * whether or not to use tag color as the color for message items
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1424)
+    public static final String A_zimbraPrefColorMessagesEnabled = "zimbraPrefColorMessagesEnabled";
 
     /**
      * direction for composing messages in the web client UI
@@ -10841,9 +10918,7 @@ public class ZAttrProvisioning {
 
     /**
      * If TRUE, spam messages will be affected by user mail filters instead
-     * of being automatically filed into the Junk folder. This attribute is
-     * deprecated and will be removed in a future release. See bug 23886 for
-     * details.
+     * of being automatically filed into the Junk folder.
      *
      * @since ZCS 5.0.2
      */

@@ -53,7 +53,7 @@ ZmComposeView = function(parent, controller, composeMode) {
 	ZmComposeView.MOVE_TO_FIELD[ZmOperation.MOVE_TO_BCC]	= AjxEmailAddress.BCC;
 	
 	this._onMsgDataChange = new AjxCallback(this, this._onMsgDataChange);
-	this._useAcAddrBubbles = appCtxt.get(ZmSetting.USE_ADDR_BUBBLES);
+	this._useAcAddrBubbles = appCtxt.get(ZmSetting.USE_ADDR_BUBBLES) && appCtxt.get(ZmSetting.CONTACTS_ENABLED);
 
 	this._controller = controller;
 
@@ -3072,11 +3072,12 @@ function(files, node) {
         return;
     }
 
-    if(files) {
+    if (files) {
         for (var j = 0; j < files.length; j++) {
             var file = files[j];
             size += file.size || file.fileSize; /*Safari*/;
-            if(size > appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT)) {
+            if ((-1 /* means unlimited */ != appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT)) &&
+                (size > appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT))) {
                 var msgDlg = appCtxt.getMsgDialog();
                 var errorMsg = AjxMessageFormat.format(ZmMsg.attachmentSizeError, AjxUtil.formatSize(appCtxt.get(ZmSetting.ATTACHMENT_SIZE_LIMIT)));
                 msgDlg.setMessage(errorMsg, DwtMessageDialog.WARNING_STYLE);

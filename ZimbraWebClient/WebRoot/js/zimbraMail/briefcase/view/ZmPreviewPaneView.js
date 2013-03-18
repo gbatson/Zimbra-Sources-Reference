@@ -554,7 +554,6 @@ function(){
     Dwt.setHandler(this._headerExpand, DwtEvent.ONCLICK, AjxCallback.simpleClosure(this._toggleExpand, this));
 
     this._iframePreview.getIframe().onload = AjxCallback.simpleClosure(this._updatePreview, this);
-
 };
 
 ZmPreviewView._errorCallback =
@@ -707,6 +706,30 @@ function(){
     if(this._previewContent){
         this._iframePreview.setIframeContent(this._previewContent);
         this._previewContent = false;
+    }
+	else {
+	    var iframeDoc = this._iframePreview && this._iframePreview.getDocument();
+	    if (!iframeDoc) {
+		    return;
+	    }
+	    this._iframePreview._resetEventHandlers();  //for resizing reading pane on right
+        var images = iframeDoc && iframeDoc.getElementsByTagName("img");
+	    if (images && images.length) {
+		    for (var i = 0; i <images.length; i++) {
+			    var dfsrc = images[i].getAttribute("dfsrc");
+			    if (dfsrc && dfsrc.match(/https?:\/\/([-\w\.]+)+(:\d+)?(\/([\w\_\.]*(\?\S+)?)?)?/)) {
+				    // Fix for IE: Over HTTPS, http src urls for images might cause an issue.
+				    try {
+					    images[i].src = ''; //unload it first
+					    images[i].src = dfsrc;
+				    } catch (ex) {
+					    // do nothing
+				    }
+			    }
+		    }
+	    }
+	    
+	    this._iframePreview
     }
 };
 

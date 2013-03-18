@@ -10,10 +10,10 @@ import com.zimbra.qa.selenium.framework.util.*;
 import com.zimbra.qa.selenium.projects.ajax.core.CalendarWorkWeekTest;
 
 public class GetAppointment extends CalendarWorkWeekTest {
-
+	
 	public GetAppointment() {
 		logger.info("New "+ GetAppointment.class.getCanonicalName());
-		
+		super.startingPage = app.zPageCalendar;
 	}
 	
 	@Bugs(ids = "69132")
@@ -61,6 +61,6 @@ public class GetAppointment extends CalendarWorkWeekTest {
 		
 		//wait for the appointment displayed in the view
 		ZAssert.assertEquals(app.zPageCalendar.sIsElementPresent(app.zPageCalendar.zGetReadOnlyAllDayApptLocator(apptSubject)), true, "Verify all-day appointment is deleted");
-	    
+		
 	}
 }

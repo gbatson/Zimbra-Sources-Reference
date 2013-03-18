@@ -29,6 +29,7 @@ public class ZUserAgentBean {
     boolean isOsWindows = false;
     boolean isOsLinux = false;
     boolean isOsAndroid = false;
+    boolean isAndroidTablet = false;
     boolean isNav  = false;
     boolean isIE = false;
     boolean trueNs = false;
@@ -42,6 +43,10 @@ public class ZUserAgentBean {
     boolean isHotJava = false;
     boolean isIPhone = false;
     boolean isIPod = false;
+    boolean isTouchiPad = false;
+
+    // Refer bug 80330 for details.
+    @Deprecated
     boolean isIPad = false;
 
     public ZUserAgentBean(String userAgent) {
@@ -89,7 +94,17 @@ public class ZUserAgentBean {
                 } else if ((token.indexOf("webtv")) != -1) {
                     isWebTv = true;
                     isNav = false;
-                } else if ((token.indexOf("iphone") != -1) || ((token.indexOf("ipad")) != -1)) {
+                } else if ((token.indexOf("iphone")) != -1) {
+                    isIPhone = true;
+                } else if ((token.indexOf("ipad")) != -1) {
+                    /**
+                     * Flag used to redirect an iPad user to the touch client(if installed)
+                     */
+                    isTouchiPad = true;
+                    /**
+                     * Faking iPad user agent as iPhone, this is a hack. On 8.0, we need to
+                     * redirect an iPad user to the mobile client.
+                     */
                     isIPhone = true;
                 } else if ((token.indexOf("ipod")) != -1) {
                     isIPod = true;
@@ -130,9 +145,12 @@ public class ZUserAgentBean {
                     isOsLinux = true;
                 }else if (token.indexOf("android") != -1){
                     isOsAndroid = true;
+                    isAndroidTablet = true;
                 }else if ((index = token.indexOf("version/")) != -1){
                     //In case of safari, get the browser version here
                     browserVersion = new Version(token.substring(index + 8));
+                } else if (token.indexOf("mobile") != -1 && isOsAndroid) {
+                    isAndroidTablet = false;
                 }
 
                 token = agtArr.hasMoreTokens() ? agtArr.nextToken() : null;
@@ -161,6 +179,8 @@ public class ZUserAgentBean {
     public boolean getIsOsLinux() { return isOsLinux; }
 
     public boolean getIsOsAndroid() { return isOsAndroid; }
+
+    public boolean getIsAndroidTablet() { return isAndroidTablet; }
     
     public boolean getIsOpera() { return isOpera; }
     
@@ -244,7 +264,10 @@ public class ZUserAgentBean {
 
     public boolean getIsiPod() { return isIPod; }
 
+    @Deprecated
     public boolean getIsiPad() { return isIPad; }
+
+    public boolean getIsTouchiPad() { return isTouchiPad; }
 
     public static class Version {
         

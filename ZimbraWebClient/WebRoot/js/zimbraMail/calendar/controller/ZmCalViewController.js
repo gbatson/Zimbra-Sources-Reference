@@ -1641,8 +1641,8 @@ ZmCalViewController.prototype.duplicateAppt =
 function(appt, params) {
 	var clone = ZmAppt.quickClone(appt);
 	var mode = ZmCalItem.MODE_EDIT;
-	if(appt.isRecurring()) {
-		mode = params.isException ? ZmCalItem.MODE_EDIT_SINGLE_INSTANCE : ZmCalItem.MODE_EDIT_SERIES
+	if (appt.isRecurring()) {
+		mode = params.isException ? ZmCalItem.MODE_COPY_SINGLE_INSTANCE : ZmCalItem.MODE_EDIT_SERIES;  //at first I also created a MODE_COPY_SERIES but I'm afraid of the impact and regressions. So keep it as "edit".
 	}
 	clone.getDetails(mode, new AjxCallback(this, this._duplicateApptContinue, [clone, ZmCalItem.MODE_NEW, params]));
 };
@@ -1653,8 +1653,7 @@ function(appt, mode, params) {
 	if(params.startDate) appt.setStartDate(params.startDate);
 	if(params.endDate) appt.setEndDate(params.endDate);
 
-    if(!appt.isOrganizer() || appt.isShared())
-    {
+    if (!appt.isOrganizer() || appt.isReadOnly()) {  //isOrganizer means current user is the organizer of the appt. (which is not the case if the appt is on a shared folder, even if the current user has admin or manager rights (i.e. not read only)
           var origOrganizer=appt.organizer;
           var myEmail=appt.getFolder().getAccount().getEmail();
           appt.replaceAttendee(myEmail,origOrganizer);
@@ -1673,7 +1672,8 @@ function(appt, mode, params) {
 		  dlg.setMessage(ZmMsg.confirmApptDuplication);
 		  dlg.popup();
     }
-    else{
+    else {
+		appt.organizer = null; // Let the organizer be set according to the choise in the form. (the calendar).
 	    this.newAppointment(appt, mode, true);
     }
 };
@@ -1848,7 +1848,7 @@ function() {
 		var list = this._deleteList[j];
 		for (var i = 0; i < list.length; i++) {
 			var appt = list[i];
-			var args = [parseInt(j), null, null, null, null];
+			var args = [j, null, null, null, null];
 			batchCmd.add(new AjxCallback(appt, appt.getDetails, args));
 		}
 	}
@@ -1862,7 +1862,7 @@ function() {
 		var list = this._deleteList[j];
 		for (var i = 0; i < list.length; i++) {
 			var appt = list[i];
-			var args = [parseInt(j), null, null, null];
+			var args = [j, null, null, null];
 			batchCmd.add(new AjxCallback(appt, appt.cancel, args));
 		}
 	}
@@ -3275,9 +3275,14 @@ function() {
 
 ZmCalViewController.prototype._enableActionMenuReplyOptions =
 function(appt, actionMenu) {
+
+    if (!(appt && actionMenu)) {
+        return;
+    }
 	var isOrganizer = appt.isOrganizer();
     var isExternalAccount = appCtxt.isExternalAccount();
-    var isSharedViewOnly = appt.isReadOnly() && appt.isShared();
+    var isFolderReadOnly = appt.isFolderReadOnly();
+    var isSharedViewOnly = isFolderReadOnly && appt.isShared();
 
 	// find the checked calendar for this appt
 	var calendar;

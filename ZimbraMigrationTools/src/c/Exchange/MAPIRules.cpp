@@ -1004,6 +1004,14 @@ bool CRuleProcessor::ProcessActions(CRule &rule, LPACTIONS pActions)
                 {
                     ruleAction.m_wstrArg = L"Junk";
                 }
+				else if (wcscmp(lpProp->Value.lpszW, L"Top of Information Store") == 0)
+                {
+                    //ruleAction.m_wstrArg = L"Inbox";
+					dloge("Unable to determine folder path.folderpath pointing to top of information store");
+                rule.SetActive(0);
+            
+                }
+                
                 else
                 {
                     std::vector<CString> vFolders;
@@ -1256,9 +1264,9 @@ void CRuleMap::WriteFilterRule(CRule &rule, LPWSTR &filterRule)
     rule.GetName(wstrRuleName);
     long lActive = rule.GetActive();
     wstrRuleActive = (lActive == 0) ? L"0" : L"1";
-    lstrcpy(filterRule, L"name,");
+    lstrcpy(filterRule, L"name;");
     lstrcat(filterRule, wstrRuleName.c_str());
-    lstrcat(filterRule, L",active,");
+    lstrcat(filterRule, L";active;");
     lstrcat(filterRule, wstrRuleActive.c_str());
 }
 

@@ -45,6 +45,9 @@ public class ZimbraAPI
         "/MAPIRoot/Tasks"
     };
 
+    char[] specialCharacters = { ':','/','"','\t','\r','\n'};
+
+
     private string lastError;
     public string LastError {
         get { return lastError; }
@@ -556,6 +559,7 @@ public class ZimbraAPI
     public int Logon(string hostname, string port, string username, string password, bool
         isSecure, bool isAdmin)
     {
+        Log.trace("ZimbraAPI - Logon");
         if (ZimbraValues.GetZimbraValues().AuthToken.Length > 0)
             return 0;                           // already logged on
         lastError = "";
@@ -626,6 +630,7 @@ public class ZimbraAPI
 
     public int GetInfo()
     {
+        Log.trace("ZimbraAPI - GetInfo");
         lastError = "";
         WebServiceClient client = new WebServiceClient {
             Url = ZimbraValues.GetZimbraValues().Url, WSServiceType =
@@ -678,6 +683,7 @@ public class ZimbraAPI
 
     public int GetAllDomains()
     {
+        Log.trace("ZimbraAPI - GetAllDomains");
         if (ZimbraValues.zimbraValues.Domains.Count > 0)        // already got 'em
             return 0;
         lastError = "";
@@ -731,6 +737,7 @@ public class ZimbraAPI
 
     public int GetAllCos()
     {
+        Log.trace("ZimbraAPI - GetAllCos");
         if (ZimbraValues.zimbraValues.COSes.Count > 0)  // already got 'em
             return 0;
         lastError = "";
@@ -784,6 +791,7 @@ public class ZimbraAPI
 
     public int GetAccount(string accountname)
     {
+        Log.trace("ZimbraAPI - GetAccount");
         int retval = 0;
 
         lastError = "";
@@ -842,88 +850,101 @@ public class ZimbraAPI
 
     public int CreateAccount(string accountname, string displayname, string givenname, string sn, string zfp, string defaultpw, bool mustChangePW, string cosid)
     {
+        Log.trace("ZimbraAPI CreateAccount");
         int retval = 0;
 
         lastError = "";
-
-        if (displayname.Length == 0)
+        try
         {
-            displayname = accountname.Substring(0, accountname.IndexOf("@"));
-        }
-        string zimbraForeignPrincipal = (zfp.Length > 0) ? zfp : "ad:" + displayname;
-        WebServiceClient client = new WebServiceClient {
-            Url = ZimbraValues.GetZimbraValues().Url, WSServiceType =
-                WebServiceClient.ServiceType.Traditional
-        };
-        StringBuilder sb = new StringBuilder();
-        XmlWriterSettings settings = new XmlWriterSettings();
 
-        settings.OmitXmlDeclaration = true;
-        using (XmlWriter writer = XmlWriter.Create(sb, settings)) {
-            writer.WriteStartDocument();
-            writer.WriteStartElement("soap", "Envelope",
-                "http://www.w3.org/2003/05/soap-envelope");
-
-            WriteHeader(writer, true, true, false);
-
-            // body
-            writer.WriteStartElement("Body", "http://www.w3.org/2003/05/soap-envelope");
-            writer.WriteStartElement("CreateAccountRequest", "urn:zimbraAdmin");
-
-            WriteNVPair(writer, "name", accountname);
-            WriteNVPair(writer, "password", defaultpw);
-
-            WriteAttrNVPair(writer, "a", "n", "displayName", displayname);
-            if (givenname.Length > 0)
+            if (displayname.Length == 0)
             {
-                WriteAttrNVPair(writer, "a", "n", "givenName", givenname);
+                displayname = accountname.Substring(0, accountname.IndexOf("@"));
             }
-            if (sn.Length > 0)
+            string zimbraForeignPrincipal = (zfp.Length > 0) ? zfp : "ad:" + displayname;
+            WebServiceClient client = new WebServiceClient
             {
-                WriteAttrNVPair(writer, "a", "n", "sn", sn);
-            }
-            WriteAttrNVPair(writer, "a", "n", "zimbraForeignPrincipal", zimbraForeignPrincipal);
-            WriteAttrNVPair(writer, "a", "n", "zimbraCOSId", cosid);
-            if (mustChangePW)
+                Url = ZimbraValues.GetZimbraValues().Url,
+                WSServiceType =
+                    WebServiceClient.ServiceType.Traditional
+            };
+            StringBuilder sb = new StringBuilder();
+            XmlWriterSettings settings = new XmlWriterSettings();
+
+            settings.OmitXmlDeclaration = true;
+            using (XmlWriter writer = XmlWriter.Create(sb, settings))
             {
-                WriteAttrNVPair(writer, "a", "n", "zimbraPasswordMustChange", "TRUE");
+                writer.WriteStartDocument();
+                writer.WriteStartElement("soap", "Envelope",
+                    "http://www.w3.org/2003/05/soap-envelope");
+
+                WriteHeader(writer, true, true, false);
+
+                // body
+                writer.WriteStartElement("Body", "http://www.w3.org/2003/05/soap-envelope");
+                writer.WriteStartElement("CreateAccountRequest", "urn:zimbraAdmin");
+
+                WriteNVPair(writer, "name", accountname);
+                WriteNVPair(writer, "password", defaultpw);
+
+                WriteAttrNVPair(writer, "a", "n", "displayName", displayname);
+                if (givenname.Length > 0)
+                {
+                    WriteAttrNVPair(writer, "a", "n", "givenName", givenname);
+                }
+                if (sn.Length > 0)
+                {
+                    WriteAttrNVPair(writer, "a", "n", "sn", sn);
+                }
+                WriteAttrNVPair(writer, "a", "n", "zimbraForeignPrincipal", zimbraForeignPrincipal);
+                WriteAttrNVPair(writer, "a", "n", "zimbraCOSId", cosid);
+                if (mustChangePW)
+                {
+                    WriteAttrNVPair(writer, "a", "n", "zimbraPasswordMustChange", "TRUE");
+                }
+
+                writer.WriteEndElement();           // CreateAccountRequest
+                writer.WriteEndElement();           // soap body
+                // end body
+
+                writer.WriteEndElement();           // soap envelope
+                writer.WriteEndDocument();
             }
 
-            writer.WriteEndElement();           // CreateAccountRequest
-            writer.WriteEndElement();           // soap body
-            // end body
+            string rsp = "";
+            WriteSoapLog(sb.ToString(), true);
 
-            writer.WriteEndElement();           // soap envelope
-            writer.WriteEndDocument();
-        }
+            client.InvokeService(sb.ToString(), out rsp);
 
-        string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
-        
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        if (client.status == 0)
-        {
-            if (ParseCreateAccount(rsp) == 0)   // length of name is 0 -- this is bad
-                retval = ACCOUNT_CREATE_FAILED;
-        }
-        else
-        {
-            string soapReason = ParseSoapFault(client.errResponseMessage);
-
-            if (soapReason.Length > 0)
-                lastError = soapReason;
+            WriteSoapLog(rsp.ToString(), false);
+            retval = client.status;
+            if (client.status == 0)
+            {
+                if (ParseCreateAccount(rsp) == 0)   // length of name is 0 -- this is bad
+                    retval = ACCOUNT_CREATE_FAILED;
+            }
             else
-                lastError = client.exceptionMessage;
+            {
+                string soapReason = ParseSoapFault(client.errResponseMessage);
+
+                if (soapReason.Length > 0)
+                    lastError = soapReason;
+                else
+                    lastError = client.exceptionMessage;
+            }
+        }
+        catch (Exception e)
+        {
+            Log.err("ZimbraAPI: Exception in CreateAccount", e.Message);
         }
         return retval;
+
     }
 
     public void CreateContactRequest(XmlWriter writer, Dictionary<string, string> contact,
         string folderId, int requestId)
     {
+        Log.trace("ZimbraAPI CreateContactRequest");
         bool IsGroup = false;
         writer.WriteStartElement("CreateContactRequest", "urn:zimbraMail");
         if (requestId != -1)
@@ -970,7 +991,8 @@ public class ZimbraAPI
                     if (nam.CompareTo("dlist") == 0)
                     {
                         IsGroup = true;
-                        string[] tokens = contact["dlist"].Split(',');
+                        //string[] tokens = contact["dlist"].Split(',');
+                        string[] tokens = contact["dlist"].Split(';');
 
                         if (tokens.Length > 0)
                         {
@@ -1026,6 +1048,7 @@ public class ZimbraAPI
 
     public int CreateContact(Dictionary<string, string> contact, string folderPath = "")
     {
+        Log.trace("ZimbraAPI CreateContact");
         lastError = "";
 
         // Create in Contacts unless another folder was desired
@@ -1077,6 +1100,7 @@ public class ZimbraAPI
     public int CreateContacts(List<Dictionary<string, string> > lContacts, string folderPath =
         "")
     {
+        Log.trace("ZimbraAPI CreateContacts");
         lastError = "";
 
         // Create in Contacts unless another folder was desired
@@ -1133,6 +1157,7 @@ public class ZimbraAPI
     public void AddMsgRequest(XmlWriter writer, string uploadInfo, ZimbraMessage message, bool
         isInline, int requestId)
     {
+        Log.trace("ZimbraAPI AddMsgRequest");
         // if isLine, uploadInfo will be a file path; if not, uploadInfo will be the upload token
         writer.WriteStartElement("AddMsgRequest", "urn:zimbraMail");
         if (requestId != -1)
@@ -1160,6 +1185,7 @@ public class ZimbraAPI
 
     public int AddMessage(Dictionary<string, string> message)
     {
+        Log.trace("ZimbraAPI AddMessage");
         lastError = "";
 
         string uploadInfo = "";
@@ -1260,6 +1286,7 @@ public class ZimbraAPI
 
     public int AddMessages(List<Dictionary<string, string> > lMessages)
     {
+        Log.trace("ZimbraAPI AddMessages");
         int retval = 0;
 
         lastError = "";
@@ -1345,6 +1372,7 @@ public class ZimbraAPI
     public void SetAppointmentRequest(XmlWriter writer, Dictionary<string, string> appt,
         string folderId)
     {
+        Log.trace("ZimbraAPI SetAppointmentRequest");
         bool isRecurring = appt.ContainsKey("freq");
         int numExceptions = (appt.ContainsKey("numExceptions")) ? Int32.Parse(appt["numExceptions"]) : 0;
         writer.WriteStartElement("SetAppointmentRequest", "urn:zimbraMail");
@@ -1366,7 +1394,12 @@ public class ZimbraAPI
         writer.WriteAttributeString("method", "REQUEST");
         writer.WriteAttributeString("fb", appt["fb"]);
         writer.WriteAttributeString("transp", appt["transp"]);
-        writer.WriteAttributeString("allDay", appt["allDay"]);
+
+        if (appt["allDay"].Length > 0)
+            writer.WriteAttributeString("allDay", appt["allDay"]);
+        else
+            writer.WriteAttributeString("allDay", "0");
+        
         writer.WriteAttributeString("name", appt["name"]);
         writer.WriteAttributeString("loc", appt["loc"]);
         if (appt["class"].Length > 0)
@@ -1418,6 +1451,17 @@ public class ZimbraAPI
             if (appt["orName"].Length > 0)
             {
                 theOrganizer = appt["orName"];
+
+                /*int idxOrg = theOrganizer.IndexOf("@");
+                if (idxOrg == -1)  // can happen if no recip table
+                {
+                    int idxAcct = AccountName.IndexOf("@");
+                    string Name = AccountName.Substring(0, idxAcct);
+                    if (Name == appt["orName"])
+                    {
+                        theOrganizer = AccountName;
+                    }
+                }*/
             }
             else
             {
@@ -1636,6 +1680,7 @@ public class ZimbraAPI
 
     private void AddExceptionToRequest(XmlWriter writer, Dictionary<string, string> appt, int num)
     {
+        Log.trace("ZimbraAPI -AddExceptionToRequest");
         string attr = "exceptionType" + "_" + num.ToString();
         bool isCancel = appt[attr] == "cancel";
         if (isCancel)
@@ -1822,6 +1867,7 @@ public class ZimbraAPI
 
     public int AddAppointment(Dictionary<string, string> appt, string folderPath = "")
     {
+        Log.trace("ZimbraAPI -AddAppointment");
         lastError = "";
 
         // Create in Calendar unless another folder was desired
@@ -2219,6 +2265,7 @@ public class ZimbraAPI
 
     public int AddTask(Dictionary<string, string> appt, string folderPath = "")
     {
+        Log.trace("ZimbraAPI AddTask");
         lastError = "";
 
         // Create in Tasks unless another folder was desired
@@ -2283,6 +2330,7 @@ public class ZimbraAPI
 
     public int AddOOO(string OOOInfo, bool isServer)
     {
+        Log.trace("ZimbraAPI AddOOO");
         lastError = "";
 
         if (OOOInfo.Length == 0)
@@ -2346,7 +2394,8 @@ public class ZimbraAPI
         string filterActionsDictName = idx.ToString() + "filterActions";
 
         writer.WriteStartElement("filterRule");
-        string[] tokens = rules[filterRuleDictName].Split(',');
+       // string[] tokens = rules[filterRuleDictName].Split(',');
+        string[] tokens = rules[filterRuleDictName].Split(';');
         writer.WriteAttributeString(tokens.GetValue(0).ToString(), tokens.GetValue(1).ToString());
         writer.WriteAttributeString(tokens.GetValue(2).ToString(), tokens.GetValue(3).ToString());
 
@@ -2354,6 +2403,8 @@ public class ZimbraAPI
 
         // first get anyof or allof.  String starts with "anyof:" or "allof:"
         writer.WriteAttributeString("condition", rules[filterTestsDictName].Substring(0, 5));
+
+        
 
         // now process the actual tests
         string[] allTests = rules[filterTestsDictName].Substring(6).Split(new string[] { "^^^" }, StringSplitOptions.None);
@@ -2402,6 +2453,8 @@ public class ZimbraAPI
         writer.WriteEndElement();   // filterActions
 
         writer.WriteEndElement();   // filterRule
+
+        
     }
 
     private void SetModifyFilterRulesRequest(XmlWriter writer, Dictionary<string, string> rules)
@@ -2419,42 +2472,44 @@ public class ZimbraAPI
 
     public int AddRules(Dictionary<string, string> rules)
     {
-        lastError = "";
+        Log.trace("ZimbraAPI AddRules");
+            lastError = "";
 
-        WebServiceClient client = new WebServiceClient
-        {
-            Url = ZimbraValues.GetZimbraValues().Url,
-            WSServiceType =
-                WebServiceClient.ServiceType.Traditional
-        };
-        int retval = 0;
-        StringBuilder sb = new StringBuilder();
-        XmlWriterSettings settings = new XmlWriterSettings();
+            WebServiceClient client = new WebServiceClient
+            {
+                Url = ZimbraValues.GetZimbraValues().Url,
+                WSServiceType =
+                    WebServiceClient.ServiceType.Traditional
+            };
+            int retval = 0;
+            StringBuilder sb = new StringBuilder();
+            XmlWriterSettings settings = new XmlWriterSettings();
 
-        settings.OmitXmlDeclaration = true;
-        using (XmlWriter writer = XmlWriter.Create(sb, settings))
-        {
-            writer.WriteStartDocument();
-            writer.WriteStartElement("soap", "Envelope",
-                "http://www.w3.org/2003/05/soap-envelope");
+            settings.OmitXmlDeclaration = true;
+            using (XmlWriter writer = XmlWriter.Create(sb, settings))
+            {
+                writer.WriteStartDocument();
+                writer.WriteStartElement("soap", "Envelope",
+                    "http://www.w3.org/2003/05/soap-envelope");
 
-            WriteHeader(writer, true, true, true);
+                WriteHeader(writer, true, true, true);
 
-            writer.WriteStartElement("Body", "http://www.w3.org/2003/05/soap-envelope");
-            SetModifyFilterRulesRequest(writer, rules);
+                writer.WriteStartElement("Body", "http://www.w3.org/2003/05/soap-envelope");
+                SetModifyFilterRulesRequest(writer, rules);
 
-            writer.WriteEndElement();           // soap body
-            writer.WriteEndElement();           // soap envelope
-            writer.WriteEndDocument();
-        }
-        string rsp = "";
-        
-        WriteSoapLog(sb.ToString(),true);
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        return retval;
+                writer.WriteEndElement();           // soap body
+                writer.WriteEndElement();           // soap envelope
+                writer.WriteEndDocument();
+            }
+            string rsp = "";
+
+            WriteSoapLog(sb.ToString(), true);
+            client.InvokeService(sb.ToString(), out rsp);
+
+            WriteSoapLog(rsp.ToString(), false);
+            retval = client.status;
+            return retval;
+       
     }
 
     private void CreateFolderRequest(XmlWriter writer, ZimbraFolder folder, int requestId)
@@ -2463,7 +2518,27 @@ public class ZimbraAPI
         if (requestId != -1)
             writer.WriteAttributeString("requestId", requestId.ToString());
         writer.WriteStartElement("folder");
-        writer.WriteAttributeString("name", folder.name);
+
+       // specialCharacters.Any(s => s.Equals(folder.name));
+
+        int indSpecialC = folder.name.IndexOfAny(specialCharacters);
+        
+
+        if ( indSpecialC != -1)
+        {
+            
+            StringBuilder sb = new StringBuilder(folder.name);
+            if (ReplaceSlash == null)
+            {
+                ReplaceSlash = "_";
+            }
+            sb[indSpecialC] = ReplaceSlash.ToCharArray().ElementAt(0)/*'_'*/;
+            string newS = sb.ToString();
+            writer.WriteAttributeString("name", newS);
+        }
+        else
+            writer.WriteAttributeString("name", folder.name);
+
         writer.WriteAttributeString("l", folder.parent);
         writer.WriteAttributeString("fie", "1");        // return the existing ID instead of an error
         if (folder.view.Length > 0)
@@ -2561,6 +2636,7 @@ public class ZimbraAPI
     public int CreateFolder(string FolderPath, string View = "", string Color = "", string
         Flags = "")
     {
+        Log.trace("ZimbraAPI : CreateFolder");
         string parentPath = "";
         string folderName = "";
 
@@ -2699,54 +2775,62 @@ public class ZimbraAPI
     {
         tagID = "";
         lastError = "";
-
+        Log.trace("ZimbraAPI : CreateTag");
         int retval = 0;
-        WebServiceClient client = new WebServiceClient
+        try
         {
-            Url = ZimbraValues.GetZimbraValues().Url,
-            WSServiceType =
-                WebServiceClient.ServiceType.Traditional
-        };
-        StringBuilder sb = new StringBuilder();
-        XmlWriterSettings settings = new XmlWriterSettings();
 
-        settings.OmitXmlDeclaration = true;
-        using (XmlWriter writer = XmlWriter.Create(sb, settings))
-        {
-            writer.WriteStartDocument();
-            writer.WriteStartElement("soap", "Envelope",
-                "http://www.w3.org/2003/05/soap-envelope");
+            WebServiceClient client = new WebServiceClient
+            {
+                Url = ZimbraValues.GetZimbraValues().Url,
+                WSServiceType =
+                    WebServiceClient.ServiceType.Traditional
+            };
+            StringBuilder sb = new StringBuilder();
+            XmlWriterSettings settings = new XmlWriterSettings();
 
-            WriteHeader(writer, true, true, true);
+            settings.OmitXmlDeclaration = true;
+            using (XmlWriter writer = XmlWriter.Create(sb, settings))
+            {
+                writer.WriteStartDocument();
+                writer.WriteStartElement("soap", "Envelope",
+                    "http://www.w3.org/2003/05/soap-envelope");
 
-            writer.WriteStartElement("Body", "http://www.w3.org/2003/05/soap-envelope");
+                WriteHeader(writer, true, true, true);
 
-            CreateTagRequest(writer, tag, color, -1);
+                writer.WriteStartElement("Body", "http://www.w3.org/2003/05/soap-envelope");
 
-            writer.WriteEndElement();           // soap body
-            writer.WriteEndElement();           // soap envelope
-            writer.WriteEndDocument();
-        }
+                CreateTagRequest(writer, tag, color, -1);
 
-        string rsp = "";
-        WriteSoapLog(sb.ToString(),true);
-        
-        client.InvokeService(sb.ToString(), out rsp);
-        
-        WriteSoapLog(rsp.ToString(),false);
-        retval = client.status;
-        if (client.status == 0)
-        {
-            ParseCreateTag(rsp, out tagID);       // get the id
-        }
-        else
-        {
-            string soapReason = ParseSoapFault(client.errResponseMessage);
+                writer.WriteEndElement();           // soap body
+                writer.WriteEndElement();           // soap envelope
+                writer.WriteEndDocument();
+            }
 
-            if (soapReason.Length > 0)
-                lastError = soapReason;
+            string rsp = "";
+            WriteSoapLog(sb.ToString(), true);
+
+            client.InvokeService(sb.ToString(), out rsp);
+
+            WriteSoapLog(rsp.ToString(), false);
+            retval = client.status;
+            if (client.status == 0)
+            {
+                ParseCreateTag(rsp, out tagID);       // get the id
+            }
             else
-                lastError = client.exceptionMessage;
+            {
+                string soapReason = ParseSoapFault(client.errResponseMessage);
+
+                if (soapReason.Length > 0)
+                    lastError = soapReason;
+                else
+                    lastError = client.exceptionMessage;
+            }
+        }
+        catch (Exception e)
+        {
+            Log.err("ZimbraApi:Exception in CreateTag {0}: {1}", tag, e.Message);
         }
         return retval;
     }
@@ -2761,6 +2845,7 @@ public class ZimbraAPI
 
     public int GetTags()
     {
+        Log.trace("ZimbraAPI : GetTags");
         lastError = "";
 
         int retval = 0;
@@ -2818,6 +2903,13 @@ public class ZimbraAPI
     {
         int idxAcc = AccountName.IndexOf("@");
         int idxOrg = theOrganizer.IndexOf("@");
+        if (idxOrg == -1)
+        {
+            int idxCN = theOrganizer.LastIndexOf("CN=");
+            string Name = theOrganizer.Substring((idxCN +3));
+            string nameAcc1 = AccountName.Substring(0, idxAcc);
+            return ((nameAcc1.ToUpper() == Name) || (AccountID.ToUpper() == Name));
+        }
         if ((idxAcc == -1) || (idxOrg == -1))   // can happen if no recip table
         {
             return false;

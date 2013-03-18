@@ -18,7 +18,7 @@ public class ModifyMeeting extends CalendarWorkWeekTest {
 
 	public ModifyMeeting() {
 		logger.info("New "+ ModifyMeeting.class.getCanonicalName());
-		
+		super.startingPage = app.zPageCalendar;
 	}
 	
 	@Bugs(ids = "69132")
@@ -70,6 +70,7 @@ public class ModifyMeeting extends CalendarWorkWeekTest {
         apptForm.zFillField(Field.Attendees, editApptAttendee1);
         apptForm.zFillField(Field.Body, editApptBody);
         apptForm.zToolbarPressButton(Button.B_SEND);
+        SleepUtil.sleepLong(); //importFromSOAP fails due to fast execution
         
         // Use GetAppointmentRequest to verify the changes are saved
         AppointmentItem modifyAppt = AppointmentItem.importFromSOAP(ZimbraAccount.AccountA(), "subject:("+ editApptSubject +")");

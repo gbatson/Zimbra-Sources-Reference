@@ -191,13 +191,13 @@ function() {
         var prefEndDate   = this._getPrefDate(ZmSetting.VACATION_UNTIL);
         if ((prefStartDate != null) && (prefEndDate != null)) {
             var startDate = new Date(prefStartDate);
-            startDate.setHours(0,0,0,0);
+            startDate.setHours(0, 0, 0, 0);  //we set this just to compare - took me a while to figure out
             var endDate = new Date(prefEndDate);
-            endDate.setHours(23,59,59,0);
+            endDate.setHours(23, 59, 59, 0); //we set this just to compare.
             this._initialAllDayFlag = ((prefStartDate.getTime() == startDate.getTime()) &&
                                        (prefEndDate.getTime()   == endDate.getTime()));
         } else {
-            this._initialAllDayFlag = false;
+            this._initialAllDayFlag = true;
         }
         this._allDayCheckbox.setSelected(this._initialAllDayFlag);
         this._updateOriginalValue(ZmSetting.VACATION_DURATION_ALL_DAY);

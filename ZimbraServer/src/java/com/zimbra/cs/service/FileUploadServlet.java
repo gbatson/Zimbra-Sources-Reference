@@ -334,8 +334,10 @@ public class FileUploadServlet extends ZimbraServlet {
         try {
             // store the fetched file as a normal upload
             ServletFileUpload upload = getUploader(limit);
+            long sizeMax = upload.getSizeMax();
             fi = upload.getFileItemFactory().createItem("upload", contentType, false, filename);
-            long size = ByteUtil.copy(is, true, fi.getOutputStream(), true, upload.getSizeMax() + 1);
+            // sizeMax=-1 means "no limit"
+            long size = ByteUtil.copy(is, true, fi.getOutputStream(), true, sizeMax < 0 ? sizeMax : sizeMax + 1);
             if (upload.getSizeMax() >= 0 && size > upload.getSizeMax()) {
                 mLog.info("Exceeded maximum upload size of " + upload.getSizeMax() + " bytes");
                 throw MailServiceException.UPLOAD_TOO_LARGE(filename, "upload too large");
@@ -604,7 +606,7 @@ public class FileUploadServlet extends ZimbraServlet {
         try {
             // write the upload to disk, but make sure not to exceed the permitted max upload size
             long size = ByteUtil.copy(req.getInputStream(), false, fi.getOutputStream(), true, upload.getSizeMax() * 3);
-            if (size > upload.getSizeMax()) {
+            if ((upload.getSizeMax() >= 0 /* -1 would mean "no limit" */) && (size > upload.getSizeMax())) {
                 mLog.debug("handlePlainUpload(): deleting %s", fi);
                 fi.delete();
                 mLog.info("Exceeded maximum upload size of " + upload.getSizeMax() + " bytes: " + acct.getId());
@@ -718,9 +720,17 @@ public class FileUploadServlet extends ZimbraServlet {
         long maxSize = DEFAULT_MAX_SIZE;
         try {
             if (limitByFileUploadMaxSize) {
-                maxSize = Provisioning.getInstance().getLocalServer().getLongAttr(Provisioning.A_zimbraFileUploadMaxSize, DEFAULT_MAX_SIZE);
+                maxSize = Provisioning.getInstance().getLocalServer().getLongAttr(
+                        Provisioning.A_zimbraFileUploadMaxSize, DEFAULT_MAX_SIZE);
             } else {
-                maxSize = Provisioning.getInstance().getConfig().getLongAttr(Provisioning.A_zimbraMtaMaxMessageSize, DEFAULT_MAX_SIZE);
+                maxSize = Provisioning.getInstance().getConfig().getLongAttr(
+                        Provisioning.A_zimbraMtaMaxMessageSize, DEFAULT_MAX_SIZE);
+                if (maxSize == 0) {
+                    /* zimbraMtaMaxMessageSize=0 means "no limit".  The return value from this function gets used
+                     * by FileUploadBase "sizeMax" where "-1" means "no limit"
+                     */
+                    maxSize = -1;
+                }
             }
         } catch (ServiceException e) {
             mLog.error("Unable to read " +

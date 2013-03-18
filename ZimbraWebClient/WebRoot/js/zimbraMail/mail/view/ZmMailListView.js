@@ -216,6 +216,21 @@ function() {
 	return !this._controller.isReadingPaneOnRight();
 };
 
+
+ZmMailListView.prototype._getExtraStyle =
+function(item) {
+	if (!appCtxt.get(ZmSetting.COLOR_MESSAGES)) {
+		return null;
+	}
+	var color = item.getColor && item.getColor();
+	if (!color) {
+		return null;
+	}
+
+	return Dwt.createLinearGradientCss(AjxColor.lighten(color, 0.75), AjxColor.lighten(color, 0.25), "v");
+};
+
+
 ZmMailListView.prototype._getAbridgedContent =
 function(item, colIdx) {
 	// override me
@@ -515,7 +530,8 @@ function(defaultColumnSort) {
 			// set the received column name based on search folder
 			colLabel = ZmMsg.received;
 			if (this._isOutboundFolder()) {
-				colLabel = "&nbsp;" + (this._folderId == ZmFolder.ID_DRAFTS) ? ZmMsg.lastSaved : ZmMsg.sentAt;
+				colLabel = (this._folderId == ZmFolder.ID_DRAFTS) ? ZmMsg.lastSaved : ZmMsg.sentAt;
+				colLabel = "&nbsp;" + colLabel;
 			}
 		}
 		else if (activeSortBy && ZmMailListView.SORTBY_HASH[activeSortBy]){
@@ -1001,7 +1017,8 @@ function(ev) {
 		return;
 	}
 
-	if (!this.isMultiColumn() && (ev.event == ZmEvent.E_TAGS || ev.event == ZmEvent.E_REMOVE_ALL)) {
+	if ((!this.isMultiColumn() || appCtxt.get(ZmSetting.COLOR_MESSAGES))
+			&& (ev.event == ZmEvent.E_TAGS || ev.event == ZmEvent.E_REMOVE_ALL)) {
 		DBG.println(AjxDebug.DBG2, "ZmMailListView: TAG");
 		this.redrawItem(item);
 		ev.handled = true;
@@ -1448,6 +1465,7 @@ function(item, index, skipNotify, itemIndex) {
                 headerDiv = this._getSectionHeaderDiv(group, section);
                 this._addRow(headerDiv, index);
             }
+			index = parseInt(index) || 0;  //check for NaN index
             this._addRow(div, index+1); //account for header
 
 		}

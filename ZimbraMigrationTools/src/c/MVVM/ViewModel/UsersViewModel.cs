@@ -34,6 +34,7 @@ public class UsersViewModel: BaseViewModel
         this.MustChangePassword = false;
         this.EnablePopButtons = true;
         this.DomainsFilledIn = false;
+        this.CsvDelimiter = ",";
     }
 
     // a bit of a hack, but with the LDAP Browser now being controlled by the UsersView,
@@ -79,7 +80,17 @@ public class UsersViewModel: BaseViewModel
             {
                 uname = uname.Substring(0, uname.IndexOf("@"));
             }
-            UsersViewModel uvm = new UsersViewModel(displayname, uname);
+
+            UsersViewModel uvm;
+
+            if (uname.CompareTo(displayname) == 0)
+            {
+                 uvm = new UsersViewModel(displayname, uname);
+            }
+            else
+            {
+                uvm = new UsersViewModel(uname, uname);
+            }
             uvm.AddOPInfo(new ObjectPickerInfo(displayname, givenname, sn, zfp));
             UsersList.Add(uvm);
 
@@ -108,6 +119,39 @@ public class UsersViewModel: BaseViewModel
         fDialog.Filter = "User Map Files|*.xml;*.csv";
         fDialog.CheckFileExists = true;
         fDialog.Multiselect = false;
+
+       // string delimiter = ",";
+        // /
+        // Domain information is stored in the xml and not in  the usermap.
+        // will have to revisit
+        
+        System.Xml.Serialization.XmlSerializer reader =
+            new System.Xml.Serialization.XmlSerializer(typeof(Config));
+        if (File.Exists(scheduleViewModel.GetConfigFile()))
+        {
+            System.IO.StreamReader fileRead = new System.IO.StreamReader(
+                scheduleViewModel.GetConfigFile());
+
+            Config Z11 = new Config();
+
+            Z11 = (Config)reader.Deserialize(fileRead);
+            fileRead.Close();
+
+            CSVDelimiter = Z11.AdvancedImportOptions.CSVDelimiter;
+            if (CSVDelimiter == null)
+            {
+                CSVDelimiter = ",";
+            }
+
+            ZimbraDomain = Z11.UserProvision.DestinationDomain;
+            if (DomainList.Count > 0)
+                CurrentDomainSelection = (ZimbraDomain == null) ? 0 :
+                    DomainList.IndexOf(ZimbraDomain);
+
+            else
+                DomainList.Add(ZimbraDomain);
+
+        }
         if (fDialog.ShowDialog() == true)
         {
             int lastDot = fDialog.FileName.LastIndexOf(".");
@@ -145,7 +189,8 @@ public class UsersViewModel: BaseViewModel
                                 string[] row;
                                 while ((line = readFile.ReadLine()) != null)
                                 {
-                                    row = line.Split(',');
+                                    row = line.Split(CSVDelimiter.ToCharArray());
+                                    //row = line.Split(',');
                                     parsedData.Add(row);
                                 }
                                 readFile.Close();
@@ -192,7 +237,7 @@ public class UsersViewModel: BaseViewModel
                                     tempuser.ChangePWD = Convert.ToBoolean(strres[2]);
                                     // tempuser.PWDdefault = strres[3];
                                     // string result = tempuser.UserName + "," + tempuser.MappedName +"," + tempuser.ChangePWD + "," + tempuser.PWDdefault;
-                                    string result = tempuser.Username + "," + tempuser.MappedName;
+                                    string result = tempuser.Username + CSVDelimiter /*","*/  + tempuser.MappedName;
 
                                     Username = strres[0];
                                     MappedName = strres[1];
@@ -218,7 +263,7 @@ public class UsersViewModel: BaseViewModel
                     // Domain information is stored in the xml and not in  the usermap.
                     // will have to revisit
 
-                    System.Xml.Serialization.XmlSerializer reader =
+                   /* System.Xml.Serialization.XmlSerializer reader =
                         new System.Xml.Serialization.XmlSerializer(typeof (Config));
                     if (File.Exists(scheduleViewModel.GetConfigFile()))
                     {
@@ -229,6 +274,8 @@ public class UsersViewModel: BaseViewModel
 
                         Z11 = (Config)reader.Deserialize(fileRead);
                         fileRead.Close();
+                    }*/
+                   /* {
                         ZimbraDomain = Z11.UserProvision.DestinationDomain;
                         if (DomainList.Count > 0)
                             CurrentDomainSelection = (ZimbraDomain == null) ? 0 :
@@ -236,7 +283,7 @@ public class UsersViewModel: BaseViewModel
 
                         else
                             DomainList.Add(ZimbraDomain);
-                    }
+                    }*/
                     scheduleViewModel.SetUsermapFile(fDialog.FileName);
                 }
             }
@@ -286,12 +333,35 @@ public class UsersViewModel: BaseViewModel
     {
         if (!ValidateUsersList(true))
             return;
+
+        ScheduleViewModel scheduleViewModel =
+            ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);
+
+        System.Xml.Serialization.XmlSerializer reader =
+            new System.Xml.Serialization.XmlSerializer(typeof(Config));
+        if (File.Exists(scheduleViewModel.GetConfigFile()))
+        {
+            System.IO.StreamReader fileRead = new System.IO.StreamReader(
+                scheduleViewModel.GetConfigFile());
+
+            Config Z11 = new Config();
+
+            Z11 = (Config)reader.Deserialize(fileRead);
+            fileRead.Close();
+
+            CSVDelimiter = Z11.AdvancedImportOptions.CSVDelimiter;
+        }
         List<Users> ListofUsers = new List<Users>();
         for (int i = 0; i < UsersList.Count; i++)
         {
-            string users = UsersList[i].Username + ',' + UsersList[i].MappedName;
+            if (CSVDelimiter == null)
+            {
+                CSVDelimiter = ",";
+            }
+            string users = UsersList[i].Username + CSVDelimiter/*','*/ + UsersList[i].MappedName;
 
-            string[] nameTokens = users.Split(',');
+//            string[] nameTokens = users.Split(',');
+            string[] nameTokens = users.Split(CSVDelimiter.ToCharArray());
 
             Users tempUser = new Users();
 
@@ -311,7 +381,8 @@ public class UsersViewModel: BaseViewModel
             ListofUsers.Add(tempUser);
         }
 
-        string resultcsv = Users.ToCsv<Users>(",", ListofUsers);
+        //string resultcsv = Users.ToCsv<Users>(",", ListofUsers);
+        string resultcsv = Users.ToCsv<Users>(CSVDelimiter, ListofUsers);
 
         Microsoft.Win32.SaveFileDialog fDialog = new Microsoft.Win32.SaveFileDialog();
         fDialog.Filter = "User Map Files|*.csv";
@@ -319,8 +390,8 @@ public class UsersViewModel: BaseViewModel
         // fDialog.CheckFileExists = true;
         // fDialog.Multiselect = false;
 
-        ScheduleViewModel scheduleViewModel =
-            ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);
+        /*ScheduleViewModel scheduleViewModel =
+            ((ScheduleViewModel)ViewModelPtrs[(int)ViewType.SCHED]);*/
 
         if (fDialog.ShowDialog() == true)
         {
@@ -560,6 +631,7 @@ public class UsersViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("MappedName"));
         }
     }
+
     public string ZimbraDomain {
         get { return m_config.UserProvision.DestinationDomain; }
         set
@@ -601,6 +673,14 @@ public class UsersViewModel: BaseViewModel
             OnPropertyChanged(new PropertyChangedEventArgs("MinusEnabled"));
         }
     }
+    private string CsvDelimiter;
+
+    public string CSVDelimiter
+    {
+        get { return CsvDelimiter; }
+        set { CsvDelimiter = value; }
+    }
+
     private bool isProvisioned;
     public bool IsProvisioned {
         get { return isProvisioned; }

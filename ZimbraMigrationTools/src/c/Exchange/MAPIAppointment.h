@@ -73,9 +73,15 @@ private:
     wstring m_pHtmlFile;
     vector<MAPIAppointment*> m_vExceptions;
     wstring m_pExceptionType;
+	Zimbra::Mail::TimeZone::OlkTimeZone _olkTz;
+    LPWSTR _pTzString;
+	Zimbra::MAPI::MAPIStore *m_mapiStore;
+	Zimbra::Mail::TimeZone *pInvTz;
 
+	IAddrBook *m_pAddrBook;
+	HRESULT UpdateAttendeeFromEntryId(Attendee &pAttendee,SBinary &eid);
 public:
-    MAPIAppointment(Zimbra::MAPI::MAPISession &session, Zimbra::MAPI::MAPIMessage &mMessage, int exceptionType);
+    MAPIAppointment(Zimbra::MAPI::MAPISession &session, Zimbra::MAPI::MAPIStore &store, Zimbra::MAPI::MAPIMessage &mMessage, int exceptionType);
     ~MAPIAppointment();
     HRESULT InitNamedPropsForAppt();
     HRESULT SetMAPIAppointmentValues();

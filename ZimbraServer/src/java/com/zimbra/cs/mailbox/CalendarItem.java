@@ -72,6 +72,7 @@ import com.zimbra.cs.index.LuceneFields;
 import com.zimbra.cs.index.analysis.FieldTokenStream;
 import com.zimbra.cs.index.analysis.RFC822AddressTokenStream;
 import com.zimbra.cs.mailbox.MailItem.CustomMetadata.CustomMetadataList;
+import com.zimbra.cs.mailbox.Mailbox.SetCalendarItemData;
 import com.zimbra.cs.mailbox.calendar.Alarm;
 import com.zimbra.cs.mailbox.calendar.CalendarMailSender;
 import com.zimbra.cs.mailbox.calendar.IcalXmlStrMap;
@@ -495,7 +496,7 @@ public abstract class CalendarItem extends MailItem {
         data.setSubject(subject);
         data.metadata = encodeMetadata(DEFAULT_COLOR_RGB, 1, 1, custom, uid, startTime, endTime, recur,
                                        invites, firstInvite.getTimeZoneMap(), new ReplyList(), null);
-        data.contentChanged(mbox);
+        data.contentChanged(mbox, false);
 
         if (!firstInvite.hasRecurId()) {
             ZimbraLog.calendar.info(
@@ -537,7 +538,7 @@ public abstract class CalendarItem extends MailItem {
         }
         item.processPartStat(firstInvite, pm != null ? pm.getMimeMessage() : null, true, defaultPartStat);
         item.finishCreation(null);
-
+        folder.updateHighestMODSEQ();
         if (pm != null) {
             item.createBlob(pm, firstInvite);
         }
@@ -1391,7 +1392,7 @@ public abstract class CalendarItem extends MailItem {
             method.equals(ICalTok.CANCEL.toString()) ||
             method.equals(ICalTok.PUBLISH.toString())) {
             return processNewInviteRequestOrCancel(pm, invite, folderId, nextAlarm,
-                                                   preserveAlarms, replaceExistingInvites);
+                                                   preserveAlarms, replaceExistingInvites, false);
         } else if (method.equals(ICalTok.REPLY.toString())) {
             return processNewInviteReply(invite, null);
         } else if (method.equals(ICalTok.COUNTER.toString())) {
@@ -1401,6 +1402,23 @@ public abstract class CalendarItem extends MailItem {
         if (!method.equals(ICalTok.DECLINECOUNTER.toString()))
             ZimbraLog.calendar.warn("Unsupported METHOD " + method);
         return false;
+    }
+    
+    void processNewInviteExceptions(List<SetCalendarItemData> scidList,
+            int folderId, long nextAlarm,
+            boolean preserveAlarms, boolean replaceExistingInvites) throws ServiceException {
+        for (SetCalendarItemData scid : scidList) {
+            processNewInviteRequestOrCancel(scid.message, scid.invite, folderId, nextAlarm,
+                                                preserveAlarms, replaceExistingInvites, true);
+        }
+        // now update the recurrence.
+        updateRecurrence(nextAlarm);
+        // persist the data to the DB.
+        try {
+            setContent(null, null);
+        } catch (IOException e) {
+            throw ServiceException.FAILURE("IOException", e);
+        }
     }
 
     /**
@@ -1417,13 +1435,28 @@ public abstract class CalendarItem extends MailItem {
         else
             return r2 == null;
     }
+    
+    /**
+     * 
+     * @param pm
+     * @param newInvite
+     * @param folderId
+     * @param nextAlarm
+     * @param preserveAlarms
+     * @param discardExistingInvites
+     * @param batch - if true this call will not update the recurrence and may not persist to the data. 
+     *                The caller needs to persist the data by calling setContent().
+     * @return
+     * @throws ServiceException
+     */
 
     private boolean processNewInviteRequestOrCancel(ParsedMessage pm,
                                                     Invite newInvite,
                                                     int folderId,
                                                     long nextAlarm,
                                                     boolean preserveAlarms,
-                                                    boolean discardExistingInvites)
+                                                    boolean discardExistingInvites,
+                                                    boolean batch)
     throws ServiceException {
         // trace logging
         if (!newInvite.hasRecurId())
@@ -1974,11 +2007,6 @@ public abstract class CalendarItem extends MailItem {
             mInvites.remove(i.intValue());
         }
 
-        if (getFolderId() != folderId) {
-            // Move appointment/task to a different folder.
-            move(folder);
-        }
-
         // Check if there are any surviving non-cancel invites after applying the update.
         // Also check for changes in flags.
         int oldFlags = mData.getFlags();
@@ -2021,7 +2049,7 @@ public abstract class CalendarItem extends MailItem {
                 modifiedCalItem = true;
 
             if (modifiedCalItem) {
-                if (!updateRecurrence(nextAlarm)) {
+                if (!batch && !updateRecurrence(nextAlarm)) {
                     // no default invite!  This appointment/task no longer valid
                     ZimbraLog.calendar.warn(
                             "Invalid state: deleting calendar item " + getId() +
@@ -2036,6 +2064,11 @@ public abstract class CalendarItem extends MailItem {
                                         pm != null ? pm.getMimeMessage() : null,
                                         false,
                                         newInvite.getPartStat());
+                    }
+
+                    if (getFolderId() != folderId) {
+                        // Move appointment/task to a different folder.
+                        move(folder);
                     }
 
                     // Did the appointment have a blob before the change?
@@ -2069,7 +2102,9 @@ public abstract class CalendarItem extends MailItem {
                         try {
                             // call setContent here so that MOD_CONTENT is updated...this is required
                             // for the index entry to be correctly updated (bug 39463)
-                            setContent(null, null);
+                            if (!batch) {
+                                setContent(null, null);
+                            }
                         } catch (IOException e) {
                             throw ServiceException.FAILURE("IOException", e);
                         }
@@ -2093,6 +2128,10 @@ public abstract class CalendarItem extends MailItem {
                     return true;
                 }
             } else {
+                if (getFolderId() != folderId) {
+                    // Move appointment/task to a different folder.
+                    move(folder);
+                }
                 return false;
             }
         }
@@ -3203,33 +3242,7 @@ public abstract class CalendarItem extends MailItem {
     }
 
     public MimeMessage getMimeMessage() throws ServiceException {
-        InputStream is = null;
-        MimeMessage mm = null;
-        try {
-            is = getRawMessage();
-            if (is == null)
-                return null;
-            mm = new ZMimeMessage(JMSession.getSession(), is);
-            ByteUtil.closeStream(is);
-
-            try {
-                for (Class<? extends MimeVisitor> visitor : MimeVisitor.getConverters())
-                    visitor.newInstance().accept(mm);
-            } catch (Exception e) {
-                // If the conversion bombs for any reason, revert to the original
-                ZimbraLog.mailbox.warn(
-                    "MIME converter failed for message " + getId(), e);
-                is = getRawMessage();
-                mm = new ZMimeMessage(JMSession.getSession(), is);
-                ByteUtil.closeStream(is);
-            }
-
-            return mm;
-        } catch (MessagingException e) {
-            throw ServiceException.FAILURE("MessagingException while getting MimeMessage for item " + mId, e);
-        } finally {
-            ByteUtil.closeStream(is);
-        }
+        return MessageCache.getMimeMessage(this, !DebugConfig.disableMimeConvertersForCalendarBlobs);
     }
 
     /**
@@ -3271,37 +3284,26 @@ public abstract class CalendarItem extends MailItem {
     private MimeBodyPart findBodyBySubId(int subId) throws ServiceException {
         if (getSize() <= 0)
             return null;
-        InputStream is = null;
         MimeMessage mm = null;
         try {
-            is = getRawMessage();
-            if (is == null)
-                return null;
-            mm = new Mime.FixedMimeMessage(JMSession.getSession(), is);
-            ByteUtil.closeStream(is);
-
-            if (!DebugConfig.disableMimeConvertersForCalendarBlobs) {
-                try {
-                    for (Class<? extends MimeVisitor> visitor : MimeVisitor.getConverters())
-                        visitor.newInstance().accept(mm);
-                } catch (Exception e) {
-                    // If the conversion bombs for any reason, revert to the original
-                    ZimbraLog.mailbox.warn("MIME converter failed for message " + getId(), e);
-                    is = getRawMessage();
-                    mm = new ZMimeMessage(JMSession.getSession(), is);
-                    ByteUtil.closeStream(is);
-                }
-            }
-
+            mm = MessageCache.getMimeMessage(this, !DebugConfig.disableMimeConvertersForCalendarBlobs);
             // It should be multipart/digest.
             MimeMultipart mmp;
-            Object obj = mm.getContent();
-            if (obj instanceof MimeMultipart)
-                mmp = (MimeMultipart) obj;
-            else
-                throw ServiceException.FAILURE(
+            Object obj = null;
+            try {
+                obj = mm.getContent();
+                if (obj instanceof MimeMultipart) {
+                    mmp = (MimeMultipart) obj;
+                } else {
+                    throw ServiceException.FAILURE(
                         "Expected MimeMultipart, but got " + obj.getClass().getName() +
                         ": id=" + mId + ", content=" + obj.toString(), null);
+                }
+            } finally {
+                if (obj instanceof InputStream) {
+                    ByteUtil.closeStream((InputStream)obj);
+                }
+            }
 
             // find the matching parts...
             int numParts = mmp.getCount();
@@ -3318,8 +3320,6 @@ public abstract class CalendarItem extends MailItem {
             throw ServiceException.FAILURE("IOException while getting MimeMessage for item " + mId, e);
         } catch (MessagingException e) {
             throw ServiceException.FAILURE("MessagingException while getting MimeMessage for item " + mId, e);
-        } finally {
-            ByteUtil.closeStream(is);
         }
     }
 
@@ -4058,7 +4058,11 @@ public abstract class CalendarItem extends MailItem {
     }
 
     public void snapshotRevision() throws ServiceException {
-        addRevision(false);
+        snapshotRevision(true);
+    }
+    
+    public void snapshotRevision(boolean updateFolderMODSEQ) throws ServiceException {
+        addRevision(false, updateFolderMODSEQ);
     }
 
     @Override

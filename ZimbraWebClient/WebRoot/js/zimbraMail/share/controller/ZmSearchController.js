@@ -553,7 +553,13 @@ function(params, noRender, callback, errorCallback) {
 	params.sortBy = params.sortBy || this._getSuitableSortBy(types);
 	params.types = types;
 	var search = new ZmSearch(params);
-	
+
+	// force drafts folder into msg view
+		if (searchFor === ZmId.SEARCH_MAIL && !params.isViewSwitch && search.folderId && Number(search.folderId) === ZmFolder.ID_DRAFTS) {
+		search.types = new AjxVector([ZmItem.MSG]);
+		search.isDefaultToMessageView = true;
+	}
+
 	var respCallback = this._handleResponseDoSearch.bind(this, search, noRender, callback, params.noUpdateOverview);
 	if (!errorCallback) {
 		errorCallback = this._handleErrorDoSearch.bind(this, search);
@@ -739,6 +745,7 @@ function(ev) {
  * @param {string}		origin						indicates what initiated the search
  * @param {string}		sessionId					session ID of search results tab (if search came from one)
  * @param {boolean}		skipUpdateSearchToolbar     don't update the search toolbar (e.g. from the ZmDumpsterDialog where the search is called from its own search toolbar
+ * @param {String}		sortBy
  * 
  * @private
  */
@@ -769,6 +776,7 @@ function(params) {
 			origin:						params.origin,
 			sessionId:					params.sessionId,
 			errorCallback:				params.errorCallback,
+			sortBy:						params.sortBy,
 			isEmpty:					params.isEmpty || !queryString
 		};
 		this.search(searchParams);

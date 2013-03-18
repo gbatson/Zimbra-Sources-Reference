@@ -1231,8 +1231,9 @@ function(msg, force) {
 		this._expanded = this._isMatchingMsg = msg.inHitList;
 	}
 	else {
-		this._expanded = this._forceExpand || (!this._forceCollapse && msg.isUnread);
+		this._expanded = !this._forceCollapse && msg.isUnread;
 	}
+	this._expanded = this._expanded || this._forceExpand;
 	if (this._expanded) {
 		this._convView._hasBeenExpanded[msg.id] = true;
 	}
@@ -2204,7 +2205,7 @@ function(ev) {
 	// only tags can be dropped on us
 	var data = ev.srcData.data;
 	if (ev.action == DwtDropEvent.DRAG_ENTER) {
-		ev.doIt = (item && item.isZmItem && !item.isShared() && this._dropTgt.isValidTarget(data));
+		ev.doIt = (item && item.isZmItem && !item.isReadOnly() && this._dropTgt.isValidTarget(data));
         // Bug: 44488 - Don't allow dropping tag of one account to other account's item
         if (appCtxt.multiAccounts) {
            var listAcctId = item ? item.getAccount().id : null;

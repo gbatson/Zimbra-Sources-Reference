@@ -7,7 +7,6 @@ import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import com.zimbra.common.soap.Element;
-import com.zimbra.qa.selenium.framework.core.DevEnvironment;
 
 
 
@@ -53,8 +52,53 @@ public class ZimbraResource extends ZimbraAccount {
 	}};
 
 
+	public boolean exists() throws HarnessException {
+		
+		// Check if the account exists
+		ZimbraAdminAccount.GlobalAdmin().soapSend(
+				"<GetCalendarResourceRequest xmlns='urn:zimbraAdmin'>" +
+					"<calresource by='name'>"+ EmailAddress +"</calresource>" +
+				"</GetCalendarResourceRequest>");
+		
+		Element[] getCalendarResourceResponse = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//admin:GetCalendarResourceResponse");
+		
+		if ( (getCalendarResourceResponse == null) || (getCalendarResourceResponse.length == 0) ) {
+			
+			logger.debug("Resource does not exist");
+			return (false);
+			
+		}
+		
+		// Reset the account settings based on the response
+		ZimbraId = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource", "id");
+		ZimbraMailHost = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource/admin:a[@n='zimbraMailHost']", null);
+
+		// If the adminHost value is set, use that value for the ZimbraMailHost
+		String adminHost = ZimbraSeleniumProperties.getStringProperty("adminHost", null);
+		if ( adminHost != null ) {
+			ZimbraMailHost = adminHost;
+		}
+
+		return (true);
+	}
+
 	public ZimbraAccount provision() {
 		try {
+			
+			// Check if the account already exists
+			// If yes, don't provision again
+			//
+			if ( exists() ) {
+				logger.info(EmailAddress + " already exists.  Not provisioning again.");
+				return (this);
+			}
+
+			
+			// Make sure the domain exists
+			ZimbraDomain domain = new ZimbraDomain(EmailAddress.split("@")[1]);
+			domain.provision();
+			
+			
 			
 			Map<String, String> attrs = null;
 			StringBuilder prefs = null;
@@ -82,30 +126,35 @@ public class ZimbraResource extends ZimbraAccount {
 					"</CreateCalendarResourceRequest>");
 			
 			Element[] createCalendarResourceResponse = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//admin:CreateCalendarResourceResponse");
-			if ( (createCalendarResourceResponse == null) || (createCalendarResourceResponse.length == 0) ) {
-				logger.error("Error occured during resource provisioning, perhaps resource already exists: "+ EmailAddress);
-				ZimbraAdminAccount.GlobalAdmin().soapSend(
-						"<GetCalendarResourceRequest xmlns='urn:zimbraAdmin'>" +
-							"<calresource by='name'>"+ EmailAddress +"</calresource>" +
-						"</GetCalendarResourceRequest>");
-				Element[] getCalendarResourceResponse = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//admin:GetCalendarResourceResponse");
-				if ( (getCalendarResourceResponse == null) || (getCalendarResourceResponse.length == 0)) {
-					logger.error("Error occured during get account provisioning.  Now I'm really confused");
-				} else {
-					ZimbraId = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource", "id");
-					ZimbraMailHost = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource/admin:a[@n='zimbraMailHost']", null);
+			
+			if ( (createCalendarResourceResponse == null) || (createCalendarResourceResponse.length == 0)) {
+
+				Element[] soapFault = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//soap:Fault");
+				if ( soapFault != null && soapFault.length > 0 ) {
+				
+					String error = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//zimbra:Code", null);
+					throw new HarnessException("Unable to create account: "+ error);
+					
 				}
 				
-			} else {
-				ZimbraId = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource", "id");
-				ZimbraMailHost = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource/admin:a[@n='zimbraMailHost']", null);
+				throw new HarnessException("Unknown error when provisioning account");
+				
 			}
-			
-			// Start: Dev environment hack
-			if ( DevEnvironment.isUsingDevEnvironment() ) {
-				ZimbraMailHost = "localhost";
+
+
+			// Set the account settings based on the response
+			ZimbraId = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource", "id");
+			ZimbraMailHost = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:calresource/admin:a[@n='zimbraMailHost']", null);
+
+			// If the adminHost value is set, use that value for the ZimbraMailHost
+			String adminHost = ZimbraSeleniumProperties.getStringProperty("adminHost", null);
+			if ( adminHost != null ) {
+				ZimbraMailHost = adminHost;
 			}
-			// End: Dev environment hack
+
+
+			// Sync the GAL to put the account into the list
+			domain.syncGalAccount();
 
 			
 		} catch (HarnessException e) {
@@ -116,4 +165,5 @@ public class ZimbraResource extends ZimbraAccount {
 		return (this);
 	}
 	
-}
+	}
+

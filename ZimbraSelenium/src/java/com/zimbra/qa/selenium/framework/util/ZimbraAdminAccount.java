@@ -1,10 +1,9 @@
 package com.zimbra.qa.selenium.framework.util;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
+import org.apache.log4j.*;
 
-import com.zimbra.qa.selenium.framework.core.DevEnvironment;
+import com.zimbra.common.soap.Element;
+
 
 
 public class ZimbraAdminAccount extends ZimbraAccount {
@@ -13,41 +12,91 @@ public class ZimbraAdminAccount extends ZimbraAccount {
 	public ZimbraAdminAccount(String email) {
 		EmailAddress = email;
 		Password = ZimbraSeleniumProperties.getStringProperty("adminPwd", "test123");
-		ZimbraMailHost = EmailAddress.split("@")[1];
+		
+		// In the dev environment, they may need a config value to override
+		// the default, so use that value here
+		ZimbraMailHost = ZimbraSeleniumProperties.getStringProperty("adminHost", EmailAddress.split("@")[1]);
 
-		// Start: Dev environment hack
-		if ( DevEnvironment.isUsingDevEnvironment() ) {
-			ZimbraMailHost = "localhost";
-		}
-		// End: Dev environment hack
 	}
+
 
 	/**
 	 * Creates the account on the ZCS using CreateAccountRequest
 	 * zimbraIsAdminAccount is set to TRUE
 	 */
 	public ZimbraAccount provision() {
+		
 		try {
+			
+			// Check if the account already exists
+			// If yes, don't provision again
+			//
+			if ( exists() ) {
+				logger.info(EmailAddress + " already exists.  Not provisioning again.");
+				return (this);
+			}
+
+			// Make sure domain exists
+			ZimbraDomain domain = new ZimbraDomain( EmailAddress.split("@")[1]);
+			domain.provision();
+			
+				
+			// Account does not exist.  Create it now.
 			ZimbraAdminAccount.GlobalAdmin().soapSend(
 					"<CreateAccountRequest xmlns='urn:zimbraAdmin'>" +
-					"<name>"+ EmailAddress +"</name>" +
-					"<password>"+ Password +"</password>" +
-					"<a n='zimbraIsAdminAccount'>TRUE</a>" +
-			"</CreateAccountRequest>");
+						"<name>"+ EmailAddress +"</name>" +
+						"<password>"+ Password +"</password>" +
+						"<a n='zimbraIsAdminAccount'>TRUE</a>" +
+					"</CreateAccountRequest>");
+			
+			Element[] createAccountResponse = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//admin:CreateAccountResponse");
+
+
+			if ( (createAccountResponse == null) || (createAccountResponse.length == 0)) {
+
+				Element[] soapFault = ZimbraAdminAccount.GlobalAdmin().soapSelectNodes("//soap:Fault");
+				if ( soapFault != null && soapFault.length > 0 ) {
+				
+					String error = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//zimbra:Code", null);
+					throw new HarnessException("Unable to create account: "+ error);
+					
+				}
+				
+				throw new HarnessException("Unknown error when provisioning account");
+				
+			}
+
+			// Set the account settings based on the response
 			ZimbraId = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:account", "id");
 			ZimbraMailHost = ZimbraAdminAccount.GlobalAdmin().soapSelectValue("//admin:account/admin:a[@n='zimbraMailHost']", null);
 
-			// Start: Dev environment hack
-			if ( DevEnvironment.isUsingDevEnvironment() ) {
-				ZimbraMailHost = "localhost";
+			// If the adminHost value is set, use that value for the ZimbraMailHost
+			String adminHost = ZimbraSeleniumProperties.getStringProperty("adminHost", null);
+			if ( adminHost != null ) {
+				ZimbraMailHost = adminHost;
 			}
-			// End: Dev environment hack
+
+			// If SOAP trace logging is specified, turn it on
+			if ( ZimbraSeleniumProperties.getStringProperty("soap.trace.enabled", "false").toLowerCase().equals("true") ) {
+				
+				ZimbraAdminAccount.GlobalAdmin().soapSend(
+							"<AddAccountLoggerRequest xmlns='urn:zimbraAdmin'>"
+						+		"<account by='name'>"+ EmailAddress + "</account>"
+						+		"<logger category='zimbra.soap' level='trace'/>"
+						+	"</AddAccountLoggerRequest>");
+
+			}
+
+
+			// Sync the GAL to put the account into the list
+			domain.syncGalAccount();
 
 		} catch (HarnessException e) {
 			logger.error("Unable to provision account: "+ EmailAddress);
 			ZimbraId = null;
 			ZimbraMailHost = null;
 		}
+		
 		return (this);
 	}
 

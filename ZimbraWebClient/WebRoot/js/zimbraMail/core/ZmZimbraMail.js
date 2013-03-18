@@ -729,8 +729,9 @@ function(params, result) {
 				sc.resetSearchToolbar();
 			}
 
-			var contactListPkg = appCtxt.multiAccounts ? "GetContactsForAllAccounts" : "GetContacts";
-			AjxDispatcher.run(contactListPkg);
+			if (appCtxt.get(ZmSetting.CONTACTS_ENABLED)) {
+				AjxDispatcher.run(appCtxt.multiAccounts ? "GetContactsForAllAccounts" : "GetContacts");
+			}
 	
 			if (appCtxt.get(ZmSetting.OFFLINE_SUPPORTS_MAILTO) && appCtxt.isOffline) {
 				this.handleOfflineMailTo(location.search);
@@ -796,12 +797,9 @@ function(params, result) {
  */
 ZmZimbraMail.prototype.handleTaskComponents =
 function() {
-    // reminder controlled by calendar preferences setting
-	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
-		var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
-		var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
-		AjxTimedAction.scheduleAction(reminderAction, delay);
-	}
+    var reminderAction = new AjxTimedAction(this, this.showTaskReminder);
+    var delay = appCtxt.isOffline ? 0 : ZmTasksApp.REMINDER_START_DELAY;
+    AjxTimedAction.scheduleAction(reminderAction, delay);
 };
 
 /**
@@ -817,14 +815,10 @@ function() {
         AjxTimedAction.scheduleAction(miniCalAction, delay);
 	}
 
-	// reminder controlled by calendar preferences setting
-	if (appCtxt.get(ZmSetting.CAL_REMINDER_WARNING_TIME) != 0) {
-        AjxDispatcher.require(["CalendarCore", "Calendar"]);
-		var reminderAction = new AjxTimedAction(this, this.showReminder);
-		var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
-		AjxTimedAction.scheduleAction(reminderAction, delay);
-	}
-
+    AjxDispatcher.require(["CalendarCore", "Calendar"]);
+    var reminderAction = new AjxTimedAction(this, this.showReminder);
+    var delay = appCtxt.isOffline ? 0 : ZmCalendarApp.REMINDER_START_DELAY;
+    AjxTimedAction.scheduleAction(reminderAction, delay);
 };
 
 /**
@@ -2742,11 +2736,12 @@ function(bStartTimer) {
 
 		DwtEventManager.addListener(DwtEvent.ONMOUSEUP, ZmZimbraMail._userEventHdlr);
 		this._shell.setHandler(DwtEvent.ONMOUSEUP, ZmZimbraMail._userEventHdlr);
-		if (AjxEnv.isIE)
-			this._shell.setHandler(DwtEvent.ONMOUSEDOWN, ZmZimbraMail._userEventHdlr);
-		else
-			window.onkeydown = ZmZimbraMail._userEventHdlr;
-	} else {
+		if (AjxEnv.isIE)  {
+			document.attachEvent("onkeydown", ZmZimbraMail._userEventHdlr);
+		}
+		window.onkeydown = ZmZimbraMail._userEventHdlr;		
+	}
+	else {
 		DBG.println(AjxDebug.DBG3, "INACTIVITY TIMER CANCELED (" + (new Date()).toLocaleString() + ")");
 
 		AjxTimedAction.cancelAction(this._sessionTimerId);
@@ -2754,10 +2749,10 @@ function(bStartTimer) {
 
 		DwtEventManager.removeListener(DwtEvent.ONMOUSEUP, ZmZimbraMail._userEventHdlr);
 		this._shell.clearHandler(DwtEvent.ONMOUSEUP);
-		if (AjxEnv.isIE)
-			this._shell.clearHandler(DwtEvent.ONMOUSEDOWN);
-		else
-			window.onkeydown = null;
+		if (AjxEnv.isIE) {
+			document.detachEvent("onkeydown", ZmZimbraMail._userEventHdlr);
+		}	
+		window.onkeydown = null;
 	}
 };
 
@@ -2880,7 +2875,9 @@ function() {
 
 		ZmZimbraMail._endSession();
 	}
-	
+    if (window.ZmDesktopAlert) {
+        ZmDesktopAlert.closeNotification();
+    }
 	ZmZimbraMail._endSessionDone = true;
 };
 

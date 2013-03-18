@@ -1033,6 +1033,35 @@ ZaItem.hasAnyRight = function (rights, instance) {
 }
 XFormItem.prototype.hasAnyRight = ZaItem.hasAnyRight;
 
+ZaItem.adminHasAnyRight = function (rights) {
+    if(ZaZimbraAdmin.currentAdminAccount.attrs[ZaAccount.A_zimbraIsAdminAccount] == 'TRUE') {
+        return true;
+    }
+
+    if (!rights) {
+        return true;
+    }
+
+    if (!rights instanceof Array) {
+        rights = [rights];
+    }
+
+    var adminAccount = new ZaAccount();
+    adminAccount.load(null, ZaZimbraAdmin.currentAdminId, false, true);
+
+    if (!adminAccount.rights) {
+        return false;
+    }
+
+    for (var i = 0; i < rights.length; i++) {
+        if (adminAccount.rights[rights[i]] === true) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 ZaItem.formatServerTime = function(serverStr) {
 	if(serverStr) {
 		var ajxTKServerStr = serverStr.substring(0,8) + "T" + serverStr.substring(8) ;
@@ -1054,6 +1083,22 @@ ZaItem.getZeroIsUnlimitedItem = function () {
     return item ;
 }
 
+/**
+ * Returns the copyright information for the about screen
+ *
+ * @return {string} copyright string with the end year information
+ */
+ZaItem.getAboutScreenCopyright = function() {
+    var date = new Date();
+    var curYear = date.getFullYear() + "";
+    return AjxMessageFormat.format(ZabMsg.aboutScreenCopyright, [curYear]);
+}
+
+/**
+ * Returns the copyright information for the login screen and the subsequent splash screen
+ *
+ * @return {string} copyright string with the end year information
+ */
 ZaItem.getSplashScreenCopyright = function() {
 	var date = new Date();
 	var curYear = date.getFullYear() + "";

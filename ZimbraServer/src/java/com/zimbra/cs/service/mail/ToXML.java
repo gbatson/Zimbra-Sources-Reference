@@ -447,6 +447,7 @@ public final class ToXML {
                 if (!Strings.isNullOrEmpty(name)) {
                     elem.addAttribute(MailConstants.A_NAME, name);
                 }
+                elem.addAttribute(MailConstants.A_ABS_FOLDER_PATH, folder.getPath());
             }
             if (needToOutput(fields, Change.FOLDER)) {
                 elem.addAttribute(MailConstants.A_FOLDER, ifmt.formatItemId(folder.getFolderId()));
@@ -568,7 +569,7 @@ public final class ToXML {
         transferLongAttribute(elem, mptTarget, MailConstants.A_SIZE);
         elem.addAttribute(MailConstants.A_OWNER_FOLDER_NAME, mptTarget.getAttribute(MailConstants.A_NAME, null));
         String ownerName = elem.getAttribute(MailConstants.A_OWNER_NAME, null);
-        String ownerFolderPath = mptTarget.getAttribute(MailConstants.A_FOLDER_PATH, null);
+        String ownerFolderPath = mptTarget.getAttribute(MailConstants.A_ABS_FOLDER_PATH, null);
         // construct rest url based on owner name and folder name.
         elem.addAttribute(MailConstants.A_REST_URL, getRestUrl(ownerName, ownerFolderPath));
         elem.addAttribute(MailConstants.A_URL, mptTarget.getAttribute(MailConstants.A_URL, null));
@@ -1018,7 +1019,7 @@ public final class ToXML {
     private static Element encodeConversationSummary(Element parent, ItemIdFormatter ifmt, OperationContext octxt,
             Conversation conv, Message msgHit, OutputParticipants output, int fields, boolean alwaysSerialize)
             throws ServiceException {
-        boolean addRecips  = msgHit != null && msgHit.isFromMe() && (output == OutputParticipants.PUT_RECIPIENTS || output == OutputParticipants.PUT_BOTH);
+        boolean addRecips  = msgHit != null && (output == OutputParticipants.PUT_RECIPIENTS || output == OutputParticipants.PUT_BOTH);
         boolean addSenders = (output == OutputParticipants.PUT_BOTH || output == OutputParticipants.PUT_SENDERS) && needToOutput(fields, Change.SENDERS);
 
         Mailbox mbox = conv.getMailbox();
@@ -1743,7 +1744,7 @@ public final class ToXML {
         if (!needToOutput(fields, Change.CONTENT)) {
             return el;
         }
-        boolean addRecips = msg.isFromMe() && (output == OutputParticipants.PUT_RECIPIENTS || output == OutputParticipants.PUT_BOTH);
+        boolean addRecips = (output == OutputParticipants.PUT_RECIPIENTS || output == OutputParticipants.PUT_BOTH);
         boolean addSenders = (output == OutputParticipants.PUT_BOTH || output == OutputParticipants.PUT_SENDERS);
         if (addRecips) {
             addEmails(el, Mime.parseAddressHeader(msg.getRecipients()), EmailType.TO);

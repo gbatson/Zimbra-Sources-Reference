@@ -230,10 +230,12 @@ function(obj) {
         var overviewController = appCtxt.getOverviewController();
         var treeController = overviewController.getTreeController(this.type);
         var overviewId = appCtxt.getCurrentApp().getOverviewId();
-        var treeView = treeController.getTreeView(overviewId);
-        var node = treeView.getTreeItemById(this.id);        
+        var treeView = treeController && treeController.getTreeView(overviewId);
+        var node = treeView && treeView.getTreeItemById(this.id);
         this.noSuchFolder = true;
-        node.setText(this.getName(true));
+        if(node) {
+            node.setText(this.getName(true));
+        }
     }else{
         ZmFolder.prototype.notifyDelete.call(this, obj);
     }
@@ -288,10 +290,10 @@ function() {
 };
 
 ZmCalendar.prototype.getRestUrl =
-function(acct) {
+function(acct, noRemote) {
 
     if(!appCtxt.multiAccounts){
-        return ZmFolder.prototype.getRestUrl.call(this);
+        return ZmFolder.prototype.getRestUrl.call(this, noRemote);
     }
 
 	// return REST URL as seen by server

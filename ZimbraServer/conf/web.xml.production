@@ -18,17 +18,17 @@
 
     <init-param>
      <param-name>delayMs</param-name>
-     <param-value>-1</param-value>
+     <param-value>%%zimbraHttpDosFilterDelayMillis%%</param-value>
+    </init-param>
+
+    <init-param>
+     <param-name>maxRequestsPerSec</param-name>
+     <param-value>%%zimbraHttpDosFilterMaxRequestsPerSec%%</param-value>
     </init-param>
 
     <init-param>
      <param-name>remotePort</param-name>
      <param-value>true</param-value>
-    </init-param>
-    
-    <init-param>
-     <param-name>ipWhitelist</param-name>
-     <param-value>%%zimbraLocalBindAddress%%</param-value>
     </init-param>
     
     <init-param>

@@ -42,7 +42,7 @@ public abstract class ZAttrConfig extends Entry {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: unknown unknown unknown unknown */
+    /* build: 9.0.0_BETA1_1111 pburgu 20130117-1610 */
 
     /**
      * RFC2256: descriptive information
@@ -12533,6 +12533,93 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @return zimbraHttpConnectorMaxIdleTimeMillis, or 60000 if unset
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public int getHttpConnectorMaxIdleTimeMillis() {
+        return getIntAttr(Provisioning.A_zimbraHttpConnectorMaxIdleTimeMillis, 60000);
+    }
+
+    /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @param zimbraHttpConnectorMaxIdleTimeMillis new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public void setHttpConnectorMaxIdleTimeMillis(int zimbraHttpConnectorMaxIdleTimeMillis) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpConnectorMaxIdleTimeMillis, Integer.toString(zimbraHttpConnectorMaxIdleTimeMillis));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @param zimbraHttpConnectorMaxIdleTimeMillis new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public Map<String,Object> setHttpConnectorMaxIdleTimeMillis(int zimbraHttpConnectorMaxIdleTimeMillis, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpConnectorMaxIdleTimeMillis, Integer.toString(zimbraHttpConnectorMaxIdleTimeMillis));
+        return attrs;
+    }
+
+    /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public void unsetHttpConnectorMaxIdleTimeMillis() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpConnectorMaxIdleTimeMillis, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public Map<String,Object> unsetHttpConnectorMaxIdleTimeMillis(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpConnectorMaxIdleTimeMillis, "");
+        return attrs;
+    }
+
+    /**
      * Whether to enable http debug handler on a server
      *
      * @return zimbraHttpDebugHandlerEnabled, or true if unset
@@ -12601,6 +12688,165 @@ public abstract class ZAttrConfig extends Entry {
     public Map<String,Object> unsetHttpDebugHandlerEnabled(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraHttpDebugHandlerEnabled, "");
+        return attrs;
+    }
+
+    /**
+     * Delay imposed on all requests over the rate limit, before they are
+     * considered at all. -1 = Reject request, 0 = No delay, any other value
+     * = Delay in ms
+     *
+     * @return zimbraHttpDosFilterDelayMillis, or -1 if unset
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1430)
+    public int getHttpDosFilterDelayMillis() {
+        return getIntAttr(Provisioning.A_zimbraHttpDosFilterDelayMillis, -1);
+    }
+
+    /**
+     * Delay imposed on all requests over the rate limit, before they are
+     * considered at all. -1 = Reject request, 0 = No delay, any other value
+     * = Delay in ms
+     *
+     * @param zimbraHttpDosFilterDelayMillis new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1430)
+    public void setHttpDosFilterDelayMillis(int zimbraHttpDosFilterDelayMillis) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterDelayMillis, Integer.toString(zimbraHttpDosFilterDelayMillis));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Delay imposed on all requests over the rate limit, before they are
+     * considered at all. -1 = Reject request, 0 = No delay, any other value
+     * = Delay in ms
+     *
+     * @param zimbraHttpDosFilterDelayMillis new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1430)
+    public Map<String,Object> setHttpDosFilterDelayMillis(int zimbraHttpDosFilterDelayMillis, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterDelayMillis, Integer.toString(zimbraHttpDosFilterDelayMillis));
+        return attrs;
+    }
+
+    /**
+     * Delay imposed on all requests over the rate limit, before they are
+     * considered at all. -1 = Reject request, 0 = No delay, any other value
+     * = Delay in ms
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1430)
+    public void unsetHttpDosFilterDelayMillis() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterDelayMillis, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Delay imposed on all requests over the rate limit, before they are
+     * considered at all. -1 = Reject request, 0 = No delay, any other value
+     * = Delay in ms
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1430)
+    public Map<String,Object> unsetHttpDosFilterDelayMillis(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterDelayMillis, "");
+        return attrs;
+    }
+
+    /**
+     * Maximum number of requests from a connection per second. Requests in
+     * excess of this are throttled.
+     *
+     * @return zimbraHttpDosFilterMaxRequestsPerSec, or 30 if unset
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1431)
+    public int getHttpDosFilterMaxRequestsPerSec() {
+        return getIntAttr(Provisioning.A_zimbraHttpDosFilterMaxRequestsPerSec, 30);
+    }
+
+    /**
+     * Maximum number of requests from a connection per second. Requests in
+     * excess of this are throttled.
+     *
+     * @param zimbraHttpDosFilterMaxRequestsPerSec new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1431)
+    public void setHttpDosFilterMaxRequestsPerSec(int zimbraHttpDosFilterMaxRequestsPerSec) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterMaxRequestsPerSec, Integer.toString(zimbraHttpDosFilterMaxRequestsPerSec));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of requests from a connection per second. Requests in
+     * excess of this are throttled.
+     *
+     * @param zimbraHttpDosFilterMaxRequestsPerSec new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1431)
+    public Map<String,Object> setHttpDosFilterMaxRequestsPerSec(int zimbraHttpDosFilterMaxRequestsPerSec, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterMaxRequestsPerSec, Integer.toString(zimbraHttpDosFilterMaxRequestsPerSec));
+        return attrs;
+    }
+
+    /**
+     * Maximum number of requests from a connection per second. Requests in
+     * excess of this are throttled.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1431)
+    public void unsetHttpDosFilterMaxRequestsPerSec() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterMaxRequestsPerSec, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Maximum number of requests from a connection per second. Requests in
+     * excess of this are throttled.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1431)
+    public Map<String,Object> unsetHttpDosFilterMaxRequestsPerSec(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpDosFilterMaxRequestsPerSec, "");
         return attrs;
     }
 
@@ -12855,6 +13101,217 @@ public abstract class ZAttrConfig extends Entry {
     public Map<String,Object> unsetHttpSSLNumThreads(Map<String,Object> attrs) {
         if (attrs == null) attrs = new HashMap<String,Object>();
         attrs.put(Provisioning.A_zimbraHttpSSLNumThreads, "");
+        return attrs;
+    }
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @return zimbraHttpThreadPoolMaxIdleTimeMillis, or 10000 if unset
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public int getHttpThreadPoolMaxIdleTimeMillis() {
+        return getIntAttr(Provisioning.A_zimbraHttpThreadPoolMaxIdleTimeMillis, 10000);
+    }
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @param zimbraHttpThreadPoolMaxIdleTimeMillis new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public void setHttpThreadPoolMaxIdleTimeMillis(int zimbraHttpThreadPoolMaxIdleTimeMillis) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThreadPoolMaxIdleTimeMillis, Integer.toString(zimbraHttpThreadPoolMaxIdleTimeMillis));
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @param zimbraHttpThreadPoolMaxIdleTimeMillis new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public Map<String,Object> setHttpThreadPoolMaxIdleTimeMillis(int zimbraHttpThreadPoolMaxIdleTimeMillis, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThreadPoolMaxIdleTimeMillis, Integer.toString(zimbraHttpThreadPoolMaxIdleTimeMillis));
+        return attrs;
+    }
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public void unsetHttpThreadPoolMaxIdleTimeMillis() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThreadPoolMaxIdleTimeMillis, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public Map<String,Object> unsetHttpThreadPoolMaxIdleTimeMillis(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThreadPoolMaxIdleTimeMillis, "");
+        return attrs;
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @return zimbraHttpThrottleSafeIPs, or empty array if unset
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public String[] getHttpThrottleSafeIPs() {
+        return getMultiAttr(Provisioning.A_zimbraHttpThrottleSafeIPs);
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param zimbraHttpThrottleSafeIPs new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public void setHttpThrottleSafeIPs(String[] zimbraHttpThrottleSafeIPs) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThrottleSafeIPs, zimbraHttpThrottleSafeIPs);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param zimbraHttpThrottleSafeIPs new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public Map<String,Object> setHttpThrottleSafeIPs(String[] zimbraHttpThrottleSafeIPs, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThrottleSafeIPs, zimbraHttpThrottleSafeIPs);
+        return attrs;
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param zimbraHttpThrottleSafeIPs new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public void addHttpThrottleSafeIPs(String zimbraHttpThrottleSafeIPs) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraHttpThrottleSafeIPs, zimbraHttpThrottleSafeIPs);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param zimbraHttpThrottleSafeIPs new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public Map<String,Object> addHttpThrottleSafeIPs(String zimbraHttpThrottleSafeIPs, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraHttpThrottleSafeIPs, zimbraHttpThrottleSafeIPs);
+        return attrs;
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param zimbraHttpThrottleSafeIPs existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public void removeHttpThrottleSafeIPs(String zimbraHttpThrottleSafeIPs) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraHttpThrottleSafeIPs, zimbraHttpThrottleSafeIPs);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param zimbraHttpThrottleSafeIPs existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public Map<String,Object> removeHttpThrottleSafeIPs(String zimbraHttpThrottleSafeIPs, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraHttpThrottleSafeIPs, zimbraHttpThrottleSafeIPs);
+        return attrs;
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public void unsetHttpThrottleSafeIPs() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThrottleSafeIPs, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * IP addresses to ignore when applying Jetty DosFilter.
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1427)
+    public Map<String,Object> unsetHttpThrottleSafeIPs(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraHttpThrottleSafeIPs, "");
         return attrs;
     }
 
@@ -20954,6 +21411,249 @@ public abstract class ZAttrConfig extends Entry {
     }
 
     /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @return zimbraMobileItemsToTrackPerFolderMaxSize, or empty array if unset
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public String[] getMobileItemsToTrackPerFolderMaxSize() {
+        return getMultiAttr(Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize);
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param zimbraMobileItemsToTrackPerFolderMaxSize new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public void setMobileItemsToTrackPerFolderMaxSize(String[] zimbraMobileItemsToTrackPerFolderMaxSize) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, zimbraMobileItemsToTrackPerFolderMaxSize);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param zimbraMobileItemsToTrackPerFolderMaxSize new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public Map<String,Object> setMobileItemsToTrackPerFolderMaxSize(String[] zimbraMobileItemsToTrackPerFolderMaxSize, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, zimbraMobileItemsToTrackPerFolderMaxSize);
+        return attrs;
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param zimbraMobileItemsToTrackPerFolderMaxSize new to add to existing values
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public void addMobileItemsToTrackPerFolderMaxSize(String zimbraMobileItemsToTrackPerFolderMaxSize) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, zimbraMobileItemsToTrackPerFolderMaxSize);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param zimbraMobileItemsToTrackPerFolderMaxSize new to add to existing values
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public Map<String,Object> addMobileItemsToTrackPerFolderMaxSize(String zimbraMobileItemsToTrackPerFolderMaxSize, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "+" + Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, zimbraMobileItemsToTrackPerFolderMaxSize);
+        return attrs;
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param zimbraMobileItemsToTrackPerFolderMaxSize existing value to remove
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public void removeMobileItemsToTrackPerFolderMaxSize(String zimbraMobileItemsToTrackPerFolderMaxSize) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, zimbraMobileItemsToTrackPerFolderMaxSize);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param zimbraMobileItemsToTrackPerFolderMaxSize existing value to remove
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public Map<String,Object> removeMobileItemsToTrackPerFolderMaxSize(String zimbraMobileItemsToTrackPerFolderMaxSize, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        StringUtil.addToMultiMap(attrs, "-" + Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, zimbraMobileItemsToTrackPerFolderMaxSize);
+        return attrs;
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public void unsetMobileItemsToTrackPerFolderMaxSize() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * Max size of items in a folder that server tracks, categorized by
+     * collection type (Email,Calendar,Contacts,Tasks). e.g. Email:3000 makes
+     * the max size of items to track for an Email folder to be 3000. If not
+     * specify, default value is Integer.MAX_VALUE
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1426)
+    public Map<String,Object> unsetMobileItemsToTrackPerFolderMaxSize(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileItemsToTrackPerFolderMaxSize, "");
+        return attrs;
+    }
+
+    /**
+     * whether or not to enable truncating on client metadata size, if
+     * enabled server will only track recent items on client device instead
+     * of all
+     *
+     * @return zimbraMobileMetadataMaxSizeEnabled, or false if unset
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1425)
+    public boolean isMobileMetadataMaxSizeEnabled() {
+        return getBooleanAttr(Provisioning.A_zimbraMobileMetadataMaxSizeEnabled, false);
+    }
+
+    /**
+     * whether or not to enable truncating on client metadata size, if
+     * enabled server will only track recent items on client device instead
+     * of all
+     *
+     * @param zimbraMobileMetadataMaxSizeEnabled new value
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1425)
+    public void setMobileMetadataMaxSizeEnabled(boolean zimbraMobileMetadataMaxSizeEnabled) throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMetadataMaxSizeEnabled, zimbraMobileMetadataMaxSizeEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether or not to enable truncating on client metadata size, if
+     * enabled server will only track recent items on client device instead
+     * of all
+     *
+     * @param zimbraMobileMetadataMaxSizeEnabled new value
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1425)
+    public Map<String,Object> setMobileMetadataMaxSizeEnabled(boolean zimbraMobileMetadataMaxSizeEnabled, Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMetadataMaxSizeEnabled, zimbraMobileMetadataMaxSizeEnabled ? Provisioning.TRUE : Provisioning.FALSE);
+        return attrs;
+    }
+
+    /**
+     * whether or not to enable truncating on client metadata size, if
+     * enabled server will only track recent items on client device instead
+     * of all
+     *
+     * @throws com.zimbra.common.service.ServiceException if error during update
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1425)
+    public void unsetMobileMetadataMaxSizeEnabled() throws com.zimbra.common.service.ServiceException {
+        HashMap<String,Object> attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMetadataMaxSizeEnabled, "");
+        getProvisioning().modifyAttrs(this, attrs);
+    }
+
+    /**
+     * whether or not to enable truncating on client metadata size, if
+     * enabled server will only track recent items on client device instead
+     * of all
+     *
+     * @param attrs existing map to populate, or null to create a new map
+     * @return populated map to pass into Provisioning.modifyAttrs
+     *
+     * @since ZCS 8.0.3
+     */
+    @ZAttr(id=1425)
+    public Map<String,Object> unsetMobileMetadataMaxSizeEnabled(Map<String,Object> attrs) {
+        if (attrs == null) attrs = new HashMap<String,Object>();
+        attrs.put(Provisioning.A_zimbraMobileMetadataMaxSizeEnabled, "");
+        return attrs;
+    }
+
+    /**
      * mta anti spam lock method.
      *
      * @return zimbraMtaAntiSpamLockMethod, or "flock" if unset
@@ -21859,7 +22559,8 @@ public abstract class ZAttrConfig extends Entry {
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
-     * also used as value for postconf message_size_limit
+     * also used as value for postconf message_size_limit. 0 means &quot;no
+     * limit&quot;
      *
      * @return zimbraMtaMaxMessageSize, or 10240000 if unset
      */
@@ -21870,7 +22571,8 @@ public abstract class ZAttrConfig extends Entry {
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
-     * also used as value for postconf message_size_limit
+     * also used as value for postconf message_size_limit. 0 means &quot;no
+     * limit&quot;
      *
      * @param zimbraMtaMaxMessageSize new value
      * @throws com.zimbra.common.service.ServiceException if error during update
@@ -21884,7 +22586,8 @@ public abstract class ZAttrConfig extends Entry {
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
-     * also used as value for postconf message_size_limit
+     * also used as value for postconf message_size_limit. 0 means &quot;no
+     * limit&quot;
      *
      * @param zimbraMtaMaxMessageSize new value
      * @param attrs existing map to populate, or null to create a new map
@@ -21899,7 +22602,8 @@ public abstract class ZAttrConfig extends Entry {
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
-     * also used as value for postconf message_size_limit
+     * also used as value for postconf message_size_limit. 0 means &quot;no
+     * limit&quot;
      *
      * @throws com.zimbra.common.service.ServiceException if error during update
      */
@@ -21912,7 +22616,8 @@ public abstract class ZAttrConfig extends Entry {
 
     /**
      * Maximum total size of a mail message. Enforced in mailbox server and
-     * also used as value for postconf message_size_limit
+     * also used as value for postconf message_size_limit. 0 means &quot;no
+     * limit&quot;
      *
      * @param attrs existing map to populate, or null to create a new map
      * @return populated map to pass into Provisioning.modifyAttrs

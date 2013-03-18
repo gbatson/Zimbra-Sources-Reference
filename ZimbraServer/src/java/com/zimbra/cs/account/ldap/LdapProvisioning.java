@@ -238,15 +238,15 @@ public class LdapProvisioning extends LdapProv {
     private String[] BASIC_DYNAMIC_GROUP_ATTRS;
     private String[] BASIC_GROUP_ATTRS;
 
-    private static LdapProvisioning SINGLETON = null;
+    private static LdapProvisioning singleton = null;
 
     private static synchronized void ensureSingleton(LdapProvisioning prov) {
-        if (SINGLETON != null) {
+        if (singleton != null) {
             // pass an exception to have the stack logged
             Zimbra.halt("Only one instance of LdapProvisioning can be created",
                     ServiceException.FAILURE("failed to instantiate LdapProvisioning", null));
         }
-        SINGLETON = prov;
+        singleton = prov;
     }
 
     public LdapProvisioning() {
@@ -1113,6 +1113,8 @@ public class LdapProvisioning extends LdapProv {
                     ocs.add(additionalObjectClasses[i]);
             }
 
+            boolean skipCountingLicenseQuota = false;
+
             /* bug 48226
              *
              * Check if any of the OCs in the backup is a structural OC that subclasses
@@ -1128,6 +1130,19 @@ public class LdapProvisioning extends LdapProv {
 
                 if (!LdapObjectClass.ZIMBRA_DEFAULT_PERSON_OC.equalsIgnoreCase(mostSpecificOC)) {
                     ocs.add(mostSpecificOC);
+                }
+
+                //calendar resource doesn't count against license quota
+                if (origAttrs.get(A_zimbraCalResType) != null) {
+                    skipCountingLicenseQuota = true;
+                }
+                if (origAttrs.get(A_zimbraIsSystemResource) != null) {
+                    entry.setAttr(A_zimbraIsSystemResource, "TRUE");
+                    skipCountingLicenseQuota = true;
+                }
+                if (origAttrs.get(A_zimbraIsExternalVirtualAccount) != null) {
+                    entry.setAttr(A_zimbraIsExternalVirtualAccount, "TRUE");
+                    skipCountingLicenseQuota = true;
                 }
             }
 
@@ -1242,8 +1257,7 @@ public class LdapProvisioning extends LdapProv {
 
             AttributeManager.getInstance().postModify(acctAttrs, acct, callbackContext);
             removeExternalAddrsFromAllDynamicGroups(acct.getAllAddrsSet(), zlc);
-            validate(ProvisioningValidator.CREATE_ACCOUNT_SUCCEEDED,
-                    emailAddress, acct);
+            validate(ProvisioningValidator.CREATE_ACCOUNT_SUCCEEDED, emailAddress, acct, skipCountingLicenseQuota);
             return acct;
         } catch (LdapEntryAlreadyExistException e) {
             throw AccountServiceException.ACCOUNT_EXISTS(emailAddress, dn, e);
@@ -1951,7 +1965,7 @@ public class LdapProvisioning extends LdapProv {
             SearchLdapOptions searchObjectsOptions = new SearchLdapOptions(base, filter,
                     returnAttrs, opts.getMaxResults(), null, ZSearchScope.SEARCH_SCOPE_SUBTREE,
                     searchObjectsVisitor);
-
+            searchObjectsOptions.setUseControl(opts.isUseControl());
             zlc.searchPaged(searchObjectsOptions);
         } catch (LdapSizeLimitExceededException e) {
             throw AccountServiceException.TOO_MANY_SEARCH_RESULTS("too many search results returned", e);
@@ -2966,13 +2980,14 @@ public class LdapProvisioning extends LdapProv {
             // eat the exception and continue
             ZimbraLog.account.warn("cannot revoke grants", e);
         }
-
+        final Map<String, Object> attrs = new HashMap<String, Object>(acc.getAttrs());
         ZLdapContext zlc = null;
         try {
             zlc = LdapClient.getContext(LdapServerType.MASTER, LdapUsage.DELETE_ACCOUNT);
 
             zlc.deleteChildren(entry.getDN());
             zlc.deleteEntry(entry.getDN());
+            validate(ProvisioningValidator.DELETE_ACCOUNT_SUCCEEDED, attrs);
             accountCache.remove(acc);
         } catch (ServiceException e) {
             throw ServiceException.FAILURE("unable to purge account: "+zimbraId, e);

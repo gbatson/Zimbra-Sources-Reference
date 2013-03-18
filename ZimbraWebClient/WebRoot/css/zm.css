@@ -493,8 +493,10 @@ INPUT[type="text"].search_input, INPUT[type="text"].search_input-expanded {
 /* message fragment text */
 .Row .ZmConvListFragment,
 .Conv2MsgHeader .ZmConvListFragment,
-.Row .Row-Selected .ZmConvListFragment {
-	@Text-disabled@
+.Row .Row-Selected .ZmConvListFragment,
+.SubjectDoubleRow .ZmConvListFragment {
+	color:black;
+	opacity:0.4;
 	font-weight:normal;
 }
 
@@ -513,11 +515,6 @@ INPUT[type="text"].search_input, INPUT[type="text"].search_input-expanded {
 
 .Unread .ZmConvListNumMsgs {
 	background-color:@darken(AppC,40)@;
-}
-
-.SubjectDoubleRow .ZmConvListFragment {
-	@Text-disabled@
-	font-weight:normal;
 }
 
 .ZmConvExpanded {
@@ -1893,14 +1890,14 @@ INPUT[type="text"].search_input, INPUT[type="text"].search_input-expanded {
 }
 .calendar_cur_time_indicator_arr{
 	height:10px;
-	color:@darken(CalendarNowColor,25)@;
+	color:@CalendarIndicatorColor@;
 	overflow:hidden;
 	right:1px;
 }
 .calendar_cur_time_indicator_strip{
 	font-size:0;
 	line-height:0;
-	background-color:@CalendarNowColor@;
+	background-color:@CalendarIndicatorColor@;
 	height:4px;
 	position:static;
 	margin:-3px;
@@ -2055,6 +2052,10 @@ INPUT[type="text"].search_input, INPUT[type="text"].search_input-expanded {
 .calendar_body_hscroll {
 	position:absolute;
 	overflow:auto;
+}
+
+.calendar_month_body_container {
+    vertical-align: top;
 }
 
 /* outer scrolling container for the month view */

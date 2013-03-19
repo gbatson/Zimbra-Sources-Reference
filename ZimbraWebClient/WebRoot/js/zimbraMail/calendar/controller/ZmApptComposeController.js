@@ -196,7 +196,7 @@ function(attId) {
 			}
 
             //attendee forwarding an appt
-            if(!appt.isOrganizer()) return this.forwardCalItem(appt);
+            /* if(!appt.isOrganizer()) */ return this.forwardCalItem(appt);
 		}
 
 		if (!this._attendeeValidated && this._invalidAttendees && this._invalidAttendees.length > 0) {
@@ -375,7 +375,7 @@ function(){
 		  dialog.popup();
     }
     else{
-            this._sendContinue();
+        this._sendContinue();
     }
 }
 

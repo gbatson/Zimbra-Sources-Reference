@@ -70,6 +70,7 @@ import com.zimbra.cs.account.ldap.LdapUtil;
 import com.zimbra.cs.datasource.DataSourceManager;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailItem.QueryParams;
+import com.zimbra.cs.db.DbMailItem.SearchOpts;
 import com.zimbra.cs.db.DbMailbox;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.db.DbPool.Connection;
@@ -917,6 +918,14 @@ public class Mailbox {
         if (authuser != null && authuser.getId().equals(getAccountId()))
             authuser = null;
         return authuser;
+    }
+
+    Account getLockAccount() throws ServiceException {
+        Account authenticatedAccount = getAuthenticatedAccount();
+        if (authenticatedAccount == null) {
+            authenticatedAccount = getAccount();
+        }
+        return authenticatedAccount;
     }
 
     /** Returns whether the authenticated user for the transaction is using
@@ -3499,12 +3508,13 @@ public class Mailbox {
         }
     }
 
-    public synchronized List<Integer> getItemListByDates(OperationContext octxt, byte type, long start, long end, int folderId, boolean descending) throws ServiceException {
+    public synchronized List<Integer> getItemIdList(OperationContext octxt, byte type, int folderId,
+            SearchOpts searchOpts) throws ServiceException {
         boolean success = false;
         try {
-            beginTransaction("getItemListByDates", octxt);
+            beginTransaction("getItemIdList", octxt);
 
-            List<Integer> msgIds = DbMailItem.getItemListByDates(this, type, start, end, folderId, descending);
+            List<Integer> msgIds = DbMailItem.getItemIdList(this, type, folderId, searchOpts);
             success = true;
             return msgIds;
         } finally {
@@ -4056,7 +4066,6 @@ public class Mailbox {
 
             redoRecorder.setData(defaultInv, exceptions, replies, nextAlarm);
 
-            boolean first = true;
             boolean calItemIsNew = true;
             long oldNextAlarm = 0;
             for (SetCalendarItemData scid : scidList) {
@@ -4068,44 +4077,46 @@ public class Mailbox {
                         scid.mPm = new ParsedMessage(mm, octxt == null ? System.currentTimeMillis() : octxt.getTimestamp(), true);
                     }
                 }
+            }
 
-                if (first) {
-                    // usually the default invite
-                    first = false;
-                    calItemIsNew = calItem == null;
-                    if (calItemIsNew) {
+            if (scidList.size() > 0) {
+                SetCalendarItemData scid = scidList.get(0);
+                calItemIsNew = calItem == null;
+                if (calItemIsNew) {
 
-                        // ONLY create an calendar item if this is a REQUEST method...otherwise don't.
-                        String method = scid.mInv.getMethod();
-                        if ("REQUEST".equals(method) || "PUBLISH".equals(method)) {
-                            try {
-                                calItem = createCalendarItem(folderId, flags, tags, scid.mInv.getUid(), scid.mPm, scid.mInv, null);
-                            } catch (MailServiceException mse) {
-                                if (mse.getCode() == MailServiceException.ALREADY_EXISTS) {
-                                    //bug 49106 - did not find the appointment above in getCalendarItemByUid(), but the mail_item exists
-                                    ZimbraLog.calendar.error("failed to create calendar item; already exists. cause: "+(scidList.isEmpty()?"no items in uuid list.":"uuid not found in appointment: "+scidList.get(0).mInv.getUid()+" or bad mail_item type"));
-                                }
-                                throw mse;
+                    // ONLY create an calendar item if this is a REQUEST method...otherwise don't.
+                    String method = scid.mInv.getMethod();
+                    if ("REQUEST".equals(method) || "PUBLISH".equals(method)) {
+                        try {
+                            calItem = createCalendarItem(folderId, flags, tags, scid.mInv.getUid(), scid.mPm, scid.mInv, null);
+                        } catch (MailServiceException mse) {
+                            if (mse.getCode() == MailServiceException.ALREADY_EXISTS) {
+                                //bug 49106 - did not find the appointment above in getCalendarItemByUid(), but the mail_item exists
+                                ZimbraLog.calendar.error("failed to create calendar item; already exists. cause: "+(scidList.isEmpty()?"no items in uuid list.":"uuid not found in appointment: "+scidList.get(0).mInv.getUid()+" or bad mail_item type"));
                             }
-                        } else {
-                            return null; // for now, just ignore this Invitation
+                            throw mse;
                         }
                     } else {
-                        calItem.snapshotRevision();
-
-                        // Preserve alarm time before any modification is made to the item.
-                        AlarmData alarmData = calItem.getAlarmData();
-                        if (alarmData != null)
-                            oldNextAlarm = alarmData.getNextAt();
-
-                        calItem.setTags(flags, tags);
-                        calItem.processNewInvite(scid.mPm, scid.mInv, folderId, nextAlarm, false, true);
+                        return null; // for now, just ignore this Invitation
                     }
-                    redoRecorder.setCalendarItemAttrs(calItem.getId(), calItem.getFolderId());
                 } else {
-                    // exceptions
-                    calItem.processNewInvite(scid.mPm, scid.mInv, folderId, nextAlarm, false, false);
+                    calItem.snapshotRevision();
+
+                    // Preserve alarm time before any modification is made to the item.
+                    AlarmData alarmData = calItem.getAlarmData();
+                    if (alarmData != null)
+                        oldNextAlarm = alarmData.getNextAt();
+
+                    calItem.setTags(flags, tags);
+                    calItem.processNewInvite(scid.mPm, scid.mInv, folderId, nextAlarm, false, true);
                 }
+                redoRecorder.setCalendarItemAttrs(calItem.getId(), calItem.getFolderId());
+            }
+            if (scidList.size() > 1) {
+                // remove the first one. it is already processed
+                scidList.remove(0);
+                // exceptions
+                calItem.processNewInviteExceptions(scidList, folderId, nextAlarm, false, false);
             }
 
             // Recompute alarm time after processing all Invites.

@@ -13,7 +13,7 @@ class ExchangeAdminException: public GenericException
 {
 public:
     ExchangeAdminException(HRESULT hrErrCode, LPCWSTR lpszDescription);
-    ExchangeAdminException(HRESULT hrErrCode, LPCWSTR lpszDescription, int nLine, LPCSTR
+    ExchangeAdminException(HRESULT hrErrCode, LPCWSTR lpszDescription, LPCWSTR lpszShortDescription, int nLine, LPCSTR
         strFile);
     virtual ~ExchangeAdminException() {}
 };
@@ -72,6 +72,7 @@ public:
         lpAdminPassword = NULL);
     static LPCWSTR GlobalUninit();
     static LPCWSTR SelectExchangeUsers(vector<ObjectPickerData> &vUserList);
+    static BOOL AvoidInternalErrors(LPCWSTR lpToCmp);
 };
 
 const LPCWSTR DEFAULT_ADMIN_PROFILE_NAME = L"zmprof";

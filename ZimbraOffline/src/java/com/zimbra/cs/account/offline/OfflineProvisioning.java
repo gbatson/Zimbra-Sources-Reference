@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -167,6 +167,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         private EntryType(String abbr, boolean leaf)  { mAbbr = abbr;  mLeafEntry = leaf; }
 
         public boolean isLeafEntry()  { return mLeafEntry; }
+        @Override
         public String toString()      { return mAbbr; }
 
         public static EntryType typeForEntry(Entry e) {
@@ -528,7 +529,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized Set<String> getDistributionLists(Account acct) throws ServiceException {
         return null;
     }
-    
+
     @Override
     public Set<String> getDirectDistributionLists(Account acct)
             throws ServiceException {
@@ -984,7 +985,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         setAccountAttribute(galAcct, OfflineConstants.A_offlineGalGroupMembersPopulated, Provisioning.FALSE);
         setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountSyncToken, "");
         setAccountAttribute(galAcct, OfflineConstants.A_offlineGalAccountId, galAcct.getId());
-        
+
         return galAcct;
     }
 
@@ -1123,13 +1124,14 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                     Account account = get(AccountBy.id, LOCAL_ACCOUNT_ID);
                     if (account == null) {
                         account = createLocalAccount();
-                        String uri = "http://127.0.0.1:" + LC.zimbra_admin_service_port.value() + "/desktop/login.jsp?at=" + OfflineLC.zdesktop_installation_key.value();
-                        String webappUri = account.getAttr(A_offlineWebappUri, null);
-                        if (webappUri == null || !webappUri.equals(uri))
-                            setAccountAttribute(account, A_offlineWebappUri, uri);
-                        if (OfflineLC.zdesktop_relabel.value().equalsIgnoreCase(CHN_BETA) && !CHN_BETA.equalsIgnoreCase(account.getAttr(A_zimbraPrefOfflineUpdateChannel, null))) {
-                            setAccountAttribute(account, A_zimbraPrefOfflineUpdateChannel, CHN_BETA);
-                        }
+                    }
+                    String uri = "http://127.0.0.1:" + LC.zimbra_admin_service_port.value() + "/desktop/login.jsp?at=" + OfflineLC.zdesktop_installation_key.value();
+                    String webappUri = account.getAttr(A_offlineWebappUri, null);
+                    if (webappUri == null || !webappUri.equals(uri)) {
+                        setAccountAttribute(account, A_offlineWebappUri, uri);
+                    }
+                    if (OfflineLC.zdesktop_relabel.value().equalsIgnoreCase(CHN_BETA) && !CHN_BETA.equalsIgnoreCase(account.getAttr(A_zimbraPrefOfflineUpdateChannel, null))) {
+                        setAccountAttribute(account, A_zimbraPrefOfflineUpdateChannel, CHN_BETA);
                     }
                     localAccount = account;
                 }
@@ -1171,7 +1173,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public boolean isGalAccount(Account account) {
         return "Gal".equals(account.getAttr(A_offlineAccountFlavor, null));
     }
-    
+
     public boolean isMountpointAccount(String accountId) throws ServiceException {
         Account acct = getAccountById(accountId);
         return (acct != null && isMountpointAccount(acct));
@@ -1446,6 +1448,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         Map<String,Object> attrs = null;
         DbOfflineDirectory.GranterEntry granter = null;
         if (keyType == AccountBy.id) {
+            if (key.equals(LOCAL_ACCOUNT_ID) && localAccount != null) {
+                return getLocalAccount();
+            }
             if ((acct = mAccountCache.getById(key)) == null) {
                 if (zimbraAdminAccount != null && key.equals(zimbraAdminAccount.getId())) {
                     acct = zimbraAdminAccount;
@@ -1457,8 +1462,9 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                 }
             }
         } else if (keyType == AccountBy.name) {
-            if (key.equals(LOCAL_ACCOUNT_NAME))
+            if (key.equals(LOCAL_ACCOUNT_NAME)) {
                 return getLocalAccount();
+            }
             if ((acct = mAccountCache.getByName(key)) == null) {
                 attrs = DbOfflineDirectory.readDirectoryEntry(EntryType.ACCOUNT, A_offlineDn, key);
 
@@ -1544,7 +1550,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         if (this.cachedAccountIds.isEmpty()) {
             synchronized (this) {
                 if (this.cachedAccountIds.isEmpty()) {
-                    this.loadAccountIdsInOrder();        
+                    this.loadAccountIdsInOrder();
                 }
             }
         }
@@ -1647,7 +1653,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public synchronized void preAuthAccount(Account acct, String accountName, String accountBy, long timestamp, long expires, String preAuth, Map<String, Object> authCtxt) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("preAuthAccount");
     }
-    
+
     @Override
     public void ssoAuthAccount(Account acct, AuthContext.Protocol proto, Map<String, Object> authCtxt) throws ServiceException {
         throw OfflineServiceException.UNSUPPORTED("ssoAuthAccount");
@@ -1959,6 +1965,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
         throw new UnsupportedOperationException();
     }
 
+    @Override
     public List<NamedEntry> searchDirectory(SearchOptions options) throws ServiceException {
         //HACK: we were throwing UnsupportedOperationException, but DeleteAccount now does a searchDirectory to prevent from deleting
         //domain wiki accounts.  Hence the hack to always return empty.
@@ -2400,6 +2407,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
 
     private static void sort(List<DataSource> sources) {
         Collections.sort(sources, new Comparator<DataSource>() {
+            @Override
             public int compare(DataSource ds1, DataSource ds2) {
                 return syncOrder(ds1) - syncOrder(ds2);
             }
@@ -2702,7 +2710,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
             return null;
         }
     }
-    
+
     public String getCalendarProxyAuthToken(String requestedAccountId, Map<String, Object> context) throws ServiceException {
         Account acct = getAccountById(requestedAccountId);
         if (acct != null && isMountpointAccount(acct) && acct.getBooleanAttr(OfflineProvisioning.A_offlineAmbiguousGranter, false)) {
@@ -2721,13 +2729,13 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
                         if (mounts != null) {
                             for (MailItem mount : mounts) {
                                 if (((Mountpoint) mount).getDefaultView() == MailItem.TYPE_APPOINTMENT) {
-                                    //probably this one. 
+                                    //probably this one.
                                     return getProxyAuthToken(zcsAcct.getId(), null);
                                 }
                             }
                         }
                     }
-                    
+
                 }
             }
         }
@@ -2743,7 +2751,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public boolean allowsPingRemote() {
         return false; // in offline don't actively ping remote servers for pending sessions
     }
-    
+
     public boolean syncZimletProperties(String accountId) throws ServiceException {
         return accountId.equals(getZimletSyncAccountId());
     }
@@ -2831,7 +2839,7 @@ public class OfflineProvisioning extends Provisioning implements OfflineConstant
     public Account getGalAccountByAccount(OfflineAccount account) throws ServiceException {
         OfflineDomainGal gal = this.getDomainGal(account.getDomain());
         if (gal != null) {
-            return gal.getGalAccount();    
+            return gal.getGalAccount();
         }
         return null;
     }

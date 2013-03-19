@@ -28,7 +28,7 @@ public class ZAttrProvisioning {
 
     ///// BEGIN-AUTO-GEN-REPLACE
 
-    /* build: 7.0.0_BETA1_1111 rgadipuuri 20120726-0313 */
+    /* build: 7.0.0_BETA1_1111 pburgu 20121116-1547 */
 
     public static enum AccountCalendarUserType {
         RESOURCE("RESOURCE"),
@@ -2566,6 +2566,15 @@ public class ZAttrProvisioning {
     public static final String A_zimbraDataSourceImportClassName = "zimbraDataSourceImportClassName";
 
     /**
+     * whether to invoke data imports for all data sources owned by an
+     * account after successful user login from the login page
+     *
+     * @since ZCS 7.2.2
+     */
+    @ZAttr(id=1418)
+    public static final String A_zimbraDataSourceImportOnLogin = "zimbraDataSourceImportOnLogin";
+
+    /**
      * indicates that this datasource is used for one way (incoming) import
      * vs. two-way sync
      *
@@ -4180,6 +4189,17 @@ public class ZAttrProvisioning {
     public static final String A_zimbraHsmPolicy = "zimbraHsmPolicy";
 
     /**
+     * Maximum Idle time in milli seconds for a connection. This is applied
+     * when waiting for a new request to be received on a connection; when
+     * reading the headers and content of a request; when writing the headers
+     * and content of a response.
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1428)
+    public static final String A_zimbraHttpConnectorMaxIdleTimeMillis = "zimbraHttpConnectorMaxIdleTimeMillis";
+
+    /**
      * Whether to enable http debug handler on a server
      *
      * @since ZCS 6.0.0_GA
@@ -4206,6 +4226,15 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=519)
     public static final String A_zimbraHttpSSLNumThreads = "zimbraHttpSSLNumThreads";
+
+    /**
+     * The maximum thread idle time in milli seconds. Threads that are idle
+     * for longer than this period may be stopped.
+     *
+     * @since ZCS 7.2.3
+     */
+    @ZAttr(id=1429)
+    public static final String A_zimbraHttpThreadPoolMaxIdleTimeMillis = "zimbraHttpThreadPoolMaxIdleTimeMillis";
 
     /**
      * Zimbra Systems Unique ID
@@ -4513,6 +4542,14 @@ public class ZAttrProvisioning {
      */
     @ZAttr(id=114)
     public static final String A_zimbraLastLogonTimestampFrequency = "zimbraLastLogonTimestampFrequency";
+
+    /**
+     * whether ldap based galsync disabled or not
+     *
+     * @since ZCS 7.2.2
+     */
+    @ZAttr(id=1420)
+    public static final String A_zimbraLdapGalSyncDisabled = "zimbraLdapGalSyncDisabled";
 
     /**
      * name to use in greeting and sign-off; if empty, uses hostname

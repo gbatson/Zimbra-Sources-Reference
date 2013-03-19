@@ -35,13 +35,16 @@ public class Props2JsServlet extends com.zimbra.kabuki.servlets.Props2JsServlet 
 	// Protected methods
 	//
 
-	protected String getSkin(HttpServletRequest req) {
-		String skin = (String)req.getAttribute(A_SKIN);
-		if (skin == null) {
-			skin = req.getParameter(P_SKIN);
-		}
-		return skin;
-	}
+    protected String getSkin(HttpServletRequest req) {
+        String skin = (String)req.getAttribute(A_SKIN);
+        if (skin == null) {
+            skin = req.getParameter(P_SKIN);
+        }
+        if (skin != null) {
+            skin = skin.replaceAll("[^A-Za-z0-9]", "");
+        }
+        return skin;
+    }
 
 	//
 	// com.zimbra.kabuki.servlets.Props2JsServlet methods

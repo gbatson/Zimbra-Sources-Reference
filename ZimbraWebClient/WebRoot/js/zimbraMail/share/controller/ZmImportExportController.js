@@ -148,6 +148,14 @@ function(params) {
 	}
 
 	params.ext = params.filename.replace(/^.*\./,"").toLowerCase();
+	if (!ZmImportExportController.EXTS_TYPE[params.ext]) {
+		var params = {
+			msg:	AjxMessageFormat.format(ZmMsg.importErrorTypeNotSupported, params.ext),
+			level:	ZmStatusView.LEVEL_CRITICAL
+		};
+		appCtxt.setStatusMsg(params);
+		return false;
+	}
 	params.defaultType = params.type || ZmImportExportController.EXTS_TYPE[params.ext] || ZmImportExportController.TYPE_DEFAULT;
 	var isZimbra = ZmImportExportController.EXTS_TYPE[params.defaultType] == ZmImportExportController.TYPE_TGZ;
 	var folder = appCtxt.getById(folderId);
@@ -435,21 +443,16 @@ function(params) {
 
 	var formParams = { "fmt" : type };
 	if (isCSV) { formParams[type+"fmt"] = subType; }
+	var startDate = params.start ? AjxDateUtil.simpleParseDateStr(params.start) : null;
+	var endDate = params.end ? AjxDateUtil.simpleParseDateStr(params.end) : null;
 	if (isTGZ && params.views) { formParams["types"] = params.views; }
-        if (params.views == "appointment"){
-            var startDate = params.start ? AjxDateUtil.simpleParseDateStr(params.start) : null;
-            var endDate = params.end ? AjxDateUtil.simpleParseDateStr(params.end) : null;
-            if(startDate) {
-                formParams["start"] = startDate.getTime();
-            }
-            if(endDate) {
-                endDate = AjxDateUtil.roll(endDate, AjxDateUtil.DAY, 1);
-                formParams["end"] = endDate.getTime();
-            }
-        } else {
-                if (isTGZ && params.start){ params.searchFilter = (params.searchFilter) ? params.searchFilter + " AND " : "" + "after:" + params.start; }
-                if (isTGZ && params.end){ params.searchFilter = ((params.searchFilter) ? params.searchFilter + " AND " : "") + "before:" + params.end; }
-        }
+    if(startDate) {
+        formParams["start"] = startDate.getTime();
+    }
+    if(endDate) {
+        endDate = AjxDateUtil.roll(endDate, AjxDateUtil.DAY, 1);
+        formParams["end"] = endDate.getTime();
+    }
 	if (isTGZ && params.searchFilter) { formParams["query"] = params.searchFilter; }
 	if (params.skipMeta) { formParams["meta"] = "0"; }
 	if (params.filename) { formParams["filename"] = params.filename; }

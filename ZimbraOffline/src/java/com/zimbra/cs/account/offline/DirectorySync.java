@@ -173,7 +173,14 @@ public class DirectorySync {
                     syncAccount(prov, acct, zmbx);
                     pushAccount(prov, acct, zmbx);
                     if (((OfflineAccount)acct).getRemoteServerVersion().isAtLeast6xx()) {
-                        syncFilterRules(prov, acct, zmbx);
+                        /*
+                         * bug: 72035
+                         * filter sync is done only if the version < 8
+                         */
+                        if (((OfflineAccount)acct).getRemoteServerVersion().getMajor() < 8) {
+                            syncFilterRules(prov, acct, zmbx);
+                        }
+
                         syncWhiteBlackList(prov, acct, zmbx);
                     }
                     else {

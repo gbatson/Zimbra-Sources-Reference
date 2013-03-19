@@ -21,7 +21,6 @@ import java.util.Map;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
-import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -40,7 +39,7 @@ public class OfflineResetGal extends AdminDocumentHandler {
         OfflineAccount account = (OfflineAccount) prov.get(AccountBy.id, accountId);
         if (account.isFeatureGalEnabled() && account.isFeatureGalSyncEnabled()) {
             OfflineAccount galAccount = (OfflineAccount) prov.getGalAccountByAccount(account);
-            if (GalSync.isFullSynced(galAccount)) {
+            if (galAccount != null && GalSync.isFullSynced(galAccount)) {
                 boolean isReset = GalSync.getInstance().resetGal(galAccount);
                 if (!isReset) {
                     OfflineLog.offline.debug("reseting gal for account %s -- Skipped because GAL is recently synced",

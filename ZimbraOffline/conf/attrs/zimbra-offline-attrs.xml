@@ -62,7 +62,7 @@
   <desc>whether use ssl to access remote Zimbra server</desc>
 </attr>
 
-<attr name="offlineRemoteServerVersion" type="string" cardinality="single" optionalIn="account">
+<attr name="offlineRemoteServerVersion" type="string" cardinality="single" optionalIn="account" flags="accountInfo">
   <desc>version number of remote Zimbra server</desc>
 </attr>
 

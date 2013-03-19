@@ -24,6 +24,9 @@
 <c:set var="useMobile" value="${ua.isiPhone or ua.isiPod or ua.isOsAndroid}"/>
 <c:set var="trimmedUserName" value="${fn:trim(param.username)}"/>
 
+<c:if test="${param.loginOp eq 'relogin' and empty loginException}">
+    <zm:logout/>
+</c:if>
 <c:if test="${param.loginOp eq 'relogin' and not empty loginException}">
     <zm:getException var="error" exception="${loginException}"/>
     <c:if test="${error.code eq 'service.AUTH_EXPIRED'}">
@@ -67,7 +70,7 @@
 		            <zm:login username="${fullUserName}" password="${param.password}" varRedirectUrl="postLoginUrl"
                               varAuthResult="authResult" varNeedRefer="needRefer"
 		                      newpassword="${param.loginNewPassword}" rememberme="${param.zrememberme == '1'}"
-							  requestedSkin="${param.skin}"/>
+							  requestedSkin="${param.skin}" importData="true"/>
 		            <%-- continue on at not empty authResult test --%>
 		    	</c:when>
 		        <c:otherwise>
@@ -83,7 +86,7 @@
 	            <zm:login authtoken="${authtoken}" authtokenInUrl="${not empty param.zauthtoken}"
 	                      varRedirectUrl="postLoginUrl" varAuthResult="authResult" varNeedRefer="needRefer"
 	                      rememberme="${param.zrememberme == '1'}"
-						  requestedSkin="${param.skin}" adminPreAuth="${param.adminPreAuth == '1'}"/>
+						  requestedSkin="${param.skin}" adminPreAuth="${param.adminPreAuth == '1'}" importData="true"/>
 	            <%-- continue on at not empty authResult test --%>
 	        </c:if>
 	    </c:otherwise>

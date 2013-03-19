@@ -19,6 +19,10 @@ import java.util.Map;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
+import com.zimbra.cs.account.Provisioning.AccountBy;
+import com.zimbra.cs.account.offline.OfflineAccount;
+import com.zimbra.cs.account.offline.OfflineProvisioning;
+import com.zimbra.cs.mailbox.GalSync;
 import com.zimbra.cs.mailbox.Mailbox;
 import com.zimbra.cs.mailbox.MailboxManager;
 import com.zimbra.cs.offline.OfflineLog;
@@ -42,9 +46,11 @@ public class OfflineDialogAction extends DocumentHandler {
     public static final String DIALOG_TYPE_FOLDER_MOVE_FAIL_MSG = "Folder move failed";
     public static final String DIALOG_TYPE_HEAP_DUMP_UPLOAD_CONSENT = "heapdump_upload";
     public static final String DIALOG_HEAP_DUMP_UPLOAD_CONSENT_MSG = "Do we have your consent to upload heap dump of ZD's previous crash ?";
+    public static final String DIALOG_TYPE_GAL_RESYNC = "gal_needs_resync";
+    public static final String DIALOG_TYPE_GAL_RESYNC_MSG = "GAL needs resync, please click Reset-GAL button at account setup page";
 
     private static enum DialogType {
-        resync, heapdump_upload
+        resync, heapdump_upload, gal_resync
     }
 
     private static enum DialogAction {
@@ -81,6 +87,9 @@ public class OfflineDialogAction extends DocumentHandler {
         case heapdump_upload:
             handleHeapdumpUpload(accountId, action);
             break;
+        case gal_resync:
+            handleGalResync(accountId, action);
+            break;
         }
     }
 
@@ -105,6 +114,25 @@ public class OfflineDialogAction extends DocumentHandler {
             break;
         case no:
             OfflineLog.offline.info("user chose NOT to upload heap dump.");
+            break;
+        }
+    }
+
+    private void handleGalResync(String accountId, DialogAction action) throws ServiceException {
+        switch (action) {
+        case yes:
+            OfflineLog.offline.info("user chose to resync GAL.");
+            OfflineProvisioning prov = OfflineProvisioning.getOfflineInstance();
+            OfflineAccount account = (OfflineAccount) prov.get(AccountBy.id, accountId);
+            if (account.isFeatureGalEnabled() && account.isFeatureGalSyncEnabled()) {
+                OfflineAccount galAccount = (OfflineAccount) prov.getGalAccountByAccount(account);
+                if (galAccount != null) {
+                    GalSync.getInstance().resetGal(galAccount);        
+                }
+            }
+            break;
+        case no:
+            OfflineLog.offline.info("user chose NOT to resync GAL.");
             break;
         }
     }

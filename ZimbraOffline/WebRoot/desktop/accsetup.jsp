@@ -791,7 +791,7 @@ function changeDateFields(selectObj) {
                                                 </div>
                                             </td>
                                             <td width=60%>
-                                                <select class="ZSelect" id="syncEmailDate" name="syncEmailDate" onclick="changeDateFields(this)" >
+                                                <select class="ZSelect" id="syncEmailDate" name="syncEmailDate" onchange="changeDateFields(this)" >
                                                     <option value="0" ${bean.syncEmailDate == 0 ? 'selected' : ''}><fmt:message key='SyncEverything'/></option>
                                                     <option value="1" ${bean.syncEmailDate == 1 ? 'selected' : ''}><fmt:message key='SyncFixedDate'/></option>
                                                     <option value="2" ${bean.syncEmailDate == 2 ? 'selected' : ''}><fmt:message key='SyncRelativeDate'/></option>

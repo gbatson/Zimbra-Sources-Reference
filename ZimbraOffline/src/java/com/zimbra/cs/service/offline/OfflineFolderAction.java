@@ -1,7 +1,7 @@
 /*
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
+ * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 VMware, Inc.
  * 
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import org.apache.commons.httpclient.HttpStatus;
 import org.apache.commons.httpclient.NameValuePair;
@@ -35,6 +36,7 @@ import com.zimbra.cs.account.Account;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
 import com.zimbra.cs.db.DbMailItem;
 import com.zimbra.cs.db.DbMailItem.QueryParams;
+import com.zimbra.cs.db.DbPool.Connection;
 import com.zimbra.cs.db.DbPool;
 import com.zimbra.cs.mailbox.Folder;
 import com.zimbra.cs.mailbox.MailItem;
@@ -152,6 +154,9 @@ public class OfflineFolderAction extends FolderAction {
         return response;
     }
 
+    private static ScheduledThreadPoolExecutor folderMoveTimer =
+        new ScheduledThreadPoolExecutor(1); //let the folder move jobs pile up
+
     /**
      * @param source sourceAcctId:folderId
      * @param target localAcctId:folderId
@@ -166,7 +171,7 @@ public class OfflineFolderAction extends FolderAction {
         final int sourceFolderId = Integer.parseInt(source.split(":")[1]);
         final int targetParentFolderId = Integer.parseInt(target.split(":")[1]);
 
-        new Thread("folder-move-" + source) {
+        folderMoveTimer.execute(new Thread("folder-move-" + source) {
 
             @Override
             public void run() {
@@ -240,10 +245,6 @@ public class OfflineFolderAction extends FolderAction {
                             }
                             throw e;
                         }
-                        // delete backup file
-                        if (backupFile != null) {
-                            FileUtil.delete(backupFile);
-                        }
                     }
 
                     // delete src folder
@@ -261,13 +262,15 @@ public class OfflineFolderAction extends FolderAction {
                         dbParams.setFolderIds(folderIds);
                         dbParams.setIncludedTypes(MailItem.TYPE_MESSAGE, MailItem.TYPE_CONVERSATION);
                         dbParams.setChangeDateAfter(exportStart / 1000);
+                        Connection conn = null;
                         try {
                             synchronized (mbox) {
-                                Set<Integer> newlyChangedItemIds = DbMailItem.getIds(mbox, DbPool.getConnection(),
-                                        dbParams, false);
+                                conn = DbPool.getConnection(mbox);
+                                Set<Integer> newlyChangedItemIds = DbMailItem.getIds(mbox, conn, dbParams, false);
                                 // need to use message type even for conversation
                                 ItemActionHelper.MOVE(octxt, mbox, zsc.getResponseProtocol(), new ArrayList<Integer>(
                                         newlyChangedItemIds), MailItem.TYPE_MESSAGE, null, targetFolder);
+                                OfflineLog.offline.debug("[Folder Move] forced item move done.");
                                 // now, can delete source folder
                                 mbox.delete(octxt, sourceFolderId, MailItem.TYPE_FOLDER);
                             }
@@ -275,9 +278,14 @@ public class OfflineFolderAction extends FolderAction {
                             OfflineLog.offline.debug("[Folder Move] force move delta items failed", e);
                             destMbox.delete(octxt, targetFolder.getId(), MailItem.TYPE_FOLDER);
                             throw e;
+                        } finally {
+                            DbPool.quietClose(conn);
                         }
                     }
-
+                    // delete backup file
+                    if (backupFile != null) {
+                        FileUtil.delete(backupFile);
+                    }
                     OfflineSyncManager.getInstance().registerDialog(
                             sourceAccount,
                             new Pair<String, String>(OfflineDialogAction.DIALOG_TYPE_FOLDER_MOVE_COMPLETE,
@@ -294,6 +302,6 @@ public class OfflineFolderAction extends FolderAction {
                     OfflineLog.offline.warn("[Folder Move] failed", e);
                 }
             }
-        }.start();
+        });
     }
 }

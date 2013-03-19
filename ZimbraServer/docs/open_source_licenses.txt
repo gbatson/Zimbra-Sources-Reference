@@ -1,6 +1,7 @@
 open_source_license.txt
 
-Zimbra Collaboration Suite 7.2.1 GA
+Zimbra Collaboration Suite 7.2.3 GA
+
 
 ===========================================================================
 
@@ -51,7 +52,7 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> javamail-1.4.5
    >>> jaxen-1.1.1
    >>> jce_policy-6
-   >>> jdk-1.6.0_33
+   >>> jdk-1.6.0_41
    >>> jdom-1.1
    >>> joscar-0.9.3
    >>> json-1.0
@@ -67,8 +68,8 @@ SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
    >>> nginx-0.5.37
    >>> nginx-0.9-zimbra
    >>> nist-sip-1.2
-   >>> openldap-2.4.30
-   >>> openssl-1.0.0j
+   >>> openldap-2.4.33
+   >>> openssl-1.0.0k
    >>> perl-data-uuid-1.217
    >>> perl-geography-countries-2009041301
    >>> perl-locale-maketext-simple-0.21
@@ -105,6 +106,7 @@ SECTION 2: Apache License, V2.0
    >>> apache-log4j-1.2.16
    >>> apache-log4j-extras-1.0
    >>> cindy-3.0b1
+   >>> concurrentlinkedhashmap-lru-1.3.1
    >>> ehcache-core-2.5.1
    >>> guava-r09
    >>> java-jml-1.0b1
@@ -120,6 +122,7 @@ SECTION 2: Apache License, V2.0
    >>> sqlite-xerial-jdbc-3.7.2
    >>> whack-1.0.0
    >>> xerces-2.9.1
+   >>> xerces-j-2.9.1
 
 
 
@@ -131,11 +134,10 @@ SECTION 3: Common Development and Distribution License, V1.0
 
 SECTION 4: GNU General Public License, V1.0
 
-   >>> perl-class-inspector-1.25
-   >>> perl-xml-sax-base-1.04
    >>> libwww-perl-6.02
    >>> perl-berkeleydb-0.43
    >>> perl-cache-fastmmap-1.39
+   >>> perl-class-inspector-1.25
    >>> perl-compress-raw-bzip2-2.037
    >>> perl-compress-raw-zlib-2.037
    >>> perl-config-inifiles-2.68
@@ -171,6 +173,7 @@ SECTION 4: GNU General Public License, V1.0
    >>> perl-version-0.94
    >>> perl-xml-namespace-support-1.11
    >>> perl-xml-sax-0.96
+   >>> perl-xml-sax-base-1.04
 
 
 
@@ -182,7 +185,7 @@ SECTION 5: GNU General Public License, V2.0
    >>> dspam-3.9.0
    >>> libtool-2.2.6b
    >>> libwww-perl-5.837
-   >>> mysql-5.1.63
+   >>> mysql-5.1.65
    >>> mysql-connector-java-5.1.13
    >>> perl-archive-tar-1.76
    >>> perl-archive-zip-1.30
@@ -287,7 +290,7 @@ SECTION 9: IBM Public License, V1.0
 
 
 
-PART 2. SMIME Zimlet
+PART 2. ZCS: SMIME
 
 
 SECTION 1: BSD-STYLE, MIT-STYLE, OR SIMILAR STYLE LICENSES
@@ -344,7 +347,8 @@ APPENDIX. Standard License Files
 
 
 
-============= PART 1. CORE ===================
+
+=============== PART 1. CORE =======================
 
 
 
@@ -719,7 +723,6 @@ Copyright 2001-2004 (C) MetaStuff, Ltd. All Rights Reserved.
 
 >>> freetype-2.4.9
 
-
 The FreeType Project LICENSE
                     ----------------------------
 
@@ -921,6 +924,9 @@ INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGE.
+
+
+ADDITIONAL LICENSE INFORMATION:
 
 
 The Java implementations of the AES, Blowfish and 3DES ciphers have been
@@ -5097,7 +5103,7 @@ Use of any of this software is governed by the terms of the license below:
 
 License
 
-[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1.  PLEASE SEE BELOW TO REVIEW THE FULL TEXT OF LGPL 2.1. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
+[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1 LICENSE.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE LGPL 2.1. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
 
 LZMA SDK is available under any of the following licenses:
 
@@ -5153,9 +5159,7 @@ follows:
 LICENSE
 -------
 
-
-[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1.  PLEASE SEE BELOW TO REVIEW THE FULL TEXT OF LGPL 2.1. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
-
+[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1 LICENSE.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE LGPL 2.1. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
 
 LZMA SDK is available under any of the following licenses:
 
@@ -5220,7 +5224,79 @@ You should have received a copy of the Common Public License along with this
 library.
 
 
->>> jdk-1.6.0_33
+>>> jdk-1.6.0_41
+
+Oracle Binary Code License Agreement for the Java SE Platform Products and JavaFX 
+
+ORACLE AMERICA, INC. ("ORACLE"), FOR AND ON BEHALF OF ITSELF AND ITS SUBSIDIARIES AND AFFILIATES UNDER COMMON CONTROL, IS WILLING TO LICENSE THE SOFTWARE TO YOU ONLY UPON THE CONDITION THAT YOU ACCEPT ALL OF THE TERMS CONTAINED IN THIS BINARY CODE LICENSE AGREEMENT AND SUPPLEMENTAL LICENSE TERMS (COLLECTIVELY "AGREEMENT"). PLEASE READ THE AGREEMENT CAREFULLY. BY SELECTING THE "ACCEPT LICENSE AGREEMENT" (OR THE EQUIVALENT) BUTTON AND/OR BY USING THE SOFTWARE YOU ACKNOWLEDGE THAT YOU HAVE READ THE TERMS AND AGREE TO THEM. IF YOU ARE AGREEING TO THESE TERMS ON BEHALF OF A COMPANY OR OTHER LEGAL ENTITY, YOU REPRESENT THAT YOU HAVE THE LEGAL AUTHORITY TO BIND THE LEGAL ENTITY TO THESE TERMS. IF YOU DO NOT HAVE SUCH AUTHORITY, OR IF YOU DO NOT WISH TO BE BOUND BY THE TERMS, THEN SELECT THE "DECLINE LICENSE AGREEMENT" (OR THE EQUIVALENT) BUTTON AND YOU MUST NOT USE THE SOFTWARE ON THIS SITE OR ANY OTHER MEDIA ON WHICH THE SOFTWARE IS CONTAINED. 
+
+1. DEFINITIONS. "Software" means the software identified above in binary form that you selected for download, install or use (in the version You selected for download, install or use) from Oracle or its authorized licensees, any other machine readable materials (including, but not limited to, libraries, source files, header files, and data files), any updates or error corrections provided by Oracle, and any user manuals, programming guides and other documentation provided to you by Oracle under this Agreement. "General Purpose Desktop Computers and Servers" means computers, including desktop and laptop computers, or servers, used for general computing functions under end user control (such as but not specifically limited to email, general purpose Internet browsing, and office suite productivity tools). The use of Software in systems and solutions that provide dedicated functionality (other than as mentioned above) or designed for use in embedded or function-specific software applications, for example but not limited to: Software embedded in or bundled with industrial control systems, wireless mobile telephones, wireless handheld devices, kiosks, TV/STB, Blu-ray Disc devices, telematics and network control switching equipment, printers and storage management systems, and other related systems are excluded from this definition and not licensed under this Agreement. "Programs" means (a) Java technology applets and applications intended to run on the Java Platform, Standard Edition platform on Java-enabled General Purpose Desktop Computers and Servers; and (b) JavaFX technology applications intended to run on the JavaFX Runtime on JavaFX-enabled General Purpose Desktop Computers and Servers. Commercial Features means those features identified in Table 1-1 (Commercial Features In Java SE Product Editions) of the Java SE documentation accessible at http://www.oracle.com/technetwork/java/javase/documentation/index.html. README File means the README file for the Software accessible at http://www.oracle.com/technetwork/java/javase/documentation/index.html. 
+
+2. LICENSE TO USE. Subject to the terms and conditions of this Agreement including, but not limited to, the Java Technology Restrictions of the Supplemental License Terms, Oracle grants you a non-exclusive, non-transferable, limited license without license fees to reproduce and use internally the Software complete and unmodified for the sole purpose of running Programs. THE LICENSE SET FORTH IN THIS SECTION 2 DOES NOT EXTEND TO THE COMMERCIAL FEATURES. YOUR RIGHTS AND OBLIGATIONS RELATED TO THE COMMERCIAL FEATURES ARE AS SET FORTH IN THE SUPPLEMENTAL TERMS ALONG WITH ADDITIONAL LICENSES FOR DEVELOPERS AND PUBLISHERS. 
+
+3. RESTRICTIONS. Software is copyrighted. Title to Software and all associated intellectual property rights is retained by Oracle and/or its licensors. Unless enforcement is prohibited by applicable law, you may not modify, decompile, or reverse engineer Software. You acknowledge that the Software is developed for general use in a variety of information management applications; it is not developed or intended for use in any inherently dangerous applications, including applications that may create a risk of personal injury. If you use the Software in dangerous applications, then you shall be responsible to take all appropriate fail-safe, backup, redundancy, and other measures to ensure its safe use. Oracle disclaims any express or implied warranty of fitness for such uses. No right, title or interest in or to any trademark, service mark, logo or trade name of Oracle or its licensors is granted under this Agreement. Additional restrictions for developers and/or publishers licenses are set forth in the Supplemental License Terms. 
+
+4. DISCLAIMER OF WARRANTY. THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND. ORACLE FURTHER DISCLAIMS ALL WARRANTIES, EXPRESS AND IMPLIED, INCLUDING WITHOUT LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NONINFRINGEMENT. 
+
+5. LIMITATION OF LIABILITY. IN NO EVENT SHALL ORACLE BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, PUNITIVE OR CONSEQUENTIAL DAMAGES, OR DAMAGES FOR LOSS OF PROFITS, REVENUE, DATA OR DATA USE, INCURRED BY YOU OR ANY THIRD PARTY, WHETHER IN AN ACTION IN CONTRACT OR TORT, EVEN IF ORACLE HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. ORACLE'S ENTIRE LIABILITY FOR DAMAGES HEREUNDER SHALL IN NO EVENT EXCEED ONE THOUSAND DOLLARS (U.S. $1,000). 
+
+6. TERMINATION. This Agreement is effective until terminated. You may terminate this Agreement at any time by destroying all copies of Software. This Agreement will terminate immediately without notice from Oracle if you fail to comply with any provision of this Agreement. Either party may terminate this Agreement immediately should any Software become, or in either party's opinion be likely to become, the subject of a claim of infringement of any intellectual property right. Upon termination, you must destroy all copies of Software. 
+
+7. EXPORT REGULATIONS. You agree that U.S. export control laws and other applicable export and import laws govern your use of the Software, including technical data; additional information can be found on Oracle's Global Trade Compliance web site (http://www.oracle.com/products/export). You agree that neither the Software nor any direct product thereof will be exported, directly, or indirectly, in violation of these laws, or will be used for any purpose prohibited by these laws including, without limitation, nuclear, chemical, or biological weapons proliferation. 
+
+8. TRADEMARKS AND LOGOS. You acknowledge and agree as between you
+and Oracle that Oracle owns the ORACLE and JAVA trademarks and all ORACLE- and JAVA-related trademarks, service marks, logos and other brand
+designations ("Oracle Marks"), and you agree to comply with the Third
+Party Usage Guidelines for Oracle Trademarks currently located at
+http://www.oracle.com/us/legal/third-party-trademarks/index.html . Any use you make of the Oracle Marks inures to Oracle's benefit. 
+
+9. U.S. GOVERNMENT LICENSE RIGHTS. If Software is being acquired by or on behalf of the U.S. Government or by a U.S. Government prime contractor or subcontractor (at any tier), then the Government's rights in Software and accompanying documentation shall be only those set forth in this Agreement. 
+
+10. GOVERNING LAW. This agreement is governed by the substantive and procedural laws of California. You and Oracle agree to submit to the exclusive jurisdiction of, and venue in, the courts of San Francisco, or Santa Clara counties in California in any dispute arising out of or relating to this agreement. 
+
+11. SEVERABILITY. If any provision of this Agreement is held to be unenforceable, this Agreement will remain in effect with the provision omitted, unless omission would frustrate the intent of the parties, in which case this Agreement will immediately terminate. 
+
+12. INTEGRATION. This Agreement is the entire agreement between you and Oracle relating to its subject matter. It supersedes all prior or contemporaneous oral or written communications, proposals, representations and warranties and prevails over any conflicting or additional terms of any quote, order, acknowledgment, or other communication between the parties relating to its subject matter during the term of this Agreement. No modification of this Agreement will be binding, unless in writing and signed by an authorized representative of each party. 
+
+SUPPLEMENTAL LICENSE TERMS 
+
+These Supplemental License Terms add to or modify the terms of the Binary Code License Agreement. Capitalized terms not defined in these Supplemental Terms shall have the same meanings ascribed to them in the Binary Code License Agreement. These Supplemental Terms shall supersede any inconsistent or conflicting terms in the Binary Code License Agreement, or in any license contained within the Software. 
+
+A. COMMERCIAL FEATURES. You may not use the Commercial Features for running Programs, Java applets or applications in your internal business operations or for any commercial or production purpose, or for any purpose other than as set forth in Sections B, C, D and E of these Supplemental Terms. If You want to use the Commercial Features for any purpose other than as permitted in this Agreement, You must obtain a separate license from Oracle. 
+
+B. SOFTWARE INTERNAL USE FOR DEVELOPMENT LICENSE GRANT. Subject to the terms and conditions of this Agreement and restrictions and exceptions set forth in the README File incorporated herein by reference, including, but not limited to the Java Technology Restrictions of these Supplemental Terms, Oracle grants you a non-exclusive, non-transferable, limited license without fees to reproduce internally and use internally the Software complete and unmodified for the purpose of designing, developing, and testing your Programs. 
+
+C. LICENSE TO DISTRIBUTE SOFTWARE. Subject to the terms and conditions of this Agreement and restrictions and exceptions set forth in the README File, including, but not limited to the Java Technology Restrictions and Limitations on Redistribution of these Supplemental Terms, Oracle grants you a non-exclusive, non-transferable, limited license without fees to reproduce and distribute the Software, provided that (i) you distribute the Software complete and unmodified and only bundled as part of, and for the sole purpose of running, your Programs, (ii) the Programs add significant and primary functionality to the Software, (iii) you do not distribute additional software intended to replace any component(s) of the Software, (iv) you do not remove or alter any proprietary legends or notices contained in the Software, (v) you only distribute the Software subject to a license agreement that: (a) is a complete, unmodified reproduction of this Agreement; or (b) protects Oracle's interests consistent with the terms contained in this Agreement and that includes the notice set forth in Section H, and (vi) you agree to defend and indemnify Oracle and its licensors from and against any damages, costs, liabilities, settlement amounts and/or expenses (including attorneys' fees) incurred in connection with any claim, lawsuit or action by any third party that arises or results from the use or distribution of any and all Programs and/or Software. The license set forth in this Section C does not extend to the Software identified in Section G. 
+
+D. LICENSE TO DISTRIBUTE REDISTRIBUTABLES. Subject to the terms and conditions of this Agreement and restrictions and exceptions set forth in the README File, including but not limited to the Java Technology Restrictions and Limitations on Redistribution of these Supplemental Terms, Oracle grants you a non-exclusive, non-transferable, limited license without fees to reproduce and distribute those files specifically identified as redistributable in the README File ("Redistributables") provided that: (i) you distribute the Redistributables complete and unmodified, and only bundled as part of Programs, (ii) the Programs add significant and primary functionality to the Redistributables, (iii) you do not distribute additional software intended to supersede any component(s) of the Redistributables (unless otherwise specified in the applicable README File), (iv) you do not remove or alter any proprietary legends or notices contained in or on the Redistributables, (v) you only distribute the Redistributables pursuant to a license agreement that: (a) is a complete, unmodified reproduction of this Agreement; or (b) protects Oracle's interests consistent with the terms contained in the Agreement and includes the notice set forth in Section H, (vi) you agree to defend and indemnify Oracle and its licensors from and against any damages, costs, liabilities, settlement amounts and/or expenses (including attorneys' fees) incurred in connection with any claim, lawsuit or action by any third party that arises or results from the use or distribution of any and all Programs and/or Software. The license set forth in this Section D does not extend to the Software identified in Section G. 
+
+E. DISTRIBUTION BY PUBLISHERS. This section pertains to your distribution of the JavaTM SE Development Kit Software (JDK) with your printed book or magazine (as those terms are commonly used in the industry) relating to Java technology ("Publication"). Subject to and conditioned upon your compliance with the restrictions and obligations contained in the Agreement, Oracle hereby grants to you a non-exclusive, nontransferable limited right to reproduce complete and unmodified copies of the JDK on electronic media (the "Media") for the sole purpose of inclusion and distribution with your Publication(s), subject to the following terms: (i) You may not distribute the JDK on a stand-alone basis; it must be distributed with your Publication(s); (ii) You are responsible for downloading the JDK from the applicable Oracle web site; (iii) You must refer to the JDK as JavaTM SE Development Kit; (iv) The JDK must be reproduced in its entirety and without any modification whatsoever (including with respect to all proprietary notices) and distributed with your Publication subject to a license agreement that is a complete, unmodified reproduction of this Agreement; (v) The Media label shall include the following information: Copyright [YEAR], Oracle America, Inc. All rights reserved. Use is subject to license terms. ORACLE and JAVA trademarks and all ORACLE- and JAVA-related trademarks, service marks, logos and other brand designations are trademarks or registered trademarks of Oracle in the U.S. and other countries. [YEAR] is the year of Oracle's release of the Software; the year information can typically be found in the Softwares About box or screen. This information must be placed on the Media label in such a manner as to only apply to the JDK; (vi) You must clearly identify the JDK as Oracle's product on the Media holder or Media label, and you may not state or imply that Oracle is responsible for any third-party software contained on the Media; (vii) You may not include any third party software on the Media which is intended to be a replacement or substitute for the JDK; (viii) You agree to defend and indemnify Oracle and its licensors from and against any damages, costs, liabilities, settlement amounts and/or expenses (including attorneys' fees) incurred in connection with any claim, lawsuit or action by any third party that arises or results from the use or distribution of the JDK and/or the Publication; ; and (ix) You shall provide Oracle with a written notice for each Publication; such notice shall include the following information: (1) title of Publication, (2) author(s), (3) date of Publication, and (4) ISBN or ISSN numbers. Such notice shall be sent to Oracle America, Inc., 500 Oracle Parkway, Redwood Shores, California 94065 U.S.A , Attention: General Counsel. 
+
+F. JAVA TECHNOLOGY RESTRICTIONS. You may not create, modify, or change the behavior of, or authorize your licensees to create, modify, or change the behavior of, classes, interfaces, or subpackages that are in any way identified as "java", "javax", "sun", oracle or similar convention as specified by Oracle in any naming convention designation. 
+
+G. LIMITATIONS ON REDISTRIBUTION. You may not redistribute or otherwise transfer: (a) JavaFX Runtime prior to version 2.0.2, (b) JavaFX Development Kit prior to version 2.0.2, or (c) any and all patches, bug fixes and updates made available by Oracle through Oracle Premier Support, including those made available under Oracle's Java SE Support program. 
+
+H. COMMERCIAL FEATURES NOTICE. For purpose of complying with Supplemental Term Section C.(v)(b) and D.(v)(b), your license agreement shall include the following notice, where the notice is displayed in a manner that anyone using the Software will see the notice: 
+
+Use of the Commercial Features for any commercial or production purpose requires a separate license from Oracle. Commercial Features means those features identified Table 1-1 (Commercial Features In Java SE Product Editions) of the Java SE documentation accessible at http://www.oracle.com/technetwork/java/javase/documentation/index.html  
+
+I. SOURCE CODE. Software may contain source code that, unless expressly licensed for other purposes, is provided solely for reference purposes pursuant to the terms of this Agreement. Source code may not be redistributed unless expressly provided for in this Agreement. 
+
+J. THIRD PARTY CODE. Additional copyright notices and license terms applicable to portions of the Software are set forth in the THIRDPARTYLICENSEREADME file accessible at http://www.oracle.com/technetwork/java/javase/documentation/index.html. In addition to any terms and conditions of any third party opensource/freeware license identified in the THIRDPARTYLICENSEREADME file, the disclaimer of warranty and limitation of liability provisions in paragraphs 4 and 5 of the Binary Code License Agreement shall apply to all Software in this distribution. 
+
+K. TERMINATION FOR INFRINGEMENT. Either party may terminate this Agreement immediately should any Software become, or in either party's opinion be likely to become, the subject of a claim of infringement of any intellectual property right. 
+
+L. INSTALLATION AND AUTO-UPDATE. The Software's installation and auto-update processes transmit a limited amount of data to Oracle (or its service provider) about those specific processes to help Oracle understand and optimize them. Oracle does not associate the data with personally identifiable information. You can find more information about the data Oracle collects as a result of your Software download at http://www.oracle.com/technetwork/java/javase/documentation/index.html.
+
+For inquiries please contact:
+Oracle America, Inc., 500 Oracle Parkway,
+Redwood Shores, California 94065, USA. 
+
+Last updated 2 July 2012
+
+
+ADDITIONAL LICENSE INFORMATION:
+
 
 DO NOT TRANSLATE OR LOCALIZE.
 
@@ -8048,16 +8124,18 @@ The UPX license file is at http://upx.sourceforge.net/upx-license.html.
 
 ***************************************************************************
 
+
+
 %%The following software may be included in this product:
 LZMA Software Development Kit
 
 Use of any of this software is governed by the terms of the license below:
 
+
+[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1 LICENSE.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF LGPL 2.1 LICENSE. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.] 
+
+
 License
-
-
-[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1.  PLEASE SEE BELOW TO REVIEW THE FULL TEXT OF LGPL 2.1. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
-
 
 LZMA SDK is available under any of the following licenses:
 
@@ -8113,7 +8191,8 @@ follows:
 LICENSE
 -------
 
-[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1.  PLEASE SEE BELOW TO REVIEW THE FULL TEXT OF LGPL 2.1. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
+
+[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE LGPL 2.1 LICENSE.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF LGPL 2.1 LICENSE. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.] 
 
 
 LZMA SDK is available under any of the following licenses:
@@ -8155,7 +8234,7 @@ of LZMA SDK as update for previous versions.
 
 SPECIAL EXCEPTION #3:  Igor Pavlov, as the author of this code, expressly
 permits you to use code of the following files:  BranchTypes.h, LzmaTypes.h,
-LzmaTest.c, LzmaStateTest.c, LzmaAlone.cpp, LzmaAlone.cs, LzmaAlone.java as
+LzmaTest.c, LzmaStateTest.c, LzmaAlone.cpp, Lzma Alone.cs, LzmaAlone.java as
 public domain code.
 
 
@@ -9281,7 +9360,30 @@ not limited to the correctness, accuracy, reliability or usefulness of
 this software.
 
 
->>> openldap-2.4.30
+>>> openldap-2.4.33
+
+Copyright 1998-2012 The OpenLDAP Foundation
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted only as authorized by the OpenLDAP
+Public License.
+
+A copy of this license is available in the file LICENSE in the
+top-level directory of the distribution or, alternatively, at
+<http://www.OpenLDAP.org/license.html>.
+
+OpenLDAP is a registered trademark of the OpenLDAP Foundation.
+
+Individual files and/or contributed packages may be copyright by
+other parties and/or subject to additional restrictions.
+
+This work is derived from the University of Michigan LDAP v3.3
+distribution.  Information concerning this software is available
+at <http://www.umich.edu/~dirsvcs/ldap/ldap.html>.
+
+
+LICENSE:
 
 The OpenLDAP Public License
   Version 2.8, 17 August 2003
@@ -9332,208 +9434,186 @@ California, USA.  All Rights Reserved.  Permission to copy and
 distribute verbatim copies of this document is granted.
 
 
->>> openssl-1.0.0j
-
-LICENSE ISSUES
-==============
-
-The OpenSSL toolkit stays under a dual license, i.e. both the conditions of
-the OpenSSL License and the original SSLeay license apply to the toolkit.
-See below for the actual license texts. Actually both licenses are BSD-style
-Open Source licenses. In case of any license issues related to OpenSSL
-please contact openssl-core@openssl.org.
-
-OpenSSL License
----------------
-
-====================================================================
-Copyright (c) 1998-2011 The OpenSSL Project.  All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-1. Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in
-the documentation and/or other materials provided with the
-distribution.
-
-3. All advertising materials mentioning features or use of this
-software must display the following acknowledgment:
-"This product includes software developed by the OpenSSL Project
-for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
-
-4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
-endorse or promote products derived from this software without
-prior written permission. For written permission, please contact
-openssl-core@openssl.org.
-
-5. Products derived from this software may not be called "OpenSSL"
-nor may "OpenSSL" appear in their names without prior written
-permission of the OpenSSL Project.
-
-6. Redistributions of any form whatsoever must retain the following
-acknowledgment:
-"This product includes software developed by the OpenSSL Project
-for use in the OpenSSL Toolkit (http://www.openssl.org/)"
-
-THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
-EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
-ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
-OF THE POSSIBILITY OF SUCH DAMAGE.
-====================================================================
-
-This product includes cryptographic software written by Eric Young
-(eay@cryptsoft.com).  This product includes software written by Tim
-Hudson (tjh@cryptsoft.com).
-
-
-Original SSLeay License
------------------------
-
-Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
-All rights reserved.
-
-This package is an SSL implementation written
-by Eric Young (eay@cryptsoft.com).
-The implementation was written so as to conform with Netscapes SSL.
-
-This library is free for commercial and non-commercial use as long as
-the following conditions are aheared to.  The following conditions
-apply to all code found in this distribution, be it the RC4, RSA,
-lhash, DES, etc., code; not just the SSL code.  The SSL documentation
-included with this distribution is covered by the same copyright terms
-except that the holder is Tim Hudson (tjh@cryptsoft.com).
-
-Copyright remains Eric Young's, and as such any Copyright notices in
-the code are not to be removed.
-If this package is used in a product, Eric Young should be given attribution
-as the author of the parts of the library used.
-This can be in the form of a textual message at program startup or
-in documentation (online or textual) provided with the package.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the copyright
-notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-3. All advertising materials mentioning features or use of this software
-must display the following acknowledgement:
-"This product includes cryptographic software written by
-Eric Young (eay@cryptsoft.com)"
-The word 'cryptographic' can be left out if the rouines from the library
-being used are not cryptographic related :-).
-4. If you include any Windows specific code (or a derivative thereof) from
-the apps directory (application code) you must include an acknowledgement:
-"This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
-
-THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGE.
-
-The licence and distribution terms for any publically available version or
-derivative of this code cannot be changed.  i.e. this code cannot simply be
-copied and put under another distribution licence
-[including the GNU Public Licence.]
-
 
 
 ADDITIONAL LICENSE INFORMATION:
 
 
-> BSD
+This work also contains materials derived from public sources.
 
+Additional information about OpenLDAP can be obtained at
+<http://www.openldap.org/>.
 
-openssl-1.0.0j.tar.gz\openssl-1.0.0j.tar\openssl-1.0.0j\ssl\tls1.h
+---
 
-Copyright remains Eric Young's, and as such any Copyright notices in
-the code are not to be removed.
-If this package is used in a product, Eric Young should be given attribution
-as the author of the parts of the library used.
-This can be in the form of a textual message at program startup or
-in documentation (online or textual) provided with the package.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the copyright
-notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
-3. All advertising materials mentioning features or use of this software
-must display the following acknowledgement:
-"This product includes cryptographic software written by
-Eric Young (eay@cryptsoft.com)"
-The word 'cryptographic' can be left out if the rouines from the library
-being used are not cryptographic related :-).
-4. If you include any Windows specific code (or a derivative thereof) from
-the apps directory (application code) you must include an acknowledgement:
-"This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
-
-THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGE.
-
-
-> BSD STYLE
-
-
-openssl-1.0.0j.tar.gz\openssl-1.0.0j.tar\openssl-1.0.0j\crypto\LPdir_nyi.c
-
-Copyright (c) 2004, Richard Levitte <richard@levitte.org>
+Portions Copyright 1998-2012 Kurt D. Zeilenga.
+Portions Copyright 1998-2006 Net Boolean Incorporated.
+Portions Copyright 2001-2006 IBM Corporation.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-1. Redistributions of source code must retain the above copyright
-notice, this list of conditions and the following disclaimer.
-2. Redistributions in binary form must reproduce the above copyright
-notice, this list of conditions and the following disclaimer in the
-documentation and/or other materials provided with the distribution.
+modification, are permitted only as authorized by the OpenLDAP
+Public License.
 
-THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
-OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
-OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGE.
+---
+
+Portions Copyright 1999-2008 Howard Y.H. Chu.
+Portions Copyright 1999-2008 Symas Corporation.
+Portions Copyright 1998-2003 Hallvard B. Furuseth.
+Portions Copyright 2007-2011 Gavin Henry.
+Portions Copyright 2007-2011 Suretec Systems Ltd.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that this notice is preserved.
+The names of the copyright holders may not be used to endorse or
+promote products derived from this software without their specific
+prior written permission.  This software is provided ``as is''
+without express or implied warranty.
+
+---
+
+Portions Copyright (c) 1992-1996 Regents of the University of Michigan.
+All rights reserved.
+
+Redistribution and use in source and binary forms are permitted
+provided that this notice is preserved and that due credit is given
+to the University of Michigan at Ann Arbor.  The name of the
+University may not be used to endorse or promote products derived
+from this software without specific prior written permission.  This
+software is provided ``as is'' without express or implied warranty.
+
+
+>>> openssl-1.0.0k
+
+License
+This is a copy of the current LICENSE file inside the CVS repository.
+
+
+  LICENSE ISSUES
+  ==============
+
+  The OpenSSL toolkit stays under a dual license, i.e. both the conditions of
+  the OpenSSL License and the original SSLeay license apply to the toolkit.
+  See below for the actual license texts. Actually both licenses are BSD-style
+  Open Source licenses. In case of any license issues related to OpenSSL
+  please contact openssl-core@openssl.org.
+
+  OpenSSL License
+  ---------------
+
+/* ====================================================================
+ * Copyright (c) 1998-2011 The OpenSSL Project.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ *
+ * 3. All advertising materials mentioning features or use of this
+ *    software must display the following acknowledgment:
+ *    "This product includes software developed by the OpenSSL Project
+ *    for use in the OpenSSL Toolkit. (http://www.openssl.org/)"
+ *
+ * 4. The names "OpenSSL Toolkit" and "OpenSSL Project" must not be used to
+ *    endorse or promote products derived from this software without
+ *    prior written permission. For written permission, please contact
+ *    openssl-core@openssl.org.
+ *
+ * 5. Products derived from this software may not be called "OpenSSL"
+ *    nor may "OpenSSL" appear in their names without prior written
+ *    permission of the OpenSSL Project.
+ *
+ * 6. Redistributions of any form whatsoever must retain the following
+ *    acknowledgment:
+ *    "This product includes software developed by the OpenSSL Project
+ *    for use in the OpenSSL Toolkit (http://www.openssl.org/)"
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE OpenSSL PROJECT ``AS IS'' AND ANY
+ * EXPRESSED OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE OpenSSL PROJECT OR
+ * ITS CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+ * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ * ====================================================================
+ *
+ * This product includes cryptographic software written by Eric Young
+ * (eay@cryptsoft.com).  This product includes software written by Tim
+ * Hudson (tjh@cryptsoft.com).
+ *
+ */
+
+ Original SSLeay License
+ -----------------------
+
+/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+ * All rights reserved.
+ *
+ * This package is an SSL implementation written
+ * by Eric Young (eay@cryptsoft.com).
+ * The implementation was written so as to conform with Netscapes SSL.
+ *
+ * This library is free for commercial and non-commercial use as long as
+ * the following conditions are aheared to.  The following conditions
+ * apply to all code found in this distribution, be it the RC4, RSA,
+ * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
+ * included with this distribution is covered by the same copyright terms
+ * except that the holder is Tim Hudson (tjh@cryptsoft.com).
+ *
+ * Copyright remains Eric Young's, and as such any Copyright notices in
+ * the code are not to be removed.
+ * If this package is used in a product, Eric Young should be given attribution
+ * as the author of the parts of the library used.
+ * This can be in the form of a textual message at program startup or
+ * in documentation (online or textual) provided with the package.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *    "This product includes cryptographic software written by
+ *     Eric Young (eay@cryptsoft.com)"
+ *    The word 'cryptographic' can be left out if the rouines from the library
+ *    being used are not cryptographic related :-).
+ * 4. If you include any Windows specific code (or a derivative thereof) from
+ *    the apps directory (application code) you must include an acknowledgement:
+ *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
+ *
+ * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * The licence and distribution terms for any publically available version or
+ * derivative of this code cannot be changed.  i.e. this code cannot simply be
+ * copied and put under another distribution licence
+ * [including the GNU Public Licence.]
 
 
 >>> perl-data-uuid-1.217
@@ -10926,6 +11006,11 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
+
+>>> concurrentlinkedhashmap-lru-1.3.1
+
+License: Apache 2.0
 
 
 >>> ehcache-core-2.5.1
@@ -12896,6 +12981,83 @@ public domain by Arbortext on 10 Apr 2000. See:
 http://www.arbortext.com/customer_support/updates_and_technical_notes/catalogs/docs/README.htm
 
 
+>>> xerces-j-2.9.1
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+xml-apis.jar
+xercesSamples.jar
+xercesImpl.jar
+serializer.jar
+resolver.jar
+
+ADDITIONAL LICENSE INFORMATION:
+
+
+> MIT
+
+LICENSE.dom-documentation.txt
+Public documents on the W3C site are provided by the copyright holders under
+the following license. By using and/or copying this document, or the W3C
+document from which this statement is linked, you (the licensee) agree that
+you have read, understood, and will comply with the following terms and
+conditions:
+
+Permission to copy, and distribute the contents of this document, or the W3C
+document from which this statement is linked, in any medium for any purpose
+and without fee or royalty is hereby granted, provided that you include the
+following on ALL copies of the document, or portions thereof, that you use:
+
+1. A link or URL to the original W3C document.
+
+2. The pre-existing copyright notice of the original author, or if it
+doesn't exist, a notice (hypertext is preferred, but a textual
+representation is permitted) of the form: "Copyright  [$date-of-document]
+World Wide Web Consortium, (Massachusetts Institute of Technology,
+European Research Consortium for Informatics and Mathematics, Keio
+University). All Rights Reserved.
+http://www.w3.org/Consortium/Legal/2002/copyright-documents-20021231"
+
+3. If it exists, the STATUS of the W3C document.
+
+When space permits, inclusion of the full text of this NOTICE should be
+provided. We request that authorship attribution be provided in any software,
+documents, or other items or products that you create pursuant to the
+implementation of the contents of this document, or any portion thereof.
+
+No right to create modifications or derivatives of W3C documents is granted
+pursuant to this license. However, if additional requirements (documented in
+the Copyright FAQ) are satisfied, the right to create modifications or
+derivatives is sometimes granted by the W3C to individuals complying with
+those requirements.
+
+THIS DOCUMENT IS PROVIDED "AS IS," AND COPYRIGHT HOLDERS MAKE NO
+REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, INCLUDING, BUT NOT
+LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE,
+NON-INFRINGEMENT, OR TITLE; THAT THE CONTENTS OF THE DOCUMENT ARE SUITABLE
+FOR ANY PURPOSE; NOR THAT THE IMPLEMENTATION OF SUCH CONTENTS WILL NOT
+INFRINGE ANY THIRD PARTY PATENTS, COPYRIGHTS, TRADEMARKS OR OTHER RIGHTS.
+
+COPYRIGHT HOLDERS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL OR
+CONSEQUENTIAL DAMAGES ARISING OUT OF ANY USE OF THE DOCUMENT OR THE
+PERFORMANCE OR IMPLEMENTATION OF THE CONTENTS THEREOF.
+
+The name and trademarks of copyright holders may NOT be used in advertising
+or publicity pertaining to this document or its contents without specific,
+written prior permission. Title to copyright in this document will at all
+times remain with copyright holders.
+
+
 --------------- SECTION 3: Common Development and Distribution License, V1.0 ----------
 
 Common Development and Distribution License, V1.0 is applicable to the following component(s).
@@ -12930,33 +13092,6 @@ Copyright 2005 Sun Microsystems, Inc. All rights reserved.
 GNU General Public License, V1.0 is applicable to the following component(s).
 
 
-
->>> perl-class-inspector-1.25
-
-[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 1.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE GPL 1.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
-
-
-Terms of Perl itself
-
-a) the GNU General Public License as published by the Free
-   Software Foundation; either version 1, or (at your option) any
-   later version, or
-b) the "Artistic License"
-
-
-
->>> perl-xml-sax-base-1.04
-
-[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 1.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE GPL 1.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
-
-
-XML::SAX is dual licensed under the same terms as Perl itself.
-
-This means at your choice, either the Perl Artistic License, or
-the GNU GPL version 1 or higher.
-
-
-
 >>> libwww-perl-6.02
 
 [PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 1.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF GPL 1.0. THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.] 
@@ -12988,6 +13123,19 @@ It is free software; you can redistribute it and/or modify it under the terms of
 a) the GNU General Public License as published by the Free Software Foundation; either external linkversion 1, or (at your option) any later versionexternal link, or
 
 b) the "Artistic License".
+
+
+>>> perl-class-inspector-1.25
+
+[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 1.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE GPL 1.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
+
+
+Terms of Perl itself
+
+a) the GNU General Public License as published by the Free
+   Software Foundation; either version 1, or (at your option) any
+   later version, or
+b) the "Artistic License"
 
 
 >>> perl-compress-raw-bzip2-2.037
@@ -13441,6 +13589,17 @@ This means at your choice, either the Perl Artistic License, or
 the GNU GPL version 1 or higher.
 
 
+>>> perl-xml-sax-base-1.04
+
+[PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 1.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE GPL 1.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
+
+
+XML::SAX is dual licensed under the same terms as Perl itself.
+
+This means at your choice, either the Perl Artistic License, or
+the GNU GPL version 1 or higher.
+
+
 --------------- SECTION 5: GNU General Public License, V2.0 ----------
 
 GNU General Public License, V2.0 is applicable to the following component(s).
@@ -13822,72 +13981,144 @@ This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
 
 
->>> mysql-5.1.63
+>>> mysql-5.1.65
 
-Copyright (c) 2007 MySQL AB, 2008 Sun Microsystems, Inc.
+MySQL Server 5.1
 
-Use is subject to license terms.
+This is a release of MySQL, a dual-license SQL database server.
+For the avoidance of doubt, this particular copy of the software
+is released under the version 2 of the GNU General Public License.
+MySQL is brought to you by Oracle.
 
-This program is free software; you can redistribute it and/or modify  it under the terms of the GNU General Public License as published by the Free Software Foundation; version 2 of the License.
+Copyright (c) 2000, 2012, Oracle and/or its affiliates. All rights reserved.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+License information can be found in the COPYING file.
 
-You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+MySQL FOSS License Exception
+We want free and open source software applications under certain
+licenses to be able to use specified GPL-licensed MySQL client
+libraries despite the fact that not all such FOSS licenses are
+compatible with version 2 of the GNU General Public License.
+Therefore there are special exceptions to the terms and conditions
+of the GPLv2 as applied to these client libraries, which are
+identified and described in more detail in the FOSS License
+Exception at
+<http://www.mysql.com/about/legal/licensing/foss-exception.html>.
+
+This distribution may include materials developed by third
+parties. For license and attribution notices for these
+materials, please refer to the documentation that accompanies
+this distribution (see the "Licenses for Third-Party Components"
+appendix) or view the online documentation at
+<http://dev.mysql.com/doc/>.
+
+GPLv2 Disclaimer
+For the avoidance of doubt, except that if any license choice
+other than GPL or LGPL is available it will apply instead,
+Oracle elects to use only the General Public License version 2
+(GPLv2) at this time for any software where a choice of GPL
+license versions is made available with the language indicating
+that GPLv2 or any later version may be used, or where a choice
+of which version of the GPL is applied is otherwise unspecified.
+
+For further information about MySQL or additional documentation,
+see:
+- The latest information about MySQL: http://www.mysql.com
+- The current MySQL documentation: http://dev.mysql.com/doc
+
+Some Reference Manual sections of special interest:
+- If you are migrating from an older version of MySQL, please
+read the "Upgrading from..." section.
+- To see what MySQL can do, take a look at the features section.
+- For installation instructions, see the Installing and Upgrading
+chapter.
+- For the new features/bugfix history, see the MySQL Change History
+appendix.
+
+You can browse the MySQL Reference Manual online or download it
+in any of several formats at the URL given earlier in this file.
+Source distributions include a local copy of the manual in the
+Docs directory.
 
 
 ADDITIONAL LICENSE INFORMATION:
 
-> BSD 
+> BSD
 
-MySQL-5.1.63-1.glibc23.src.rpm\MySQL-5.1.63-1.glibc23.src.cpio\mysql-5.1.63.tar.gz\mysql-5.1.63.tar\mysql-5.1.63\cmd-line-utils\libedit\np\fgetln.c
+mysql-5.1.65.tar.gz\mysql-5.1.65.tar\mysql-5.1.65\cmd-line-utils\libedit\np\fgetln.c
 
 Copyright (c) 1998 The NetBSD Foundation, Inc.
 All rights reserved.
 
-This code is derived from software contributed to The NetBSD Foundation by Christos Zoulas.
+This code is derived from software contributed to The NetBSD Foundation
+by Christos Zoulas.
 
-Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+1. Redistributions of source code must retain the above copyright
+notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+notice, this list of conditions and the following disclaimer in the
+documentation and/or other materials provided with the distribution.
 
-1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
-following disclaimer.
+THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS
+``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
 
-2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+> MIT
 
-THIS SOFTWARE IS PROVIDED BY THE NETBSD FOUNDATION, INC. AND CONTRIBUTORS ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE FOUNDATION OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE  POSSIBILITY OF SUCH DAMAGE. 
+mysql-5.1.65.tar.gz\mysql-5.1.65.tar\mysql-5.1.65\cmd-line-utils\libedit\np\strlcat.c
 
+Copyright (c) 1998 Todd C. Miller <Todd.Miller@courtesan.com>
+
+Permission to use, copy, modify, and distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND TODD C. MILLER DISCLAIMS ALL
+WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL TODD C. MILLER BE LIABLE
+FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 > Public Domain
 
-MySQL-5.1.63-1.glibc23.src.rpm\MySQL-5.1.63-1.glibc23.src.cpio\mysql-5.1.63.tar.gz\mysql-5.1.63.tar\mysql-5.1.63\dbug\dbug.c
+mysql-5.1.65.tar.gz\mysql-5.1.65.tar\mysql-5.1.65\dbug\dbug.c
 
 N O T I C E
 
-Copyright Abandoned, 1987, Fred Fish 
-                  
-This previously copyrighted work has been placed into the public domain by the author and may be freely used for any purpose, private or commercial.
-                                               
-Because of the number of inquiries I was receiving about the use of this product in commercially developed works I have decided to simply make it public domain to further its unrestricted use. I     specifically would be most happy to see this material become a part of the standard Unix distributions by AT&T and the Berkeley Computer Science Research Group, and a standard part of the GNU system from the Free Software Foundation. 
-                       
-I would appreciate it, as a courtesy, if this notice is left in all copies and derivative works. Thank you.
-
-The author makes no warranty of any kind with respect to this product and explicitly disclaims any implied warranties of merchantability or fitness for any particular purpose.
+Copyright Abandoned, 1987, Fred Fish
 
 
-> MIT Style License
+This previously copyrighted work has been placed into the  public
+domain  by  the  author  and  may be freely used for any purpose,
+private or commercial.
 
-MySQL-5.1.63-1.glibc23.src.rpm\MySQL-5.1.63-1.glibc23.src.cpio\mysql-5.1.63.tar.gz\mysql-5.1.63.tar\mysql-5.1.63\regex\regexp.c
+Because of the number of inquiries I was receiving about the  use
+of this product in commercially developed works I have decided to
+simply make it public domain to further its unrestricted use.   I
+specifically  would  be  most happy to see this material become a
+part of the standard Unix distributions by AT&T and the  Berkeley
+Computer  Science  Research Group, and a standard part of the GNU
+system from the Free Software Foundation.
 
-Copyright (c) 1986 by University of Toronto.
+I would appreciate it, as a courtesy, if this notice is  left  in
+all copies and derivative works.  Thank you.
 
-Written by Henry Spencer.  Not derived from licensed software.
-
-Permission is granted to anyone to use this software for any purpose on any computer system, and to redistribute it freely, subject to the following restrictions:
-
-1. The author is not responsible for the consequences of use of this software, no matter how awful, even if they arise from defects in it.
-
-2. The origin of this software must not be misrepresented, either by explicit claim or by omission.
-
-3. Altered versions must be plainly marked as such, and must not be misrepresented as being the original software.
+The author makes no warranty of any kind  with  respect  to  this
+product  and  explicitly disclaims any implied warranties of mer-
+chantability or fitness for any particular purpose.
 
 
 >>> mysql-connector-java-5.1.13
@@ -14874,7 +15105,7 @@ COPYRIGHT  NOTICE AND LICENSE FOR THIS MODULE.
 
 [PLEASE NOTE:  VMWARE, INC. ELECTS TO USE AND DISTRIBUTE THIS COMPONENT UNDER THE TERMS OF THE GPL 2.0.  PLEASE SEE THE APPENDIX TO REVIEW THE FULL TEXT OF THE GPL 2.0.  THE ORIGINAL LICENSE TERMS ARE REPRODUCED BELOW ONLY AS A REFERENCE.]
 
-License: GPL 2.0
+This software is (c) Luis E. Muoz, 1999 - 2007, and (c) Michael Robinton, 2006 - 2010. It can be used under the terms of the Perl artistic license provided that proper credit for the work of the authors is preserved in the form of this copyright notice and license for this module.
 
 
 >>> perl-package-constants-0.02
@@ -15282,11 +15513,7 @@ IBM Public License, V1.0 is applicable to the following component(s).
 License: IBM Public License 1.0
 
 
-
-
-
-
-=============== PART 2. SMIME Zimlet ====================================
+=============== PART 2. ZCS: SMIME ====================================
 
 
 
@@ -19303,7 +19530,6 @@ EXHIBIT A -Mozilla Public License.
 
 
 
-
 ===========================================================================
 
 To the extent any open source components are licensed under the
@@ -19324,4 +19550,4 @@ years from the date you acquired this Software product. Alternatively,
 the Source Files may accompany the VMware product.
 
 
-[ZCS721GASC072712]
+[ZCS723GAAV040313]

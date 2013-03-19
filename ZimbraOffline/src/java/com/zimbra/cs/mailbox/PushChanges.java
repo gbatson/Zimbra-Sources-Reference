@@ -135,7 +135,7 @@ public class PushChanges {
 
     /** The bitmask of all document changes that we propagate to the server. */
     static final int DOCUMENT_CHANGES = Change.MODIFIED_FLAGS | Change.MODIFIED_TAGS | Change.MODIFIED_FOLDER |
-                                        Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT | Change.MODIFIED_NAME;
+                                        Change.MODIFIED_COLOR | Change.MODIFIED_CONTENT | Change.MODIFIED_NAME | Change.MODIFIED_LOCK;
 
     /** A list of all the "leaf types" (i.e. non-folder types) that we
      *  synchronize with the server. */
@@ -395,7 +395,7 @@ public class PushChanges {
                     ++totalSent;
 
                     // remove the draft from the outbox
-                    ombx.delete(sContext, id, MailItem.TYPE_MESSAGE);
+                    ombx.delete(null, id, MailItem.TYPE_MESSAGE); //use null context instead of traceless so these tombstones are tracked
                     OfflineLog.offline.debug("push: deleted pending draft (" + id + ')');
                 } catch (ServiceException x) {
                     if ((x instanceof ZClientException || x instanceof SoapFaultException) && !x.isReceiversFault() &&
@@ -1130,13 +1130,26 @@ public class PushChanges {
                 }
                 ombx.setSyncedVersionForMailItem("" + item.getId(), resp.getSecond());
             }
-            //set tags
-            Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
-            Element action = request.addElement(MailConstants.E_ACTION);
-            action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
-            action = getTagSync().addOutboundTagsAttr(action, item.getTagString());
-            action.addAttribute(MailConstants.A_ID, id);
-            ombx.sendRequest(request);
+
+            int mask = ombx.getChangeMask(sContext, id, MailItem.TYPE_DOCUMENT);
+            if ((mask & Change.MODIFIED_LOCK) > 0) {
+                Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+                Element action = request.addElement(MailConstants.E_ACTION);
+                action.addAttribute(MailConstants.A_ID, id);
+                boolean locked = ((Document) item).getLockOwner() != null;
+                action.addAttribute(MailConstants.A_OPERATION, locked ? ItemAction.OP_LOCK : ItemAction.OP_UNLOCK);
+                ombx.sendRequest(request);
+            }
+
+            if ((mask & Change.MODIFIED_TAGS) > 0) {
+                //set tags
+                Element request = new Element.XMLElement(MailConstants.ITEM_ACTION_REQUEST);
+                Element action = request.addElement(MailConstants.E_ACTION);
+                action.addAttribute(MailConstants.A_OPERATION, ItemAction.OP_UPDATE);
+                action = getTagSync().addOutboundTagsAttr(action, item.getTagString());
+                action.addAttribute(MailConstants.A_ID, id);
+                ombx.sendRequest(request);
+            }
         }
 
         synchronized (ombx) {

@@ -37,19 +37,17 @@ import org.apache.commons.httpclient.methods.ByteArrayRequestEntity;
 import org.apache.commons.httpclient.methods.GetMethod;
 import org.apache.commons.httpclient.methods.PostMethod;
 
-import org.dom4j.DocumentException;
-
 import com.zimbra.common.httpclient.HttpClientUtil;
 import com.zimbra.common.localconfig.LC;
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.Element;
+import com.zimbra.common.soap.XmlParseException;
 import com.zimbra.common.util.ByteUtil;
 import com.zimbra.common.util.Constants;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.ZimbraHttpConnectionManager;
 import com.zimbra.common.util.ZimbraLog;
 import com.zimbra.cs.account.Account;
-import com.zimbra.cs.account.Config;
 import com.zimbra.cs.account.Domain;
 import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.Provisioning.AccountBy;
@@ -242,29 +240,46 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
         return getServerInfo(email) != null;
 	}
 	
-	public long cachedFreeBusyStartTime() {
-		Calendar cal = GregorianCalendar.getInstance();
-		try {
-			Config config = Provisioning.getInstance().getConfig();
-			long dur = config.getTimeInterval(Provisioning.A_zimbraFreebusyExchangeCachedIntervalStart, 0);
-			cal.setTimeInMillis(System.currentTimeMillis() - dur);
-		} catch (ServiceException se) {
-			// set to 1 week ago
-			cal.setTimeInMillis(System.currentTimeMillis() - Constants.MILLIS_PER_WEEK);
-		}
-		// normalize the time to 00:00:00
-		cal.set(Calendar.HOUR_OF_DAY, 0);
-		cal.set(Calendar.MINUTE, 0);
-		cal.set(Calendar.SECOND, 0);
-		return cal.getTimeInMillis();
-	}
+    private long getTimeInterval(String attr, String accountId, long defaultValue) throws ServiceException {
+        Provisioning prov = Provisioning.getInstance();
+        if (accountId != null) {
+            Account acct = prov.get(AccountBy.id, accountId);
+            if (acct != null) {
+                return acct.getTimeInterval(attr, defaultValue);
+            }
+        }
+        return prov.getConfig().getTimeInterval(attr, defaultValue);
+    }
 	
-	public long cachedFreeBusyEndTime() {
+    @Override
+    public long cachedFreeBusyStartTime(String accountId) {
+        Calendar cal = GregorianCalendar.getInstance();
+        int curYear = cal.get(Calendar.YEAR);
+        try {
+            long dur = getTimeInterval(Provisioning.A_zimbraFreebusyExchangeCachedIntervalStart, accountId, 0);
+            cal.setTimeInMillis(System.currentTimeMillis() - dur);
+        } catch (ServiceException se) {
+            // set to 1 week ago
+            cal.setTimeInMillis(System.currentTimeMillis() - Constants.MILLIS_PER_WEEK);
+        }
+        // normalize the time to 00:00:00
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        cal.set(Calendar.SECOND, 0);
+        if (cal.get(Calendar.YEAR) < curYear) {
+            // Exchange accepts FB info for only one calendar year. If the start date falls in the previous year
+            // change it to beginning of the current year.
+            cal.set(curYear, 0, 1);
+        }
+        return cal.getTimeInMillis();
+    }
+
+    @Override
+	public long cachedFreeBusyEndTime(String accountId) {
 		long duration = Constants.MILLIS_PER_MONTH * 2;
 		Calendar cal = GregorianCalendar.getInstance();
 		try {
-			Config config = Provisioning.getInstance().getConfig();
-			duration = config.getTimeInterval(Provisioning.A_zimbraFreebusyExchangeCachedInterval, duration);
+			duration = getTimeInterval(Provisioning.A_zimbraFreebusyExchangeCachedInterval, accountId, duration);
 		} catch (ServiceException se) {
 		}
 		cal.setTimeInMillis(cachedFreeBusyStartTime() + duration);
@@ -274,6 +289,16 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 		cal.set(Calendar.SECOND, 0);
 		return cal.getTimeInMillis();
 	}
+    
+    @Override
+    public long cachedFreeBusyStartTime() {
+        return cachedFreeBusyStartTime(null);
+    }
+
+    @Override
+    public long cachedFreeBusyEndTime() {
+        return cachedFreeBusyEndTime(null);
+    }
 	
 	public boolean handleMailboxChange(String accountId) {
 		String email = getEmailAddress(accountId);
@@ -415,7 +440,7 @@ public class ExchangeFreeBusyProvider extends FreeBusyProvider {
 				response = Element.parseXML(buf);
 			} else
 				response = Element.parseXML(method.getResponseBodyAsStream());
-		} catch (DocumentException e) {
+		} catch (XmlParseException e) {
 			ZimbraLog.fb.warn("error parsing fb response from exchange", e);
 			return getEmptyList(req);
 		} catch (IOException e) {

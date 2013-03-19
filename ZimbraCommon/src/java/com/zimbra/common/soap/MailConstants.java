@@ -359,6 +359,7 @@ public final class MailConstants {
     public static final String A_DATE_COMPARISON = "dateComparison";
     public static final String A_CONDITION = "condition";
     public static final String A_NEGATIVE = "negative";
+    public static final String A_ABS_FOLDER_PATH = "absFolderPath";
     public static final String A_FOLDER_PATH = "folderPath";
     public static final String A_FLAG_NAME = "flagName";
     public static final String A_TAG_NAME = "tagName";
@@ -554,6 +555,7 @@ public final class MailConstants {
     public static final String A_TYPED_DELETES = "typed";
     public static final String A_CALENDAR_CUTOFF = "calCutoff";
     public static final String A_MSG_CUTOFF = "msgCutoff";
+    public static final String A_GALSYNC_FULLSYNC_RECOMMENDED = "fullSyncRecommended";
 
     // filter rules
     public static final String A_LHS = "k0";

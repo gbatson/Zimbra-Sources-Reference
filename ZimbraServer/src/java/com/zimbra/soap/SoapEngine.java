@@ -24,6 +24,7 @@ import com.zimbra.common.soap.SoapFaultException;
 import com.zimbra.common.soap.SoapParseException;
 import com.zimbra.common.soap.SoapProtocol;
 import com.zimbra.common.soap.SoapTransport;
+import com.zimbra.common.soap.XmlParseException;
 import com.zimbra.common.soap.ZimbraNamespace;
 import com.zimbra.common.util.Log;
 import com.zimbra.common.util.LogFactory;
@@ -50,11 +51,15 @@ import com.zimbra.cs.util.BuildInfo;
 import com.zimbra.cs.util.Config;
 import com.zimbra.cs.util.Zimbra;
 import com.zimbra.soap.ZimbraSoapContext.SessionInfo;
-import org.dom4j.DocumentException;
-
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
+import javax.xml.stream.XMLStreamReader;
 
 /**
  * The soap engine.
@@ -134,6 +139,82 @@ public final class SoapEngine {
         }
     }
 
+    /**
+     * Bug 77304 - If the XML for a Soap Request was bad, look at it to see if enough of it is valid to be able
+     * to determine the desired response protocol.
+     * Use StAX parsing so that we can stop looking at the XML once we have got past the Envelope Header context.
+     */
+    private SoapProtocol chooseFaultProtocolFromBadXml(InputStream in) {
+        SoapProtocol soapProto = SoapProtocol.Soap12; /* Default */
+        XMLInputFactory xmlInputFactory = XMLInputFactory.newInstance();
+        XMLStreamReader xmlReader = null;
+        int depth = 0;
+        boolean inEnvelope = false;
+        boolean inHeader = false;
+        boolean inContext = false;
+        String localName;
+        try {
+            xmlReader = xmlInputFactory.createXMLStreamReader(in);
+            boolean scanningForFormat = true;
+            while (scanningForFormat && xmlReader.hasNext()) {
+                int eventType = xmlReader.next();
+                switch (eventType) {
+                    case XMLStreamReader.START_ELEMENT:
+                        localName = xmlReader.getLocalName();
+                        depth++;
+                        if ((depth == 1) && ("Envelope".equals(localName))) {
+                            inEnvelope = true;
+                            String ns = xmlReader.getNamespaceURI();
+                            if (SoapProtocol.Soap11.getNamespace().getStringValue().equals(ns)) {
+                                soapProto = SoapProtocol.Soap11; // new default
+                            }
+                        } else if (inEnvelope && (depth == 2) && ("Header".equals(localName))) {
+                            inHeader = true;
+                        } else if (inHeader && (depth == 3) && ("context".equals(localName))) {
+                            inContext = true;
+                        } else if (inContext && (depth == 4) && ("format".equals(localName))) {
+                            String respType = xmlReader.getAttributeValue(null, "type");
+                            if (respType != null) {
+                                if (HeaderConstants.TYPE_JAVASCRIPT.equals(respType)) {
+                                    soapProto = SoapProtocol.SoapJS;
+                                }
+                                scanningForFormat = false;
+                            }
+                        }
+                        break;
+                    case XMLStreamReader.END_ELEMENT:
+                        localName = xmlReader.getLocalName();
+                        if ((depth == 1) && ("Envelope".equals(localName))) {
+                            inEnvelope = false;
+                            scanningForFormat = false;  /* it wasn't specified, so default it */
+                        } else if (inEnvelope && (depth == 2) && ("Header".equals(localName))) {
+                            inHeader = false;
+                            scanningForFormat = false;  /* it wasn't specified, so default it */
+                        } else if (inHeader && (depth == 3) && ("context".equals(localName))) {
+                            inContext = false;
+                            scanningForFormat = false;  /* it wasn't specified, so default it */
+                        }
+                        depth--;
+                        break;
+                }
+            }
+        } catch (XMLStreamException e) {
+            ZimbraLog.soap.debug("Problem trying to determine response protocol from request XML", e);
+        } finally {
+            if (xmlReader != null) {
+                try {
+                    xmlReader.close();
+                } catch (XMLStreamException e) {
+                }
+            }
+        }
+        try {
+            in.close();
+        } catch (IOException e) {
+        }
+        return soapProto;
+    }
+
     public Element dispatch(String path, byte[] soapMessage, Map<String, Object> context) {
         if (soapMessage == null || soapMessage.length == 0) {
             SoapProtocol soapProto = SoapProtocol.Soap12;
@@ -147,13 +228,12 @@ public final class SoapEngine {
                 document = Element.parseXML(in);
             else
                 document = Element.parseJSON(in);
-        } catch (DocumentException de) {
-            // FIXME: have to pick 1.1 or 1.2 since we can't parse any
-            SoapProtocol soapProto = SoapProtocol.Soap12;
-            return soapFaultEnv(soapProto, "SOAP exception", ServiceException.PARSE_ERROR(de.getMessage(), de));
         } catch (SoapParseException e) {
             SoapProtocol soapProto = SoapProtocol.SoapJS;
             return soapFaultEnv(soapProto, "SOAP exception", ServiceException.PARSE_ERROR(e.getMessage(), e));
+        } catch (XmlParseException e) {
+            SoapProtocol soapProto = chooseFaultProtocolFromBadXml(new ByteArrayInputStream(soapMessage));
+            return soapFaultEnv(soapProto, "SOAP exception", e);
         }
         Element resp = dispatch(path, document, context);
 
@@ -266,11 +346,13 @@ public final class SoapEngine {
                 for (Element req : doc.listElements()) {
                     // if (mLog.isDebugEnabled())
                     //     mLog.debug("dispatch: multi " + req.getQualifiedName());
-
+                    long start = System.currentTimeMillis();
                     String id = req.getAttribute(A_REQUEST_CORRELATOR, null);
-                    if (!isResumed)
-                        ZimbraLog.soap.info("(batch) " + req.getName());
                     Element br = dispatchRequest(req, context, zsc);
+                    if (!isResumed) {
+                        ZimbraLog.soap.info("(batch) %s elapsed=%d", req.getName(), System.currentTimeMillis() - start);
+                    }
+
                     if (id != null)
                         br.addAttribute(A_REQUEST_CORRELATOR, id);
                     responseBody.addElement(br);
@@ -282,9 +364,11 @@ public final class SoapEngine {
                 }
             } else {
                 String id = doc.getAttribute(A_REQUEST_CORRELATOR, null);
-                if (!isResumed)
-                    ZimbraLog.soap.info(doc.getName());
+                long start = System.currentTimeMillis();
                 responseBody = dispatchRequest(doc, context, zsc);
+                if (!isResumed) {
+                    ZimbraLog.soap.info("%s elapsed=%d", doc.getName(), System.currentTimeMillis() - start);
+                }
                 if (id != null)
                     responseBody.addAttribute(A_REQUEST_CORRELATOR, id);
             }
@@ -300,8 +384,10 @@ public final class SoapEngine {
                 // if we don't detach it first.
                 doc.detach();
                 ZimbraSoapContext zscTarget = new ZimbraSoapContext(zsc, zsc.getRequestedAccountId()).disableNotifications();
-                ZimbraLog.soap.info(doc.getName() + " (Proxying to " + zsc.getProxyTarget().toString() +")");
+                long start = System.currentTimeMillis();
                 responseBody = zsc.getProxyTarget().dispatch(doc, zscTarget);
+                ZimbraLog.soap.info("%s proxy=%s,elapsed=%d", doc.getName(), zsc.getProxyTarget(),
+                        System.currentTimeMillis() - start);
                 responseBody.detach();
             } catch (SoapFaultException e) {
                 responseBody = e.getFault() != null ? e.getFault().detach() : responseProto.soapFault(e);

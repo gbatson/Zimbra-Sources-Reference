@@ -1541,8 +1541,7 @@ function(appt, mode, params) {
 	if(params.startDate) appt.setStartDate(params.startDate);
 	if(params.endDate) appt.setEndDate(params.endDate);
 
-    if(!appt.isOrganizer() || appt.isShared())
-    {
+    if (!appt.isOrganizer() || appt.isReadOnly()) {  //isOrganizer means current user is the organizer of the appt. (which is not the case if the appt is on a shared folder, even if the current user has admin or manager rights (i.e. not read only)
           var origOrganizer=appt.organizer;
           var myEmail=appt.getFolder().getAccount().getEmail();
           appt.replaceAttendee(myEmail,origOrganizer);
@@ -1561,7 +1560,8 @@ function(appt, mode, params) {
 		  dlg.setMessage(ZmMsg.confirmApptDuplication);
 		  dlg.popup();
     }
-    else{
+    else {
+		appt.organizer = null; // Let the organizer be set according to the choise in the form. (the calendar).
 	    this.newAppointment(appt, mode, true);
     }
 };
@@ -2403,9 +2403,9 @@ function(appt, mode) {
 
 ZmCalViewController.prototype._showApptForwardComposeView =
 function(appt, mode) {
-	if(!appt.isOrganizer()) {
-		appt.name = ZmMsg.fwd + ": " + appt.name;
-	}
+	/*if(!appt.isOrganizer()) { */
+	appt.name = ZmMsg.fwd + ": " + appt.name;
+	//}
 	this._app.getApptComposeController().show(appt, mode);
 };
 
@@ -2742,7 +2742,7 @@ function(parent, num) {
 		var isShared = calendar ? calendar.isRemote() : false;
 		var disabled = isSynced || isReadOnly || (num == 0);
 		var isPrivate = appt && appt.isPrivate() && calendar.isRemote() && !calendar.hasPrivateAccess();
-		var isForwardable = !isTrash && calendar && !calendar.isReadOnly();
+		var isForwardable = !isTrash && calendar && !calendar.isReadOnly() && appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED);
 		var isReplyable = !isTrash && appt && (num == 1);
         var isTrashMultiple = isTrash && (num && num>1);
 
@@ -2807,6 +2807,8 @@ function(ev) {
 	var appt = actionMenu.__appt;
 	delete actionMenu.__appt;
 
+    var orig = appt.getOrig();
+    appt = orig && orig.isMultiDay() ? orig : appt;
 	var calendar = appt.getFolder();
     var isTrash = calendar && calendar.nId == ZmOrganizer.ID_TRASH;
 	var isSynced = Boolean(calendar.url);
@@ -3094,7 +3096,7 @@ function(appt, actionMenu) {
 	var isPrivate = appt.isPrivate() && calendar.isRemote() && !calendar.hasPrivateAccess();
 	var enabled = !isOrganizer && workflow && !isPrivate;
     var isReplyable = !isTrash && appt.otherAttendees;
-	var isForwardable = !isTrash && calendar && !calendar.isReadOnly();
+	var isForwardable = !isTrash && calendar && !calendar.isReadOnly() && appCtxt.get(ZmSetting.GROUP_CALENDAR_ENABLED);
 
 	// reply action menu
 	actionMenu.enable(ZmOperation.REPLY_ACCEPT, enabled && isReplyable && appt.ptst != ZmCalBaseItem.PSTATUS_ACCEPT);
@@ -3474,7 +3476,7 @@ function(appts, newFolderId) {
 	var isMovingBetw = false;
 	for (var i = 0; i < appts.length; i++) {
 		var appt = appts[i];
-		if (!appt.isReadOnly() && appt._orig) {
+		if (!appt.isReadOnly() && appt._orig && appt.otherAttendees) {
 			var origFolder = appt._orig.getFolder();
 			var newFolder = appCtxt.getById(newFolderId);
 			if (origFolder && newFolder) {
@@ -3850,11 +3852,11 @@ function(ev) {
 
 ZmCalViewController.prototype._showApptSource =
 function(appt) {
-	var restUrl = appt.getRestUrl();
-	if (restUrl) {
-		var url = [restUrl, (restUrl.indexOf("?")==-1) ? "?" : "&", "mime=text/plain", "&", "noAttach=1"].join("");
-		window.open(url, "_blank", "menubar=yes,resizable=yes,scrollbars=yes");
-	}
+    var apptFetchUrl = appCtxt.get(ZmSetting.CSFE_MSG_FETCHER_URI)
+                    + "&id=" + AjxStringUtil.urlComponentEncode(appt.id || appt.invId)
+                    +"&mime=text/plain&noAttach=1";
+    // create a new window w/ generated msg based on msg id
+    window.open(apptFetchUrl, "_blank", "menubar=yes,resizable=yes,scrollbars=yes");
 };
 
 ZmCalViewController.prototype.getAppointmentByInvite =

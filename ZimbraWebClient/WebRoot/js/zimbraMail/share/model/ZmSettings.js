@@ -832,6 +832,7 @@ function() {
 	this.registerSetting("HTML_COMPOSE_ENABLED",			{name:"zimbraFeatureHtmlComposeEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:true});
 	this.registerSetting("IDLE_SESSION_TIMEOUT",			{name:"zimbraMailIdleSessionTimeout", type:ZmSetting.T_COS, dataType:ZmSetting.D_LDAP_TIME, defaultValue:0});
 	this.registerSetting("IMAP_ACCOUNTS_ENABLED",			{name:"zimbraFeatureImapDataSourceEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
+	this.registerSetting("IMPORT_ON_LOGIN_ENABLED",			{name:"zimbraDataSourceImportOnLogin", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("INSTANT_NOTIFY",					{name:"zimbraFeatureInstantNotify", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("LOCALE_CHANGE_ENABLED",			{name:"zimbraFeatureLocaleChangeEnabled", type:ZmSetting.T_COS, dataType:ZmSetting.D_BOOLEAN, defaultValue:false});
 	this.registerSetting("LOCALES",							{type:ZmSetting.T_COS, dataType:ZmSetting.D_LIST});
@@ -972,6 +973,7 @@ function() {
 	this.registerSetting("OFFLINE_IS_MAILTO_HANDLER",		{name:"zimbraPrefMailtoHandlerEnabled", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	this.registerSetting("OFFLINE_NOTEBOOK_SYNC_ENABLED",	{name:"zimbraPrefNotebookSyncEnabled", type:ZmSetting.T_PREF, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, isGlobal:true});
 	this.registerSetting("OFFLINE_REMOTE_SERVER_URI",		{name:"offlineRemoteServerUri", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING});
+	this.registerSetting("OFFLINE_REMOTE_SERVER_VERSION",	{name:"offlineRemoteServerVersion", type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING});
 	this.registerSetting("OFFLINE_REPORT_EMAIL",			{type:ZmSetting.T_PREF, dataType:ZmSetting.D_STRING, defaultValue:"zdesktop-report@zimbra.com", isGlobal:true});
 	this.registerSetting("OFFLINE_SHOW_ALL_MAILBOXES",		{name:"offlineShowAllMailboxes", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_BOOLEAN, defaultValue:true, section:ZmSetting.M_OFFLINE, isGlobal:true});
 	this.registerSetting("OFFLINE_ALL_MAILBOXES_TREE_OPEN",	{name:"offlineAllMailboxesTreeOpen", type:ZmSetting.T_METADATA, dataType:ZmSetting.D_BOOLEAN, defaultValue:false, section:ZmSetting.M_OFFLINE, isGlobal:true, isImplicit:true});

@@ -70,9 +70,9 @@ Function GetRandomId
 End Function
 
 Sub CopyIfExists(sSrc, sDest, bOW)
-	If oFso.FileExists(sSrc) Then
-		oFso.CopyFile sSrc, sDest, bOW
-	End If
+    If oFso.FileExists(sSrc) Then
+        oFso.CopyFile sSrc, sDest, bOW
+    End If
 End Sub
 
 Sub LaunchPrism()
@@ -105,37 +105,37 @@ Sub BackupFailed(sMsg)
 End Sub
 
 Sub BackupData()
-	If oFso.FolderExists(sTmpDir) Then
+    If oFso.FolderExists(sTmpDir) Then
         ' Save leftover temp dir, in case it's needed in manual recovery 
         Dim iEpoch
         iEpoch = DateDiff("s", "01/01/1970 00:00:00", Now())
-		oFso.MoveFolder sTmpDir, sTmpDir & "." & iEpoch 
-	End If
-	oFso.CreateFolder sTmpDir
-	
+        oFso.MoveFolder sTmpDir, sTmpDir & "." & iEpoch 
+    End If
+    oFso.CreateFolder sTmpDir
+    
     On Error Resume Next
 
-	Dim sDir
-	For Each sDir In aUserDirs
+    Dim sDir
+    For Each sDir In aUserDirs
         If oFso.FolderExists(sDataRoot & "\" & sDir) Then
-		    oFso.MoveFolder sDataRoot & "\" & sDir, sTmpDir & "\" & sDir
+            oFso.MoveFolder sDataRoot & "\" & sDir, sTmpDir & "\" & sDir
             If Err.number <> 0 Then
                 BackupFailed "File operation failed. Please close any open files under " & _
                     sDataRoot & "\" & sDir 
             End If
         End If
-	Next
-	
-	oFso.CreateFolder sTmpDir & "\profile"
-	oFso.CreateFolder sTmpDir & "\conf"
-	Dim sFile
-	For Each sFile In aUserFiles
-		CopyIfExists sDataRoot & "\" & sFile, sTmpDir & "\" & sFile, true 
-	Next
+    Next
+    
+    oFso.CreateFolder sTmpDir & "\profile"
+    oFso.CreateFolder sTmpDir & "\conf"
+    Dim sFile
+    For Each sFile In aUserFiles
+        CopyIfExists sDataRoot & "\" & sFile, sTmpDir & "\" & sFile, true 
+    Next
 
     Dim iButton, sMsg
-    Do	
-	    oFso.DeleteFolder sDataRoot, true
+    Do  
+        oFso.DeleteFolder sDataRoot, true
         If Err.number = 0 Then
             Exit Sub
         Else
@@ -151,22 +151,22 @@ Sub BackupData()
 End Sub
 
 Sub RestoreData(sSrcRoot)
-	Dim sDir
-	For Each sDir In aUserDirs
+    Dim sDir
+    For Each sDir In aUserDirs
         If oFso.FolderExists(sSrcRoot & "\" & sDir) Then
-		    If oFso.FolderExists(sDataRoot & "\" & sDir) Then 
-			    oFso.DeleteFolder sDataRoot & "\" & sDir, true
-		    End If
-		    oFso.MoveFolder sSrcRoot & "\" & sDir, sDataRoot & "\" & sDir
+            If oFso.FolderExists(sDataRoot & "\" & sDir) Then 
+                oFso.DeleteFolder sDataRoot & "\" & sDir, true
+            End If
+            oFso.MoveFolder sSrcRoot & "\" & sDir, sDataRoot & "\" & sDir
         End If
-	Next
-	
-	Dim sFile
-	For Each sFile In aUserFiles
-		CopyIfExists sSrcRoot & "\" & sFile, sDataRoot & "\" & sFile, true
-	Next
-	
-	oFso.DeleteFolder sSrcRoot, true
+    Next
+    
+    Dim sFile
+    For Each sFile In aUserFiles
+        CopyIfExists sSrcRoot & "\" & sFile, sDataRoot & "\" & sFile, true
+    Next
+    
+    oFso.DeleteFolder sSrcRoot, true
 End Sub
 
 Sub WriteVersion()
@@ -261,6 +261,7 @@ sAppRoot = oFso.GetParentFolderName(sScriptDir)
 sLocalAppDir = oFso.getFolder(oShellApp.Namespace(&H1c&).Self.Path).ShortPath
 
 sDataRoot = GetDataRoot()
+xmlDataRoot = Replace(sDataRoot,"&","&amp;")
 sVerFile = sDataRoot & "\conf\version"
 sTmpDir = sDataRoot & ".tmp"
 sRestoreDir = sDataRoot & ".rst"
@@ -291,7 +292,7 @@ oShell.Popup sMsg, 5, "Zimbra Desktop", 64
 StopProcesses
 
 If bIsUpgrade Then
-	BackupData
+    BackupData
 End If
 
 ' copy data files
@@ -304,6 +305,20 @@ End If
 oFso.CopyFolder sAppRoot & "\data\*", sDataRoot & "\", true
 WriteVersion
 
+Set physMem = GetObject("winmgmts:").InstancesOf("Win32_PhysicalMemory")
+For Each mem In physMem
+memTmp = mem.capacity / 1024 / 1024
+TotalRam = TotalRam + memTmp
+Next
+
+If TotalRam > 1000 Then
+  javaXms = "-Xms128m"
+  javaXmx = "-Xmx512m"
+Else
+  javaXms = "-Xms32m"
+  javaXmx = "-Xmx150m"
+End If
+
 ' fix data files
 Set oTokens = CreateObject("Scripting.Dictionary")
 oTokens.Add "@install.app.root@", sAppRoot
@@ -311,17 +326,22 @@ oTokens.Add "@install.data.root@", sDataRoot
 oTokens.Add "@install.key@", GetRandomId()
 oTokens.Add "@install.mutex.name@", GetRandomId()
 oTokens.Add "@install.locale@", "en-US"
+oTokens.Add "@java.xms@", javaXms
+oTokens.Add "@java.xmx@", javaXmx
 
 FindAndReplace sDataRoot & "\bin\zdctl.vbs", oTokens
-FindAndReplace sDataRoot & "\conf\localconfig.xml", oTokens
 FindAndReplace sDataRoot & "\conf\zdesktop.conf", oTokens
-FindAndReplace sDataRoot & "\jetty\etc\jetty.xml", oTokens
 FindAndReplace sDataRoot & "\zdesktop.webapp\webapp.ini", oTokens
 FindAndReplace sDataRoot & "\profile\user.js", oTokens
 FindAndReplace sOverridePath, oTokens
 
+oTokens.Remove "@install.data.root@"
+oTokens.Add "@install.data.root@", xmlDataRoot
+FindAndReplace sDataRoot & "\conf\localconfig.xml", oTokens
+FindAndReplace sDataRoot & "\jetty\etc\jetty.xml", oTokens
+
 If bIsUpgrade Then
-	RestoreData sTmpDir
+    RestoreData sTmpDir
 End If
 
 oReg.CreateKey HKEY_CURRENT_USER, "Software\Zimbra\Zimbra Desktop"

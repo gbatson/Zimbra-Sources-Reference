@@ -33,6 +33,7 @@ import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
 import com.zimbra.common.soap.Element;
 import com.zimbra.common.soap.MailConstants;
+import com.zimbra.common.soap.XmlParseException;
 import com.zimbra.common.util.DateUtil;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.common.util.ZimbraLog;
@@ -104,7 +105,7 @@ public class VersionCheck extends AdminDocumentHandler {
         	Element respDoc;
 			try {	
 				respDoc = Element.parseXML(resp);
-			} catch (DocumentException dex) {
+			} catch (XmlParseException dex) {
 				throw VersionCheckException.INVALID_VC_RESPONSE(resp, dex);
 			}
 			if(respDoc == null) {
@@ -265,7 +266,7 @@ public class VersionCheck extends AdminDocumentHandler {
 			            }					
 					}
 	        	}
-			} catch (DocumentException e) {
+			} catch (XmlParseException e) {
 				throw ServiceException.FAILURE("error parsing  zimbraVersionCheckLastResponse config attribute", e);
 			}
             

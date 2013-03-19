@@ -214,9 +214,13 @@ function(ev){
 ZmCalendarTreeController.prototype._detachListener =
 function(ev){
 	var folder = this._getActionedOrganizer(ev);
-    var acct = folder && folder.getAccount();
-	var url = (folder) ? folder.getRestUrl(acct) : null;
-	if (url) {
+    if (!folder){
+        return;
+    }
+    var acct = folder.getAccount();
+    var noRemote = true;  // noRemote is to achieve a restUrl that points to user's mailbox instead of the shared calendar owner's mailbox
+    var url = folder.getRestUrl(acct, noRemote);
+    if (url) {
 		window.open(url+".html?tz=" + AjxTimezone.DEFAULT, "_blank");
 	}
 };
@@ -489,6 +493,10 @@ function(ev) {
 
 ZmCalendarTreeController.prototype._shareCalListener =
 function(ev) {
+	if (!this._sharingPossible()) {
+		return;
+	}
+	
 	this._pendingActionData = this._getActionedOrganizer(ev);
 	appCtxt.getSharePropsDialog().popup(ZmSharePropsDialog.NEW, this._pendingActionData);
 };

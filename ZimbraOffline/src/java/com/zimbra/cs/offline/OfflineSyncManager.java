@@ -339,6 +339,12 @@ public class OfflineSyncManager implements FormatListener {
         }
     }
 
+    public boolean isOffLine(NamedEntry entry) {
+        synchronized (syncStatusTable) {
+            return getStatus(entry).mStatus == SyncStatus.offline;
+        }
+    }
+
     public String getStage(NamedEntry entry) {
         synchronized (syncStatusTable) {
             return getStatus(entry).mStage;

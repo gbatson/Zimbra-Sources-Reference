@@ -31,9 +31,12 @@ import org.dom4j.ElementPath;
 
 import com.zimbra.common.service.ServiceException;
 import com.zimbra.common.soap.AdminConstants;
+import com.zimbra.common.soap.MailConstants;
 import com.zimbra.common.util.Constants;
+import com.zimbra.common.util.Pair;
 import com.zimbra.common.util.StringUtil;
 import com.zimbra.cs.account.DataSource;
+import com.zimbra.cs.account.Provisioning;
 import com.zimbra.cs.account.offline.OfflineAccount;
 import com.zimbra.cs.account.offline.OfflineGal;
 import com.zimbra.cs.account.offline.OfflineProvisioning;
@@ -46,7 +49,9 @@ import com.zimbra.cs.db.DbPool.Connection;
 import com.zimbra.cs.mime.ParsedContact;
 import com.zimbra.cs.offline.OfflineLC;
 import com.zimbra.cs.offline.OfflineLog;
+import com.zimbra.cs.offline.OfflineSyncManager;
 import com.zimbra.cs.offline.common.OfflineConstants;
+import com.zimbra.cs.service.offline.OfflineDialogAction;
 
 public class GalSyncSAXHandler implements ElementHandler {
     public static final String PATH_RESPONSE = "/Envelope/Body/SyncGalResponse";
@@ -66,6 +71,7 @@ public class GalSyncSAXHandler implements ElementHandler {
     private List<Integer> itemIds = new ArrayList<Integer>();
     private String zcsGalAccountId = "";
     private boolean isItemIdsSorted = false;
+    private boolean needsResync = false;
 
     public GalSyncSAXHandler(OfflineAccount galAccount, Mailbox galMbox, boolean fullSync) throws ServiceException {
         this.galAccount = galAccount;
@@ -115,6 +121,20 @@ public class GalSyncSAXHandler implements ElementHandler {
             OfflineLog.offline.debug("Offline GAL parse error: SyncGalResponse has no token attribute");
             unregisterHandlers(elPath);
             return;
+        }
+        needsResync = StringUtil.equal("1", row.attributeValue(MailConstants.A_GALSYNC_FULLSYNC_RECOMMENDED));
+        if (needsResync) {
+            OfflineLog.offline.debug("GAL recommends resync, setting flag");
+            String domain = this.galAccount.getDomain();
+            try {
+                ZcsMailbox mboxWithGal = GalSyncUtil.getGalEnabledZcsMailbox(domain);
+                OfflineSyncManager.getInstance().registerDialog(
+                        mboxWithGal.getAccountId(),
+                        new Pair<String, String>(OfflineDialogAction.DIALOG_TYPE_GAL_RESYNC,
+                                OfflineDialogAction.DIALOG_TYPE_GAL_RESYNC_MSG));
+            } catch (ServiceException e) {
+                OfflineLog.offline.info("Failed to get mailbox with GAL", e);
+            }
         }
     }
 
@@ -192,7 +212,7 @@ public class GalSyncSAXHandler implements ElementHandler {
         }
     }
 
-    private void removeUnmapped() throws ServiceException {
+    private boolean removeUnmapped() throws ServiceException {
         List<Integer> folderIds = new ArrayList<Integer>();
         folderIds.add(OfflineGal.getSyncFolder(galMbox, context, false).getId());
         QueryParams params = new QueryParams();
@@ -202,14 +222,14 @@ public class GalSyncSAXHandler implements ElementHandler {
         Set<Integer> galItemIds = null;
         synchronized (galMbox) {
             try {
-                conn = DbPool.getConnection();
+                conn = DbPool.getConnection(galMbox);
                 galItemIds = DbMailItem.getIds(galMbox, conn, params, false);
             } finally {
                 DbPool.quietClose(conn);
             }
         }
         if (galItemIds == null || galItemIds.size() == 0) {
-            return;
+            return false;
         }
 
         Collection<DataSourceItem> dsItems = DbDataSource.getAllMappings(ds);
@@ -224,13 +244,14 @@ public class GalSyncSAXHandler implements ElementHandler {
                 galItemIds.removeAll(dsItemIds);
             } catch (Exception e) {
                 OfflineLog.offline.warn("Offline GAL error in calculating set difference: " + e.getMessage());
-                return;
+                return false;
             }
 
             if (galItemIds.size() > 100) {
                 prov.setAccountAttribute(this.galAccount, OfflineConstants.A_offlineGalAccountSyncToken, "");
                 OfflineLog.offline.warn("Offline GAL too many unmapped items: " + Integer.toString(galItemIds.size())
                         + ", falling back to full sync.");
+                return true;
             } else {
                 for (Integer id : galItemIds) {
                     galMbox.delete(context, id.intValue(), MailItem.TYPE_CONTACT);
@@ -239,24 +260,29 @@ public class GalSyncSAXHandler implements ElementHandler {
                         + " unmapped items.");
             }
         }
+        return false;
     }
 
-    public void runMaintenance() {
+    public boolean runMaintenance() {
         long lastRefresh = galAccount.getLongAttr(OfflineConstants.A_offlineGalAccountLastRefresh, 0);
         long interval = OfflineLC.zdesktop_gal_refresh_interval_days.longValue();
         if (lastRefresh > 0 && (System.currentTimeMillis() - lastRefresh) / Constants.MILLIS_PER_DAY < interval) {
-            return;
+            return false;
         }
 
         try {
             OfflineLog.offline.debug("Offline GAL running maintenance");
-            removeUnmapped();
+            boolean needFullSync = removeUnmapped();
             galMbox.optimize(null, 0);
-            prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountLastRefresh,
-                    Long.toString(System.currentTimeMillis()));
+            if (!needFullSync) {
+                prov.setAccountAttribute(galAccount, OfflineConstants.A_offlineGalAccountLastRefresh,
+                        Long.toString(System.currentTimeMillis()));
+            }
+            return needFullSync;
         } catch (ServiceException e) {
             OfflineLog.offline.warn("Offline GAL maintenance error: " + e.getMessage());
         }
+        return false;
     }
 
     private void saveUnparsedContact(String id, Map<String, String> map) throws ServiceException, IOException {

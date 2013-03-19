@@ -1212,7 +1212,7 @@ calculate size.
 
 <ExportAndDeleteItemsRequest [exportDir="path"] [exportFilenamePrefix="name"]>
   <mbox id="{id}">
-    <item id="{id}" />
+    <item id="{id}" version={ver}/>
     ...
   </mbox>
 </ExportAndDeleteItemsRequest>
@@ -2272,7 +2272,7 @@ e.g.
 ----------------------------------------
 
 <CheckExchangeAuthRequest>
-  <auth url="{url-to-exchange-server}" user="{exchange-user-name}" pass="{exchange-password}" scheme="basic|form" />
+  <auth url="{url-to-exchange-server}" user="{exchange-user-name}" pass="{exchange-password}" scheme="basic|form" [type="webdav|ews"]/>
 </CheckExchangeAuthRequest>
 
 <CheckExchangeAuthResponse>

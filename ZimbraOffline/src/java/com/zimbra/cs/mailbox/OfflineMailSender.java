@@ -2,12 +2,12 @@
  * ***** BEGIN LICENSE BLOCK *****
  * Zimbra Collaboration Suite Server
  * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 VMware, Inc.
- * 
+ *
  * The contents of this file are subject to the Zimbra Public License
  * Version 1.3 ("License"); you may not use this file except in
  * compliance with the License.  You may obtain a copy of the License at
  * http://www.zimbra.com/license.
- * 
+ *
  * Software distributed under the License is distributed on an "AS IS"
  * basis, WITHOUT WARRANTY OF ANY KIND, either express or implied.
  * ***** END LICENSE BLOCK *****
@@ -38,7 +38,7 @@ public class OfflineMailSender extends MailSender {
     public OfflineMailSender() {
         setTrackBadHosts(false);
     }
-    
+
     @Override
     public ItemId sendMimeMessage(OperationContext octxt, Mailbox mbox,
             MimeMessage mm) throws ServiceException {
@@ -51,10 +51,10 @@ public class OfflineMailSender extends MailSender {
         }
 
         Account acct = mbox.getAccount();
-        Account authuser = octxt == null ? null : octxt.getAuthenticatedUser();        
+        Account authuser = octxt == null ? null : octxt.getAuthenticatedUser();
         if (authuser == null)
             authuser = acct;
-        // bug 49820: Hide the "local@host.local" fake account address from From/Sender header checks. 
+        // bug 49820: Hide the "local@host.local" fake account address from From/Sender header checks.
         if (AccountUtil.isZDesktopLocalAccount(authuser.getId()))
             authuser = acct;
 
@@ -73,7 +73,7 @@ public class OfflineMailSender extends MailSender {
                 (getOriginalMessageId() != null ? getOriginalMessageId().toString(acct) : null), getReplyType(),
                 identityId, acct.getId(), 0).getId();
             mbox.move(octxt, draftId, MailItem.TYPE_MESSAGE, DesktopMailbox.ID_FOLDER_OUTBOX);
-            if (mbox instanceof SyncMailbox && getSavedDraftId() != null) { 
+            if (mbox instanceof SyncMailbox && getSavedDraftId() != null) {
                 ((SyncMailbox) mbox).trackTransientItem(getSavedDraftId().getId());
             }
             // we can now purge the uploaded attachments
@@ -83,10 +83,10 @@ public class OfflineMailSender extends MailSender {
             // add any new contacts to the personal address book
             if (getSaveContacts() != null) {
                 Mailbox contactMbox = mbox;
-                
+
                 if (!acct.isFeatureContactsEnabled()) {
                     Account localAcct = OfflineProvisioning.getOfflineInstance().getLocalAccount();
-                    
+
                     contactMbox = MailboxManager.getInstance().getMailboxByAccount(localAcct);
                 }
                 for (InternetAddress iaddr : getSaveContacts()) {
@@ -99,13 +99,13 @@ public class OfflineMailSender extends MailSender {
                     }
                 }
             }
-            
+
             // update contact rankings
             Address[] rcpts = getRecipients(mm);
             if (rcpts != null && rcpts.length > 0) {
                 ContactRankings.increment(acct.getId(), rcpts);
             }
-            
+
             return new ItemId(mbox, draftId);
         } catch (MessagingException me) {
             OfflineLog.offline.warn("exception occurred during SendMsg", me);
@@ -114,5 +114,10 @@ public class OfflineMailSender extends MailSender {
             OfflineLog.offline.warn("exception occured during send msg", ioe);
             throw ServiceException.FAILURE("IOException", ioe);
         }
+    }
+
+    @Override
+    public void checkMTAConnection() throws ServiceException {
+        //do nothing; in ZD we don't have a direct connection to MTA
     }
 }

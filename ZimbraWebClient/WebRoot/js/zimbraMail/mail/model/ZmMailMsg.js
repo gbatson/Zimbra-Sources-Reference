@@ -1718,7 +1718,7 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 
 	var attachments = this.attachments;
 
-	if (includeInlineAtts) {
+	if (includeInlineAtts || includeInlineImages) {
 		var parts = this.getBodyParts();
 		if (parts && parts.length > 1) {
 			var iAtts = [], part;
@@ -1739,7 +1739,7 @@ function(findHits, includeInlineImages, includeInlineAtts) {
 		for (var i = 0; i < attachments.length; i++) {
 			var attach = attachments[i];
 
-			if (!this.isRealAttachment(attach) || (attach.ct.match(/^image/) && attach.ci && attach.foundInMsgBody && !includeInlineImages) || (attach.cd == "inline" && attach.filename && ZmMimeTable.isRenderable(attach.ct) && !includeInlineAtts)) {
+			if (!this.isRealAttachment(attach) || (attach.ct.match(/^image/) && attach.ci && attach.foundInMsgBody && !includeInlineImages) || (attach.cd == "inline" && attach.filename && ZmMimeTable.isRenderable(attach.ct, true) && !includeInlineAtts)) {
 				continue;
 			}
 
@@ -2106,15 +2106,16 @@ function () {
 // Adds child address nodes for the given address type.
 ZmMailMsg.prototype._addAddressNodes =
 function(addrNodes, type, isDraft) {
-
-	var doAdd = appCtxt.get(ZmSetting.AUTO_ADD_ADDRESS);
+	
+	var ac = window.parentAppCtxt || window.appCtxt;
+	var doAdd = ac.get(ZmSetting.AUTO_ADD_ADDRESS);
 	var addrs = this._addrs[type];
 	var num = addrs.size();
 	if (num) {
-	 if (appCtxt.isOffline) {
-            contactsApp = appCtxt.getApp(ZmApp.CONTACTS)
+	 if (ac.isOffline) {
+            contactsApp = ac.getApp(ZmApp.CONTACTS)
         } else {
-		    contactsApp = appCtxt.get(ZmSetting.CONTACTS_ENABLED) && appCtxt.getApp(ZmApp.CONTACTS);
+		    contactsApp = ac.get(ZmSetting.CONTACTS_ENABLED) && ac.getApp(ZmApp.CONTACTS);
         }
         if (contactsApp && !contactsApp.isContactListLoaded()) {
             contactsApp = null;

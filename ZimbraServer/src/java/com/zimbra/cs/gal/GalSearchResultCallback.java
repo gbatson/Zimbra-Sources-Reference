@@ -103,7 +103,7 @@ public class GalSearchResultCallback implements GalContact.Visitor {
             fieldSet.removeAll(Contact.getSMIMECertFields());
     	    eContact = ToXML.encodeContact(mResponse, mFormatter, c, true, fieldSet);
     	}
-    	
+    	eContact.addAttribute(AccountConstants.A_REF, c.get(ContactConstants.A_dn));
     	if (mNeedsCanExpandInfo && c.isGroup()) {
     	    boolean canExpand = GalSearchControl.canExpandGalGroup(c.get(ContactConstants.A_email), 
                     c.get(ContactConstants.A_zimbraId), mAuthAcct);
@@ -114,6 +114,7 @@ public class GalSearchResultCallback implements GalContact.Visitor {
     
     public void handleContact(GalContact c) throws ServiceException {
 		Element eGalContact = ToXML.encodeGalContact(mResponse, c);
+		eGalContact.addAttribute(AccountConstants.A_REF, c.getId());
 		if (mNeedsCanExpandInfo && c.isGroup()) {
 		    boolean canExpand = GalSearchControl.canExpandGalGroup(c.getSingleAttr(ContactConstants.A_email), 
 		            c.getSingleAttr(ContactConstants.A_zimbraId), mAuthAcct);
@@ -174,6 +175,10 @@ public class GalSearchResultCallback implements GalContact.Visitor {
     }
     public void setHasMoreResult(boolean more) {
         mResponse.addAttribute(MailConstants.A_QUERY_MORE, more);
+    }
+
+    public void setFullSyncRecommended(boolean value) {
+        mResponse.addAttribute(MailConstants.A_GALSYNC_FULLSYNC_RECOMMENDED, value);
     }
     
     public static abstract class PassThruGalSearchResultCallback extends GalSearchResultCallback {

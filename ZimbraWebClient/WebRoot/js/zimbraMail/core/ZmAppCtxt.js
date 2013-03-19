@@ -54,6 +54,7 @@ ZmAppCtxt = function() {
 };
 
 ZmAppCtxt.ONE_MINUTE = 60 * 1000;
+ZmAppCtxt.MAX_TIMEOUT_VALUE = 2147483647;
 
 ZmAppCtxt._ZIMLETS_EVENT = 'ZIMLETS';
 
@@ -68,8 +69,8 @@ function() {
 };
 
 ZmAppCtxt.prototype._setAuthTokenWarning =
-function() {
-	var millisToLive = window.authTokenTimeLeftInMillis;
+function(timeLeftInMillis) {
+	var millisToLive = timeLeftInMillis || window.authTokenTimeLeftInMillis;
 	var wholeMinutesToLive = Math.floor(millisToLive / ZmAppCtxt.ONE_MINUTE);
 	var minutesToWarnBeforeLogout = Math.min(5, wholeMinutesToLive - 1); 
 
@@ -79,7 +80,14 @@ function() {
 
 	var millisToWarning = millisToLive - ZmAppCtxt.ONE_MINUTE * minutesToWarnBeforeLogout;
 	if (millisToWarning > 0) {
-		window.setTimeout(this._authTokenWarningTimeout.bind(this, minutesToWarnBeforeLogout), millisToWarning);
+		if (millisToWarning <= ZmAppCtxt.MAX_TIMEOUT_VALUE) {
+			window.setTimeout(this._authTokenWarningTimeout.bind(this, minutesToWarnBeforeLogout), millisToWarning);
+		} else {
+			//2147483647 is the max int value for which the timeout will work in most browsers. If the value exceeds the max
+			//then call this function again after the max time.
+			window.setTimeout(this._setAuthTokenWarning.bind(this, millisToLive - ZmAppCtxt.MAX_TIMEOUT_VALUE), ZmAppCtxt.MAX_TIMEOUT_VALUE);
+		}
+
 	}
 };
 
@@ -191,11 +199,10 @@ function(all) {
 ZmAppCtxt.prototype.getSettings =
 function(account) {
 	var al = this.accountList;
-	var id = account
-		? account.id
-		: al.activeAccount ? al.activeAccount.id : ZmAccountList.DEFAULT_ID;
 
-	var acct = al.getAccount(id);
+	var acct = account || al.activeAccount || al.mainAccount
+			|| al.getAccount(ZmAccountList.DEFAULT_ID); //Probably doesn't ever happen, and if it does, returns null. Might be some historical artifact - did we ever have account with id "main"? I'm still afraid to remove it without being sure it won't cause regression.
+
 	return acct && acct.settings;
 };
 
@@ -234,7 +241,7 @@ function(id, key, account) {
 
 	// for offline, global settings always come from the "local" parent account
 	var acct = (context.multiAccounts && ZmSetting.IS_GLOBAL[id])
-		? context.accountList.mainAccount : (account || context.accountList.mainAccount);
+		? context.accountList.mainAccount : account;
 	return context.getSettings(acct).get(id, key);
 };
 
